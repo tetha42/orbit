@@ -1,0 +1,474 @@
+/* Kasa (ledger) screen. Colours come from the theme tokens so light and dark both work;
+   the old inline styles assumed a dark window (white-on-white buttons in light mode). */
+.panel {
+	container: kasapanel / inline-size;
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	padding: 16px 24px 28px;
+	/* Local names for the status tokens in globals.css (they follow the theme). */
+	--green: var(--success);
+	--red: var(--danger);
+	--blue: var(--info);
+}
+
+.embedded {
+	padding: 0;
+}
+
+.cards {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+	gap: 12px;
+}
+
+.card {
+	padding: 14px 16px;
+	border-radius: 14px;
+	border: 1px solid var(--card-border);
+	background: var(--card-bg);
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.cardHead {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	font-size: 12px;
+	font-weight: 650;
+	color: var(--text-secondary);
+}
+
+.cardValue {
+	font-size: 24px;
+	font-weight: 800;
+	letter-spacing: -0.01em;
+	font-variant-numeric: tabular-nums;
+}
+
+.cardNote {
+	font-size: 11px;
+	color: var(--text-secondary);
+}
+
+.pos {
+	color: var(--green);
+}
+
+.neg {
+	color: var(--red);
+}
+
+.blue {
+	color: var(--blue);
+}
+
+/* ---- insights ---- */
+.insights {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	gap: 12px;
+}
+
+.box {
+	padding: 14px 16px;
+	border-radius: 14px;
+	border: 1px solid var(--card-border);
+	background: var(--card-bg);
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	min-width: 0;
+}
+
+.boxTitle {
+	margin: 0;
+	font-size: 13px;
+	font-weight: 750;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.catRow {
+	display: grid;
+	grid-template-columns: minmax(70px, 120px) minmax(48px, 1fr) auto;
+	gap: 10px;
+	align-items: center;
+	font-size: 12px;
+	background: none;
+	border: none;
+	padding: 2px 0;
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
+	border-radius: 6px;
+}
+
+.catRow:hover .catName {
+	text-decoration: underline;
+}
+
+.catRowActive .catName {
+	color: var(--blue);
+	font-weight: 750;
+}
+
+.catName {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.track {
+	height: 8px;
+	border-radius: 4px;
+	background: var(--fill-soft);
+	overflow: hidden;
+}
+
+.track > span {
+	display: block;
+	height: 100%;
+	border-radius: 4px;
+	background: linear-gradient(90deg, #ff9f0a, #ff453a);
+}
+
+.catAmount {
+	font-variant-numeric: tabular-nums;
+	font-weight: 650;
+	white-space: nowrap;
+}
+
+.months {
+	display: grid;
+	grid-template-columns: repeat(6, 1fr);
+	gap: 8px;
+	align-items: end;
+	height: 128px;
+}
+
+.month {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+	height: 100%;
+	justify-content: flex-end;
+	min-width: 0;
+	border: none;
+	background: none;
+	color: inherit;
+	cursor: pointer;
+	padding: 0;
+	border-radius: 6px;
+}
+
+.monthActive {
+	background: var(--fill-soft);
+}
+
+.bars {
+	flex: 1;
+	width: 100%;
+	display: flex;
+	gap: 3px;
+	align-items: flex-end;
+	justify-content: center;
+}
+
+.bar {
+	width: 12px;
+	min-height: 2px;
+	border-radius: 3px 3px 0 0;
+}
+
+.barIn {
+	background: #30d158;
+}
+
+.barOut {
+	background: #ff453a;
+}
+
+.monthLabel {
+	font-size: 10.5px;
+	color: var(--text-secondary);
+	text-transform: capitalize;
+}
+
+.legend {
+	display: flex;
+	gap: 12px;
+	font-size: 11px;
+	color: var(--text-secondary);
+}
+
+.legend i {
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	border-radius: 2px;
+	margin-right: 4px;
+}
+
+/* ---- toolbar ---- */
+.toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+}
+
+.searchInput {
+	min-width: 160px;
+	flex: 1 1 180px;
+	max-width: 320px;
+	height: 36px;
+}
+
+.spacer {
+	flex: 1;
+}
+
+.filterNote {
+	font-size: 12px;
+	color: var(--text-secondary);
+}
+
+/* ---- ledger ---- */
+.ledger {
+	border: 1px solid var(--card-border);
+	border-radius: 14px;
+	overflow-x: auto;
+	background: var(--card-bg);
+	container: kasaledger2 / inline-size;
+}
+
+.table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 13px;
+}
+
+.table th {
+	text-align: left;
+	font-size: 11.5px;
+	font-weight: 700;
+	color: var(--text-secondary);
+	padding: 10px 12px;
+	background: var(--fill-softer);
+	border-bottom: 1px solid var(--card-border);
+	white-space: nowrap;
+}
+
+.table td {
+	padding: 10px 12px;
+	border-bottom: 1px solid var(--card-border);
+	vertical-align: top;
+}
+
+.table tr:last-child td {
+	border-bottom: none;
+}
+
+.table tbody tr:hover {
+	background: var(--fill-softer);
+}
+
+.num {
+	text-align: right !important;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.date {
+	white-space: nowrap;
+	color: var(--text-secondary);
+	font-variant-numeric: tabular-nums;
+}
+
+.tag {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	font-size: 10.5px;
+	font-weight: 800;
+	padding: 2px 7px;
+	border-radius: 6px;
+	white-space: nowrap;
+}
+
+.tagIn {
+	background: color-mix(in srgb, #30d158 16%, transparent);
+	color: var(--green);
+}
+
+.tagOut {
+	background: color-mix(in srgb, #ff453a 14%, transparent);
+	color: var(--red);
+}
+
+.tagTransfer {
+	background: color-mix(in srgb, #5e5ce6 16%, transparent);
+	color: #5e5ce6;
+}
+
+.desc {
+	line-height: 1.4;
+	word-break: break-word;
+}
+
+.sub {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 3px;
+	font-size: 11px;
+	color: var(--text-secondary);
+}
+
+.receipt {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	color: var(--blue);
+	font-weight: 650;
+	text-decoration: none;
+}
+
+.actions {
+	display: flex;
+	gap: 2px;
+	justify-content: flex-end;
+}
+
+.rowBtn {
+	width: 28px;
+	height: 28px;
+	display: grid;
+	place-items: center;
+	border-radius: 7px;
+	border: none;
+	background: none;
+	color: var(--text-secondary);
+	cursor: pointer;
+}
+
+.rowBtn:hover {
+	background: var(--fill-soft);
+	color: var(--text-primary);
+}
+
+.rowBtnDanger:hover {
+	color: var(--red);
+}
+
+.foot td {
+	font-weight: 750;
+	background: var(--fill-softer);
+}
+
+.emptyRow {
+	text-align: center;
+	padding: 28px 12px !important;
+	color: var(--text-secondary);
+}
+
+.grid3 {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 12px;
+}
+
+.grid2 {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 12px;
+}
+
+.fileRow {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+	font-size: 12.5px;
+}
+
+.ok {
+	color: var(--green);
+	font-weight: 650;
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.balanceHint {
+	font-size: 12px;
+	color: var(--text-secondary);
+}
+
+@container kasaledger2 (max-width: 720px) {
+	.colUser,
+	.colBalance {
+		display: none;
+	}
+}
+
+/* These follow the panel's own width (the app window can be narrow on a wide screen). */
+@container kasapanel (max-width: 900px) {
+	.insights,
+	.grid3,
+	.grid2 {
+		grid-template-columns: 1fr;
+	}
+}
+
+@container kasapanel (max-width: 520px) {
+	.catRow {
+		grid-template-columns: minmax(0, 1fr) auto;
+	}
+	.catRow .track {
+		grid-column: 1 / -1;
+		grid-row: 2;
+	}
+}
+
+@media (max-width: 760px) {
+	.panel {
+		padding: 12px;
+	}
+}
+
+@media (max-width: 600px) {
+	.panel {
+		padding: 10px;
+		gap: 12px;
+	}
+
+	.cards {
+		grid-template-columns: 1fr;
+	}
+
+	.toolbar {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 8px;
+	}
+
+	.toolbar > * {
+		width: 100% !important;
+		max-width: none !important;
+		min-height: 38px !important;
+		height: 38px !important;
+		flex: none !important;
+		box-sizing: border-box;
+	}
+
+	.ledger {
+		border-radius: 10px;
+		-webkit-overflow-scrolling: touch;
+	}
+}

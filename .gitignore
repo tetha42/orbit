@@ -1,0 +1,32 @@
+/node_modules/
+/dist/
+/dist-release/
+/.vscode/
+.DS_Store
+.idea/
+.wrangler/
+.dev.vars
+.next/
+.next-*/
+*.tsbuildinfo
+package-lock.json
+
+# Database dumps produced by `make db-backup`
+/backups/
+
+# User uploads (receipt photos, documents) are runtime data, not source.
+/public/uploads/
+/data/
+
+# Secrets & local config files — zero config files are tracked in the repo.
+.env
+.env.*
+infra/docker/.env*
+config.ini
+*.ini
+*.ini.example
+*.log
+
+# UI e2e (tests/e2e/ui): screenshots, server logs and run fixtures stay local.
+/tests/e2e/shots/
+/tests/e2e/.tmp/

@@ -1,0 +1,810 @@
+/* macOS Sequoia Apple Mail Metaphor Styling */
+
+.container {
+	display: flex;
+	width: 100%;
+	height: 100%;
+	background: var(--window-bg);
+	color: var(--text-primary);
+	font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+	overflow: hidden;
+	position: relative;
+	user-select: none;
+}
+
+/* ==========================================================================
+   1. Sol Kenar Çubuğu (Mailboxes Sidebar)
+   ========================================================================== */
+.sidebar {
+	width: 220px;
+	min-width: 200px;
+	max-width: 260px;
+	background: var(--settings-sidebar-bg);
+	border-right: 1px solid var(--border-subtle);
+	display: flex;
+	flex-direction: column;
+	padding: 14px 10px;
+	gap: 12px;
+	flex-shrink: 0;
+}
+
+.composeBtn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	width: 100%;
+	padding: 9px 14px;
+	border-radius: 9px;
+	background: var(--accent);
+	color: #ffffff;
+	font-size: 13px;
+	font-weight: 600;
+	border: none;
+	cursor: pointer;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+	transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.composeBtn:hover {
+	opacity: 0.92;
+}
+
+.composeBtn:active {
+	transform: scale(0.98);
+}
+
+.folderSectionTitle {
+	font-size: 11px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.6px;
+	color: var(--text-muted);
+	padding: 6px 10px 4px 10px;
+}
+
+.folderList {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	flex: 1;
+	overflow-y: auto;
+}
+
+.folderItem {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 7px 10px;
+	border-radius: 7px;
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--text-primary);
+	cursor: pointer;
+	transition: background 0.12s ease;
+}
+
+.folderItem:hover {
+	background: var(--bg-hover);
+}
+
+.folderItemActive {
+	background: var(--accent);
+	color: #ffffff;
+	font-weight: 600;
+}
+
+.folderItemActive:hover {
+	background: var(--accent);
+}
+
+.folderLeft {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.folderBadge {
+	font-size: 11px;
+	font-weight: 600;
+	padding: 2px 7px;
+	border-radius: 10px;
+	background: var(--badge-bg);
+	color: var(--text-secondary);
+}
+
+.folderItemActive .folderBadge {
+	background: rgba(255, 255, 255, 0.25);
+	color: #ffffff;
+}
+
+.sidebarFooter {
+	padding-top: 8px;
+	border-top: 1px solid var(--border-subtle);
+	font-size: 11px;
+	color: var(--text-muted);
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	word-break: break-all;
+}
+
+.syncIndicator {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 11px;
+	color: var(--text-secondary);
+}
+
+/* ==========================================================================
+   2. Orta İleti Listesi (Message List Pane)
+   ========================================================================== */
+.listPane {
+	width: 320px;
+	min-width: 280px;
+	max-width: 380px;
+	border-right: 1px solid var(--border-subtle);
+	display: flex;
+	flex-direction: column;
+	background: var(--window-bg);
+	flex-shrink: 0;
+}
+
+.listHeader {
+	padding: 12px 14px;
+	border-bottom: 1px solid var(--border-subtle);
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.listTitleRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.listTitle {
+	font-size: 16px;
+	font-weight: 700;
+	color: var(--text-primary);
+	margin: 0;
+}
+
+.refreshBtn {
+	background: transparent;
+	border: none;
+	color: var(--text-secondary);
+	cursor: pointer;
+	padding: 5px;
+	border-radius: 6px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: background 0.15s ease, color 0.15s ease;
+}
+
+.refreshBtn:hover {
+	background: var(--bg-hover);
+	color: var(--text-primary);
+}
+
+.searchBox {
+	position: relative;
+	display: flex;
+	align-items: center;
+}
+
+.searchIcon {
+	position: absolute;
+	left: 9px;
+	color: var(--text-muted);
+	pointer-events: none;
+}
+
+.searchInput {
+	width: 100%;
+	padding: 6px 10px 6px 30px;
+	border-radius: 8px;
+	border: 1px solid var(--border-subtle);
+	background: var(--input-bg);
+	color: var(--text-primary);
+	font-size: 12.5px;
+	outline: none;
+	transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.searchInput:focus {
+	border-color: var(--accent);
+	box-shadow: 0 0 0 2px var(--accent-subtle);
+}
+
+.messageList {
+	flex: 1;
+	overflow-y: auto;
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.messageItem {
+	padding: 12px 14px;
+	border-bottom: 1px solid var(--border-subtle);
+	cursor: pointer;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	transition: background 0.12s ease;
+	position: relative;
+}
+
+.messageItem:hover {
+	background: var(--bg-hover);
+}
+
+.messageItemActive {
+	background: var(--accent-subtle);
+	border-left: 3px solid var(--accent);
+}
+
+.messageTopRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.senderBox {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 13.5px;
+	font-weight: 600;
+	color: var(--text-primary);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.unreadDot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--accent);
+	flex-shrink: 0;
+}
+
+.messageDate {
+	font-size: 11.5px;
+	color: var(--text-muted);
+	flex-shrink: 0;
+}
+
+.messageSubject {
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--text-primary);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.messageSnippet {
+	font-size: 12px;
+	color: var(--text-muted);
+	line-height: 1.35;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+.messageIconsRow {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 2px;
+	font-size: 11px;
+	color: var(--text-muted);
+}
+
+/* ==========================================================================
+   3. Sağ Detay Paneli (Message Detail Pane)
+   ========================================================================== */
+.detailPane {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	background: var(--window-bg);
+	overflow: hidden;
+	min-width: 0;
+}
+
+.detailEmptyState {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	color: var(--text-muted);
+	padding: 40px;
+	text-align: center;
+}
+
+.detailHeader {
+	padding: 16px 20px;
+	border-bottom: 1px solid var(--border-subtle);
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	background: var(--card-bg);
+}
+
+.detailActionsRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.actionBtnGroup {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.actionBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 11px;
+	border-radius: 7px;
+	border: 1px solid var(--border-subtle);
+	background: var(--window-bg);
+	color: var(--text-primary);
+	font-size: 12px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.actionBtn:hover {
+	background: var(--bg-hover);
+	border-color: var(--border-subtle);
+}
+
+.actionBtnPrimary {
+	background: var(--accent);
+	color: #ffffff;
+	border-color: var(--accent);
+}
+
+.actionBtnPrimary:hover {
+	opacity: 0.92;
+}
+
+.detailSubject {
+	font-size: 18px;
+	font-weight: 700;
+	color: var(--text-primary);
+	margin: 0;
+	line-height: 1.3;
+}
+
+.detailMetaBox {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.senderProfile {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.avatar {
+	width: 38px;
+	height: 38px;
+	border-radius: 50%;
+	background: var(--accent-subtle);
+	color: var(--accent);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-weight: 700;
+	font-size: 14px;
+	border: 1px solid var(--accent-border);
+	flex-shrink: 0;
+}
+
+.senderDetails {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.senderName {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--text-primary);
+}
+
+.senderAddress {
+	font-size: 12px;
+	color: var(--text-muted);
+}
+
+.toAddress {
+	font-size: 11.5px;
+	color: var(--text-secondary);
+}
+
+.privacyBanner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 9px 14px;
+	background: var(--accent-subtle);
+	border: 1px solid var(--accent-border);
+	border-radius: 8px;
+	font-size: 12px;
+	color: var(--text-primary);
+	margin: 0 20px 10px 20px;
+}
+
+.privacyBtn {
+	background: var(--accent);
+	color: #ffffff;
+	border: none;
+	padding: 4px 10px;
+	border-radius: 6px;
+	font-size: 11.5px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.bodyContainer {
+	flex: 1;
+	overflow-y: auto;
+	padding: 20px;
+	background: #ffffff;
+	color: #1a1a1a;
+	user-select: text;
+}
+
+:global([data-theme="dark"]) .bodyContainer {
+	background: #18191b;
+	color: #e0e0e0;
+}
+
+.attachmentsBar {
+	padding: 12px 20px;
+	border-top: 1px solid var(--border-subtle);
+	background: var(--card-bg);
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+.attachmentPill {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 11px;
+	background: var(--window-bg);
+	border: 1px solid var(--border-subtle);
+	border-radius: 8px;
+	font-size: 12px;
+	color: var(--text-primary);
+}
+
+/* ==========================================================================
+   4. Compose Modal (macOS Sheet / Window)
+   ========================================================================== */
+.modalOverlay {
+	position: absolute;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.45);
+	backdrop-filter: blur(4px);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 50;
+	padding: 20px;
+}
+
+.composeModal {
+	width: 100%;
+	max-width: 640px;
+	height: 520px;
+	max-height: 90%;
+	background: var(--window-bg);
+	border: 1px solid var(--border-subtle);
+	border-radius: 12px;
+	box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.composeHeader {
+	padding: 12px 16px;
+	border-bottom: 1px solid var(--border-subtle);
+	background: var(--settings-sidebar-bg);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.composeHeaderTitle {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--text-primary);
+}
+
+.composeCloseBtn {
+	background: transparent;
+	border: none;
+	color: var(--text-secondary);
+	cursor: pointer;
+	padding: 4px;
+	border-radius: 5px;
+}
+
+.composeCloseBtn:hover {
+	background: var(--bg-hover);
+	color: var(--text-primary);
+}
+
+.composeForm {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	overflow: hidden;
+}
+
+.composeFieldRow {
+	display: flex;
+	align-items: center;
+	padding: 8px 16px;
+	border-bottom: 1px solid var(--border-subtle);
+	gap: 10px;
+}
+
+.composeFieldLabel {
+	font-size: 12.5px;
+	font-weight: 500;
+	color: var(--text-muted);
+	width: 60px;
+	flex-shrink: 0;
+}
+
+.composeFieldInput {
+	flex: 1;
+	border: none;
+	background: transparent;
+	color: var(--text-primary);
+	font-size: 13px;
+	outline: none;
+}
+
+.composeTextArea {
+	flex: 1;
+	border: none;
+	background: transparent;
+	color: var(--text-primary);
+	font-size: 13.5px;
+	line-height: 1.5;
+	padding: 14px 16px;
+	resize: none;
+	outline: none;
+	font-family: inherit;
+	user-select: text;
+}
+
+.composeFooter {
+	padding: 12px 16px;
+	border-top: 1px solid var(--border-subtle);
+	background: var(--settings-sidebar-bg);
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 10px;
+}
+
+/* ==========================================================================
+   5. Mobil Uyumluluk (<768px)
+   ========================================================================== */
+/* Multi-select Batch Toolbar */
+.batchToolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 8px 12px;
+	background: var(--card-bg);
+	border-bottom: 1px solid var(--border-subtle);
+	font-size: 12px;
+}
+
+.batchToolbarLeft {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.batchToolbarRight {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.batchCount {
+	font-weight: 600;
+	color: var(--text-primary);
+}
+
+.batchActionBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 4px 8px;
+	border-radius: 6px;
+	border: 1px solid var(--border-subtle);
+	background: var(--bg-hover);
+	color: var(--text-primary);
+	font-size: 11.5px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.batchActionBtn:hover {
+	background: var(--badge-bg);
+	border-color: var(--text-secondary);
+}
+
+.batchActionBtnDanger {
+	color: #ff453a;
+}
+
+.batchActionBtnDanger:hover {
+	background: rgba(255, 69, 58, 0.12);
+	border-color: rgba(255, 69, 58, 0.4);
+}
+
+.selectionCheckbox {
+	width: 16px;
+	height: 16px;
+	border-radius: 4px;
+	border: 1.5px solid var(--text-muted);
+	background: transparent;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	padding: 0;
+	flex-shrink: 0;
+	color: #ffffff;
+	transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+
+.selectionCheckbox:hover {
+	border-color: var(--accent);
+}
+
+.selectionCheckboxChecked {
+	background: var(--accent);
+	border-color: var(--accent);
+}
+
+.messageItemRow {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	width: 100%;
+}
+
+.messageItemContent {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.selectModeBtn {
+	background: transparent;
+	border: none;
+	color: var(--text-secondary);
+	cursor: pointer;
+	padding: 5px;
+	border-radius: 6px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: background 0.15s ease, color 0.15s ease;
+}
+
+.selectModeBtn:hover {
+	background: var(--bg-hover);
+	color: var(--text-primary);
+}
+
+.selectModeBtnActive {
+	background: var(--accent-subtle);
+	color: var(--accent);
+}
+
+.emptyTrashHeaderBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 3px 8px;
+	border-radius: 6px;
+	border: 1px solid rgba(255, 69, 58, 0.3);
+	background: rgba(255, 69, 58, 0.08);
+	color: #ff453a;
+	font-size: 11px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.emptyTrashHeaderBtn:hover {
+	background: rgba(255, 69, 58, 0.16);
+	border-color: rgba(255, 69, 58, 0.5);
+}
+
+@media (max-width: 768px) {
+	.container {
+		flex-direction: column;
+	}
+
+	.sidebar {
+		width: 100%;
+		max-width: none;
+		min-width: 0;
+		height: auto;
+		border-right: none;
+		border-bottom: 1px solid var(--border-subtle);
+		padding: 10px;
+	}
+
+	.folderList {
+		flex-direction: row;
+		overflow-x: auto;
+		gap: 6px;
+		flex: none;
+	}
+
+	.folderItem {
+		white-space: nowrap;
+		padding: 6px 10px;
+	}
+
+	.listPane {
+		width: 100%;
+		max-width: none;
+		min-width: 0;
+		border-right: none;
+		flex: 1;
+	}
+
+	.detailPane {
+		position: absolute;
+		inset: 0;
+		z-index: 20;
+	}
+}

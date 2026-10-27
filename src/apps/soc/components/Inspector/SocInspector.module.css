@@ -1,0 +1,333 @@
+/* ==========================================================================
+   macOS Pro Studio 3-Pane Inspector Drawer
+   ========================================================================== */
+
+.inspectorDrawer {
+	width: 360px;
+	min-width: 360px;
+	max-width: 420px;
+	height: 100%;
+	background: var(--window-bg, #f5f5f7);
+	border-left: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	z-index: 20;
+	position: relative;
+	transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), width 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Header */
+.inspectorHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 10px 14px;
+	border-bottom: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+	background: var(--fill-soft, rgba(0, 0, 0, 0.02));
+	min-height: 44px;
+	gap: 8px;
+}
+
+.headerLeft {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	flex: 1;
+}
+
+.entityIconBadge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	border-radius: 6px;
+	background: var(--fill-softer, rgba(0, 0, 0, 0.04));
+	color: var(--accent, #0071e3);
+	flex-shrink: 0;
+}
+
+.headerTitles {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.entityTypeTag {
+	font-size: 9.5px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--text-secondary, #6e6e73);
+	line-height: 1;
+	margin-bottom: 2px;
+}
+
+.entityMainTitle {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--text-primary, #1d1d1f);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	line-height: 1.2;
+}
+
+.headerActions {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	flex-shrink: 0;
+}
+
+.iconBtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	border-radius: 5px;
+	border: none;
+	background: transparent;
+	color: var(--text-secondary, #6e6e73);
+	cursor: pointer;
+	transition: background 0.15s ease, color 0.15s ease;
+}
+
+.iconBtn:hover {
+	background: var(--fill-softer, rgba(0, 0, 0, 0.06));
+	color: var(--text-primary, #1d1d1f);
+}
+
+/* Scrollable Content Body */
+.inspectorBody {
+	flex: 1;
+	overflow-y: auto;
+	overflow-x: hidden;
+	padding: 14px;
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+
+/* Section Cards */
+.sectionCard {
+	background: var(--fill-soft, rgba(0, 0, 0, 0.02));
+	border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06));
+	border-radius: 8px;
+	padding: 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.sectionHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--text-secondary, #6e6e73);
+}
+
+.gridProps {
+	display: grid;
+	grid-template-columns: 100px 1fr;
+	gap: 6px 10px;
+	font-size: 12px;
+	align-items: baseline;
+}
+
+.propLabel {
+	color: var(--text-secondary, #6e6e73);
+	font-size: 11.5px;
+}
+
+.propValue {
+	color: var(--text-primary, #1d1d1f);
+	word-break: break-all;
+	font-weight: 500;
+}
+
+.mono {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	font-size: 11px;
+}
+
+/* Threat Score Dial */
+.scoreRow {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.scoreValue {
+	font-size: 20px;
+	font-weight: 700;
+	line-height: 1;
+}
+
+.scoreBarWrap {
+	flex: 1;
+	height: 6px;
+	background: var(--fill-softer, rgba(0, 0, 0, 0.08));
+	border-radius: 3px;
+	overflow: hidden;
+}
+
+.scoreBarFill {
+	height: 100%;
+	border-radius: 3px;
+	transition: width 0.3s ease;
+}
+
+/* Badges */
+.badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 2px 7px;
+	border-radius: 4px;
+	font-size: 10.5px;
+	font-weight: 600;
+	line-height: 1.2;
+}
+
+.badgeDanger {
+	background: color-mix(in srgb, var(--danger, #d70015) 12%, transparent);
+	color: var(--danger, #d70015);
+	border: 1px solid color-mix(in srgb, var(--danger, #d70015) 24%, transparent);
+}
+
+.badgeWarn {
+	background: color-mix(in srgb, var(--warning, #c45500) 12%, transparent);
+	color: var(--warning, #c45500);
+	border: 1px solid color-mix(in srgb, var(--warning, #c45500) 24%, transparent);
+}
+
+.badgeSuccess {
+	background: color-mix(in srgb, var(--success, #248a3d) 12%, transparent);
+	color: var(--success, #248a3d);
+	border: 1px solid color-mix(in srgb, var(--success, #248a3d) 24%, transparent);
+}
+
+.badgeNeutral {
+	background: var(--fill-softer, rgba(0, 0, 0, 0.06));
+	color: var(--text-secondary, #6e6e73);
+	border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+}
+
+/* Raw Code Viewer */
+.codeViewer {
+	background: var(--window-bg, #1e1e1e);
+	border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.1));
+	border-radius: 6px;
+	padding: 8px 10px;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	font-size: 11px;
+	line-height: 1.45;
+	color: var(--text-primary);
+	max-height: 220px;
+	overflow: auto;
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+
+/* Quick Containment Action Buttons */
+.actionGroup {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.containmentBtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 7px;
+	width: 100%;
+	padding: 7px 12px;
+	border-radius: 6px;
+	font-size: 12px;
+	font-weight: 500;
+	cursor: pointer;
+	border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.12));
+	background: var(--fill-soft, rgba(0, 0, 0, 0.03));
+	color: var(--text-primary, #1d1d1f);
+	transition: all 0.15s ease;
+}
+
+.containmentBtn:hover:not(:disabled) {
+	background: var(--fill-softer, rgba(0, 0, 0, 0.08));
+	border-color: var(--border-subtle, rgba(0, 0, 0, 0.2));
+}
+
+.containmentBtnPrimary {
+	background: var(--accent, #0071e3);
+	color: #ffffff;
+	border-color: transparent;
+}
+
+.containmentBtnPrimary:hover:not(:disabled) {
+	background: color-mix(in srgb, var(--accent, #0071e3) 88%, #000);
+}
+
+.containmentBtnDanger {
+	background: color-mix(in srgb, var(--danger, #d70015) 12%, transparent);
+	color: var(--danger, #d70015);
+	border-color: color-mix(in srgb, var(--danger, #d70015) 28%, transparent);
+}
+
+.containmentBtnDanger:hover:not(:disabled) {
+	background: var(--danger, #d70015);
+	color: #ffffff;
+}
+
+/* Textarea for Analyst Notes */
+.notesTextarea {
+	width: 100%;
+	min-height: 80px;
+	max-height: 160px;
+	border-radius: 6px;
+	border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.15));
+	background: var(--fill-softer, rgba(0, 0, 0, 0.03));
+	padding: 8px 10px;
+	font-size: 12px;
+	font-family: inherit;
+	color: var(--text-primary);
+	resize: vertical;
+}
+
+.notesTextarea:focus {
+	outline: none;
+	border-color: var(--accent, #0071e3);
+	background: var(--window-bg, #fff);
+}
+
+/* Mobile Bottom Sheet Adaptation */
+@media (max-width: 768px) {
+	.inspectorDrawer {
+		position: fixed;
+		bottom: 56px;
+		left: 0;
+		right: 0;
+		top: auto;
+		width: 100%;
+		min-width: 100%;
+		max-width: 100%;
+		max-height: 75vh;
+		border-left: none;
+		border-top: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.15));
+		box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.15);
+		border-radius: 14px 14px 0 0;
+	}
+
+	.inspectorHeader {
+		border-radius: 14px 14px 0 0;
+		padding: 12px 16px;
+	}
+}

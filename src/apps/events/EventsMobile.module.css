@@ -1,0 +1,759 @@
+/* ==========================================================================
+   Apple iOS Events Metaphor Mobile Styling (ClubPanel Theme Tokens)
+   ========================================================================== */
+
+.root {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	height: 100%;
+	background: var(--window-bg);
+	color: var(--text-primary);
+	font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", sans-serif;
+	overflow: hidden;
+	user-select: none;
+	-webkit-tap-highlight-color: transparent;
+	--ev-atolye: #0a84ff;
+	--ev-seminer: #bf5af2;
+	--ev-yarisma: #ff9f0a;
+	--ev-toplanti: #30d158;
+}
+
+.root button,
+.root input {
+	font-family: inherit;
+}
+
+/* --------------------------------------------------------------------------
+   1. Navigasyon Çubuğu (Top Bar)
+   -------------------------------------------------------------------------- */
+.topBar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	height: 48px;
+	min-height: 48px;
+	padding: 0 14px;
+	background: var(--settings-sidebar-bg);
+	border-bottom: 1px solid var(--border-subtle);
+	backdrop-filter: blur(20px);
+	-webkit-backdrop-filter: blur(20px);
+	flex-shrink: 0;
+	z-index: 10;
+}
+
+.backBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	border: none;
+	background: transparent;
+	color: var(--accent);
+	font-size: 14.5px;
+	font-weight: 500;
+	cursor: pointer;
+	padding: 6px 4px;
+	margin-left: -4px;
+	border-radius: 8px;
+	transition: opacity 0.15s ease;
+}
+
+.backBtn:active {
+	opacity: 0.65;
+}
+
+.topTitle {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--text-primary);
+	max-width: 180px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	text-align: center;
+}
+
+.topActions {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.iconBtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 34px;
+	height: 34px;
+	border: none;
+	background: transparent;
+	color: var(--accent);
+	cursor: pointer;
+	border-radius: 50%;
+	transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.iconBtn:active {
+	background: var(--bg-hover);
+	opacity: 0.75;
+}
+
+.addBtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	border-radius: 8px;
+	border: none;
+	background: var(--accent);
+	color: #ffffff;
+	cursor: pointer;
+	transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.addBtn:active {
+	opacity: 0.85;
+	transform: scale(0.95);
+}
+
+/* --------------------------------------------------------------------------
+   2. Büyük Başlık, Segmented Bar ve Arama
+   -------------------------------------------------------------------------- */
+.largeTitleWrap {
+	padding: 10px 16px 4px 16px;
+	flex-shrink: 0;
+}
+
+.largeTitle {
+	font-size: 26px;
+	font-weight: 800;
+	color: var(--text-primary);
+	letter-spacing: -0.025em;
+	margin: 0;
+	line-height: 1.15;
+}
+
+.segmentWrap {
+	padding: 6px 14px;
+	flex-shrink: 0;
+}
+
+.segmentedBar {
+	display: flex;
+	align-items: center;
+	background: var(--card-bg);
+	border: 1px solid var(--border-subtle);
+	border-radius: 10px;
+	padding: 2px;
+	gap: 2px;
+}
+
+.segmentBtn {
+	flex: 1;
+	border: none;
+	background: transparent;
+	color: var(--text-muted);
+	font-size: 12px;
+	font-weight: 500;
+	padding: 6px 4px;
+	border-radius: 8px;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	transition: background 0.15s ease, color 0.15s ease;
+}
+
+.segmentBtnActive {
+	background: var(--window-bg);
+	color: var(--text-primary);
+	font-weight: 700;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.segmentBadge {
+	font-size: 10px;
+	opacity: 0.7;
+}
+
+.searchWrap {
+	padding: 6px 14px 10px 14px;
+	flex-shrink: 0;
+}
+
+.searchBox {
+	position: relative;
+	display: flex;
+	align-items: center;
+	background: var(--input-bg);
+	border: 1px solid var(--border-subtle);
+	border-radius: 10px;
+	height: 36px;
+	padding: 0 10px;
+}
+
+.searchInput {
+	flex: 1;
+	border: none;
+	background: transparent;
+	color: var(--text-primary);
+	font-size: 13px;
+	outline: none;
+	padding-left: 6px;
+}
+
+.searchInput::placeholder {
+	color: var(--text-muted);
+}
+
+.clearSearchBtn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: none;
+	background: transparent;
+	color: var(--text-muted);
+	padding: 4px;
+	cursor: pointer;
+}
+
+/* --------------------------------------------------------------------------
+   3. Mobil Liste: Apple Takvim Yaprağı Kartları (Calendar Leaf Cards)
+   -------------------------------------------------------------------------- */
+.eventsScroll {
+	flex: 1;
+	overflow-y: auto;
+	padding: 4px 14px 24px 14px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	-webkit-overflow-scrolling: touch;
+}
+
+.eventCard {
+	background: var(--card-bg);
+	border: 1px solid var(--border-subtle);
+	border-radius: 16px;
+	padding: 12px 14px;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	cursor: pointer;
+	transition: background 0.12s ease, border-color 0.12s ease;
+	position: relative;
+}
+
+.eventCard:active {
+	background: var(--bg-hover);
+	border-color: var(--accent-subtle);
+}
+
+/* Apple Takvim Yaprağı */
+.calendarLeaf {
+	width: 48px;
+	height: 54px;
+	border-radius: 12px;
+	overflow: hidden;
+	background: var(--window-bg);
+	border: 1px solid var(--border-subtle);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: space-between;
+	flex-shrink: 0;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.calendarLeafMonth {
+	width: 100%;
+	background: var(--type-color, var(--accent));
+	color: #ffffff;
+	font-size: 9px;
+	font-weight: 800;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	text-align: center;
+	padding: 2px 0;
+}
+
+.calendarLeafDay {
+	font-size: 17px;
+	font-weight: 850;
+	color: var(--text-primary);
+	line-height: 1;
+	margin: auto 0;
+}
+
+.calendarLeafWeekday {
+	font-size: 8.5px;
+	font-weight: 600;
+	color: var(--text-muted);
+	padding-bottom: 3px;
+}
+
+.cardContent {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+}
+
+.cardBadgeRow {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-wrap: wrap;
+}
+
+.typeBadge {
+	font-size: 10px;
+	font-weight: 700;
+	padding: 1px 6px;
+	border-radius: 6px;
+	background: color-mix(in srgb, var(--type-color, var(--accent)) 16%, transparent);
+	color: var(--type-color, var(--accent));
+	border: 1px solid color-mix(in srgb, var(--type-color, var(--accent)) 30%, transparent);
+}
+
+.liveBadge {
+	font-size: 10px;
+	font-weight: 700;
+	padding: 1px 6px;
+	border-radius: 6px;
+	background: rgba(48, 209, 88, 0.15);
+	color: #30d158;
+	border: 1px solid rgba(48, 209, 88, 0.3);
+}
+
+.cardTitle {
+	font-size: 13.5px;
+	font-weight: 700;
+	color: var(--text-primary);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	line-height: 1.25;
+}
+
+.cardSubtitle {
+	font-size: 11.5px;
+	color: var(--text-muted);
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.cardStatusCol {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	justify-content: center;
+	gap: 4px;
+	flex-shrink: 0;
+}
+
+.statusPill {
+	font-size: 9.5px;
+	font-weight: 700;
+	padding: 2px 6px;
+	border-radius: 6px;
+	background: var(--accent-subtle);
+	color: var(--accent);
+}
+
+.attendedPill {
+	background: rgba(48, 209, 88, 0.15);
+	color: #30d158;
+}
+
+/* --------------------------------------------------------------------------
+   4. Mobil Detay Ekranı (Detail View & Facts)
+   -------------------------------------------------------------------------- */
+.detailContainer {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	background: var(--window-bg);
+}
+
+.detailScroll {
+	flex: 1;
+	overflow-y: auto;
+	padding: 14px 16px 24px 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	-webkit-overflow-scrolling: touch;
+}
+
+.heroCard {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.detailTitle {
+	font-size: 20px;
+	font-weight: 800;
+	color: var(--text-primary);
+	line-height: 1.25;
+	margin: 0;
+}
+
+/* iOS Inset Grouped Facts */
+.factsGroup {
+	background: var(--card-bg);
+	border: 1px solid var(--border-subtle);
+	border-radius: 16px;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+.factRow {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 12px 14px;
+	border-bottom: 1px solid var(--border-subtle);
+}
+
+.factRow:last-child {
+	border-bottom: none;
+}
+
+.factIconCircle {
+	width: 32px;
+	height: 32px;
+	border-radius: 9px;
+	background: var(--accent-subtle);
+	color: var(--accent);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+}
+
+.factTexts {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	flex: 1;
+	min-width: 0;
+}
+
+.factLabel {
+	font-size: 11px;
+	color: var(--text-muted);
+}
+
+.factValue {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--text-primary);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.meterBar {
+	width: 100%;
+	height: 6px;
+	background: var(--border-subtle);
+	border-radius: 3px;
+	margin-top: 4px;
+	overflow: hidden;
+}
+
+.meterFill {
+	height: 100%;
+	background: var(--accent);
+	border-radius: 3px;
+	transition: width 0.3s ease;
+}
+
+/* Bilet Kartı (Ticket Card if registered) */
+.ticketCard {
+	background: linear-gradient(135deg, rgba(10, 132, 255, 0.12), rgba(191, 90, 242, 0.12));
+	border: 1px solid rgba(10, 132, 255, 0.25);
+	border-radius: 16px;
+	padding: 14px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+}
+
+.ticketLeft {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.ticketBtn {
+	border: none;
+	background: var(--accent);
+	color: #ffffff;
+	font-size: 12px;
+	font-weight: 600;
+	padding: 6px 12px;
+	border-radius: 10px;
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+.aboutCard {
+	background: var(--card-bg);
+	border: 1px solid var(--border-subtle);
+	border-radius: 16px;
+	padding: 14px;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.aboutTitle {
+	font-size: 12px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	color: var(--text-muted);
+}
+
+.aboutText {
+	font-size: 13px;
+	line-height: 1.5;
+	color: var(--text-primary);
+	user-select: text;
+}
+
+/* --------------------------------------------------------------------------
+   5. Sabit iOS Alt Araç Çubuğu (Fixed Bottom Action Toolbar)
+   -------------------------------------------------------------------------- */
+.bottomToolbar {
+	height: 58px;
+	min-height: 58px;
+	width: 100%;
+	box-sizing: border-box;
+	background: var(--settings-sidebar-bg);
+	border-top: 1px solid var(--border-subtle);
+	backdrop-filter: blur(20px);
+	-webkit-backdrop-filter: blur(20px);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 6px;
+	padding: 0 10px;
+	padding-bottom: env(safe-area-inset-bottom, 0px);
+	flex-shrink: 0;
+	z-index: 10;
+	overflow-x: hidden;
+}
+
+.bigActionBtn {
+	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	background: var(--accent);
+	color: #ffffff;
+	font-size: 14px;
+	font-weight: 700;
+	padding: 10px 18px;
+	border-radius: 12px;
+	border: none;
+	cursor: pointer;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+	transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.bigActionBtn:active {
+	opacity: 0.85;
+	transform: scale(0.98);
+}
+
+.toolbarBtn {
+	flex: 1 1 0;
+	min-width: 0;
+	max-width: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 2px;
+	border: none;
+	background: transparent;
+	color: var(--accent);
+	cursor: pointer;
+	padding: 6px 4px;
+	border-radius: 8px;
+	font-size: 10.5px;
+	font-weight: 500;
+	transition: opacity 0.12s ease;
+	overflow: hidden;
+	box-sizing: border-box;
+}
+
+.toolbarBtn span {
+	width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	text-align: center;
+}
+
+.toolbarBtn:active {
+	opacity: 0.6;
+}
+
+.toolbarBtnDestructive {
+	color: #ff453a;
+}
+
+/* --------------------------------------------------------------------------
+   5b. iOS Apple-Style Action Sheet for Event Management
+   -------------------------------------------------------------------------- */
+.sheetScrim {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.55);
+	backdrop-filter: blur(4px);
+	-webkit-backdrop-filter: blur(4px);
+	z-index: 10000;
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-end;
+	padding: 12px;
+	padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
+	animation: sheetFadeIn 150ms ease;
+}
+
+.sheetCard {
+	background: var(--card-bg, #1c1c1e);
+	border: 1px solid var(--border-subtle);
+	border-radius: 14px;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+	animation: sheetSlideUp 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sheetHeader {
+	padding: 12px 16px;
+	font-size: 12px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	color: var(--text-muted);
+	border-bottom: 1px solid var(--border-subtle);
+	text-align: center;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.sheetActionBtn {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 14px 16px;
+	background: transparent;
+	border: none;
+	border-bottom: 1px solid var(--border-subtle);
+	color: var(--text-primary);
+	font-size: 15px;
+	font-weight: 500;
+	text-align: left;
+	cursor: pointer;
+	width: 100%;
+	transition: background 0.12s ease;
+}
+
+.sheetActionBtn:last-child {
+	border-bottom: none;
+}
+
+.sheetActionBtn:active {
+	background: var(--bg-hover, rgba(255, 255, 255, 0.08));
+}
+
+.sheetDestructiveBtn {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 14px 16px;
+	background: transparent;
+	border: none;
+	border-bottom: 1px solid var(--border-subtle);
+	color: #ff453a;
+	font-size: 15px;
+	font-weight: 500;
+	text-align: left;
+	cursor: pointer;
+	width: 100%;
+	transition: background 0.12s ease;
+}
+
+.sheetDestructiveBtn:last-child {
+	border-bottom: none;
+}
+
+.sheetDestructiveBtn:active {
+	background: rgba(255, 69, 58, 0.12);
+}
+
+.sheetCancelBtn {
+	margin-top: 8px;
+	background: var(--card-bg, #1c1c1e);
+	border: 1px solid var(--border-subtle);
+	border-radius: 14px;
+	padding: 14px 16px;
+	color: var(--accent);
+	font-size: 15px;
+	font-weight: 700;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.sheetCancelBtn:active {
+	opacity: 0.7;
+}
+
+@keyframes sheetFadeIn {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
+@keyframes sheetSlideUp {
+	from { transform: translateY(100%); }
+	to { transform: translateY(0); }
+}
+
+/* --------------------------------------------------------------------------
+   6. Yükleme ve Boş Durumlar (Empty States)
+   -------------------------------------------------------------------------- */
+.emptyState {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	padding: 40px 24px;
+	text-align: center;
+	color: var(--text-muted);
+	font-size: 13px;
+}

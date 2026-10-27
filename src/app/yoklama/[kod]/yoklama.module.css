@@ -1,0 +1,125 @@
+.viewport {
+  min-height: 100dvh;
+  background-color: #09090b;
+  color: #fafafa;
+  font-family: var(--font-sans, Inter, system-ui, -apple-system, sans-serif);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.panel {
+  width: 100%;
+  max-width: 440px;
+  background-color: #111113;
+  border: 1px solid #27272a;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background-color: #0c0c0e;
+  border-bottom: 1px solid #27272a;
+  font-family: var(--font-mono, JetBrains Mono, monospace);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: #a1a1aa;
+  text-transform: uppercase;
+}
+
+.body {
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-family: var(--font-mono, JetBrains Mono, monospace);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background-color: #18181b;
+  border: 1px solid #27272a;
+  color: #a1a1aa;
+  margin-bottom: 16px;
+}
+
+.badgeOk {
+  background-color: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #34d399;
+}
+
+.badgeError {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #f87171;
+}
+
+.badgeLogin {
+  background-color: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #fbbf24;
+}
+
+.title {
+  margin: 0 0 8px 0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #fafafa;
+}
+
+.eventTitle {
+  margin: 0 0 10px 0;
+  padding: 10px 12px;
+  width: 100%;
+  background-color: #09090b;
+  border: 1px solid #27272a;
+  border-radius: 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #fafafa;
+  box-sizing: border-box;
+}
+
+.message {
+  margin: 0 0 24px 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: #a1a1aa;
+}
+
+.primaryBtn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 11px 16px;
+  border-radius: 6px;
+  background-color: #fafafa;
+  border: 1px solid #fafafa;
+  color: #09090b;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+.primaryBtn:hover {
+  background-color: #e4e4e7;
+}

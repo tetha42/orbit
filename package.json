@@ -1,0 +1,69 @@
+{
+  "name": "orbit-community-os",
+  "version": "2.0.0",
+  "private": true,
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "gen:apps": "node scripts/gen-apps.mjs",
+    "check": "node --no-warnings scripts/gen-apps.mjs --check && node --no-warnings scripts/check-pure.mjs && node --no-warnings scripts/check-i18n.mjs && node --no-warnings scripts/check-tokens.mjs",
+    "verify": "node --no-warnings scripts/gen-apps.mjs && tsc --noEmit && eslint . && pnpm check",
+    "build:fim": "node scripts/build-fim.mjs",
+    "test:e2e": "node scripts/e2e-simulation.mjs",
+    "test:security": "node scripts/security-e2e-test.mjs",
+    "verify:landing": "node scripts/verify-landing-sync.mjs",
+    "e2e": "node --no-warnings tests/e2e/ui/run.mjs",
+    "demo": "node examples/oauth-client-node/server.mjs",
+    "demo:setup": "npx tsx examples/oauth-client-node/setup.mjs",
+    "example:oauth": "node examples/oauth-client-node/server.mjs"
+  },
+  "dependencies": {
+    "@simplewebauthn/browser": "^14.0.0",
+    "@simplewebauthn/server": "^14.0.3",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "bcryptjs": "^3.0.3",
+    "clsx": "^2.1.1",
+    "imapflow": "^2.5.1",
+    "jspdf": "^4.2.1",
+    "jsqr": "^1.4.0",
+    "lucide-react": "^1.48.0",
+    "mailparser": "^3.9.39",
+    "next": "16.3.6",
+    "nodemailer": "^10.0.11",
+    "otplib": "^13.5.0",
+    "pg": "^8.23.0",
+    "qrcode": "^1.5.4",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  },
+  "devDependencies": {
+    "@types/mailparser": "^3.9.0",
+    "@types/node": "^22.20.4",
+    "@types/nodemailer": "^8.0.2",
+    "@types/pg": "^8.23.1",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.6",
+    "playwright-core": "^1.63.0",
+    "typescript": "^5.9.3"
+  },
+  "packageManager": "pnpm@10.12.3",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  },
+  "prettier": {
+    "singleQuote": true,
+    "trailingComma": "all",
+    "printWidth": 100,
+    "useTabs": true
+  }
+}

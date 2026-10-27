@@ -1,0 +1,822 @@
+/* ==========================================================================
+   Apple iOS Mail Metaphor Mobile Styling (ClubPanel Theme Tokens)
+   ========================================================================== */
+
+.root {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	height: 100%;
+	background: var(--window-bg);
+	color: var(--text-primary);
+	font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", sans-serif;
+	overflow: hidden;
+	user-select: none;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.root button,
+.root input,
+.root textarea {
+	font-family: inherit;
+}
+
+/* --------------------------------------------------------------------------
+   1. Navigasyon Çubuğu (Top Navigation Bar)
+   -------------------------------------------------------------------------- */
+.navBar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	height: 48px;
+	min-height: 48px;
+	padding: 0 12px;
+	background: var(--settings-sidebar-bg);
+	border-bottom: 1px solid var(--border-subtle);
+	backdrop-filter: blur(20px);
+	-webkit-backdrop-filter: blur(20px);
+	flex-shrink: 0;
+	z-index: 10;
+}
+
+.backBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	border: none;
+	background: transparent;
+	color: var(--accent);
+	font-size: 14.5px;
+	font-weight: 500;
+	cursor: pointer;
+	padding: 6px 4px;
+	margin-left: -4px;
+	border-radius: 8px;
+	transition: opacity 0.15s ease;
+}
+
+.backBtn:active {
+	opacity: 0.65;
+}
+
+.navTitle {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--text-primary);
+	max-width: 170px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	text-align: center;
+}
+
+.navActions {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.iconBtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 34px;
+	height: 34px;
+	border: none;
+	background: transparent;
+	color: var(--accent);
+	cursor: pointer;
+	border-radius: 50%;
+	transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.iconBtn:active {
+	background: var(--bg-hover);
+	opacity: 0.75;
+}
+
+.composeIconBtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	border-radius: 8px;
+	border: none;
+	background: var(--accent-subtle);
+	color: var(--accent);
+	cursor: pointer;
+	transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.composeIconBtn:active {
+	opacity: 0.75;
+	transform: scale(0.95);
+}
+
+/* --------------------------------------------------------------------------
+   2. Büyük Başlık ve Arama (iOS Large Title & Search)
+   -------------------------------------------------------------------------- */
+.largeTitleWrap {
+	padding: 10px 16px 4px 16px;
+	flex-shrink: 0;
+}
+
+.largeTitle {
+	font-size: 26px;
+	font-weight: 800;
+	color: var(--text-primary);
+	letter-spacing: -0.025em;
+	margin: 0;
+	line-height: 1.15;
+}
+
+.searchWrap {
+	padding: 8px 14px;
+	flex-shrink: 0;
+}
+
+.searchBox {
+	position: relative;
+	display: flex;
+	align-items: center;
+	background: var(--input-bg);
+	border: 1px solid var(--border-subtle);
+	border-radius: 10px;
+	height: 36px;
+	padding: 0 10px;
+}
+
+.searchInput {
+	flex: 1;
+	border: none;
+	background: transparent;
+	color: var(--text-primary);
+	font-size: 13px;
+	outline: none;
+	padding-left: 6px;
+}
+
+.searchInput::placeholder {
+	color: var(--text-muted);
+}
+
+.clearSearchBtn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: none;
+	background: transparent;
+	color: var(--text-muted);
+	padding: 4px;
+	cursor: pointer;
+}
+
+/* --------------------------------------------------------------------------
+   3. Ekran 1: Gruplu Posta Kutuları (iOS Grouped Mailboxes)
+   -------------------------------------------------------------------------- */
+.mailboxesScroll {
+	flex: 1;
+	overflow-y: auto;
+	padding: 8px 14px 24px 14px;
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	-webkit-overflow-scrolling: touch;
+}
+
+.sectionHeader {
+	font-size: 11px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.6px;
+	color: var(--text-muted);
+	padding-left: 8px;
+}
+
+.groupedTable {
+	background: var(--card-bg);
+	border: 1px solid var(--border-subtle);
+	border-radius: 14px;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+.groupedRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 12px 14px;
+	border-bottom: 1px solid var(--border-subtle);
+	cursor: pointer;
+	transition: background 0.12s ease;
+}
+
+.groupedRow:last-child {
+	border-bottom: none;
+}
+
+.groupedRow:active {
+	background: var(--bg-hover);
+}
+
+.groupedRowLeft {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	font-size: 14px;
+	font-weight: 500;
+	color: var(--text-primary);
+}
+
+.groupedRowRight {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.unreadBadge {
+	background: var(--accent);
+	color: #ffffff;
+	font-size: 11px;
+	font-weight: 700;
+	padding: 2px 8px;
+	border-radius: 12px;
+}
+
+.chevronRight {
+	color: var(--text-muted);
+	opacity: 0.6;
+}
+
+.accountInfoBar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0 8px;
+	font-size: 11.5px;
+	color: var(--text-muted);
+}
+
+/* --------------------------------------------------------------------------
+   4. Ekran 2: İleti Listesi Kartları (Message List Cards)
+   -------------------------------------------------------------------------- */
+.messageListScroll {
+	flex: 1;
+	overflow-y: auto;
+	padding: 6px 12px 16px 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	-webkit-overflow-scrolling: touch;
+}
+
+.messageCard {
+	background: var(--card-bg);
+	border: 1px solid var(--border-subtle);
+	border-radius: 14px;
+	padding: 12px 14px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	cursor: pointer;
+	transition: background 0.12s ease, border-color 0.12s ease;
+	position: relative;
+}
+
+.messageCard:active {
+	background: var(--bg-hover);
+	border-color: var(--accent-subtle);
+}
+
+.cardTopRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.senderWrap {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	font-size: 13.5px;
+	font-weight: 600;
+	color: var(--text-primary);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.unreadDot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--accent);
+	flex-shrink: 0;
+}
+
+.cardDate {
+	font-size: 11px;
+	color: var(--text-muted);
+	flex-shrink: 0;
+}
+
+.cardDateUnread {
+	color: var(--accent);
+	font-weight: 600;
+}
+
+.cardSubject {
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--text-primary);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	padding-left: 15px;
+}
+
+.cardSnippet {
+	font-size: 12px;
+	color: var(--text-muted);
+	line-height: 1.35;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+	padding-left: 15px;
+}
+
+.cardIconsRow {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 2px;
+	padding-left: 15px;
+	font-size: 11px;
+	color: var(--text-muted);
+}
+
+/* --------------------------------------------------------------------------
+   5. Ekran 3: İleti Detayı ve Alt Araç Çubuğu (Detail & Bottom Toolbar)
+   -------------------------------------------------------------------------- */
+.detailViewContainer {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	background: var(--window-bg);
+}
+
+.detailMetaCard {
+	background: var(--card-bg);
+	border-bottom: 1px solid var(--border-subtle);
+	padding: 14px 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	flex-shrink: 0;
+}
+
+.detailSubjectTitle {
+	font-size: 16.5px;
+	font-weight: 700;
+	color: var(--text-primary);
+	line-height: 1.3;
+	margin: 0;
+}
+
+.detailSenderProfile {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+}
+
+.avatarCircle {
+	width: 36px;
+	height: 36px;
+	border-radius: 50%;
+	background: var(--accent-subtle);
+	border: 1px solid var(--accent-border);
+	color: var(--accent);
+	font-weight: 700;
+	font-size: 14px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+}
+
+.senderTexts {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	flex: 1;
+	min-width: 0;
+}
+
+.senderNameText {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--text-primary);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.toAddressText {
+	font-size: 11px;
+	color: var(--text-muted);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.dateBadgeText {
+	font-size: 11px;
+	color: var(--text-muted);
+	flex-shrink: 0;
+}
+
+.detailBodyScroll {
+	flex: 1;
+	overflow-y: auto;
+	background: #ffffff;
+	position: relative;
+	-webkit-overflow-scrolling: touch;
+	user-select: text;
+}
+
+:global([data-theme="dark"]) .detailBodyScroll {
+	background: #18191b;
+}
+
+.remoteBannerMobile {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 8px 12px;
+	background: var(--accent-subtle);
+	border-bottom: 1px solid var(--accent-border);
+	font-size: 11px;
+	color: var(--text-primary);
+	gap: 8px;
+}
+
+.loadImagesBtn {
+	border: none;
+	background: var(--accent);
+	color: #ffffff;
+	font-size: 10.5px;
+	font-weight: 600;
+	padding: 4px 8px;
+	border-radius: 6px;
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+.mobileAttachmentsRow {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 14px;
+	background: var(--card-bg);
+	border-top: 1px solid var(--border-subtle);
+	overflow-x: auto;
+	flex-shrink: 0;
+	-webkit-overflow-scrolling: touch;
+}
+
+.mobileAttachmentPill {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 5px 9px;
+	background: var(--window-bg);
+	border: 1px solid var(--border-subtle);
+	border-radius: 8px;
+	font-size: 11.5px;
+	color: var(--text-primary);
+	white-space: nowrap;
+}
+
+/* Sabit iOS Alt Araç Çubuğu (Fixed Bottom Frosted Toolbar) */
+.bottomToolbar {
+	height: 52px;
+	min-height: 52px;
+	background: var(--settings-sidebar-bg);
+	border-top: 1px solid var(--border-subtle);
+	backdrop-filter: blur(20px);
+	-webkit-backdrop-filter: blur(20px);
+	display: flex;
+	align-items: center;
+	justify-content: space-around;
+	padding: 0 16px;
+	padding-bottom: env(safe-area-inset-bottom, 0px);
+	flex-shrink: 0;
+	z-index: 10;
+}
+
+.toolbarBtn {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 2px;
+	border: none;
+	background: transparent;
+	color: var(--accent);
+	cursor: pointer;
+	padding: 6px 10px;
+	border-radius: 8px;
+	font-size: 10px;
+	font-weight: 500;
+	transition: opacity 0.12s ease;
+}
+
+.toolbarBtn:active {
+	opacity: 0.6;
+}
+
+.toolbarBtnDestructive {
+	color: #ff453a;
+}
+
+.selectionCheckbox {
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	border: 1.5px solid var(--text-muted);
+	background: transparent;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	padding: 0;
+	flex-shrink: 0;
+	color: #ffffff;
+	transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+
+.selectionCheckboxChecked {
+	background: var(--accent);
+	border-color: var(--accent);
+}
+
+.selectTextBtn {
+	border: none;
+	background: transparent;
+	color: var(--accent);
+	font-size: 14px;
+	font-weight: 500;
+	cursor: pointer;
+	padding: 6px 4px;
+	border-radius: 8px;
+	transition: opacity 0.15s ease;
+}
+
+.selectTextBtn:active {
+	opacity: 0.65;
+}
+
+.emptyTrashMobileBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 4px 8px;
+	border-radius: 7px;
+	border: 1px solid rgba(255, 69, 58, 0.28);
+	background: rgba(255, 69, 58, 0.08);
+	color: #ff453a;
+	font-size: 11.5px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: opacity 0.15s ease;
+}
+
+.emptyTrashMobileBtn:active {
+	opacity: 0.65;
+}
+
+/* --------------------------------------------------------------------------
+   6. iOS Alttan Kayan Tam Ekran Yeni İleti (Compose Full Sheet)
+   -------------------------------------------------------------------------- */
+.sheetOverlay {
+	position: absolute;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.6);
+	backdrop-filter: blur(8px);
+	-webkit-backdrop-filter: blur(8px);
+	z-index: 50;
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-end;
+}
+
+.sheetCard {
+	width: 100%;
+	height: 94%;
+	background: var(--window-bg);
+	border-top-left-radius: 20px;
+	border-top-right-radius: 20px;
+	border-top: 1px solid var(--border-subtle);
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.4);
+	animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+	from {
+		transform: translateY(100%);
+	}
+	to {
+		transform: translateY(0);
+	}
+}
+
+.sheetHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 12px 16px;
+	background: var(--settings-sidebar-bg);
+	border-bottom: 1px solid var(--border-subtle);
+	flex-shrink: 0;
+}
+
+.sheetCancelBtn {
+	border: none;
+	background: transparent;
+	color: var(--accent);
+	font-size: 14.5px;
+	font-weight: 500;
+	cursor: pointer;
+	padding: 4px;
+}
+
+.sheetTitle {
+	font-size: 14.5px;
+	font-weight: 700;
+	color: var(--text-primary);
+}
+
+.sheetSendBtn {
+	border: none;
+	background: var(--accent);
+	color: #ffffff;
+	font-size: 13px;
+	font-weight: 600;
+	padding: 5px 14px;
+	border-radius: 16px;
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.sheetSendBtn:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.sheetForm {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	overflow: hidden;
+}
+
+.sheetFieldRow {
+	display: flex;
+	align-items: center;
+	padding: 10px 16px;
+	border-bottom: 1px solid var(--border-subtle);
+	gap: 10px;
+}
+
+.sheetFieldLabel {
+	font-size: 13px;
+	color: var(--text-muted);
+	width: 50px;
+	flex-shrink: 0;
+}
+
+.sheetFieldInput {
+	flex: 1;
+	border: none;
+	background: transparent;
+	color: var(--text-primary);
+	font-size: 14px;
+	outline: none;
+}
+
+.sheetTextArea {
+	flex: 1;
+	padding: 14px 16px;
+	border: none;
+	background: transparent;
+	color: var(--text-primary);
+	font-size: 14px;
+	line-height: 1.5;
+	outline: none;
+	resize: none;
+	user-select: text;
+}
+
+/* --------------------------------------------------------------------------
+   7. Yükleme ve Boş Durumlar (Loading & Empty States)
+   -------------------------------------------------------------------------- */
+.centerEmptyState {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	padding: 40px 24px;
+	text-align: center;
+	color: var(--text-muted);
+}
+
+/* Sabit Apple iOS Alt Sekme Çubuğu (Bottom Navigation Tab Bar) */
+.mobileBottomTabBar {
+	flex-shrink: 0;
+	height: calc(56px + env(safe-area-inset-bottom, 0px));
+	min-height: calc(56px + env(safe-area-inset-bottom, 0px));
+	background: rgba(18, 18, 22, 0.94);
+	backdrop-filter: blur(20px);
+	-webkit-backdrop-filter: blur(20px);
+	border-top: 1px solid rgba(255, 255, 255, 0.1);
+	display: grid;
+	grid-template-columns: repeat(5, 1fr);
+	padding: 0 4px;
+	padding-bottom: env(safe-area-inset-bottom, 0px);
+	box-sizing: border-box;
+	z-index: 50;
+}
+
+.mobileBottomTabBtn {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 3px;
+	background: transparent;
+	border: none;
+	color: rgba(255, 255, 255, 0.55);
+	cursor: pointer;
+	padding: 6px 2px;
+	border-radius: 8px;
+	transition: color 120ms ease, transform 100ms ease;
+	-webkit-tap-highlight-color: transparent;
+	position: relative;
+}
+
+.mobileBottomTabBtn:active {
+	transform: scale(0.92);
+}
+
+.mobileBottomTabBtnActive {
+	color: var(--accent, #0a84ff) !important;
+}
+
+.mobileBottomTabIconWrap {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	position: relative;
+	height: 22px;
+}
+
+.mobileBottomTabLabel {
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+	line-height: 1;
+	white-space: nowrap;
+}
+
+.tabBadge {
+	position: absolute;
+	top: -3px;
+	right: -8px;
+	min-width: 16px;
+	height: 16px;
+	border-radius: 8px;
+	background: #ff453a;
+	color: #ffffff;
+	font-size: 10px;
+	font-weight: 700;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0 4px;
+	border: 1.5px solid #121216;
+}
+

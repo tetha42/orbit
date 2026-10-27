@@ -1,0 +1,944 @@
+/* Mobile layout for the chat app (viewport < 768px).
+ * Styled to match the desktop macOS/Cupertino theme (rgba window-bg, #34c759 accents, frosted cards).
+ */
+
+.root {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+	width: 100%;
+	height: 100%;
+	background: var(--window-bg, rgba(20, 22, 28, 0.95));
+	color: var(--text-primary, #ffffff);
+	font-family: var(--system-font, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif);
+	overflow: hidden;
+	user-select: none;
+}
+
+.root button,
+.root input {
+	font-family: inherit;
+}
+
+/* ---------- Top bar (Room List) ---------- */
+.topBar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	height: 52px;
+	min-height: 52px;
+	padding: 0 12px;
+	background: var(--window-titlebar, var(--settings-sidebar-bg));
+	border-bottom: 1px solid var(--border-subtle);
+	backdrop-filter: blur(20px);
+	-webkit-backdrop-filter: blur(20px);
+	flex-shrink: 0;
+}
+
+.topTitleWrap {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+}
+
+.topTitle {
+	font-size: 16px;
+	font-weight: 700;
+	color: var(--text-primary);
+	letter-spacing: -0.01em;
+}
+
+.backHomeBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	border: none;
+	background: transparent;
+	color: var(--accent);
+	font-size: 14px;
+	font-weight: 500;
+	cursor: pointer;
+	padding: 6px 4px;
+	margin-left: -4px;
+	border-radius: 8px;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.backHomeBtn:active {
+	opacity: 0.7;
+}
+
+.topActions {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.newChatBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	background: var(--accent-subtle);
+	border: 1px solid var(--accent-border);
+	color: var(--accent);
+	cursor: pointer;
+	padding: 6px 10px;
+	border-radius: 8px;
+	font-size: 12.5px;
+	font-weight: 600;
+	-webkit-tap-highlight-color: transparent;
+	transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.newChatBtn:active {
+	background: var(--accent-muted);
+	transform: scale(0.97);
+}
+
+.iconBtn {
+	width: 34px;
+	height: 34px;
+	border-radius: 8px;
+	border: 1px solid var(--border-subtle);
+	background: var(--fill-soft);
+	color: var(--text-primary);
+	display: grid;
+	place-items: center;
+	cursor: pointer;
+	flex-shrink: 0;
+	-webkit-tap-highlight-color: transparent;
+	transition: background 0.15s ease, color 0.15s ease;
+}
+
+.iconBtn:active {
+	background: var(--fill-strong);
+	color: var(--text-primary);
+}
+
+/* ---------- Search Bar ---------- */
+.searchWrap {
+	padding: 8px 12px 6px;
+	background: var(--settings-sidebar-bg);
+	border-bottom: 1px solid var(--border-subtle);
+	flex-shrink: 0;
+}
+
+.searchBox {
+	position: relative;
+	display: flex;
+	align-items: center;
+	background: var(--input-bg);
+	border: 1px solid var(--input-border);
+	border-radius: 10px;
+	padding: 0 10px;
+	height: 36px;
+	transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.searchBox:focus-within {
+	border-color: var(--accent);
+	background: var(--input-bg);
+}
+
+.searchInput {
+	flex: 1;
+	min-width: 0;
+	background: transparent;
+	border: none;
+	color: var(--text-primary);
+	font-size: 13.5px;
+	padding-left: 8px;
+	outline: none;
+}
+
+.searchInput::placeholder {
+	color: var(--text-placeholder, var(--text-secondary));
+}
+
+.clearBtn {
+	border: none;
+	background: var(--fill-strong);
+	color: var(--text-primary);
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	display: grid;
+	place-items: center;
+	cursor: pointer;
+	padding: 0;
+}
+
+/* ---------- Room List Screen ---------- */
+.list {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	-webkit-overflow-scrolling: touch;
+	overscroll-behavior: contain;
+	padding: 6px 8px 24px;
+	background: var(--settings-sidebar-bg);
+}
+
+.sectionHeader {
+	font-size: 11px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--text-secondary);
+	padding: 12px 10px 6px;
+}
+
+.roomItem {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	width: 100%;
+	padding: 9px 10px;
+	border-radius: 10px;
+	border: none;
+	background: transparent;
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
+	-webkit-tap-highlight-color: transparent;
+	transition: background 0.15s ease;
+}
+
+.roomItem:active {
+	background: var(--fill-soft);
+}
+
+.roomIcon {
+	width: 40px;
+	height: 40px;
+	border-radius: 10px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--fill-soft);
+	flex-shrink: 0;
+	color: var(--accent);
+	overflow: hidden;
+}
+
+.roomIcon img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.roomIconInitial {
+	font-size: 15px;
+	font-weight: 700;
+	color: var(--accent);
+}
+
+.roomBody {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+}
+
+.roomNameRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.roomName {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--text-primary);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.roomTime {
+	font-size: 11px;
+	color: var(--text-secondary);
+	flex-shrink: 0;
+}
+
+.roomLastMsgRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.roomLastMsg {
+	font-size: 12px;
+	color: var(--text-secondary);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.unreadBadge {
+	background: var(--accent);
+	color: var(--accent-contrast, #ffffff);
+	font-size: 10.5px;
+	font-weight: 700;
+	padding: 2px 7px;
+	border-radius: 10px;
+	flex-shrink: 0;
+	line-height: 1.3;
+}
+
+.emptyList {
+	padding: 48px 24px;
+	text-align: center;
+	color: var(--text-secondary);
+	font-size: 13.5px;
+}
+
+/* ---------- Conversation Screen ---------- */
+.convHeader {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	height: 54px;
+	min-height: 54px;
+	padding: 0 10px;
+	background: var(--window-titlebar, var(--window-bg));
+	border-bottom: 1px solid var(--border-subtle);
+	backdrop-filter: blur(20px);
+	-webkit-backdrop-filter: blur(20px);
+	flex-shrink: 0;
+}
+
+.convBackBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	border: none;
+	background: transparent;
+	color: var(--accent);
+	font-size: 14.5px;
+	font-weight: 500;
+	cursor: pointer;
+	padding: 6px 4px;
+	margin-left: -4px;
+	border-radius: 8px;
+	flex-shrink: 0;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.convBackBtn:active {
+	opacity: 0.7;
+}
+
+.convWho {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex: 1;
+	min-width: 0;
+	border: none;
+	background: transparent;
+	color: inherit;
+	text-align: left;
+	padding: 2px 4px;
+	border-radius: 8px;
+	cursor: default;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.convWhoClickable {
+	cursor: pointer;
+}
+
+.convWhoClickable:active {
+	background: var(--fill-soft);
+}
+
+.convIcon {
+	width: 34px;
+	height: 34px;
+	border-radius: 10px;
+	background: var(--fill-soft);
+	color: var(--accent);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	flex-shrink: 0;
+}
+
+.convIcon img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.convIconInitial {
+	font-size: 13px;
+	font-weight: 700;
+	color: var(--accent);
+}
+
+.convText {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	gap: 1px;
+}
+
+.convName {
+	font-size: 14.5px;
+	font-weight: 600;
+	color: var(--text-primary);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.convSub {
+	font-size: 11px;
+	color: var(--text-secondary);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.convActions {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-shrink: 0;
+}
+
+/* ---------- Messages Stream ---------- */
+.messages {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	-webkit-overflow-scrolling: touch;
+	overscroll-behavior: contain;
+	padding: 14px 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	background: var(--right-content-bg, var(--window-bg));
+}
+
+.loadOlderWrap {
+	display: flex;
+	justify-content: center;
+	flex: 0 0 auto;
+	padding: 2px 0 6px;
+}
+
+.loadOlderBtn {
+	font-family: inherit;
+	font-size: 11px;
+	font-weight: 500;
+	color: var(--text-secondary);
+	background: var(--fill-soft);
+	border: 1px solid var(--border-subtle);
+	border-radius: 999px;
+	padding: 5px 14px;
+	cursor: pointer;
+}
+
+.loadOlderBtn:disabled {
+	cursor: default;
+	opacity: 0.7;
+}
+
+.systemMsg {
+	display: flex;
+	justify-content: center;
+	margin: 4px 0;
+}
+
+.systemPill {
+	background: var(--fill-soft);
+	color: var(--text-secondary);
+	border: 1px solid var(--border-subtle);
+	font-size: 11px;
+	padding: 4px 14px;
+	border-radius: 12px;
+	max-width: 85%;
+	text-align: center;
+	backdrop-filter: blur(4px);
+	-webkit-backdrop-filter: blur(4px);
+}
+
+.msgRow {
+	display: flex;
+	align-items: flex-end;
+	gap: 8px;
+	max-width: 84%;
+}
+
+.msgRowMine {
+	align-self: flex-end;
+	flex-direction: row-reverse;
+}
+
+.msgAvatar {
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	background: var(--fill-strong);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 11px;
+	font-weight: 700;
+	flex-shrink: 0;
+	overflow: hidden;
+	color: var(--text-primary);
+	margin-bottom: 2px;
+}
+
+.msgAvatar img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.msgBody {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	min-width: 0;
+}
+
+.msgRowMine .msgBody {
+	align-items: flex-end;
+}
+
+.msgSender {
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--text-secondary);
+	padding-left: 4px;
+}
+
+.bubble {
+	padding: 8px 12px;
+	border-radius: 14px;
+	background: var(--card-bg);
+	border: 1px solid var(--border-subtle);
+	color: var(--text-primary);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+	font-size: 13.5px;
+	line-height: 1.45;
+	word-break: break-word;
+	user-select: text;
+}
+
+.bubbleMine {
+	background: var(--accent);
+	color: var(--accent-contrast, #ffffff);
+	border: none;
+	font-weight: 500;
+	box-shadow: var(--accent-glow);
+}
+
+.bubbleWrap {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.msgRowMine .bubbleWrap {
+	flex-direction: row-reverse;
+}
+
+.bubbleDeleted {
+	opacity: 0.72;
+	background: rgba(239, 68, 68, 0.08) !important;
+	border: 1px dashed rgba(239, 68, 68, 0.35) !important;
+	color: var(--text-secondary) !important;
+}
+
+.deletedInlineNotice {
+	color: #ef4444;
+	font-weight: 700;
+	font-size: 11px;
+	margin-right: 4px;
+}
+
+.mobileMsgActions {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.mobileActionBtn {
+	background: var(--fill-strong);
+	border: 1px solid var(--border-subtle);
+	color: var(--text-secondary);
+	width: 24px;
+	height: 24px;
+	border-radius: 6px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.mobileActionBtn:active {
+	opacity: 0.7;
+}
+
+.mobileActionBtnDanger {
+	color: #f87171;
+}
+
+.deletedBadge {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 10px;
+	color: #f87171;
+	font-weight: 500;
+	margin-top: 2px;
+}
+
+.msgRowMine .deletedBadge {
+	justify-content: flex-end;
+}
+
+.adminOnlyTag {
+	font-size: 8.5px;
+	font-weight: 700;
+	padding: 1px 4px;
+	border-radius: 4px;
+	background: rgba(239, 68, 68, 0.18);
+	border: 1px solid rgba(239, 68, 68, 0.3);
+	color: #fca5a5;
+}
+
+.editedBadge {
+	font-size: 10px;
+	color: var(--text-secondary);
+	font-style: italic;
+	margin-top: 2px;
+}
+
+.msgRowMine .editedBadge {
+	text-align: right;
+}
+
+.mobileEditingBanner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 6px 14px;
+	background: rgba(245, 158, 11, 0.12);
+	border-top: 1px solid rgba(245, 158, 11, 0.25);
+	font-size: 11.5px;
+	color: #fbbf24;
+}
+
+.mobileEditingInfo {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.mobileCancelEditBtn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.1);
+	border: none;
+	color: var(--text-secondary);
+	cursor: pointer;
+}
+
+.bubbleTime {
+	font-size: 10px;
+	margin-top: 4px;
+	line-height: 1;
+	text-align: right;
+	color: var(--text-secondary);
+}
+
+.bubbleMine .bubbleTime {
+	color: color-mix(in srgb, var(--accent-contrast, #ffffff) 75%, transparent);
+}
+
+.centerState {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	padding: 24px;
+	text-align: center;
+	color: var(--text-secondary);
+	font-size: 13.5px;
+	background: var(--right-content-bg, var(--window-bg));
+}
+
+/* ---------- Composer ---------- */
+.composer {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+	background: var(--window-titlebar, var(--window-bg));
+	border-top: 1px solid var(--border-subtle);
+	backdrop-filter: blur(20px);
+	-webkit-backdrop-filter: blur(20px);
+	flex-shrink: 0;
+}
+
+.composerInput {
+	flex: 1;
+	min-width: 0;
+	height: 40px;
+	padding: 0 16px;
+	border: 1px solid var(--input-border);
+	border-radius: 20px;
+	background: var(--input-bg);
+	color: var(--text-primary);
+	font-size: 16px; /* stops iOS zoom */
+	outline: none;
+	transition: border-color 0.15s ease, background 0.15s ease;
+	user-select: text;
+}
+
+.composerInput:focus {
+	border-color: var(--accent);
+	background: var(--input-bg);
+}
+
+.composerInput::placeholder {
+	color: var(--text-placeholder, var(--text-secondary));
+}
+
+.sendBtn {
+	width: 38px;
+	height: 38px;
+	border-radius: 50%;
+	border: none;
+	background: var(--accent);
+	color: var(--accent-contrast, #ffffff);
+	display: grid;
+	place-items: center;
+	cursor: pointer;
+	box-shadow: var(--accent-glow);
+	flex-shrink: 0;
+	-webkit-tap-highlight-color: transparent;
+	transition: transform 0.1s ease, opacity 0.15s ease;
+}
+
+.sendBtn:active:not(:disabled) {
+	transform: scale(0.92);
+}
+
+.sendBtn:disabled {
+	opacity: 0.35;
+	cursor: default;
+	box-shadow: none;
+}
+
+/* Sabit Apple iOS Alt Sekme Çubuğu (Bottom Navigation Tab Bar) */
+.mobileBottomTabBar {
+	flex-shrink: 0;
+	height: calc(56px + env(safe-area-inset-bottom, 0px));
+	min-height: calc(56px + env(safe-area-inset-bottom, 0px));
+	background: rgba(18, 18, 22, 0.94);
+	backdrop-filter: blur(20px);
+	-webkit-backdrop-filter: blur(20px);
+	border-top: 1px solid rgba(255, 255, 255, 0.1);
+	display: grid;
+	grid-template-columns: repeat(5, 1fr);
+	padding: 0 4px;
+	padding-bottom: env(safe-area-inset-bottom, 0px);
+	box-sizing: border-box;
+	z-index: 50;
+}
+
+.mobileBottomTabBtn {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 3px;
+	background: transparent;
+	border: none;
+	color: rgba(255, 255, 255, 0.55);
+	cursor: pointer;
+	padding: 6px 2px;
+	border-radius: 8px;
+	transition: color 120ms ease, transform 100ms ease;
+	-webkit-tap-highlight-color: transparent;
+	position: relative;
+}
+
+.mobileBottomTabBtn:active {
+	transform: scale(0.92);
+}
+
+.mobileBottomTabBtnActive {
+	color: var(--accent, #0a84ff) !important;
+}
+
+.mobileBottomTabIconWrap {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	position: relative;
+	height: 22px;
+}
+
+.mobileBottomTabLabel {
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+	line-height: 1;
+	white-space: nowrap;
+}
+
+.tabBadge {
+	position: absolute;
+	top: -3px;
+	right: -8px;
+	min-width: 16px;
+	height: 16px;
+	border-radius: 8px;
+	background: #ff453a;
+	color: #ffffff;
+	font-size: 10px;
+	font-weight: 700;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0 4px;
+	border: 1.5px solid #121216;
+}
+
+.emptyListCard {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 48px 16px;
+	text-align: center;
+	box-sizing: border-box;
+}
+
+/* ---------- Mobile Reply & Forward ---------- */
+
+.forwardedTag {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 10.5px;
+	font-style: italic;
+	color: var(--text-secondary);
+	margin-bottom: 3px;
+	user-select: none;
+}
+
+.forwardedTagMine {
+	color: rgba(255, 255, 255, 0.85);
+}
+
+.quotedBubble {
+	display: flex;
+	background: var(--fill-soft);
+	border-radius: 8px;
+	overflow: hidden;
+	margin-bottom: 5px;
+	border: 1px solid var(--border-subtle);
+}
+
+.quotedBubbleMine {
+	background: rgba(0, 0, 0, 0.16);
+	border-color: rgba(255, 255, 255, 0.2);
+}
+
+.quotedBar {
+	width: 3.5px;
+	background: var(--accent);
+	flex-shrink: 0;
+}
+
+.quotedBubbleMine .quotedBar {
+	background: var(--accent-contrast, #ffffff);
+}
+
+.quotedContent {
+	padding: 3px 7px;
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	min-width: 0;
+	overflow: hidden;
+}
+
+.quotedAuthor {
+	font-size: 10.5px;
+	font-weight: 700;
+	color: var(--accent);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.quotedBubbleMine .quotedAuthor {
+	color: var(--accent-contrast, #ffffff);
+}
+
+.quotedSnippet {
+	font-size: 11px;
+	color: var(--text-secondary);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.quotedBubbleMine .quotedSnippet {
+	color: rgba(255, 255, 255, 0.85);
+}
+
+.msgTextContent {
+	word-break: break-word;
+	line-height: 1.45;
+}
+
+.mobileReplyBanner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 6px 14px;
+	background: var(--accent-subtle);
+	border-top: 1px solid var(--accent-border);
+	font-size: 11.5px;
+	color: var(--text-primary);
+}
+
+.mobileReplyInfo {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+

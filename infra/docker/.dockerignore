@@ -1,0 +1,25 @@
+node_modules
+.next
+.git
+.github
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+dist
+
+# Local configuration and data — must never be baked into an image.
+.env
+.env.*
+infra/docker/.env*
+config.ini
+*.ini
+*.ini.example
+kulup.db
+kulup.db-shm
+kulup.db-wal
+
+# Uploaded receipts are runtime data (a named volume in compose), not build input.
+data
+
+.DS_Store

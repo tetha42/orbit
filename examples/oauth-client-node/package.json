@@ -1,0 +1,13 @@
+{
+  "name": "orbit-oauth-demo-client",
+  "version": "1.0.0",
+  "description": "Orbit Community OS OAuth 2.0 & OpenID Connect (OIDC) Reference Client",
+  "type": "module",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs",
+    "setup": "npx tsx setup.mjs"
+  },
+  "keywords": ["oauth2", "oidc", "demo", "sso", "orbit"],
+  "license": "MIT"
+}

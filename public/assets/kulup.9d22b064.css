@@ -1,0 +1,231 @@
+/* ================= Shared (every page) ================= */
+/* hide the page scrollbar everywhere; scrolling itself still works */
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+html::-webkit-scrollbar,body::-webkit-scrollbar{display:none;width:0;height:0}
+#header .news-w{display:none}
+@keyframes il-in{from{opacity:0;transform:translateY(1.5rem)}to{opacity:1;transform:none}}
+
+/* macOS-style glass context menu (kulup.js); every property is explicit so the panel's Tailwind reset can't leak in */
+.km{position:fixed;z-index:2147483000;min-width:240px;box-sizing:border-box;padding:5px;border-radius:12px;background:rgba(26,28,34,.5);-webkit-backdrop-filter:blur(28px) saturate(180%);backdrop-filter:blur(28px) saturate(180%);border:1px solid rgba(255,255,255,.14);box-shadow:0 0 0 .5px rgba(0,0,0,.55),0 22px 60px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.09);font:500 13px/1.25 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI","Century Gothic",sans-serif;color:rgba(255,255,255,.92);letter-spacing:0;text-transform:none;text-align:left;user-select:none;-webkit-user-select:none;opacity:0;transform:scale(.96);transition:opacity .12s ease,transform .12s cubic-bezier(.2,.8,.2,1)}
+.km--in{opacity:1;transform:none}
+.km--out{opacity:0;transform:scale(.98);transition-duration:.1s}
+.km-title{padding:6px 10px 5px;font-size:11px;font-weight:600;color:rgba(255,255,255,.45)}
+.km-item{display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;margin:0;padding:6px 10px;border:0;border-radius:6px;background:none;color:inherit;font:inherit;line-height:1.25;text-align:left;text-decoration:none;text-transform:none;letter-spacing:0;cursor:default;outline:none;-webkit-appearance:none;appearance:none}
+.km-item svg{display:block;width:15px;height:15px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.85}
+.km-label{flex:1;white-space:nowrap}
+.km-item:not([disabled]):hover,.km-item:not([disabled]):focus{background:#1f6fd1;color:#fff}
+.km-item:not([disabled]):hover svg,.km-item:not([disabled]):focus svg{opacity:1}
+.km-item[disabled]{opacity:.35}
+.km-item--current .km-label{font-weight:700;color:#fff}
+.km-check{margin-left:12px}
+.km-check svg{width:13px;height:13px;opacity:1;stroke-width:2.4}
+.km-kbd{margin-left:18px;font:inherit;font-size:12px;color:rgba(255,255,255,.42);background:none;border:0;padding:0}
+.km-item:not([disabled]):hover .km-kbd,.km-item:not([disabled]):focus .km-kbd{color:rgba(255,255,255,.8)}
+.km-sep{height:1px;margin:5px 10px;background:rgba(255,255,255,.12)}
+.km-toast{position:fixed;left:50%;bottom:32px;z-index:2147483001;transform:translateX(-50%);padding:10px 16px;border-radius:10px;background:rgba(26,28,34,.55);-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);border:1px solid rgba(255,255,255,.14);box-shadow:0 12px 40px rgba(0,0,0,.4);color:#fff;font:500 13px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI","Century Gothic",sans-serif;animation:km-toast .2s ease both;transition:opacity .3s}
+.km-toast--out{opacity:0}
+@keyframes km-toast{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translateX(-50%)}}
+
+/* ================= Öğrenci paneli shell: site chrome stays in the DOM for the engine but is hidden ================= */
+body:has(main.panel-sahne){background:#02060d}
+body:has(main.panel-sahne) :is(#header,.montfort-menu,.buttons-container,.cursor,.hero-transition,#footer){display:none!important}
+body:has(main.panel-sahne) #canvas-wrapper{position:fixed;inset:0;z-index:0;width:100%;height:100vh;height:100lvh;pointer-events:none}
+body:has(main.panel-sahne) #canvas-wrapper canvas{display:block;width:100%;height:100%}
+main.panel-sahne{position:relative;z-index:1}
+
+/* ================= Ana sayfa: başkan / başkan yardımcısı ================= */
+.baskan{--accent:#3d9be9;position:relative;align-items:center;row-gap:32px;padding:14vh 0 8vh}
+.baskan + .baskan{padding-top:4vh}
+.baskan-bust{max-width:420px;width:100%;justify-self:center}
+.bust-svg{display:block;width:100%;height:auto;overflow:visible}
+.bust-mirror{transform:scaleX(-1)}
+.bust-eye{animation:bust-pulse 2.6s ease-in-out infinite}
+.bust-svg .trace{stroke-dasharray:6 8;animation:bust-flow 1.8s linear infinite}
+.bust-scan{animation:bust-scan 5s ease-in-out infinite}
+@keyframes bust-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes bust-flow{to{stroke-dashoffset:-28}}
+@keyframes bust-scan{0%{transform:translateY(0)}100%{transform:translateY(560px)}}
+.baskan-label{color:var(--accent);letter-spacing:.3em;margin-bottom:12px}
+.baskan-name{margin:0 0 8px}
+.baskan-sub{opacity:.85;margin-bottom:20px}
+.baskan-bio{opacity:.9;max-width:62ch}
+.baskan-tags{display:flex;flex-wrap:wrap;gap:8px;list-style:none;padding:0;margin:24px 0}
+.baskan-tags li{color:#fff;border:1px solid color-mix(in srgb,var(--accent) 55%,transparent);background:color-mix(in srgb,var(--accent) 8%,transparent);border-radius:999px;padding:7px 12px;letter-spacing:.08em}
+.baskan-links,.team-links{display:flex;flex-wrap:wrap;gap:12px 28px}
+.baskan-links a{color:#fff;text-decoration:none;letter-spacing:.2em;padding-bottom:4px;border-bottom:1px solid var(--accent);transition:color .3s,border-color .3s}
+.etkinlik-bos{min-height:70vh}
+@media (min-width:64em){.baskan>*{grid-row:1}}
+
+/* ================= Hakkımızda ================= */
+.team-links{margin-top:1.5rem}
+.team-links a{color:#2d628c;text-decoration:none;letter-spacing:.2em;padding-bottom:4px;border-bottom:1px solid #2d628c66}
+.hakkimizda-logo{padding-top:clamp(9rem,24vh,16rem)}
+.hakkimizda-logo svg{display:block;height:auto;margin:0 auto;animation:il-in 1.4s cubic-bezier(.2,.7,.2,1) both}
+.hakkimizda-logo .logo-genis{width:100%;max-width:1200px}
+.hakkimizda-logo .logo-dar{display:none;width:min(320px,80vw)}
+.hakkimizda-logo + .core-values-block{padding-top:8rem}
+.team-block .members-wrapper{display:flex!important;flex-direction:column;gap:9rem!important;max-width:none!important;width:100%}
+.team-block .team-member-block.uye-satir{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);column-gap:5rem;align-items:center;width:100%!important;margin-top:0!important}
+.team-block .uye-satir.ters{grid-template-columns:minmax(0,6fr) minmax(0,5fr)}
+.team-block .uye-satir.ters .picture-wrapper{order:2}
+.team-block .uye-satir .picture-wrapper{max-width:460px;width:100%;justify-self:center}
+.team-block .uye-satir .content-wrapper{margin-top:0!important;transform:none!important}
+.team-block .uye-satir .name,.team-block .uye-satir .position,.team-block .uye-satir .team-content{max-width:36rem!important}
+
+/* ================= İletişim ================= */
+.iletisim{--il-acc:#3d9be9;--il-line:rgba(255,255,255,.12);position:relative;color:#fff;background:radial-gradient(1200px 600px at 80% -10%,rgba(61,155,233,.22),transparent 60%),radial-gradient(900px 500px at -10% 40%,rgba(46,211,183,.08),transparent 60%),#07111f;padding-bottom:10rem;overflow:clip}
+.iletisim svg{width:1.25em;height:1.25em;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.il-hero{padding-top:clamp(9rem,22vh,15rem);animation:il-in 1s cubic-bezier(.2,.7,.2,1) both}
+.il-ust{color:var(--il-acc);letter-spacing:.3em;margin-bottom:1rem}
+.il-giris{max-width:40rem;margin:1.5rem 0 2.5rem;opacity:.85}
+.il-soluk{color:rgba(255,255,255,.68)}
+.il-butonlar{display:flex;flex-wrap:wrap;gap:1rem}
+.il-btn{display:inline-flex;align-items:center;gap:.7rem;padding:1rem 1.6rem;border:1px solid var(--il-line);border-radius:999px;color:#fff;text-decoration:none;letter-spacing:.18em;transition:background .3s,border-color .3s,transform .3s}
+.il-btn--ana{background:var(--il-acc);border-color:var(--il-acc)}
+.il-bolum{margin-top:clamp(5rem,12vh,8rem);animation:il-in 1s .15s cubic-bezier(.2,.7,.2,1) both}
+.il-baslik{margin-bottom:2rem;letter-spacing:.12em}
+.il-instagram{display:flex;align-items:center;gap:2rem;padding:2.5rem;border:1px solid var(--il-line);border-radius:1.25rem;background:linear-gradient(135deg,rgba(61,155,233,.14),rgba(255,255,255,.02));color:#fff;text-decoration:none;transition:border-color .3s,transform .3s}
+.il-ikon{display:grid;place-items:center;width:4.5rem;height:4.5rem;border-radius:1.1rem;background:linear-gradient(45deg,#f9a825,#e1306c 55%,#833ab4);flex:none}
+.il-ikon svg{width:2.2rem;height:2.2rem}
+.il-ig-metin{display:flex;flex-direction:column;gap:.5rem;flex:1}
+.il-ig-metin .il-ust{margin:0}
+.il-ok svg{width:2rem;height:2rem;color:var(--il-acc)}
+.il-kisiler{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.5rem}
+.il-kisi{display:flex;flex-direction:column;gap:1.25rem;padding:1.75rem;border:1px solid var(--il-line);border-radius:1.25rem;background:rgba(255,255,255,.03)}
+.il-kisi img{width:5.5rem;height:5.5rem;border-radius:50%;object-fit:cover;border:2px solid var(--il-acc)}
+.il-kisi h3{margin:0 0 .35rem}
+.il-rol{color:var(--il-acc);letter-spacing:.15em;margin-bottom:.9rem}
+.il-konu{color:rgba(255,255,255,.72);margin-bottom:1.2rem}
+.il-kisi-link{display:flex;flex-wrap:wrap;gap:.6rem 1.4rem}
+.il-kisi-link a{color:#fff;text-decoration:none;letter-spacing:.15em;padding-bottom:3px;border-bottom:1px solid var(--il-acc)}
+.il-konum{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:3rem;align-items:center}
+.il-konum-metin p.fs-s1{display:flex;gap:.8rem;align-items:flex-start;margin-bottom:1rem}
+.il-konum-metin p.fs-s1 svg{margin-top:.25em;color:var(--il-acc)}
+.il-konum-metin .il-soluk{margin-bottom:2rem;max-width:28rem}
+.il-harita{border-radius:1.25rem;overflow:hidden;border:1px solid var(--il-line);aspect-ratio:16/10;background:#0b1a2e}
+.il-harita iframe{width:100%;height:100%;border:0;filter:grayscale(.3) invert(.92) hue-rotate(180deg) contrast(.9)}
+.il-sss details{border-bottom:1px solid var(--il-line)}
+.il-sss summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:1rem;padding:1.5rem 0}
+.il-sss summary::-webkit-details-marker{display:none}
+.il-sss summary::after{content:"+";color:var(--il-acc);font-size:1.6em;line-height:1;transition:transform .3s}
+.il-sss details[open] summary::after{transform:rotate(45deg)}
+.il-sss details p{padding:0 0 1.5rem;max-width:48rem}
+
+/* ================= Haberler ================= */
+.haber-bos{display:flex;flex-direction:column;gap:1.5rem;max-width:44rem;margin:4rem 0 12rem}
+.haber-geri{color:#2d628c;text-decoration:none;letter-spacing:.2em;width:fit-content;padding-bottom:4px;border-bottom:1px solid #2d628c66}
+
+/* ================= Atatürk Köşesi ================= */
+.ataturk{--ak-red:#e30a17;--ak-line:rgba(255,255,255,.14);position:relative;color:#fff;background:radial-gradient(1100px 600px at 80% 0%,rgba(227,10,23,.12),transparent 60%),linear-gradient(180deg,#050b14 0%,#07182a 55%,#0a2238 100%);padding-bottom:10rem;overflow:clip}
+.ataturk>section{position:relative;z-index:1}
+/* glowing dot floor like the home page grid, drawn in CSS so this page needs no WebGL scene */
+.ak-zemin{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.ak-zemin::before{content:"";position:absolute;left:-60%;right:-60%;bottom:-5%;height:85%;background-image:radial-gradient(circle,rgba(92,178,255,.9) 1.2px,transparent 1.8px);background-size:26px 26px;transform:perspective(520px) rotateX(60deg);transform-origin:50% 100%;-webkit-mask-image:linear-gradient(to top,#000 0%,rgba(0,0,0,.8) 40%,transparent 95%);mask-image:linear-gradient(to top,#000 0%,rgba(0,0,0,.8) 40%,transparent 95%);animation:ak-zemin 6s linear infinite}
+.ak-zemin::after{content:"";position:absolute;left:0;right:0;bottom:0;height:45%;background:radial-gradient(60% 80% at 50% 100%,rgba(61,155,233,.18),transparent 70%)}
+@keyframes ak-zemin{to{background-position:0 26px}}
+.ak-hero{min-height:100vh;min-height:100svh;align-content:center;padding:clamp(9rem,20vh,13rem) 0 6rem}
+.ak-hero-ic{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4rem;align-items:center}
+.ak-portre{margin:0;justify-self:end;animation:ak-portre 1.8s .4s cubic-bezier(.2,.7,.2,1) both}
+.ak-portre img{display:block;width:clamp(220px,24vw,330px);height:auto;filter:drop-shadow(0 30px 60px rgba(0,0,0,.6)) saturate(.9);-webkit-mask-image:linear-gradient(180deg,#000 72%,transparent 100%);mask-image:linear-gradient(180deg,#000 72%,transparent 100%)}
+@keyframes ak-portre{from{opacity:0;transform:translateY(2rem) scale(.97)}to{opacity:1;transform:none}}
+.ak-ust{display:flex;align-items:center;gap:1rem;color:var(--ak-red);letter-spacing:.35em;margin-bottom:2.5rem;animation:il-in 1s both}
+.ak-cizgi{display:inline-block;width:3rem;height:2px;background:var(--ak-red)}
+.ak-soz{margin:0;max-width:62rem}
+.ak-soz-metin{font-family:"Josefin Sans","Century Gothic",sans-serif;font-weight:300;font-size:clamp(1.8rem,4.2vw,3.6rem);line-height:1.3;letter-spacing:.01em;text-shadow:0 2px 24px rgba(0,0,0,.55);animation:ak-soz 1.6s .2s cubic-bezier(.2,.7,.2,1) both}
+.ak-soz-metin em{font-style:normal;font-weight:600;color:#fff;background:linear-gradient(transparent 62%,rgba(227,10,23,.55) 62%)}
+.ak-kaynak{margin-top:2rem;color:rgba(255,255,255,.62);letter-spacing:.22em;animation:il-in 1s .9s both}
+.ak-imza{display:block;width:min(360px,70vw);height:auto;margin-top:3.5rem;color:#fff;clip-path:inset(0 100% 0 0);animation:ak-imza 2.6s 1.3s cubic-bezier(.6,.05,.3,1) forwards}
+@keyframes ak-imza{to{clip-path:inset(0 0 0 0)}}
+@keyframes ak-soz{from{opacity:0;filter:blur(8px);transform:translateY(1rem)}to{opacity:1;filter:none;transform:none}}
+.ak-bolum{margin-top:clamp(5rem,12vh,9rem)}
+.ak-baslik{letter-spacing:.14em;margin-bottom:2.5rem}
+.ak-iki{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,7fr);gap:3rem;align-items:start}
+.ak-metin p{color:rgba(255,255,255,.8);margin-bottom:1.5rem}
+.ak-ilkeler{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.5rem;margin-top:3.5rem}
+.ak-ilke{padding:2rem;border:1px solid var(--ak-line);border-radius:.75rem;background:rgba(5,11,20,.55);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.ak-no{display:block;color:var(--ak-red);letter-spacing:.25em;margin-bottom:1rem}
+.ak-ilke h3{margin-bottom:.8rem}
+.ak-ilke p{color:rgba(255,255,255,.72)}
+.ak-anma{margin-top:3rem;padding-left:1.25rem;border-left:2px solid var(--ak-red);color:rgba(255,255,255,.85);max-width:48rem}
+.ak-anma strong{color:#fff}
+.ak-kartlar{display:grid;grid-template-columns:2fr 1.4fr 1fr;gap:1.5rem}
+.ak-kart{margin:0;display:flex;flex-direction:column;justify-content:space-between;gap:2rem;padding:2rem;border:1px solid var(--ak-line);border-top:2px solid var(--ak-red);border-radius:.75rem;background:rgba(5,11,20,.45)}
+.ak-kart blockquote{margin:0;color:rgba(255,255,255,.9)}
+.ak-kart figcaption{color:rgba(255,255,255,.55);letter-spacing:.18em}
+/* Andımız: sticky scene, words light up with scroll (--p set by kulup.js), flag draws then glows */
+.ak-and{position:relative;z-index:1;height:340vh;margin-top:clamp(4rem,10vh,8rem)}
+.ak-and-sahne{position:sticky;top:0;height:100vh;height:100svh;align-content:center}
+.ak-and-ic{position:relative;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:3rem;align-items:center}
+.ak-and-metin{position:relative;z-index:1}
+.ak-ant{margin:0;font-family:"Josefin Sans","Century Gothic",sans-serif;font-weight:300;font-size:clamp(1.2rem,2.2vw,2rem);line-height:1.45;color:#fff}
+.ak-ant p{margin:0 0 .5em}
+.ak-ant .w{transition:color .45s ease,text-shadow .45s ease}
+.ak-and--js .ak-ant .w{color:rgba(255,255,255,.14)}
+.ak-and--js .ak-ant .w.on{color:#fff;text-shadow:0 0 22px rgba(255,255,255,.16)}
+.ak-ant .ak-ant-final{margin-top:.8em;font-weight:600;font-size:1.6em;line-height:1.15}
+.ak-and--js .ak-ant-final .w.on{text-shadow:0 0 30px rgba(227,10,23,.8),0 0 2px rgba(227,10,23,.9)}
+.ak-bayrak{display:block;width:100%;max-width:430px;justify-self:center;overflow:visible;--d:clamp(0,calc((var(--p,1) - .5)/.25),1);--s:clamp(0,calc((var(--p,1) - .68)/.14),1);--f:clamp(0,calc((var(--p,1) - .84)/.1),1)}
+.ak-bayrak path,.ak-bayrak polygon{fill:#fff;fill-opacity:var(--f);stroke:#fff;stroke-width:2.5;stroke-linejoin:round;stroke-dasharray:1 1;vector-effect:non-scaling-stroke}
+.ak-bayrak path{stroke-dashoffset:calc(1 - var(--d))}
+.ak-bayrak polygon{stroke-dashoffset:calc(1 - var(--s))}
+.ak-bayrak-isik{opacity:calc(var(--f) * .9);transform-origin:470px 400px}
+.ak-and--tamam .ak-bayrak-isik{animation:ak-nabiz 3.2s ease-in-out infinite}
+.ak-and--tamam .ak-bayrak{filter:drop-shadow(0 0 24px rgba(255,255,255,.25))}
+@keyframes ak-nabiz{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+.ak-kapanis{margin-top:clamp(6rem,14vh,10rem);text-align:center}
+.ak-yillar{font-family:"Josefin Sans","Century Gothic",sans-serif;font-weight:200;font-size:clamp(3rem,9vw,7rem);letter-spacing:.12em;color:rgba(255,255,255,.9)}
+/* the last 8 of 1938 lies down into an infinity sign; kulup.js sets .ak-bekle, then .ak-don when it scrolls into view */
+.ak-sonsuz{display:inline-block;margin:0 .14em 0 .1em;transform:rotate(90deg);color:#fff;text-shadow:0 0 18px rgba(227,10,23,.55);transition:transform 1.8s cubic-bezier(.65,0,.35,1),text-shadow 1.8s ease}
+.ak-sonsuz.ak-bekle{transform:rotate(0deg);text-shadow:none}
+.ak-sonsuz.ak-bekle.ak-don{transform:rotate(90deg);text-shadow:0 0 18px rgba(227,10,23,.55)}
+.ak-saygi{margin-top:1rem;color:rgba(255,255,255,.6);letter-spacing:.1em}
+
+/* ================= Devices ================= */
+/* hover lift only where a real hover exists (avoids "stuck" hover on touch screens) */
+@media (hover:hover){
+  .baskan-links a:hover{color:var(--accent);border-color:#fff}
+  .team-links a:hover{border-color:#2d628c}
+  .il-btn:hover{border-color:var(--il-acc);transform:translateY(-2px)}
+  .il-btn--ana:hover{background:#2f86d0}
+  .il-instagram:hover{border-color:var(--il-acc);transform:translateY(-3px)}
+}
+
+/* phones and tablets (portrait) */
+@media (max-width:63.99em){
+  .baskan{padding:10vh 0 6vh}
+  .baskan-bust{max-width:300px}
+  .hakkimizda-logo .logo-genis{display:none}
+  .hakkimizda-logo .logo-dar{display:block}
+  .team-block .members-wrapper{gap:5rem!important}
+  .team-block .team-member-block.uye-satir,.team-block .uye-satir.ters{grid-template-columns:minmax(0,1fr);row-gap:2rem}
+  .team-block .uye-satir.ters .picture-wrapper{order:0}
+  .il-kisiler{grid-template-columns:minmax(0,1fr)}
+  .il-kisi{flex-direction:row;align-items:flex-start}
+  .il-kisi img{width:4.5rem;height:4.5rem}
+  .il-konum{grid-template-columns:minmax(0,1fr)}
+  .il-instagram{flex-wrap:wrap;gap:1.25rem;padding:1.75rem}
+  .il-ok{display:none}
+  .ak-hero{min-height:auto}
+  .ak-hero-ic{grid-template-columns:minmax(0,1fr);gap:2.5rem}
+  .ak-portre{order:-1;justify-self:center}
+  .ak-portre img{width:min(220px,60vw)}
+  .ak-iki,.ak-kartlar,.ak-ilkeler,.ak-and-ic{grid-template-columns:minmax(0,1fr)}
+  .ak-bayrak{position:absolute;top:50%;right:-12%;width:85%;max-width:none;transform:translateY(-50%);opacity:.3}
+  .ak-and{height:260vh}
+}
+
+/* phones/tablets: lighter GPU work (fewer blurred layers, no endless background animation) */
+@media (max-width:63.99em),(pointer:coarse){
+  .km,.km-toast{-webkit-backdrop-filter:blur(12px) saturate(160%);backdrop-filter:blur(12px) saturate(160%)}
+  .ak-ilke{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(5,11,20,.75)}
+  .ak-zemin::before{animation:none}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .km{transition:none}
+  .km-toast{animation:none}
+  .bust-eye,.bust-svg .trace,.bust-scan,.ak-zemin::before,.ak-soz-metin,.ak-kaynak,.ak-ust{animation:none}
+  .ak-bayrak-isik{animation:none!important}
+  .ak-imza{animation:none;clip-path:none}
+  .ak-sonsuz,.ak-sonsuz.ak-bekle{transition:none;transform:rotate(90deg)}
+}

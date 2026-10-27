@@ -1,0 +1,2519 @@
+{
+  "definitions": [
+    {
+      "oldName": "addButceKaydi",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/budget.repo.ts"
+      ],
+      "newName": "createBudgetRecord"
+    },
+    {
+      "oldName": "addEnvanterItem",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/inventory.repo.ts"
+      ],
+      "newName": "createInventoryItem"
+    },
+    {
+      "oldName": "addGorevMaddesi",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/kanban.repo.ts"
+      ],
+      "newName": "addTaskItem"
+    },
+    {
+      "oldName": "addGorevYorumu",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/kanban.repo.ts"
+      ],
+      "newName": "addTaskComment"
+    },
+    {
+      "oldName": "addHaber",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/news.repo.ts"
+      ],
+      "newName": "createNews"
+    },
+    {
+      "oldName": "addKullaniciXp",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/members.repo.ts"
+      ],
+      "newName": "addUserXp"
+    },
+    {
+      "oldName": "addPostaYaniti",
+      "type": "function",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "addMailReply"
+    },
+    {
+      "oldName": "addTakimGorevi",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/kanban.repo.ts"
+      ],
+      "newName": "createTeamTask"
+    },
+    {
+      "oldName": "addTutanak",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/decisions.repo.ts"
+      ],
+      "newName": "createDecision"
+    },
+    {
+      "oldName": "anketEk",
+      "type": "variable",
+      "files": [
+        "src/server/db/domains/chat.repo.ts"
+      ],
+      "newName": "addPoll"
+    },
+    {
+      "oldName": "anketId",
+      "type": "variable",
+      "files": [
+        "src/server/db/domains/chat.repo.ts"
+      ],
+      "newName": "pollId"
+    },
+    {
+      "oldName": "araPostaAdaylari",
+      "type": "function",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "searchMailCandidates"
+    },
+    {
+      "oldName": "baskan",
+      "type": "variable",
+      "files": [
+        "src/server/db/domains/certificates.repo.ts"
+      ],
+      "newName": "lead"
+    },
+    {
+      "oldName": "BasvuruKarari",
+      "type": "type",
+      "files": [
+        "src/server/db/domains/teams.repo.ts"
+      ],
+      "newName": "ApplicationDecision"
+    },
+    {
+      "oldName": "bildirimOlaylari",
+      "type": "function",
+      "files": [
+        "src/db/olaylar.ts"
+      ],
+      "newName": "notificationEvents"
+    },
+    {
+      "oldName": "bitis",
+      "type": "variable",
+      "files": [
+        "src/server/db/domains/security.repo.ts"
+      ],
+      "newName": "endTime"
+    },
+    {
+      "oldName": "bitisNum",
+      "type": "variable",
+      "files": [
+        "src/server/db/domains/security.repo.ts"
+      ],
+      "newName": "endTimestamp"
+    },
+    {
+      "oldName": "bitisTarihi",
+      "type": "variable",
+      "files": [
+        "src/server/db/domains/security.repo.ts"
+      ],
+      "newName": "expiresAt"
+    },
+    {
+      "oldName": "ButceKategorisi",
+      "type": "type",
+      "files": [
+        "src/server/db/domains/budget.repo.ts"
+      ],
+      "newName": "BudgetCategory"
+    },
+    {
+      "oldName": "ButceKaydi",
+      "type": "type",
+      "files": [
+        "src/db/schema.ts"
+      ],
+      "newName": "BudgetRecord"
+    },
+    {
+      "oldName": "byRole",
+      "type": "variable",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "byRole"
+    },
+    {
+      "oldName": "convertLegacyRoles",
+      "type": "function",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "convertLegacyRoles"
+    },
+    {
+      "oldName": "createEtkinlik",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/events.repo.ts"
+      ],
+      "newName": "createEvent"
+    },
+    {
+      "oldName": "createEtkinlikSertifikalari",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/certificates.repo.ts"
+      ],
+      "newName": "createEventCertificates"
+    },
+    {
+      "oldName": "createKullanici",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/members.repo.ts"
+      ],
+      "newName": "createUser"
+    },
+    {
+      "oldName": "createPostaKonusu",
+      "type": "function",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "createMailThread"
+    },
+    {
+      "oldName": "createProje",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/projects.repo.ts"
+      ],
+      "newName": "createProject"
+    },
+    {
+      "oldName": "createRol",
+      "type": "function",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "createRole"
+    },
+    {
+      "oldName": "createSertifika",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/certificates.repo.ts"
+      ],
+      "newName": "createCertificate"
+    },
+    {
+      "oldName": "createTakim",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/teams.repo.ts"
+      ],
+      "newName": "createTeam"
+    },
+    {
+      "oldName": "decideTakimBasvurusu",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/teams.repo.ts"
+      ],
+      "newName": "decideTeamApplication"
+    },
+    {
+      "oldName": "deleteButceKaydi",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/budget.repo.ts"
+      ],
+      "newName": "deleteBudgetRecord"
+    },
+    {
+      "oldName": "deleteEnvanterItem",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/inventory.repo.ts"
+      ],
+      "newName": "deleteInventoryItem"
+    },
+    {
+      "oldName": "deleteEtkinlik",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/events.repo.ts"
+      ],
+      "newName": "deleteEvent"
+    },
+    {
+      "oldName": "deleteGorevMaddesi",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/kanban.repo.ts"
+      ],
+      "newName": "deleteTaskItem"
+    },
+    {
+      "oldName": "deleteGorevYorumu",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/kanban.repo.ts"
+      ],
+      "newName": "deleteTaskComment"
+    },
+    {
+      "oldName": "deleteHaber",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/news.repo.ts"
+      ],
+      "newName": "deleteNews"
+    },
+    {
+      "oldName": "deleteKullanici",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/members.repo.ts"
+      ],
+      "newName": "deleteUser"
+    },
+    {
+      "oldName": "deleteKullaniciNotKlasoru",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/notes.repo.ts"
+      ],
+      "newName": "deleteUserNoteFolder"
+    },
+    {
+      "oldName": "deleteKullaniciNotu",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/notes.repo.ts"
+      ],
+      "newName": "deleteUserNote"
+    },
+    {
+      "oldName": "deleteProje",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/projects.repo.ts"
+      ],
+      "newName": "deleteProject"
+    },
+    {
+      "oldName": "deleteRol",
+      "type": "function",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "deleteRole"
+    },
+    {
+      "oldName": "deleteSertifika",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/certificates.repo.ts"
+      ],
+      "newName": "deleteCertificate"
+    },
+    {
+      "oldName": "deleteTakim",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/teams.repo.ts"
+      ],
+      "newName": "deleteTeam"
+    },
+    {
+      "oldName": "deleteTakimGorevi",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/kanban.repo.ts"
+      ],
+      "newName": "deleteTeamTask"
+    },
+    {
+      "oldName": "deleteTutanak",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/decisions.repo.ts"
+      ],
+      "newName": "deleteDecision"
+    },
+    {
+      "oldName": "DenetimAlanlari",
+      "type": "type",
+      "files": [
+        "src/db/audit.ts"
+      ],
+      "newName": "AuditFields"
+    },
+    {
+      "oldName": "denetimBaglami",
+      "type": "function",
+      "files": [
+        "src/db/audit.ts"
+      ],
+      "newName": "auditContext"
+    },
+    {
+      "oldName": "DenetimBaglami",
+      "type": "type",
+      "files": [
+        "src/db/audit.ts",
+        "src/db/roles.ts",
+        "src/server/db/domains/auth.repo.ts",
+        "src/server/db/domains/members.repo.ts",
+        "src/server/db/domains/settings.repo.ts"
+      ],
+      "newName": "AuditContext"
+    },
+    {
+      "oldName": "denetimBakiminiBaslat",
+      "type": "function",
+      "files": [
+        "src/db/audit.ts"
+      ],
+      "newName": "startAuditMaintenance"
+    },
+    {
+      "oldName": "DenetimGirdisi",
+      "type": "type",
+      "files": [
+        "src/db/audit.ts",
+        "src/server/db/domains/settings.repo.ts"
+      ],
+      "newName": "AuditEntry"
+    },
+    {
+      "oldName": "DenetimHedefTuru",
+      "type": "type",
+      "files": [
+        "src/db/audit.ts"
+      ],
+      "newName": "AuditTargetType"
+    },
+    {
+      "oldName": "DenetimIslemi",
+      "type": "type",
+      "files": [
+        "src/db/audit.ts"
+      ],
+      "newName": "AuditAction"
+    },
+    {
+      "oldName": "DenetimKaydi",
+      "type": "type",
+      "files": [
+        "src/db/audit.ts"
+      ],
+      "newName": "AuditRecord"
+    },
+    {
+      "oldName": "denetimListele",
+      "type": "function",
+      "files": [
+        "src/db/audit.ts"
+      ],
+      "newName": "listAuditLogs"
+    },
+    {
+      "oldName": "denetimSifirla",
+      "type": "function",
+      "files": [
+        "src/db/audit.ts"
+      ],
+      "newName": "resetAuditLogs"
+    },
+    {
+      "oldName": "DenetimSuzgeci",
+      "type": "type",
+      "files": [
+        "src/db/audit.ts"
+      ],
+      "newName": "AuditFilter"
+    },
+    {
+      "oldName": "denetimTemizle",
+      "type": "function",
+      "files": [
+        "src/db/audit.ts"
+      ],
+      "newName": "clearAuditLogs"
+    },
+    {
+      "oldName": "denetimYaz",
+      "type": "function",
+      "files": [
+        "src/db/audit.ts"
+      ],
+      "newName": "logAuditEvent"
+    },
+    {
+      "oldName": "disableKullaniciTotp",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/auth.repo.ts"
+      ],
+      "newName": "disableUserTotp"
+    },
+    {
+      "oldName": "dogrulamaKodu",
+      "type": "variable",
+      "files": [
+        "src/server/db/domains/certificates.repo.ts"
+      ],
+      "newName": "verificationCode"
+    },
+    {
+      "oldName": "durum",
+      "type": "variable",
+      "files": [
+        "src/server/db/domains/kanban.repo.ts",
+        "src/server/db/domains/security.repo.ts",
+        "src/server/db/domains/teams.repo.ts"
+      ],
+      "newName": "status"
+    },
+    {
+      "oldName": "emptyKullaniciNotlariCop",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/notes.repo.ts"
+      ],
+      "newName": "emptyUserNotesTrash"
+    },
+    {
+      "oldName": "enableKullaniciTotp",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/auth.repo.ts"
+      ],
+      "newName": "enableUserTotp"
+    },
+    {
+      "oldName": "engel",
+      "type": "variable",
+      "files": [
+        "src/server/db/domains/security.repo.ts"
+      ],
+      "newName": "block"
+    },
+    {
+      "oldName": "engelMap",
+      "type": "variable",
+      "files": [
+        "src/server/db/domains/security.repo.ts"
+      ],
+      "newName": "blockMap"
+    },
+    {
+      "oldName": "ensureRoleSchema",
+      "type": "function",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "ensureRoleSchema"
+    },
+    {
+      "oldName": "ensureSeedRole",
+      "type": "function",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "ensureSeedRole"
+    },
+    {
+      "oldName": "EnvanterEsyasi",
+      "type": "type",
+      "files": [
+        "src/db/schema.ts"
+      ],
+      "newName": "InventoryItem"
+    },
+    {
+      "oldName": "EnvanterHareketi",
+      "type": "type",
+      "files": [
+        "src/server/db/domains/inventory.repo.ts"
+      ],
+      "newName": "InventoryActivity"
+    },
+    {
+      "oldName": "EnvanterHareketTuru",
+      "type": "type",
+      "files": [
+        "src/server/db/domains/inventory.repo.ts"
+      ],
+      "newName": "InventoryActivityType"
+    },
+    {
+      "oldName": "eposta",
+      "type": "variable",
+      "files": [
+        "src/db/index.ts"
+      ],
+      "newName": "email"
+    },
+    {
+      "oldName": "eskiDurum",
+      "type": "variable",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "previousStatus"
+    },
+    {
+      "oldName": "eskiRol",
+      "type": "variable",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "oldRole"
+    },
+    {
+      "oldName": "Etkinlik",
+      "type": "type",
+      "files": [
+        "src/db/schema.ts"
+      ],
+      "newName": "CommunityEvent"
+    },
+    {
+      "oldName": "EtkinlikDurumu",
+      "type": "type",
+      "files": [
+        "src/server/db/domains/events.repo.ts"
+      ],
+      "newName": "EventStatus"
+    },
+    {
+      "oldName": "EtkinlikGorunumu",
+      "type": "type",
+      "files": [
+        "src/server/db/domains/events.repo.ts"
+      ],
+      "newName": "EventView"
+    },
+    {
+      "oldName": "etkinlikKaydiniIptalEt",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/events.repo.ts"
+      ],
+      "newName": "cancelEventRegistration"
+    },
+    {
+      "oldName": "etkinlikKaydiniSil",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/events.repo.ts"
+      ],
+      "newName": "cancelEventRegistration"
+    },
+    {
+      "oldName": "EtkinlikPatch",
+      "type": "type",
+      "files": [
+        "src/server/db/domains/events.repo.ts"
+      ],
+      "newName": "EventPatch"
+    },
+    {
+      "oldName": "EtkinlikTuru",
+      "type": "type",
+      "files": [
+        "src/server/db/domains/events.repo.ts"
+      ],
+      "newName": "EventType"
+    },
+    {
+      "oldName": "getAcikYoklamaEtkinlikleri",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/events.repo.ts"
+      ],
+      "newName": "getOpenAttendanceEvents"
+    },
+    {
+      "oldName": "getBekleyenProjeOnerileri",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/notifications.repo.ts"
+      ],
+      "newName": "getPendingProjectProposals"
+    },
+    {
+      "oldName": "getBekleyenTakimBasvurulari",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/teams.repo.ts"
+      ],
+      "newName": "getPendingTeamApplications"
+    },
+    {
+      "oldName": "getButceKaydiById",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/budget.repo.ts"
+      ],
+      "newName": "getBudgetRecordById"
+    },
+    {
+      "oldName": "getButceKayitlari",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/budget.repo.ts"
+      ],
+      "newName": "getBudgetRecords"
+    },
+    {
+      "oldName": "getButceTakimIdsByReceipt",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/budget.repo.ts"
+      ],
+      "newName": "getBudgetTeamIdsByReceipt"
+    },
+    {
+      "oldName": "getEnvanter",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/inventory.repo.ts"
+      ],
+      "newName": "getInventoryItems"
+    },
+    {
+      "oldName": "getEnvanterById",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/inventory.repo.ts"
+      ],
+      "newName": "getInventoryItemById"
+    },
+    {
+      "oldName": "getEnvanterHareketleri",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/inventory.repo.ts"
+      ],
+      "newName": "getInventoryActivities"
+    },
+    {
+      "oldName": "getEtkinlikById",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/events.repo.ts"
+      ],
+      "newName": "getEventById"
+    },
+    {
+      "oldName": "getEtkinlikGorunumleri",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/events.repo.ts"
+      ],
+      "newName": "getEventViews"
+    },
+    {
+      "oldName": "getEtkinlikKatilimListesi",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/events.repo.ts"
+      ],
+      "newName": "getEventAttendeeList"
+    },
+    {
+      "oldName": "getEtkinlikler",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/events.repo.ts"
+      ],
+      "newName": "getEvents"
+    },
+    {
+      "oldName": "getGorevMaddesi",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/kanban.repo.ts"
+      ],
+      "newName": "getTaskItem"
+    },
+    {
+      "oldName": "getGorevYorumu",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/kanban.repo.ts"
+      ],
+      "newName": "getTaskComment"
+    },
+    {
+      "oldName": "getGuvenlikEngelleri",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/security.repo.ts"
+      ],
+      "newName": "getSecurityBlocks"
+    },
+    {
+      "oldName": "getHaberById",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/news.repo.ts"
+      ],
+      "newName": "getNewsById"
+    },
+    {
+      "oldName": "getHaberler",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/news.repo.ts"
+      ],
+      "newName": "getNews"
+    },
+    {
+      "oldName": "getKasaTotals",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/budget.repo.ts"
+      ],
+      "newName": "getCashTotals"
+    },
+    {
+      "oldName": "getKatilimcilar",
+      "type": "function",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "getAttendees"
+    },
+    {
+      "oldName": "getKullaniciBasvuruKararlari",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/teams.repo.ts"
+      ],
+      "newName": "getUserApplicationDecisions"
+    },
+    {
+      "oldName": "getKullaniciByEposta",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/members.repo.ts"
+      ],
+      "newName": "getUserByEmail"
+    },
+    {
+      "oldName": "getKullaniciById",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/members.repo.ts"
+      ],
+      "newName": "getUserById"
+    },
+    {
+      "oldName": "getKullaniciByOgrenciNo",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/members.repo.ts"
+      ],
+      "newName": "getUserByHandle"
+    },
+    {
+      "oldName": "getKullaniciBySessionToken",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/members.repo.ts"
+      ],
+      "newName": "getUserBySessionToken"
+    },
+    {
+      "oldName": "getKullaniciEtkinlikKayitIds",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/events.repo.ts"
+      ],
+      "newName": "getUserEventRegistrationIds"
+    },
+    {
+      "oldName": "getKullanicilar",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/members.repo.ts"
+      ],
+      "newName": "getUsers"
+    },
+    {
+      "oldName": "getKullaniciNotKlasorleri",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/notes.repo.ts"
+      ],
+      "newName": "getUserNoteFolders"
+    },
+    {
+      "oldName": "getKullaniciNotlari",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/notes.repo.ts"
+      ],
+      "newName": "getUserNotes"
+    },
+    {
+      "oldName": "getKullaniciOzeti",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/users.repo.ts"
+      ],
+      "newName": "getUserSummary"
+    },
+    {
+      "oldName": "getKullaniciTakimIds",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/teams.repo.ts"
+      ],
+      "newName": "getUserTeamIds"
+    },
+    {
+      "oldName": "getKullaniciYaklasanGorevler",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/kanban.repo.ts"
+      ],
+      "newName": "getUserUpcomingTasks"
+    },
+    {
+      "oldName": "getKullaniciYaklasanIadeler",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/users.repo.ts"
+      ],
+      "newName": "getUserUpcomingReturns"
+    },
+    {
+      "oldName": "getKullaniciYeniAtamalar",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/kanban.repo.ts"
+      ],
+      "newName": "getUserNewAssignments"
+    },
+    {
+      "oldName": "getKurulumDurumu",
+      "type": "function",
+      "files": [
+        "src/db/index.ts"
+      ],
+      "newName": "getSetupStatus"
+    },
+    {
+      "oldName": "getLedTakimlar",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/teams.repo.ts"
+      ],
+      "newName": "getLedTeams"
+    },
+    {
+      "oldName": "getOnayBekleyenKullanicilar",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/members.repo.ts"
+      ],
+      "newName": "getPendingUsers"
+    },
+    {
+      "oldName": "getPostaAday",
+      "type": "function",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "getMailCandidate"
+    },
+    {
+      "oldName": "getPostaAdayRolleri",
+      "type": "function",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "getMailCandidateRoles"
+    },
+    {
+      "oldName": "getPostaAramaKonulari",
+      "type": "function",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "getMailSearchThreads"
+    },
+    {
+      "oldName": "getPostaEpostaAyari",
+      "type": "function",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "getMailEmailSetting"
+    },
+    {
+      "oldName": "getPostaKatilimciIdleri",
+      "type": "function",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "getMailParticipantIds"
+    },
+    {
+      "oldName": "getPostaKonulari",
+      "type": "function",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "getMailThreads"
+    },
+    {
+      "oldName": "getPostaKonusu",
+      "type": "function",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "getMailThread"
+    },
+    {
+      "oldName": "getPostaOkunmamisKonulari",
+      "type": "function",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "getUnreadMailThreads"
+    },
+    {
+      "oldName": "getPostaOkunmamisSayisi",
+      "type": "function",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "getUnreadMailCount"
+    },
+    {
+      "oldName": "getPostaSonYazisilanlar",
+      "type": "function",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "getRecentMailThreads"
+    },
+    {
+      "oldName": "getPostaUyeleri",
+      "type": "function",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "getMailMembers"
+    },
+    {
+      "oldName": "getProjeById",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/projects.repo.ts"
+      ],
+      "newName": "getProjectById"
+    },
+    {
+      "oldName": "getProjeler",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/projects.repo.ts"
+      ],
+      "newName": "getProjects"
+    },
+    {
+      "oldName": "getPublicEtkinlikler",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/events.repo.ts"
+      ],
+      "newName": "getPublicEvents"
+    },
+    {
+      "oldName": "getPublicHaberBySlug",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/news.repo.ts"
+      ],
+      "newName": "getPublicNewsBySlug"
+    },
+    {
+      "oldName": "getPublicHaberKategoriSayilari",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/news.repo.ts"
+      ],
+      "newName": "getPublicNewsCategoryCounts"
+    },
+    {
+      "oldName": "getPublicHaberler",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/news.repo.ts"
+      ],
+      "newName": "getPublicNews"
+    },
+    {
+      "oldName": "getRolIdsWith",
+      "type": "function",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "getRoleIdsWith"
+    },
+    {
+      "oldName": "getRoller",
+      "type": "function",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "getRoles"
+    },
+    {
+      "oldName": "getRolYetkisi",
+      "type": "function",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "getRolePermission"
+    },
+    {
+      "oldName": "getSertifikaByKod",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/certificates.repo.ts"
+      ],
+      "newName": "getCertificateByCode"
+    },
+    {
+      "oldName": "getSertifikalar",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/certificates.repo.ts"
+      ],
+      "newName": "getCertificates"
+    },
+    {
+      "oldName": "getSistemAyari",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/settings.repo.ts"
+      ],
+      "newName": "getSystemSetting"
+    },
+    {
+      "oldName": "getSistemAyarlari",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/settings.repo.ts"
+      ],
+      "newName": "getSystemSettings"
+    },
+    {
+      "oldName": "getSistemLoglari",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/logs.repo.ts"
+      ],
+      "newName": "getSystemLogs"
+    },
+    {
+      "oldName": "getSistemLoglariPaginated",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/logs.repo.ts"
+      ],
+      "newName": "getSystemLogsPaginated"
+    },
+    {
+      "oldName": "getTakimById",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/teams.repo.ts"
+      ],
+      "newName": "getTeamById"
+    },
+    {
+      "oldName": "getTakimGorevById",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/kanban.repo.ts"
+      ],
+      "newName": "getTeamTaskById"
+    },
+    {
+      "oldName": "getTakimGorevDetay",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/kanban.repo.ts"
+      ],
+      "newName": "getTeamTaskDetail"
+    },
+    {
+      "oldName": "getTakimGorevleri",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/kanban.repo.ts"
+      ],
+      "newName": "getTeamTasks"
+    },
+    {
+      "oldName": "getTakimlar",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/teams.repo.ts"
+      ],
+      "newName": "getTeams"
+    },
+    {
+      "oldName": "getTakimUyeleri",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/teams.repo.ts"
+      ],
+      "newName": "getTeamMembers"
+    },
+    {
+      "oldName": "getTakimVitrini",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/teams.repo.ts"
+      ],
+      "newName": "getTeamShowcase"
+    },
+    {
+      "oldName": "getTutanakById",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/decisions.repo.ts"
+      ],
+      "newName": "getDecisionById"
+    },
+    {
+      "oldName": "getTutanakByNo",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/decisions.repo.ts"
+      ],
+      "newName": "getDecisionByNumber"
+    },
+    {
+      "oldName": "getTutanaklar",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/decisions.repo.ts"
+      ],
+      "newName": "getDecisions"
+    },
+    {
+      "oldName": "getUyeRoster",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/members.repo.ts"
+      ],
+      "newName": "getMemberRoster"
+    },
+    {
+      "oldName": "getVarsayilanRolId",
+      "type": "function",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "getDefaultRoleId"
+    },
+    {
+      "oldName": "getYoklamaBekleyenEtkinlikler",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/notifications.repo.ts"
+      ],
+      "newName": "getPendingAttendanceEvents"
+    },
+    {
+      "oldName": "getYoklamalarByEtkinlik",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/events.repo.ts"
+      ],
+      "newName": "getAttendancesByEvent"
+    },
+    {
+      "oldName": "gorev",
+      "type": "variable",
+      "files": [
+        "src/server/db/domains/kanban.repo.ts"
+      ],
+      "newName": "task"
+    },
+    {
+      "oldName": "GOREV_SELECT",
+      "type": "variable",
+      "files": [
+        "src/server/db/domains/kanban.repo.ts"
+      ],
+      "newName": "TASK_SELECT"
+    },
+    {
+      "oldName": "GorevAktiviteTuru",
+      "type": "type",
+      "files": [
+        "src/db/schema.ts"
+      ],
+      "newName": "TaskActivityType"
+    },
+    {
+      "oldName": "GorevYazici",
+      "type": "type",
+      "files": [
+        "src/server/db/domains/kanban.repo.ts"
+      ],
+      "newName": "TaskWriter"
+    },
+    {
+      "oldName": "GuvenlikEngeli",
+      "type": "type",
+      "files": [
+        "src/server/db/domains/security.repo.ts"
+      ],
+      "newName": "SecurityBlock"
+    },
+    {
+      "oldName": "Haber",
+      "type": "type",
+      "files": [
+        "src/db/schema.ts"
+      ],
+      "newName": "NewsItem"
+    },
+    {
+      "oldName": "haberSlug",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/news.repo.ts"
+      ],
+      "newName": "newsSlug"
+    },
+    {
+      "oldName": "hedefMezun",
+      "type": "variable",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "targetAlumni"
+    },
+    {
+      "oldName": "insertRole",
+      "type": "function",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "insertRole"
+    },
+    {
+      "oldName": "joinTakim",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/teams.repo.ts"
+      ],
+      "newName": "joinTeam"
+    },
+    {
+      "oldName": "kararKaydet",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/teams.repo.ts"
+      ],
+      "newName": "saveDecision"
+    },
+    {
+      "oldName": "karsiKullaniciId",
+      "type": "variable",
+      "files": [
+        "src/server/db/domains/chat.repo.ts"
+      ],
+      "newName": "peerUserId"
+    },
+    {
+      "oldName": "kasaFilter",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/budget.repo.ts"
+      ],
+      "newName": "cashFilter"
+    },
+    {
+      "oldName": "kasaNetKurus",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/budget.repo.ts"
+      ],
+      "newName": "cashNetCents"
+    },
+    {
+      "oldName": "KasaTotals",
+      "type": "type",
+      "files": [
+        "src/server/db/domains/budget.repo.ts"
+      ],
+      "newName": "CashTotals"
+    },
+    {
+      "oldName": "katilimcilar",
+      "type": "variable",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "attendees"
+    },
+    {
+      "oldName": "KatilimSatiri",
+      "type": "type",
+      "files": [
+        "src/server/db/domains/events.repo.ts"
+      ],
+      "newName": "AttendeeRow"
+    },
+    {
+      "oldName": "KatilimSonucu",
+      "type": "type",
+      "files": [
+        "src/server/db/domains/teams.repo.ts"
+      ],
+      "newName": "AttendanceResult"
+    },
+    {
+      "oldName": "kayit",
+      "type": "variable",
+      "files": [
+        "src/server/db/domains/budget.repo.ts"
+      ],
+      "newName": "registration"
+    },
+    {
+      "oldName": "KayitSonucu",
+      "type": "type",
+      "files": [
+        "src/server/db/domains/events.repo.ts"
+      ],
+      "newName": "RegistrationResult"
+    },
+    {
+      "oldName": "Kullanici",
+      "type": "type",
+      "files": [
+        "src/db/schema.ts"
+      ],
+      "newName": "User"
+    },
+    {
+      "oldName": "KULLANICI_BASINA_AZAMI_BAGLANTI",
+      "type": "variable",
+      "files": [
+        "src/db/olaylar.ts"
+      ],
+      "newName": "MAX_CONNECTIONS_PER_USER"
+    },
+    {
+      "oldName": "kullaniciAd",
+      "type": "variable",
+      "files": [
+        "src/server/db/domains/chat.repo.ts"
+      ],
+      "newName": "userFirstName"
+    },
+    {
+      "oldName": "kullaniciFoto",
+      "type": "variable",
+      "files": [
+        "src/server/db/domains/chat.repo.ts"
+      ],
+      "newName": "userAvatar"
+    },
+    {
+      "oldName": "kullaniciId",
+      "type": "variable",
+      "files": [
+        "src/db/oauth.ts",
+        "src/server/db/domains/logs.repo.ts"
+      ],
+      "newName": "userId"
+    },
+    {
+      "oldName": "kullanicininkiler",
+      "type": "variable",
+      "files": [
+        "src/db/olaylar.ts"
+      ],
+      "newName": "userItems"
+    },
+    {
+      "oldName": "KullaniciNotKlasoru",
+      "type": "type",
+      "files": [
+        "src/db/schema.ts"
+      ],
+      "newName": "UserNoteFolder"
+    },
+    {
+      "oldName": "KullaniciNotu",
+      "type": "type",
+      "files": [
+        "src/db/schema.ts"
+      ],
+      "newName": "UserNote"
+    },
+    {
+      "oldName": "KullaniciOzeti",
+      "type": "type",
+      "files": [
+        "src/server/db/domains/users.repo.ts"
+      ],
+      "newName": "UserSummary"
+    },
+    {
+      "oldName": "leaveTakim",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/teams.repo.ts"
+      ],
+      "newName": "leaveTeam"
+    },
+    {
+      "oldName": "lockKasa",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/budget.repo.ts"
+      ],
+      "newName": "lockCashRegister"
+    },
+    {
+      "oldName": "lockKasalar",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/budget.repo.ts"
+      ],
+      "newName": "lockCashRegisters"
+    },
+    {
+      "oldName": "logGorevAktivite",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/kanban.repo.ts"
+      ],
+      "newName": "logTaskActivity"
+    },
+    {
+      "oldName": "mapHaber",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/news.repo.ts"
+      ],
+      "newName": "mapNews"
+    },
+    {
+      "oldName": "MAX_SISTEM_LOG_COUNT",
+      "type": "variable",
+      "files": [
+        "src/server/db/domains/logs.repo.ts"
+      ],
+      "newName": "MAX_SYSTEM_LOG_COUNT"
+    },
+    {
+      "oldName": "mevcutRolAd",
+      "type": "variable",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "currentRoleName"
+    },
+    {
+      "oldName": "mezunRol",
+      "type": "variable",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "alumniRole"
+    },
+    {
+      "oldName": "mezunRolId",
+      "type": "variable",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "alumniRoleId"
+    },
+    {
+      "oldName": "newAciklama",
+      "type": "variable",
+      "files": [
+        "src/db/oauth.ts"
+      ],
+      "newName": "newDescription"
+    },
+    {
+      "oldName": "normalizeKullaniciRow",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/members.repo.ts"
+      ],
+      "newName": "normalizeUserRow"
+    },
+    {
+      "oldName": "oduncUzat",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/inventory.repo.ts"
+      ],
+      "newName": "extendLoan"
+    },
+    {
+      "oldName": "oduncVer",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/inventory.repo.ts"
+      ],
+      "newName": "lendInventoryItem"
+    },
+    {
+      "oldName": "Olay",
+      "type": "type",
+      "files": [
+        "src/db/olaylar.ts"
+      ],
+      "newName": "AppEvent"
+    },
+    {
+      "oldName": "OlayAbonesi",
+      "type": "type",
+      "files": [
+        "src/db/olaylar.ts"
+      ],
+      "newName": "EventSubscriber"
+    },
+    {
+      "oldName": "olayDurumu",
+      "type": "function",
+      "files": [
+        "src/db/olaylar.ts"
+      ],
+      "newName": "eventStatus"
+    },
+    {
+      "oldName": "OlayIsleyici",
+      "type": "type",
+      "files": [
+        "src/db/olaylar.ts"
+      ],
+      "newName": "EventHandler"
+    },
+    {
+      "oldName": "olayIsleyicisiKaydet",
+      "type": "function",
+      "files": [
+        "src/db/olaylar.ts"
+      ],
+      "newName": "registerEventHandler"
+    },
+    {
+      "oldName": "olaySayisi",
+      "type": "variable",
+      "files": [
+        "src/server/db/domains/security.repo.ts"
+      ],
+      "newName": "eventCount"
+    },
+    {
+      "oldName": "olayYayinla",
+      "type": "function",
+      "files": [
+        "src/db/olaylar.ts"
+      ],
+      "newName": "publishEvent"
+    },
+    {
+      "oldName": "olayYayinlaSessiz",
+      "type": "function",
+      "files": [
+        "src/db/olaylar.ts"
+      ],
+      "newName": "publishEventQuiet"
+    },
+    {
+      "oldName": "POSTA_KIMLIK_MIN",
+      "type": "variable",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "MAIL_IDENTITY_MIN"
+    },
+    {
+      "oldName": "PostaAday",
+      "type": "type",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "MailCandidate"
+    },
+    {
+      "oldName": "PostaAramaKonusu",
+      "type": "type",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "MailSearchThread"
+    },
+    {
+      "oldName": "PostaDurumIslemi",
+      "type": "type",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "MailStatusAction"
+    },
+    {
+      "oldName": "PostaKisi",
+      "type": "type",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "MailPerson"
+    },
+    {
+      "oldName": "PostaKlasoru",
+      "type": "type",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "MailFolder"
+    },
+    {
+      "oldName": "PostaKonuDetayi",
+      "type": "type",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "MailThreadDetail"
+    },
+    {
+      "oldName": "PostaKonuOzeti",
+      "type": "type",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "MailThreadSummary"
+    },
+    {
+      "oldName": "PostaMesaji",
+      "type": "type",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "MailMessage"
+    },
+    {
+      "oldName": "PostaOkunmamisKonu",
+      "type": "type",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "UnreadMailThread"
+    },
+    {
+      "oldName": "PostaSaklama",
+      "type": "type",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "MailStorage"
+    },
+    {
+      "oldName": "PostaUye",
+      "type": "type",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "MailMember"
+    },
+    {
+      "oldName": "Proje",
+      "type": "type",
+      "files": [
+        "src/db/schema.ts"
+      ],
+      "newName": "Project"
+    },
+    {
+      "oldName": "PROJE_SELECT",
+      "type": "variable",
+      "files": [
+        "src/server/db/domains/projects.repo.ts"
+      ],
+      "newName": "PROJECT_SELECT"
+    },
+    {
+      "oldName": "ProjeInput",
+      "type": "type",
+      "files": [
+        "src/server/db/domains/projects.repo.ts"
+      ],
+      "newName": "ProjectInput"
+    },
+    {
+      "oldName": "PublicEtkinlikRow",
+      "type": "type",
+      "files": [
+        "src/server/db/domains/events.repo.ts"
+      ],
+      "newName": "PublicEventRow"
+    },
+    {
+      "oldName": "PublicHaberQuery",
+      "type": "type",
+      "files": [
+        "src/server/db/domains/news.repo.ts"
+      ],
+      "newName": "PublicNewsQuery"
+    },
+    {
+      "oldName": "rol",
+      "type": "variable",
+      "files": [
+        "src/server/db/domains/members.repo.ts"
+      ],
+      "newName": "role"
+    },
+    {
+      "oldName": "Rol",
+      "type": "type",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "Role"
+    },
+    {
+      "oldName": "rolAdi",
+      "type": "function",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "roleName"
+    },
+    {
+      "oldName": "rolId",
+      "type": "variable",
+      "files": [
+        "src/db/roles.ts",
+        "src/server/db/domains/security.repo.ts"
+      ],
+      "newName": "roleId"
+    },
+    {
+      "oldName": "RolOzeti",
+      "type": "type",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "RoleSummary"
+    },
+    {
+      "oldName": "rolOzetiOku",
+      "type": "function",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "readRoleSummary"
+    },
+    {
+      "oldName": "RolSonucu",
+      "type": "type",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "RoleResult"
+    },
+    {
+      "oldName": "saveKullaniciNotKlasoru",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/notes.repo.ts"
+      ],
+      "newName": "saveUserNoteFolder"
+    },
+    {
+      "oldName": "saveKullaniciNotu",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/notes.repo.ts"
+      ],
+      "newName": "saveUserNote"
+    },
+    {
+      "oldName": "Sertifika",
+      "type": "type",
+      "files": [
+        "src/db/schema.ts"
+      ],
+      "newName": "Certificate"
+    },
+    {
+      "oldName": "setEnvanterDurum",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/inventory.repo.ts"
+      ],
+      "newName": "setInventoryStatus"
+    },
+    {
+      "oldName": "setKullaniciRecoveryCodes",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/auth.repo.ts"
+      ],
+      "newName": "setUserRecoveryCodes"
+    },
+    {
+      "oldName": "setKullaniciRol",
+      "type": "function",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "setUserRole"
+    },
+    {
+      "oldName": "setKullaniciTotpSecret",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/auth.repo.ts"
+      ],
+      "newName": "setUserTotpSecret"
+    },
+    {
+      "oldName": "setKullaniciTotpStep",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/auth.repo.ts"
+      ],
+      "newName": "setUserTotpStep"
+    },
+    {
+      "oldName": "setPostaEpostaAyari",
+      "type": "function",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "setMailEmailSetting"
+    },
+    {
+      "oldName": "setPostaKonuDurumu",
+      "type": "function",
+      "files": [
+        "src/db/posta.ts"
+      ],
+      "newName": "setMailThreadStatus"
+    },
+    {
+      "oldName": "setSistemAyari",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/settings.repo.ts"
+      ],
+      "newName": "setSystemSetting"
+    },
+    {
+      "oldName": "setSistemAyarlari",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/settings.repo.ts"
+      ],
+      "newName": "setSystemSettings"
+    },
+    {
+      "oldName": "setTakimUyeRolu",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/teams.repo.ts"
+      ],
+      "newName": "setTeamMemberRole"
+    },
+    {
+      "oldName": "setTutanakKilit",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/decisions.repo.ts"
+      ],
+      "newName": "setDecisionLock"
+    },
+    {
+      "oldName": "setUyeDurum",
+      "type": "function",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "setMemberStatus"
+    },
+    {
+      "oldName": "setVarsayilanRolId",
+      "type": "function",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "setDefaultRoleId"
+    },
+    {
+      "oldName": "sifre",
+      "type": "variable",
+      "files": [
+        "src/db/index.ts"
+      ],
+      "newName": "password"
+    },
+    {
+      "oldName": "sifreHash",
+      "type": "variable",
+      "files": [
+        "src/db/index.ts"
+      ],
+      "newName": "passwordHash"
+    },
+    {
+      "oldName": "SISTEM_AYARLARI_DEFAULTS",
+      "type": "variable",
+      "files": [
+        "src/db/schema.ts"
+      ],
+      "newName": "SYSTEM_SETTINGS_DEFAULTS"
+    },
+    {
+      "oldName": "SistemAyari",
+      "type": "type",
+      "files": [
+        "src/db/schema.ts"
+      ],
+      "newName": "SystemSetting"
+    },
+    {
+      "oldName": "SistemLog",
+      "type": "type",
+      "files": [
+        "src/server/db/domains/logs.repo.ts"
+      ],
+      "newName": "SystemLog"
+    },
+    {
+      "oldName": "sistemLogBakiminiBaslat",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/logs.repo.ts"
+      ],
+      "newName": "startSystemLogMaintenance"
+    },
+    {
+      "oldName": "SistemLogFiltresi",
+      "type": "type",
+      "files": [
+        "src/server/db/domains/logs.repo.ts"
+      ],
+      "newName": "SystemLogFilter"
+    },
+    {
+      "oldName": "sistemLogSaklamaGunu",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/logs.repo.ts"
+      ],
+      "newName": "systemLogRetentionDays"
+    },
+    {
+      "oldName": "sistemLogYaz",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/logs.repo.ts"
+      ],
+      "newName": "logSystemEvent"
+    },
+    {
+      "oldName": "sonlanmaTarihi",
+      "type": "variable",
+      "files": [
+        "src/server/db/domains/chat.repo.ts"
+      ],
+      "newName": "endsAt"
+    },
+    {
+      "oldName": "Takim",
+      "type": "type",
+      "files": [
+        "src/db/schema.ts"
+      ],
+      "newName": "Team"
+    },
+    {
+      "oldName": "TakimGorevAktivite",
+      "type": "type",
+      "files": [
+        "src/db/schema.ts"
+      ],
+      "newName": "TeamTaskActivity"
+    },
+    {
+      "oldName": "TakimGorevDetay",
+      "type": "type",
+      "files": [
+        "src/db/schema.ts"
+      ],
+      "newName": "TeamTaskDetail"
+    },
+    {
+      "oldName": "TakimGorevi",
+      "type": "type",
+      "files": [
+        "src/db/schema.ts"
+      ],
+      "newName": "TeamTask"
+    },
+    {
+      "oldName": "TakimGoreviPatch",
+      "type": "type",
+      "files": [
+        "src/server/db/domains/kanban.repo.ts"
+      ],
+      "newName": "TeamTaskPatch"
+    },
+    {
+      "oldName": "TakimGorevMaddesi",
+      "type": "type",
+      "files": [
+        "src/db/schema.ts"
+      ],
+      "newName": "TeamTaskItem"
+    },
+    {
+      "oldName": "TakimGorevYorumu",
+      "type": "type",
+      "files": [
+        "src/db/schema.ts"
+      ],
+      "newName": "TeamTaskComment"
+    },
+    {
+      "oldName": "takimId",
+      "type": "variable",
+      "files": [
+        "src/server/db/domains/budget.repo.ts"
+      ],
+      "newName": "teamId"
+    },
+    {
+      "oldName": "TakimPatch",
+      "type": "type",
+      "files": [
+        "src/server/db/domains/teams.repo.ts"
+      ],
+      "newName": "TeamPatch"
+    },
+    {
+      "oldName": "TakimUyesi",
+      "type": "type",
+      "files": [
+        "src/db/schema.ts"
+      ],
+      "newName": "TeamMember"
+    },
+    {
+      "oldName": "TakimVitrinKaydi",
+      "type": "type",
+      "files": [
+        "src/server/db/domains/teams.repo.ts"
+      ],
+      "newName": "TeamShowcaseRecord"
+    },
+    {
+      "oldName": "targetRol",
+      "type": "variable",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "targetRole"
+    },
+    {
+      "oldName": "tarih",
+      "type": "variable",
+      "files": [
+        "src/server/db/domains/budget.repo.ts",
+        "src/server/db/domains/chat.repo.ts",
+        "src/server/db/domains/decisions.repo.ts"
+      ],
+      "newName": "date"
+    },
+    {
+      "oldName": "toggleProjeBegeni",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/projects.repo.ts"
+      ],
+      "newName": "toggleProjectLike"
+    },
+    {
+      "oldName": "toGorev",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/kanban.repo.ts"
+      ],
+      "newName": "toTask"
+    },
+    {
+      "oldName": "toKayit",
+      "type": "function",
+      "files": [
+        "src/db/audit.ts"
+      ],
+      "newName": "toRecord"
+    },
+    {
+      "oldName": "toProje",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/projects.repo.ts"
+      ],
+      "newName": "toProject"
+    },
+    {
+      "oldName": "touchGorev",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/kanban.repo.ts"
+      ],
+      "newName": "touchTask"
+    },
+    {
+      "oldName": "tutanak",
+      "type": "variable",
+      "files": [
+        "src/server/db/domains/decisions.repo.ts"
+      ],
+      "newName": "decision"
+    },
+    {
+      "oldName": "TutanakKarar",
+      "type": "type",
+      "files": [
+        "src/db/schema.ts"
+      ],
+      "newName": "Decision"
+    },
+    {
+      "oldName": "unassignTakimUyesiGorevleri",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/kanban.repo.ts"
+      ],
+      "newName": "unassignTeamMemberTasks"
+    },
+    {
+      "oldName": "updateButceKaydi",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/budget.repo.ts"
+      ],
+      "newName": "updateBudgetRecord"
+    },
+    {
+      "oldName": "updateEnvanterItem",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/inventory.repo.ts"
+      ],
+      "newName": "updateInventoryItem"
+    },
+    {
+      "oldName": "updateEtkinlik",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/events.repo.ts"
+      ],
+      "newName": "updateEvent"
+    },
+    {
+      "oldName": "updateGorevMaddesi",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/kanban.repo.ts"
+      ],
+      "newName": "updateTaskItem"
+    },
+    {
+      "oldName": "updateHaber",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/news.repo.ts"
+      ],
+      "newName": "updateNews"
+    },
+    {
+      "oldName": "updateKullaniciDurum",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/members.repo.ts"
+      ],
+      "newName": "updateUserStatus"
+    },
+    {
+      "oldName": "updateKullaniciProfil",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/users.repo.ts"
+      ],
+      "newName": "updateUserProfile"
+    },
+    {
+      "oldName": "updateKullaniciSession",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/members.repo.ts"
+      ],
+      "newName": "updateUserSession"
+    },
+    {
+      "oldName": "updateKullaniciSifre",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/auth.repo.ts"
+      ],
+      "newName": "updateUserPassword"
+    },
+    {
+      "oldName": "updateProje",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/projects.repo.ts"
+      ],
+      "newName": "updateProject"
+    },
+    {
+      "oldName": "updateRol",
+      "type": "function",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "updateRole"
+    },
+    {
+      "oldName": "updateTakim",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/teams.repo.ts"
+      ],
+      "newName": "updateTeam"
+    },
+    {
+      "oldName": "updateTakimGorevi",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/kanban.repo.ts"
+      ],
+      "newName": "updateTeamTask"
+    },
+    {
+      "oldName": "updateTakimGoreviDurum",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/kanban.repo.ts"
+      ],
+      "newName": "updateTeamTaskStatus"
+    },
+    {
+      "oldName": "updateTutanak",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/decisions.repo.ts"
+      ],
+      "newName": "updateDecision"
+    },
+    {
+      "oldName": "UYE_ROSTER_SQL",
+      "type": "variable",
+      "files": [
+        "src/db/schema.ts"
+      ],
+      "newName": "MEMBER_ROSTER_SQL"
+    },
+    {
+      "oldName": "uyeRolId",
+      "type": "variable",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "memberRoleId"
+    },
+    {
+      "oldName": "UyeRosterRow",
+      "type": "type",
+      "files": [
+        "src/db/schema.ts"
+      ],
+      "newName": "MemberRosterRow"
+    },
+    {
+      "oldName": "uyeSayisi",
+      "type": "variable",
+      "files": [
+        "src/server/db/domains/chat.repo.ts"
+      ],
+      "newName": "memberCount"
+    },
+    {
+      "oldName": "VARSAYILAN_MEZUN_IZINLERI",
+      "type": "variable",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "DEFAULT_ALUMNI_PERMISSIONS"
+    },
+    {
+      "oldName": "VARSAYILAN_ROL_ANAHTARI",
+      "type": "variable",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "DEFAULT_ROLE_KEY"
+    },
+    {
+      "oldName": "VARSAYILAN_UYE_IZINLERI",
+      "type": "variable",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "DEFAULT_MEMBER_PERMISSIONS"
+    },
+    {
+      "oldName": "VARSAYILAN_YONETIM_IZINLERI",
+      "type": "variable",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "DEFAULT_MANAGEMENT_PERMISSIONS"
+    },
+    {
+      "oldName": "YaklasanGorev",
+      "type": "type",
+      "files": [
+        "src/db/schema.ts"
+      ],
+      "newName": "UpcomingTask"
+    },
+    {
+      "oldName": "yayinDurumu",
+      "type": "variable",
+      "files": [
+        "src/server/db/domains/news.repo.ts"
+      ],
+      "newName": "publishStatus"
+    },
+    {
+      "oldName": "yeniDogrulamaKodu",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/certificates.repo.ts"
+      ],
+      "newName": "newVerificationCode"
+    },
+    {
+      "oldName": "yeniDurum",
+      "type": "variable",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "newStatus"
+    },
+    {
+      "oldName": "yetki",
+      "type": "variable",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "permission"
+    },
+    {
+      "oldName": "Yetki",
+      "type": "type",
+      "files": [
+        "src/db/roles.ts"
+      ],
+      "newName": "Permission"
+    },
+    {
+      "oldName": "Yoklama",
+      "type": "type",
+      "files": [
+        "src/db/schema.ts"
+      ],
+      "newName": "Attendance"
+    },
+    {
+      "oldName": "yoklamaKapatBitenler",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/events.repo.ts"
+      ],
+      "newName": "closeFinishedAttendances"
+    },
+    {
+      "oldName": "yoklamaKaydet",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/events.repo.ts"
+      ],
+      "newName": "saveAttendance"
+    },
+    {
+      "oldName": "yoklamaSil",
+      "type": "function",
+      "files": [
+        "src/server/db/domains/events.repo.ts"
+      ],
+      "newName": "deleteAttendance"
+    },
+    {
+      "oldName": "YoklamaYontemi",
+      "type": "type",
+      "files": [
+        "src/server/db/domains/events.repo.ts"
+      ],
+      "newName": "AttendanceMethod"
+    }
+  ]
+}

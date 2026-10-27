@@ -1,0 +1,76 @@
+# PostgreSQL + Next.js Orbit Community OS stack.
+#
+#   docker compose -f infra/docker/docker-compose.yml up -d db      # database only
+#   docker compose -f infra/docker/docker-compose.yml up -d         # database + app (localhost:3000)
+#   docker compose -f infra/docker/docker-compose.yml logs -f
+#   docker compose -f infra/docker/docker-compose.yml down          # stop, keep the volume
+#
+# Host Caddy reverse proxy:
+#   orbit.example.com {
+#       reverse_proxy 127.0.0.1:3000
+#   }
+name: tetha42-orbit-prod
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: orbit-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-orbit}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-orbit_secret_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-orbit}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    expose:
+      - '5432'
+    volumes:
+      - orbit-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-orbit} -d ${POSTGRES_DB:-orbit}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  app:
+    image: ${ORBIT_IMAGE:-ghcr.io/tetha42/orbit}:${ORBIT_TAG:-latest}
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile
+    container_name: orbit-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-orbit}:${POSTGRES_PASSWORD:-orbit_secret_2026}@db:5432/${POSTGRES_DB:-orbit}
+      WEBAUTHN_ORIGIN: ${WEBAUTHN_ORIGIN:-}
+      WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID:-}
+      AUTH_SECRET: ${AUTH_SECRET:-}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      BOOTSTRAP_ADMIN_AD: ${BOOTSTRAP_ADMIN_AD:-}
+      BOOTSTRAP_ADMIN_SOYAD: ${BOOTSTRAP_ADMIN_SOYAD:-}
+      TERMINAL_ENABLED: ${TERMINAL_ENABLED:-1}
+      UPLOAD_DIR: /app/data/uploads
+      PUBLIC_API_ALLOWED_ORIGINS: ${PUBLIC_API_ALLOWED_ORIGINS:-http://localhost:3000,http://orbit.local}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:3000}
+    ports:
+      - '${PORT:-3000}:3000'
+    expose:
+      - '3000'
+    volumes:
+      - orbit-uploads:/app/data/uploads
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1:3000/']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  orbit-pgdata:
+  orbit-uploads:

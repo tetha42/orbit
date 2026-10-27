@@ -1,0 +1,586 @@
+/**
+ * Roles and their per-app permissions (see src/core/permissions).
+ *
+ * Tables:
+ *   roller        — id, ad, renk, aciklama, sistem (built-in admin), ikiAdimZorunlu
+ *   rol_izinleri  — (roleId, appId) → seviye ('kullan' | 'yonet'); 'yok' is the absence of a row
+ *   kullanicilar.roleId — the member's role; NULL means "no role yet" (personal settings only)
+ *
+ * The admin role (rol_admin) is created on first start, manages everything and
+ * cannot be edited or deleted; the last admin cannot lose the role.
+ */
+import type { PoolClient } from 'pg';
+import { randomBytes } from 'crypto';
+import { getPgPool, withTransaction, ensurePostgresInit, getSystemSetting, updateUserStatus } from './index';
+import { logAuditEvent, type AuditContext } from './audit';
+import { dinleyiciyiBaslat, registerEventHandler, publishEvent } from './olaylar';
+import { alanFarki, durumIslemi, rolFarki, rolOzeti, uyeHedefAdi, type RoleSummary } from '@/lib/audit';
+import {
+	ADMIN_ROL_ID,
+	MEZUN_ROL_ID,
+	TUM_YETKILER,
+	UYE_ROL_ID,
+	YETKI_UYGULAMALARI,
+	YONETIM_ROL_ID,
+	isMezunRol,
+	type Izinler,
+	type Seviye,
+} from '@/core/permissions';
+
+export interface Role {
+	id: string;
+	ad: string;
+	renk: string;
+	aciklama: string;
+	sistem: boolean;
+	ikiAdimZorunlu: boolean;
+	izinler: Izinler;
+	kullaniciSayisi: number;
+}
+
+/** The member's role and permissions, as the session and every guard see them. */
+export interface Permission {
+	role: { id: string; ad: string; renk: string } | null;
+	izinler: Izinler;
+	admin: boolean;
+	ikiAdimZorunlu: boolean;
+}
+
+const DEFAULT_ROLE_KEY = 'varsayilan_rol';
+const DONUSUM_ANAHTARI = 'roller_donusumu';
+
+const DEFAULT_MANAGEMENT_PERMISSIONS: Izinler = {
+	news: 'yonet',
+	events: 'yonet',
+	teams: 'yonet',
+	projects: 'yonet',
+	certificates: 'yonet',
+	inventory: 'yonet',
+	members: 'yonet',
+	budget: 'yonet',
+	notes: 'kullan',
+	chat: 'yonet',
+	mail: 'yonet',
+	settings: 'kullan',
+};
+
+const DEFAULT_MEMBER_PERMISSIONS: Izinler = {
+	news: 'kullan',
+	events: 'kullan',
+	teams: 'kullan',
+	projects: 'kullan',
+	certificates: 'kullan',
+	inventory: 'kullan',
+	members: 'kullan',
+	notes: 'kullan',
+	chat: 'kullan',
+	mail: 'kullan',
+	settings: 'kullan',
+};
+
+const DEFAULT_ALUMNI_PERMISSIONS: Izinler = {
+	news: 'kullan',
+	events: 'kullan',
+	teams: 'kullan',
+	projects: 'kullan',
+	certificates: 'kullan',
+	inventory: 'kullan',
+	members: 'kullan',
+	notes: 'kullan',
+	chat: 'kullan',
+	mail: 'kullan',
+	settings: 'kullan',
+};
+
+async function ensureSeedRole(
+	client: PoolClient,
+	id: string,
+	ad: string,
+	renk: string,
+	aciklama: string,
+	ikiAdim: boolean,
+	now: number,
+	izinler: Izinler
+): Promise<string> {
+	const existing = await client.query(
+		'SELECT id FROM roller WHERE id = $1 OR lower(ad) = lower($2) LIMIT 1',
+		[id, ad]
+	);
+	if (existing.rows[0]?.id) {
+		const existingId = String(existing.rows[0].id);
+		if (izinler.chat) {
+			await client.query(
+				`INSERT INTO rol_izinleri (roleId, appId, seviye) VALUES ($1, 'chat', $2) ON CONFLICT (roleId, appId) DO NOTHING`,
+				[existingId, izinler.chat]
+			);
+		}
+		return existingId;
+	}
+	await insertRole(client, id, ad, renk, aciklama, ikiAdim, now, izinler);
+	return id;
+}
+
+/** Called from ensurePostgresInit with its raw (lower-case) client, inside its transaction. */
+export async function ensureRoleSchema(client: PoolClient): Promise<void> {
+	await client.query(`
+		CREATE TABLE IF NOT EXISTS roles (
+			id TEXT PRIMARY KEY,
+			ad TEXT NOT NULL,
+			renk TEXT NOT NULL,
+			aciklama TEXT NOT NULL DEFAULT '',
+			sistem INTEGER NOT NULL DEFAULT 0,
+			ikiAdimZorunlu INTEGER NOT NULL DEFAULT 0,
+			olusturma BIGINT NOT NULL
+		);
+		CREATE UNIQUE INDEX IF NOT EXISTS roles_ad_ci ON roles (lower(ad));
+		CREATE TABLE IF NOT EXISTS role_permissions (
+			roleId TEXT NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+			appId TEXT NOT NULL,
+			seviye TEXT NOT NULL,
+			PRIMARY KEY (roleId, appId)
+		);
+		ALTER TABLE users ADD COLUMN IF NOT EXISTS role_id TEXT REFERENCES roles(id) ON DELETE SET NULL;
+		DROP VIEW IF EXISTS roller CASCADE; CREATE VIEW roller AS SELECT * FROM roles;
+		DROP VIEW IF EXISTS rol_izinleri CASCADE; CREATE VIEW rol_izinleri AS SELECT * FROM role_permissions;
+	`);
+	const now = Date.now();
+	await client.query(
+		`INSERT INTO roles (id, ad, renk, aciklama, sistem, ikiAdimZorunlu, olusturma)
+		 VALUES ($1, 'Admin', '#ff453a', 'Tüm uygulamaları yönetir. Değiştirilemez.', 1, 1, $2)
+		 ON CONFLICT (id) DO NOTHING`,
+		[ADMIN_ROL_ID, now]
+	);
+
+	// One-time conversion of the old fixed roles (the `role` column), so an
+	// existing club keeps working: başkan → Admin, yönetim → "Yönetim Kurulu"
+	// (manages every app, as before), üye → "Üye" (the default for new members).
+	// The column is dropped afterwards; a new installation never has it.
+	const legacy = await client.query(`SELECT 1 FROM information_schema.columns WHERE table_name = 'kullanicilar' AND column_name = 'role'`);
+	if (legacy.rowCount) {
+		const done = await client.query(`SELECT 1 FROM sistem_ayarlari WHERE anahtar = $1`, [DONUSUM_ANAHTARI]);
+		if (!done.rowCount) await convertLegacyRoles(client);
+		await client.query('ALTER TABLE kullanicilar DROP COLUMN role');
+	}
+
+	// Ensure standard club roles (Yönetim Kurulu, Üye, Mezun) exist on every installation.
+	await ensureSeedRole(
+		client,
+		YONETIM_ROL_ID,
+		'Yönetim Kurulu',
+		'#ff9f0a',
+		'Kulübün günlük yönetimi',
+		true,
+		now + 1,
+		DEFAULT_MANAGEMENT_PERMISSIONS
+	);
+	const memberRoleId = await ensureSeedRole(
+		client,
+		UYE_ROL_ID,
+		'Üye',
+		'#0a84ff',
+		'Aktif kulüp üyesi',
+		false,
+		now + 2,
+		DEFAULT_MEMBER_PERMISSIONS
+	);
+	const alumniRoleId = await ensureSeedRole(
+		client,
+		MEZUN_ROL_ID,
+		'Mezun',
+		'#64d2ff',
+		'Mezun kulüp üyesi (salt okunur erişim).',
+		false,
+		now + 3,
+		DEFAULT_ALUMNI_PERMISSIONS
+	);
+
+	await client.query(
+		`INSERT INTO system_settings (key, value, updated_at) VALUES ($1, $2, $3) ON CONFLICT (key) DO NOTHING`,
+		[DEFAULT_ROLE_KEY, memberRoleId, now]
+	);
+
+	await client.query(`
+		INSERT INTO role_permissions (roleId, appId, seviye)
+		VALUES ('rol_uye', 'mail', 'kullan'), ('rol_yonetim_kurulu', 'mail', 'yonet'), ('rol_mezun', 'mail', 'kullan')
+		ON CONFLICT (roleId, appId) DO NOTHING
+	`);
+
+	// Heal any admin account that was marked 'mezun' back to 'aktif', and ensure
+	// non-admin 'mezun' members hold the Mezun role.
+	await client.query(`UPDATE users SET status = 'aktif' WHERE role_id = $1 AND status = 'mezun'`, [ADMIN_ROL_ID]);
+	await client.query(`UPDATE users SET role_id = $1 WHERE status = 'mezun' AND (role_id IS NULL OR role_id <> $1)`, [alumniRoleId]);
+}
+
+async function convertLegacyRoles(client: PoolClient) {
+	// If legacy column 'role' exists on users
+	try {
+		const legacy = await client.query(`SELECT role, COUNT(*)::int AS n FROM users WHERE role_id IS NULL GROUP BY role`);
+		const has = new Set(legacy.rows.filter((r) => Number(r.n) > 0).map((r) => String(r.role)));
+		const now = Date.now();
+		if (has.has('lead')) await client.query(`UPDATE users SET role_id = $1 WHERE role = 'lead' AND role_id IS NULL`, [ADMIN_ROL_ID]);
+		if (has.has('yonetim')) {
+			const id = YONETIM_ROL_ID;
+			await insertRole(client, id, 'Yönetim Kurulu', '#ff9f0a', 'Eski "yönetim" roleünden dönüştürüldü: tüm uygulamaları yönetir.', true, now, TUM_YETKILER);
+			await client.query(`UPDATE users SET role_id = $1 WHERE role = 'yonetim' AND role_id IS NULL`, [id]);
+		}
+		if (has.has('uye')) {
+			const id = UYE_ROL_ID;
+			const izinler: Izinler = Object.fromEntries(
+				YETKI_UYGULAMALARI.filter((a) => a !== 'budget' && a !== 'terminal' && a !== 'database').map((a) => [a, 'kullan'])
+			) as Izinler;
+			await insertRole(client, id, 'Üye', '#0a84ff', 'Eski "üye" roleünden dönüştürüldü.', false, now, izinler);
+			await client.query(`UPDATE users SET role_id = $1 WHERE role = 'uye' AND role_id IS NULL`, [id]);
+			await client.query(
+				`INSERT INTO system_settings (key, value, updated_at) VALUES ($1, $2, $3) ON CONFLICT (key) DO NOTHING`,
+				[DEFAULT_ROLE_KEY, id, now]
+			);
+		}
+		await client.query(`INSERT INTO system_settings (key, value, updated_at) VALUES ($1, '1', $2) ON CONFLICT (key) DO NOTHING`, [DONUSUM_ANAHTARI, now]);
+	} catch {
+		// Ignore if column role does not exist on fresh install
+	}
+}
+
+async function insertRole(client: PoolClient, id: string, ad: string, renk: string, aciklama: string, ikiAdim: boolean, now: number, izinler: Izinler) {
+	await client.query(
+		`INSERT INTO roller (id, ad, renk, aciklama, sistem, ikiAdimZorunlu, olusturma) VALUES ($1, $2, $3, $4, 0, $5, $6) ON CONFLICT (id) DO NOTHING`,
+		[id, ad, renk, aciklama, ikiAdim ? 1 : 0, now]
+	);
+	await writeIzinler(client, id, izinler);
+}
+
+async function writeIzinler(client: PoolClient, roleId: string, izinler: Izinler) {
+	await client.query('DELETE FROM rol_izinleri WHERE roleId = $1', [roleId]);
+	for (const [appId, seviye] of Object.entries(izinler)) {
+		if (seviye && seviye !== 'yok') {
+			await client.query('INSERT INTO rol_izinleri (roleId, appId, seviye) VALUES ($1, $2, $3)', [roleId, appId, seviye]);
+		}
+	}
+}
+
+/* ---------------- permission cache ----------------
+ * Every authenticated request needs the caller's permissions. They change only
+ * when a role is edited, so they are cached per role for a few seconds and the
+ * cache is dropped on every write. Other server processes hear the write over
+ * PostgreSQL NOTIFY (db/olaylar) and drop theirs at once; should that connection
+ * be down they catch up within the TTL. Kept on globalThis so the one handler
+ * below empties the same map whichever bundle of this module a route runs. */
+const CACHE_TTL_MS = 5000;
+const g = globalThis as typeof globalThis & { __beuRolOnbellegi?: Map<string, { at: number; permission: Permission }> };
+const cache = (g.__beuRolOnbellegi ??= new Map());
+const dropCache = () => cache.clear();
+registerEventHandler('role-onbellegi', (olay) => {
+	if (olay.k === 'permission' || olay.k === 'yenile') dropCache();
+});
+
+export async function getRolePermission(roleId: string | null | undefined): Promise<Permission> {
+	if (!roleId) return { role: null, izinler: {}, admin: false, ikiAdimZorunlu: false };
+	const hit = cache.get(roleId);
+	if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.permission;
+	void dinleyiciyiBaslat();
+	await ensurePostgresInit();
+	const [r, p] = await Promise.all([
+		getPgPool().query('SELECT id, ad, renk, sistem, ikiAdimZorunlu FROM roller WHERE id = $1', [roleId]),
+		getPgPool().query('SELECT appId, seviye FROM rol_izinleri WHERE roleId = $1', [roleId]),
+	]);
+	const row = r.rows[0];
+	if (!row) return { role: null, izinler: {}, admin: false, ikiAdimZorunlu: false };
+	const admin = roleId === ADMIN_ROL_ID;
+	const izinler: Izinler = admin ? { ...TUM_YETKILER } : Object.fromEntries(p.rows.map((x) => [x.appId, x.seviye as Seviye]));
+	const permission: Permission = { role: { id: row.id, ad: row.ad, renk: row.renk }, izinler, admin, ikiAdimZorunlu: admin || Number(row.ikiAdimZorunlu) === 1 };
+	cache.set(roleId, { at: Date.now(), permission });
+	return permission;
+}
+
+export async function getRoles(): Promise<Role[]> {
+	await ensurePostgresInit();
+	const [roles, perms, counts] = await Promise.all([
+		getPgPool().query('SELECT * FROM roller ORDER BY sistem DESC, olusturma ASC'),
+		getPgPool().query('SELECT roleid AS "roleId", appid AS "appId", seviye FROM role_permissions'),
+		getPgPool().query(`SELECT role_id AS "roleId", COUNT(*)::int AS n FROM users WHERE role_id IS NOT NULL AND status <> 'reddedildi' GROUP BY role_id`),
+	]);
+	const byRole = new Map<string, Izinler>();
+	for (const p of perms.rows) {
+		const rid = (p.roleId ?? p.roleid) as string;
+		const aid = (p.appId ?? p.appid) as string;
+		const m = byRole.get(rid) ?? {};
+		(m as Record<string, Seviye>)[aid] = p.seviye as Seviye;
+		byRole.set(rid, m);
+	}
+	const n = new Map(counts.rows.map((c) => [(c.roleId ?? c.roleid) as string, Number(c.n)]));
+	return roles.rows.map((r) => ({
+		id: r.id,
+		ad: r.ad,
+		renk: r.renk,
+		aciklama: r.aciklama ?? '',
+		sistem: Number(r.sistem) === 1,
+		ikiAdimZorunlu: Number(r.ikiAdimZorunlu) === 1,
+		izinler: r.id === ADMIN_ROL_ID ? { ...TUM_YETKILER } : (byRole.get(r.id) ?? {}),
+		kullaniciSayisi: n.get(r.id) ?? 0,
+	}));
+}
+
+export type RoleResult = { ok: true; id: string; error?: undefined } | { ok: false; error: 'yok' | 'sistem' | 'ad-var'; id?: undefined };
+
+/** A role as the audit log records it, read inside the operation's transaction. */
+async function readRoleSummary(client: PoolClient, id: string): Promise<RoleSummary | null> {
+	const r = await client.query('SELECT ad, renk, aciklama, ikiAdimZorunlu FROM roller WHERE id = $1', [id]);
+	if (!r.rows[0]) return null;
+	const p = await client.query('SELECT appId, seviye FROM rol_izinleri WHERE roleId = $1', [id]);
+	return rolOzeti({
+		ad: r.rows[0].ad,
+		renk: r.rows[0].renk,
+		aciklama: r.rows[0].aciklama,
+		ikiAdimZorunlu: Number(r.rows[0].ikiAdimZorunlu) === 1,
+		izinler: Object.fromEntries(p.rows.map((x) => [x.appId as string, x.seviye as string])),
+	});
+}
+
+async function roleName(client: PoolClient, id: string | null): Promise<string | null> {
+	if (!id) return null;
+	const r = await client.query('SELECT ad FROM roller WHERE id = $1', [id]);
+	return r.rows[0]?.ad ?? null;
+}
+
+// Every change below writes its audit record (src/db/audit.ts) on the same
+// transaction client: the record exists exactly when the change was committed.
+
+export async function createRole(r: { ad: string; renk: string; aciklama: string; izinler: Izinler; ikiAdimZorunlu: boolean }, ctx: AuditContext): Promise<RoleResult> {
+	const id = `rol_${randomBytes(6).toString('hex')}`;
+	try {
+		await withTransaction(async (client) => {
+			await insertRole(client, id, r.ad, r.renk, r.aciklama, r.ikiAdimZorunlu, Date.now(), r.izinler);
+			await logAuditEvent(client, ctx, { islem: 'role.olustur', hedefTur: 'role', hedefId: id, hedefAd: r.ad, onceki: null, sonraki: await readRoleSummary(client, id) });
+		});
+	} catch (err) {
+		if ((err as { code?: string }).code === '23505') return { ok: false, error: 'ad-var' };
+		throw err;
+	}
+	dropCache();
+	return { ok: true, id };
+}
+
+export async function updateRole(id: string, r: { ad: string; renk: string; aciklama: string; izinler: Izinler; ikiAdimZorunlu: boolean }, ctx: AuditContext): Promise<RoleResult> {
+	try {
+		const out = await withTransaction(async (client): Promise<RoleResult> => {
+			const found = await client.query('SELECT sistem FROM roller WHERE id = $1 FOR UPDATE', [id]);
+			if (!found.rows[0]) return { ok: false, error: 'yok' };
+			if (Number(found.rows[0].sistem) === 1) return { ok: false, error: 'sistem' };
+			const onceki = await readRoleSummary(client, id);
+			await client.query('UPDATE roller SET ad = $2, renk = $3, aciklama = $4, ikiAdimZorunlu = $5 WHERE id = $1', [id, r.ad, r.renk, r.aciklama, r.ikiAdimZorunlu ? 1 : 0]);
+			await writeIzinler(client, id, r.izinler);
+			const sonraki = await readRoleSummary(client, id);
+			// Saving without a change leaves nothing to record.
+			const fark = onceki && sonraki ? rolFarki(onceki, sonraki) : null;
+			if (fark) {
+				await logAuditEvent(client, ctx, { islem: 'role.duzenle', hedefTur: 'role', hedefId: id, hedefAd: sonraki?.ad ?? r.ad, onceki: fark.onceki, sonraki: fark.sonraki });
+				await publishEvent(client, { k: 'permission', roleId: id });
+			}
+			return { ok: true, id };
+		});
+		dropCache();
+		return out;
+	} catch (err) {
+		if ((err as { code?: string }).code === '23505') return { ok: false, error: 'ad-var' };
+		throw err;
+	}
+}
+
+/** Deletes a role; its members move to `tasi` (another role) or to no role. */
+export async function deleteRole(id: string, tasi: string | null, ctx: AuditContext): Promise<RoleResult> {
+	const out = await withTransaction(async (client): Promise<RoleResult> => {
+		const found = await client.query('SELECT sistem FROM roller WHERE id = $1 FOR UPDATE', [id]);
+		if (!found.rows[0]) return { ok: false, error: 'yok' };
+		if (Number(found.rows[0].sistem) === 1 || id === MEZUN_ROL_ID) return { ok: false, error: 'sistem' };
+		if (tasi) {
+			const target = await client.query('SELECT 1 FROM roller WHERE id = $1 AND id <> $2', [tasi, id]);
+			if (!target.rowCount) return { ok: false, error: 'yok' };
+		}
+		const onceki = await readRoleSummary(client, id);
+		const tasiAd = await roleName(client, tasi);
+		const moved = await client.query('UPDATE kullanicilar SET roleId = $2 WHERE roleId = $1', [id, tasi]);
+		await client.query('DELETE FROM roller WHERE id = $1', [id]);
+		const def = await client.query(`SELECT deger FROM sistem_ayarlari WHERE anahtar = $1`, [DEFAULT_ROLE_KEY]);
+		const varsayilandi = def.rows[0]?.deger === id;
+		if (varsayilandi) await client.query(`DELETE FROM sistem_ayarlari WHERE anahtar = $1`, [DEFAULT_ROLE_KEY]);
+		await logAuditEvent(client, ctx, {
+			islem: 'role.sil',
+			hedefTur: 'role',
+			hedefId: id,
+			hedefAd: onceki?.ad ?? '',
+			onceki,
+			sonraki: { tasinanUyeSayisi: moved.rowCount ?? 0, tasinanRolId: tasi, tasinanRolAd: tasiAd, varsayilanRolKaldirildi: varsayilandi },
+		});
+		await publishEvent(client, { k: 'permission', roleId: id });
+		return { ok: true, id };
+	});
+	dropCache();
+	return out;
+}
+
+/**
+ * Gives a member a role (or none). Locks the admins while checking, so two
+ * admins demoting each other at the same moment cannot leave the club without one.
+ * Assigning the Mezun role automatically sets `status = 'mezun'`; assigning any
+ * other role to a graduate automatically restores `status = 'aktif'`.
+ */
+export async function setUserRole(userId: string, roleId: string | null, ctx: AuditContext): Promise<'ok' | 'yok' | 'role-yok' | 'son-admin'> {
+	return withTransaction(async (client) => {
+		await client.query("SELECT pg_advisory_xact_lock(hashtext('roller.admin'))");
+		const u = await client.query('SELECT ad, soyad, email, roleId, status FROM kullanicilar WHERE id = $1 FOR UPDATE', [userId]);
+		if (!u.rows[0]) return 'yok';
+		let targetRole: { id: string; ad: string } | null = null;
+		if (roleId) {
+			const r = await client.query('SELECT id, ad FROM roller WHERE id = $1', [roleId]);
+			if (!r.rowCount) return 'role-yok';
+			targetRole = { id: String(r.rows[0].id), ad: String(r.rows[0].ad) };
+		}
+		if (u.rows[0].roleId === ADMIN_ROL_ID && roleId !== ADMIN_ROL_ID) {
+			const admins = await client.query(`SELECT COUNT(*)::int AS n FROM kullanicilar WHERE roleId = $1 AND status = 'aktif'`, [ADMIN_ROL_ID]);
+			if (Number(admins.rows[0].n) <= 1) return 'son-admin';
+		}
+
+		const eski: string | null = u.rows[0].roleId ?? null;
+		const previousStatus = (u.rows[0].status as 'aktif' | 'beklemede' | 'reddedildi' | 'mezun') || 'aktif';
+		const targetAlumni = isMezunRol(targetRole);
+		const newStatus: 'aktif' | 'beklemede' | 'reddedildi' | 'mezun' = targetAlumni
+			? 'mezun'
+			: previousStatus === 'mezun'
+			? 'aktif'
+			: previousStatus;
+
+		await client.query('UPDATE kullanicilar SET roleId = $2 WHERE id = $1', [userId, roleId]);
+		if (newStatus !== previousStatus) {
+			await updateUserStatus(userId, newStatus, client);
+		}
+
+		if (eski !== roleId || newStatus !== previousStatus) {
+			await logAuditEvent(client, ctx, {
+				islem: roleId ? 'uye.rol_ata' : 'uye.rol_kaldir',
+				hedefTur: 'uye',
+				hedefId: userId,
+				hedefAd: uyeHedefAdi(u.rows[0]),
+				onceki: {
+					roleId: eski,
+					rolAd: await roleName(client, eski),
+					...(newStatus !== previousStatus ? { status: previousStatus } : {}),
+				},
+				sonraki: {
+					roleId,
+					rolAd: await roleName(client, roleId),
+					...(newStatus !== previousStatus ? { status: newStatus } : {}),
+				},
+			});
+			await publishEvent(client, { k: 'permission', userId });
+		}
+		return 'ok';
+	});
+}
+
+/**
+ * Changes a member's status (approve / reject an application, graduate,
+ * reactivate). Approving an applicant who has no role gives them the club's
+ * default role in the same step; graduating a member assigns the Mezun role,
+ * and reactivating a graduate restores the club's default role.
+ */
+export async function setMemberStatus(userId: string, status: 'aktif' | 'beklemede' | 'reddedildi' | 'mezun', ctx: AuditContext): Promise<'ok' | 'yok'> {
+	return withTransaction(async (client) => {
+		const u = await client.query('SELECT ad, soyad, email, status, roleId FROM kullanicilar WHERE id = $1 FOR UPDATE', [userId]);
+		const row = u.rows[0];
+		if (!row) return 'yok';
+		let roleId: string | null = row.roleId ?? null;
+		const currentRoleName = await roleName(client, roleId);
+
+		if (status === 'mezun') {
+			const alumniRole = await client.query(
+				`SELECT id FROM roller WHERE id = $1 OR lower(ad) IN ('mezun', 'alumni') ORDER BY CASE WHEN id = $1 THEN 0 ELSE 1 END LIMIT 1`,
+				[MEZUN_ROL_ID]
+			);
+			if (alumniRole.rows[0]?.id) {
+				roleId = String(alumniRole.rows[0].id);
+				await client.query('UPDATE kullanicilar SET roleId = $2 WHERE id = $1', [userId, roleId]);
+			}
+		} else if (
+			status === 'aktif' &&
+			((row.status === 'beklemede' && !roleId) ||
+				(row.status === 'mezun' && (!roleId || isMezunRol({ id: roleId, ad: currentRoleName }))))
+		) {
+			const def = await client.query(
+				`SELECT r.id FROM sistem_ayarlari s JOIN roller r ON r.id = s.deger WHERE s.anahtar = $1
+				 UNION ALL
+				 SELECT id FROM roller WHERE id = $2 OR lower(ad) = 'üye'
+				 LIMIT 1`,
+				[DEFAULT_ROLE_KEY, UYE_ROL_ID]
+			);
+			if (def.rows[0]) {
+				roleId = def.rows[0].id as string;
+				await client.query('UPDATE kullanicilar SET roleId = $2 WHERE id = $1', [userId, roleId]);
+			} else if (isMezunRol({ id: roleId, ad: currentRoleName })) {
+				roleId = null;
+				await client.query('UPDATE kullanicilar SET roleId = NULL WHERE id = $1', [userId]);
+			}
+		}
+
+		// updateUserStatus pays the welcome XP itself, once, on approval.
+		await updateUserStatus(userId, status, client);
+		if (roleId !== (row.roleId ?? null)) await publishEvent(client, { k: 'permission', userId });
+		const islem = durumIslemi(row.status, status);
+		if (!islem) return 'ok';
+		const oldRole: string | null = row.roleId ?? null;
+		const fark = alanFarki(
+			{ status: row.status, roleId: oldRole, rolAd: currentRoleName },
+			{ status, roleId, rolAd: await roleName(client, roleId) }
+		);
+		if (fark) await logAuditEvent(client, ctx, { islem, hedefTur: 'uye', hedefId: userId, hedefAd: uyeHedefAdi(row), onceki: fark.onceki, sonraki: fark.sonraki });
+		return 'ok';
+	});
+}
+
+/** Active admins — the last one cannot be deleted, deactivated or demoted. */
+export async function countAktifAdmin(): Promise<number> {
+	await ensurePostgresInit();
+	const r = await getPgPool().query(`SELECT COUNT(*)::int AS n FROM kullanicilar WHERE roleId = $1 AND status = 'aktif'`, [ADMIN_ROL_ID]);
+	return Number(r.rows[0].n);
+}
+
+export async function getDefaultRoleId(): Promise<string | null> {
+	const v = await getSystemSetting(DEFAULT_ROLE_KEY, '');
+	return v || null;
+}
+
+export async function setDefaultRoleId(roleId: string | null, ctx: AuditContext): Promise<'ok' | 'yok' | 'sistem'> {
+	return withTransaction(async (client) => {
+		if (roleId) {
+			const r = await client.query('SELECT id, ad, sistem FROM roller WHERE id = $1', [roleId]);
+			if (!r.rows[0]) return 'yok';
+			// New members never become admins or graduates by default.
+			if (Number(r.rows[0].sistem) === 1 || isMezunRol(r.rows[0])) return 'sistem';
+		}
+		const cur = await client.query('SELECT deger FROM sistem_ayarlari WHERE anahtar = $1 FOR UPDATE', [DEFAULT_ROLE_KEY]);
+		const eski: string | null = cur.rows[0]?.deger || null;
+		await client.query(
+			`INSERT INTO sistem_ayarlari (anahtar, deger, guncellenme) VALUES ($1, $2, $3)
+			 ON CONFLICT (anahtar) DO UPDATE SET deger = EXCLUDED.deger, guncellenme = EXCLUDED.guncellenme`,
+			[DEFAULT_ROLE_KEY, roleId ?? '', Date.now()]
+		);
+		if (eski !== roleId) {
+			await logAuditEvent(client, ctx, {
+				islem: 'role.varsayilan',
+				hedefTur: 'ayar',
+				hedefId: DEFAULT_ROLE_KEY,
+				hedefAd: 'Varsayılan role',
+				onceki: { roleId: eski, rolAd: await roleName(client, eski) },
+				sonraki: { roleId, rolAd: await roleName(client, roleId) },
+			});
+		}
+		return 'ok';
+	});
+}
+
+/** Members holding any of these roles — for "notify everyone who manages X". */
+export async function getRoleIdsWith(appId: string, seviye: Seviye): Promise<string[]> {
+	await ensurePostgresInit();
+	const levels = seviye === 'yonet' ? ['yonet'] : ['kullan', 'yonet'];
+	const r = await getPgPool().query('SELECT DISTINCT roleId FROM rol_izinleri WHERE appId = $1 AND seviye = ANY($2)', [appId, levels]);
+	return [ADMIN_ROL_ID, ...r.rows.map((x) => x.roleId as string)];
+}

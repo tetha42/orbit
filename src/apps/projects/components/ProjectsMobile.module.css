@@ -1,0 +1,275 @@
+/* ==========================================================================
+   Apple iOS Style Mobile Layout for Projects App
+   ========================================================================== */
+
+.mobileRoot {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	height: 100%;
+	min-height: 0;
+	color: var(--text-primary, #f5f5f7);
+	overflow: hidden;
+	user-select: none;
+	background: var(--window-bg);
+}
+
+.mobileScrollArea {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	overflow-x: hidden;
+	-webkit-overflow-scrolling: touch;
+	padding: 14px 14px 28px 14px;
+	box-sizing: border-box;
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	width: 100%;
+}
+
+/* Sabit Apple iOS Alt Sekme Çubuğu (Bottom Navigation Tab Bar) */
+.mobileBottomTabBar {
+	flex-shrink: 0;
+	height: calc(56px + env(safe-area-inset-bottom, 0px));
+	min-height: calc(56px + env(safe-area-inset-bottom, 0px));
+	background: rgba(18, 18, 22, 0.94);
+	backdrop-filter: blur(20px);
+	-webkit-backdrop-filter: blur(20px);
+	border-top: 1px solid rgba(255, 255, 255, 0.1);
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	padding: 0 4px;
+	padding-bottom: env(safe-area-inset-bottom, 0px);
+	box-sizing: border-box;
+	z-index: 50;
+}
+
+.mobileBottomTabBtn {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 3px;
+	background: transparent;
+	border: none;
+	color: rgba(255, 255, 255, 0.55);
+	cursor: pointer;
+	padding: 6px 2px;
+	border-radius: 8px;
+	transition: color 120ms ease, transform 100ms ease;
+	-webkit-tap-highlight-color: transparent;
+	position: relative;
+}
+
+.mobileBottomTabBtn:active {
+	transform: scale(0.92);
+}
+
+.mobileBottomTabBtnActive {
+	color: var(--accent, #0a84ff) !important;
+}
+
+.mobileBottomTabIconWrap {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	position: relative;
+	height: 22px;
+}
+
+.mobileBottomTabLabel {
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+	line-height: 1;
+	white-space: nowrap;
+}
+
+.tabBadge {
+	position: absolute;
+	top: -3px;
+	right: -8px;
+	min-width: 16px;
+	height: 16px;
+	border-radius: 8px;
+	background: #ff453a;
+	color: #ffffff;
+	font-size: 10px;
+	font-weight: 700;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0 4px;
+	border: 1.5px solid #121216;
+}
+
+/* Card Styles */
+.card {
+	background: linear-gradient(145deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02));
+	border: 1px solid rgba(255, 255, 255, 0.09);
+	border-radius: 14px;
+	padding: 14px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	box-sizing: border-box;
+	width: 100%;
+}
+
+.projectCard {
+	background: rgba(255, 255, 255, 0.035);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 14px;
+	padding: 14px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	cursor: pointer;
+	transition: background 120ms ease, transform 100ms ease;
+}
+
+.projectCard:active {
+	background: rgba(255, 255, 255, 0.08);
+	transform: scale(0.99);
+}
+
+.projectHeader {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 10px;
+}
+
+.projectTitle {
+	font-size: 15px;
+	font-weight: 700;
+	color: #f8fafc;
+	line-height: 1.3;
+}
+
+.projectSummary {
+	font-size: 12.5px;
+	opacity: 0.75;
+	line-height: 1.45;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+.metaRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding-top: 6px;
+	border-top: 1px solid rgba(255, 255, 255, 0.06);
+	font-size: 11.5px;
+}
+
+.techRow {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 5px;
+}
+
+.techPill {
+	font-size: 10.5px;
+	padding: 2px 7px;
+	border-radius: 6px;
+	background: rgba(255, 255, 255, 0.06);
+	color: rgba(255, 255, 255, 0.8);
+	font-weight: 500;
+}
+
+.starBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 4px 8px;
+	border-radius: 8px;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	background: rgba(255, 255, 255, 0.04);
+	color: rgba(255, 255, 255, 0.75);
+	font-size: 12px;
+	cursor: pointer;
+	transition: all 120ms ease;
+}
+
+.starBtnStarred {
+	background: rgba(255, 179, 64, 0.15) !important;
+	border-color: rgba(255, 179, 64, 0.4) !important;
+	color: #ffb340 !important;
+}
+
+/* Search Box */
+.searchBox {
+	position: relative;
+	width: 100%;
+}
+
+.searchInput {
+	width: 100%;
+	height: 38px;
+	background: rgba(255, 255, 255, 0.05);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 10px;
+	padding: 0 12px 0 34px;
+	color: #ffffff;
+	font-size: 13px;
+	outline: none;
+	box-sizing: border-box;
+}
+
+.searchInput:focus {
+	border-color: var(--accent, #0a84ff);
+	background: rgba(255, 255, 255, 0.08);
+}
+
+.searchIcon {
+	position: absolute;
+	left: 10px;
+	top: 50%;
+	transform: translateY(-50%);
+	color: rgba(255, 255, 255, 0.4);
+	pointer-events: none;
+}
+
+/* Chip Row */
+.chipRow {
+	display: flex;
+	gap: 6px;
+	overflow-x: auto;
+	scrollbar-width: none;
+	padding-bottom: 2px;
+}
+
+.chipRow::-webkit-scrollbar {
+	display: none;
+}
+
+.chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 6px 12px;
+	border-radius: 16px;
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	background: rgba(255, 255, 255, 0.04);
+	color: rgba(255, 255, 255, 0.75);
+	font-size: 12px;
+	font-weight: 500;
+	cursor: pointer;
+	white-space: nowrap;
+	flex-shrink: 0;
+	transition: all 120ms ease;
+}
+
+.chipActive {
+	background: var(--accent, #0a84ff) !important;
+	color: #ffffff !important;
+	border-color: var(--accent-border, #0a84ff) !important;
+	font-weight: 600;
+}

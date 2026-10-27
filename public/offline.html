@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#09090b" />
+  <title>Offline — Orbit Workspace</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      min-height: 100dvh;
+      background-color: #09090b;
+      color: #fafafa;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .panel {
+      width: 100%;
+      max-width: 460px;
+      background-color: #111113;
+      border: 1px solid #27272a;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background-color: #0c0c0e;
+      border-bottom: 1px solid #27272a;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: #a1a1aa;
+      text-transform: uppercase;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #f59e0b;
+    }
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: #f59e0b;
+    }
+    .body {
+      padding: 28px 24px;
+    }
+    .code-tag {
+      display: inline-block;
+      padding: 4px 8px;
+      background-color: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 4px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 11px;
+      color: #a1a1aa;
+      margin-bottom: 16px;
+    }
+    h1 {
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: #fafafa;
+      margin-bottom: 10px;
+    }
+    p {
+      font-size: 14px;
+      line-height: 1.6;
+      color: #a1a1aa;
+      margin-bottom: 24px;
+    }
+    .diagnostics {
+      border: 1px solid #27272a;
+      border-radius: 6px;
+      background-color: #09090b;
+      padding: 12px 14px;
+      margin-bottom: 24px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+    }
+    .diag-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      color: #a1a1aa;
+    }
+    .diag-row span:last-child {
+      color: #fafafa;
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+    }
+    button {
+      flex: 1;
+      padding: 10px 16px;
+      background-color: #fafafa;
+      color: #09090b;
+      border: 1px solid #fafafa;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+    }
+    button:hover {
+      background-color: #e4e4e7;
+    }
+  </style>
+</head>
+<body>
+  <main class="panel">
+    <header class="header">
+      <span>ORBIT // TETHA42</span>
+      <span class="status-badge">
+        <span class="status-dot"></span>
+        NETWORK OFFLINE
+      </span>
+    </header>
+    <div class="body">
+      <div class="code-tag">NET_DISCONNECTED</div>
+      <h1>Connection Unavailable</h1>
+      <p>
+        Orbit cannot reach the remote server at this moment. Please verify your network connection. The workspace will automatically reconnect as soon as connectivity is restored.
+      </p>
+      <div class="diagnostics">
+        <div class="diag-row">
+          <span>SERVICE WORKER</span>
+          <span>ACTIVE (FALLBACK)</span>
+        </div>
+        <div class="diag-row">
+          <span>LOCAL CACHE</span>
+          <span>READY</span>
+        </div>
+        <div class="diag-row">
+          <span>UPLINK STATUS</span>
+          <span id="uplink-state">WAITING FOR SIGNAL</span>
+        </div>
+      </div>
+      <div class="actions">
+        <button type="button" onclick="window.location.reload()">
+          Retry Connection
+        </button>
+      </div>
+    </div>
+  </main>
+  <script>
+    window.addEventListener('online', function () {
+      var el = document.getElementById('uplink-state');
+      if (el) el.textContent = 'RECONNECTING...';
+      window.location.reload();
+    });
+  </script>
+</body>
+</html>

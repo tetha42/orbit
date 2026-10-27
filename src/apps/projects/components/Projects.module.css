@@ -1,0 +1,359 @@
+/* Project showcase. Generic controls (inputs, buttons, sheets) come from the
+   Kanban module; this file holds what is specific to the showcase. */
+
+.root {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	padding: 22px 24px 28px;
+	min-height: 100%;
+	box-sizing: border-box;
+	background: var(--window-bg);
+	color: var(--text-primary);
+}
+
+.header {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 14px;
+	justify-content: space-between;
+}
+
+.brand {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.brandIcon {
+	width: 40px;
+	height: 40px;
+	border-radius: 11px;
+	display: grid;
+	place-items: center;
+	background: linear-gradient(135deg, var(--accent), #5e5ce6);
+	box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 30%, transparent);
+	color: #fff;
+}
+
+.title {
+	margin: 0;
+	font-size: 20px;
+	font-weight: 750;
+	letter-spacing: -0.02em;
+}
+
+.subtitle {
+	margin: 2px 0 0;
+	font-size: 12.5px;
+	color: var(--text-secondary);
+}
+
+.toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+}
+
+.tabBadge {
+	margin-left: 5px;
+	font-size: 10.5px;
+	font-weight: 800;
+	padding: 0 6px;
+	border-radius: 8px;
+	background: #ff9f0a;
+	color: #fff;
+}
+
+.chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.chip {
+	border: 1px solid var(--card-border);
+	background: var(--card-bg);
+	color: var(--text-primary);
+	border-radius: 14px;
+	padding: 4px 11px;
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.chip:hover {
+	border-color: var(--accent);
+}
+
+.chipActive {
+	background: var(--accent);
+	border-color: var(--accent);
+	color: #fff;
+}
+
+.grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+	gap: 14px;
+}
+
+.card {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	padding: 16px;
+	border-radius: 14px;
+	background: var(--card-bg);
+	border: 1px solid var(--card-border);
+	cursor: pointer;
+	text-align: left;
+	color: inherit;
+	transition:
+		transform 140ms ease,
+		box-shadow 140ms ease,
+		border-color 140ms ease;
+}
+
+.card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
+	border-color: color-mix(in srgb, var(--accent) 40%, var(--card-border));
+}
+
+.card:focus-visible {
+	outline: none;
+	box-shadow: 0 0 0 2px var(--accent);
+}
+
+.cardFeatured {
+	border-color: color-mix(in srgb, #ff9f0a 55%, transparent);
+	background: linear-gradient(160deg, color-mix(in srgb, #ff9f0a 9%, var(--card-bg)), var(--card-bg) 55%);
+}
+
+.cardTop {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-wrap: wrap;
+	min-height: 20px;
+}
+
+.pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 10.5px;
+	font-weight: 700;
+	padding: 2px 8px;
+	border-radius: 10px;
+	white-space: nowrap;
+}
+
+.pillFeatured {
+	background: color-mix(in srgb, #ff9f0a 18%, transparent);
+	color: #d97706;
+}
+
+.pillTeam {
+	background: color-mix(in srgb, var(--accent) 14%, transparent);
+	color: var(--accent);
+	border: none;
+	cursor: pointer;
+}
+
+.pillTeam:hover {
+	background: color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+.pill_oneri {
+	background: color-mix(in srgb, #ff9f0a 16%, transparent);
+	color: #d97706;
+}
+
+.pill_yayinda {
+	background: color-mix(in srgb, #30d158 16%, transparent);
+	color: #248a3d;
+}
+
+.pill_arsiv {
+	background: var(--fill-soft);
+	color: var(--text-secondary);
+}
+
+.cardTitle {
+	margin: 0;
+	font-size: 15.5px;
+	font-weight: 720;
+	line-height: 1.3;
+}
+
+.cardSummary {
+	margin: 0;
+	font-size: 12.5px;
+	line-height: 1.5;
+	color: var(--text-secondary);
+	display: -webkit-box;
+	-webkit-line-clamp: 3;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+	flex: 1;
+}
+
+.techList {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 5px;
+}
+
+.tech {
+	font-size: 11px;
+	font-weight: 600;
+	padding: 2px 8px;
+	border-radius: 6px;
+	background: var(--fill-soft);
+	color: var(--text-primary);
+	font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+.cardFooter {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding-top: 10px;
+	border-top: 1px solid var(--card-border);
+	font-size: 12px;
+	color: var(--text-secondary);
+}
+
+.author {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	min-width: 0;
+	flex: 1;
+}
+
+.author span:last-child {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.linkIcon {
+	display: grid;
+	place-items: center;
+	width: 28px;
+	height: 28px;
+	border-radius: 7px;
+	color: var(--text-secondary);
+}
+
+.linkIcon:hover {
+	background: var(--fill-soft);
+	color: var(--text-primary);
+}
+
+.starBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	height: 28px;
+	padding: 0 9px;
+	border-radius: 7px;
+	border: 1px solid var(--card-border);
+	background: transparent;
+	color: var(--text-primary);
+	font-size: 12px;
+	font-weight: 700;
+	cursor: pointer;
+}
+
+.starBtn:hover {
+	border-color: #ffb800;
+}
+
+.starBtnOn {
+	border-color: color-mix(in srgb, #ffb800 60%, transparent);
+	background: color-mix(in srgb, #ffb800 14%, transparent);
+	color: #b07d00;
+}
+
+.starBtn:disabled {
+	cursor: default;
+	opacity: 0.6;
+}
+
+.emptyState {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+	padding: 50px 20px;
+	text-align: center;
+	color: var(--text-secondary);
+	border: 1.5px dashed var(--card-border);
+	border-radius: 14px;
+}
+
+.detailHero {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.linkRow {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.linkBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	height: 34px;
+	padding: 0 14px;
+	border-radius: 9px;
+	text-decoration: none;
+	font-size: 13px;
+	font-weight: 650;
+	border: 1px solid var(--card-border);
+	background: var(--card-bg);
+	color: var(--text-primary);
+}
+
+.linkBtn:hover {
+	border-color: var(--accent);
+}
+
+.linkBtnPrimary {
+	background: var(--accent);
+	border-color: var(--accent);
+	color: #fff;
+}
+
+.note {
+	font-size: 12.5px;
+	padding: 9px 12px;
+	border-radius: 9px;
+	background: color-mix(in srgb, #ff9f0a 12%, transparent);
+	color: color-mix(in srgb, #d97706 85%, var(--text-primary));
+}
+
+.counter {
+	margin-left: auto;
+	font-weight: 500;
+}
+
+@media (max-width: 640px) {
+	.root {
+		padding: 16px;
+	}
+	.grid {
+		grid-template-columns: 1fr;
+	}
+}

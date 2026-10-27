@@ -1,0 +1,578 @@
+/* ==========================================================================
+   Apple iOS Style Mobile Layout for Teams App (Ar-Ge Takımları)
+   ========================================================================== */
+
+.mobileRoot {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	height: 100%;
+	min-height: 0;
+	color: var(--text-primary, #f5f5f7);
+	overflow: hidden;
+	user-select: none;
+	background: var(--window-bg);
+}
+
+.mobileScrollArea {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	overflow-x: hidden;
+	-webkit-overflow-scrolling: touch;
+	padding: 14px 14px 28px 14px;
+	box-sizing: border-box;
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	width: 100%;
+}
+
+/* Header & Navigation */
+.headerBox {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 0 4px;
+}
+
+.headerTop {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.title {
+	margin: 0;
+	font-size: 20px;
+	font-weight: 800;
+	letter-spacing: -0.4px;
+}
+
+.subtitle {
+	margin: 0;
+	font-size: 12px;
+	opacity: 0.65;
+}
+
+.newTeamBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	background: var(--accent);
+	color: #ffffff;
+	border: none;
+	border-radius: 12px;
+	padding: 8px 12px;
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+	flex-shrink: 0;
+	transition: opacity 120ms ease;
+}
+
+.newTeamBtn:active {
+	opacity: 0.8;
+}
+
+/* Search and Filters */
+.searchBox {
+	position: relative;
+	display: flex;
+	align-items: center;
+	background: rgba(255, 255, 255, 0.06);
+	border: 1px solid var(--card-border);
+	border-radius: 12px;
+	padding: 0 10px;
+	height: 40px;
+}
+
+.searchIcon {
+	opacity: 0.5;
+	flex-shrink: 0;
+	margin-right: 8px;
+}
+
+.searchInput {
+	flex: 1;
+	background: transparent;
+	border: none;
+	outline: none;
+	color: inherit;
+	font-size: 13.5px;
+}
+
+.clearSearchBtn {
+	background: transparent;
+	border: none;
+	color: inherit;
+	opacity: 0.5;
+	padding: 4px;
+	cursor: pointer;
+	display: grid;
+	place-items: center;
+}
+
+/* Horizontal Filter Pills */
+.filterScrollRow {
+	display: flex;
+	gap: 6px;
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+	scrollbar-width: none;
+	padding: 2px 0;
+}
+
+.filterScrollRow::-webkit-scrollbar {
+	display: none;
+}
+
+.filterPill {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	background: rgba(255, 255, 255, 0.05);
+	border: 1px solid var(--card-border);
+	color: rgba(255, 255, 255, 0.7);
+	padding: 6px 12px;
+	border-radius: 16px;
+	font-size: 12px;
+	font-weight: 600;
+	white-space: nowrap;
+	cursor: pointer;
+	transition: all 120ms ease;
+}
+
+.filterPillActive {
+	background: var(--accent);
+	border-color: var(--accent);
+	color: #ffffff;
+}
+
+/* Team Card */
+.teamCard {
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid var(--card-border);
+	border-radius: 16px;
+	padding: 14px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	transition: background 120ms ease;
+}
+
+.teamCard:active {
+	background: rgba(255, 255, 255, 0.07);
+}
+
+.teamCardHeader {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 10px;
+}
+
+.teamName {
+	font-size: 15px;
+	font-weight: 700;
+	letter-spacing: -0.2px;
+	line-height: 1.25;
+}
+
+.categoryBadge {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 10.5px;
+	font-weight: 700;
+	padding: 3px 8px;
+	border-radius: 8px;
+	background: rgba(10, 132, 255, 0.15);
+	color: var(--accent);
+	flex-shrink: 0;
+}
+
+.teamLeaderRow {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 11.5px;
+	opacity: 0.75;
+}
+
+.teamDesc {
+	font-size: 12px;
+	opacity: 0.8;
+	line-height: 1.45;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+.teamMetaRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding-top: 4px;
+	border-top: 1px solid rgba(255, 255, 255, 0.06);
+	font-size: 11.5px;
+}
+
+.quotaPill {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-weight: 600;
+	opacity: 0.75;
+}
+
+.enterBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	background: var(--accent);
+	color: #ffffff;
+	border: none;
+	border-radius: 10px;
+	padding: 6px 12px;
+	font-size: 12px;
+	font-weight: 700;
+	cursor: pointer;
+}
+
+/* ==========================================================================
+   Workspace View (Inside Selected Team)
+   ========================================================================== */
+
+.workspaceHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 10px 14px;
+	background: rgba(18, 18, 22, 0.95);
+	backdrop-filter: blur(20px);
+	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+	position: sticky;
+	top: 0;
+	z-index: 40;
+	flex-shrink: 0;
+}
+
+.backBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	background: rgba(255, 255, 255, 0.1);
+	border: 1px solid rgba(255, 255, 255, 0.15);
+	border-radius: 16px;
+	padding: 5px 10px;
+	color: #ffffff;
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.workspaceTitleWrap {
+	flex: 1;
+	min-width: 0;
+	text-align: center;
+}
+
+.workspaceTitle {
+	font-size: 14px;
+	font-weight: 800;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.workspaceTabsBar {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 4px;
+	background: rgba(255, 255, 255, 0.04);
+	border-radius: 12px;
+	padding: 3px;
+	border: 1px solid var(--card-border);
+	flex-shrink: 0;
+}
+
+.workspaceTabsBarFour {
+	grid-template-columns: repeat(4, 1fr);
+}
+
+.workspaceTabBtn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	padding: 8px 4px;
+	border-radius: 9px;
+	border: none;
+	background: transparent;
+	color: rgba(255, 255, 255, 0.6);
+	font-size: 11.5px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: all 120ms ease;
+}
+
+.workspaceTabBtnActive {
+	background: rgba(255, 255, 255, 0.15);
+	color: #ffffff;
+}
+
+/* Kanban Columns & Task Cards */
+.kanbanColSwitcher {
+	display: flex;
+	gap: 6px;
+	overflow-x: auto;
+	scrollbar-width: none;
+	padding: 2px 0;
+}
+
+.kanbanColSwitcher::-webkit-scrollbar {
+	display: none;
+}
+
+.colBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	background: rgba(255, 255, 255, 0.05);
+	border: 1px solid var(--card-border);
+	color: rgba(255, 255, 255, 0.65);
+	padding: 6px 12px;
+	border-radius: 14px;
+	font-size: 11.5px;
+	font-weight: 700;
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.colBtnActive {
+	background: rgba(255, 255, 255, 0.16);
+	border-color: rgba(255, 255, 255, 0.25);
+	color: #ffffff;
+}
+
+.colBadge {
+	font-size: 10px;
+	padding: 1px 5px;
+	border-radius: 8px;
+	background: rgba(255, 255, 255, 0.12);
+}
+
+.tasksList {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.taskCard {
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid var(--card-border);
+	border-radius: 14px;
+	padding: 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	cursor: pointer;
+	transition: background 120ms ease;
+}
+
+.taskCard:active {
+	background: rgba(255, 255, 255, 0.08);
+}
+
+.taskHeader {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.taskTitle {
+	font-size: 13.5px;
+	font-weight: 700;
+	line-height: 1.35;
+	flex: 1;
+}
+
+.prioPill {
+	font-size: 9.5px;
+	font-weight: 800;
+	padding: 2px 6px;
+	border-radius: 6px;
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+	flex-shrink: 0;
+}
+
+.taskMeta {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 6px;
+	font-size: 11px;
+	opacity: 0.75;
+}
+
+.taskActionRow {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 6px;
+	padding-top: 6px;
+	border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.stepBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	background: rgba(255, 255, 255, 0.08);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	border-radius: 8px;
+	padding: 4px 8px;
+	font-size: 10.5px;
+	font-weight: 600;
+	color: inherit;
+	cursor: pointer;
+}
+
+.emptyCard {
+	background: rgba(255, 255, 255, 0.03);
+	border: 1px dashed var(--card-border);
+	border-radius: 14px;
+	padding: 36px 16px;
+	text-align: center;
+	font-size: 13px;
+	opacity: 0.65;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+}
+
+/* Sabit Apple iOS Alt Sekme Çubuğu (Bottom Navigation Tab Bar) */
+.mobileBottomTabBar {
+	flex-shrink: 0;
+	height: calc(56px + env(safe-area-inset-bottom, 0px));
+	min-height: calc(56px + env(safe-area-inset-bottom, 0px));
+	background: rgba(18, 18, 22, 0.94);
+	backdrop-filter: blur(20px);
+	-webkit-backdrop-filter: blur(20px);
+	border-top: 1px solid rgba(255, 255, 255, 0.1);
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	padding: 0 4px;
+	padding-bottom: env(safe-area-inset-bottom, 0px);
+	box-sizing: border-box;
+	z-index: 50;
+}
+
+.mobileBottomTabBtn {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 3px;
+	background: transparent;
+	border: none;
+	color: rgba(255, 255, 255, 0.55);
+	cursor: pointer;
+	padding: 6px 2px;
+	border-radius: 8px;
+	transition: color 120ms ease, transform 100ms ease;
+	-webkit-tap-highlight-color: transparent;
+	position: relative;
+}
+
+.mobileBottomTabBtn:active {
+	transform: scale(0.92);
+}
+
+.mobileBottomTabBtnActive {
+	color: var(--accent) !important;
+}
+
+.mobileBottomTabIconWrap {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	position: relative;
+	height: 22px;
+}
+
+.mobileBottomTabLabel {
+	font-size: 10px;
+	font-weight: 500;
+	letter-spacing: -0.1px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 100%;
+}
+
+.tabBadge {
+	position: absolute;
+	top: -4px;
+	right: -8px;
+	background: var(--accent);
+	color: #ffffff;
+	font-size: 10px;
+	font-weight: 700;
+	min-width: 15px;
+	height: 15px;
+	padding: 0 4px;
+	border-radius: 10px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* Team Switcher in Board Tab */
+.teamPickerRow {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	overflow-x: auto;
+	padding-bottom: 4px;
+	-webkit-overflow-scrolling: touch;
+	scrollbar-width: none;
+}
+
+.teamPickerRow::-webkit-scrollbar {
+	display: none;
+}
+
+.teamPickerBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 12px;
+	border-radius: 10px;
+	background: rgba(255, 255, 255, 0.06);
+	border: 1px solid var(--card-border);
+	color: inherit;
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+	white-space: nowrap;
+	flex-shrink: 0;
+	transition: all 120ms ease;
+}
+
+.teamPickerBtnActive {
+	background: var(--accent-subtle, rgba(10, 132, 255, 0.15));
+	border-color: var(--accent);
+	color: var(--accent);
+}
