@@ -749,21 +749,21 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 
 	await runMigrationStep('2026_03_haberler_slugs', 'Backfill unique slugs for news', async () => {
 		const unslugged = await client.query(
-			'SELECT id, baslik FROM haberler WHERE slug IS NULL ORDER BY olusturma ASC'
+			'SELECT id, baslik FROM news WHERE slug IS NULL ORDER BY olusturma ASC'
 		);
 		for (const row of unslugged.rows) {
 			const slug = await uniqueSlug(
 				slugify(row.baslik),
 				async (candidate) =>
-					((await client.query('SELECT 1 FROM haberler WHERE slug = $1', [candidate])).rowCount ?? 0) > 0,
+					((await client.query('SELECT 1 FROM news WHERE slug = $1', [candidate])).rowCount ?? 0) > 0,
 				'haber'
 			);
-			await client.query('UPDATE haberler SET slug = $1 WHERE id = $2', [slug, row.id]);
+			await client.query('UPDATE news SET slug = $1 WHERE id = $2', [slug, row.id]);
 		}
 		await client.query(
-			`UPDATE haberler SET yayinTarihi = olusturma WHERE yayinTarihi IS NULL AND publishStatus <> 'taslak'`
+			`UPDATE news SET yayinTarihi = olusturma WHERE yayinTarihi IS NULL AND publishStatus <> 'taslak'`
 		);
-		await client.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_haberler_slug ON haberler (slug)');
+		await client.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_news_slug ON news (slug)');
 	});
 
 	if (!hadXpColumn) {
@@ -796,7 +796,7 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 		for (const column of ['verilistarihi', 'olusturma']) {
 			try {
 				await client.query(`
-					ALTER TABLE sertifikalar
+					ALTER TABLE certificates
 					ALTER COLUMN ${column} TYPE BIGINT
 					USING (NULLIF(regexp_replace(${column}::text, '[^0-9]', '', 'g'), '')::bigint)
 				`);
@@ -809,8 +809,8 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 	});
 
 	await runMigrationStep('2026_08_kullanicilar_durum', 'Normalize default user status', async () => {
-		await client.query(`ALTER TABLE kullanicilar ALTER COLUMN status SET DEFAULT 'beklemede'`);
-		await client.query(`UPDATE kullanicilar SET status = 'beklemede' WHERE status = 'pending'`);
+		await client.query(`ALTER TABLE users ALTER COLUMN status SET DEFAULT 'beklemede'`);
+		await client.query(`UPDATE users SET status = 'beklemede' WHERE status = 'pending'`);
 	});
 
 	await runMigrationStep('2026_09_sohbet_mesajlari_moderasyon', 'Add soft-delete and edit timestamps to chat messages', async () => {
@@ -871,17 +871,22 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 			CREATE TABLE IF NOT EXISTS security_blocks (
 				ip TEXT PRIMARY KEY,
 				status TEXT NOT NULL DEFAULT 'ban',
-				neden TEXT NOT NULL,
-				tehditPuani INTEGER NOT NULL DEFAULT 100,
-				ihlaller INTEGER NOT NULL DEFAULT 1,
-				olusturanId TEXT,
-				expiresAt BIGINT DEFAULT NULL,
-				olusturma BIGINT NOT NULL,
-				guncellenme BIGINT NOT NULL
+				reason TEXT NOT NULL,
+				threat_score INTEGER NOT NULL DEFAULT 100,
+				violations INTEGER NOT NULL DEFAULT 1,
+				creator_id TEXT,
+				expires_at BIGINT DEFAULT NULL,
+				created_at BIGINT NOT NULL,
+				updated_at BIGINT NOT NULL
 			);
 
-			CREATE INDEX IF NOT EXISTS idx_security_blocks_durum ON security_blocks (status, expiresAt);
-			DROP VIEW IF EXISTS guvenlik_engelleri CASCADE; CREATE VIEW guvenlik_engelleri AS SELECT * FROM security_blocks;
+			CREATE INDEX IF NOT EXISTS idx_security_blocks_durum ON security_blocks (status, expires_at);
+			DROP VIEW IF EXISTS guvenlik_engelleri CASCADE;
+			CREATE VIEW guvenlik_engelleri AS
+			SELECT ip, status AS status, reason AS neden, threat_score AS tehditpuani,
+			       violations AS ihlaller, creator_id AS olusturanid,
+			       expires_at AS bitistarihi, created_at AS olusturma, updated_at AS guncellenme
+			FROM security_blocks;
 		`);
 	});
 
@@ -943,12 +948,13 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 
 		// Helper to safely rename column if exists
 		const renameCol = async (table: string, oldCol: string, newCol: string) => {
-			const check = await client.query(
-				`SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2`,
+			if (oldCol.toLowerCase() === newCol.toLowerCase()) return;
+			const check = await client.query<{ column_name: string }>(
+				`SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1 AND lower(column_name) = $2`,
 				[table, oldCol.toLowerCase()]
 			);
-			if (check.rowCount) {
-				await client.query(`ALTER TABLE ${table} RENAME COLUMN "${oldCol}" TO "${newCol}"`).catch(() => {});
+			if (check.rowCount && check.rows[0]?.column_name) {
+				await client.query(`ALTER TABLE ${table} RENAME COLUMN "${check.rows[0].column_name}" TO "${newCol}"`).catch(() => {});
 			}
 		};
 
