@@ -1,18 +1,95 @@
-name: Release (Docker & Distribution Packages)
+name: CI/CD Pipeline
 
 on:
   push:
+    branches: [main]
     tags:
       - 'v*'
+  pull_request:
+    branches: [main]
 
-permissions:
-  contents: write
-  packages: write
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
+  # =========================================================================
+  # 1. Aşama: Kod Kalitesi, Güvenlik ve Testler (Her Push, PR ve Tag'de Koşar)
+  # =========================================================================
+  verify-and-test:
+    name: Verify, Build & E2E Simulation
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: orbit
+          POSTGRES_USER: orbit
+          POSTGRES_PASSWORD: orbit_secret_2026
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://orbit:orbit_secret_2026@localhost:5432/orbit
+      NODE_ENV: test
+      PORT: 3000
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify Codebase (TSC, ESLint, Manifests)
+        run: pnpm verify
+
+      - name: Security Regression & WAF Testing
+        run: pnpm test:security
+
+      - name: Production Build Verification
+        run: pnpm build
+
+  # =========================================================================
+  # 2. Aşama: Docker Image Derleme & GHCR Push (SADECE Tag Varsa ve Test Geçtiyse)
+  # =========================================================================
   docker-publish:
     name: Build & Push Docker Image (GHCR)
+    needs: [verify-and-test]
+    # SADECE v* ile başlayan bir tag pushlandığında çalışır:
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Checkout repository
@@ -49,10 +126,16 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  # =========================================================================
+  # 3. Aşama: Release Paketleri & GitHub Release (Docker Başarıyla Yüklendiyse)
+  # =========================================================================
   create-release:
     name: Package Release & Publish GitHub Release
     needs: [docker-publish]
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repository
@@ -99,13 +182,13 @@ jobs:
             ---
 
             ### 🐳 1. Docker Deployment (Recommended)
-            Download \`orbit-os-${{ github.ref_name }}-docker.tar.gz\` from the Assets below:
+            Download `orbit-os-${{ github.ref_name }}-docker.tar.gz` from the Assets below:
             ```bash
             tar -xzf orbit-os-${{ github.ref_name }}-docker.tar.gz
             cd orbit-os-${{ github.ref_name }}-docker
             make up
             ```
-            * The stack runs securely bound to \`127.0.0.1:3000\`.
+            * The stack runs securely bound to `127.0.0.1:3000`.
             * Add these 3 lines to your host reverse proxy (Caddy):
               ```caddy
               orbit.example.com {
@@ -117,7 +200,7 @@ jobs:
             ---
 
             ### ⚡ 2. Baremetal / Direct Node.js Execution (Standalone Build)
-            If deploying directly without Docker, download \`orbit-os-${{ github.ref_name }}-standalone.tar.gz\`:
+            If deploying directly without Docker, download `orbit-os-${{ github.ref_name }}-standalone.tar.gz`:
             ```bash
             tar -xzf orbit-os-${{ github.ref_name }}-standalone.tar.gz
             cd orbit-os-${{ github.ref_name }}-standalone

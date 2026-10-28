@@ -126,9 +126,9 @@ export async function saveWebhookConfig(config: WebhookConfig): Promise<boolean>
 		await ensurePostgresInit();
 		const p = getPgPool();
 		await p.query(
-			`INSERT INTO sistem_ayarlari (anahtar, deger, guncellenme)
+			`INSERT INTO system_settings (key, value, updated_at)
 			 VALUES ('soc_webhook_config', $1, $2)
-			 ON CONFLICT (anahtar) DO UPDATE SET deger = $1, guncellenme = $2`,
+			 ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = $2`,
 			[JSON.stringify(config), Date.now()]
 		);
 		return true;

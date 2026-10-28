@@ -50,24 +50,19 @@ echo -e "  Tag:             ${GREEN}${TAG}${NC}"
 echo -e "  Description:     ${YELLOW}${MSG}${NC}"
 echo -e "${CYAN}----------------------------------------------------------------${NC}\n"
 
-# 2. Push current branch to remote
-echo -e "${CYAN}==> [1/4] Pushing branch '${CURRENT_BRANCH}' to GitHub...${NC}"
-git push origin "$CURRENT_BRANCH"
-echo -e "${GREEN}✓ Branch synchronized.${NC}\n"
-
-# 3. Clean up any existing local tag with the same name
-echo -e "${CYAN}==> [2/4] Preparing local tag...${NC}"
+# 2. Clean up any existing local tag with the same name
+echo -e "${CYAN}==> [1/3] Preparing local tag...${NC}"
 git tag -d "$TAG" 2>/dev/null || true
 
-# 4. Create annotated tag
-echo -e "${CYAN}==> [3/4] Creating annotated tag: ${TAG}...${NC}"
+# 3. Create annotated tag
+echo -e "${CYAN}==> [2/3] Creating annotated tag: ${TAG}...${NC}"
 git tag -a "$TAG" -m "$MSG"
 echo -e "${GREEN}✓ Annotated tag created on HEAD.${NC}\n"
 
-# 5. Push only this tag to GitHub
-echo -e "${CYAN}==> [4/4] Pushing tag '${TAG}' to GitHub (--force)...${NC}"
-git push origin "$TAG" --force
-echo -e "${GREEN}✓ Tag pushed to GitHub.${NC}\n"
+# 4. Push branch and tag together in a single command to avoid double CI triggers
+echo -e "${CYAN}==> [3/3] Pushing branch '${CURRENT_BRANCH}' and tag '${TAG}' to GitHub...${NC}"
+git push origin "$CURRENT_BRANCH" "+refs/tags/$TAG"
+echo -e "${GREEN}✓ Branch and tag pushed to GitHub.${NC}\n"
 
 echo -e "${GREEN}================================================================${NC}"
 echo -e "${GREEN}  ✓ SUCCESS: Release ${TAG} is live on GitHub!${NC}"

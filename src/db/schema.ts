@@ -43,46 +43,46 @@ export const MEMBER_ROSTER_SQL = `
 		k.department AS "bolum",
 		k.grade AS "sinif",
 		k.role_id AS "roleId",
-		r.name AS "rolAd",
-		r.color AS "rolRenk",
+		r.ad AS "rolAd",
+		r.renk AS "rolRenk",
 		k.avatar_url AS "profilFoto",
 		k.bio,
 		k.xp,
 		k.status AS "status",
 		k.created_at AS "olusturma",
 		(
-			SELECT STRING_AGG(DISTINCT t.name, ', ' ORDER BY t.name)
+			SELECT STRING_AGG(DISTINCT t.ad, ', ' ORDER BY t.ad)
 			FROM teams t
-			LEFT JOIN team_members tu ON tu.team_id = t.id AND (tu.status = 'aktif' OR tu.status = 'active' OR tu.status IS NULL)
-			WHERE tu.user_id = k.id OR t.leader_id = k.id
+			LEFT JOIN team_members tu ON tu.teamId = t.id AND (tu.status = 'aktif' OR tu.status = 'active' OR tu.status IS NULL)
+			WHERE tu.userId = k.id OR t.liderId = k.id
 		) AS "takimAdi",
 		(
 			SELECT COALESCE(
 				JSON_AGG(
 					DISTINCT JSONB_BUILD_OBJECT(
 						'id', t.id,
-						'ad', t.name,
-						'kategori', t.category,
-						'liderMi', CASE WHEN t.leader_id = k.id THEN true ELSE false END,
-						'role', tu.role
+						'ad', t.ad,
+						'kategori', t.kategori,
+						'liderMi', CASE WHEN t.liderId = k.id THEN true ELSE false END,
+						'role', tu.takimRolu
 					)
 				),
 				'[]'::json
 			)
 			FROM teams t
-			LEFT JOIN team_members tu ON tu.team_id = t.id AND (tu.status = 'aktif' OR tu.status = 'active' OR tu.status IS NULL)
-			WHERE tu.user_id = k.id OR t.leader_id = k.id
+			LEFT JOIN team_members tu ON tu.teamId = t.id AND (tu.status = 'aktif' OR tu.status = 'active' OR tu.status IS NULL)
+			WHERE tu.userId = k.id OR t.liderId = k.id
 		) AS "takimlar",
 		(
-			SELECT COUNT(*)
+			SELECT COUNT(*)::int
 			FROM attendances y
-			WHERE y.user_id = k.id
+			WHERE y.userId = k.id
 		) AS "yoklamaSayisi"
 	FROM users k
 	LEFT JOIN roles r ON r.id = k.role_id
 	ORDER BY
-		r.system DESC NULLS LAST,
-		r.created_at ASC NULLS LAST,
+		r.sistem DESC NULLS LAST,
+		r.olusturma ASC NULLS LAST,
 		k.created_at ASC
 `;
 

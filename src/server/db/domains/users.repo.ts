@@ -1,4 +1,4 @@
-import { getPgPool, ensurePostgresInit } from '@/db';
+import { getPgPool, ensurePostgresInit, isDatabaseConfigured } from '@/db';
 import type { YaklasanIade } from '@/db/schema';
 
 export interface UserSummary {
@@ -11,26 +11,42 @@ export interface UserSummary {
 	proje: number;
 }
 
+const EMPTY_USER_SUMMARY: UserSummary = {
+	takimlar: [],
+	katilinanEtkinlik: 0,
+	kayitliEtkinlik: 0,
+	tamamlananGorev: 0,
+	acikGorev: 0,
+	sertifika: 0,
+	proje: 0,
+};
+
 /** Inventory on loan to the member that is due back before until (epoch ms), soonest first. */
 export async function getUserUpcomingReturns(
 	userId: string,
 	until: number
 ): Promise<YaklasanIade[]> {
-	await ensurePostgresInit();
-	const res = await getPgPool().query(
-		`
-		SELECT id, kod, ad, iadeTarihi
-		FROM envanter
-		WHERE oduncAlanId = $1
-		  AND status = 'oduncte'
-		  AND iadeTarihi IS NOT NULL
-		  AND iadeTarihi <= $2
-		ORDER BY iadeTarihi ASC
-		LIMIT 20
-	`,
-		[userId, until]
-	);
-	return res.rows;
+	if (!userId || !isDatabaseConfigured()) return [];
+	try {
+		await ensurePostgresInit();
+		const res = await getPgPool().query(
+			`
+			SELECT id, kod, ad, iadeTarihi
+			FROM envanter
+			WHERE oduncAlanId = $1
+			  AND status = 'oduncte'
+			  AND iadeTarihi IS NOT NULL
+			  AND iadeTarihi <= $2
+			ORDER BY iadeTarihi ASC
+			LIMIT 20
+		`,
+			[userId, until]
+		);
+		return res.rows ?? [];
+	} catch (error) {
+		console.error('getUserUpcomingReturns error:', error);
+		return [];
+	}
 }
 
 export async function updateUserProfile(
@@ -58,29 +74,46 @@ export async function updateUserProfile(
 }
 
 export async function getUserSummary(id: string): Promise<UserSummary> {
-	await ensurePostgresInit();
-	const db = getPgPool();
-	const [teams, counts] = await Promise.all([
-		db.query(
-			`SELECT t.id, t.ad, tu.takimRolu AS role, (t.liderId = $1) AS "kaptanMi"
-			 FROM takim_uyeleri tu JOIN takimlar t ON t.id = tu.teamId
-			 WHERE tu.userId = $1 AND tu.status = 'aktif'
-			 ORDER BY tu.katilimTarihi ASC`,
-			[id]
-		),
-		db.query(
-			`SELECT
-			   (SELECT COUNT(*) FROM yoklamalar WHERE userId = $1)::int AS "katilinanEtkinlik",
-			   (SELECT COUNT(*) FROM etkinlik_kayitlari WHERE userId = $1)::int AS "kayitliEtkinlik",
-			   (SELECT COUNT(*) FROM takim_gorevleri WHERE atananUyeId = $1 AND status = 'tamamlandi')::int AS "tamamlananGorev",
-			   (SELECT COUNT(*) FROM takim_gorevleri WHERE atananUyeId = $1 AND status <> 'tamamlandi')::int AS "acikGorev",
-			   (SELECT COUNT(*) FROM sertifikalar WHERE userId = $1)::int AS "sertifika",
-			   (SELECT COUNT(*) FROM projeler WHERE olusturanId = $1 AND status = 'yayinda')::int AS "proje"`,
-			[id]
-		),
-	]);
-	return {
-		takimlar: teams.rows.map((r) => ({ id: r.id, ad: r.ad, role: r.role, kaptanMi: Boolean(r.kaptanMi) })),
-		...(counts.rows[0] as Omit<UserSummary, 'takimlar'>),
-	};
+	if (!id || !isDatabaseConfigured()) return { ...EMPTY_USER_SUMMARY };
+	try {
+		await ensurePostgresInit();
+		const db = getPgPool();
+		const [teams, counts] = await Promise.all([
+			db.query(
+				`SELECT t.id, t.ad, tu.takimRolu AS role, (t.liderId = $1) AS "kaptanMi"
+				 FROM takim_uyeleri tu JOIN takimlar t ON t.id = tu.teamId
+				 WHERE tu.userId = $1 AND tu.status = 'aktif'
+				 ORDER BY tu.katilimTarihi ASC`,
+				[id]
+			),
+			db.query(
+				`SELECT
+				   (SELECT COUNT(*) FROM yoklamalar WHERE userId = $1)::int AS "katilinanEtkinlik",
+				   (SELECT COUNT(*) FROM etkinlik_kayitlari WHERE userId = $1)::int AS "kayitliEtkinlik",
+				   (SELECT COUNT(*) FROM takim_gorevleri WHERE atananUyeId = $1 AND status = 'tamamlandi')::int AS "tamamlananGorev",
+				   (SELECT COUNT(*) FROM takim_gorevleri WHERE atananUyeId = $1 AND status <> 'tamamlandi')::int AS "acikGorev",
+				   (SELECT COUNT(*) FROM sertifikalar WHERE userId = $1)::int AS "sertifika",
+				   (SELECT COUNT(*) FROM projeler WHERE olusturanId = $1 AND status = 'yayinda')::int AS "proje"`,
+				[id]
+			),
+		]);
+		const row = (counts.rows[0] ?? {}) as Partial<Omit<UserSummary, 'takimlar'>>;
+		return {
+			takimlar: (teams.rows ?? []).map((r) => ({
+				id: String(r.id),
+				ad: String(r.ad ?? ''),
+				role: String(r.role ?? ''),
+				kaptanMi: Boolean(r.kaptanMi),
+			})),
+			katilinanEtkinlik: Number(row.katilinanEtkinlik ?? 0),
+			kayitliEtkinlik: Number(row.kayitliEtkinlik ?? 0),
+			tamamlananGorev: Number(row.tamamlananGorev ?? 0),
+			acikGorev: Number(row.acikGorev ?? 0),
+			sertifika: Number(row.sertifika ?? 0),
+			proje: Number(row.proje ?? 0),
+		};
+	} catch (error) {
+		console.error('getUserSummary error:', error);
+		return { ...EMPTY_USER_SUMMARY };
+	}
 }

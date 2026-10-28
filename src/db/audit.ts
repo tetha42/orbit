@@ -80,7 +80,7 @@ export async function logAuditEvent(client: PoolClient, ctx: AuditContext, g: Au
 		return alanlar ? JSON.stringify(alanlar) : null;
 	};
 	await client.query(
-		`INSERT INTO denetim_kaydi (zaman, yapanId, yapanAd, islem, hedefTur, hedefId, hedefAd, onceki, sonraki, ip)
+		`INSERT INTO audit_logs (zaman, yapanId, yapanAd, islem, hedefTur, hedefId, hedefAd, onceki, sonraki, ip)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10)`,
 		[Date.now(), ctx.yapanId, ctx.yapanAd.slice(0, 200), g.islem, g.hedefTur, g.hedefId, (g.hedefAd ?? '').slice(0, 200), json(g.onceki), json(g.sonraki), ctx.ip]
 	);
@@ -118,13 +118,13 @@ function where(f: AuditFilter): { sql: string; params: unknown[] } {
 function toRecord(r: Record<string, unknown>): AuditRecord {
 	return {
 		id: String(r.id),
-		zaman: Number(r.zaman),
-		yapanId: (r.yapanId as string | null) ?? null,
-		yapanAd: String(r.yapanAd ?? ''),
-		islem: String(r.islem),
-		hedefTur: String(r.hedefTur),
-		hedefId: (r.hedefId as string | null) ?? null,
-		hedefAd: String(r.hedefAd ?? ''),
+		zaman: Number(r.zaman ?? 0),
+		yapanId: ((r.yapanId ?? r.yapanid) as string | null) ?? null,
+		yapanAd: String(r.yapanAd ?? r.yapanad ?? ''),
+		islem: String(r.islem ?? ''),
+		hedefTur: String(r.hedefTur ?? r.hedeftur ?? ''),
+		hedefId: ((r.hedefId ?? r.hedefid) as string | null) ?? null,
+		hedefAd: String(r.hedefAd ?? r.hedefad ?? ''),
 		onceki: (r.onceki as AuditFields | null) ?? null,
 		sonraki: (r.sonraki as AuditFields | null) ?? null,
 		ip: String(r.ip ?? ''),
@@ -132,16 +132,29 @@ function toRecord(r: Record<string, unknown>): AuditRecord {
 }
 
 /** One page, newest first, and the total number of matching records. */
-export async function listAuditLogs(f: AuditFilter, opts: { limit?: number; offset?: number } = {}): Promise<{ kayitlar: AuditRecord[]; toplam: number }> {
-	await ensurePostgresInit();
-	const w = where(f);
-	const limit = opts.limit ?? f.boyut;
-	const offset = opts.offset ?? (f.sayfa - 1) * f.boyut;
-	const [rows, count] = await Promise.all([
-		getPgPool().query(`SELECT id::text AS id, zaman, yapanId, yapanAd, islem, hedefTur, hedefId, hedefAd, onceki, sonraki, ip FROM denetim_kaydi ${w.sql} ORDER BY zaman DESC, denetim_kaydi.id DESC LIMIT ${limit} OFFSET ${offset}`, w.params),
-		getPgPool().query(`SELECT COUNT(*)::int AS n FROM denetim_kaydi ${w.sql}`, w.params),
-	]);
-	return { kayitlar: rows.rows.map(toRecord), toplam: Number(count.rows[0].n) };
+export async function listAuditLogs(
+	f: Partial<AuditFilter> = {},
+	opts: { limit?: number; offset?: number } = {}
+): Promise<{ kayitlar: AuditRecord[]; toplam: number }> {
+	try {
+		await ensurePostgresInit();
+		const w = where(f as AuditFilter);
+		const rawBoyut = Number.isFinite(f.boyut) && Number(f.boyut) > 0 ? Number(f.boyut) : 50;
+		const rawSayfa = Number.isFinite(f.sayfa) && Number(f.sayfa) > 0 ? Number(f.sayfa) : 1;
+		const limit = Number.isFinite(opts.limit) && Number(opts.limit) > 0 ? Math.floor(Number(opts.limit)) : rawBoyut;
+		const offset = Number.isFinite(opts.offset) && Number(opts.offset) >= 0 ? Math.floor(Number(opts.offset)) : (rawSayfa - 1) * rawBoyut;
+		const [rows, count] = await Promise.all([
+			getPgPool().query(
+				`SELECT id::text AS id, zaman, yapanId AS "yapanId", yapanAd AS "yapanAd", islem, hedefTur AS "hedefTur", hedefId AS "hedefId", hedefAd AS "hedefAd", onceki, sonraki, ip FROM audit_logs ${w.sql} ORDER BY zaman DESC, audit_logs.id DESC LIMIT ${limit} OFFSET ${offset}`,
+				w.params
+			),
+			getPgPool().query(`SELECT COUNT(*)::int AS n FROM audit_logs ${w.sql}`, w.params),
+		]);
+		return { kayitlar: rows.rows.map(toRecord), toplam: Number(count.rows[0]?.n ?? 0) };
+	} catch (error) {
+		console.error('listAuditLogs error:', error);
+		return { kayitlar: [], toplam: 0 };
+	}
 }
 
 /* ---------------- retention ---------------- */
@@ -150,14 +163,14 @@ export async function listAuditLogs(f: AuditFilter, opts: { limit?: number; offs
 export async function clearAuditLogs(): Promise<number> {
 	await ensurePostgresInit();
 	const sinir = Date.now() - saklamaGunu(process.env.AUDIT_RETENTION_DAYS) * 24 * 3600 * 1000;
-	const r = await getPgPool().query('DELETE FROM denetim_kaydi WHERE zaman < $1', [sinir]);
+	const r = await getPgPool().query('DELETE FROM audit_logs WHERE zaman < $1', [sinir]);
 	return r.rowCount ?? 0;
 }
 
 /** Purges all audit log records from the database. */
 export async function resetAuditLogs(): Promise<void> {
 	await ensurePostgresInit();
-	await getPgPool().query('TRUNCATE TABLE denetim_kaydi');
+	await getPgPool().query('TRUNCATE TABLE audit_logs');
 }
 
 const BAKIM_ARALIGI_MS = 24 * 3600 * 1000;

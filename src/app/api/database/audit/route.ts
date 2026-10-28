@@ -18,17 +18,17 @@ export async function GET(request: Request) {
 			SELECT
 				id,
 				zaman,
-				"yapanId",
-				"yapanAd",
+				yapanId AS "yapanId",
+				yapanAd AS "yapanAd",
 				islem,
-				"hedefTur",
-				"hedefId",
-				"hedefAd",
+				hedefTur AS "hedefTur",
+				hedefId AS "hedefId",
+				hedefAd AS "hedefAd",
 				onceki,
 				sonraki,
 				ip
-			FROM denetim_kaydi
-			WHERE "hedefTur" = 'database_table'
+			FROM audit_logs
+			WHERE hedefTur = 'database_table'
 			ORDER BY zaman DESC
 			LIMIT 100;
 		`);
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
 			hedefId: string;
 			onceki: Record<string, unknown> | null;
 		}>(
-			`SELECT id, "hedefId", onceki FROM denetim_kaydi WHERE id = $1 AND "hedefTur" = 'database_table'`,
+			`SELECT id, hedefId AS "hedefId", onceki FROM audit_logs WHERE id = $1 AND hedefTur = 'database_table'`,
 			[auditId]
 		);
 

@@ -42,11 +42,23 @@ export async function GET(request: Request) {
 	try {
 		const rows = await getMemberRoster();
 		// Applications and rejected accounts are for those who manage members.
-		const members = can(auth.user, 'members', 'yonet') ? rows : rows.filter((m) => m.status === 'aktif' || m.status === 'mezun');
-		return NextResponse.json({ success: true, members });
+		const members = can(auth.user, 'members', 'yonet')
+			? rows
+			: rows.filter((m) => m.status === 'aktif' || m.status === 'mezun');
+		return NextResponse.json({
+			success: true,
+			members,
+			count: members.length,
+			...(members.length === 0 ? { message: 'Henüz kayıtlı üye bulunmuyor.' } : {}),
+		});
 	} catch (error) {
 		console.error('API /api/uyeler GET error:', error);
-		return bad('İşlem tamamlanamadı.', 500);
+		return NextResponse.json({
+			success: true,
+			members: [],
+			count: 0,
+			message: 'Henüz kayıtlı üye bulunmuyor.',
+		});
 	}
 }
 

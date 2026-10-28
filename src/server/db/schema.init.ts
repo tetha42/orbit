@@ -793,6 +793,7 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 	});
 
 	await runMigrationStep('2026_07_sertifikalar_bigint', 'Cast certificate timestamps to BIGINT', async () => {
+		await client.query(`DROP VIEW IF EXISTS sertifikalar CASCADE`);
 		for (const column of ['verilistarihi', 'olusturma']) {
 			try {
 				await client.query(`
@@ -806,6 +807,7 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 				}
 			}
 		}
+		await client.query(`CREATE VIEW sertifikalar AS SELECT * FROM certificates`);
 	});
 
 	await runMigrationStep('2026_08_kullanicilar_durum', 'Normalize default user status', async () => {

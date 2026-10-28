@@ -43,47 +43,107 @@ export async function normalizeUserRow(row: Record<string, unknown> | undefined 
 }
 
 export async function getUsers(): Promise<User[]> {
-	await ensurePostgresInit();
-	const res = await getPgPool().query('SELECT * FROM users ORDER BY created_at ASC');
-	const users = await Promise.all(res.rows.map(normalizeUserRow));
-	return users.filter((u): u is User => u !== null);
+	if (!isDatabaseConfigured()) return [];
+	try {
+		await ensurePostgresInit();
+		const res = await getPgPool().query('SELECT * FROM users ORDER BY created_at ASC');
+		if (!res.rows?.length) return [];
+		const users = await Promise.all(res.rows.map(normalizeUserRow));
+		return users.filter((u): u is User => u !== null);
+	} catch (err) {
+		console.warn('[members.repo] getUsers read warning:', err);
+		return [];
+	}
+}
+
+function parseRosterTeams(raw: unknown): MemberRosterRow['takimlar'] {
+	if (Array.isArray(raw)) {
+		return raw.filter((item): item is NonNullable<MemberRosterRow['takimlar']>[number] => Boolean(item && typeof item === 'object' && (item as { id?: unknown }).id));
+	}
+	if (typeof raw === 'string' && raw.trim()) {
+		try {
+			const parsed = JSON.parse(raw);
+			if (Array.isArray(parsed)) {
+				return parsed.filter((item): item is NonNullable<MemberRosterRow['takimlar']>[number] => Boolean(item && typeof item === 'object' && (item as { id?: unknown }).id));
+			}
+		} catch {
+			return [];
+		}
+	}
+	return [];
 }
 
 export async function getMemberRoster(): Promise<MemberRosterRow[]> {
-	await ensurePostgresInit();
-	const res = await getPgPool().query(MEMBER_ROSTER_SQL);
-	return res.rows.map((r: Record<string, unknown>) => ({
-		...(r as unknown as MemberRosterRow),
-		takimAdi: (r.takimAdi ?? r.takimadi ?? undefined) as string | undefined,
-		takimlar: Array.isArray(r.takimlar)
-			? (r.takimlar as MemberRosterRow['takimlar'])
-			: typeof r.takimlar === 'string'
-			? (JSON.parse(r.takimlar) as MemberRosterRow['takimlar'])
-			: [],
-		yoklamaSayisi: Number(r.yoklamaSayisi ?? r.yoklamasayisi ?? 0),
-	}));
+	if (!isDatabaseConfigured()) return [];
+	try {
+		await ensurePostgresInit();
+		const res = await getPgPool().query(MEMBER_ROSTER_SQL);
+		if (!res.rows?.length) return [];
+		return res.rows.map((r: Record<string, unknown>) => ({
+			...(r as unknown as MemberRosterRow),
+			id: String(r.id ?? ''),
+			ad: String(r.ad ?? r.firstName ?? r.first_name ?? ''),
+			soyad: String(r.soyad ?? r.lastName ?? r.last_name ?? ''),
+			email: String(r.email ?? ''),
+			ogrenciNo: String(r.ogrenciNo ?? r.ogrencino ?? r.handle ?? ''),
+			bolum: String(r.bolum ?? r.department ?? ''),
+			sinif: Number(r.sinif ?? r.grade ?? 1),
+			roleId: (r.roleId ?? r.rolid ?? r.role_id ?? null) as string | null,
+			rolAd: (r.rolAd ?? r.rolad ?? null) as string | null,
+			rolRenk: (r.rolRenk ?? r.rolrenk ?? null) as string | null,
+			profilFoto: (r.profilFoto ?? r.profilfoto ?? r.avatarUrl ?? r.avatar_url ?? undefined) as string | undefined,
+			bio: (r.bio ?? undefined) as string | undefined,
+			xp: Number(r.xp ?? 0),
+			status: ((r.status as User['status']) || 'aktif'),
+			olusturma: Number(r.olusturma ?? r.createdAt ?? r.created_at ?? 0),
+			takimAdi: (r.takimAdi ?? r.takimadi ?? undefined) as string | undefined,
+			takimlar: parseRosterTeams(r.takimlar),
+			yoklamaSayisi: Number(r.yoklamaSayisi ?? r.yoklamasayisi ?? 0),
+		}));
+	} catch (err) {
+		console.warn('[members.repo] getMemberRoster read warning:', err);
+		return [];
+	}
 }
 
 export async function getUserById(id: string): Promise<User | null> {
-	await ensurePostgresInit();
-	const res = await getPgPool().query('SELECT * FROM users WHERE id = $1', [id]);
-	return await normalizeUserRow(res.rows[0]);
+	if (!id || !isDatabaseConfigured()) return null;
+	try {
+		await ensurePostgresInit();
+		const res = await getPgPool().query('SELECT * FROM users WHERE id = $1', [id]);
+		return await normalizeUserRow(res.rows[0]);
+	} catch (err) {
+		console.warn('[members.repo] getUserById read warning:', err);
+		return null;
+	}
 }
 
 export async function getUserByEmail(email: string): Promise<User | null> {
-	await ensurePostgresInit();
-	const res = await getPgPool().query('SELECT * FROM users WHERE LOWER(email) = LOWER($1)', [
-		email.trim(),
-	]);
-	return await normalizeUserRow(res.rows[0]);
+	if (!email || !isDatabaseConfigured()) return null;
+	try {
+		await ensurePostgresInit();
+		const res = await getPgPool().query('SELECT * FROM users WHERE LOWER(email) = LOWER($1)', [
+			email.trim(),
+		]);
+		return await normalizeUserRow(res.rows[0]);
+	} catch (err) {
+		console.warn('[members.repo] getUserByEmail read warning:', err);
+		return null;
+	}
 }
 
 export async function getUserByHandle(ogrenciNo: string): Promise<User | null> {
-	await ensurePostgresInit();
-	const res = await getPgPool().query('SELECT * FROM users WHERE handle = $1', [
-		ogrenciNo.trim(),
-	]);
-	return await normalizeUserRow(res.rows[0]);
+	if (!ogrenciNo || !isDatabaseConfigured()) return null;
+	try {
+		await ensurePostgresInit();
+		const res = await getPgPool().query('SELECT * FROM users WHERE handle = $1', [
+			ogrenciNo.trim(),
+		]);
+		return await normalizeUserRow(res.rows[0]);
+	} catch (err) {
+		console.warn('[members.repo] getUserByHandle read warning:', err);
+		return null;
+	}
 }
 
 export function hashSessionToken(token: string): string {
@@ -230,12 +290,19 @@ export async function createUser(
 }
 
 export async function getPendingUsers(): Promise<User[]> {
-	await ensurePostgresInit();
-	const res = await getPgPool().query(
-		"SELECT * FROM users WHERE status = 'beklemede' ORDER BY created_at ASC"
-	);
-	const users = await Promise.all(res.rows.map(normalizeUserRow));
-	return users.filter((u): u is User => u !== null);
+	if (!isDatabaseConfigured()) return [];
+	try {
+		await ensurePostgresInit();
+		const res = await getPgPool().query(
+			"SELECT * FROM users WHERE status = 'beklemede' ORDER BY created_at ASC"
+		);
+		if (!res.rows?.length) return [];
+		const users = await Promise.all(res.rows.map(normalizeUserRow));
+		return users.filter((u): u is User => u !== null);
+	} catch (err) {
+		console.warn('[members.repo] getPendingUsers read warning:', err);
+		return [];
+	}
 }
 
 export async function updateUserStatus(

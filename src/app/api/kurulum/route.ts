@@ -228,9 +228,9 @@ export async function handleSetupSubmission(request: Request) {
 		// 5. Seed default Orbit chat room
 		try {
 			await getPgPool().query(
-				`INSERT INTO chat_rooms (id, type, team_id, name, created_at)
+				`INSERT INTO chat_rooms (id, tur, teamId, ad, olusturma)
 				 VALUES ('oda_genel', 'genel', NULL, 'Orbit General Chat', $1)
-				 ON CONFLICT (id) DO UPDATE SET name = 'Orbit General Chat'`,
+				 ON CONFLICT (id) DO UPDATE SET ad = 'Orbit General Chat'`,
 				[Date.now()]
 			);
 		} catch (chatErr) {
