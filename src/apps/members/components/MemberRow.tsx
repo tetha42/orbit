@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { AvatarFallback } from '@/components/Common/AvatarFallback';
 import { RoleBadge } from '@/core/ui/RoleBadge';
-import { isMezunRol } from '@/core/permissions';
+import { isAlumniRole } from '@/core/permissions';
 import { useI18n } from '@/core/i18n';
 import { useSession } from '@/core/session';
 import { useContextMenu, useShellActions } from '@/core/shell';
@@ -26,7 +26,7 @@ import type { MenuItem } from '@/types/workspace';
 import { fill } from '@/lib/text';
 import ui from '@/core/ui/ui.module.css';
 import { MemberActions } from './MemberActions';
-import type { MemberRecord, AtanabilirRol } from '../types';
+import type { MemberRecord, AssignableRole } from '../types';
 
 interface MemberRowProps {
 	member: MemberRecord;
@@ -35,7 +35,7 @@ interface MemberRowProps {
 	isReachable: boolean;
 	isAuthorizedToAdd: boolean;
 	erisilebilir: boolean;
-	atanabilir: AtanabilirRol[];
+	assignableRoles: AssignableRole[];
 	onOpenProfile: (member: MemberRecord) => void;
 	onResetPassword: (memberId: string, name: string) => void;
 	onSendMessage: (memberId: string) => void;
@@ -52,7 +52,7 @@ export function MemberRow({
 	isReachable,
 	isAuthorizedToAdd,
 	erisilebilir,
-	atanabilir,
+	assignableRoles,
 	onOpenProfile,
 	onResetPassword,
 	onSendMessage,
@@ -67,13 +67,13 @@ export function MemberRow({
 	const { openApp } = useWindowActions();
 	const canSoc = canUseApp('soc');
 
-	const isMezun = member.status === 'mezun' || isMezunRol({ id: member.roleId, ad: member.rolAd });
-	const displayRol = isMezun
+	const isAlumni = member.status === 'mezun' || isAlumniRole({ id: member.roleId, ad: member.rolAd });
+	const displayRole = isAlumni
 		? {
-				ad: isMezunRol({ id: member.roleId, ad: member.rolAd })
+				ad: isAlumniRole({ id: member.roleId, ad: member.rolAd })
 					? (member.rolAd ?? t('membersStatusAlumni', 'Mezun'))
 					: t('membersStatusAlumni', 'Mezun'),
-				renk: isMezunRol({ id: member.roleId, ad: member.rolAd }) ? (member.rolRenk ?? '#64d2ff') : '#64d2ff',
+				renk: isAlumniRole({ id: member.roleId, ad: member.rolAd }) ? (member.rolRenk ?? '#64d2ff') : '#64d2ff',
 		  }
 		: member.roleId
 		? { ad: member.rolAd ?? '—', renk: member.rolRenk ?? '#8e8e93' }
@@ -122,13 +122,13 @@ export function MemberRow({
 						{
 							id: `role-none-${member.id}`,
 							label: t('membersCtxNoRole'),
-							checked: !member.roleId && !isMezun,
+							checked: !member.roleId && !isAlumni,
 							action: () => onUpdateRole(member.id, ''),
 						},
-						...atanabilir.map((r) => ({
+						...assignableRoles.map((r) => ({
 							id: `role-${r.id}-${member.id}`,
-							label: isMezunRol(r) ? t('membersStatusAlumni', r.ad) : r.ad,
-							checked: isMezun ? isMezunRol(r) : member.roleId === r.id,
+							label: isAlumniRole(r) ? t('membersStatusAlumni', r.ad) : r.ad,
+							checked: isAlumni ? isAlumniRole(r) : member.roleId === r.id,
 							action: () => onUpdateRole(member.id, r.id),
 						})),
 					],
@@ -248,7 +248,7 @@ export function MemberRow({
 
 			{/* Role badge */}
 			<td style={{ padding: '10px' }}>
-				<RoleBadge role={displayRol} bosMetin={t('roleNone')} />
+				<RoleBadge role={displayRole} bosMetin={t('roleNone')} />
 			</td>
 
 			{/* Major & Year */}

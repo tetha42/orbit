@@ -5,7 +5,7 @@ import { X } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
 import { useJsonResource } from '@/core/data/useJsonResource';
 import { relativeTime } from '@/core/data/format';
-import { BASLIK_MAX, teslimDurumu } from '@/lib/kanban';
+import { TITLE_MAX, dueStatus } from '@/lib/kanban';
 import type { TeamTaskActivity, TeamTaskItem, TeamTaskComment } from '@/db/schema';
 import styles from './Kanban.module.css';
 import ui from '@/core/ui/ui.module.css';
@@ -99,7 +99,7 @@ export function TaskDetailModal({ taskId, currentUserId, members, allLabels, not
 
 	const { task, maddeler, yorumlar, aktivite, izinler } = data;
 	const col = columnMeta(task.status);
-	const due = teslimDurumu(task.teslimTarihi, task.status, now);
+	const due = dueStatus(task.teslimTarihi, task.status, now);
 	const doneItems = maddeler.filter((m) => Number(m.tamamMi) === 1).length;
 	const canClaim = !task.atananUyeId && !izinler.manage && members.some((m) => m.id === currentUserId);
 	const when = (ts: number) => relativeTime(ts, now, language === 'en' ? 'en' : 'tr');
@@ -130,7 +130,7 @@ export function TaskDetailModal({ taskId, currentUserId, members, allLabels, not
 						className={styles.sheetTitleInput}
 						value={titleDraft ?? task.baslik}
 						disabled={!izinler.manage}
-						maxLength={BASLIK_MAX}
+						maxLength={TITLE_MAX}
 						aria-label={t('kbTitle')}
 						onFocus={() => setTitleDraft(task.baslik)}
 						onChange={(e) => setTitleDraft(e.target.value)}

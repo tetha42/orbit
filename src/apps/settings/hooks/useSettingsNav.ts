@@ -17,7 +17,7 @@ export function useSettingsNav() {
 	const [selectedTab, setActiveTab] = useState<SettingsTabId>('account');
 	const yonetici = canManageApp('settings');
 	const visibleSections = SETTINGS_SECTIONS.filter((sec) => {
-		if (sec.id === 'integrations' || sec.id === 'roles') return isAdmin;
+		if (sec.id === 'integrations' || sec.id === 'roles' || sec.id === 'privacy') return isAdmin;
 		return !sec.sistem || yonetici;
 	});
 	const activeTab: SettingsTabId = visibleSections.some((sec) => sec.id === selectedTab) ? selectedTab : 'account';

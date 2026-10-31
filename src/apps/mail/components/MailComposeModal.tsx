@@ -28,6 +28,33 @@ export const MailComposeModal: React.FC<MailComposeModalProps> = ({
 	const [body, setBody] = useState(initial?.body || '');
 	const [isSending, setIsSending] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [groups, setGroups] = useState<
+		{ id: string; label: string; kind: string; count: number; emails: string[] }[]
+	>([]);
+
+	React.useEffect(() => {
+		if (!isOpen) return;
+		let cancelled = false;
+		fetch('/api/mail/groups', { cache: 'no-store' })
+			.then((res) => (res.ok ? res.json() : null))
+			.then((payload) => {
+				if (!cancelled && Array.isArray(payload?.groups)) setGroups(payload.groups);
+			})
+			.catch(() => {});
+		return () => {
+			cancelled = true;
+		};
+	}, [isOpen]);
+
+	const addGroup = (id: string) => {
+		const group = groups.find((item) => item.id === id);
+		if (!group) return;
+		const current = to
+			.split(',')
+			.map((value) => value.trim())
+			.filter(Boolean);
+		setTo([...new Set([...current, ...group.emails])].join(', '));
+	};
 
 	React.useEffect(() => {
 		if (isOpen) {
@@ -123,7 +150,7 @@ export const MailComposeModal: React.FC<MailComposeModalProps> = ({
 					<div className={styles.composeFieldRow}>
 						<label className={styles.composeFieldLabel}>{t('mailToLabel')}</label>
 						<input
-							type="email"
+							type="text"
 							className={styles.composeFieldInput}
 							placeholder="alici@example.com"
 							value={to}
@@ -131,6 +158,22 @@ export const MailComposeModal: React.FC<MailComposeModalProps> = ({
 							required
 							autoFocus
 						/>
+					</div>
+
+					<div className={styles.composeFieldRow}>
+						<label className={styles.composeFieldLabel}>{t('mailRecipientGroup')}</label>
+						<select
+							className={styles.composeFieldInput}
+							value=""
+							onChange={(e) => addGroup(e.target.value)}
+						>
+							<option value="">{t('mailGroupPlaceholder')}</option>
+							{groups.map((group) => (
+								<option key={group.id} value={group.id}>
+									{group.label} ({group.count})
+								</option>
+							))}
+						</select>
 					</div>
 
 					<div className={styles.composeFieldRow}>

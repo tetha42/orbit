@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { useSound } from '@/core/sound';
 import { useI18n } from '@/core/i18n';
 import { foldTr } from '@/lib/text';
-import { teslimDurumu, type GorevDurumu, type GorevOnceligi } from '@/lib/kanban';
+import { dueStatus, type TaskStatus, type TaskPriority } from '@/lib/kanban';
 import styles from './Kanban.module.css';
 import { COLUMNS, sortTasks, type TeamMember, type TeamTask } from '../types';
 import { NewTaskModal } from './NewTaskModal';
@@ -45,10 +45,10 @@ export function KanbanBoard({ team, currentUserId, isManager, mutateTasks, refet
 
 	const [query, setQuery] = useState('');
 	const [assignee, setAssignee] = useState<AssigneeFilter>('all');
-	const [priority, setPriority] = useState<GorevOnceligi | ''>('');
+	const [priority, setPriority] = useState<TaskPriority | ''>('');
 	const [label, setLabel] = useState('');
 	const [sort, setSort] = useState<SortMode>('manual');
-	const [newTaskCol, setNewTaskCol] = useState<GorevDurumu | null>(null);
+	const [newTaskCol, setNewTaskCol] = useState<TaskStatus | null>(null);
 	const notify: Notify = useToast();
 
 	useAppCommand('teams', (command) => {
@@ -89,7 +89,7 @@ export function KanbanBoard({ team, currentUserId, isManager, mutateTasks, refet
 	}, [tasks, query, assignee, currentUserId, priority, label]);
 
 	const byColumn = useMemo(() => {
-		const map = new Map<GorevDurumu, TeamTask[]>();
+		const map = new Map<TaskStatus, TeamTask[]>();
 		for (const col of COLUMNS) map.set(col.id, []);
 		for (const task of visible) map.get(task.status)?.push(task);
 		for (const col of COLUMNS) map.set(col.id, sortTasks(map.get(col.id) ?? [], sort));
@@ -99,7 +99,7 @@ export function KanbanBoard({ team, currentUserId, isManager, mutateTasks, refet
 	const stats = useMemo(() => {
 		const total = tasks.length;
 		const done = tasks.filter((g) => g.status === 'tamamlandi').length;
-		const overdue = tasks.filter((g) => teslimDurumu(g.teslimTarihi, g.status, now) === 'gecikti').length;
+		const overdue = tasks.filter((g) => dueStatus(g.teslimTarihi, g.status, now) === 'gecikti').length;
 		const mine = tasks.filter((g) => g.atananUyeId === currentUserId && g.status !== 'tamamlandi').length;
 		return { total, done, overdue, mine };
 	}, [tasks, currentUserId, now]);
@@ -108,7 +108,7 @@ export function KanbanBoard({ team, currentUserId, isManager, mutateTasks, refet
 		tasks, byColumn, sort, now, canWork, mutateTasks, refetch, notify, playSystemSound, t,
 	});
 
-	const dueText = (state: ReturnType<typeof teslimDurumu>, ts: number) => {
+	const dueText = (state: ReturnType<typeof dueStatus>, ts: number) => {
 		if (state === 'gecikti') return t('kbDueOverdue');
 		if (state === 'bugun') return t('kbDueToday');
 		return new Date(ts).toLocaleDateString(language === 'en' ? 'en-GB' : 'tr-TR', { day: 'numeric', month: 'short' });

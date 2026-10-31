@@ -31,6 +31,7 @@ export function DatabaseApp() {
 	const isLight = !isDark;
 	const isAllowed = isAdmin || canUseApp('database');
 	const twoFactorEnabled = Boolean(currentUser?.twoFactorEnabled);
+	const passkeySession = currentUser?.authMethod === 'passkey';
 
 	const [is2FaVerified, setIs2FaVerified] = useState(false);
 	const [dbToken, setDbToken] = useState<string>('');
@@ -101,9 +102,15 @@ export function DatabaseApp() {
 			});
 			if (res.ok) {
 				const data = await res.json();
-				setTables(data.tables || []);
-				if (!selectedTable && data.tables?.length > 0) {
-					setSelectedTable(data.tables[0].name);
+				const nextTables = Array.isArray(data.tables)
+					? data.tables.filter(
+							(t: unknown): t is TableSummary =>
+								Boolean(t && typeof t === 'object' && typeof (t as { name?: unknown }).name === 'string')
+						)
+					: [];
+				setTables(nextTables);
+				if (!selectedTable && nextTables.length > 0) {
+					setSelectedTable(nextTables[0].name);
 				}
 			} else if (res.status === 401) {
 				setIs2FaVerified(false);
@@ -167,6 +174,34 @@ export function DatabaseApp() {
 			void fetchTableData();
 		}
 	}, [is2FaVerified, dbToken, selectedTable, fetchTableData]);
+
+	// A passkey session is already multi-factor; obtain the short-lived database
+	// token directly. If this fails, the prompt offers the same action again.
+	const handlePasskeySubmit = useCallback(async () => {
+		try {
+			const res = await fetch('/api/database/auth', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ method: 'passkey' }),
+			});
+			const data = await res.json();
+			if (res.ok && data.token) {
+				setDbToken(data.token);
+				setIs2FaVerified(true);
+				setIdleExpired(false);
+				return { ok: true };
+			}
+			return { ok: false, error: data.error };
+		} catch (err) {
+			return { ok: false, error: err instanceof Error ? err.message : t('connError') };
+		}
+	}, [t]);
+
+	useEffect(() => {
+		if (passkeySession && !is2FaVerified) {
+			void handlePasskeySubmit();
+		}
+	}, [passkeySession, is2FaVerified, handlePasskeySubmit]);
 
 	// Handle 2FA verification submission
 	const handleTwoFactorSubmit = async (code: string) => {
@@ -493,8 +528,10 @@ export function DatabaseApp() {
 			<DatabaseTwoFactorPrompt
 				isLight={isLight}
 				twoFactorEnabled={twoFactorEnabled}
+				passkeySession={passkeySession}
 				idleExpired={idleExpired}
 				onSubmit={handleTwoFactorSubmit}
+				onPasskey={handlePasskeySubmit}
 			/>
 		);
 	}

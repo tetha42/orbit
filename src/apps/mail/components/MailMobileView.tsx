@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import {
 	ChevronLeft,
 	Search,
@@ -90,6 +90,32 @@ function MobileComposeSheet({ composeInitial, onClose, onSendSuccess }: MobileCo
 	const [composeBody, setComposeBody] = useState(composeInitial?.body || '');
 	const [isSending, setIsSending] = useState(false);
 	const [composeError, setComposeError] = useState<string | null>(null);
+	const [groups, setGroups] = useState<
+		{ id: string; label: string; count: number; emails: string[] }[]
+	>([]);
+
+	useEffect(() => {
+		let cancelled = false;
+		fetch('/api/mail/groups', { cache: 'no-store' })
+			.then((res) => (res.ok ? res.json() : null))
+			.then((payload) => {
+				if (!cancelled && Array.isArray(payload?.groups)) setGroups(payload.groups);
+			})
+			.catch(() => {});
+		return () => {
+			cancelled = true;
+		};
+	}, []);
+
+	const addGroup = (id: string) => {
+		const group = groups.find((item) => item.id === id);
+		if (!group) return;
+		const current = composeTo
+			.split(',')
+			.map((value) => value.trim())
+			.filter(Boolean);
+		setComposeTo([...new Set([...current, ...group.emails])].join(', '));
+	};
 
 	const handleSendSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -189,13 +215,29 @@ function MobileComposeSheet({ composeInitial, onClose, onSendSuccess }: MobileCo
 					<div className={s.sheetFieldRow}>
 						<span className={s.sheetFieldLabel}>{t('mailToLabel')}</span>
 						<input
-							type="email"
+							type="text"
 							className={s.sheetFieldInput}
 							placeholder="alici@example.com"
 							value={composeTo}
 							onChange={(e) => setComposeTo(e.target.value)}
 							required
 						/>
+					</div>
+
+					<div className={s.sheetFieldRow}>
+						<span className={s.sheetFieldLabel}>{t('mailRecipientGroup')}</span>
+						<select
+							className={s.sheetFieldInput}
+							value=""
+							onChange={(e) => addGroup(e.target.value)}
+						>
+							<option value="">{t('mailGroupPlaceholder')}</option>
+							{groups.map((group) => (
+								<option key={group.id} value={group.id}>
+									{group.label} ({group.count})
+								</option>
+							))}
+						</select>
 					</div>
 
 					<div className={s.sheetFieldRow}>

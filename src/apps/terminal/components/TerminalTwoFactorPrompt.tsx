@@ -8,6 +8,8 @@ import { useWindowActions } from '@/core/windows';
 interface TerminalTwoFactorPromptProps {
 	isLight: boolean;
 	twoFactorEnabled: boolean;
+	/** The current session signed in with a passkey, which is already multi-factor. */
+	passkeySession?: boolean;
 	idleExpired?: boolean;
 	/** Why the previous attempt failed to start the shell (shown above the input). */
 	serverError?: string | null;
@@ -17,6 +19,7 @@ interface TerminalTwoFactorPromptProps {
 export function TerminalTwoFactorPrompt({
 	isLight,
 	twoFactorEnabled,
+	passkeySession,
 	idleExpired,
 	serverError,
 	onSubmit,
@@ -67,6 +70,71 @@ export function TerminalTwoFactorPrompt({
 		// that was just spent at sign-in, which would submit it again immediately
 		// and bounce the gate before the user can read the error.
 	};
+
+	if (passkeySession) {
+		return (
+			<div
+				style={{
+					display: 'flex',
+					flexDirection: 'column',
+					alignItems: 'center',
+					justifyContent: 'center',
+					height: '100%',
+					padding: '2rem',
+					background: isLight ? '#f8fafc' : '#080b11',
+					color: isLight ? '#0f172a' : '#f8fafc',
+					textAlign: 'center',
+				}}
+			>
+				<div
+					style={{
+						width: '56px',
+						height: '56px',
+						borderRadius: '14px',
+						background: 'rgba(16, 185, 129, 0.12)',
+						border: '1px solid rgba(16, 185, 129, 0.3)',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						marginBottom: '1.25rem',
+						color: '#10b981',
+					}}
+				>
+					<KeyRound size={28} />
+				</div>
+				<h2 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '0.4rem' }}>
+					{t('termPasskeyTitle')}
+				</h2>
+				<p
+					style={{
+						maxWidth: '430px',
+						fontSize: '0.8125rem',
+						color: isLight ? '#64748b' : '#94a3b8',
+						lineHeight: 1.5,
+						marginBottom: '1.5rem',
+					}}
+				>
+					{t('termPasskeyDesc')}
+				</p>
+				<button
+					type="button"
+					onClick={() => void onSubmit('')}
+					style={{
+						padding: '0.625rem 1.25rem',
+						borderRadius: '10px',
+						background: 'var(--accent)',
+						color: '#fff',
+						fontSize: '0.875rem',
+						fontWeight: 600,
+						border: 'none',
+						cursor: 'pointer',
+					}}
+				>
+					{t('termPasskeyOpen')}
+				</button>
+			</div>
+		);
+	}
 
 	if (!twoFactorEnabled) {
 		return (

@@ -11,7 +11,7 @@ import type { AppleNote, NoteFolder, ServerNoteRecord } from '../types';
 export const DEFAULT_FOLDERS: NoteFolder[] = [
 	{ id: 'all', name: 'All Notes', isSystem: true, iconType: 'all' },
 	{ id: 'quick', name: 'Quick Notes', isSystem: true, iconType: 'quick' },
-	{ id: 'club', name: 'Club & Management', isSystem: true, iconType: 'club' },
+	{ id: 'club', name: 'Community & Management', isSystem: true, iconType: 'club' },
 	{ id: 'teknofest', name: 'Teknofest & R&D', isSystem: true, iconType: 'teknofest' },
 	{ id: 'workshops', name: 'Workshops & Training', isSystem: true, iconType: 'workshops' },
 	{ id: 'personal', name: 'Personal', isSystem: true, iconType: 'personal' },

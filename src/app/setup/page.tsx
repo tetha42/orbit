@@ -3,12 +3,12 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { FirstRunSetupWizard } from '@/components/Auth/FirstRunSetupWizard';
-import type { KurulumYaniti } from '@/lib/kurulum';
+import type { SetupResponse } from '@/lib/kurulum';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import styles from '@/components/Auth/VsCodeSetup.module.css';
 
 export default function SetupPage() {
-	const [status, setStatus] = useState<KurulumYaniti | null>(null);
+	const [status, setStatus] = useState<SetupResponse | null>(null);
 	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {

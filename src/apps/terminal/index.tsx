@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import '@xterm/xterm/css/xterm.css';
 import { useIsActive, useWindow } from '@/core/windows';
 import { useSession } from '@/core/session';
@@ -26,6 +26,7 @@ export function TerminalApp() {
 
 	const containerRef = useRef<HTMLDivElement>(null);
 	const isAllowed = canUseApp('terminal');
+	const passkeySession = currentUser?.authMethod === 'passkey';
 
 	const [is2FaVerified, setIs2FaVerified] = useState(false);
 	const [twoFactorCode, setTwoFactorCode] = useState<string>('');
@@ -34,6 +35,16 @@ export function TerminalApp() {
 	// rate limit, disabled terminal…). Carrying the server message into the
 	// prompt stops a failed start from looking like a silent 2FA lock loop.
 	const [initError, setInitError] = useState<string | null>(null);
+
+	// A passkey session already cleared the strongest factor; open the shell
+	// without a second prompt. After the 60-minute idle lock the passkey panel
+	// asks once, and the session is re-verified without a TOTP code.
+	useEffect(() => {
+		if (passkeySession && !idleExpired) {
+			setIs2FaVerified(true);
+			setTwoFactorCode('');
+		}
+	}, [passkeySession, idleExpired]);
 
 	const handleIdleTimeout = useCallback(() => {
 		setIs2FaVerified(false);
@@ -126,6 +137,7 @@ export function TerminalApp() {
 			<TerminalTwoFactorPrompt
 				isLight={isLight}
 				twoFactorEnabled={Boolean(currentUser?.twoFactorEnabled)}
+				passkeySession={passkeySession}
 				idleExpired={idleExpired}
 				serverError={initError}
 				onSubmit={handleVerify2Fa}

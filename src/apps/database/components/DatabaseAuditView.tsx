@@ -158,9 +158,9 @@ export function DatabaseAuditView({ dbToken, onRevertSuccess }: DatabaseAuditVie
 				) : (
 					<div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
 						{records.map((rec) => {
-							const onceki = rec.onceki || {};
+							const previous = rec.onceki || {};
 							const sonraki = rec.sonraki || {};
-							const pkVal = onceki.pkVal ?? sonraki.pkVal;
+							const pkVal = previous.pkVal ?? sonraki.pkVal;
 
 							// Extract changed keys excluding pkCol and pkVal
 							const changedKeys = Object.keys(sonraki).filter((k) => k !== 'pkCol' && k !== 'pkVal');
@@ -209,7 +209,7 @@ export function DatabaseAuditView({ dbToken, onRevertSuccess }: DatabaseAuditVie
 										{/* Diff pills */}
 										<div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
 											{changedKeys.map((key) => {
-												const oldVal = onceki[key];
+												const oldVal = previous[key];
 												const newVal = sonraki[key];
 												return (
 													<div

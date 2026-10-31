@@ -7,14 +7,14 @@ import { Trash2 } from 'lucide-react';
 import { Sheet } from '@/core/ui/Sheet';
 import ui from '@/core/ui/ui.module.css';
 
-export interface RolSummaryView {
+export interface RoleSummaryView {
 	id: string;
 	ad: string;
 	kullaniciSayisi: number;
 }
 
 interface DeleteRoleSheetProps {
-	role: RolSummaryView;
+	role: RoleSummaryView;
 	hedefler: { id: string; ad: string }[];
 	varsayilan: string | null;
 	onClose: () => void;

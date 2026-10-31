@@ -8,7 +8,7 @@ import type { TeamWorkspaceTab } from './TeamWorkspaceHeader';
 import { KanbanBoard } from './KanbanBoard';
 import { TeamMembers } from './TeamMembers';
 import { TeamSettings } from './TeamSettings';
-import { KasaPanel } from '@/apps/budget/components/KasaPanel';
+import { VaultPanel } from '@/apps/budget/components/KasaPanel';
 import { TeamChatRoom } from './TeamChatRoom';
 
 interface TeamWorkspaceBodyProps {
@@ -16,10 +16,11 @@ interface TeamWorkspaceBodyProps {
 	visibleTab: TeamWorkspaceTab;
 	currentUserId: string;
 	currentUserName?: string;
-	canSeeKasa: boolean;
+	canSeeVault: boolean;
 	openTaskId: string | null;
 	setOpenTaskId: (id: string | null) => void;
 	roster: { id: string; ad: string; soyad: string }[];
+	categories: string[];
 	notify: (text: string, tone?: 'success' | 'error') => void;
 	fetchTeams: () => Promise<void>;
 	setTeamsData: React.Dispatch<React.SetStateAction<Team[] | null>>;
@@ -31,10 +32,11 @@ export function TeamWorkspaceBody({
 	visibleTab,
 	currentUserId,
 	currentUserName,
-	canSeeKasa,
+	canSeeVault,
 	openTaskId,
 	setOpenTaskId,
 	roster,
+	categories,
 	notify,
 	fetchTeams,
 	setTeamsData,
@@ -77,12 +79,13 @@ export function TeamWorkspaceBody({
 					currentUserName={currentUserName || t('tmMemberFallback')}
 				/>
 			)}
-			{visibleTab === 'kasa' && canSeeKasa && <KasaPanel key={team.id} teamId={team.id} embedded />}
+			{visibleTab === 'kasa' && canSeeVault && <VaultPanel key={team.id} teamId={team.id} embedded />}
 			{visibleTab === 'settings' && team.izinler.manage && (
 				<TeamSettings
 					key={`${team.id}:${team.ad}:${team.kontenjan}:${team.liderId}:${team.status}:${team.katilimTuru}`}
 					team={team}
 					roster={roster}
+					categories={categories}
 					notify={notify}
 					onChanged={fetchTeams}
 					onDelete={() => onRemoveTeam(team)}

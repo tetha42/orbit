@@ -8,12 +8,12 @@ import { formatDate } from '@/core/data/format';
 import { useContextMenu } from '@/core/shell/useContextMenu';
 import { copyToClipboard } from '@/lib/clipboard';
 import type { MenuItem } from '@/types/workspace';
-import type { KasaRecord } from '../types';
+import type { VaultRecord } from '../types';
 import k from './Kasa.module.css';
 
-interface KasaLedgerTableProps {
-	records: KasaRecord[];
-	filtered: KasaRecord[];
+interface VaultLedgerTableProps {
+	records: VaultRecord[];
+	filtered: VaultRecord[];
 	balances: Map<string, number>;
 	isLoading: boolean;
 	canWrite: boolean;
@@ -21,25 +21,25 @@ interface KasaLedgerTableProps {
 	anyFilter: boolean;
 	filteredIn: number;
 	filteredOut: number;
-	onEdit: (r: KasaRecord) => void;
-	onDelete: (r: KasaRecord) => void;
+	onEdit: (r: VaultRecord) => void;
+	onDelete: (r: VaultRecord) => void;
 }
 
 const tl = (kurus: number) => `₺${formatKurus(kurus)}`;
 const dateFmt = (ms: number) => formatDate(ms);
 
-interface KasaRowProps {
-	r: KasaRecord;
+interface VaultRowProps {
+	r: VaultRecord;
 	balance: number;
 	lockedForMe: boolean;
 	canWrite: boolean;
 	isManagement: boolean;
 	language: string;
-	onEdit: (r: KasaRecord) => void;
-	onDelete: (r: KasaRecord) => void;
+	onEdit: (r: VaultRecord) => void;
+	onDelete: (r: VaultRecord) => void;
 }
 
-function KasaTableRow({ r, balance, lockedForMe, language, onEdit, onDelete }: KasaRowProps) {
+function VaultTableRow({ r, balance, lockedForMe, language, onEdit, onDelete }: VaultRowProps) {
 	const { t } = useI18n();
 	const transfer = !!r.aktarimId;
 
@@ -171,7 +171,7 @@ function KasaTableRow({ r, balance, lockedForMe, language, onEdit, onDelete }: K
 	);
 }
 
-function KasaMobileCard({ r, lockedForMe, onEdit, onDelete }: Omit<KasaRowProps, 'balance'>) {
+function VaultMobileCard({ r, lockedForMe, onEdit, onDelete }: Omit<VaultRowProps, 'balance'>) {
 	const { t } = useI18n();
 	const transfer = !!r.aktarimId;
 
@@ -307,7 +307,7 @@ function KasaMobileCard({ r, lockedForMe, onEdit, onDelete }: Omit<KasaRowProps,
 	);
 }
 
-export function KasaLedgerTable({
+export function VaultLedgerTable({
 	records,
 	filtered,
 	balances,
@@ -319,7 +319,7 @@ export function KasaLedgerTable({
 	filteredOut,
 	onEdit,
 	onDelete,
-}: KasaLedgerTableProps) {
+}: VaultLedgerTableProps) {
 	const { t, language } = useI18n();
 	const [isMobile, setIsMobile] = React.useState(false);
 
@@ -346,7 +346,7 @@ export function KasaLedgerTable({
 					const transfer = !!r.aktarimId;
 					const lockedForMe = !canWrite || (transfer && !isManagement);
 					return (
-						<KasaMobileCard
+						<VaultMobileCard
 							key={r.id}
 							r={r}
 							lockedForMe={lockedForMe}
@@ -393,7 +393,7 @@ export function KasaLedgerTable({
 						const transfer = !!r.aktarimId;
 						const lockedForMe = !canWrite || (transfer && !isManagement);
 						return (
-							<KasaTableRow
+							<VaultTableRow
 								key={r.id}
 								r={r}
 								balance={balances.get(r.id) ?? 0}

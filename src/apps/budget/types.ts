@@ -1,6 +1,6 @@
-import type { KasaSummary } from '@/types/budget';
+import type { VaultSummary } from '@/types/budget';
 
-export interface KasaRecord {
+export interface VaultRecord {
 	id: string;
 	date: number;
 	olusturma?: number;
@@ -24,15 +24,15 @@ export interface CashTotals {
 	kayitSayisi: number;
 }
 
-export interface KasaResponse {
+export interface VaultResponse {
 	kasa: { teamId: string | null; ad: string; kind: 'genel' | 'proje' };
-	kayitlar: KasaRecord[];
+	kayitlar: VaultRecord[];
 	ozet: CashTotals;
 	/** What the caller may do here (lib/kasaAccess): write entries; manage (transfers). */
 	izin: { yaz: boolean; yonet: boolean };
 }
 
-export type { KasaSummary };
+export type { VaultSummary };
 
 /** "Genel Kasa" or the project's name, for the transfer form. */
-export const kasaKey = (teamId: string | null) => teamId ?? 'genel';
+export const vaultKey = (teamId: string | null) => teamId ?? 'genel';

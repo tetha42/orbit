@@ -1,14 +1,17 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { inspectRequestComponents } from '@/lib/waf';
+import { consumeRateLimit } from '@/lib/rateLimit';
+import { clientAddress } from '@/lib/http';
 
 /**
  * Next.js 16 Global Proxy (Edge / Pre-routing Defense Layer).
  *
  * Intercepts incoming requests before route dispatch:
- * 1. Executes pure WAF inspection on path, query, and user-agent.
- * 2. Catches AI bots, recon fuzzers, and canary triggers (e.g. /.env, /.git, /wp-login.php).
- * 3. Transparently rewrites malicious recon probes to the honeypot canary handler (/api/admin/config),
+ * 1. Enforces global rate-limiting on authentication routes (/api/auth/).
+ * 2. Executes pure WAF inspection on path, query, and user-agent.
+ * 3. Catches AI bots, recon fuzzers, and canary triggers (e.g. /.env, /.git, /wp-login.php).
+ * 4. Transparently rewrites malicious recon probes to the honeypot canary handler (/api/admin/config),
  *    which logs the strike to PostgreSQL and automatically quarantines the attacker's IP.
  */
 export function proxy(request: NextRequest) {
@@ -17,6 +20,17 @@ export function proxy(request: NextRequest) {
 	// Honeypot itself passes directly to its route handler
 	if (pathname === '/api/admin/config') {
 		return NextResponse.next();
+	}
+
+	if (pathname.startsWith('/api/auth/')) {
+		const ip = clientAddress(request);
+		const r = consumeRateLimit(`auth:global:${ip}`, 30, 60_000);
+		if (!r.allowed) {
+			return NextResponse.json(
+				{ error: 'Too many requests.' },
+				{ status: 429, headers: { 'Retry-After': String(r.retryAfter) } }
+			);
+		}
 	}
 
 	const waf = inspectRequestComponents({

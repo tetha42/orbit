@@ -7,7 +7,7 @@ import { formatKurus } from '@/lib/budget';
 import ui from '@/core/ui/ui.module.css';
 import k from './Kasa.module.css';
 
-interface KasaInsightsProps {
+interface VaultInsightsProps {
 	dagilim: { kategori: string; tutarKurus: number; oran: number }[];
 	kategori: string;
 	onSelectKategori: (cat: string) => void;
@@ -26,7 +26,7 @@ const monthName = (key: string, style: 'short' | 'long' = 'short', lang = 'tr') 
 	);
 };
 
-export function KasaInsights({
+export function VaultInsights({
 	dagilim,
 	kategori,
 	onSelectKategori,
@@ -34,7 +34,7 @@ export function KasaInsights({
 	ay,
 	onSelectAy,
 	maxMonth,
-}: KasaInsightsProps) {
+}: VaultInsightsProps) {
 	const { t, language } = useI18n();
 
 	return (

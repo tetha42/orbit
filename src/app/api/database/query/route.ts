@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getPgPool } from '@/db';
 import { requireDatabaseAdmin } from '@/lib/server/databaseAccess';
 import { clientAddress } from '@/lib/http';
-import { inspectDatabaseSql, maskDatabaseRow } from '@/lib/waf';
+import { inspectDatabaseSql, maskDatabaseRow, DB_SENSITIVE_COLUMNS } from '@/lib/waf';
 import { logSystemEvent } from '@/server/db/domains/logs.repo';
 import { recordSecurityStrike } from '@/server/db/domains/security.repo';
 
@@ -138,12 +138,17 @@ export async function POST(request: Request) {
 			}
 		}
 
-		// 3. Normal Query execution with mandatory 8-second statement_timeout
+		// 3. Normal Query execution inside strict READ ONLY transaction with mandatory 8-second statement_timeout
 		const client = await pool.connect();
 		let result;
 		try {
+			await client.query('BEGIN TRANSACTION READ ONLY');
 			await client.query('SET LOCAL statement_timeout = 8000');
 			result = await client.query(query);
+			await client.query('COMMIT');
+		} catch (qErr) {
+			await client.query('ROLLBACK').catch(() => {});
+			throw qErr;
 		} finally {
 			client.release();
 		}
@@ -154,10 +159,18 @@ export async function POST(request: Request) {
 			dataTypeID: f.dataTypeID,
 		}));
 
-		// Mask sensitive fields by column name, value prefix, and sistem_ayarlari row key
-		const rows = (result.rows || []).map((r) =>
-			r && typeof r === 'object' ? maskDatabaseRow(r as Record<string, unknown>) : r
-		);
+		// Deny-list and mask sensitive columns from query results
+		const rows = (result.rows || []).map((r) => {
+			if (!r || typeof r !== 'object') return r;
+			const clean = { ...(r as Record<string, unknown>) };
+			for (const k of Object.keys(clean)) {
+				const lower = k.toLowerCase();
+				if (DB_SENSITIVE_COLUMNS.has(lower) || DB_SENSITIVE_COLUMNS.has(lower.replace(/_/g, ''))) {
+					clean[k] = '[REDACTED]';
+				}
+			}
+			return maskDatabaseRow(clean);
+		});
 
 		await logSystemEvent({
 			servis: 'database',

@@ -7,7 +7,7 @@ export interface ChatOdaItem {
 	avatar?: string | null;
 	peerUserId?: string | null;
 	memberCount?: number;
-	sonMesaj?: ChatMesajItem | null;
+	sonMesaj?: ChatMessageItem | null;
 	okunmamisSayisi?: number;
 }
 
@@ -44,14 +44,21 @@ export interface QuotedMessageSnapshot {
 	icerik: string;
 }
 
-export interface ChatMesajItem {
+export interface ChatAttachmentItem {
+	ad: string;
+	url: string;
+	boyut?: number;
+	tip?: string;
+}
+
+export interface ChatMessageItem {
 	id: string;
 	odaId: string;
 	gonderenId: string;
 	gonderenAd: string;
 	gonderenFoto: string | null;
 	icerik: string;
-	ekler: Array<{ ad: string; url: string; boyut?: number; tip?: string }>;
+	ekler: ChatAttachmentItem[];
 	date: number;
 	silinmeTarihi?: number | null;
 	duzenlenmeTarihi?: number | null;

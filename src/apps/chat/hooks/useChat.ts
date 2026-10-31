@@ -10,7 +10,7 @@ import {
 	requestNotificationPermission,
 	showAppNotification,
 } from '@/lib/client/notifications';
-import type { ChatOdaItem, ChatMesajItem, ChatPollItem } from '../types';
+import type { ChatAttachmentItem, ChatOdaItem, ChatMessageItem, ChatPollItem } from '../types';
 
 export function useChat(initialRoomId?: string | null) {
 	const { currentUser, isAdmin } = useSession();
@@ -18,8 +18,9 @@ export function useChat(initialRoomId?: string | null) {
 	const { focusTarget, clearFocusTarget } = useWindowFocusTarget();
 	const [rooms, setRooms] = useState<ChatOdaItem[]>([]);
 	const [activeRoomId, setActiveRoomId] = useState<string | null>(initialRoomId || null);
-	const [messages, setMessages] = useState<ChatMesajItem[]>([]);
-	const [replyingMessage, setReplyingMessage] = useState<ChatMesajItem | null>(null);
+	const [messages, setMessages] = useState<ChatMessageItem[]>([]);
+	const [replyingMessage, setReplyingMessage] = useState<ChatMessageItem | null>(null);
+	const [focusedMessageId, setFocusedMessageId] = useState<string | null>(null);
 	const [loadingRooms, setLoadingRooms] = useState(true);
 	const [loadingMessages, setLoadingMessages] = useState(false);
 	const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
@@ -34,7 +35,7 @@ export function useChat(initialRoomId?: string | null) {
 	const loadOlderAbortRef = useRef<AbortController | null>(null);
 	const activeFetchIdRef = useRef<number>(0);
 	const focusTargetRef = useRef(focusTarget);
-	const messagesRef = useRef<ChatMesajItem[]>([]);
+	const messagesRef = useRef<ChatMessageItem[]>([]);
 	const hasMoreMessagesRef = useRef(false);
 	const loadingOlderRef = useRef(false);
 
@@ -120,7 +121,7 @@ export function useChat(initialRoomId?: string | null) {
 			if (fetchId !== activeFetchIdRef.current) return; // Discard stale response
 
 			if (data.ok && Array.isArray(data.messages)) {
-				const safeMessages: ChatMesajItem[] = data.messages.map((m: ChatMesajItem) => ({
+				const safeMessages: ChatMessageItem[] = data.messages.map((m: ChatMessageItem) => ({
 					...m,
 					gonderenAd: m.gonderenAd || 'Üye',
 					icerik: m.icerik || '',
@@ -182,7 +183,7 @@ export function useChat(initialRoomId?: string | null) {
 			if (fetchId !== activeFetchIdRef.current) return;
 
 			if (data.ok && Array.isArray(data.messages)) {
-				const olderMessages: ChatMesajItem[] = data.messages.map((m: ChatMesajItem) => ({
+				const olderMessages: ChatMessageItem[] = data.messages.map((m: ChatMessageItem) => ({
 					...m,
 					gonderenAd: m.gonderenAd || 'Üye',
 					icerik: m.icerik || '',
@@ -251,8 +252,8 @@ export function useChat(initialRoomId?: string | null) {
 				try {
 					const data = JSON.parse(e.data);
 					if (data.type === 'new_message' && data.message) {
-						const rawMsg = data.message as ChatMesajItem;
-						const newMsg: ChatMesajItem = {
+						const rawMsg = data.message as ChatMessageItem;
+						const newMsg: ChatMessageItem = {
 							...rawMsg,
 							gonderenAd: rawMsg.gonderenAd || 'Üye',
 							icerik: rawMsg.icerik || '',
@@ -339,7 +340,7 @@ export function useChat(initialRoomId?: string | null) {
 							});
 						}
 					} else if (data.type === 'message_edited' && data.message) {
-						const updated = data.message as ChatMesajItem;
+						const updated = data.message as ChatMessageItem;
 						if (activeRoomRef.current === updated.odaId) {
 							setMessages((prev) =>
 								prev.map((m) => (m.id === updated.id ? { ...m, ...updated } : m))
@@ -388,8 +389,8 @@ export function useChat(initialRoomId?: string | null) {
 
 	// 4. Send Message
 	const sendMessage = useCallback(
-		async (icerik: string, ekler: Array<{ ad: string; url: string }> = []) => {
-			if (!activeRoomId || !icerik.trim() || sending) return false;
+		async (icerik: string, ekler: ChatAttachmentItem[] = []) => {
+			if (!activeRoomId || (!icerik.trim() && ekler.length === 0) || sending) return false;
 			setSending(true);
 			const yanitlananMesajId = replyingMessage ? replyingMessage.id : null;
 			const yanitlananMesaj = replyingMessage
@@ -466,10 +467,18 @@ export function useChat(initialRoomId?: string | null) {
 	);
 
 	const selectRoom = useCallback((odaId: string) => {
+		setFocusedMessageId(null);
 		setActiveRoomId(odaId);
 	}, []);
 
 	const createDm = useCallback(async (targetUserId: string): Promise<string | null> => {
+		// Reuse a room the state already knows about; this also avoids a request
+		// when a member card is clicked twice before the rooms list refreshes.
+		const known = rooms.find((room) => room.tur === 'ozel' && room.peerUserId === targetUserId);
+		if (known) {
+			setActiveRoomId(known.id);
+			return known.id;
+		}
 		try {
 			const res = await fetch('/api/chat/rooms', {
 				method: 'POST',
@@ -486,7 +495,7 @@ export function useChat(initialRoomId?: string | null) {
 		} catch {
 			return null;
 		}
-	}, [fetchRooms]);
+	}, [fetchRooms, rooms]);
 
 	const createGroupDm = useCallback(async (memberIds: string[], title?: string): Promise<string | null> => {
 		try {
@@ -627,8 +636,11 @@ export function useChat(initialRoomId?: string | null) {
 	// Reveal target thread when clicked from Notification Center, Spotlight, or Member Card
 	useEffect(() => {
 		if (focusTarget && focusTarget.appId === 'chat') {
-			const { section, itemId, kind } = focusTarget;
-			if (section === 'compose' || kind === 'dm') {
+			const { section, itemId, kind, parentId } = focusTarget;
+			if (kind === 'thread' && itemId) {
+				setActiveRoomId(itemId);
+				setFocusedMessageId(parentId || null);
+			} else if (section === 'compose' || kind === 'dm') {
 				if (itemId) {
 					const existingDm = rooms.find(
 						(r) => r.tur === 'ozel' && r.peerUserId === itemId
@@ -674,6 +686,8 @@ export function useChat(initialRoomId?: string | null) {
 		votePoll,
 		closePoll,
 		replyingMessage,
+		focusedMessageId,
+		clearFocusedMessage: () => setFocusedMessageId(null),
 		setReplyingMessage,
 		cancelReply,
 		forwardMessage,

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getCashTotals } from '@/db';
 import { authenticateEnrolled } from '@/lib/auth/access';
 import { listAccessibleKasas } from '@/lib/kasaAccess';
-import type { KasaSummary } from '@/types/budget';
+import type { VaultSummary } from '@/types/budget';
 
 /**
  * The kasas the caller may open, each with its balance.
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
 		}
 
 		const totals = new Map((await getCashTotals()).map((t) => [t.teamId, t]));
-		const kasalar: KasaSummary[] = accessible.map((kasa) => {
+		const vaults: VaultSummary[] = accessible.map((kasa) => {
 			const t = totals.get(kasa.teamId);
 			const gelir = t?.toplamGelirKurus ?? 0;
 			const gider = t?.toplamGiderKurus ?? 0;
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
 			};
 		});
 
-		return NextResponse.json({ kasalar });
+		return NextResponse.json({ kasalar: vaults });
 	} catch (error) {
 		console.error('API /api/butce/kasalar GET error:', error);
 		return NextResponse.json({ error: 'İşlem tamamlanamadı.' }, { status: 500 });

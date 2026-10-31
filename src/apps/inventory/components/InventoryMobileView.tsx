@@ -12,7 +12,7 @@ import {
 	RotateCcw,
 } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
-import { iadeDurumu } from '@/lib/inventory';
+import { returnStatus } from '@/lib/inventory';
 import { formatDate } from '@/core/data/format';
 import type { useInventory } from '../hooks/useInventory';
 import type { InventoryItem } from '../types';
@@ -88,7 +88,7 @@ export function InventoryMobileView({ inv }: InventoryMobileViewProps) {
 			case 'saglam':
 				return <span className={`${s.badge} ${s.badgeOk}`}>{t('invStatusAvailable')}</span>;
 			case 'oduncte': {
-				const info = iadeDurumu(item.iadeTarihi, inv.now);
+				const info = returnStatus(item.iadeTarihi, inv.now);
 				if (info?.gecikti) {
 					return <span className={`${s.badge} ${s.badgeDanger}`}>{t('invStatusOverdue')}</span>;
 				}
@@ -208,7 +208,7 @@ export function InventoryMobileView({ inv }: InventoryMobileViewProps) {
 				</div>
 			) : (
 				loanedItems.map((item) => {
-					const info = iadeDurumu(item.iadeTarihi, inv.now);
+					const info = returnStatus(item.iadeTarihi, inv.now);
 					return (
 						<div
 							key={item.id}
@@ -285,7 +285,7 @@ export function InventoryMobileView({ inv }: InventoryMobileViewProps) {
 				</div>
 			) : (
 				myItems.map((item) => {
-					const info = iadeDurumu(item.iadeTarihi, inv.now);
+					const info = returnStatus(item.iadeTarihi, inv.now);
 					return (
 						<div key={item.id} className={s.loanCard}>
 							<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -373,7 +373,7 @@ export function InventoryMobileView({ inv }: InventoryMobileViewProps) {
 					item={detail}
 					selfId={inv.currentUserId}
 					isManager={inv.isManager}
-					isMezun={inv.isMezun}
+					isAlumni={inv.isAlumni}
 					now={inv.now}
 					onClose={() => inv.setDetailId(null)}
 					onEdit={() => {

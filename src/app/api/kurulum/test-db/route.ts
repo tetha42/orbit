@@ -1,6 +1,7 @@
+import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
 import { getSetupStatus, reconfigurePgPool, testPostgresConnection } from '@/db';
-import { resetKurulumCache } from '@/app/api/kurulum/route';
+import { resetSetupCache } from '@/app/api/kurulum/route';
 import { clientAddress } from '@/lib/http';
 import { consumeRateLimit } from '@/lib/rateLimit';
 import { inspectRequestPayload } from '@/lib/waf';
@@ -8,7 +9,7 @@ import { isIpBanned, recordSecurityStrike } from '@/server/db/domains/security.r
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
 	const ip = clientAddress(request);
 	try {
 		const ban = await isIpBanned(ip);
@@ -58,7 +59,7 @@ export async function POST(request: Request) {
 		}
 
 		await reconfigurePgPool(cleanUrl);
-		resetKurulumCache();
+		resetSetupCache();
 		const status = await getSetupStatus();
 
 		return NextResponse.json({
@@ -74,3 +75,5 @@ export async function POST(request: Request) {
 		return NextResponse.json({ ok: false, error: msg }, { status: 500 });
 	}
 }
+
+export const POST = withAudit(handlePOST, { action: 'kurulum.test-db.create', target: 'kurulum.test-db' });

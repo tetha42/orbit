@@ -19,7 +19,7 @@ const HISTORY_STORAGE_KEY = 'clubpanel_db_query_history';
 
 export function DatabaseSqlConsole({ dbToken, onQueryExecuted }: DatabaseSqlConsoleProps) {
 	const { t } = useI18n();
-	const [query, setQuery] = useState('SELECT * FROM kullanicilar ORDER BY olusturma DESC LIMIT 50;');
+	const [query, setQuery] = useState('SELECT * FROM users ORDER BY created_at DESC LIMIT 50;');
 	const [isLoading, setIsLoading] = useState(false);
 	const [result, setResult] = useState<QueryResult | null>(null);
 

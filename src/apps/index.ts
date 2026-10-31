@@ -12,7 +12,7 @@ import type { AppManifest, WindowManifest } from '../core/apps/manifest.ts';
 type Manifest = (typeof MANIFESTS)[number];
 
 /** Every app a role can be granted, with or without a window. */
-export type YetkiUygulamasi = Manifest['id'];
+export type PermissionApp = Manifest['id'];
 /** The apps that have a window on the desktop. */
 export type AppID = Extract<Manifest, { window: object }>['id'];
 
@@ -22,9 +22,9 @@ export type NotificationKind = Manifest extends infer M ? (M extends { notificat
 // Every app with a window is a permission app: it is one by construction, since
 // both come from the same manifest — and a manifest without `permission` does
 // not compile (`satisfies AppManifest`).
-type HerUygulamaYetkili = [AppID] extends [YetkiUygulamasi] ? true : never;
-const _herUygulamaYetkili: HerUygulamaYetkili = true;
-void _herUygulamaYetkili;
+type EveryAppHasPermission = [AppID] extends [PermissionApp] ? true : never;
+const _everyAppHasPermission: EveryAppHasPermission = true;
+void _everyAppHasPermission;
 
 const byPosition = <T extends AppManifest>(position: (m: T) => number | undefined) => (a: T, b: T) =>
 	(position(a) ?? Infinity) - (position(b) ?? Infinity) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
@@ -34,8 +34,14 @@ export const ALL_MANIFESTS: readonly AppManifest[] = [...MANIFESTS].sort(byPosit
 
 const hasWindow = (m: AppManifest): m is WindowManifest => !!m.window;
 
-/** The manifests with a window, in launcher / Spotlight / menu order. */
-export const WINDOW_MANIFESTS: readonly WindowManifest[] = ALL_MANIFESTS.filter(hasWindow).sort(byPosition<WindowManifest>((m) => m.order));
+/** Every app with a window, including internal window-only tools. */
+export const ALL_WINDOW_MANIFESTS: readonly WindowManifest[] = ALL_MANIFESTS.filter(hasWindow).sort(byPosition<WindowManifest>((m) => m.order));
+
+/** The manifests with a user-facing window, in launcher / Spotlight / menu order. */
+export const WINDOW_MANIFESTS: readonly WindowManifest[] = ALL_WINDOW_MANIFESTS.filter((m) => !m.internal);
+
+/** System windows (media preview): real WindowFrames, but absent from launcher/dock/Spotlight. */
+export const INTERNAL_WINDOW_MANIFESTS: readonly WindowManifest[] = ALL_WINDOW_MANIFESTS.filter((m) => m.internal);
 
 /** The apps pinned in a fresh dock, left to right. */
 export const DEFAULT_DOCK_ORDER: readonly AppID[] = [...WINDOW_MANIFESTS].sort(byPosition<WindowManifest>((m) => m.dock)).map((m) => m.id as AppID);
@@ -44,7 +50,7 @@ export const manifestOf = (id: string): AppManifest | undefined => ALL_MANIFESTS
 
 /** The tint of an app's icon: its `colors` entry for that place, else its accent colour. */
 export function appColor(id: string, where: 'icon' | 'menu' | 'search' = 'icon'): string {
-	const m = WINDOW_MANIFESTS.find((w) => w.id === id);
+	const m = ALL_WINDOW_MANIFESTS.find((w) => w.id === id);
 	return m ? ((m.colors as Partial<Record<typeof where, string>> | undefined)?.[where] ?? m.accentColor) : '#8e8e93';
 }
 

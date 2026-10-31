@@ -2,11 +2,11 @@
 
 import React, { useState } from 'react';
 import { Cpu } from 'lucide-react';
-import { kodHatasi, normalizeKod } from '@/lib/inventory';
+import { codeProblem, normalizeCode } from '@/lib/inventory';
 import ui from '@/core/ui/ui.module.css';
 import { sendJson } from '@/core/data/http';
 import s from './Inventory.module.css';
-import { KATEGORI_ONERILERI, type InventoryItem } from '../types';
+import { CATEGORY_SUGGESTIONS, type InventoryItem } from '../types';
 import { Sheet } from '@/core/ui/Sheet';
 import { useI18n } from '@/core/i18n';
 import { fill } from '@/lib/text';
@@ -31,16 +31,16 @@ export function ItemFormModal({
 	const [status, setDurum] = useState<'saglam' | 'arizali'>('saglam');
 	const [error, setError] = useState('');
 	const [busy, setBusy] = useState(false);
-	const kodNorm = normalizeKod(kod);
-	const kodErr = kod ? kodHatasi(kodNorm) : null;
+	const normalizedCode = normalizeCode(kod);
+	const codeError = kod ? codeProblem(normalizedCode) : null;
 
 	const submit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setError('');
-		if (kodErr) return setError(kodErr);
+		if (codeError) return setError(codeError);
 		setBusy(true);
 		const fields = {
-			kod: kodNorm,
+			kod: normalizedCode,
 			ad: ad.trim(),
 			kategori: kategori.trim(),
 			konum: konum.trim(),
@@ -56,7 +56,7 @@ export function ItemFormModal({
 			: await sendJson('/api/inventory', 'POST', { action: 'create', ...fields, status });
 		setBusy(false);
 		if (!res.ok) return setError(res.error || 'Kaydedilemedi.');
-		onSaved(item ? t('invItemUpdated') : fill(t('invItemAdded'), { code: kodNorm }));
+		onSaved(item ? t('invItemUpdated') : fill(t('invItemAdded'), { code: normalizedCode }));
 	};
 
 	return (
@@ -72,7 +72,7 @@ export function ItemFormModal({
 					<button type="button" className={ui.btn} onClick={onClose}>
 						{t('cancel')}
 					</button>
-					<button type="submit" className={ui.primaryBtn} disabled={busy || !!kodErr}>
+					<button type="submit" className={ui.primaryBtn} disabled={busy || !!codeError}>
 						{busy ? t('saving') : item ? t('save') : t('invNewEquipment')}
 					</button>
 				</>
@@ -90,10 +90,10 @@ export function ItemFormModal({
 						autoFocus={!item}
 						style={{ fontFamily: 'ui-monospace, monospace' }}
 					/>
-					{kod && kodNorm !== kod && !kodErr && (
-						<span className={ui.hint}>{fill(t('invWillBeSaved'), { code: kodNorm })}</span>
+					{kod && normalizedCode !== kod && !codeError && (
+						<span className={ui.hint}>{fill(t('invWillBeSaved'), { code: normalizedCode })}</span>
 					)}
-					{kodErr && <span className={ui.error}>{kodErr}</span>}
+					{codeError && <span className={ui.error}>{codeError}</span>}
 				</label>
 				<label className={ui.field}>
 					<span className={ui.fieldLabel}>{t('invSerialOptional')}</span>
@@ -131,7 +131,7 @@ export function ItemFormModal({
 						required
 					/>
 					<datalist id="envanter-kategorileri">
-						{KATEGORI_ONERILERI.map((k) => (
+						{CATEGORY_SUGGESTIONS.map((k) => (
 							<option key={k} value={k} />
 						))}
 					</datalist>

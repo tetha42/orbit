@@ -423,10 +423,10 @@
 	overflow-y: auto;
 	-webkit-overflow-scrolling: touch;
 	overscroll-behavior: contain;
-	padding: 14px 12px;
+	padding: 10px 10px 14px;
 	display: flex;
 	flex-direction: column;
-	gap: 12px;
+	gap: 6px;
 	background: var(--right-content-bg, var(--window-bg));
 }
 
@@ -477,7 +477,7 @@
 	display: flex;
 	align-items: flex-end;
 	gap: 8px;
-	max-width: 84%;
+	max-width: 88%;
 }
 
 .msgRowMine {
@@ -512,6 +512,7 @@
 	flex-direction: column;
 	gap: 3px;
 	min-width: 0;
+	max-width: 100%;
 }
 
 .msgRowMine .msgBody {
@@ -527,6 +528,8 @@
 
 .bubble {
 	padding: 8px 12px;
+	max-width: 100%;
+	box-sizing: border-box;
 	border-radius: 14px;
 	background: var(--card-bg);
 	border: 1px solid var(--border-subtle);
@@ -546,10 +549,26 @@
 	box-shadow: var(--accent-glow);
 }
 
+/* Attachments stay on a neutral card even inside a member's accent bubble. */
+.bubbleMine.bubbleMedia {
+	background: var(--card-bg);
+	color: var(--text-primary);
+	border: 1px solid var(--border-subtle);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.bubbleMedia {
+	width: 100%;
+	max-width: 420px;
+	overflow: hidden;
+}
+
 .bubbleWrap {
 	display: flex;
 	align-items: center;
 	gap: 6px;
+	max-width: 100%;
+	min-width: 0;
 }
 
 .msgRowMine .bubbleWrap {
@@ -571,9 +590,13 @@
 }
 
 .mobileMsgActions {
-	display: flex;
+	display: none;
 	align-items: center;
 	gap: 4px;
+}
+
+.msgActionsVisible .mobileMsgActions {
+	display: flex;
 }
 
 .mobileActionBtn {
@@ -942,3 +965,100 @@
 }
 
 
+
+
+/* ---------- Voice messages ---------- */
+.micBtn {
+	width: 38px;
+	height: 38px;
+	border-radius: 50%;
+	border: 1px solid var(--border-subtle);
+	background: var(--fill-soft);
+	color: var(--text-secondary);
+	display: grid;
+	place-items: center;
+	cursor: pointer;
+	flex-shrink: 0;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.micBtn:active:not(:disabled) {
+	transform: scale(0.92);
+}
+
+.micBtn:disabled {
+	opacity: 0.4;
+}
+
+.micBtnRecording {
+	background: #ff453a;
+	border-color: transparent;
+	color: #ffffff;
+}
+
+.recordingBar {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 12px;
+	background: rgba(255, 69, 58, 0.1);
+	border-top: 1px solid rgba(255, 69, 58, 0.24);
+	color: var(--text-primary);
+	font-size: 12px;
+}
+
+.recordingDot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: #ff453a;
+	box-shadow: 0 0 0 4px rgba(255, 69, 58, 0.14);
+	flex-shrink: 0;
+}
+
+.recordingText {
+	flex: 1;
+	min-width: 0;
+	font-weight: 600;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.recordingCancel,
+.recordingDone {
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	border: 1px solid var(--border-subtle);
+	background: var(--fill-soft);
+	color: var(--text-primary);
+	display: grid;
+	place-items: center;
+	cursor: pointer;
+	flex-shrink: 0;
+}
+
+.recordingDone {
+	background: #ff453a;
+	border-color: transparent;
+	color: #ffffff;
+}
+
+.voiceError {
+	padding: 5px 12px 0;
+	font-size: 11px;
+	color: #ff453a;
+}
+
+
+.messageFocused {
+	animation: chatMessageFocusMobile 1.4s ease-out;
+	border-radius: 14px;
+}
+
+@keyframes chatMessageFocusMobile {
+	0%, 100% { box-shadow: 0 0 0 0 transparent; }
+	15% { box-shadow: 0 0 0 3px var(--accent), 0 0 0 7px var(--accent-subtle); }
+	70% { box-shadow: 0 0 0 2px var(--accent); }
+}

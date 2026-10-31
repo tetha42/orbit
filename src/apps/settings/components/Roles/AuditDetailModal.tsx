@@ -5,10 +5,10 @@ import { History } from 'lucide-react';
 import { Sheet } from '@/core/ui/Sheet';
 import { useI18n } from '@/core/i18n';
 import { formatDateTime } from '@/core/data/format';
-import { isYetkiUygulamasi, YETKI_ACIKLAMALARI } from '@/core/permissions';
+import { isPermissionApp, PERMISSION_DESCRIPTIONS } from '@/core/permissions';
 import { getAppMeta } from '@/configs/apps.config';
 import type { AppID } from '@/types/workspace';
-import { farkSatirlari, type AuditRecord } from '@/lib/audit';
+import { diffRows, type AuditRecord } from '@/lib/audit';
 
 interface AuditDetailModalProps {
 	detay: AuditRecord | null;
@@ -22,7 +22,7 @@ export function AuditDetailModal({ detay, onClose }: AuditDetailModalProps) {
 
 	if (!detay) return null;
 
-	const diffs = farkSatirlari(detay.onceki, detay.sonraki);
+	const diffs = diffRows(detay.onceki, detay.sonraki);
 
 	const formatAuditValue = (alan: string, val: unknown): string => {
 		if (val === null || val === undefined) return '—';
@@ -31,9 +31,9 @@ export function AuditDetailModal({ detay, onClose }: AuditDetailModalProps) {
 		}
 		if (alan === 'roleId' || alan === 'tasinanRolId') {
 			if (val === 'rol_admin') return t('auditRoleAdmin', 'Yönetici (Admin)');
-			if (val === 'rol_yonetim_kurulu') return t('auditRoleBoard', 'Yönetim Kurulu');
-			if (val === 'rol_uye') return t('auditRoleMember', 'Üye');
-			if (val === 'rol_mezun') return t('auditRoleAlumni', 'Mezun');
+			if (val === 'rol_yonetim_kurulu') return t('auditRoleBoard', 'Management Board');
+			if (val === 'rol_uye') return t('auditRoleMember', 'Member');
+			if (val === 'rol_mezun') return t('auditRoleAlumni', 'Alumni');
 		}
 		if (typeof val === 'string') {
 			if (val === 'yok' || val === 'kullan' || val === 'yonet' || val === 'aktif' || val === 'mezun' || val === 'beklemede' || val === 'reddedildi') {
@@ -133,9 +133,9 @@ export function AuditDetailModal({ detay, onClose }: AuditDetailModalProps) {
 					<div style={{ display: 'flex', flexDirection: 'column' }}>
 						{diffs.map((d, i) => {
 							const appKey = d.alan.startsWith('izinler.') ? d.alan.slice('izinler.'.length) : d.alan;
-							const appMeta = isYetkiUygulamasi(appKey) ? getAppMeta(appKey as AppID, language) : null;
-							const label = isYetkiUygulamasi(appKey)
-								? (appMeta?.shortTitle || appMeta?.title || YETKI_ACIKLAMALARI[appKey]?.ad || appKey)
+							const appMeta = isPermissionApp(appKey) ? getAppMeta(appKey as AppID, language) : null;
+							const label = isPermissionApp(appKey)
+								? (appMeta?.shortTitle || appMeta?.title || PERMISSION_DESCRIPTIONS[appKey]?.ad || appKey)
 								: t(`auditField_${d.alan}`, d.alan);
 							return (
 								<div

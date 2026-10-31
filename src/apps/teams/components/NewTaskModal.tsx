@@ -4,10 +4,10 @@ import React, { useState } from 'react';
 import { ListPlus } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
 import {
-	BASLIK_MAX,
-	normalizeTeslimTarihi,
-	type GorevDurumu,
-	type GorevOnceligi,
+	TITLE_MAX,
+	normalizeDueDate,
+	type TaskStatus,
+	type TaskPriority,
 } from '@/lib/kanban';
 import styles from '@/core/ui/ui.module.css';
 import { COLUMNS, PRIORITIES } from '../types';
@@ -17,7 +17,7 @@ import { Sheet } from '@/core/ui/Sheet';
 
 interface Props {
 	teamId: string;
-	column: GorevDurumu;
+	column: TaskStatus;
 	members: { id: string; name: string; role: string }[];
 	labels: string[];
 	onClose: () => void;
@@ -28,8 +28,8 @@ export function NewTaskModal({ teamId, column, members, labels, onClose, onCreat
 	const { t } = useI18n();
 	const [baslik, setBaslik] = useState('');
 	const [aciklama, setAciklama] = useState('');
-	const [status, setDurum] = useState<GorevDurumu>(column);
-	const [oncelik, setOncelik] = useState<GorevOnceligi>('orta');
+	const [status, setDurum] = useState<TaskStatus>(column);
+	const [oncelik, setOncelik] = useState<TaskPriority>('orta');
 	const [atanan, setAtanan] = useState('');
 	const [teslim, setTeslim] = useState('');
 	const [etiketler, setEtiketler] = useState<string[]>([]);
@@ -49,7 +49,7 @@ export function NewTaskModal({ teamId, column, members, labels, onClose, onCreat
 			status,
 			oncelik,
 			atananUyeId: atanan || undefined,
-			teslimTarihi: teslim ? normalizeTeslimTarihi(teslim) : undefined,
+			teslimTarihi: teslim ? normalizeDueDate(teslim) : undefined,
 			etiketler,
 		});
 		setBusy(false);
@@ -84,7 +84,7 @@ export function NewTaskModal({ teamId, column, members, labels, onClose, onCreat
 					autoFocus
 					className={styles.input}
 					value={baslik}
-					maxLength={BASLIK_MAX}
+					maxLength={TITLE_MAX}
 					onChange={(e) => setBaslik(e.target.value)}
 					placeholder={t('kbTitlePh')}
 					required
@@ -113,7 +113,7 @@ export function NewTaskModal({ teamId, column, members, labels, onClose, onCreat
 						className={styles.select}
 						style={{ maxWidth: 'none' }}
 						value={status}
-						onChange={(e) => setDurum(e.target.value as GorevDurumu)}
+						onChange={(e) => setDurum(e.target.value as TaskStatus)}
 					>
 						{COLUMNS.map((c) => (
 							<option key={c.id} value={c.id}>

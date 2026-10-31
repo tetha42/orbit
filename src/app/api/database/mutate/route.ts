@@ -13,7 +13,16 @@ const SENSITIVE_COLUMNS = new Set([
 	'smtp_pass',
 ]);
 
-const PROTECTED_TABLES = new Set(['sistem_loglari', 'denetim_kaydi', 'guvenlik_engelleri']);
+const PROTECTED_TABLES = new Set([
+	'sistem_loglari',
+	'system_logs',
+	'denetim_kaydi',
+	'audit_logs',
+	'guvenlik_engelleri',
+	'security_blocks',
+	'sistem_ayarlari',
+	'system_settings',
+]);
 const PROTECTED_SETTINGS_KEYS = new Set(['smtp_pass', 'soc_lockdown_mode', 'soc_lockdown_reason']);
 
 interface UpdateItem {
@@ -37,6 +46,16 @@ interface MutateBody {
 export async function POST(request: Request) {
 	const auth = await requireDatabaseAdmin(request);
 	if (!auth.authorized) return auth.response;
+
+	if (process.env.ORBIT_DB_STUDIO_WRITE !== '1') {
+		return NextResponse.json(
+			{
+				error: 'Direct database mutation is disabled. Set ORBIT_DB_STUDIO_WRITE=1 break-glass flag in your server environment to enable writes.',
+				code: 'DB_STUDIO_READ_ONLY',
+			},
+			{ status: 403 }
+		);
+	}
 
 	const ip = clientAddress(request);
 	const body = (await request.json().catch(() => ({}))) as MutateBody;
@@ -161,8 +180,10 @@ export async function POST(request: Request) {
 			detay: {
 				tablo: table,
 				guncellenenSayisi: updates.length,
+				guncellenenIds: updates.map((u) => u.pk.val).slice(0, 50),
 				eklenenSayisi: inserts.length,
 				silinenSayisi: deletes.length,
+				silinenIds: deletes.map((d) => d.val).slice(0, 50),
 			},
 			userId: auth.user.id,
 			ip,

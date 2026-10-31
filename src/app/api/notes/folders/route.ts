@@ -1,3 +1,4 @@
+import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
 import { requireApp } from '@/lib/auth/access';
 import { getUserNoteFolders, saveUserNoteFolder, deleteUserNoteFolder } from '@/db';
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
 	}
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
 	try {
 		const auth = await requireApp(request, 'notes', 'kullan');
 		if (!auth.authorized) {
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
 	}
 }
 
-export async function DELETE(request: Request) {
+async function handleDELETE(request: Request) {
 	try {
 		const auth = await requireApp(request, 'notes', 'kullan');
 		if (!auth.authorized) {
@@ -71,3 +72,6 @@ export async function DELETE(request: Request) {
 		return NextResponse.json({ error: 'Klasör silinemedi.' }, { status: 500 });
 	}
 }
+
+export const POST = withAudit(handlePOST, { action: 'notes.folders.create', target: 'notes.folders' });
+export const DELETE = withAudit(handleDELETE, { action: 'notes.folders.delete', target: 'notes.folders' });

@@ -11,7 +11,7 @@ import { attachSessionCookie, establishSession, sessionUserOf } from '@/lib/auth
 import { clearRateLimit, isRateLimited, recordFailure } from '@/lib/rateLimit';
 import { clientAddress } from '@/lib/http';
 import { inspectRequestPayload } from '@/lib/waf';
-import { ADMIN_ROL_ID } from '@/core/permissions';
+import { ADMIN_ROLE_ID } from '@/core/permissions';
 import { logSystemEvent } from '@/server/db/domains/logs.repo';
 import { getLockdownState, isIpBanned, recordSecurityStrike } from '@/server/db/domains/security.repo';
 
@@ -182,7 +182,7 @@ export async function POST(request: Request) {
 		clearRateLimit(userKey);
 
 		const lockdown = await getLockdownState();
-		if (lockdown.active && user.roleId !== ADMIN_ROL_ID) {
+		if (lockdown.active && user.roleId !== ADMIN_ROLE_ID) {
 			return NextResponse.json(
 				{
 					error: 'Workspace is currently in Lockdown Mode under active cyber defense. Only administrators may sign in.',
@@ -192,7 +192,7 @@ export async function POST(request: Request) {
 			);
 		}
 
-		const sessionToken = await establishSession(user, request);
+		const sessionToken = await establishSession(user, request, 'totp');
 		await logSystemEvent({
 			servis: 'auth',
 			seviye: 'INFO',

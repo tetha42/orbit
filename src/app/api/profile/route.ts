@@ -1,65 +1,74 @@
 import { NextResponse } from 'next/server';
-import { getUserSummary, updateUserProfile } from '@/db';
+import {
+	getFormFields,
+	getMemberFieldValues,
+	getUserSummary,
+} from '@/db';
+import { auditContext } from '@/db/audit';
 import { verifyAuth } from '@/lib/auth/authGuard';
 import { sessionUserOf } from '@/lib/auth/session';
-import { DEPARTMENTS } from '@/data/departments';
-import { BIO_MAX, SINIF_MAX, SINIF_MIN, seviye } from '@/lib/profile';
+import { seviye } from '@/lib/profile';
+import { updateSelfProfile } from '@/server/members/service';
 
 export const dynamic = 'force-dynamic';
 
-/** The member's own profile, level and what they have done in the club. */
+/** The member's own profile, level, custom fields and what they have done. */
 export async function GET(request: Request) {
 	const auth = await verifyAuth(request);
 	if (!auth.authorized) return auth.response;
-	const ozet = await getUserSummary(auth.user.id);
+	const [ozet, fields, allValues] = await Promise.all([
+		getUserSummary(auth.user.id),
+		getFormFields({ scope: 'profile' }),
+		getMemberFieldValues(auth.user.id),
+	]);
+	const keys = new Set(fields.map((field) => field.fieldKey));
+	const customFields: Record<string, string> = {};
+	for (const [key, value] of Object.entries(allValues)) {
+		if (keys.has(key)) customFields[key] = value;
+	}
 	return NextResponse.json(
 		{
 			user: { ...(await sessionUserOf(auth.user)), olusturma: auth.user.olusturma },
 			seviye: seviye(Number(auth.user.xp) || 0),
 			ozet,
+			fields,
+			customFields,
 		},
 		{ headers: { 'Cache-Control': 'no-store' } }
 	);
 }
 
 /**
- * Edits what a member may change about themselves: bio, programme and year.
- * Name, e-mail and student number identify the member and stay with management.
+ * Edits what a member may change about themselves: bio, track, level and the
+ * custom fields the community marked `selfEditable`. Name, e-mail and handle
+ * stay with management (e-mail has its own verified change flow).
  */
 export async function PATCH(request: Request) {
 	const auth = await verifyAuth(request);
 	if (!auth.authorized) return auth.response;
-	if (auth.user.status === 'mezun') {
-		return NextResponse.json({ error: 'Mezunlar sadece okuma erişimine sahiptir.' }, { status: 403 });
-	}
 	try {
-		const body = (await request.json()) as Record<string, unknown>;
-		const patch: { bio?: string | null; bolum?: string; sinif?: number } = {};
-		if (body.bio !== undefined) {
-			if (body.bio !== null && typeof body.bio !== 'string') return NextResponse.json({ error: 'Geçersiz biyografi.' }, { status: 400 });
-			const bio = typeof body.bio === 'string' ? body.bio.trim() : '';
-			if (bio.length > BIO_MAX) return NextResponse.json({ error: `Biyografi en fazla ${BIO_MAX} karakter olabilir.` }, { status: 400 });
-			patch.bio = bio || null;
+		const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+		if (!body || typeof body !== 'object' || Array.isArray(body)) {
+			return NextResponse.json({ error: 'Geçersiz istek gövdesi.' }, { status: 400 });
 		}
-		if (body.bolum !== undefined) {
-			const bolum = typeof body.bolum === 'string' ? body.bolum.trim() : '';
-			// A programme from the list — or the one already on record, which may predate it.
-			if (bolum !== auth.user.bolum && !DEPARTMENTS.some((d) => d.name === bolum)) {
-				return NextResponse.json({ error: 'Listeden bir bölüm seçin.' }, { status: 400 });
-			}
-			patch.bolum = bolum;
+		const result = await updateSelfProfile(auth.user.id, body, auditContext(request, auth.user));
+		if (!result.ok) {
+			const failure = result as Extract<typeof result, { ok: false }>;
+			return NextResponse.json(
+				{
+					error: failure.error,
+					...(failure.fieldErrors ? { fieldErrors: failure.fieldErrors } : {}),
+				},
+				{ status: failure.status }
+			);
 		}
-		if (body.sinif !== undefined) {
-			const sinif = Number(body.sinif);
-			if (!Number.isInteger(sinif) || sinif < SINIF_MIN || sinif > SINIF_MAX) {
-				return NextResponse.json({ error: `Sınıf ${SINIF_MIN} ile ${SINIF_MAX} arasında olmalıdır.` }, { status: 400 });
-			}
-			patch.sinif = sinif;
-		}
-		await updateUserProfile(auth.user.id, patch);
 		return NextResponse.json({ success: true, message: 'Profiliniz güncellendi.' });
 	} catch (error) {
-		console.error('API /api/profil PATCH error:', error);
+		const code = error instanceof Error ? error.message : '';
+		if (code === 'MEMBER_NOT_FOUND') {
+			return NextResponse.json({ error: 'Üye bulunamadı.' }, { status: 404 });
+		}
+		console.error('API /api/profile PATCH error:', error);
 		return NextResponse.json({ error: 'Profil güncellenemedi.' }, { status: 500 });
 	}
 }

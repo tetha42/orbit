@@ -111,8 +111,8 @@ export function useEvents() {
 	// Camera scan and typed entry both send the 6-character code shown on the projector.
 	// The member's identity comes from the session; the code only says which window is live.
 	const checkIn = async (kod: string) => {
-		const kisaKod = kod.trim().toUpperCase();
-		const res = await sendJson<{ message: string; zaten: boolean }>('/api/events', 'POST', { action: 'yoklama', kisaKod });
+		const shortCode = kod.trim().toUpperCase();
+		const res = await sendJson<{ message: string; zaten: boolean }>('/api/events', 'POST', { action: 'yoklama', shortCode });
 		if (!res.ok) notify(res.error || t('kbActionFailed'), 'error');
 		else {
 			playSystemSound();

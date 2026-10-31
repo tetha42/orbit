@@ -3,11 +3,11 @@
 import React from 'react';
 import { ArrowRightLeft, Download, Plus } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
-import { BUTCE_KATEGORILERI, AKTARIM_KATEGORISI } from '@/types/budget';
+import { BUDGET_CATEGORIES, TRANSFER_CATEGORY } from '@/types/budget';
 import ui from '@/core/ui/ui.module.css';
 import k from './Kasa.module.css';
 
-interface KasaToolbarProps {
+interface VaultToolbarProps {
 	arama: string;
 	onAramaChange: (val: string) => void;
 	tur: 'hepsi' | 'gelir' | 'gider';
@@ -33,7 +33,7 @@ const monthName = (key: string, style: 'short' | 'long' = 'short', lang = 'tr') 
 	);
 };
 
-export function KasaToolbar({
+export function VaultToolbar({
 	arama,
 	onAramaChange,
 	tur,
@@ -49,7 +49,7 @@ export function KasaToolbar({
 	onExportCsv,
 	onOpenTransfer,
 	onOpenNewEntry,
-}: KasaToolbarProps) {
+}: VaultToolbarProps) {
 	const { t, language } = useI18n();
 
 	return (
@@ -83,7 +83,7 @@ export function KasaToolbar({
 				aria-label={t('budgetColCategory')}
 			>
 				<option value="">{t('kasaAllCategories')}</option>
-				{[...BUTCE_KATEGORILERI, AKTARIM_KATEGORISI].map((c) => (
+				{[...BUDGET_CATEGORIES, TRANSFER_CATEGORY].map((c) => (
 					<option key={c} value={c}>
 						{c}
 					</option>

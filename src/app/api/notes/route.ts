@@ -1,3 +1,4 @@
+import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
 import { requireApp } from '@/lib/auth/access';
 import { getUserNotes, saveUserNote, deleteUserNote, emptyUserNotesTrash, getPgPool } from '@/db';
@@ -11,15 +12,15 @@ export async function GET(request: Request) {
 			return auth.response;
 		}
 
-		const notlar = await getUserNotes(auth.user.id);
-		return NextResponse.json(notlar);
+		const notes = await getUserNotes(auth.user.id);
+		return NextResponse.json(notes);
 	} catch (error) {
 		console.error('API error:', error);
 		return NextResponse.json({ error: 'İşlem tamamlanamadı.' }, { status: 500 });
 	}
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
 	try {
 		const auth = await requireApp(request, 'notes', 'kullan');
 		if (!auth.authorized) {
@@ -62,7 +63,7 @@ export async function POST(request: Request) {
 	}
 }
 
-export async function DELETE(request: Request) {
+async function handleDELETE(request: Request) {
 	try {
 		const auth = await requireApp(request, 'notes', 'kullan');
 		if (!auth.authorized) {
@@ -92,3 +93,6 @@ export async function DELETE(request: Request) {
 		return NextResponse.json({ error: 'İşlem tamamlanamadı.' }, { status: 500 });
 	}
 }
+
+export const POST = withAudit(handlePOST, { action: 'notes.create', target: 'notes' });
+export const DELETE = withAudit(handleDELETE, { action: 'notes.delete', target: 'notes' });

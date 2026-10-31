@@ -27,15 +27,19 @@ export function DatabaseTableList({
 	const { t } = useI18n();
 	const [filter, setFilter] = useState('');
 
-	const filtered = tables.filter((t) =>
-		t.name.toLowerCase().includes(filter.toLowerCase().trim())
+	// The API is the source of truth, but a transient/partial response must never
+	// crash the whole Database window: ignore malformed entries defensively.
+	const safeTables = tables.filter(
+		(t): t is TableSummary => Boolean(t && typeof t.name === 'string')
 	);
+	const needle = filter.toLowerCase().trim();
+	const filtered = safeTables.filter((t) => t.name.toLowerCase().includes(needle));
 
 	return (
 		<aside className={s.sidebar}>
 			<div className={s.sidebarHeader}>
 				<div className={s.sidebarTitle}>
-					<span>{fill(t('dbTables'), { n: tables.length })}</span>
+					<span>{fill(t('dbTables'), { n: safeTables.length })}</span>
 					<div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
 						{onOpenCreateTable && (
 							<button

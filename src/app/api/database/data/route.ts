@@ -25,10 +25,14 @@ export async function GET(request: Request) {
 	try {
 		// 1. Fetch column specifications
 		const colRes = await pool.query<{
-			column_name: string;
-			data_type: string;
-			is_nullable: string;
-			column_default: string | null;
+			column_name?: string;
+			columnName?: string;
+			data_type?: string;
+			dataType?: string;
+			is_nullable?: string;
+			isNullable?: string;
+			column_default?: string | null;
+			columnDefault?: string | null;
 		}>(
 			`
 			SELECT
@@ -48,7 +52,7 @@ export async function GET(request: Request) {
 		}
 
 		// 1b. Fetch primary key mappings for this table
-		const pkRes = await pool.query<{ column_name: string }>(
+		const pkRes = await pool.query<{ column_name?: string; columnName?: string }>(
 			`
 			SELECT kcu.column_name
 			FROM information_schema.table_constraints tc
@@ -64,14 +68,19 @@ export async function GET(request: Request) {
 			[table]
 		);
 
-		const primaryKeys = pkRes.rows.map((r) => r.column_name);
+		const primaryKeys = pkRes.rows
+			.map((r) => String(r.columnName ?? r.column_name ?? '').trim())
+			.filter(Boolean);
 		const pkSet = new Set(primaryKeys);
 
 		// 1c. Fetch foreign key mappings for this table
 		const fkRes = await pool.query<{
-			column_name: string;
-			foreign_table_name: string;
-			foreign_column_name: string;
+			column_name?: string;
+			columnName?: string;
+			foreign_table_name?: string;
+			foreignTableName?: string;
+			foreign_column_name?: string;
+			foreignColumnName?: string;
 		}>(
 			`
 			SELECT
@@ -94,22 +103,30 @@ export async function GET(request: Request) {
 
 		const foreignKeys: Record<string, { table: string; column: string }> = {};
 		for (const r of fkRes.rows) {
-			foreignKeys[r.column_name] = {
-				table: r.foreign_table_name,
-				column: r.foreign_column_name,
+			const columnName = String(r.columnName ?? r.column_name ?? '').trim();
+			if (!columnName) continue;
+			foreignKeys[columnName] = {
+				table: String(r.foreignTableName ?? r.foreign_table_name ?? ''),
+				column: String(r.foreignColumnName ?? r.foreign_column_name ?? ''),
 			};
 		}
 
-		const columns = colRes.rows.map((c) => ({
-			name: c.column_name,
-			type: c.data_type,
-			nullable: c.is_nullable === 'YES',
-			hasDefault: c.column_default !== null,
-			isSensitive: DB_SENSITIVE_COLUMNS.has(c.column_name.toLowerCase()),
-			isPrimaryKey: pkSet.has(c.column_name),
-			isForeignKey: Boolean(foreignKeys[c.column_name]),
-			foreignKeyTarget: foreignKeys[c.column_name],
-		}));
+		const columns = colRes.rows
+			.map((c) => {
+				const name = String(c.columnName ?? c.column_name ?? '').trim();
+				if (!name) return null;
+				return {
+					name,
+					type: String(c.dataType ?? c.data_type ?? ''),
+					nullable: (c.isNullable ?? c.is_nullable) === 'YES',
+					hasDefault: (c.columnDefault ?? c.column_default) !== null,
+					isSensitive: DB_SENSITIVE_COLUMNS.has(name.toLowerCase()),
+					isPrimaryKey: pkSet.has(name),
+					isForeignKey: Boolean(foreignKeys[name]),
+					foreignKeyTarget: foreignKeys[name],
+				};
+			})
+			.filter((c): c is NonNullable<typeof c> => c !== null);
 
 		const validColNames = new Set(columns.map((c) => c.name));
 		const primaryKey = primaryKeys[0] || (validColNames.has('id') ? 'id' : columns[0]?.name || 'id');
@@ -184,8 +201,18 @@ export async function GET(request: Request) {
 		const dataQuery = `SELECT * FROM "${table}" ${whereSql} ${orderSql} LIMIT ${limit} OFFSET ${offset}`;
 		const dataRes = await pool.query(dataQuery, params);
 
-		// Mask sensitive fields by column name, value prefix, and sistem_ayarlari row key
-		const rows = dataRes.rows.map((r) => maskDatabaseRow(r as Record<string, unknown>));
+		// Mask and deny-list sensitive fields by column name, value prefix, and sistem_ayarlari row key
+		const rows = dataRes.rows.map((r) => {
+			if (!r || typeof r !== 'object') return r;
+			const clean = { ...(r as Record<string, unknown>) };
+			for (const k of Object.keys(clean)) {
+				const lower = k.toLowerCase();
+				if (DB_SENSITIVE_COLUMNS.has(lower) || DB_SENSITIVE_COLUMNS.has(lower.replace(/_/g, ''))) {
+					clean[k] = '[REDACTED]';
+				}
+			}
+			return maskDatabaseRow(clean);
+		});
 
 		return NextResponse.json({
 			table,

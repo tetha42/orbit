@@ -11,7 +11,7 @@ import {
 } from '@/db';
 import { getInventoryItems } from '@/server/db/domains/inventory.repo';
 import { searchMailCandidates, getMailSearchThreads } from '@/db/posta';
-import { aliciListesi } from '@/lib/server/posta';
+import { recipientList } from '@/lib/server/posta';
 import { authenticate, can } from '@/lib/auth/access';
 import { listAccessibleKasas } from '@/lib/kasaAccess';
 import { consumeRateLimit } from '@/lib/rateLimit';
@@ -100,7 +100,7 @@ export async function GET(request: Request) {
 				when(uses('teams') && !manages('teams'), () => getUserTeamIds(user.id)),
 				listAccessibleKasas(user),
 				when(uses('mail'), () => getMailSearchThreads(user.id)),
-				when(uses('mail'), async () => (await aliciListesi(await searchMailCandidates(user.id, q, MAX_HITS_PER_KIND))).filter((p) => p.ulasilabilir)),
+				when(uses('mail'), async () => (await recipientList(await searchMailCandidates(user.id, q, MAX_HITS_PER_KIND))).filter((p) => p.ulasilabilir)),
 			]);
 
 		const byKind = new Map<SearchKind, SearchHit[]>();
@@ -263,21 +263,21 @@ export async function GET(request: Request) {
 		}
 
 		// Kasa entries. Only kasas this caller may open are read at all.
-		const kasaApp = uses('budget');
-		const kasaEntries = await Promise.all(
+		const vaultApp = uses('budget');
+		const vaultEntries = await Promise.all(
 			kasas.map(async (kasa) => ({ kasa, records: await getBudgetRecords(kasa.teamId) }))
 		);
-		for (const { kasa, records } of kasaEntries) {
+		for (const { kasa, records } of vaultEntries) {
 			for (const r of records) {
 				add(
 					{
 						id: `ledger:${r.id}`,
 						kind: 'ledger',
 						// The Kasa app if the role opens it; otherwise a captain reaches their kasa through the team.
-						appId: kasaApp ? 'budget' : 'teams',
+						appId: vaultApp ? 'budget' : 'teams',
 						title: r.aciklama,
 						subtitle: [formatTL(r.tutarKurus), r.kategori, kasa.ad].join(' · '),
-						target: kasaApp
+						target: vaultApp
 							? { kind: 'ledger', itemId: r.id, parentId: kasa.teamId ?? 'genel' }
 							: { section: 'kasa', kind: 'ledger', itemId: r.id, parentId: kasa.teamId ?? undefined },
 					},

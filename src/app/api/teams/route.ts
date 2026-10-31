@@ -1,6 +1,8 @@
+import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
 import {
 	getTeams,
+	getTeamCategories,
 	getTeamMembers,
 	getTeamTasks,
 	joinTeam,
@@ -19,27 +21,26 @@ import {
 } from '@/db';
 import { notificationEvents, publishEventQuiet } from '@/db/olaylar';
 import {
-	BASVURU_NOTU_MAX,
-	KAPTAN_ROLU,
-	TAKIM_ACIKLAMA_MAX,
-	TAKIM_ADI_MAX,
-	isKategori,
-	isKatilimTuru,
-	isTakimDurumu,
-	kontenjanHatasi,
-	normalizeRol,
+	APPLICATION_NOTE_MAX,
+	CAPTAIN_ROLE,
+	TEAM_DESCRIPTION_MAX,
+	TEAM_NAME_MAX,
+	isParticipationType,
+	isTeamStatus,
+	capacityProblem,
+	normalizeRole,
 } from '@/lib/teams';
 import { normalizeHttpUrl } from '@/lib/projects';
 import { can, requireApp } from '@/lib/auth/access';
 import {
-	ACIKLAMA_MAX,
-	BASLIK_MAX,
-	GOREV_DURUMLARI,
+	DESCRIPTION_MAX,
+	TITLE_MAX,
+	TASK_STATUSES,
 	SIRALAMA_MAX,
-	normalizeDurum,
+	normalizeStatus,
 	normalizeEtiketler,
 	normalizeOncelik,
-	normalizeTeslimTarihi,
+	normalizeDueDate,
 } from '@/lib/kanban';
 import { getBoardAccess, getTaskAccess, isAssignable } from '@/lib/server/taskAccess';
 
@@ -62,7 +63,7 @@ export async function GET(request: Request) {
 				// A team's task board belongs to the team: management, its leader and its
 				// active members. Everyone else sees the team card, not the work items.
 				const canSeeTasks = manage || aktif.some((u) => u.userId === auth.user.id);
-				const gorevler = canSeeTasks ? await getTeamTasks(team.id) : [];
+				const tasks = canSeeTasks ? await getTeamTasks(team.id) : [];
 				const benim = tumu.find((u) => u.userId === auth.user.id);
 				return {
 					...team,
@@ -72,7 +73,7 @@ export async function GET(request: Request) {
 					basvurular: manage ? tumu.filter((u) => u.status === 'basvurdu') : [],
 					benimDurumum: benim?.status ?? null,
 					izinler: { manage, editAll: can(auth.user, 'teams', 'yonet') },
-					gorevler,
+					gorevler: tasks,
 					doluKontenjan: aktif.length,
 					kalanKontenjan: Math.max(0, team.kontenjan - aktif.length),
 					dolulukOrani: Math.min(100, Math.round((aktif.length / team.kontenjan) * 100)),
@@ -93,7 +94,7 @@ export async function GET(request: Request) {
 	}
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
 	const auth = await requireApp(request, 'teams', 'kullan');
 	if (!auth.authorized) return auth.response;
 
@@ -107,7 +108,7 @@ export async function POST(request: Request) {
 		if (action === 'join') {
 			if (graduate) return NextResponse.json({ error: 'Mezunlar sadece okuma erişimine sahiptir.' }, { status: 403 });
 			if (!teamId) return NextResponse.json({ error: 'Eksik parametreler.' }, { status: 400 });
-			const note = typeof body.basvuruNotu === 'string' ? body.basvuruNotu.trim().slice(0, BASVURU_NOTU_MAX) : null;
+			const note = typeof body.basvuruNotu === 'string' ? body.basvuruNotu.trim().slice(0, APPLICATION_NOTE_MAX) : null;
 			const result = await joinTeam({ teamId, userId: auth.user.id, basvuruNotu: note });
 			if (result.ok) await publishEventQuiet(getPgPool(), { k: 'takim_guncellendi', teamId });
 			return result.ok
@@ -145,9 +146,9 @@ export async function POST(request: Request) {
 			}
 
 			if (action === 'setMemberRole') {
-				const role = normalizeRol(body.takimRolu);
+				const role = normalizeRole(body.takimRolu);
 				if (!role) return NextResponse.json({ error: 'Role boş olamaz.' }, { status: 400 });
-				if (userId === board.team.liderId && role !== KAPTAN_ROLU) {
+				if (userId === board.team.liderId && role !== CAPTAIN_ROLE) {
 					return NextResponse.json({ error: 'Kaptanın unvanı kaptanlık devredilerek değişir.' }, { status: 409 });
 				}
 				const ok = await setTeamMemberRole(teamId, userId, role);
@@ -172,7 +173,7 @@ export async function POST(request: Request) {
 					return NextResponse.json({ error: 'Üye eklemek yönetime aittir.' }, { status: 403 });
 				}
 				if (!userId) return NextResponse.json({ error: 'Üye belirtilmedi.' }, { status: 400 });
-				const r = await joinTeam({ teamId, userId, direct: true, takimRolu: normalizeRol(body.takimRolu) ?? undefined });
+				const r = await joinTeam({ teamId, userId, direct: true, takimRolu: normalizeRole(body.takimRolu) ?? undefined });
 				if (r.ok) await publishEventQuiet(getPgPool(), { k: 'takim_guncellendi', teamId });
 				return r.ok
 					? NextResponse.json({ success: true, message: 'Üye takıma eklendi.' })
@@ -189,22 +190,25 @@ export async function POST(request: Request) {
 			}
 			if (body.ad !== undefined) {
 				const ad = typeof body.ad === 'string' ? body.ad.trim() : '';
-				if (ad.length < 3 || ad.length > TAKIM_ADI_MAX) return NextResponse.json({ error: 'Takım adı 3-90 karakter olmalıdır.' }, { status: 400 });
+				if (ad.length < 3 || ad.length > TEAM_NAME_MAX) return NextResponse.json({ error: 'Takım adı 3-90 karakter olmalıdır.' }, { status: 400 });
 				patch.ad = ad;
 			}
 			if (body.aciklama !== undefined) {
-				const aciklama = typeof body.aciklama === 'string' ? body.aciklama.trim() : '';
-				if (aciklama.length < 10 || aciklama.length > TAKIM_ACIKLAMA_MAX) {
+				const description = typeof body.aciklama === 'string' ? body.aciklama.trim() : '';
+				if (description.length < 10 || description.length > TEAM_DESCRIPTION_MAX) {
 					return NextResponse.json({ error: 'Açıklama 10-1200 karakter olmalıdır.' }, { status: 400 });
 				}
-				patch.aciklama = aciklama;
+				patch.aciklama = description;
 			}
 			if (body.kategori !== undefined) {
-				if (!isKategori(body.kategori)) return NextResponse.json({ error: 'Geçersiz kategori.' }, { status: 400 });
+				const categories = await getTeamCategories();
+				if (typeof body.kategori !== 'string' || (!categories.includes(body.kategori) && body.kategori !== board.team.kategori)) {
+					return NextResponse.json({ error: 'Geçersiz kategori.' }, { status: 400 });
+				}
 				patch.kategori = body.kategori;
 			}
 			if (body.kontenjan !== undefined) {
-				const err = kontenjanHatasi(body.kontenjan, board.uyeler.filter((u) => u.status === 'aktif').length);
+				const err = capacityProblem(body.kontenjan, board.uyeler.filter((u) => u.status === 'aktif').length);
 				if (err) return NextResponse.json({ error: err }, { status: 400 });
 				patch.kontenjan = Number(body.kontenjan);
 			}
@@ -214,17 +218,17 @@ export async function POST(request: Request) {
 				patch.repoUrl = url;
 			}
 			if (body.status !== undefined) {
-				if (!isTakimDurumu(body.status)) return NextResponse.json({ error: 'Geçersiz status.' }, { status: 400 });
+				if (!isTeamStatus(body.status)) return NextResponse.json({ error: 'Geçersiz status.' }, { status: 400 });
 				patch.status = body.status;
 			}
 			if (body.katilimTuru !== undefined) {
-				if (!isKatilimTuru(body.katilimTuru)) return NextResponse.json({ error: 'Geçersiz katılım türü.' }, { status: 400 });
+				if (!isParticipationType(body.katilimTuru)) return NextResponse.json({ error: 'Geçersiz katılım türü.' }, { status: 400 });
 				patch.katilimTuru = body.katilimTuru;
 			}
 			if (body.liderId !== undefined) {
-				const lider = typeof body.liderId === 'string' ? await getUserById(body.liderId) : null;
-				if (!lider || lider.status !== 'aktif') return NextResponse.json({ error: 'Kaptan olarak seçilen üye bulunamadı.' }, { status: 400 });
-				patch.liderId = lider.id;
+				const leader = typeof body.liderId === 'string' ? await getUserById(body.liderId) : null;
+				if (!leader || leader.status !== 'aktif') return NextResponse.json({ error: 'Kaptan olarak seçilen üye bulunamadı.' }, { status: 400 });
+				patch.liderId = leader.id;
 			}
 			await updateTeam(teamId, patch);
 			await publishEventQuiet(getPgPool(), { k: 'takim_guncellendi', teamId });
@@ -243,11 +247,11 @@ export async function POST(request: Request) {
 			if (!teamId || !title) {
 				return NextResponse.json({ error: 'Takım ID ve Başlık zorunludur.' }, { status: 400 });
 			}
-			if (title.length > BASLIK_MAX) {
-				return NextResponse.json({ error: `Başlık en fazla ${BASLIK_MAX} karakter olabilir.` }, { status: 400 });
+			if (title.length > TITLE_MAX) {
+				return NextResponse.json({ error: `Başlık en fazla ${TITLE_MAX} karakter olabilir.` }, { status: 400 });
 			}
-			if (typeof aciklama === 'string' && aciklama.length > ACIKLAMA_MAX) {
-				return NextResponse.json({ error: `Açıklama en fazla ${ACIKLAMA_MAX} karakter olabilir.` }, { status: 400 });
+			if (typeof aciklama === 'string' && aciklama.length > DESCRIPTION_MAX) {
+				return NextResponse.json({ error: `Açıklama en fazla ${DESCRIPTION_MAX} karakter olabilir.` }, { status: 400 });
 			}
 			// Creating assignments is a management action or team captain action.
 			const board = await getBoardAccess(auth.user, teamId);
@@ -256,7 +260,7 @@ export async function POST(request: Request) {
 			}
 			if (!board.manage) {
 				return NextResponse.json(
-					{ error: 'Bu işlem için kulüp yönetimi veya takım kaptanı yetkisi gereklidir.' },
+					{ error: 'Bu işlem için topluluk yönetimi veya takım kaptanı yetkisi gereklidir.' },
 					{ status: 403 }
 				);
 			}
@@ -264,11 +268,11 @@ export async function POST(request: Request) {
 			if (!priority) {
 				return NextResponse.json({ error: 'Geçersiz öncelik.' }, { status: 400 });
 			}
-			const column = status === undefined ? 'yapilacak' : normalizeDurum(status);
+			const column = status === undefined ? 'yapilacak' : normalizeStatus(status);
 			if (!column) {
 				return NextResponse.json({ error: 'Geçersiz status.' }, { status: 400 });
 			}
-			const due = teslimTarihi === undefined ? null : normalizeTeslimTarihi(teslimTarihi);
+			const due = teslimTarihi === undefined ? null : normalizeDueDate(teslimTarihi);
 			if (due === undefined) {
 				return NextResponse.json({ error: 'Geçersiz teslim tarihi.' }, { status: 400 });
 			}
@@ -302,10 +306,10 @@ export async function POST(request: Request) {
 				return NextResponse.json({ error: 'Görev ID zorunludur.' }, { status: 400 });
 			}
 			// Reject unknown states instead of persisting a value no client can filter on.
-			const normalized = normalizeDurum(status);
+			const normalized = normalizeStatus(status);
 			if (!normalized) {
 				return NextResponse.json(
-					{ error: `Geçersiz status. Beklenen: ${GOREV_DURUMLARI.join(', ')}` },
+					{ error: `Geçersiz status. Beklenen: ${TASK_STATUSES.join(', ')}` },
 					{ status: 400 }
 				);
 			}
@@ -357,8 +361,11 @@ export async function POST(request: Request) {
 					{ status: 400 }
 				);
 			}
-			if (!isKategori(kategori)) return NextResponse.json({ error: 'Geçersiz kategori.' }, { status: 400 });
-			const quotaError = kontenjanHatasi(kontenjan ?? 6, 0);
+			const categories = await getTeamCategories();
+			if (typeof kategori !== 'string' || !categories.includes(kategori)) {
+				return NextResponse.json({ error: 'Geçersiz kategori.' }, { status: 400 });
+			}
+			const quotaError = capacityProblem(kontenjan ?? 6, 0);
 			if (quotaError) return NextResponse.json({ error: quotaError }, { status: 400 });
 			const repo = normalizeHttpUrl(repoUrl);
 			if (repo === undefined) return NextResponse.json({ error: 'Geçerli bir depo bağlantısı girin (https://…).' }, { status: 400 });
@@ -369,7 +376,7 @@ export async function POST(request: Request) {
 				kontenjan: Number(kontenjan ?? 6),
 				repoUrl: repo ?? undefined,
 				liderId,
-				katilimTuru: isKatilimTuru(katilimTuru) ? katilimTuru : 'acik',
+				katilimTuru: isParticipationType(katilimTuru) ? katilimTuru : 'acik',
 			});
 			await publishEventQuiet(getPgPool(), { k: 'takim_guncellendi', teamId: newTeam.id });
 			return NextResponse.json({ success: true, team: newTeam });
@@ -420,7 +427,7 @@ export async function POST(request: Request) {
 			}
 			if (!access.manage) {
 				return NextResponse.json(
-					{ error: 'Görevi silmek için kulüp yönetimi veya takım kaptanı olmalısınız.' },
+					{ error: 'Görevi silmek için topluluk yönetimi veya takım kaptanı olmalısınız.' },
 					{ status: 403 }
 				);
 			}
@@ -435,3 +442,5 @@ export async function POST(request: Request) {
 		return NextResponse.json({ error: 'İşlem tamamlanamadı.' }, { status: 500 });
 	}
 }
+
+export const POST = withAudit(handlePOST, { action: 'teams.create', target: 'teams' });

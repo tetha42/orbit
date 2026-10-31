@@ -13,10 +13,10 @@ import {
 	getUserNewAssignments,
 	getPendingAttendanceEvents,
 } from '@/db';
-import { getChatOkunmamisOdalari, getChatOkunmamisSayisi } from '@/server/db/domains/chat.repo';
-import { YOKLAMA_TOLERANS_MS } from '@/lib/events';
+import { getUnreadChatRooms, getUnreadChatCount } from '@/server/db/domains/chat.repo';
+import { ATTENDANCE_TOLERANCE_MS } from '@/lib/events';
 import { authenticate, can } from '@/lib/auth/access';
-import { BILDIRIM_TURLERI } from '@/core/notifications/kinds';
+import { NOTIFICATION_KINDS } from '@/core/notifications/kinds';
 import type { NotificationItem, NotificationKind, NotificationsResponse } from '@/types/notifications';
 
 export const dynamic = 'force-dynamic';
@@ -57,7 +57,7 @@ export async function GET(request: Request) {
 	const auth = await authenticate(request);
 	if (!auth.authorized) return auth.response;
 	const user = auth.user;
-	const izinli = (kind: NotificationKind) => can(user, BILDIRIM_TURLERI[kind].appId, BILDIRIM_TURLERI[kind].seviye);
+	const izinli = (kind: NotificationKind) => can(user, NOTIFICATION_KINDS[kind].appId, NOTIFICATION_KINDS[kind].seviye);
 	/** Reads a source only when its kind may be shown. */
 	const when = <T,>(kind: NotificationKind, load: () => Promise<T[]>): Promise<T[]> => (izinli(kind) ? load() : Promise.resolve([]));
 
@@ -69,7 +69,7 @@ export async function GET(request: Request) {
 			when('teamApplication', () => getPendingTeamApplications(user.id, can(user, 'teams', 'yonet'))),
 			when('projectProposal', () => getPendingProjectProposals()),
 			when('assigned', () => getUserNewAssignments(user.id, now - FEED_WINDOW)),
-			when('checkin', () => getPendingAttendanceEvents(user.id, now, YOKLAMA_TOLERANS_MS)),
+			when('checkin', () => getPendingAttendanceEvents(user.id, now, ATTENDANCE_TOLERANCE_MS)),
 			when('teamDecision', () => getUserApplicationDecisions(user.id, now - FEED_WINDOW)),
 		]);
 
@@ -81,9 +81,9 @@ export async function GET(request: Request) {
 			when('task', () => getUserUpcomingTasks(user.id, now + DUE_WINDOW)),
 			when('loan', () => getUserUpcomingReturns(user.id, now + DUE_WINDOW)),
 			when('certificate', () => getCertificates(user.id)),
-			when('message', () => getChatOkunmamisOdalari(user.id, user.permission.admin, MAX_MESSAGES)),
+			when('message', () => getUnreadChatRooms(user.id, user.permission.admin, MAX_MESSAGES)),
 		]);
-		const unreadMessages = await (izinli('message') ? getChatOkunmamisSayisi(user.id, user.permission.admin) : Promise.resolve(0));
+		const unreadMessages = await (izinli('message') ? getUnreadChatCount(user.id, user.permission.admin) : Promise.resolve(0));
 
 		const items: NotificationItem[] = [];
 
@@ -251,8 +251,8 @@ export async function GET(request: Request) {
 				kind: 'message',
 				priority: 'info',
 				at: m.at,
-				data: { title: m.konu, from: `${m.gonderen.ad} ${m.gonderen.soyad}`.trim() },
-				target: { appId: 'chat', kind: 'thread', itemId: m.id },
+				data: { title: m.konu, from: `${m.gonderen.ad} ${m.gonderen.soyad}`.trim(), messageId: m.messageId },
+				target: { appId: 'chat', kind: 'thread', itemId: m.id, parentId: m.messageId },
 			});
 		}
 

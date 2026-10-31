@@ -4,7 +4,7 @@ import React from 'react';
 import { Activity } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
 import { fill } from '@/lib/text';
-import { columnMeta, type GorevDurumu } from '../types';
+import { columnMeta, type TaskStatus } from '../types';
 import type { TeamTaskActivity } from '@/db/schema';
 import styles from './Kanban.module.css';
 import ui from '@/core/ui/ui.module.css';
@@ -32,8 +32,8 @@ export function TaskActivityHistory({ aktivite, members, when }: TaskActivityHis
 			case 'tasindi':
 				return fill(t('kbActMoved'), {
 					actor,
-					from: t(columnMeta(String(d.from) as GorevDurumu).key),
-					to: t(columnMeta(String(d.to) as GorevDurumu).key),
+					from: t(columnMeta(String(d.from) as TaskStatus).key),
+					to: t(columnMeta(String(d.to) as TaskStatus).key),
 				});
 			case 'duzenlendi': {
 				const names: Record<string, string> = {

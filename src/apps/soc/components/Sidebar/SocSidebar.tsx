@@ -6,6 +6,7 @@ import {
 	Flame,
 	Users,
 	FileSearch,
+	History,
 	ShieldCheck,
 	KeyRound,
 	Cpu,
@@ -18,7 +19,7 @@ import {
 	RotateCcw,
 } from 'lucide-react';
 import { useSoc } from '../../context/SocContext';
-import { LAB_KULLAN_TABS } from '../../types';
+import { SOC_LAB_TABS } from '../../types';
 import s from './SocSidebar.module.css';
 
 export function SocSidebar() {
@@ -161,6 +162,22 @@ export function SocSidebar() {
 							<span className={s.shortcut}>⌥5</span>
 						</div>
 					</button>
+
+					{canManage && (
+						<button
+							type="button"
+							className={`${s.navItem} ${activeTab === 'audit' ? s.navItemActive : ''}`}
+							onClick={() => setActiveTab('audit')}
+						>
+							<div className={s.navItemLeft}>
+								<span className={s.navIcon}><History size={14} /></span>
+								<span className={s.navLabel}>{isEn ? 'Change History' : 'Değişiklik Geçmişi'}</span>
+							</div>
+							<div className={s.navItemRight}>
+								<span className={s.shortcut}>⌥A</span>
+							</div>
+						</button>
+					)}
 				</div>
 
 				{/* Group 3: Test Lab & Diagnostics */}
@@ -183,7 +200,7 @@ export function SocSidebar() {
 						</div>
 					</button>
 
-					{(canManage || LAB_KULLAN_TABS.includes('oauth')) && (
+					{(canManage || SOC_LAB_TABS.includes('oauth')) && (
 						<button
 							type="button"
 							className={`${s.navItem} ${activeTab === 'oauth' ? s.navItemActive : ''}`}
@@ -213,7 +230,7 @@ export function SocSidebar() {
 						</div>
 					</button>
 
-					{(canManage || LAB_KULLAN_TABS.includes('health')) && (
+					{(canManage || SOC_LAB_TABS.includes('health')) && (
 						<button
 							type="button"
 							className={`${s.navItem} ${activeTab === 'health' ? s.navItemActive : ''}`}

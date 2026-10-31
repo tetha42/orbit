@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
 	ChevronLeft,
 	MessageSquare,
@@ -15,16 +15,21 @@ import {
 	Trash2,
 	Check,
 	Plus,
+	Paperclip,
+	Loader2,
 	Hash,
 	PlusCircle,
 	Reply,
 	Forward,
+	Mic,
+	Square,
 } from 'lucide-react';
 import { useSession } from '@/core/session';
 import { useI18n } from '@/core/i18n';
 import { useDialog } from '@/components/Common/DialogProvider';
 import { fill } from '@/lib/text';
 import { useChat } from './hooks/useChat';
+import { useVoiceRecorder } from './hooks/useVoiceRecorder';
 import { NewChatModal } from './components/NewChatModal';
 import { AddMemberModal } from './components/AddMemberModal';
 import { GroupInfoModal } from './components/GroupInfoModal';
@@ -32,7 +37,8 @@ import { ComposerActionsMenu } from './components/composer/ComposerActionsMenu';
 import { CreatePollModal } from './components/poll/CreatePollModal';
 import { PollMessageCard } from './components/poll/PollMessageCard';
 import { ForwardMessageModal } from './components/ForwardMessageModal';
-import type { ChatOdaItem, ChatMesajItem } from './types';
+import { ChatAttachments } from './components/ChatAttachments';
+import type { ChatAttachmentItem, ChatOdaItem, ChatMessageItem } from './types';
 import { useMobileSubView } from '@/lib/client/useMobileSubView';
 import s from './ChatMobile.module.css';
 import chatStyles from './Chat.module.css';
@@ -40,6 +46,12 @@ import chatStyles from './Chat.module.css';
 function formatTime(ts?: number): string {
 	if (!ts) return '';
 	return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatDuration(seconds: number): string {
+	const mins = Math.floor(seconds / 60);
+	const secs = seconds % 60;
+	return `${mins}:${String(secs).padStart(2, '0')}`;
 }
 
 function formatDateTime(ts?: number): string {
@@ -96,6 +108,8 @@ export function ChatMobileView() {
 		votePoll,
 		closePoll,
 		replyingMessage,
+		focusedMessageId,
+		clearFocusedMessage,
 		setReplyingMessage,
 		cancelReply,
 		forwardMessage,
@@ -114,22 +128,41 @@ export function ChatMobileView() {
 	const [isCreatePollOpen, setIsCreatePollOpen] = useState(false);
 	const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
 	const [text, setText] = useState('');
-	const [editingMessage, setEditingMessage] = useState<ChatMesajItem | null>(null);
-	const [forwardingMessage, setForwardingMessage] = useState<ChatMesajItem | null>(null);
+	const [attachments, setAttachments] = useState<ChatAttachmentItem[]>([]);
+	const [isUploading, setIsUploading] = useState(false);
+	const [uploadError, setUploadError] = useState<string | null>(null);
+	const [activeActionsId, setActiveActionsId] = useState<string | null>(null);
+	const voice = useVoiceRecorder();
+	const [editingMessage, setEditingMessage] = useState<ChatMessageItem | null>(null);
+	const [forwardingMessage, setForwardingMessage] = useState<ChatMessageItem | null>(null);
 	const [prevRoomId, setPrevRoomId] = useState(activeRoomId);
 	const bottomRef = useRef<HTMLDivElement>(null);
 	const messagesScrollRef = useRef<HTMLDivElement>(null);
-	const prevMessagesRef = useRef<ChatMesajItem[]>([]);
+	const prevMessagesRef = useRef<ChatMessageItem[]>([]);
 	const prevScrollHeightRef = useRef(0);
 	const prevScreenRef = useRef<'rooms' | 'chat'>('rooms');
 	const composerInputRef = useRef<HTMLInputElement>(null);
+	const attachmentInputRef = useRef<HTMLInputElement>(null);
 
 	if (activeRoomId !== prevRoomId) {
 		setPrevRoomId(activeRoomId);
 		setEditingMessage(null);
 		setForwardingMessage(null);
 		setText('');
+		setAttachments([]);
+		setUploadError(null);
+		setActiveActionsId(null);
 	}
+
+	useEffect(() => {
+		if (focusedMessageId) setScreen('chat');
+	}, [focusedMessageId]);
+
+	useEffect(() => {
+		if (voice.isRecording) void voice.cancel();
+		// Only a room change should cancel an in-flight take.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [activeRoomId]);
 
 	// Preserve the reader's position when older messages are prepended, and
 	// follow new messages only when already near the bottom.
@@ -167,6 +200,23 @@ export function ChatMobileView() {
 		prevScreenRef.current = screen;
 	}, [messages, screen]);
 
+	useEffect(() => {
+		if (!focusedMessageId) return;
+		const container = messagesScrollRef.current;
+		if (!container) return;
+		const target = container.querySelector<HTMLElement>(
+			`[data-message-id="${focusedMessageId.replace(/"/g, '\\"')}"]`
+		);
+		if (target) {
+			target.scrollIntoView({ block: 'center', behavior: 'auto' });
+			target.classList.add(s.messageFocused);
+			const timer = setTimeout(() => target.classList.remove(s.messageFocused), 1400);
+			clearFocusedMessage();
+			return () => clearTimeout(timer);
+		}
+		if (hasMoreMessages && !loadingOlderMessages) void loadOlderMessages();
+	}, [focusedMessageId, messages, hasMoreMessages, loadingOlderMessages, loadOlderMessages, clearFocusedMessage, screen]);
+
 	const handleMessagesScroll = () => {
 		const el = messagesScrollRef.current;
 		if (!el || !hasMoreMessages || loadingOlderMessages) return;
@@ -187,7 +237,7 @@ export function ChatMobileView() {
 		() => filteredRooms.filter((r) => r.tur !== 'takim' && r.tur !== 'ozel'),
 		[filteredRooms]
 	);
-	const takimRooms = useMemo(
+	const teamRooms = useMemo(
 		() => filteredRooms.filter((r) => r.tur === 'takim'),
 		[filteredRooms]
 	);
@@ -209,8 +259,8 @@ export function ChatMobileView() {
 		[genelRooms]
 	);
 	const unreadTeamsCount = useMemo(
-		() => takimRooms.reduce((acc, r) => acc + (r.okunmamisSayisi || 0), 0),
-		[takimRooms]
+		() => teamRooms.reduce((acc, r) => acc + (r.okunmamisSayisi || 0), 0),
+		[teamRooms]
 	);
 
 	const handleTabChange = (tabId: ChatMobileTab) => {
@@ -274,10 +324,72 @@ export function ChatMobileView() {
 		setScreen('chat');
 	};
 
+	const uploadOne = async (file: File): Promise<ChatAttachmentItem | null> => {
+		if (!activeRoomId) return null;
+		const formData = new FormData();
+		formData.set('odaId', activeRoomId);
+		formData.set('file', file);
+		const res = await fetch('/api/chat/upload', { method: 'POST', body: formData });
+		const data = await res.json();
+		if (!res.ok || !data.ok) {
+			setUploadError(data.error || t('chatUploadFailed'));
+			return null;
+		}
+		return data.attachment as ChatAttachmentItem;
+	};
+
+	const uploadFiles = async (files: FileList | null) => {
+		if (!files || !activeRoomId || editingMessage) return;
+		setUploadError(null);
+		setIsUploading(true);
+		try {
+			for (const file of Array.from(files).slice(0, 6)) {
+				const attachment = await uploadOne(file);
+				if (attachment) setAttachments((previous) => [...previous, attachment]);
+			}
+		} catch {
+			setUploadError(t('chatUploadFailed'));
+		} finally {
+			setIsUploading(false);
+			if (attachmentInputRef.current) attachmentInputRef.current.value = '';
+		}
+	};
+
+	const finishVoice = async () => {
+		const file = await voice.stop();
+		if (!file) {
+			setUploadError(t('chatVoiceFailed', 'The voice recording could not be created.'));
+			return;
+		}
+		setUploadError(null);
+		setIsUploading(true);
+		try {
+			const attachment = await uploadOne(file);
+			if (attachment) {
+				const ok = await sendMessage('', [attachment]);
+				if (!ok) setAttachments((previous) => [...previous, attachment]);
+			}
+		} catch {
+			setUploadError(t('chatUploadFailed'));
+		} finally {
+			setIsUploading(false);
+		}
+	};
+
+	const voiceError =
+		voice.error === 'unsupported'
+			? t('chatVoiceUnsupported', 'Voice recording is not supported by this browser.')
+			: voice.error === 'permission'
+				? t('chatVoicePermission', 'Microphone permission is required.')
+				: voice.error === 'failed'
+					? t('chatVoiceFailed', 'The voice recording could not be saved.')
+					: null;
+
 	const handleSend = async (e: React.FormEvent) => {
 		e.preventDefault();
 		const trimmed = text.trim();
-		if (!trimmed || sending) return;
+		const pending = editingMessage ? [] : attachments;
+		if ((!trimmed && pending.length === 0) || sending || isUploading) return;
 		setText('');
 		composerInputRef.current?.focus();
 		if (editingMessage) {
@@ -288,8 +400,9 @@ export function ChatMobileView() {
 				setText(trimmed);
 			}
 		} else {
-			const ok = await sendMessage(trimmed);
+			const ok = await sendMessage(trimmed, pending);
 			if (!ok) setText(trimmed);
+			else setAttachments([]);
 		}
 		requestAnimationFrame(() => {
 			composerInputRef.current?.focus();
@@ -445,10 +558,10 @@ export function ChatMobileView() {
 								</div>
 							)}
 
-							{takimRooms.length > 0 && (
+							{teamRooms.length > 0 && (
 								<div>
 									<div className={s.sectionHeader}>{t('chatTeamRooms')}</div>
-									{takimRooms.map(renderRoomItem)}
+									{teamRooms.map(renderRoomItem)}
 								</div>
 							)}
 
@@ -513,10 +626,10 @@ export function ChatMobileView() {
 
 					{activeTab === 'teams' && (
 						<>
-							{takimRooms.length > 0 ? (
+							{teamRooms.length > 0 ? (
 								<div>
 									<div className={s.sectionHeader}>{t('chatTeamRooms')}</div>
-									{takimRooms.map(renderRoomItem)}
+									{teamRooms.map(renderRoomItem)}
 								</div>
 							) : (
 								<div className={s.emptyListCard}>
@@ -662,7 +775,10 @@ export function ChatMobileView() {
 						return (
 							<div
 								key={msg.id}
-								className={`${s.msgRow} ${isMine ? s.msgRowMine : ''} ${isDeleted ? s.msgRowDeleted : ''}`}
+								data-message-id={msg.id}
+								className={`${s.msgRow} ${isMine ? s.msgRowMine : ''} ${isDeleted ? s.msgRowDeleted : ''} ${
+									activeActionsId === msg.id ? s.msgActionsVisible : ''
+								}`}
 							>
 								{!isMine && (
 									<div className={s.msgAvatar}>
@@ -689,7 +805,20 @@ export function ChatMobileView() {
 												onClosePoll={closePoll}
 											/>
 										) : (
-											<div className={`${s.bubble} ${isMine ? s.bubbleMine : ''} ${isDeleted ? s.bubbleDeleted : ''}`}>
+											<div
+												className={`${s.bubble} ${isMine ? s.bubbleMine : ''} ${
+													!isDeleted && (msg.ekler?.length ?? 0) > 0 ? s.bubbleMedia : ''
+												} ${isDeleted ? s.bubbleDeleted : ''}`}
+												onClick={(event) => {
+													const target = event.target as HTMLElement;
+													if (target.closest('button, a, img, video, audio, iframe, input, textarea, select')) return;
+													setActiveActionsId((current) => (current === msg.id ? null : msg.id));
+												}}
+												onContextMenu={(event) => {
+													event.preventDefault();
+													setActiveActionsId(msg.id);
+												}}
+											>
 												{/* Forwarded Header */}
 												{msg.iletildiMi && !isDeleted && (
 													<div className={`${s.forwardedTag} ${isMine ? s.forwardedTagMine : ''}`}>
@@ -710,7 +839,8 @@ export function ChatMobileView() {
 												)}
 
 												{isDeleted && <span className={s.deletedInlineNotice}>[{t('chatDelete').toUpperCase()}] </span>}
-												<div className={s.msgTextContent}>{msg.icerik}</div>
+												{msg.icerik && <div className={s.msgTextContent}>{msg.icerik}</div>}
+												{!isDeleted && msg.ekler?.length > 0 && <ChatAttachments attachments={msg.ekler} />}
 												<div className={s.bubbleTime}>{formatTime(msg.date)}</div>
 											</div>
 										)}
@@ -837,6 +967,54 @@ export function ChatMobileView() {
 				</div>
 			)}
 
+			{voice.isRecording && (
+				<div className={s.recordingBar}>
+					<span className={s.recordingDot} />
+					<span className={s.recordingText}>{t('chatRecording', 'Recording voice message')} · {formatDuration(voice.seconds)}</span>
+					<button type="button" className={s.recordingCancel} onClick={() => void voice.cancel()} title={t('cancel')}>
+						<X size={14} />
+					</button>
+					<button type="button" className={s.recordingDone} onClick={() => void finishVoice()} disabled={isUploading} title={t('chatSend')}>
+						<Check size={14} />
+					</button>
+				</div>
+			)}
+			{voiceError && (
+				<div role="alert" className={s.voiceError}>{voiceError}</div>
+			)}
+
+			<input
+				ref={attachmentInputRef}
+				type="file"
+				multiple
+				hidden
+				accept="image/*,video/*,audio/*,.pdf,.md,.markdown,.txt,.csv,.json,.zip,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.odp,.epub"
+				onChange={(event) => void uploadFiles(event.target.files)}
+			/>
+			{attachments.length > 0 && (
+				<div className={chatStyles.pendingAttachments}>
+					{attachments.map((attachment, index) => (
+						<span key={`${attachment.url}-${index}`} className={chatStyles.pendingAttachment}>
+							<Paperclip size={11} />
+							<span>{attachment.ad}</span>
+							<button
+								type="button"
+								onClick={() =>
+									setAttachments((previous) => previous.filter((_, itemIndex) => itemIndex !== index))
+								}
+							>
+								<X size={11} />
+							</button>
+						</span>
+					))}
+				</div>
+			)}
+			{uploadError && (
+				<div role="alert" style={{ padding: '5px 12px 0', fontSize: 11, color: '#ff453a' }}>
+					{uploadError}
+				</div>
+			)}
+
 			<form className={s.composer} onSubmit={handleSend}>
 				<div className={chatStyles.composerActionWrapper}>
 					<button
@@ -845,8 +1023,9 @@ export function ChatMobileView() {
 						onClick={() => setIsActionsMenuOpen((prev) => !prev)}
 						title={t('chatActionsMenu') || 'Ek Eylemler'}
 						aria-expanded={isActionsMenuOpen}
+						disabled={isUploading || Boolean(editingMessage)}
 					>
-						<Plus size={18} />
+						{isUploading ? <Loader2 size={18} /> : <Plus size={18} />}
 					</button>
 					<ComposerActionsMenu
 						isOpen={isActionsMenuOpen}
@@ -855,6 +1034,8 @@ export function ChatMobileView() {
 						onSelectAction={(actionId) => {
 							if (actionId === 'poll') {
 								setIsCreatePollOpen(true);
+							} else if (actionId === 'attach') {
+								attachmentInputRef.current?.click();
 							}
 						}}
 					/>
@@ -864,18 +1045,32 @@ export function ChatMobileView() {
 					ref={composerInputRef}
 					type="text"
 					className={s.composerInput}
-					placeholder={t('chatTypePlaceholder')}
+					placeholder={voice.isRecording ? t('chatRecording', 'Recording voice message') : t('chatTypePlaceholder')}
 					value={text}
 					onChange={(e) => setText(e.target.value)}
+					disabled={voice.isRecording}
 				/>
-				<button
-					type="submit"
-					className={s.sendBtn}
-					disabled={sending || !text.trim()}
-					title={editingMessage ? t('chatSaveEdit') : t('chatSend')}
-				>
-					{editingMessage ? <Check size={18} /> : <Send size={18} />}
-				</button>
+				{!text.trim() && attachments.length === 0 && !editingMessage ? (
+					<button
+						type="button"
+						className={`${s.micBtn} ${voice.isRecording ? s.micBtnRecording : ''}`}
+						onClick={() => (voice.isRecording ? void finishVoice() : void voice.start())}
+						disabled={sending || isUploading}
+						title={voice.isRecording ? t('chatStopRecording', 'Stop and send') : t('chatRecordVoice', 'Record voice message')}
+						aria-label={voice.isRecording ? t('chatStopRecording', 'Stop and send') : t('chatRecordVoice', 'Record voice message')}
+					>
+						{voice.isRecording ? <Square size={14} /> : <Mic size={18} />}
+					</button>
+				) : (
+					<button
+						type="submit"
+						className={s.sendBtn}
+						disabled={sending || isUploading || (!text.trim() && attachments.length === 0)}
+						title={editingMessage ? t('chatSaveEdit') : t('chatSend')}
+					>
+						{editingMessage ? <Check size={18} /> : <Send size={18} />}
+					</button>
+				)}
 			</form>
 			{modals}
 		</div>

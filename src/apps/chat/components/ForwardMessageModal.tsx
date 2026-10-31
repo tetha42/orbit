@@ -4,13 +4,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useI18n } from '@/core/i18n';
 import { fill } from '@/lib/text';
 import { X, Search, Forward, Users, MessageSquare, Check } from 'lucide-react';
-import type { ChatOdaItem, ChatMesajItem } from '../types';
+import type { ChatOdaItem, ChatMessageItem } from '../types';
 import s from '../Chat.module.css';
 
 interface ForwardMessageModalProps {
 	isOpen: boolean;
 	onClose: () => void;
-	message: ChatMesajItem | null;
+	message: ChatMessageItem | null;
 	rooms: ChatOdaItem[];
 	onForward: (mesajId: string, targetOdaIds: string[]) => Promise<{ ok: boolean; count?: number }>;
 }

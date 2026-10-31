@@ -1,26 +1,26 @@
 'use client';
 
 import React from 'react';
-import type { teslimDurumu } from '@/lib/kanban';
+import type { dueStatus } from '@/lib/kanban';
 import styles from './Kanban.module.css';
-import { COLUMNS, type GorevDurumu, type TeamTask } from '../types';
+import { COLUMNS, type TaskStatus, type TeamTask } from '../types';
 import { KanbanColumn } from './KanbanColumn';
 
 interface KanbanColumnGridProps {
 	tasks: TeamTask[];
-	byColumn: Map<GorevDurumu, TeamTask[]>;
-	drop: { col: GorevDurumu; index: number } | null;
+	byColumn: Map<TaskStatus, TeamTask[]>;
+	drop: { col: TaskStatus; index: number } | null;
 	dragId: string | null;
 	canManage: boolean;
 	canWork: (task: TeamTask) => boolean;
 	now: number;
-	dueText: (state: ReturnType<typeof teslimDurumu>, ts: number) => string;
-	move: (task: TeamTask, targetCol: GorevDurumu, targetIndex?: number) => void;
+	dueText: (state: ReturnType<typeof dueStatus>, ts: number) => string;
+	move: (task: TeamTask, targetCol: TaskStatus, targetIndex?: number) => void;
 	step: (task: TeamTask, delta: -1 | 1) => void;
 	setOpenTaskId: (id: string | null) => void;
-	setNewTaskCol: (col: GorevDurumu) => void;
+	setNewTaskCol: (col: TaskStatus) => void;
 	setDragId: (id: string | null) => void;
-	setDrop: (drop: { col: GorevDurumu; index: number } | null) => void;
+	setDrop: (drop: { col: TaskStatus; index: number } | null) => void;
 }
 
 export function KanbanColumnGrid({

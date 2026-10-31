@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getEventById, getEventAttendeeList } from '@/db';
 import { requireApp } from '@/lib/auth/access';
-import { pencereKalanMs, yoklamaZamaniMi } from '@/lib/events';
-import { yoklamaKoduUret } from '@/lib/server/attendanceToken';
+import { windowRemainingMs, isAttendanceTime } from '@/lib/events';
+import { createAttendanceCode } from '@/lib/server/attendanceToken';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,17 +21,17 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 		return NextResponse.json({ error: 'Önce yoklamayı açın.', code: 'YOKLAMA_KAPALI' }, { status: 409 });
 	}
 	const now = Date.now();
-	if (!yoklamaZamaniMi(Number(ev.baslangic), Number(ev.endTime), now)) {
+	if (!isAttendanceTime(Number(ev.baslangic), Number(ev.endTime), now)) {
 		return NextResponse.json({ error: 'Attendance yalnızca etkinlik sırasında alınabilir.', code: 'ZAMAN_DISI' }, { status: 409 });
 	}
-	const kod = await yoklamaKoduUret(id, now);
-	const katilimci = (await getEventAttendeeList(id)).filter((r) => r.katilimZamani).length;
+	const code = await createAttendanceCode(id, now);
+	const participant = (await getEventAttendeeList(id)).filter((r) => r.katilimZamani).length;
 	return NextResponse.json(
 		{
 			// The projector shows and encodes only this short code.
-			kisaKod: kod.kisaKod,
-			kalanMs: pencereKalanMs(now),
-			katilimciSayisi: katilimci,
+			kisaKod: code.kisaKod,
+			kalanMs: windowRemainingMs(now),
+			katilimciSayisi: participant,
 		},
 		{ headers: { 'Cache-Control': 'no-store' } }
 	);

@@ -1,3 +1,4 @@
+import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
 import { resizeTerminalSession, getTerminalSession } from '@/lib/server/terminalManager';
 import { authorizeTerminal } from '@/lib/server/terminalAccess';
@@ -8,7 +9,7 @@ interface ResizeSessionBody {
 	rows?: unknown;
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
 	const auth = await authorizeTerminal(request);
 	if (!auth.authorized) return auth.response;
 
@@ -39,3 +40,5 @@ export async function POST(request: Request) {
 		return NextResponse.json({ error: message }, { status: 500 });
 	}
 }
+
+export const POST = withAudit(handlePOST, { action: 'terminal.resize.create', target: 'terminal.resize' });

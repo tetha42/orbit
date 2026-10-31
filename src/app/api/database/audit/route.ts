@@ -70,10 +70,10 @@ export async function POST(request: Request) {
 
 		const rec = checkRes.rows[0];
 		const table = rec.hedefId;
-		const onceki = rec.onceki || {};
+		const previous = rec.onceki || {};
 
-		const pkCol = String(onceki.pkCol || '');
-		const pkVal = onceki.pkVal;
+		const pkCol = String(previous.pkCol || '');
+		const pkVal = previous.pkVal;
 
 		if (!table || !/^[a-zA-Z0-9_]+$/.test(table)) {
 			return NextResponse.json({ error: 'Geçersiz hedef tablo.' }, { status: 400 });
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
 		const setClauses: string[] = [];
 		const params: unknown[] = [];
 
-		for (const [key, val] of Object.entries(onceki)) {
+		for (const [key, val] of Object.entries(previous)) {
 			if (key === 'pkCol' || key === 'pkVal') continue;
 			if (!/^[a-zA-Z0-9_]+$/.test(key)) continue;
 			if (SENSITIVE_COLUMNS.has(key.toLowerCase())) continue;

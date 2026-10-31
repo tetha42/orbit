@@ -1,12 +1,12 @@
-import type { EnvanterDurum } from '@/types/inventory';
-export type { EnvanterDurum };
+import type { InventoryStatus } from '@/types/inventory';
+export type { InventoryStatus };
 
 export interface InventoryItem {
 	id: string;
 	kod: string;
 	ad: string;
 	kategori: string;
-	status: EnvanterDurum;
+	status: InventoryStatus;
 	konum: string;
 	oduncAlanId: string | null;
 	oduncAlanAdSoyad: string | null;
@@ -16,9 +16,9 @@ export interface InventoryItem {
 	seriNo: string | null;
 }
 
-export type Filter = 'hepsi' | EnvanterDurum | 'gecikmis' | 'bende';
+export type Filter = 'hepsi' | InventoryStatus | 'gecikmis' | 'bende';
 
-export const KATEGORI_ONERILERI = [
+export const CATEGORY_SUGGESTIONS = [
 	'Geliştirme Kartı',
 	'Gömülü Sistem',
 	'Sensör',

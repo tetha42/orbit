@@ -13,7 +13,7 @@ const manifest = {
 	tr: {
 		title: 'Kasa & Finans Masası',
 		shortTitle: 'Finans',
-		description: 'Kulüp kasası, bütçe tahsisleri ve harcama takibi',
+		description: 'Topluluk kasası, bütçe tahsisleri ve harcama takibi',
 	},
 	category: 'Finance',
 	icon: 'DollarSign',
@@ -40,7 +40,7 @@ const manifest = {
 	},
 	menu: {
 		title: { tr: 'Finans', en: 'Finance' },
-		about: { id: 'about-budget', label: { tr: 'Mali İşler & Kasa Hakkında', en: 'About Club Treasury' } },
+		about: { id: 'about-budget', label: { tr: 'Mali İşler & Kasa Hakkında', en: 'About Community Treasury' } },
 		categories: [
 			{
 				id: 'file',

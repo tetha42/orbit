@@ -92,7 +92,7 @@ export function SmtpFormFields({
 					<label style={labelStyle}>{t('smtpUserLabel')}</label>
 					<input
 						type="email"
-						placeholder="kulup@example.org"
+						placeholder="community@example.org"
 						value={user}
 						onChange={(e) => onUserChange(e.target.value)}
 						required

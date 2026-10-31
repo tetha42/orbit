@@ -2,13 +2,13 @@ import type { TestbenchTab } from './testbench/types';
 export type { TestbenchTab };
 
 /** Defence tabs plus the test-lab tabs hosted in the same studio. */
-export type SocTab = 'radar' | 'firewall' | 'sessions' | 'siem' | 'inspection' | TestbenchTab;
+export type SocTab = 'radar' | 'firewall' | 'sessions' | 'siem' | 'inspection' | 'audit' | TestbenchTab;
 
 export const isLabTab = (tab: SocTab): tab is TestbenchTab =>
 	tab === 'oauth' || tab === 'api' || tab === 'fuzzer' || tab === 'health' || tab === 'session';
 
 /** Lab tabs a SoC user without management rights may open; the rest need SoC "Yönet". */
-export const LAB_KULLAN_TABS: TestbenchTab[] = ['api', 'session'];
+export const SOC_LAB_TABS: TestbenchTab[] = ['api', 'session'];
 
 export const LAB_SEGMENTS: Array<{ id: TestbenchTab; key: string; tr: string; en: string }> = [
 	{ id: 'oauth', key: 'tbTabOAuthShort', tr: 'OAuth', en: 'OAuth' },
@@ -160,7 +160,7 @@ export interface SocIncident {
 	updatedAt: number;
 }
 
-export interface AktifOturumBilgisi {
+export interface ActiveSessionInfo {
 	id: string;
 	ad: string;
 	soyad: string;
@@ -350,7 +350,7 @@ export type InspectorEntity =
 	| { type: 'event'; data: SystemLog }
 	| { type: 'ip'; data: InspectorIpData }
 	| { type: 'incident'; data: SocIncident }
-	| { type: 'session'; data: AktifOturumBilgisi }
+	| { type: 'session'; data: ActiveSessionInfo }
 	| { type: 'fim'; data: InspectorFimData };
 
 export interface ContextMenuState {

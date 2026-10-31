@@ -5,7 +5,7 @@ import { Check, Inbox, LogOut, UserMinus, UserPlus, Users, X } from 'lucide-reac
 import { useI18n } from '@/core/i18n';
 import { useDialog } from '@/components/Common/DialogProvider';
 import { fill } from '@/lib/text';
-import { KAPTAN_ROLU, ROL_MAX } from '@/lib/teams';
+import { CAPTAIN_ROLE, ROLE_MAX } from '@/lib/teams';
 import ui from '@/core/ui/ui.module.css';
 import styles from './Teams.module.css';
 import { sendJson } from '@/core/data/http';
@@ -144,10 +144,10 @@ export function TeamMembers({ team, currentUserId, roster, notify, onChanged }: 
 									<input
 										className={styles.roleInput}
 										value={roleDrafts[u.userId] ?? u.takimRolu}
-										maxLength={ROL_MAX}
+										maxLength={ROLE_MAX}
 										disabled={!manage || isCaptain}
 										aria-label={`${t('tmRole')}: ${u.kullaniciAdSoyad}`}
-										title={isCaptain ? KAPTAN_ROLU : t('tmRole')}
+										title={isCaptain ? CAPTAIN_ROLE : t('tmRole')}
 										onChange={(e) => setRoleDrafts((d) => ({ ...d, [u.userId]: e.target.value }))}
 										onBlur={() => saveRole(u.userId, u.takimRolu)}
 										onKeyDown={(e) => {

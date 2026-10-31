@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { FolderPlus } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
-import { PROJE_BASLIK_MAX, PROJE_OZET_MAX, normalizeTeknolojiler } from '@/lib/projects';
+import { PROJECT_TITLE_MAX, PROJECT_SUMMARY_MAX, normalizeTeknolojiler } from '@/lib/projects';
 import type { Project } from '@/db/schema';
 import ui from '@/core/ui/ui.module.css';
 import styles from './Projects.module.css';
@@ -28,6 +28,7 @@ export function ProjectFormModal({ proje, teams, manage, onClose, onSaved }: Pro
 	const [canliUrl, setCanliUrl] = useState(proje?.canliUrl ?? '');
 	const [tech, setTech] = useState((proje?.teknolojiler ?? []).join(', '));
 	const [teamId, setTakimId] = useState(proje?.teamId ?? '');
+	const [ownerTeamId, setOwnerTeamId] = useState(proje?.ownerTeamId ?? proje?.teamId ?? '');
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
 
@@ -46,6 +47,7 @@ export function ProjectFormModal({ proje, teams, manage, onClose, onSaved }: Pro
 			canliUrl,
 			teknolojiler: tech,
 			teamId: teamId || null,
+			ownerTeamId: ownerTeamId || null,
 		};
 		const res = proje
 			? await sendJson<{ proje: Project }>(
@@ -87,7 +89,7 @@ export function ProjectFormModal({ proje, teams, manage, onClose, onSaved }: Pro
 					className={ui.input}
 					value={baslik}
 					autoFocus
-					maxLength={PROJE_BASLIK_MAX}
+					maxLength={PROJECT_TITLE_MAX}
 					onChange={(e) => setBaslik(e.target.value)}
 					required
 					minLength={3}
@@ -97,7 +99,7 @@ export function ProjectFormModal({ proje, teams, manage, onClose, onSaved }: Pro
 				<span className={ui.fieldLabel} style={{ display: 'flex' }}>
 					{t('pjFieldSummary')}
 					<span className={styles.counter}>
-						{ozet.length}/{PROJE_OZET_MAX}
+						{ozet.length}/{PROJECT_SUMMARY_MAX}
 					</span>
 				</span>
 				<textarea
@@ -105,7 +107,7 @@ export function ProjectFormModal({ proje, teams, manage, onClose, onSaved }: Pro
 					style={{ minHeight: 60 }}
 					rows={2}
 					value={ozet}
-					maxLength={PROJE_OZET_MAX}
+					maxLength={PROJECT_SUMMARY_MAX}
 					onChange={(e) => setOzet(e.target.value)}
 					required
 					minLength={10}
@@ -178,6 +180,22 @@ export function ProjectFormModal({ proje, teams, manage, onClose, onSaved }: Pro
 					style={{ maxWidth: 'none' }}
 					value={teamId}
 					onChange={(e) => setTakimId(e.target.value)}
+				>
+					<option value="">{t('pjNoTeam')}</option>
+					{teams.map((tm) => (
+						<option key={tm.id} value={tm.id}>
+							{tm.ad}
+						</option>
+					))}
+				</select>
+			</label>
+			<label className={ui.field}>
+				<span className={ui.fieldLabel}>{t('pjFieldOwnerTeam')}</span>
+				<select
+					className={ui.select}
+					style={{ maxWidth: 'none' }}
+					value={ownerTeamId}
+					onChange={(e) => setOwnerTeamId(e.target.value)}
 				>
 					<option value="">{t('pjNoTeam')}</option>
 					{teams.map((tm) => (

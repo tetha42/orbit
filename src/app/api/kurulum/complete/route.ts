@@ -1,7 +1,10 @@
+import { withAudit } from '@/lib/audit/withAudit';
 import { handleSetupSubmission } from '../route';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
 	return handleSetupSubmission(request);
 }
+
+export const POST = withAudit(handlePOST, { action: 'kurulum.complete.create', target: 'kurulum.complete' });

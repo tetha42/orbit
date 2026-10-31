@@ -1,3 +1,4 @@
+import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
 import { requireApp } from '@/lib/auth/access';
 import { createSmtpTransport } from '@/lib/mail/mailer';
@@ -9,7 +10,7 @@ import { consumeRateLimit, pruneRateLimits } from '@/lib/rateLimit';
 /** Tests are expensive (a real SMTP handshake) and admin-triggered only. */
 const RATE_LIMIT = { max: 5, windowMs: 10 * 60 * 1000 };
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
 	const auth = await requireApp(request, 'settings', 'yonet');
 	if (!auth.authorized) return auth.response;
 
@@ -123,3 +124,5 @@ export async function POST(request: Request) {
 		);
 	}
 }
+
+export const POST = withAudit(handlePOST, { action: 'settings.smtp.test.create', target: 'settings.smtp.test' });

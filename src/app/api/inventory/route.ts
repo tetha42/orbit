@@ -1,22 +1,23 @@
+import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
 import { getUserById, getPgPool } from '@/db';
 import { publishEventQuiet } from '@/db/olaylar';
 import {
-	EnvanterKodVarError,
+	InventoryCodeExistsError,
 	createInventoryItem,
 	deleteInventoryItem,
 	getInventoryItems,
 	getInventoryItemById,
 	getInventoryActivities,
-	iadeAl,
+	markReturned,
 	extendLoan,
 	lendInventoryItem,
 	setInventoryStatus,
 	updateInventoryItem,
 } from '@/server/db/domains/inventory.repo';
 import { can, requireApp } from '@/lib/auth/access';
-import { VARSAYILAN_ODUNC_GUN, iadeTarihiHatasi, kodHatasi, normalizeKod } from '@/lib/inventory';
-import { ENVANTER_DURUMLARI, isEnvanterDurum } from '@/types/inventory';
+import { DEFAULT_LOAN_DAYS, returnDateProblem, codeProblem, normalizeCode } from '@/lib/inventory';
+import { INVENTORY_STATUSES, isInventoryStatus } from '@/types/inventory';
 
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status });
 const DAY = 86_400_000;
@@ -49,7 +50,7 @@ export async function GET(request: Request) {
 	}
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
 	try {
 		const auth = await requireApp(request, 'inventory', 'kullan');
 		if (!auth.authorized) return auth.response;
@@ -75,10 +76,10 @@ export async function POST(request: Request) {
 				seriNo?: string | null;
 			} = {};
 			if (body.kod !== undefined || action === 'create') {
-				const kod = normalizeKod(body.kod);
-				const err = kodHatasi(kod);
+				const code = normalizeCode(body.kod);
+				const err = codeProblem(code);
 				if (err) return bad(err);
-				fields.kod = kod;
+				fields.kod = code;
 			}
 			for (const [key, min, max, label] of [
 				['ad', 3, 120, 'Ad'],
@@ -113,13 +114,13 @@ export async function POST(request: Request) {
 						aciklama: fields.aciklama,
 						seriNo: fields.seriNo,
 						// A new item is in service, broken or lost — never "on loan" to nobody.
-						status: isEnvanterDurum(body.status) && body.status !== 'oduncte' ? body.status : 'saglam',
+						status: isInventoryStatus(body.status) && body.status !== 'oduncte' ? body.status : 'saglam',
 						aktorId: auth.user.id,
 					});
 					await publishEventQuiet(getPgPool(), { k: 'envanter_guncellendi' });
 					return NextResponse.json({ success: true, item }, { status: 201 });
 				} catch (err) {
-					if (err instanceof EnvanterKodVarError)
+					if (err instanceof InventoryCodeExistsError)
 						return bad(`${fields.kod} kodu zaten kullanılıyor.`, 409);
 					throw err;
 				}
@@ -156,14 +157,14 @@ export async function POST(request: Request) {
 					return bad('Ödünç verilecek üye bulunamadı veya aktif değil.', 404);
 				userId = target.id;
 			}
-			const iade =
-				body.iadeTarihi === undefined ? now + VARSAYILAN_ODUNC_GUN * DAY : Number(body.iadeTarihi);
-			const err = iadeTarihiHatasi(iade, { now, yonetim: isManager });
+			const returnDate =
+				body.iadeTarihi === undefined ? now + DEFAULT_LOAN_DAYS * DAY : Number(body.iadeTarihi);
+			const err = returnDateProblem(returnDate, { now, yonetim: isManager });
 			if (err) return bad(err);
 			const r = await lendInventoryItem({
 				id: envanterId,
 				userId,
-				iadeTarihi: iade,
+				iadeTarihi: returnDate,
 				aktorId: auth.user.id,
 			});
 			if (r === 'yok') return bad('Envanter kaydı bulunamadı.', 404);
@@ -178,7 +179,7 @@ export async function POST(request: Request) {
 			// it; a borrower may report it broken, which takes it out of service.
 			const not = text(body.not, 0, 500);
 			if (not === null) return bad('Not en fazla 500 karakter olabilir.');
-			const r = await iadeAl({
+			const r = await markReturned({
 				id: envanterId,
 				aktorId: auth.user.id,
 				borrowerOnly: isManager ? undefined : auth.user.id,
@@ -205,8 +206,8 @@ export async function POST(request: Request) {
 			if (item.status !== 'oduncte') return bad('Bu eşya ödünçte değil.', 409);
 			if (!isManager && item.oduncAlanId !== auth.user.id)
 				return bad('Süreyi yalnızca ödünç alan kişi veya yönetim uzatabilir.', 403);
-			const iade = Number(body.iadeTarihi);
-			const err = iadeTarihiHatasi(iade, {
+			const returnDate = Number(body.iadeTarihi);
+			const err = returnDateProblem(returnDate, {
 				now,
 				baslangic: item.oduncTarihi ?? now,
 				yonetim: isManager,
@@ -214,7 +215,7 @@ export async function POST(request: Request) {
 			if (err) return bad(err);
 			const r = await extendLoan({
 				id: envanterId,
-				iadeTarihi: iade,
+				iadeTarihi: returnDate,
 				aktorId: auth.user.id,
 				borrowerOnly: isManager ? undefined : auth.user.id,
 			});
@@ -226,15 +227,15 @@ export async function POST(request: Request) {
 		if (action === 'updateDurum') {
 			if (!isManager)
 				return bad(
-					'Envanter durumu yalnızca kulüp başkanı veya yönetim tarafından güncellenebilir.',
+					'Envanter durumu yalnızca topluluk lideri veya yönetim tarafından güncellenebilir.',
 					403,
 				);
 			const status = body.status;
 			// Reject unknown values instead of persisting a status nothing can filter on;
 			// "on loan" is reached by lending, never set by hand.
-			if (!isEnvanterDurum(status) || status === 'oduncte') {
+			if (!isInventoryStatus(status) || status === 'oduncte') {
 				return bad(
-					`Geçersiz status. Beklenen: ${ENVANTER_DURUMLARI.filter((d) => d !== 'oduncte').join(', ')}`,
+					`Geçersiz status. Beklenen: ${INVENTORY_STATUSES.filter((d) => d !== 'oduncte').join(', ')}`,
 				);
 			}
 			const not = text(body.not, 0, 500);
@@ -257,3 +258,5 @@ export async function POST(request: Request) {
 		return bad('İşlem tamamlanamadı.', 500);
 	}
 }
+
+export const POST = withAudit(handlePOST, { action: 'inventory.create', target: 'inventory' });

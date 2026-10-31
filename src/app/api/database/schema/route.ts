@@ -11,7 +11,7 @@ export async function GET(request: Request) {
 
 	try {
 		// 1. Fetch public base tables
-		const tablesRes = await pool.query<{ table_name: string }>(`
+		const tablesRes = await pool.query<{ table_name?: string; tableName?: string }>(`
 			SELECT table_name
 			FROM information_schema.tables
 			WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
@@ -20,10 +20,14 @@ export async function GET(request: Request) {
 
 		// 2. Fetch all columns
 		const colsRes = await pool.query<{
-			table_name: string;
-			column_name: string;
-			data_type: string;
-			is_nullable: string;
+			table_name?: string;
+			tableName?: string;
+			column_name?: string;
+			columnName?: string;
+			data_type?: string;
+			dataType?: string;
+			is_nullable?: string;
+			isNullable?: string;
 		}>(`
 			SELECT table_name, column_name, data_type, is_nullable
 			FROM information_schema.columns
@@ -32,7 +36,7 @@ export async function GET(request: Request) {
 		`);
 
 		// 3. Fetch all Primary Keys
-		const pksRes = await pool.query<{ table_name: string; column_name: string }>(`
+		const pksRes = await pool.query<{ table_name?: string; tableName?: string; column_name?: string; columnName?: string }>(`
 			SELECT tc.table_name, kcu.column_name
 			FROM information_schema.table_constraints tc
 			JOIN information_schema.key_column_usage kcu
@@ -44,15 +48,21 @@ export async function GET(request: Request) {
 
 		const pkSet = new Set<string>();
 		for (const r of pksRes.rows) {
-			pkSet.add(`${r.table_name}.${r.column_name}`);
+			const tableName = String(r.tableName ?? r.table_name ?? '');
+			const columnName = String(r.columnName ?? r.column_name ?? '');
+			if (tableName && columnName) pkSet.add(`${tableName}.${columnName}`);
 		}
 
 		// 4. Fetch all Foreign Keys
 		const fksRes = await pool.query<{
-			table_name: string;
-			column_name: string;
-			foreign_table_name: string;
-			foreign_column_name: string;
+			table_name?: string;
+			tableName?: string;
+			column_name?: string;
+			columnName?: string;
+			foreign_table_name?: string;
+			foreignTableName?: string;
+			foreign_column_name?: string;
+			foreignColumnName?: string;
 		}>(`
 			SELECT
 				tc.table_name,
@@ -74,32 +84,34 @@ export async function GET(request: Request) {
 		const relations: SchemaRelationEdge[] = [];
 
 		for (const r of fksRes.rows) {
-			fkMap.set(`${r.table_name}.${r.column_name}`, {
-				table: r.foreign_table_name,
-				column: r.foreign_column_name,
-			});
+			const tableName = String(r.tableName ?? r.table_name ?? '');
+			const columnName = String(r.columnName ?? r.column_name ?? '');
+			const foreignTable = String(r.foreignTableName ?? r.foreign_table_name ?? '');
+			const foreignColumn = String(r.foreignColumnName ?? r.foreign_column_name ?? '');
+			if (!tableName || !columnName || !foreignTable || !foreignColumn) continue;
+			fkMap.set(`${tableName}.${columnName}`, { table: foreignTable, column: foreignColumn });
 			relations.push({
-				fromTable: r.table_name,
-				fromColumn: r.column_name,
-				toTable: r.foreign_table_name,
-				toColumn: r.foreign_column_name,
+				fromTable: tableName,
+				fromColumn: columnName,
+				toTable: foreignTable,
+				toColumn: foreignColumn,
 			});
 		}
 
 		// Group columns by table
 		const tableColsMap = new Map<string, typeof colsRes.rows>();
 		for (const c of colsRes.rows) {
-			if (!tableColsMap.has(c.table_name)) {
-				tableColsMap.set(c.table_name, []);
-			}
-			tableColsMap.get(c.table_name)!.push(c);
+			const tableName = String(c.tableName ?? c.table_name ?? '');
+			if (!tableName) continue;
+			if (!tableColsMap.has(tableName)) tableColsMap.set(tableName, []);
+			tableColsMap.get(tableName)!.push(c);
 		}
 
 		// 5. Construct table nodes with approximate counts
 		const tables: SchemaTableNode[] = [];
 		for (const row of tablesRes.rows) {
-			const tableName = row.table_name;
-			if (!/^[a-zA-Z0-9_]+$/.test(tableName)) continue;
+			const tableName = String(row.tableName ?? row.table_name ?? '').trim();
+			if (!tableName || !/^[a-zA-Z0-9_]+$/.test(tableName)) continue;
 
 			let rowCount = 0;
 			try {
@@ -110,18 +122,22 @@ export async function GET(request: Request) {
 			}
 
 			const rawCols = tableColsMap.get(tableName) || [];
-			const columns = rawCols.map((c) => {
-				const isPk = pkSet.has(`${tableName}.${c.column_name}`);
-				const fkTarget = fkMap.get(`${tableName}.${c.column_name}`);
-				return {
-					name: c.column_name,
-					type: c.data_type,
-					nullable: c.is_nullable === 'YES',
-					isPk,
-					isFk: Boolean(fkTarget),
-					fkTarget,
-				};
-			});
+			const columns = rawCols
+				.map((c) => {
+					const columnName = String(c.columnName ?? c.column_name ?? '').trim();
+					if (!columnName) return null;
+					const isPk = pkSet.has(`${tableName}.${columnName}`);
+					const fkTarget = fkMap.get(`${tableName}.${columnName}`);
+					return {
+						name: columnName,
+						type: String(c.dataType ?? c.data_type ?? ''),
+						nullable: (c.isNullable ?? c.is_nullable) === 'YES',
+						isPk,
+						isFk: Boolean(fkTarget),
+						fkTarget,
+					};
+				})
+				.filter((c): c is NonNullable<typeof c> => c !== null);
 
 			tables.push({
 				name: tableName,

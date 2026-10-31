@@ -3,7 +3,7 @@
 import React from 'react';
 import { Plus, Search, X } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
-import { TAKIM_SINIRI } from '@/lib/teams';
+import { TEAM_LIMIT } from '@/lib/teams';
 import styles from './Teams.module.css';
 import ui from '@/core/ui/ui.module.css';
 import type { Team } from '../types';
@@ -68,7 +68,7 @@ export function TeamsCatalog({
 					</div>
 					<div className={styles.stat}>
 						<div className={styles.statValue}>
-							{myTeams}/{TAKIM_SINIRI}
+							{myTeams}/{TEAM_LIMIT}
 						</div>
 						<div className={styles.statLabel}>{t('tmStatMine')}</div>
 					</div>

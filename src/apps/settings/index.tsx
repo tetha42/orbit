@@ -14,6 +14,11 @@ import { RolesPanel } from './components/Roles/RolesPanel';
 import { SmtpSettingsPanel } from './components/Panels/SmtpSettingsPanel';
 import { OAuthAppsPanel } from './components/Panels/OAuthAppsPanel';
 import { CommunitySettingsPanel } from './components/Panels/CommunitySettingsPanel';
+import { MembershipPolicyPanel } from './components/Panels/MembershipPolicyPanel';
+import { PrivacyDataPanel } from './components/Panels/PrivacyDataPanel';
+import { LegalSettingsPanel } from './components/Panels/LegalSettingsPanel';
+import { FormDesignerPanel } from './components/Panels/FormDesignerPanel';
+import { TeamCategoriesPanel } from './components/Panels/TeamCategoriesPanel';
 
 /**
  * System & Preferences Application.
@@ -27,7 +32,7 @@ export function SettingsApp() {
 		return <SettingsMobileView nav={nav} />;
 	}
 
-	const { visibleSections, activeTab, setActiveTab, resetMessage, handleReset, isAdmin } = nav;
+	const { visibleSections, activeTab, setActiveTab, resetMessage, handleReset, isAdmin, yonetici } = nav;
 
 	return (
 		<div style={{ display: 'flex', height: '100%', minHeight: '100%', flex: 1, color: 'var(--text-primary)' }}>
@@ -59,8 +64,13 @@ export function SettingsApp() {
 				)}
 				{activeTab === 'language' && <LanguageSettingsPanel />}
 				{activeTab === 'security' && <SecurityPanel />}
-				{activeTab === 'community' && isAdmin && <CommunitySettingsPanel />}
+				{activeTab === 'community' && yonetici && <CommunitySettingsPanel />}
+				{activeTab === 'membership' && yonetici && <MembershipPolicyPanel />}
+				{activeTab === 'legal' && yonetici && <LegalSettingsPanel />}
+				{activeTab === 'forms' && yonetici && <FormDesignerPanel />}
+				{activeTab === 'teams' && yonetici && <TeamCategoriesPanel />}
 				{activeTab === 'roles' && isAdmin && <RolesPanel />}
+				{activeTab === 'privacy' && isAdmin && <PrivacyDataPanel />}
 				{activeTab === 'smtp' && <SmtpSettingsPanel />}
 				{activeTab === 'integrations' && isAdmin && <OAuthAppsPanel />}
 			</div>

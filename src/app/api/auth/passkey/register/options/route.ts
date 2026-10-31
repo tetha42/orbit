@@ -1,3 +1,4 @@
+import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
 import { generateRegistrationOptions } from '@simplewebauthn/server';
 import { verifyAuth } from '@/lib/auth/authGuard';
@@ -12,7 +13,7 @@ import { consumeRateLimit } from '@/lib/rateLimit';
  * response, so the follow-up verification can prove the credential was created
  * for *this* ceremony rather than a replayed one.
  */
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
 	const auth = await verifyAuth(request);
 	if (!auth.authorized) return auth.response;
 
@@ -39,6 +40,11 @@ export async function POST(request: Request) {
 			userDisplayName: `${user.ad} ${user.soyad}`,
 			userID: new TextEncoder().encode(user.id),
 			attestationType: 'none',
+			timeout: 120_000,
+			// Browser password managers (Proton Pass, iCloud Keychain, Google) use
+			// discoverable credentials, so prefer a resident key and ask for the
+			// credential-properties extension when the authenticator supports it.
+			extensions: { credProps: true },
 			excludeCredentials: existing.map((c) => ({
 				id: c.id,
 				transports: parseTransports(c.transports),
@@ -65,3 +71,5 @@ export async function POST(request: Request) {
 		return NextResponse.json({ error: 'Passkey kaydı başlatılamadı.' }, { status: 500 });
 	}
 }
+
+export const POST = withAudit(handlePOST, { action: 'auth.passkey.register.options.create', target: 'auth.passkey.register.options' });

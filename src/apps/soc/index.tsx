@@ -9,6 +9,7 @@ import {
 	Flame,
 	Users,
 	FileSearch,
+	History,
 	FlaskConical,
 	X,
 } from 'lucide-react';
@@ -24,6 +25,7 @@ import { FirewallView } from './components/views/FirewallView';
 import { SessionsView } from './components/views/SessionsView';
 import { SiemView } from './components/views/SiemView';
 import { InspectionView } from './components/views/InspectionView';
+import { SocAuditView } from './components/views/SocAuditView';
 import { TestbenchView } from './components/views/TestbenchView';
 import { SocInspector } from './components/Inspector/SocInspector';
 import { SocContextMenu } from './components/ContextMenu/SocContextMenu';
@@ -86,6 +88,7 @@ function SocStudioShell() {
 			else if (cmd === 'tab-sessions') setActiveTab('sessions');
 			else if (cmd === 'tab-siem') setActiveTab('siem');
 			else if (cmd === 'tab-inspection') setActiveTab('inspection');
+			else if (cmd === 'tab-audit') setActiveTab('audit');
 			else if (cmd === 'tab-fuzzer') openLabTab('fuzzer');
 			else if (cmd === 'tab-oauth') openLabTab('oauth');
 			else if (cmd === 'tab-api') openLabTab('api');
@@ -138,6 +141,11 @@ function SocStudioShell() {
 					toggleInspector();
 					return;
 				}
+				if (e.code === 'KeyA' || e.key.toLowerCase() === 'a') {
+					e.preventDefault();
+					if (canManage) setActiveTab('audit');
+					return;
+				}
 
 				const shortcutMap: Record<string, SocTab> = {
 					'1': 'radar',
@@ -164,7 +172,7 @@ function SocStudioShell() {
 
 		window.addEventListener('keydown', handleKeyDown);
 		return () => window.removeEventListener('keydown', handleKeyDown);
-	}, [isSocActive, setActiveTab, openLabTab, toggleInspector]);
+	}, [isSocActive, setActiveTab, openLabTab, toggleInspector, canManage]);
 
 	// Global Refresh Event
 	useEffect(() => {
@@ -316,6 +324,7 @@ function SocStudioShell() {
 				{activeTab === 'sessions' && <SessionsView />}
 				{activeTab === 'siem' && <SiemView />}
 				{activeTab === 'inspection' && <InspectionView />}
+				{activeTab === 'audit' && <SocAuditView />}
 				{isLabTab(activeTab) && <TestbenchView />}
 			</div>
 
@@ -365,6 +374,16 @@ function SocStudioShell() {
 						<ShieldCheck size={16} />
 						<span>{isEn ? 'Inspection' : 'Teftiş'}</span>
 					</button>
+					{canManage && (
+						<button
+							type="button"
+							className={`${s.mobileNavBtn} ${activeTab === 'audit' ? s.mobileNavBtnActive : ''}`}
+							onClick={() => setActiveTab('audit')}
+						>
+							<History size={16} />
+							<span>{isEn ? 'Audit' : 'Denetim'}</span>
+						</button>
+					)}
 					<button
 						type="button"
 						className={`${s.mobileNavBtn} ${isLabTab(activeTab) ? s.mobileNavBtnActive : ''}`}

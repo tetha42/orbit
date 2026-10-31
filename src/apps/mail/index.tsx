@@ -11,6 +11,7 @@ import { MailSidebar } from './components/MailSidebar';
 import { MailList } from './components/MailList';
 import { MailDetail } from './components/MailDetail';
 import { MailComposeModal } from './components/MailComposeModal';
+import { MailOutboxModal, type OutboxItem } from './components/MailOutboxModal';
 import { MailMobileView } from './components/MailMobileView';
 import type { MailFolderInfo, MailMessageSummary, MailMessageDetail } from './types';
 import { getFolderDisplayName } from './utils';
@@ -62,6 +63,9 @@ export const MailApp: React.FC = () => {
 	const [selectedUids, setSelectedUids] = useState<Set<number>>(new Set());
 
 	const [isComposeOpen, setIsComposeOpen] = useState<boolean>(false);
+	const [outbox, setOutbox] = useState<OutboxItem[]>([]);
+	const [outboxOpen, setOutboxOpen] = useState(false);
+	const [outboxBusyId, setOutboxBusyId] = useState<string | null>(null);
 	const [composeInitial, setComposeInitial] = useState<
 		| {
 				to?: string;
@@ -70,6 +74,44 @@ export const MailApp: React.FC = () => {
 		  }
 		| undefined
 	>(undefined);
+
+	const loadOutbox = useCallback(async () => {
+		try {
+			const res = await fetch('/api/mail/outbox', { cache: 'no-store' });
+			const data = res.ok ? await res.json() : null;
+			setOutbox(Array.isArray(data?.items) ? data.items : []);
+		} catch {
+			// Mailbox can still be used when the outbox endpoint is unavailable.
+		}
+	}, []);
+
+	useEffect(() => {
+		if (!isAdmin) return;
+		void loadOutbox();
+		const timer = setInterval(() => void loadOutbox(), 60_000);
+		return () => clearInterval(timer);
+	}, [isAdmin, loadOutbox]);
+
+	const handleOutboxAction = async (id: string, action: 'approve' | 'reject') => {
+		setOutboxBusyId(id);
+		try {
+			const res = await fetch('/api/mail/outbox', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ id, action }),
+			});
+			const data = await res.json().catch(() => ({}));
+			if (!res.ok) throw new Error(data.error || t('mailErrSend'));
+			await loadOutbox();
+		} catch (error) {
+			void dialog.alert({
+				message: error instanceof Error ? error.message : t('mailErrSend'),
+				tone: 'danger',
+			});
+		} finally {
+			setOutboxBusyId(null);
+		}
+	};
 
 	// Debounce searchQuery -> debouncedSearch
 	useEffect(() => {
@@ -616,32 +658,57 @@ export const MailApp: React.FC = () => {
 
 	if (error && folders.length === 0 && !isLoadingFolders) {
 		return (
-			<div
-				style={{
-					display: 'flex',
-					flexDirection: 'column',
-					alignItems: 'center',
-					justifyContent: 'center',
-					height: '100%',
-					padding: 30,
-					textAlign: 'center',
-					color: 'var(--text-secondary)',
-				}}
-			>
-				<MailWarning size={48} color="var(--accent)" style={{ marginBottom: 16 }} />
-				<h2 style={{ color: 'var(--text-primary)', margin: '0 0 8px 0', fontSize: 18 }}>
-					{t('mailConnErrorTitle')}
-				</h2>
-				<p style={{ maxWidth: 480, fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>{error}</p>
-				<button
-					type="button"
-					className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
-					onClick={handleRefresh}
+			<>
+				<div
+					style={{
+						display: 'flex',
+						flexDirection: 'column',
+						alignItems: 'center',
+						justifyContent: 'center',
+						height: '100%',
+						padding: 30,
+						textAlign: 'center',
+						color: 'var(--text-secondary)',
+					}}
 				>
-					<RefreshCw size={14} />
-					<span>{t('retry')}</span>
-				</button>
-			</div>
+					<MailWarning size={48} color="var(--accent)" style={{ marginBottom: 16 }} />
+					<h2 style={{ color: 'var(--text-primary)', margin: '0 0 8px 0', fontSize: 18 }}>
+						{t('mailConnErrorTitle')}
+					</h2>
+					<p style={{ maxWidth: 480, fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>{error}</p>
+					<button
+						type="button"
+						className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
+						onClick={handleRefresh}
+					>
+						<RefreshCw size={14} />
+						<span>{t('retry')}</span>
+					</button>
+					{outbox.length > 0 && (
+						<button
+							type="button"
+							onClick={() => setOutboxOpen(true)}
+							style={{
+								marginTop: 12, padding: '9px 13px', borderRadius: 8,
+								border: '1px solid #ff9f0a', background: 'rgba(255,159,10,0.16)',
+								color: 'inherit', fontSize: 12, fontWeight: 700,
+								display: 'flex', gap: 6, alignItems: 'center',
+							}}
+						>
+							<MailWarning size={14} /> {t('mailOutboxTitle')} ({outbox.length})
+						</button>
+					)}
+				</div>
+				{outboxOpen && (
+					<MailOutboxModal
+						items={outbox}
+						busyId={outboxBusyId}
+						onClose={() => setOutboxOpen(false)}
+						onApprove={(id) => void handleOutboxAction(id, 'approve')}
+						onReject={(id) => void handleOutboxAction(id, 'reject')}
+					/>
+				)}
+			</>
 		);
 	}
 
@@ -653,6 +720,7 @@ export const MailApp: React.FC = () => {
 	// --------------------------------------------------------------------------
 	if (isMobile) {
 		return (
+			<>
 			<MailMobileView
 				folders={folders}
 				activeFolder={activeFolder}
@@ -701,6 +769,30 @@ export const MailApp: React.FC = () => {
 				onBatchToggleRead={handleBatchToggleRead}
 				onEmptyTrash={handleEmptyTrash}
 			/>
+			{outbox.length > 0 && (
+				<button
+					type="button"
+					onClick={() => setOutboxOpen(true)}
+					style={{
+						position: 'fixed', right: 14, bottom: 74, zIndex: 80,
+						padding: '9px 13px', borderRadius: 999, border: '1px solid #ff9f0a',
+						background: 'rgba(255,159,10,0.16)', color: 'inherit',
+						fontSize: 11.5, fontWeight: 700, display: 'flex', gap: 6, alignItems: 'center',
+					}}
+				>
+					<MailWarning size={13} /> {t('mailOutboxTitle')} ({outbox.length})
+				</button>
+			)}
+			{outboxOpen && (
+				<MailOutboxModal
+					items={outbox}
+					busyId={outboxBusyId}
+					onClose={() => setOutboxOpen(false)}
+					onApprove={(id) => void handleOutboxAction(id, 'approve')}
+					onReject={(id) => void handleOutboxAction(id, 'reject')}
+				/>
+			)}
+			</>
 		);
 	}
 
@@ -709,6 +801,20 @@ export const MailApp: React.FC = () => {
 	// --------------------------------------------------------------------------
 	return (
 		<div className={styles.container}>
+			{outbox.length > 0 && (
+				<button
+					type="button"
+					onClick={() => setOutboxOpen(true)}
+					style={{
+						position: 'absolute', top: 9, right: 12, zIndex: 30,
+						padding: '7px 11px', borderRadius: 8, border: '1px solid #ff9f0a',
+						background: 'rgba(255,159,10,0.14)', color: 'inherit',
+						fontSize: 11, fontWeight: 700, display: 'flex', gap: 6, alignItems: 'center',
+					}}
+				>
+					<MailWarning size={12} /> {t('mailOutboxTitle')} ({outbox.length})
+				</button>
+			)}
 			<MailSidebar
 				folders={folders}
 				activeFolder={activeFolder}
@@ -772,6 +878,15 @@ export const MailApp: React.FC = () => {
 				}}
 				initial={composeInitial}
 			/>
+			{outboxOpen && (
+				<MailOutboxModal
+					items={outbox}
+					busyId={outboxBusyId}
+					onClose={() => setOutboxOpen(false)}
+					onApprove={(id) => void handleOutboxAction(id, 'approve')}
+					onReject={(id) => void handleOutboxAction(id, 'reject')}
+				/>
+			)}
 		</div>
 	);
 };

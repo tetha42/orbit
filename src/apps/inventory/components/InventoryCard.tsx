@@ -4,16 +4,16 @@ import { useI18n } from '@/core/i18n';
 import { useContextMenu } from '@/core/shell';
 import { copyToClipboard } from '@/lib/clipboard';
 import type { MenuItem } from '@/types/workspace';
-import { iadeDurumu, iadeMetni } from '@/lib/inventory';
+import { returnStatus, returnText } from '@/lib/inventory';
 import s from './Inventory.module.css';
-import { trDate, type EnvanterDurum, type InventoryItem } from '../types';
+import { trDate, type InventoryStatus, type InventoryItem } from '../types';
 import type { LoanMode } from './LoanModal';
 
 interface InventoryCardProps {
 	item: InventoryItem;
 	currentUserId?: string | null;
 	isManager: boolean;
-	isMezun?: boolean;
+	isAlumni?: boolean;
 	now: number;
 	onDetail: (id: string) => void;
 	onLoan: (loan: { id: string; mode: LoanMode }) => void;
@@ -23,13 +23,13 @@ export function InventoryCard({
 	item,
 	currentUserId,
 	isManager,
-	isMezun = false,
+	isAlumni = false,
 	now,
 	onDetail,
 	onLoan,
 }: InventoryCardProps) {
 	const { t } = useI18n();
-	const due = item.status === 'oduncte' ? iadeDurumu(item.iadeTarihi, now) : null;
+	const due = item.status === 'oduncte' ? returnStatus(item.iadeTarihi, now) : null;
 	const mine = item.oduncAlanId === currentUserId;
 
 	const menuItems = useMemo<MenuItem[]>(() => {
@@ -50,7 +50,7 @@ export function InventoryCard({
 			},
 		];
 
-		if (item.status === 'saglam' && !isMezun) {
+		if (item.status === 'saglam' && !isAlumni) {
 			items.push({
 				id: `inv-loan-${item.id}`,
 				label: t('invActionBorrow'),
@@ -67,11 +67,11 @@ export function InventoryCard({
 		}
 
 		return items;
-	}, [item, mine, isManager, isMezun, t, onDetail, onLoan]);
+	}, [item, mine, isManager, isAlumni, t, onDetail, onLoan]);
 
 	const contextMenuProps = useContextMenu({ items: menuItems });
 
-	const statusBadgeText = (d: EnvanterDurum) => {
+	const statusBadgeText = (d: InventoryStatus) => {
 		switch (d) {
 			case 'saglam': return t('invBadgeAvailable');
 			case 'oduncte': return t('invBadgeOnLoan');
@@ -114,13 +114,13 @@ export function InventoryCard({
 						<span
 							className={`${s.due} ${due?.gecikti ? s.dueLate : due && due.gun <= 2 ? s.dueSoon : ''}`}
 						>
-							· {iadeMetni(item.iadeTarihi, now)}
+							· {returnText(item.iadeTarihi, now)}
 						</span>
 					</span>
 				</div>
 			)}
 			<div className={s.actions}>
-				{item.status === 'saglam' && !isMezun && (
+				{item.status === 'saglam' && !isAlumni && (
 					<button
 						type="button"
 						className={s.btnPrimary}

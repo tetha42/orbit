@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { KeyRound } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
-import { sifreHatasi } from '@/lib/profile';
+import { passwordProblem } from '@/lib/profile';
 import { PasswordStrengthMeter } from '@/components/Common/PasswordStrengthMeter';
 import ui from '@/core/ui/ui.module.css';
 import styles from './Account.module.css';
@@ -29,7 +29,7 @@ export function AccountPasswordForm({
 	const [yeni, setYeni] = useState('');
 	const [tekrar, setTekrar] = useState('');
 
-	const passwordProblem = yeni ? sifreHatasi(yeni, { mevcut: mevcut || undefined, email: userEmail }) : null;
+	const passwordIssue = yeni ? passwordProblem(yeni, { mevcut: mevcut || undefined, email: userEmail }) : null;
 
 	const changePassword = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -38,7 +38,7 @@ export function AccountPasswordForm({
 			return;
 		}
 		onSetBusy('password');
-		const res = await sendJson('/api/profilee/password', 'POST', { mevcut, yeni });
+		const res = await sendJson('/api/profile/password', 'POST', { mevcut, yeni });
 		if (res.ok) {
 			setMevcut('');
 			setYeni('');
@@ -68,10 +68,10 @@ export function AccountPasswordForm({
 				</label>
 			</div>
 			{yeni && <PasswordStrengthMeter password={yeni} />}
-			<div className={passwordProblem ? ui.error : ui.hint}>{passwordProblem ?? t('acPasswordRules')}</div>
+			<div className={passwordIssue ? ui.error : ui.hint}>{passwordIssue ?? t('acPasswordRules')}</div>
 			{tekrar && yeni !== tekrar && <div className={ui.error}>{t('acMismatch')}</div>}
 			<div className={ui.btnRow}>
-				<button type="submit" className={ui.primaryBtn} disabled={busy === 'password' || !mevcut || !!passwordProblem || !yeni || yeni !== tekrar}>
+				<button type="submit" className={ui.primaryBtn} disabled={busy === 'password' || !mevcut || !!passwordIssue || !yeni || yeni !== tekrar}>
 					{t('acChangePassword')}
 				</button>
 			</div>

@@ -5,12 +5,11 @@ import { Send, Users } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
 import { Sheet } from '@/core/ui/Sheet';
 import {
-	BASVURU_NOTU_MAX,
-	KONTENJAN_MAX,
-	TAKIM_ACIKLAMA_MAX,
-	TAKIM_ADI_MAX,
-	TAKIM_KATEGORILERI,
-	type KatilimTuru,
+	APPLICATION_NOTE_MAX,
+	CAPACITY_MAX,
+	TEAM_DESCRIPTION_MAX,
+	TEAM_NAME_MAX,
+	type ParticipationType,
 } from '@/lib/teams';
 import ui from '@/core/ui/ui.module.css';
 import styles from './Teams.module.css';
@@ -60,7 +59,7 @@ export function ApplyModal({
 				className={ui.textarea}
 				autoFocus
 				rows={5}
-				maxLength={BASVURU_NOTU_MAX}
+				maxLength={APPLICATION_NOTE_MAX}
 				value={note}
 				onChange={(e) => setNote(e.target.value)}
 				placeholder={t('tmApplyPh')}
@@ -71,21 +70,23 @@ export function ApplyModal({
 
 export function NewTeamModal({
 	roster,
+	categories,
 	onClose,
 	onCreated,
 }: {
 	roster: { id: string; ad: string; soyad: string }[];
+	categories: string[];
 	onClose: () => void;
 	onCreated: () => Promise<void>;
 }) {
 	const { t } = useI18n();
 	const [ad, setAd] = useState('');
-	const [kategori, setKategori] = useState<string>(TAKIM_KATEGORILERI[0]);
+	const [kategori, setKategori] = useState<string>(categories[0] ?? '');
 	const [aciklama, setAciklama] = useState('');
 	const [kontenjan, setKontenjan] = useState('6');
 	const [repoUrl, setRepoUrl] = useState('');
 	const [liderId, setLiderId] = useState('');
-	const [katilimTuru, setKatilimTuru] = useState<KatilimTuru>('acik');
+	const [katilimTuru, setKatilimTuru] = useState<ParticipationType>('acik');
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
 
@@ -137,7 +138,7 @@ export function NewTeamModal({
 					autoFocus
 					required
 					minLength={3}
-					maxLength={TAKIM_ADI_MAX}
+					maxLength={TEAM_NAME_MAX}
 					value={ad}
 					onChange={(e) => setAd(e.target.value)}
 				/>
@@ -151,7 +152,7 @@ export function NewTeamModal({
 						value={kategori}
 						onChange={(e) => setKategori(e.target.value)}
 					>
-						{TAKIM_KATEGORILERI.map((c) => (
+						{categories.map((c) => (
 							<option key={c} value={c}>
 								{c}
 							</option>
@@ -164,7 +165,7 @@ export function NewTeamModal({
 						className={ui.input}
 						type="number"
 						min={1}
-						max={KONTENJAN_MAX}
+						max={CAPACITY_MAX}
 						required
 						value={kontenjan}
 						onChange={(e) => setKontenjan(e.target.value)}
@@ -204,7 +205,7 @@ export function NewTeamModal({
 					rows={3}
 					required
 					minLength={10}
-					maxLength={TAKIM_ACIKLAMA_MAX}
+					maxLength={TEAM_DESCRIPTION_MAX}
 					value={aciklama}
 					onChange={(e) => setAciklama(e.target.value)}
 				/>
@@ -244,11 +245,13 @@ export function NewTeamModal({
 export function EditTeamModal({
 	team,
 	roster,
+	categories,
 	onClose,
 	onSaved,
 }: {
 	team: import('../types').Team;
 	roster: { id: string; ad: string; soyad: string }[];
+	categories: string[];
 	onClose: () => void;
 	onSaved: () => Promise<void>;
 }) {
@@ -260,7 +263,7 @@ export function EditTeamModal({
 	const [kontenjan, setKontenjan] = useState(String(team.kontenjan));
 	const [repoUrl, setRepoUrl] = useState(team.repoUrl ?? '');
 	const [liderId, setLiderId] = useState(team.liderId ?? '');
-	const [katilimTuru, setKatilimTuru] = useState<KatilimTuru>(team.katilimTuru);
+	const [katilimTuru, setKatilimTuru] = useState<ParticipationType>(team.katilimTuru);
 	const [status, setDurum] = useState(team.status);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
@@ -289,9 +292,9 @@ export function EditTeamModal({
 		await onSaved();
 	};
 
-	const categories = (TAKIM_KATEGORILERI as readonly string[]).includes(team.kategori)
-		? TAKIM_KATEGORILERI
-		: [team.kategori, ...TAKIM_KATEGORILERI];
+	const categoryOptions = categories.includes(team.kategori)
+		? categories
+		: [team.kategori, ...categories];
 
 	return (
 		<Sheet
@@ -320,7 +323,7 @@ export function EditTeamModal({
 					disabled={!all}
 					required
 					minLength={3}
-					maxLength={TAKIM_ADI_MAX}
+					maxLength={TEAM_NAME_MAX}
 					value={ad}
 					onChange={(e) => setAd(e.target.value)}
 				/>
@@ -335,7 +338,7 @@ export function EditTeamModal({
 						value={kategori}
 						onChange={(e) => setKategori(e.target.value)}
 					>
-						{categories.map((c) => (
+						{categoryOptions.map((c) => (
 							<option key={c} value={c}>
 								{c}
 							</option>
@@ -348,7 +351,7 @@ export function EditTeamModal({
 						className={ui.input}
 						type="number"
 						min={Math.max(1, team.doluKontenjan)}
-						max={KONTENJAN_MAX}
+						max={CAPACITY_MAX}
 						required
 						value={kontenjan}
 						onChange={(e) => setKontenjan(e.target.value)}
@@ -405,7 +408,7 @@ export function EditTeamModal({
 					rows={3}
 					required
 					minLength={10}
-					maxLength={TAKIM_ACIKLAMA_MAX}
+					maxLength={TEAM_DESCRIPTION_MAX}
 					value={aciklama}
 					onChange={(e) => setAciklama(e.target.value)}
 				/>

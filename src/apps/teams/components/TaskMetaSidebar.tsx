@@ -5,9 +5,9 @@ import { Hand, Trash2 } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
 import { fill } from '@/lib/text';
 import {
-	normalizeTeslimTarihi,
+	normalizeDueDate,
 	toDateInput,
-	type GorevDurumu,
+	type TaskStatus,
 } from '@/lib/kanban';
 import { initials } from '@/core/text/initials';
 import styles from './Kanban.module.css';
@@ -25,7 +25,7 @@ interface TaskMetaSidebarProps {
 	due: string | false | null;
 	locale: string;
 	when: (ts: number) => string;
-	onSetStatus: (status: GorevDurumu) => void;
+	onSetStatus: (status: TaskStatus) => void;
 	onPatch: (body: Record<string, unknown>) => void;
 	onDeleteTask: () => void;
 }
@@ -57,7 +57,7 @@ export function TaskMetaSidebar({
 					style={{ maxWidth: 'none', borderLeft: `3px solid ${col.color}` }}
 					value={task.status}
 					disabled={!izinler.work}
-					onChange={(e) => onSetStatus(e.target.value as GorevDurumu)}
+					onChange={(e) => onSetStatus(e.target.value as TaskStatus)}
 				>
 					{COLUMNS.map((c) => (
 						<option key={c.id} value={c.id}>
@@ -134,7 +134,7 @@ export function TaskMetaSidebar({
 					disabled={!izinler.manage}
 					value={toDateInput(task.teslimTarihi)}
 					onChange={(e) =>
-						onPatch({ teslimTarihi: e.target.value ? normalizeTeslimTarihi(e.target.value) ?? null : null })
+						onPatch({ teslimTarihi: e.target.value ? normalizeDueDate(e.target.value) ?? null : null })
 					}
 				/>
 			</label>

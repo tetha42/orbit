@@ -9,7 +9,7 @@ import { foldTr } from '@/lib/text';
 import { sendJson } from '@/core/data/http';
 import { useToast } from '@/core/ui/Toast';
 import type { Project } from '@/db/schema';
-import type { ProjeDurumu } from '@/lib/projects';
+import type { ProjectStatus } from '@/lib/projects';
 import type { ProjectsResponse, TeamOption, SortMode } from '../types';
 
 export function useProjects() {
@@ -19,10 +19,10 @@ export function useProjects() {
 	const { openApp } = useWindowActions();
 	const { data, setData, refetch, error, httpStatus } = useJsonResource<ProjectsResponse>('/api/projects');
 	const { data: teamsData } = useJsonResource<TeamOption[]>('/api/teams');
-	const projeler = useMemo(() => data?.projeler ?? [], [data]);
+	const projects = useMemo(() => data?.projeler ?? [], [data]);
 	const manage = data?.izinler.manage ?? false;
 
-	const [tab, setTab] = useState<ProjeDurumu>('yayinda');
+	const [tab, setTab] = useState<ProjectStatus>('yayinda');
 	const [query, setQuery] = useState('');
 	const [tech, setTech] = useState<string | null>(null);
 	const [sort, setSort] = useState<SortMode>('featured');
@@ -34,7 +34,7 @@ export function useProjects() {
 	useFocusTarget('projects', {
 		ready: data !== null,
 		apply: (target) => {
-			const found = projeler.find((p) => p.id === target.itemId);
+			const found = projects.find((p) => p.id === target.itemId);
 			if (found) {
 				setTab(found.status);
 				setOpenId(found.id);
@@ -60,14 +60,14 @@ export function useProjects() {
 
 	const counts = useMemo(
 		() => ({
-			yayinda: projeler.filter((p) => p.status === 'yayinda').length,
-			oneri: projeler.filter((p) => p.status === 'oneri').length,
-			arsiv: projeler.filter((p) => p.status === 'arsiv').length,
+			yayinda: projects.filter((p) => p.status === 'yayinda').length,
+			oneri: projects.filter((p) => p.status === 'oneri').length,
+			arsiv: projects.filter((p) => p.status === 'arsiv').length,
 		}),
-		[projeler]
+		[projects]
 	);
 
-	const inTab = useMemo(() => projeler.filter((p) => p.status === tab), [projeler, tab]);
+	const inTab = useMemo(() => projects.filter((p) => p.status === tab), [projects, tab]);
 	const techs = useMemo(() => {
 		const tally = new Map<string, number>();
 		for (const p of inTab) for (const x of p.teknolojiler) tally.set(x, (tally.get(x) ?? 0) + 1);
@@ -76,7 +76,7 @@ export function useProjects() {
 
 	const allFiltered = useMemo(() => {
 		const q = foldTr(query.trim());
-		const list = projeler.filter((p) => {
+		const list = projects.filter((p) => {
 			if (tech && !p.teknolojiler.includes(tech)) return false;
 			if (!q) return true;
 			return foldTr(
@@ -87,7 +87,7 @@ export function useProjects() {
 		if (sort === 'newest') return list.sort(byNew);
 		if (sort === 'stars') return list.sort((a, b) => (b.begeniSayisi ?? 0) - (a.begeniSayisi ?? 0) || byNew(a, b));
 		return list.sort((a, b) => Number(b.oneCikan) - Number(a.oneCikan) || (b.begeniSayisi ?? 0) - (a.begeniSayisi ?? 0) || byNew(a, b));
-	}, [projeler, query, tech, sort]);
+	}, [projects, query, tech, sort]);
 
 	const visible = useMemo(() => {
 		const q = foldTr(query.trim());
@@ -104,7 +104,7 @@ export function useProjects() {
 		return list.sort((a, b) => Number(b.oneCikan) - Number(a.oneCikan) || (b.begeniSayisi ?? 0) - (a.begeniSayisi ?? 0) || byNew(a, b));
 	}, [inTab, query, tech, sort]);
 
-	const open = projeler.find((p) => p.id === openId) ?? null;
+	const open = projects.find((p) => p.id === openId) ?? null;
 
 	const replace = (next: Project) =>
 		setData((d) => (d ? { ...d, projeler: d.projeler.map((p) => (p.id === next.id ? next : p)) } : d));

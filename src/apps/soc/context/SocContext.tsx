@@ -12,7 +12,7 @@ import type {
 	TestbenchTab,
 	SocOverviewData,
 	SecurityBlock,
-	AktifOturumBilgisi,
+	ActiveSessionInfo,
 	SystemLog,
 	IngressDiagnostics,
 	WebhookConfig,
@@ -32,7 +32,7 @@ import type {
 	SoarPlaybookId,
 	SoarPlaybookExecutionResult,
 } from '../types';
-import { LAB_KULLAN_TABS } from '../types';
+import { SOC_LAB_TABS } from '../types';
 
 interface SocContextType {
 	activeTab: SocTab;
@@ -40,7 +40,7 @@ interface SocContextType {
 	openLabTab: (requested: TestbenchTab) => void;
 	overview: SocOverviewData | null;
 	bans: SecurityBlock[];
-	sessions: AktifOturumBilgisi[];
+	sessions: ActiveSessionInfo[];
 	incidents: SocIncident[];
 	handleUpdateIncidentStatus: (id: string, status: SocIncidentStatus, analystNotes?: string) => Promise<boolean>;
 	handleCreateIncident: (data: { title: string; severity: SocIncidentSeverity; sourceIp?: string; service?: string; analystNotes?: string }) => Promise<void>;
@@ -79,10 +79,10 @@ interface SocContextType {
 	handleClearRateLimit: (key: string) => Promise<void>;
 
 	// Sessions states
-	handleKillSession: (session: AktifOturumBilgisi) => Promise<void>;
+	handleKillSession: (session: ActiveSessionInfo) => Promise<void>;
 	handleKillAllOtherSessions: () => Promise<void>;
 	handleRevokeAnomalousSessions: () => Promise<void>;
-	handleSuspendUser: (session: AktifOturumBilgisi) => Promise<void>;
+	handleSuspendUser: (session: ActiveSessionInfo) => Promise<void>;
 
 	// SIEM states
 	siemServis: string;
@@ -247,7 +247,7 @@ export function SocProvider({ children }: { children: ReactNode }) {
 	const [globalSearch, setGlobalSearch] = useState<string>('');
 	const [overview, setOverview] = useState<SocOverviewData | null>(null);
 	const [bans, setBans] = useState<SecurityBlock[]>([]);
-	const [sessions, setSessions] = useState<AktifOturumBilgisi[]>([]);
+	const [sessions, setSessions] = useState<ActiveSessionInfo[]>([]);
 	const [incidents, setIncidents] = useState<SocIncident[]>([]);
 	const [siemLogs, setSiemLogs] = useState<SystemLog[]>([]);
 	const [currentUserId, setCurrentUserId] = useState<string>('');
@@ -916,7 +916,7 @@ export function SocProvider({ children }: { children: ReactNode }) {
 
 	const openLabTab = useCallback(
 		(requested: TestbenchTab) => {
-			const tab = canManage || LAB_KULLAN_TABS.includes(requested) ? requested : 'api';
+			const tab = canManage || SOC_LAB_TABS.includes(requested) ? requested : 'api';
 			setActiveTab(tab);
 			if (tab === 'api' && tb.apiItems.length === 0 && !tb.isRunningSuite) {
 				void tb.runApiSuite();
@@ -1330,7 +1330,7 @@ export function SocProvider({ children }: { children: ReactNode }) {
 	);
 
 	const handleKillSession = useCallback(
-		async (session: AktifOturumBilgisi) => {
+		async (session: ActiveSessionInfo) => {
 			const confirmed = await dialog.confirm({
 				title: isEn ? 'Terminate User Session?' : 'Oturum Sonlandırılsın mı?',
 				message: isEn
@@ -1384,7 +1384,7 @@ export function SocProvider({ children }: { children: ReactNode }) {
 	}, [dialog, isEn, runSocAction]);
 
 	const handleSuspendUser = useCallback(
-		async (session: AktifOturumBilgisi) => {
+		async (session: ActiveSessionInfo) => {
 			const confirmed = await dialog.confirm({
 				title: isEn ? 'Suspend User Account?' : 'Kullanıcı Hesabı Askıya Alınsın mı?',
 				message: isEn

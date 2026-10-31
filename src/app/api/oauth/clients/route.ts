@@ -32,7 +32,7 @@ export async function POST(request: Request) {
 	try {
 		const body = await request.json();
 		const ad = typeof body.ad === 'string' ? body.ad.trim() : '';
-		const aciklama = typeof body.aciklama === 'string' ? body.aciklama.trim() : '';
+		const description = typeof body.aciklama === 'string' ? body.aciklama.trim() : '';
 		const logoUrl = typeof body.logoUrl === 'string' ? body.logoUrl.trim() : undefined;
 		const guvenilir = body.guvenilir === true;
 
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
 		}
 
 		const result = await createOAuthClient(
-			{ ad, aciklama, logoUrl, redirectUris, allowedScopes, guvenilir },
+			{ ad, aciklama: description, logoUrl, redirectUris, allowedScopes, guvenilir },
 			auth.user.id
 		);
 

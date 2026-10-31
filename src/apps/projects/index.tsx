@@ -16,7 +16,7 @@ import { ProjectKanbanBoard } from './components/ProjectKanbanBoard';
 import { ProjectDetailModal } from './components/ProjectDetailModal';
 import { ProjectFormModal } from './components/ProjectFormModal';
 import { ProjectsMobileView } from './components/ProjectsMobileView';
-import type { ProjeDurumu } from '@/lib/projects';
+import type { ProjectStatus } from '@/lib/projects';
 import type { ViewMode } from './types';
 
 export function ProjectsApp() {
@@ -32,7 +32,7 @@ export function ProjectsApp() {
 		return <ProjectsMobileView p={p} />;
 	}
 
-	const tabs: { id: ProjeDurumu; label: string; count: number; show: boolean }[] = [
+	const tabs: { id: ProjectStatus; label: string; count: number; show: boolean }[] = [
 		{ id: 'yayinda', label: t('pjTabShowcase'), count: p.counts.yayinda, show: true },
 		{ id: 'oneri', label: t('pjTabProposals'), count: p.counts.oneri, show: p.manage || p.counts.oneri > 0 },
 		{ id: 'arsiv', label: t('pjTabArchive'), count: p.counts.arsiv, show: p.counts.arsiv > 0 },

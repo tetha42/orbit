@@ -3,7 +3,7 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
-import { DENETIM_ISLEMLERI } from '@/lib/audit';
+import { AUDIT_ACTIONS } from '@/lib/audit';
 import ui from '@/core/ui/ui.module.css';
 import s from './Roles.module.css';
 
@@ -76,7 +76,7 @@ export function AuditFilterBar({
 				aria-label={t('auditFiltreIslem')}
 			>
 				<option value="">{t('auditFiltreIslemHepsi')}</option>
-				{DENETIM_ISLEMLERI.map((op) => (
+				{AUDIT_ACTIONS.map((op) => (
 					<option key={op} value={op}>
 						{t(opKey(op))}
 					</option>

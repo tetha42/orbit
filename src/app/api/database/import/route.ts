@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { withTransaction, getPgPool } from '@/db';
 import { requireDatabaseAdmin } from '@/lib/server/databaseAccess';
+import { clientAddress } from '@/lib/http';
 import { logSystemEvent } from '@/server/db/domains/logs.repo';
 
 const SENSITIVE_COLUMNS = new Set([
@@ -12,7 +13,16 @@ const SENSITIVE_COLUMNS = new Set([
 	'smtp_pass',
 ]);
 
-const PROTECTED_TABLES = new Set(['sistem_loglari', 'denetim_kaydi', 'guvenlik_engelleri']);
+const PROTECTED_TABLES = new Set([
+	'sistem_loglari',
+	'system_logs',
+	'denetim_kaydi',
+	'audit_logs',
+	'guvenlik_engelleri',
+	'security_blocks',
+	'sistem_ayarlari',
+	'system_settings',
+]);
 const PROTECTED_SETTINGS_KEYS = new Set(['smtp_pass', 'soc_lockdown_mode', 'soc_lockdown_reason']);
 
 interface ImportBody {
@@ -25,6 +35,17 @@ export async function POST(request: Request) {
 	const auth = await requireDatabaseAdmin(request);
 	if (!auth.authorized) return auth.response;
 
+	if (process.env.ORBIT_DB_STUDIO_WRITE !== '1') {
+		return NextResponse.json(
+			{
+				error: 'Direct database import is disabled. Set ORBIT_DB_STUDIO_WRITE=1 break-glass flag in your server environment to enable writes.',
+				code: 'DB_STUDIO_READ_ONLY',
+			},
+			{ status: 403 }
+		);
+	}
+
+	const ip = clientAddress(request);
 	const body = (await request.json().catch(() => ({}))) as ImportBody;
 	const table = String(body.table || '').trim();
 	const rows = Array.isArray(body.rows) ? body.rows : [];
@@ -54,7 +75,7 @@ export async function POST(request: Request) {
 
 	try {
 		// 1. Get column list and primary keys
-		const colRes = await pool.query<{ column_name: string }>(`
+		const colRes = await pool.query<{ column_name?: string; columnName?: string }>(`
 			SELECT column_name
 			FROM information_schema.columns
 			WHERE table_schema = 'public' AND table_name = $1;
@@ -64,9 +85,13 @@ export async function POST(request: Request) {
 			return NextResponse.json({ error: 'Hedef tablo bulunamadı.' }, { status: 404 });
 		}
 
-		const validCols = new Set(colRes.rows.map((r) => r.column_name));
+		const validCols = new Set(
+			colRes.rows
+				.map((r) => String(r.columnName ?? r.column_name ?? '').trim())
+				.filter(Boolean)
+		);
 
-		const pkRes = await pool.query<{ column_name: string }>(`
+		const pkRes = await pool.query<{ column_name?: string; columnName?: string }>(`
 			SELECT kcu.column_name
 			FROM information_schema.table_constraints tc
 			JOIN information_schema.key_column_usage kcu
@@ -79,7 +104,9 @@ export async function POST(request: Request) {
 			ORDER BY kcu.ordinal_position ASC;
 		`, [table]);
 
-		const primaryKeys = pkRes.rows.map((r) => r.column_name);
+		const primaryKeys = pkRes.rows
+			.map((r) => String(r.columnName ?? r.column_name ?? '').trim())
+			.filter(Boolean);
 		const pkCol = primaryKeys[0];
 
 		// 2. Perform batch insert inside a single transaction
@@ -137,6 +164,7 @@ export async function POST(request: Request) {
 				strateji: conflictStrategy,
 			},
 			userId: auth.user.id,
+			ip,
 		});
 
 		return NextResponse.json({

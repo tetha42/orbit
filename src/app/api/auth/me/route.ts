@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getUserBySessionToken } from '@/db';
 import { readSessionToken } from '@/lib/auth/authGuard';
 import { SESSION_COOKIE, sessionUserOf } from '@/lib/auth/session';
-import { ADMIN_ROL_ID } from '@/core/permissions';
+import { ADMIN_ROLE_ID } from '@/core/permissions';
 import { clientAddress } from '@/lib/http';
 import { getLockdownState, isIpBanned, recordSessionActivity } from '@/server/db/domains/security.repo';
 
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
 
 		// DEFCON 1 hard lockdown: only non-admin members are refused. The check runs
 		// after the session is resolved, so an admin is never mistaken for a non-admin.
-		if (user.roleId !== ADMIN_ROL_ID) {
+		if (user.roleId !== ADMIN_ROLE_ID) {
 			const lockdown = await getLockdownState();
 			if (lockdown.active) {
 				return NextResponse.json(

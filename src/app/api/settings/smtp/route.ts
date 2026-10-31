@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 			smtp_secure: config.secure,
 			smtp_user: config.user,
 			smtp_from: settings.smtp_from || '',
-			mail_welcome_template: settings.mail_welcome_template || 'Kulüp üyelik başvurunuz alındı. Yönetim kurulu incelemesinin ardından hesabınız aktifleştirilecek ve bu adrese bilgi verilecektir.',
+			mail_welcome_template: settings.mail_welcome_template || 'Topluluk üyelik başvurunuz alındı. Yönetim incelemesinin ardından hesabınız etkinleştirilecek ve bu adrese bilgi verilecektir.',
 			hasPassword,
 			// The panel never receives the credential itself, only this placeholder.
 			maskedPassword: hasPassword ? PASSWORD_MASK : '',

@@ -1,8 +1,9 @@
+import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
 import { mkdir, writeFile } from 'fs/promises';
 import path from 'path';
 import { randomBytes } from 'crypto';
-import { addDosya } from '@/db';
+import { addStoredFile } from '@/db';
 import { verifyUploadAccess } from '@/lib/kasaAccess';
 import { consumeRateLimit } from '@/lib/rateLimit';
 import { MAX_UPLOAD_BYTES, sniffFile, uploadDir } from '@/lib/uploads';
@@ -17,7 +18,7 @@ import { getEmergencyKillSwitches } from '@/server/db/domains/security.repo';
  * `GET /api/uploads/[name]`, which applies the same rule as the ledger entry the
  * receipt is attached to.
  */
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
 	try {
 		const emergency = await getEmergencyKillSwitches();
 		if (emergency.disableUploads) {
@@ -68,7 +69,7 @@ export async function POST(request: Request) {
 		await mkdir(dir, { recursive: true });
 		// `wx` refuses to overwrite: a name collision fails instead of replacing a receipt.
 		await writeFile(path.join(dir, name), buffer, { flag: 'wx' });
-		await addDosya({
+		await addStoredFile({
 			ad: name,
 			yukleyenId: access.user.id,
 			mime: sniffed.mime,
@@ -89,3 +90,5 @@ export async function POST(request: Request) {
 		return NextResponse.json({ error: 'Dosya yüklenirken hata oluştu.' }, { status: 500 });
 	}
 }
+
+export const POST = withAudit(handlePOST, { action: 'upload.create', target: 'upload' });

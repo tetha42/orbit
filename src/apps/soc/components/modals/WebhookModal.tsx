@@ -140,7 +140,7 @@ export const WebhookModal = React.memo(function WebhookModal() {
 							<input
 								type="text"
 								className={s.input}
-								placeholder="security@club.org, admin@club.org"
+								placeholder="security@community.org, admin@community.org"
 								value={draft.emailRecipients || ''}
 								onChange={(e) => setDraft((prev) => ({ ...prev, emailRecipients: e.target.value }))}
 							/>
@@ -170,7 +170,7 @@ export const WebhookModal = React.memo(function WebhookModal() {
 									<input
 										type="text"
 										className={s.input}
-										placeholder={isEn ? 'security@club.org, admin@club.org' : 'guvenlik@kulup.org, admin@kulup.org'}
+										placeholder={isEn ? 'security@community.org, admin@community.org' : 'guvenlik@topluluk.org, admin@topluluk.org'}
 										value={draft.emailRecipients || ''}
 										onChange={(e) => setDraft((prev) => ({ ...prev, emailRecipients: e.target.value }))}
 									/>

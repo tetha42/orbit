@@ -8,15 +8,19 @@ import { useWindowActions } from '@/core/windows';
 interface DatabaseTwoFactorPromptProps {
 	isLight: boolean;
 	twoFactorEnabled: boolean;
+	passkeySession?: boolean;
 	idleExpired?: boolean;
 	onSubmit: (code: string) => Promise<{ ok: boolean; error?: string }>;
+	onPasskey?: () => Promise<{ ok: boolean; error?: string }>;
 }
 
 export function DatabaseTwoFactorPrompt({
 	isLight,
 	twoFactorEnabled,
+	passkeySession,
 	idleExpired,
 	onSubmit,
+	onPasskey,
 }: DatabaseTwoFactorPromptProps) {
 	const { t } = useI18n();
 	const { openApp } = useWindowActions();
@@ -63,6 +67,73 @@ export function DatabaseTwoFactorPrompt({
 			}, 50);
 		}
 	};
+
+	if (passkeySession) {
+		return (
+			<div
+				style={{
+					display: 'flex',
+					flexDirection: 'column',
+					alignItems: 'center',
+					justifyContent: 'center',
+					height: '100%',
+					padding: '2rem',
+					background: isLight ? '#f8fafc' : '#080b11',
+					color: isLight ? '#0f172a' : '#f8fafc',
+					textAlign: 'center',
+				}}
+			>
+				<div
+					style={{
+						width: '56px',
+						height: '56px',
+						borderRadius: '14px',
+						background: 'rgba(16, 185, 129, 0.12)',
+						border: '1px solid rgba(16, 185, 129, 0.3)',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						marginBottom: '1.25rem',
+						color: '#10b981',
+					}}
+				>
+					<Database size={28} />
+				</div>
+				<h3 style={{ fontSize: '1.125rem', fontWeight: 600, margin: '0 0 0.5rem 0' }}>
+					{t('dbPasskeyTitle')}
+				</h3>
+				<p style={{ maxWidth: '440px', fontSize: '0.8125rem', color: isLight ? '#64748b' : '#94a3b8', lineHeight: 1.5, margin: '0 0 1.5rem 0' }}>
+					{t('dbPasskeyDesc')}
+				</p>
+				<button
+					type="button"
+					disabled={loading}
+					onClick={() => {
+						if (!onPasskey) return;
+						setLoading(true);
+						setError(null);
+						void onPasskey().then((res) => {
+							if (!res.ok) setError(res.error || t('db2faGenericError'));
+						}).finally(() => setLoading(false));
+					}}
+					style={{
+						padding: '0.625rem 1.25rem',
+						borderRadius: '8px',
+						background: 'var(--accent)',
+						color: '#fff',
+						border: 'none',
+						fontWeight: 600,
+						fontSize: '0.875rem',
+						cursor: loading ? 'wait' : 'pointer',
+						opacity: loading ? 0.7 : 1,
+					}}
+				>
+					{loading ? t('loading') : t('dbPasskeyOpen')}
+				</button>
+				{error && <div style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.75rem' }}>{error}</div>}
+			</div>
+		);
+	}
 
 	if (!twoFactorEnabled) {
 		return (

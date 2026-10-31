@@ -1,13 +1,13 @@
 import React from 'react';
 import { Search, X, LayoutGrid, Kanban } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
-import type { ProjeDurumu } from '@/lib/projects';
+import type { ProjectStatus } from '@/lib/projects';
 import type { SortMode, ViewMode } from '../types';
 import ui from '@/core/ui/ui.module.css';
 import styles from './Projects.module.css';
 
 interface TabItem {
-	id: ProjeDurumu;
+	id: ProjectStatus;
 	label: string;
 	count: number;
 	show: boolean;
@@ -15,8 +15,8 @@ interface TabItem {
 
 interface Props {
 	tabs: TabItem[];
-	activeTab: ProjeDurumu;
-	onSelectTab: (tab: ProjeDurumu) => void;
+	activeTab: ProjectStatus;
+	onSelectTab: (tab: ProjectStatus) => void;
 	query: string;
 	onQueryChange: (q: string) => void;
 	sort: SortMode;

@@ -16,7 +16,7 @@ import { ChatMessageInput } from './ChatMessageInput';
 import { CreatePollModal } from './poll/CreatePollModal';
 import { ForwardMessageModal } from './ForwardMessageModal';
 import { GroupInfoModal } from './GroupInfoModal';
-import type { ChatMesajItem } from '../types';
+import type { ChatMessageItem } from '../types';
 import s from '../Chat.module.css';
 
 interface TeamChatEmbedProps {
@@ -52,8 +52,8 @@ export function TeamChatEmbed({ teamId, takimAd }: TeamChatEmbedProps) {
 		};
 	}, [teamId, takimAd]);
 
-	const [editingMessage, setEditingMessage] = useState<ChatMesajItem | null>(null);
-	const [forwardingMessage, setForwardingMessage] = useState<ChatMesajItem | null>(null);
+	const [editingMessage, setEditingMessage] = useState<ChatMessageItem | null>(null);
+	const [forwardingMessage, setForwardingMessage] = useState<ChatMessageItem | null>(null);
 	const [isCreatePollOpen, setIsCreatePollOpen] = useState(false);
 	const [isGroupInfoOpen, setIsGroupInfoOpen] = useState(false);
 
@@ -187,6 +187,7 @@ export function TeamChatEmbed({ teamId, takimAd }: TeamChatEmbedProps) {
 
 			{/* Full-featured Chat Message Input */}
 			<ChatMessageInput
+				roomId={activeRoom?.id ?? targetRoomId}
 				onSendMessage={sendMessage}
 				editingMessage={editingMessage}
 				onSaveEdit={editMessage}

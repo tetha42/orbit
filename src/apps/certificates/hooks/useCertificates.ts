@@ -9,7 +9,7 @@ import { useJsonResource } from '@/core/data/useJsonResource';
 import { useFocusTarget } from '@/lib/client/useFocusTarget';
 import { fill } from '@/lib/text';
 import { seviye } from '@/lib/profile';
-import type { KulupBilgileri } from '@/db';
+import type { CommunityProfile } from '@/db';
 import type { Certificate, MemberRankItem } from '../types';
 
 export function useCertificates() {
@@ -37,7 +37,7 @@ export function useCertificates() {
 
 	const { data: eventsData } = useJsonResource<{ etkinlikler: Array<{ id: string; baslik: string; katilimciSayisi: number }> }>('/api/events');
 	const events = eventsData?.etkinlikler ?? [];
-	const { data: kulup, refetch: refetchKulup } = useJsonResource<KulupBilgileri>('/api/community');
+	const { data: kulup, refetch: refetchKulup } = useJsonResource<CommunityProfile>('/api/community');
 	const [editingSignatories, setEditingSignatories] = useState(false);
 	const [issueMode, setIssueMode] = useState<'single' | 'bulk'>('single');
 	const verifyUrl = (kod: string) => (typeof window === 'undefined' ? `/dogrula/${kod}` : `${window.location.origin}/dogrula/${kod}`);

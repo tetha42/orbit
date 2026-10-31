@@ -17,12 +17,12 @@ import {
 } from 'lucide-react';
 import { AvatarFallback } from '@/components/Common/AvatarFallback';
 import { RoleBadge } from '@/core/ui/RoleBadge';
-import { isMezunRol } from '@/core/permissions';
+import { isAlumniRole } from '@/core/permissions';
 import { useI18n } from '@/core/i18n';
 import { useSession } from '@/core/session';
 import { useWindowActions } from '@/core/windows';
 import { fill } from '@/lib/text';
-import type { MemberRecord, AtanabilirRol } from '../types';
+import type { MemberRecord, AssignableRole } from '../types';
 
 interface MemberCardProps {
 	member: MemberRecord;
@@ -31,7 +31,7 @@ interface MemberCardProps {
 	isReachable: boolean;
 	isAuthorizedToAdd: boolean;
 	erisilebilir: boolean;
-	atanabilir: AtanabilirRol[];
+	assignableRoles: AssignableRole[];
 	onOpenProfile: (member: MemberRecord) => void;
 	onResetPassword: (memberId: string, name: string) => void;
 	onSendMessage: (memberId: string) => void;
@@ -48,7 +48,7 @@ export function MemberCard({
 	isReachable: _isReachable,
 	isAuthorizedToAdd,
 	erisilebilir,
-	atanabilir: _atanabilir,
+	assignableRoles: _assignableRoles,
 	onOpenProfile,
 	onResetPassword,
 	onSendMessage,
@@ -62,13 +62,13 @@ export function MemberCard({
 	const { openApp } = useWindowActions();
 	const canSoc = canUseApp('soc');
 
-	const isMezun = member.status === 'mezun' || isMezunRol({ id: member.roleId, ad: member.rolAd });
-	const displayRol = isMezun
+	const isAlumni = member.status === 'mezun' || isAlumniRole({ id: member.roleId, ad: member.rolAd });
+	const displayRole = isAlumni
 		? {
-				ad: isMezunRol({ id: member.roleId, ad: member.rolAd })
+				ad: isAlumniRole({ id: member.roleId, ad: member.rolAd })
 					? (member.rolAd ?? t('membersStatusAlumni', 'Mezun'))
 					: t('membersStatusAlumni', 'Mezun'),
-				renk: isMezunRol({ id: member.roleId, ad: member.rolAd }) ? (member.rolRenk ?? '#64d2ff') : '#64d2ff',
+				renk: isAlumniRole({ id: member.roleId, ad: member.rolAd }) ? (member.rolRenk ?? '#64d2ff') : '#64d2ff',
 		  }
 		: member.roleId
 		? { ad: member.rolAd ?? '—', renk: member.rolRenk ?? '#8e8e93' }
@@ -152,7 +152,7 @@ export function MemberCard({
 
 				{/* Role or Status Badge */}
 				<div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-					<RoleBadge role={displayRol} bosMetin={t('roleNone')} size="sm" />
+					<RoleBadge role={displayRole} bosMetin={t('roleNone')} size="sm" />
 
 					<span
 						style={{

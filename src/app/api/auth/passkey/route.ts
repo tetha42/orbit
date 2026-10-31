@@ -1,3 +1,4 @@
+import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth/authGuard';
 import { deleteWebauthnCredential, getWebauthnCredentials } from '@/db';
@@ -29,7 +30,7 @@ export async function GET(request: Request) {
 }
 
 /** Removes one of the caller's passkeys. */
-export async function DELETE(request: Request) {
+async function handleDELETE(request: Request) {
 	const auth = await verifyAuth(request);
 	if (!auth.authorized) return auth.response;
 
@@ -52,3 +53,5 @@ export async function DELETE(request: Request) {
 		return NextResponse.json({ error: 'Passkey kaldırılamadı.' }, { status: 500 });
 	}
 }
+
+export const DELETE = withAudit(handleDELETE, { action: 'auth.passkey.delete', target: 'auth.passkey' });

@@ -9,14 +9,14 @@ import { useJsonResource } from '@/core/data/useJsonResource';
 import {
 	aylikAkis,
 	ayAnahtari,
-	filtreleKayitlar,
+	filterRecords,
 	formatKurus,
 	kategoriDagilimi,
-	yuruyenBakiye,
+	runningBalance,
 } from '@/lib/budget';
 import { foldTr } from '@/lib/text';
 import { useAppCommand } from '@/core/commands';
-import type { KasaRecord, KasaResponse, KasaSummary } from '../types';
+import type { VaultRecord, VaultResponse, VaultSummary } from '../types';
 import { downloadCsv } from '@/core/data/download';
 import { escapeHtml } from '@/core/text/escape';
 import { openPrintWindow } from '@/core/data/print';
@@ -27,14 +27,14 @@ import { useNow } from '@/lib/client/useSheet';
 const tl = (kurus: number) => `₺${formatKurus(kurus)}`;
 const dateFmt = (ms: number) => formatDate(ms);
 
-interface UseKasaLedgerOptions {
+interface UseVaultLedgerOptions {
 	teamId: string | null;
 	onChanged?: () => void;
 	embedded?: boolean;
-	kasalar?: KasaSummary[];
+	vaults?: VaultSummary[];
 }
 
-export function useKasaLedger({ teamId, onChanged, embedded = false, kasalar }: UseKasaLedgerOptions) {
+export function useVaultLedger({ teamId, onChanged, embedded = false, vaults }: UseVaultLedgerOptions) {
 	const { t, language } = useI18n();
 	const { playSystemSound } = useSound();
 	const dialog = useDialog();
@@ -42,7 +42,7 @@ export function useKasaLedger({ teamId, onChanged, embedded = false, kasalar }: 
 	const now = useNow(60_000);
 
 	const url = teamId ? `/api/budget?teamId=${encodeURIComponent(teamId)}` : '/api/budget';
-	const { data, refetch, isLoading, httpStatus } = useJsonResource<KasaResponse>(url);
+	const { data, refetch, isLoading, httpStatus } = useJsonResource<VaultResponse>(url);
 
 	const canWrite = !!data?.izin?.yaz;
 	const isManagement = !!data?.izin?.yonet;
@@ -54,7 +54,7 @@ export function useKasaLedger({ teamId, onChanged, embedded = false, kasalar }: 
 	const [ay, setAy] = useState('');
 	const [arama, setArama] = useState('');
 	const [modal, setModal] = useState<
-		{ kind: 'new' } | { kind: 'edit'; registration: KasaRecord } | { kind: 'transfer' } | null
+		{ kind: 'new' } | { kind: 'edit'; registration: VaultRecord } | { kind: 'transfer' } | null
 	>(null);
 
 	const flash = (text: string, error = false) => notify(text, error ? 'error' : 'success');
@@ -69,7 +69,7 @@ export function useKasaLedger({ teamId, onChanged, embedded = false, kasalar }: 
 		onChanged?.();
 	};
 
-	const balances = useMemo(() => yuruyenBakiye(records), [records]);
+	const balances = useMemo(() => runningBalance(records), [records]);
 	const dagilim = useMemo(() => kategoriDagilimi(records), [records]);
 	const aylar = useMemo(() => aylikAkis(records, now, 6), [records, now]);
 	const monthOptions = useMemo(
@@ -77,7 +77,7 @@ export function useKasaLedger({ teamId, onChanged, embedded = false, kasalar }: 
 		[records]
 	);
 	const filtered = useMemo(
-		() => filtreleKayitlar(records, { tur, kategori, ay, arama, fold: foldTr }),
+		() => filterRecords(records, { tur, kategori, ay, arama, fold: foldTr }),
 		[records, tur, kategori, ay, arama]
 	);
 	const filteredIn = filtered
@@ -88,9 +88,9 @@ export function useKasaLedger({ teamId, onChanged, embedded = false, kasalar }: 
 		.reduce((a, r) => a + r.tutarKurus, 0);
 	const anyFilter = tur !== 'hepsi' || !!kategori || !!ay || !!arama.trim();
 	const maxMonth = Math.max(1, ...aylar.map((m) => Math.max(m.gelir, m.gider)));
-	const canTransfer = isManagement && !!kasalar && kasalar.length > 1;
+	const canTransfer = isManagement && !!vaults && vaults.length > 1;
 
-	const remove = async (r: KasaRecord) => {
+	const remove = async (r: VaultRecord) => {
 		const message = r.aktarimId
 			? fill(t('kasaRevertTransferConfirm'), { target: r.karsiKasaAd ?? t('kasaOtherLedger') })
 			: fill(t('kasaDeleteRecordConfirm'), { desc: r.aciklama, amount: tl(r.tutarKurus) });

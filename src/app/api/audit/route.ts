@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/auth/access';
+import { authenticate, can, requireAdmin } from '@/lib/auth/access';
 import { listAuditLogs } from '@/db/audit';
-import { DENETIM_CSV_SINIRI, suzgecOku } from '@/lib/audit';
+import { AUDIT_CSV_LIMIT, suzgecOku } from '@/lib/audit';
 
 /**
  * The audit log — Settings → Roller → Değişiklik geçmişi. Read-only and only
@@ -11,15 +11,18 @@ import { DENETIM_CSV_SINIRI, suzgecOku } from '@/lib/audit';
  *   GET /api/denetim?…&tum=1   — every matching record, no paging (up to DENETIM_CSV_SINIRI), for the CSV download
  */
 export async function GET(request: Request) {
-	const auth = await requireAdmin(request);
+	const auth = await authenticate(request);
 	if (!auth.authorized) return auth.response;
+	if (!auth.user.permission.admin && !can(auth.user, 'soc', 'yonet')) {
+		return NextResponse.json({ error: 'Bu kayıt için SoC yönetim yetkisi gerekir.' }, { status: 403 });
+	}
 
 	try {
 		const params = new URL(request.url).searchParams;
 		const suzgec = suzgecOku(params);
 		const tum = params.get('tum') === '1';
-		const { kayitlar, toplam } = await listAuditLogs(suzgec, tum ? { limit: DENETIM_CSV_SINIRI, offset: 0 } : {});
-		return NextResponse.json({ kayitlar, toplam, sayfa: tum ? 1 : suzgec.sayfa, boyut: tum ? DENETIM_CSV_SINIRI : suzgec.boyut }, { headers: { 'Cache-Control': 'no-store' } });
+		const { kayitlar, toplam } = await listAuditLogs(suzgec, tum ? { limit: AUDIT_CSV_LIMIT, offset: 0 } : {});
+		return NextResponse.json({ kayitlar, toplam, sayfa: tum ? 1 : suzgec.sayfa, boyut: tum ? AUDIT_CSV_LIMIT : suzgec.boyut }, { headers: { 'Cache-Control': 'no-store' } });
 	} catch (error) {
 		console.error('API /api/denetim GET error:', error);
 		return NextResponse.json({ error: 'Değişiklik geçmişi okunamadı.' }, { status: 500 });

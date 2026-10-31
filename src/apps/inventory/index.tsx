@@ -26,7 +26,7 @@ export function InventoryApp() {
 	const {
 		currentUserId,
 		isManager,
-		isMezun,
+		isAlumni,
 		now,
 		data,
 		items,
@@ -75,7 +75,7 @@ export function InventoryApp() {
 					totalCount={items.length}
 					currentUserId={currentUserId}
 					isManager={isManager}
-					isMezun={isMezun}
+					isAlumni={isAlumni}
 					now={now}
 					onDetail={(id) => setDetailId(id)}
 					onLoan={(loanState) => setLoan(loanState)}
@@ -87,7 +87,7 @@ export function InventoryApp() {
 					item={detail}
 					selfId={currentUserId}
 					isManager={isManager}
-					isMezun={isMezun}
+					isAlumni={isAlumni}
 					now={now}
 					onClose={() => setDetailId(null)}
 					onEdit={() => {

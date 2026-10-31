@@ -7,7 +7,7 @@ import { formatKurus } from '@/lib/budget';
 import type { CashTotals } from '../types';
 import k from './Kasa.module.css';
 
-interface KasaCardSummaryProps {
+interface VaultCardSummaryProps {
 	teamId: string | null;
 	summary: CashTotals | null;
 	isLoading: boolean;
@@ -16,12 +16,12 @@ interface KasaCardSummaryProps {
 
 const tl = (kurus: number) => `₺${formatKurus(kurus)}`;
 
-export function KasaCardSummary({
+export function VaultCardSummary({
 	teamId,
 	summary,
 	isLoading,
 	dagilimFirstCategory,
-}: KasaCardSummaryProps) {
+}: VaultCardSummaryProps) {
 	const { t } = useI18n();
 
 	return (

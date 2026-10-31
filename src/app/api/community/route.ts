@@ -1,5 +1,6 @@
+import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
-import { getKulupBilgileri, setSystemSettings } from '@/db';
+import { getCommunityProfile, setSystemSettings } from '@/db';
 import { verifyAuth } from '@/lib/auth/authGuard';
 import { authenticateEnrolled, can } from '@/lib/auth/access';
 import { getCached, setCached, invalidateCache } from '@/lib/server/cache';
@@ -18,13 +19,13 @@ export async function GET(request: Request) {
 		return NextResponse.json(cached);
 	}
 
-	const data = await getKulupBilgileri();
+	const data = await getCommunityProfile();
 	setCached('kulup_bilgileri', data, 60_000);
 	return NextResponse.json(data);
 }
 
 /** The board sets the university line, the club name and the two signatories. */
-export async function PATCH(request: Request) {
+async function handlePATCH(request: Request) {
 	const auth = await authenticateEnrolled(request);
 	if (!auth.authorized) return auth.response;
 	if (!can(auth.user, 'settings', 'yonet') && !can(auth.user, 'certificates', 'yonet')) {
@@ -39,8 +40,8 @@ export async function PATCH(request: Request) {
 			if (s.length > MAX) throw new Error(`${field} en fazla ${MAX} karakter olabilir.`);
 			return s;
 		};
-		if (body.universite !== undefined) next.universite = text(body.universite, 'Üniversite', true);
-		if (body.kulupAdi !== undefined) next.kulup_adi = text(body.kulupAdi, 'Kulüp adı', true);
+		if (body.universite !== undefined) next.universite = text(body.universite, 'Studio', true);
+		if (body.kulupAdi !== undefined) next.kulup_adi = text(body.kulupAdi, 'Community name', true);
 		if (body.imzalar !== undefined) {
 			if (!Array.isArray(body.imzalar) || body.imzalar.length !== 2) throw new Error('İki imza satırı gönderin.');
 			body.imzalar.forEach((imza: unknown, i: number) => {
@@ -51,7 +52,7 @@ export async function PATCH(request: Request) {
 		}
 		await setSystemSettings(next);
 		invalidateCache('kulup_bilgileri');
-		const fresh = await getKulupBilgileri();
+		const fresh = await getCommunityProfile();
 		setCached('kulup_bilgileri', fresh, 60_000);
 		return NextResponse.json({ success: true, ...fresh });
 	} catch (error) {
@@ -61,3 +62,5 @@ export async function PATCH(request: Request) {
 		return NextResponse.json({ error: 'Kaydedilemedi.' }, { status: 500 });
 	}
 }
+
+export const PATCH = withAudit(handlePATCH, { action: 'community.update', target: 'community' });

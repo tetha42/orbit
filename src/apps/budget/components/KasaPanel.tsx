@@ -4,16 +4,16 @@ import React from 'react';
 import { ShieldAlert } from 'lucide-react';
 import ui from '@/core/ui/ui.module.css';
 import k from './Kasa.module.css';
-import type { KasaRecord, KasaSummary } from '../types';
-import { useKasaLedger } from '../hooks/useKasaLedger';
-import { KasaCardSummary } from './KasaCardSummary';
-import { KasaInsights } from './KasaInsights';
-import { KasaToolbar } from './KasaToolbar';
-import { KasaLedgerTable } from './KasaLedgerTable';
-import { KasaEntryModal } from './KasaEntryModal';
+import type { VaultRecord, VaultSummary } from '../types';
+import { useVaultLedger } from '../hooks/useKasaLedger';
+import { VaultCardSummary } from './KasaCardSummary';
+import { VaultInsights } from './KasaInsights';
+import { VaultToolbar } from './KasaToolbar';
+import { VaultLedgerTable } from './KasaLedgerTable';
+import { VaultEntryModal } from './KasaEntryModal';
 import { TransferModal } from './TransferModal';
 
-export interface KasaPanelProps {
+export interface VaultPanelProps {
 	/** The project whose kasa to show; `null` is the club's general kasa. */
 	teamId: string | null;
 	/** Called after an entry is added or removed, so a surrounding list can refresh its balances. */
@@ -21,10 +21,10 @@ export interface KasaPanelProps {
 	/** Drops the outer padding when the panel sits inside another screen. */
 	embedded?: boolean;
 	/** Every kasa the viewer may open; when given (management), allocations between them are offered. */
-	kasalar?: KasaSummary[];
+	vaults?: VaultSummary[];
 }
 
-export function KasaPanel({ teamId, onChanged, embedded = false, kasalar }: KasaPanelProps) {
+export function VaultPanel({ teamId, onChanged, embedded = false, vaults }: VaultPanelProps) {
 	const {
 		t,
 		records,
@@ -57,7 +57,7 @@ export function KasaPanel({ teamId, onChanged, embedded = false, kasalar }: Kasa
 		filteredOut,
 		anyFilter,
 		maxMonth,
-	} = useKasaLedger({ teamId, onChanged, embedded, kasalar });
+	} = useVaultLedger({ teamId, onChanged, embedded, vaults });
 
 	if (httpStatus === 403) {
 		return (
@@ -85,7 +85,7 @@ export function KasaPanel({ teamId, onChanged, embedded = false, kasalar }: Kasa
 
 	return (
 		<div className={`${k.panel} ${embedded ? k.embedded : ''}`} data-focus-id={`kasa:${teamId ?? 'genel'}`}>
-			<KasaCardSummary
+			<VaultCardSummary
 				teamId={teamId}
 				summary={summary}
 				isLoading={isLoading}
@@ -93,7 +93,7 @@ export function KasaPanel({ teamId, onChanged, embedded = false, kasalar }: Kasa
 			/>
 
 			{records.length > 0 && (
-				<KasaInsights
+				<VaultInsights
 					dagilim={dagilim}
 					kategori={kategori}
 					onSelectKategori={(c) => setKategori(c)}
@@ -104,7 +104,7 @@ export function KasaPanel({ teamId, onChanged, embedded = false, kasalar }: Kasa
 				/>
 			)}
 
-			<KasaToolbar
+			<VaultToolbar
 				arama={arama}
 				onAramaChange={setArama}
 				tur={tur}
@@ -140,7 +140,7 @@ export function KasaPanel({ teamId, onChanged, embedded = false, kasalar }: Kasa
 				</div>
 			)}
 
-			<KasaLedgerTable
+			<VaultLedgerTable
 				records={records}
 				filtered={filtered}
 				balances={balances}
@@ -150,12 +150,12 @@ export function KasaPanel({ teamId, onChanged, embedded = false, kasalar }: Kasa
 				anyFilter={anyFilter}
 				filteredIn={filteredIn}
 				filteredOut={filteredOut}
-				onEdit={(registration: KasaRecord) => setModal({ kind: 'edit', registration })}
+				onEdit={(registration: VaultRecord) => setModal({ kind: 'edit', registration })}
 				onDelete={remove}
 			/>
 
 			{modal?.kind === 'new' && (
-				<KasaEntryModal
+				<VaultEntryModal
 					teamId={teamId}
 					netBakiyeKurus={summary?.netBakiyeKurus ?? 0}
 					onClose={() => setModal(null)}
@@ -163,7 +163,7 @@ export function KasaPanel({ teamId, onChanged, embedded = false, kasalar }: Kasa
 				/>
 			)}
 			{modal?.kind === 'edit' && (
-				<KasaEntryModal
+				<VaultEntryModal
 					teamId={teamId}
 					registration={modal.registration}
 					netBakiyeKurus={summary?.netBakiyeKurus ?? 0}
@@ -171,9 +171,9 @@ export function KasaPanel({ teamId, onChanged, embedded = false, kasalar }: Kasa
 					onSaved={changed}
 				/>
 			)}
-			{modal?.kind === 'transfer' && kasalar && (
+			{modal?.kind === 'transfer' && vaults && (
 				<TransferModal
-					kasalar={kasalar}
+					vaults={vaults}
 					initialSource={teamId}
 					onClose={() => setModal(null)}
 					onSaved={changed}

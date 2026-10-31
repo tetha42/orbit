@@ -1,3 +1,4 @@
+import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
 import { verifyRegistrationResponse } from '@simplewebauthn/server';
 import { verifyAuth } from '@/lib/auth/authGuard';
@@ -13,7 +14,7 @@ import { consumeRateLimit } from '@/lib/rateLimit';
  * same response cannot succeed even if two requests race — the second DELETE
  * finds nothing and is rejected.
  */
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
 	const auth = await verifyAuth(request);
 	if (!auth.authorized) return auth.response;
 
@@ -85,3 +86,5 @@ export async function POST(request: Request) {
 		return NextResponse.json({ error: 'Passkey kaydedilemedi.' }, { status: 500 });
 	}
 }
+
+export const POST = withAudit(handlePOST, { action: 'auth.passkey.register.verify.create', target: 'auth.passkey.register.verify' });

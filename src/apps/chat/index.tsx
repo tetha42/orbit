@@ -13,7 +13,7 @@ import {
 	Users,
 } from 'lucide-react';
 import { useIsMobile } from '@/lib/client/useClientValue';
-import type { ChatMesajItem } from './types';
+import type { ChatMessageItem } from './types';
 import { ChatMobileView } from './ChatMobileView';
 import { useChat } from './hooks/useChat';
 import { ChatRoomList } from './components/ChatRoomList';
@@ -55,6 +55,8 @@ function ChatDesktopView() {
 		votePoll,
 		closePoll,
 		replyingMessage,
+		focusedMessageId,
+		clearFocusedMessage,
 		setReplyingMessage,
 		cancelReply,
 		forwardMessage,
@@ -65,8 +67,8 @@ function ChatDesktopView() {
 	const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
 	const [isGroupInfoOpen, setIsGroupInfoOpen] = useState(false);
 	const [isCreatePollOpen, setIsCreatePollOpen] = useState(false);
-	const [editingMessage, setEditingMessage] = useState<ChatMesajItem | null>(null);
-	const [forwardingMessage, setForwardingMessage] = useState<ChatMesajItem | null>(null);
+	const [editingMessage, setEditingMessage] = useState<ChatMessageItem | null>(null);
+	const [forwardingMessage, setForwardingMessage] = useState<ChatMessageItem | null>(null);
 
 	useEffect(() => {
 		setEditingMessage(null);
@@ -286,9 +288,12 @@ function ChatDesktopView() {
 							onForward={(msg) => setForwardingMessage(msg)}
 							onVotePoll={votePoll}
 							onClosePoll={closePoll}
+							focusedMessageId={focusedMessageId}
+							onFocusMessageHandled={clearFocusedMessage}
 						/>
 
 						<ChatMessageInput
+							roomId={activeRoomId}
 							onSendMessage={sendMessage}
 							editingMessage={editingMessage}
 							onSaveEdit={editMessage}

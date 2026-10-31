@@ -6,7 +6,7 @@ import { useSound } from '@/core/sound';
 import { useI18n } from '@/core/i18n';
 import { fill } from '@/lib/text';
 import { sendJson } from '@/core/data/http';
-import type { GorevDurumu } from '@/lib/kanban';
+import type { TaskStatus } from '@/lib/kanban';
 import type { TeamTaskItem, TeamTaskComment } from '@/db/schema';
 import type { TeamTask } from '../types';
 
@@ -83,7 +83,7 @@ export function useTaskDetail({
 		if (ok) setDescDraft(null);
 	};
 
-	const setStatus = async (status: GorevDurumu) => {
+	const setStatus = async (status: TaskStatus) => {
 		if (!data) return;
 		const res = await sendJson<{ xpVerildi?: boolean }>('/api/teams', 'POST', {
 			action: 'updateTask',
@@ -111,12 +111,12 @@ export function useTaskDetail({
 	};
 
 	const sendComment = async () => {
-		const icerik = commentDraft.trim();
-		if (!icerik || busy) return;
+		const content = commentDraft.trim();
+		if (!content || busy) return;
 		setBusy(true);
-		const ok = await action({ action: 'addComment', icerik });
+		const ok = await action({ action: 'addComment', content });
 		setBusy(false);
-		if (ok) setCommentDraft((d) => (d.trim() === icerik ? '' : d));
+		if (ok) setCommentDraft((d) => (d.trim() === content ? '' : d));
 	};
 
 	const deleteComment = async (y: TeamTaskComment) => {

@@ -4,7 +4,7 @@ import React from 'react';
 import { Plus } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
 import { fill } from '@/lib/text';
-import { TAKIM_SINIRI } from '@/lib/teams';
+import { TEAM_LIMIT } from '@/lib/teams';
 import ui from '@/core/ui/ui.module.css';
 import type { Team } from '../types';
 
@@ -43,13 +43,13 @@ export function TeamJoinButton({
 	}
 	const closed = tm.status !== 'aktif';
 	const full = tm.kalanKontenjan === 0 && tm.katilimTuru === 'acik';
-	const limit = myTeams >= TAKIM_SINIRI;
+	const limit = myTeams >= TEAM_LIMIT;
 	return (
 		<button
 			type="button"
 			className={ui.primaryBtn}
 			disabled={busy || closed || full || limit}
-			title={limit ? fill(t('tmLimitReached'), { n: TAKIM_SINIRI }) : undefined}
+			title={limit ? fill(t('tmLimitReached'), { n: TEAM_LIMIT }) : undefined}
 			onClick={() => onJoin(tm)}
 		>
 			<Plus size={14} />

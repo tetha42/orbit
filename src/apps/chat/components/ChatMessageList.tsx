@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useLayoutEffect, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { useI18n } from '@/core/i18n';
 import { useDialog } from '@/components/Common/DialogProvider';
 import { fill } from '@/lib/text';
@@ -8,34 +8,37 @@ import { Pencil, Trash2, Reply, Forward, Copy } from 'lucide-react';
 import { useContextMenu } from '@/core/shell';
 import { copyToClipboard } from '@/lib/clipboard';
 import type { MenuItem } from '@/types/workspace';
-import type { ChatMesajItem } from '../types';
+import type { ChatMessageItem } from '../types';
 import { PollMessageCard } from './poll/PollMessageCard';
+import { ChatAttachments } from './ChatAttachments';
 import s from '../Chat.module.css';
 
 interface ChatMessageListProps {
-	messages: ChatMesajItem[];
+	messages: ChatMessageItem[];
 	currentUserId: string;
 	isAdmin?: boolean;
 	loading: boolean;
 	hasMore?: boolean;
 	loadingOlder?: boolean;
 	onLoadOlder?: () => void;
-	onStartEdit?: (message: ChatMesajItem) => void;
+	onStartEdit?: (message: ChatMessageItem) => void;
 	onDelete?: (messageId: string) => void;
-	onReply?: (message: ChatMesajItem) => void;
-	onForward?: (message: ChatMesajItem) => void;
+	onReply?: (message: ChatMessageItem) => void;
+	onForward?: (message: ChatMessageItem) => void;
 	onVotePoll?: (pollId: string, secenekId: string) => Promise<boolean>;
 	onClosePoll?: (pollId: string) => Promise<boolean>;
+	focusedMessageId?: string | null;
+	onFocusMessageHandled?: () => void;
 }
 
 interface ChatMessageRowProps {
-	msg: ChatMesajItem;
+	msg: ChatMessageItem;
 	currentUserId: string;
 	isAdmin: boolean;
-	onStartEdit?: (message: ChatMesajItem) => void;
+	onStartEdit?: (message: ChatMessageItem) => void;
 	onDelete?: (messageId: string) => void;
-	onReply?: (message: ChatMesajItem) => void;
-	onForward?: (message: ChatMesajItem) => void;
+	onReply?: (message: ChatMessageItem) => void;
+	onForward?: (message: ChatMessageItem) => void;
 	onVotePoll?: (pollId: string, secenekId: string) => Promise<boolean>;
 	onClosePoll?: (pollId: string) => Promise<boolean>;
 	formatTime: (timestamp: number) => string;
@@ -128,6 +131,7 @@ function ChatMessageRow({
 	return (
 		<div
 			className={`${s.messageRow} ${isMine ? s.messageRowMine : ''} ${isDeleted ? s.messageRowDeleted : ''} cv-auto-row`}
+			data-message-id={msg.id}
 		>
 			{!isMine && (
 				<div className={s.messageAvatar}>
@@ -162,7 +166,11 @@ function ChatMessageRow({
 							onClosePoll={onClosePoll || (async () => false)}
 						/>
 					) : (
-						<div className={`${s.messageBubble} ${isDeleted ? s.messageBubbleDeleted : ''}`}>
+						<div
+							className={`${s.messageBubble} ${
+								!isDeleted && (msg.ekler?.length ?? 0) > 0 ? s.messageBubbleMedia : ''
+							} ${isDeleted ? s.messageBubbleDeleted : ''}`}
+						>
 							{/* Forwarded Header */}
 							{msg.iletildiMi && !isDeleted && (
 								<div className={`${s.forwardedTag} ${isMine ? s.forwardedTagMine : ''}`}>
@@ -185,7 +193,8 @@ function ChatMessageRow({
 							{isDeleted && (
 								<span className={s.deletedInlineNotice}>[{t('chatDelete').toUpperCase()}] </span>
 							)}
-							<div className={s.messageTextContent}>{msg.icerik}</div>
+							{msg.icerik && <div className={s.messageTextContent}>{msg.icerik}</div>}
+							{!isDeleted && msg.ekler?.length > 0 && <ChatAttachments attachments={msg.ekler} />}
 							{isMine && !isDeleted && (
 								<div
 									style={{
@@ -284,11 +293,13 @@ export function ChatMessageList({
 	onForward,
 	onVotePoll,
 	onClosePoll,
+	focusedMessageId,
+	onFocusMessageHandled,
 }: ChatMessageListProps) {
 	const { t } = useI18n();
 	const bottomRef = useRef<HTMLDivElement>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
-	const prevMessagesRef = useRef<ChatMesajItem[]>([]);
+	const prevMessagesRef = useRef<ChatMessageItem[]>([]);
 	const prevScrollHeightRef = useRef(0);
 
 	// Keep the viewport stable when older messages are prepended, and only
@@ -323,6 +334,26 @@ export function ChatMessageList({
 		}
 		prevMessagesRef.current = messages;
 	}, [messages]);
+
+	// A notification can point at a specific message. Wait for the room's
+	// messages, then reveal it (loading older pages if it is not in the first
+	// window). The target is cleared after it has been shown once.
+	useEffect(() => {
+		if (!focusedMessageId) return;
+		const container = containerRef.current;
+		if (!container) return;
+		const target = container.querySelector<HTMLElement>(
+			`[data-message-id="${focusedMessageId.replace(/"/g, '\\"')}"]`
+		);
+		if (target) {
+			target.scrollIntoView({ block: 'center', behavior: 'auto' });
+			target.classList.add(s.messageFocused);
+			const timer = setTimeout(() => target.classList.remove(s.messageFocused), 1400);
+			onFocusMessageHandled?.();
+			return () => clearTimeout(timer);
+		}
+		if (hasMore && !loadingOlder) onLoadOlder?.();
+	}, [focusedMessageId, messages, hasMore, loadingOlder, onLoadOlder, onFocusMessageHandled]);
 
 	const handleScroll = () => {
 		const el = containerRef.current;
@@ -377,6 +408,7 @@ export function ChatMessageList({
 					return (
 						<div
 							key={msg.id}
+							data-message-id={msg.id}
 							style={{
 								display: 'flex',
 								justifyContent: 'center',

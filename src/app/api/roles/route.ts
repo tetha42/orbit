@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createRole, deleteRole, getRolePermission, getRoles, getDefaultRoleId, setDefaultRoleId, updateRole } from '@/db/roles';
 import { auditContext } from '@/db/audit';
-import { authenticateEnrolled, can, requireAdmin, type YetkiliKullanici } from '@/lib/auth/access';
-import { ADMIN_ROL_ID, MEZUN_ROL_ID, YETKI_ACIKLAMALARI, fazlaYetkiler, normalizeIzinler, rolHatasi, rolVerilebilirMi, type Izinler } from '@/core/permissions';
+import { authenticateEnrolled, can, requireAdmin, type AuthorizedUser } from '@/lib/auth/access';
+import { ADMIN_ROLE_ID, ALUMNI_ROLE_ID, PERMISSION_DESCRIPTIONS, extraPermissions, normalizePermissions, roleProblem, canAssignRole, type Permissions } from '@/core/permissions';
 import { getCached, setCached, invalidateCache } from '@/lib/server/cache';
 
 /**
@@ -13,19 +13,19 @@ import { getCached, setCached, invalidateCache } from '@/lib/server/cache';
  */
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status });
 
-function readRole(body: Record<string, unknown>, user: YetkiliKullanici) {
-	const err = rolHatasi(body);
+function readRole(body: Record<string, unknown>, user: AuthorizedUser) {
+	const err = roleProblem(body);
 	if (err) return { error: err };
-	const izin = normalizeIzinler(body.izinler ?? {});
+	const izin = normalizePermissions(body.izinler ?? {});
 	if (izin.error !== undefined) return { error: izin.error };
-	const fazla = fazlaYetkiler(izin.value, user.permission.izinler);
-	if (fazla.length) return { error: `Kendinizde olmayan yetkileri veremezsiniz: ${fazla.map((a) => YETKI_ACIKLAMALARI[a].ad).join(', ')}`, status: 403 };
+	const excess = extraPermissions(izin.value, user.permission.izinler);
+	if (excess.length) return { error: `Kendinizde olmayan yetkileri veremezsiniz: ${excess.map((a) => PERMISSION_DESCRIPTIONS[a].ad).join(', ')}`, status: 403 };
 	return {
 		value: {
 			ad: String(body.ad).trim(),
 			renk: String(body.renk).toLowerCase(),
 			aciklama: typeof body.aciklama === 'string' ? body.aciklama.trim() : '',
-			izinler: izin.value as Izinler,
+			izinler: izin.value as Permissions,
 			ikiAdimZorunlu: body.ikiAdimZorunlu === true,
 		},
 	};
@@ -35,8 +35,8 @@ export async function GET(request: Request) {
 	const auth = await authenticateEnrolled(request);
 	if (!auth.authorized) return auth.response;
 	const user = auth.user;
-	const ayarlar = user.permission.admin;
-	if (!ayarlar && !can(user, 'members', 'yonet')) return bad('Bu işlem Yönetici yetkisi veya Üye Rehberi yönetim yetkisi gerektirir.', 403);
+	const settings = user.permission.admin;
+	if (!settings && !can(user, 'members', 'yonet')) return bad('Bu işlem Yönetici yetkisi veya Üye Rehberi yönetim yetkisi gerektirir.', 403);
 
 	let raw = getCached<{ roller: Awaited<ReturnType<typeof getRoles>>; varsayilanRolId: string | null }>('roller_raw');
 	if (!raw) {
@@ -45,17 +45,17 @@ export async function GET(request: Request) {
 		setCached('roller_raw', raw, 60_000);
 	}
 
-	const isaretli = raw.roller.map((r) => ({ ...r, atanabilir: rolVerilebilirMi(r, user.permission) }));
-	if (!ayarlar) {
-		return NextResponse.json({ roller: isaretli.map(({ id, ad, renk, sistem, atanabilir }) => ({ id, ad, renk, sistem, atanabilir })), varsayilanRolId: raw.varsayilanRolId });
+	const isaretli = raw.roller.map((r) => ({ ...r, assignableRoles: canAssignRole(r, user.permission) }));
+	if (!settings) {
+		return NextResponse.json({ roller: isaretli.map(({ id, ad, renk, sistem, assignableRoles }) => ({ id, ad, renk, sistem, assignableRoles })), varsayilanRolId: raw.varsayilanRolId });
 	}
 	return NextResponse.json({ roller: isaretli, varsayilanRolId: raw.varsayilanRolId, benimIzinlerim: user.permission.izinler });
 }
 
 /** A role the caller may not touch answers 403 before anything is changed. */
-async function dokunulamaz(id: string, user: YetkiliKullanici): Promise<boolean> {
+async function isProtectedRole(id: string, user: AuthorizedUser): Promise<boolean> {
 	const mevcut = await getRolePermission(id);
-	return !!mevcut.role && !rolVerilebilirMi({ id, izinler: mevcut.izinler }, user.permission);
+	return !!mevcut.role && !canAssignRole({ id, izinler: mevcut.izinler }, user.permission);
 }
 
 export async function POST(request: Request) {
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
 		const body = (await request.json()) as Record<string, unknown>;
 		if (body.action === 'varsayilan') {
 			const roleId = typeof body.roleId === 'string' && body.roleId ? body.roleId : null;
-			if (roleId && fazlaYetkiler((await getRolePermission(roleId)).izinler, auth.user.permission.izinler).length) {
+			if (roleId && extraPermissions((await getRolePermission(roleId)).izinler, auth.user.permission.izinler).length) {
 				return bad('Varsayılan role sizden daha yetkili olamaz.', 403);
 			}
 			const r = await setDefaultRoleId(roleId, auditContext(request, auth.user));
@@ -91,8 +91,8 @@ export async function PATCH(request: Request) {
 	try {
 		const body = (await request.json()) as Record<string, unknown>;
 		const id = typeof body.id === 'string' ? body.id : '';
-		if (id === ADMIN_ROL_ID) return bad('Admin roleü değiştirilemez.', 409);
-		if (await dokunulamaz(id, auth.user)) return bad('Sizden daha yetkili bir roleü değiştiremezsiniz.', 403);
+		if (id === ADMIN_ROLE_ID) return bad('Admin roleü değiştirilemez.', 409);
+		if (await isProtectedRole(id, auth.user)) return bad('Sizden daha yetkili bir roleü değiştiremezsiniz.', 403);
 		// Editing your own role into something stronger is the same escalation.
 		const parsed = readRole(body, auth.user);
 		if (parsed.error !== undefined) return bad(parsed.error, parsed.status);
@@ -117,11 +117,11 @@ export async function DELETE(request: Request) {
 		const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
 		const id = typeof body.id === 'string' ? body.id : '';
 		const tasi = typeof body.tasi === 'string' && body.tasi ? body.tasi : null;
-		if (id === ADMIN_ROL_ID) return bad('Admin roleü silinemez.', 409);
-		if (id === MEZUN_ROL_ID) return bad('Mezun roleü silinemez.', 409);
-		if (await dokunulamaz(id, auth.user)) return bad('Sizden daha yetkili bir roleü silemezsiniz.', 403);
-		if (tasi === ADMIN_ROL_ID) return bad('Üyeler toplu olarak Admin yapılamaz.', 400);
-		if (tasi && fazlaYetkiler((await getRolePermission(tasi)).izinler, auth.user.permission.izinler).length) {
+		if (id === ADMIN_ROLE_ID) return bad('Admin roleü silinemez.', 409);
+		if (id === ALUMNI_ROLE_ID) return bad('Mezun roleü silinemez.', 409);
+		if (await isProtectedRole(id, auth.user)) return bad('Sizden daha yetkili bir roleü silemezsiniz.', 403);
+		if (tasi === ADMIN_ROLE_ID) return bad('Üyeler toplu olarak Admin yapılamaz.', 400);
+		if (tasi && extraPermissions((await getRolePermission(tasi)).izinler, auth.user.permission.izinler).length) {
 			return bad('Üyeleri kendinizden daha yetkili bir role taşıyamazsınız.', 403);
 		}
 		const r = await deleteRole(id, tasi, auditContext(request, auth.user));

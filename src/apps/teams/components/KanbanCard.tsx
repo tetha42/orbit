@@ -6,7 +6,7 @@ import { useI18n } from '@/core/i18n';
 import { useContextMenu } from '@/core/shell';
 import { copyToClipboard } from '@/lib/clipboard';
 import type { MenuItem } from '@/types/workspace';
-import { teslimDurumu } from '@/lib/kanban';
+import { dueStatus } from '@/lib/kanban';
 import styles from './Kanban.module.css';
 import ui from '@/core/ui/ui.module.css';
 import { COLUMNS, labelHue, priorityMeta, type TeamTask } from '../types';
@@ -18,7 +18,7 @@ interface KanbanCardProps {
 	now: number;
 	dragId: string | null;
 	canWork: boolean;
-	dueText: (due: ReturnType<typeof teslimDurumu>, time: number) => string;
+	dueText: (due: ReturnType<typeof dueStatus>, time: number) => string;
 	onDragStart: (e: React.DragEvent, id: string) => void;
 	onDragEnd: () => void;
 	onDragOver: (e: React.DragEvent) => void;
@@ -41,7 +41,7 @@ export function KanbanCard({
 }: KanbanCardProps) {
 	const { t } = useI18n();
 	const prio = priorityMeta(task.oncelik);
-	const due = teslimDurumu(task.teslimTarihi, task.status, now);
+	const due = dueStatus(task.teslimTarihi, task.status, now);
 
 	const menuItems = useMemo<MenuItem[]>(() => {
 		const items: MenuItem[] = [

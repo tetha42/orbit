@@ -6,7 +6,7 @@ import { useI18n } from '@/core/i18n';
 import { useIsMobile } from '@/lib/client/useClientValue';
 import { useBudget } from './hooks/useBudget';
 import { BudgetSidebar } from './components/BudgetSidebar';
-import { KasaPanel } from './components/KasaPanel';
+import { VaultPanel } from './components/KasaPanel';
 import { BudgetMobileView } from './components/BudgetMobileView';
 
 const shellStyle: React.CSSProperties = {
@@ -66,7 +66,7 @@ export function BudgetApp() {
 	const {
 		allowed,
 		httpStatus,
-		kasalar,
+		vaults,
 		active,
 		general,
 		projects,
@@ -88,7 +88,7 @@ export function BudgetApp() {
 	if (isMobile) {
 		return (
 			<BudgetMobileView
-				kasalar={kasalar}
+				vaults={vaults}
 				active={active}
 				general={general}
 				projects={projects}
@@ -103,7 +103,7 @@ export function BudgetApp() {
 		<div className="kasa-app" style={shellStyle}>
 			<div className="kasa-shell">
 				<BudgetSidebar
-					kasalar={kasalar}
+					vaults={vaults}
 					active={active}
 					general={general}
 					projects={projects}
@@ -116,11 +116,11 @@ export function BudgetApp() {
 							<div style={{ padding: '18px 24px 0', fontSize: '17px', fontWeight: 750 }}>
 								{active.ad}
 							</div>
-							<KasaPanel
+							<VaultPanel
 								key={active.teamId ?? 'genel'}
 								teamId={active.teamId}
 								onChanged={refetch}
-								kasalar={kasalar}
+								vaults={vaults}
 							/>
 						</>
 					)}

@@ -4,7 +4,7 @@ import { useSound } from '@/core/sound';
 import { useFocusTarget } from '@/lib/client/useFocusTarget';
 import { useJsonResource } from '@/core/data/useJsonResource';
 import { useNow } from '@/lib/client/useSheet';
-import { iadeDurumu } from '@/lib/inventory';
+import { returnStatus } from '@/lib/inventory';
 import { foldTr } from '@/lib/text';
 import { useToast } from '@/core/ui/Toast';
 import type { Filter, InventoryItem } from '../types';
@@ -14,7 +14,7 @@ export function useInventory() {
 	const { currentUserId, currentUser, canManageApp } = useSession();
 	const { playSystemSound } = useSound();
 	const isManager = canManageApp('inventory');
-	const isMezun = currentUser?.status === 'mezun';
+	const isAlumni = currentUser?.status === 'mezun';
 	const now = useNow(60_000);
 
 	const { data, refetch } = useJsonResource<InventoryItem[]>('/api/inventory');
@@ -50,7 +50,7 @@ export function useInventory() {
 	};
 
 	const overdue = (i: InventoryItem) =>
-		i.status === 'oduncte' && !!iadeDurumu(i.iadeTarihi, now)?.gecikti;
+		i.status === 'oduncte' && !!returnStatus(i.iadeTarihi, now)?.gecikti;
 
 	const counts = {
 		hepsi: items.length,
@@ -95,7 +95,7 @@ export function useInventory() {
 	return {
 		currentUserId,
 		isManager,
-		isMezun,
+		isAlumni,
 		now,
 		data,
 		items,

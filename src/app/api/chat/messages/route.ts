@@ -1,4 +1,7 @@
 import { NextResponse } from 'next/server';
+import { mkdir, readFile, writeFile } from 'fs/promises';
+import path from 'path';
+import { randomBytes } from 'crypto';
 import { requireApp } from '@/lib/auth/access';
 import {
 	canUserAccessChatRoom,
@@ -9,6 +12,8 @@ import {
 	softDeleteChatMessagesBatch,
 	editChatMessage,
 } from '@/server/db/domains/chat.repo';
+import { addStoredFile, getStoredFile } from '@/db';
+import { UPLOAD_NAME_RE, mimeForName, uploadDir } from '@/lib/uploads';
 import { logSystemEvent } from '@/server/db/domains/logs.repo';
 import { recordSecurityStrike } from '@/server/db/domains/security.repo';
 import { clientAddress } from '@/lib/http';
@@ -27,11 +32,11 @@ export async function GET(request: Request) {
 	const odaId = searchParams.get('odaId');
 	const rawLimit = Number(searchParams.get('limit') || '50');
 	const limit = Number.isFinite(rawLimit) ? Math.max(1, Math.min(Math.trunc(rawLimit), 100)) : 50;
-	const beforeTarih = Number(searchParams.get('before'));
+	const beforeDate = Number(searchParams.get('before'));
 	const beforeId = searchParams.get('beforeId');
 	const before =
-		Number.isFinite(beforeTarih) && beforeTarih > 0 && beforeId
-			? { date: beforeTarih, id: beforeId }
+		Number.isFinite(beforeDate) && beforeDate > 0 && beforeId
+			? { date: beforeDate, id: beforeId }
 			: null;
 
 	if (!odaId) {
@@ -75,6 +80,49 @@ export async function GET(request: Request) {
 		console.error('[Chat messages GET error]:', err);
 		return NextResponse.json({ error: 'Mesajlar alınamadı.' }, { status: 500, headers: NO_CACHE });
 	}
+}
+
+
+/**
+ * Forwarding an attachment must not link the target room to a file that only
+ * source-room members may read. The bytes are copied and registered under the
+ * target room, so forwarded media is exactly as private as its new message.
+ */
+async function cloneAttachmentsForRoom(
+	attachments: Array<{ ad: string; url: string; boyut?: number; tip?: string }>,
+	roomId: string,
+	userId: string
+): Promise<Array<{ ad: string; url: string; boyut?: number; tip?: string }>> {
+	const cloned: Array<{ ad: string; url: string; boyut?: number; tip?: string }> = [];
+	const dir = uploadDir();
+	await mkdir(dir, { recursive: true });
+	for (const attachment of attachments) {
+		const sourceName = attachment.url.replace('/api/uploads/', '');
+		if (!UPLOAD_NAME_RE.test(sourceName)) continue;
+		try {
+			const buffer = await readFile(path.join(dir, sourceName));
+			const extension = sourceName.slice(sourceName.lastIndexOf('.'));
+			const name = `${Date.now()}_${randomBytes(9).toString('hex')}${extension}`;
+			await writeFile(path.join(dir, name), buffer, { flag: 'wx' });
+			const mime = attachment.tip || mimeForName(name);
+			await addStoredFile({
+				ad: name,
+				yukleyenId: userId,
+				mime,
+				boyut: buffer.length,
+				sohbetOdaId: roomId,
+			});
+			cloned.push({
+				ad: attachment.ad,
+				url: `/api/uploads/${name}`,
+				boyut: buffer.length,
+				tip: mime,
+			});
+		} catch {
+			// A missing source file is skipped rather than breaking the forward.
+		}
+	}
+	return cloned;
 }
 
 export async function POST(request: Request) {
@@ -124,6 +172,11 @@ export async function POST(request: Request) {
 			for (const targetOdaId of targetOdaIds) {
 				const canSend = await canUserAccessChatRoom(String(targetOdaId), auth.user.id, isAdmin);
 				if (canSend) {
+					const copiedAttachments = await cloneAttachmentsForRoom(
+						sourceMsg.ekler,
+						String(targetOdaId),
+						auth.user.id
+					);
 					const fMsg = await createChatMessage(
 						String(targetOdaId),
 						{
@@ -133,7 +186,7 @@ export async function POST(request: Request) {
 							profilFoto: auth.user.profilFoto,
 						},
 						sourceMsg.icerik,
-						sourceMsg.ekler,
+						copiedAttachments,
 						{ iletildiMi: true }
 					);
 					forwardedMessages.push(fMsg);
@@ -157,8 +210,28 @@ export async function POST(request: Request) {
 
 		const { odaId, icerik, ekler, yanitlananMesajId, yanitlananMesaj, iletildiMi } = body;
 
-		if (!odaId || !icerik || typeof icerik !== 'string' || !icerik.trim()) {
+		// Attachments-only messages are valid; the text may be empty.
+		const attachments = (Array.isArray(ekler) ? ekler : [])
+			.slice(0, 10)
+			.filter(
+				(item): item is { ad: unknown; url: string; boyut?: unknown; tip?: unknown } =>
+					Boolean(item) &&
+					typeof item === 'object' &&
+					typeof (item as { url?: unknown }).url === 'string' &&
+					String((item as { url?: unknown }).url).startsWith('/api/uploads/')
+			)
+			.map((item) => ({
+				ad: String(item.ad ?? 'attachment').slice(0, 140),
+				url: String(item.url),
+				...(typeof item.boyut === 'number' ? { boyut: item.boyut } : {}),
+				...(typeof item.tip === 'string' ? { tip: item.tip.slice(0, 120) } : {}),
+			}));
+
+		if (typeof icerik !== 'string' || (!icerik.trim() && attachments.length === 0)) {
 			return NextResponse.json({ error: 'Mesaj içeriği boş olamaz.' }, { status: 400, headers: NO_CACHE });
+		}
+		if (!odaId) {
+			return NextResponse.json({ error: 'Oda ID belirtilmedi.' }, { status: 400, headers: NO_CACHE });
 		}
 
 		const trimmedContent = icerik.trim();
@@ -190,6 +263,28 @@ export async function POST(request: Request) {
 			return NextResponse.json(
 				{ error: 'Bu sohbet odasına mesaj gönderme yetkiniz bulunmuyor.' },
 				{ status: 403, headers: NO_CACHE }
+			);
+		}
+
+		// Only attachments that belong to this room (or were uploaded by the
+		// sender) may travel with the message. Knowing another room's file URL is
+		// not enough to attach it.
+		const safeAttachments = (
+			await Promise.all(
+				attachments.map(async (attachment) => {
+					const name = attachment.url.replace('/api/uploads/', '');
+					const file = await getStoredFile(name);
+					if (!file) return null;
+					if (file.sohbetOdaId === String(odaId)) return attachment;
+					return null;
+				})
+			)
+		).filter((attachment): attachment is NonNullable<typeof attachment> => attachment !== null);
+
+		if (!trimmedContent && safeAttachments.length === 0) {
+			return NextResponse.json(
+				{ error: 'Mesaj içeriği veya ek gereklidir.' },
+				{ status: 400, headers: NO_CACHE }
 			);
 		}
 
@@ -255,7 +350,7 @@ export async function POST(request: Request) {
 				profilFoto: auth.user.profilFoto,
 			},
 			trimmedContent,
-			Array.isArray(ekler) ? ekler : [],
+			safeAttachments,
 			{
 				yanitlananMesajId: yanitlananMesajId ? String(yanitlananMesajId) : null,
 				yanitlananMesaj: yanitlananMesaj && typeof yanitlananMesaj === 'object' ? yanitlananMesaj : null,

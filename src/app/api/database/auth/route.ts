@@ -50,18 +50,43 @@ export async function POST(request: Request) {
 		return NextResponse.json({ error: 'Kullanıcı bulunamadı.' }, { status: 404 });
 	}
 
-	if (Number(user.totpEnabled) !== 1 || !user.totpSecret) {
-		return NextResponse.json(
-			{
-				error: 'Veritabanı yöneticisini kullanabilmek için iki adımlı doğrulamayı (2FA) Ayarlar bölümünden etkinleştirmeniz gerekmektedir.',
-				code: '2FA_SETUP_REQUIRED',
-			},
-			{ status: 403 }
-		);
-	}
-
 	try {
 		const body = await request.json().catch(() => ({}));
+
+		// A passkey session already satisfies the second-factor requirement, so it
+		// receives the short-lived database token without a fresh TOTP code.
+		if (String(body.method || '') === 'passkey') {
+			if ((auth.user.authMethod ?? 'password') !== 'passkey') {
+				return NextResponse.json(
+					{
+						error: 'This session was not authenticated with a passkey. Sign in with your passkey or enter a TOTP code.',
+						code: 'PASSKEY_SESSION_REQUIRED',
+					},
+					{ status: 403 }
+				);
+			}
+			const token = await createDatabaseSessionToken(auth.user.id);
+			await logSystemEvent({
+				servis: 'database',
+				seviye: 'INFO',
+				mesaj: 'Veritabanı Yöneticisi passkey oturumu ile açıldı',
+				detay: { email: auth.user.email },
+				userId: auth.user.id,
+				ip,
+			});
+			return NextResponse.json({ success: true, token, expiresInMs: 30 * 60 * 1000, method: 'passkey' });
+		}
+
+		if (Number(user.totpEnabled) !== 1 || !user.totpSecret) {
+			return NextResponse.json(
+				{
+					error: 'Veritabanı yöneticisini kullanabilmek için iki adımlı doğrulamayı (2FA) Ayarlar bölümünden etkinleştirmeniz gerekmektedir.',
+					code: '2FA_SETUP_REQUIRED',
+				},
+				{ status: 403 }
+			);
+		}
+
 		const code = String(body.code || '').trim();
 
 		if (!code) {

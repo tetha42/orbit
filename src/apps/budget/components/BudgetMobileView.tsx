@@ -20,18 +20,18 @@ import {
 import { useI18n } from '@/core/i18n';
 import { formatKurus } from '@/lib/budget';
 import { formatDate } from '@/core/data/format';
-import type { KasaSummary, KasaRecord } from '../types';
-import { useKasaLedger } from '../hooks/useKasaLedger';
-import { KasaInsights } from './KasaInsights';
-import { KasaEntryModal } from './KasaEntryModal';
+import type { VaultSummary, VaultRecord } from '../types';
+import { useVaultLedger } from '../hooks/useKasaLedger';
+import { VaultInsights } from './KasaInsights';
+import { VaultEntryModal } from './KasaEntryModal';
 import { TransferModal } from './TransferModal';
 import s from './BudgetMobile.module.css';
 
 export interface BudgetMobileViewProps {
-	kasalar: KasaSummary[];
-	active: KasaSummary | undefined;
-	general: KasaSummary[];
-	projects: KasaSummary[];
+	vaults: VaultSummary[];
+	active: VaultSummary | undefined;
+	general: VaultSummary[];
+	projects: VaultSummary[];
 	selected: string | null;
 	onSelect: (teamId: string | null) => void;
 	refetch: () => Promise<void>;
@@ -42,7 +42,7 @@ type BudgetMobileTab = 'transactions' | 'wallets' | 'insights' | 'add';
 const tl = (kurus: number) => `₺${formatKurus(kurus)}`;
 
 export function BudgetMobileView({
-	kasalar,
+	vaults,
 	active,
 	general,
 	projects,
@@ -52,12 +52,12 @@ export function BudgetMobileView({
 	const { t } = useI18n();
 	const [activeTab, setActiveTab] = useState<BudgetMobileTab>('transactions');
 	const scrollAreaRef = useRef<HTMLDivElement>(null);
-	const [selectedRecord, setSelectedRecord] = useState<KasaRecord | null>(null);
+	const [selectedRecord, setSelectedRecord] = useState<VaultRecord | null>(null);
 
-	const ledger = useKasaLedger({
+	const ledger = useVaultLedger({
 		teamId: active?.teamId ?? null,
 		onChanged: refetch,
-		kasalar,
+		vaults,
 	});
 
 	const handleTabChange = (tabId: BudgetMobileTab) => {
@@ -351,7 +351,7 @@ export function BudgetMobileView({
 					<span style={{ fontSize: '13px', fontWeight: 700 }}>{t('kasaInsightsTitle')}</span>
 					<span style={{ fontSize: '11.5px', opacity: 0.6 }}>{active?.ad}</span>
 				</div>
-				<KasaInsights
+				<VaultInsights
 					dagilim={ledger.dagilim}
 					kategori={ledger.kategori}
 					onSelectKategori={(c) => ledger.setKategori(c)}
@@ -507,7 +507,7 @@ export function BudgetMobileView({
 
 			{/* New Entry Modal */}
 			{ledger.modal?.kind === 'new' && (
-				<KasaEntryModal
+				<VaultEntryModal
 					teamId={active?.teamId ?? null}
 					netBakiyeKurus={ledger.summary?.netBakiyeKurus ?? 0}
 					onClose={() => ledger.setModal(null)}
@@ -516,9 +516,9 @@ export function BudgetMobileView({
 			)}
 
 			{/* Transfer Modal */}
-			{ledger.modal?.kind === 'transfer' && kasalar && (
+			{ledger.modal?.kind === 'transfer' && vaults && (
 				<TransferModal
-					kasalar={kasalar}
+					vaults={vaults}
 					initialSource={active?.teamId ?? null}
 					onClose={() => ledger.setModal(null)}
 					onSaved={ledger.changed}

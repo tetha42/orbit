@@ -6,13 +6,13 @@ import { useI18n } from '@/core/i18n';
 import { useSound } from '@/core/sound';
 import { generateCertificatePDF } from '@/lib/client/pdfGenerator';
 import { inferCertificateCategory } from '@/lib/certificates';
-import type { KulupBilgileri } from '@/db';
+import type { CommunityProfile } from '@/db';
 import type { Certificate } from '../types';
 
 interface CertificateModalActionsProps {
 	cert: Certificate;
 	recipient: string;
-	kulup: KulupBilgileri | null;
+	kulup: CommunityProfile | null;
 	copied: boolean;
 	verifyUrl: (kod: string) => string;
 	onCopyVerification: (kod: string) => void;

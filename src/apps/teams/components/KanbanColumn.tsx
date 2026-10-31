@@ -3,7 +3,7 @@
 import React from 'react';
 import { Plus } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
-import type { teslimDurumu } from '@/lib/kanban';
+import type { dueStatus } from '@/lib/kanban';
 import styles from './Kanban.module.css';
 import ui from '@/core/ui/ui.module.css';
 import type { COLUMNS, TeamTask } from '../types';
@@ -19,7 +19,7 @@ interface KanbanColumnProps {
 	canManage: boolean;
 	canWork: (task: TeamTask) => boolean;
 	now: number;
-	dueText: (state: ReturnType<typeof teslimDurumu>, ts: number) => string;
+	dueText: (state: ReturnType<typeof dueStatus>, ts: number) => string;
 	onDragOver: (e: React.DragEvent) => void;
 	onDragLeave: (e: React.DragEvent) => void;
 	onDrop: (e: React.DragEvent) => void;

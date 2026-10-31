@@ -1,3 +1,4 @@
+import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
 import {
 	addTaskItem,
@@ -15,13 +16,13 @@ import {
 import { publishEventQuiet } from '@/db/olaylar';
 import { requireApp } from '@/lib/auth/access';
 import {
-	ACIKLAMA_MAX,
-	BASLIK_MAX,
+	DESCRIPTION_MAX,
+	TITLE_MAX,
 	MADDE_MAX,
 	YORUM_MAX,
 	normalizeEtiketler,
 	normalizeOncelik,
-	normalizeTeslimTarihi,
+	normalizeDueDate,
 } from '@/lib/kanban';
 import { badRequest, forbidden, getTaskAccess, isAssignable, notFound } from '@/lib/server/taskAccess';
 
@@ -55,7 +56,7 @@ export async function GET(request: Request, { params }: Params) {
  * change the description and labels of their own task, not who owns it or when
  * it is due.
  */
-export async function PATCH(request: Request, { params }: Params) {
+async function handlePATCH(request: Request, { params }: Params) {
 	const auth = await requireApp(request, 'teams', 'kullan');
 	if (!auth.authorized) return auth.response;
 	if (auth.user.status === 'mezun') return forbidden('Mezunlar sadece okuma erişimine sahiptir.');
@@ -69,12 +70,12 @@ export async function PATCH(request: Request, { params }: Params) {
 
 		if (body.baslik !== undefined) {
 			if (typeof body.baslik !== 'string' || !body.baslik.trim()) return badRequest('Başlık boş olamaz.');
-			if (body.baslik.trim().length > BASLIK_MAX) return badRequest(`Başlık en fazla ${BASLIK_MAX} karakter olabilir.`);
+			if (body.baslik.trim().length > TITLE_MAX) return badRequest(`Başlık en fazla ${TITLE_MAX} karakter olabilir.`);
 			patch.baslik = body.baslik.trim();
 		}
 		if (body.aciklama !== undefined) {
 			if (typeof body.aciklama !== 'string') return badRequest('Geçersiz açıklama.');
-			if (body.aciklama.length > ACIKLAMA_MAX) return badRequest(`Açıklama en fazla ${ACIKLAMA_MAX} karakter olabilir.`);
+			if (body.aciklama.length > DESCRIPTION_MAX) return badRequest(`Açıklama en fazla ${DESCRIPTION_MAX} karakter olabilir.`);
 			patch.aciklama = body.aciklama.trim();
 		}
 		if (body.oncelik !== undefined) {
@@ -88,7 +89,7 @@ export async function PATCH(request: Request, { params }: Params) {
 			patch.etiketler = etiketler;
 		}
 		if (body.teslimTarihi !== undefined) {
-			const due = normalizeTeslimTarihi(body.teslimTarihi);
+			const due = normalizeDueDate(body.teslimTarihi);
 			if (due === undefined) return badRequest('Geçersiz teslim tarihi.');
 			patch.teslimTarihi = due;
 		}
@@ -130,7 +131,7 @@ export async function PATCH(request: Request, { params }: Params) {
 }
 
 /** Checklist lines and comments: `{ action: 'addItem' | 'updateItem' | 'deleteItem' | 'addComment' | 'deleteComment' }`. */
-export async function POST(request: Request, { params }: Params) {
+async function handlePOST(request: Request, { params }: Params) {
 	const auth = await requireApp(request, 'teams', 'kullan');
 	if (!auth.authorized) return auth.response;
 	if (auth.user.status === 'mezun') return forbidden('Mezunlar sadece okuma erişimine sahiptir.');
@@ -183,10 +184,10 @@ export async function POST(request: Request, { params }: Params) {
 		}
 
 		if (action === 'addComment') {
-			const icerik = typeof body.icerik === 'string' ? body.icerik.trim() : '';
-			if (!icerik) return badRequest('Yorum boş olamaz.');
-			if (icerik.length > YORUM_MAX) return badRequest(`Yorum en fazla ${YORUM_MAX} karakter olabilir.`);
-			const yorum = await addTaskComment(id, auth.user.id, icerik);
+			const content = typeof body.icerik === 'string' ? body.icerik.trim() : '';
+			if (!content) return badRequest('Yorum boş olamaz.');
+			if (content.length > YORUM_MAX) return badRequest(`Yorum en fazla ${YORUM_MAX} karakter olabilir.`);
+			const yorum = await addTaskComment(id, auth.user.id, content);
 			await publishEventQuiet(getPgPool(), { k: 'takim_guncellendi', teamId: access.task.teamId });
 			return NextResponse.json({
 				success: true,
@@ -213,3 +214,6 @@ export async function POST(request: Request, { params }: Params) {
 		return NextResponse.json({ error: 'İşlem tamamlanamadı.' }, { status: 500 });
 	}
 }
+
+export const POST = withAudit(handlePOST, { action: 'teams.tasks.item.create', target: 'teams.tasks.item' });
+export const PATCH = withAudit(handlePATCH, { action: 'teams.tasks.item.update', target: 'teams.tasks.item' });

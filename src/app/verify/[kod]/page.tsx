@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { getKulupBilgileri, getCertificateByCode } from '@/db';
+import { getCommunityProfile, getCertificateByCode } from '@/db';
 import { ShieldCheck, ArrowLeft, XCircle } from 'lucide-react';
 import { DocumentVerification } from './DocumentVerification';
 import { CERTIFICATE_THEMES, inferCertificateCategory } from '@/lib/certificates';
@@ -11,13 +11,13 @@ export default async function VerifyDetailPage({
 	params: Promise<{ kod: string }>;
 }) {
 	const { kod: raw } = await params;
-	const kod = decodeURIComponent(raw);
+	const code = decodeURIComponent(raw);
 
 	// Official documents carry their own code on the printout's QR.
-	const evrak = /^(?:BEU-EVRAK|ORBIT-DOC)-(\d{5,9})$/.exec(kod);
-	if (evrak) return <DocumentVerification kod={kod} no={Number(evrak[1])} />;
+	const evrak = /^(?:BEU-EVRAK|ORBIT-DOC)-(\d{5,9})$/.exec(code);
+	if (evrak) return <DocumentVerification kod={code} no={Number(evrak[1])} />;
 
-	const [cert, kulup] = await Promise.all([getCertificateByCode(kod), getKulupBilgileri()]);
+	const [cert, kulup] = await Promise.all([getCertificateByCode(code), getCommunityProfile()]);
 
 	const catId = cert ? inferCertificateCategory(cert.baslik, cert.kategori) : 'achievement';
 	const theme = CERTIFICATE_THEMES[catId];
@@ -117,7 +117,7 @@ export default async function VerifyDetailPage({
 							<h1 className={styles.title}>Invalid Verification Code</h1>
 
 							<p className={styles.subtitle}>
-								The verification code <strong>&ldquo;{kod}&rdquo;</strong> does not match any active credential in the Orbit registry or has been revoked.
+								The verification code <strong>&ldquo;{code}&rdquo;</strong> does not match any active credential in the Orbit registry or has been revoked.
 							</p>
 						</>
 					)}

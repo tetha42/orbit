@@ -7,7 +7,7 @@ import { clearRateLimit, consumeRateLimit, isRateLimited, recordFailure } from '
 import { clientAddress } from '@/lib/http';
 import { inspectRequestPayload } from '@/lib/waf';
 import { logSystemEvent } from '@/server/db/domains/logs.repo';
-import { ADMIN_ROL_ID } from '@/core/permissions';
+import { ADMIN_ROLE_ID } from '@/core/permissions';
 import { getEmergencyKillSwitches, getLockdownState, isIpBanned, recordSecurityStrike } from '@/server/db/domains/security.repo';
 
 const MAX_ACCOUNT_ATTEMPTS = 5;
@@ -85,12 +85,12 @@ export async function POST(request: Request) {
 			return NextResponse.json({ error: 'Email and password are required.' }, { status: 400 });
 		}
 
-		const normalizedEposta = email.trim().slice(0, 254).toLowerCase();
-		const accountKey = `login:account:${normalizedEposta}`;
+		const normalizedEmail = email.trim().slice(0, 254).toLowerCase();
+		const accountKey = `login:account:${normalizedEmail}`;
 		const ipKey = `login:ip:${ip}`;
 
 		const accountBurst = consumeRateLimit(
-			`login:burst:acct:${normalizedEposta}`,
+			`login:burst:acct:${normalizedEmail}`,
 			lockdown.active ? 4 : MAX_ACCOUNT_BURST_PER_MIN,
 			BURST_WINDOW_MS
 		);
@@ -111,14 +111,14 @@ export async function POST(request: Request) {
 				await logSystemEvent({
 					servis: 'auth',
 					seviye: 'WARN',
-					mesaj: `Login rate limit exceeded (${normalizedEposta})`,
-					detay: { email: normalizedEposta, kilitAnahtari: key, kalanSaniye: gate.retryAfter },
+					mesaj: `Login rate limit exceeded (${normalizedEmail})`,
+					detay: { email: normalizedEmail, kilitAnahtari: key, kalanSaniye: gate.retryAfter },
 					ip,
 				});
 				void recordSecurityStrike({
 					ip,
 					points: 30,
-					reason: `Brute-force lockout exceeded (${normalizedEposta})`,
+					reason: `Brute-force lockout exceeded (${normalizedEmail})`,
 					path: '/api/auth/login',
 				});
 				return NextResponse.json(
@@ -146,17 +146,17 @@ export async function POST(request: Request) {
 			return NextResponse.json({ error: 'Invalid email or password.' }, { status: 401 });
 		}
 
-		const user = await getUserByEmail(normalizedEposta);
+		const user = await getUserByEmail(normalizedEmail);
 		const INVALID_CREDENTIALS = 'Invalid email or password.';
 
 		if (!user) {
 			await bcrypt.compare(password, DUMMY_HASH);
-			fail(`Unregistered account login attempt (${normalizedEposta})`);
+			fail(`Unregistered account login attempt (${normalizedEmail})`);
 			await logSystemEvent({
 				servis: 'auth',
 				seviye: 'WARN',
-				mesaj: `Failed login attempt (unregistered email): ${normalizedEposta}`,
-				detay: { email: normalizedEposta },
+				mesaj: `Failed login attempt (unregistered email): ${normalizedEmail}`,
+				detay: { email: normalizedEmail },
 				ip,
 			});
 			return NextResponse.json({ error: INVALID_CREDENTIALS }, { status: 401 });
@@ -206,7 +206,7 @@ export async function POST(request: Request) {
 			);
 		}
 
-		if (lockdown.active && user.roleId !== ADMIN_ROL_ID) {
+		if (lockdown.active && user.roleId !== ADMIN_ROLE_ID) {
 			return NextResponse.json(
 				{
 					error: 'The system is currently in Shield Mode (Defcon Lockdown). Only administrators can sign in.',
@@ -226,7 +226,7 @@ export async function POST(request: Request) {
 			});
 		}
 
-		const sessionToken = await establishSession(user, request);
+		const sessionToken = await establishSession(user, request, 'password');
 
 		await logSystemEvent({
 			servis: 'auth',

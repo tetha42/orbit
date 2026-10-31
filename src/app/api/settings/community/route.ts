@@ -55,8 +55,20 @@ export async function PATCH(request: Request) {
 		}
 		if (universite !== undefined) {
 			const studio = clean(universite);
-			if (!studio) return NextResponse.json({ error: 'Stüdyo / kurum adı boş bırakılamaz.' }, { status: 400 });
-			updates.universite = studio;
+			// The studio is the product's maker and is not white-label editable.
+			if (studio && studio !== 'tetha42') {
+				return NextResponse.json(
+					{
+						error: 'The studio name (tetha42) is immutable.',
+						code: 'IMMUTABLE_IDENTITY',
+					},
+					{ status: 400 }
+				);
+			}
+			if (!studio) {
+				return NextResponse.json({ error: 'Studio name cannot be empty.' }, { status: 400 });
+			}
+			updates.universite = 'tetha42';
 		}
 		if (kulupDomain !== undefined) {
 			const domain = clean(kulupDomain);

@@ -12,7 +12,7 @@ import { useContextMenu } from '@/core/shell/useContextMenu';
 import { copyToClipboard } from '@/lib/clipboard';
 import type { MenuItem } from '@/types/workspace';
 import ui from '@/core/ui/ui.module.css';
-import { DENETIM_CSV_BASLIKLARI, DENETIM_SAYFA_BOYUTU, denetimCsvSatirlari, type AuditRecord } from '@/lib/audit';
+import { AUDIT_CSV_HEADERS, AUDIT_PAGE_SIZE, auditCsvRows, type AuditRecord } from '@/lib/audit';
 import { fill } from '@/lib/text';
 import { AuditFilterBar, type Suzgec } from './AuditFilterBar';
 import { AuditDetailModal } from './AuditDetailModal';
@@ -89,7 +89,7 @@ function AuditHistoryRow({ record, language, onSelect }: AuditHistoryRowProps) {
 	);
 }
 
-export function AuditHistory({ roller }: { roller: { id: string; ad: string }[] }) {
+export function AuditHistory({ roller, variant = 'settings' }: { roller: { id: string; ad: string }[]; variant?: 'settings' | 'soc' }) {
 	const { t, language } = useI18n();
 	const notify = useToast();
 	const dialog = useDialog();
@@ -115,8 +115,8 @@ export function AuditHistory({ roller }: { roller: { id: string; ad: string }[] 
 			const res = await fetch(query(filtre, { tum: '1' }));
 			if (!res.ok) throw new Error();
 			const json = (await res.json()) as AuditResponse;
-			const rows = denetimCsvSatirlari(json.kayitlar);
-			downloadCsv('denetim-gecmisi', DENETIM_CSV_BASLIKLARI, rows);
+			const rows = auditCsvRows(json.kayitlar);
+			downloadCsv('denetim-gecmisi', AUDIT_CSV_HEADERS, rows);
 		} catch {
 			notify(t('auditCsvHata'), 'error');
 		} finally {
@@ -125,13 +125,13 @@ export function AuditHistory({ roller }: { roller: { id: string; ad: string }[] 
 	};
 
 	const gecmisiTemizle = async () => {
-		const onay = await dialog.confirm({
+		const approval = await dialog.confirm({
 			title: t('auditTemizle'),
 			message: t('auditTemizleOnay'),
 			tone: 'danger',
 			confirmLabel: t('auditTemizle'),
 		});
-		if (!onay) return;
+		if (!approval) return;
 
 		setTemizleniyor(true);
 		try {
@@ -146,12 +146,12 @@ export function AuditHistory({ roller }: { roller: { id: string; ad: string }[] 
 		}
 	};
 
-	const kayitlar = data?.kayitlar ?? [];
+	const records = data?.kayitlar ?? [];
 	const toplam = data?.toplam ?? 0;
-	const toplamSayfa = Math.max(1, Math.ceil(toplam / DENETIM_SAYFA_BOYUTU));
+	const toplamSayfa = Math.max(1, Math.ceil(toplam / AUDIT_PAGE_SIZE));
 
 	return (
-		<section className={s.audit} aria-label={t('auditTitle')}>
+		<section className={`${s.audit} ${variant === 'soc' ? s.auditSoc : ''}`} aria-label={t('auditTitle')}>
 			<div className={s.auditBar}>
 				<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 					<h4 className={s.title} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -201,10 +201,10 @@ export function AuditHistory({ roller }: { roller: { id: string; ad: string }[] 
 			{error && <div className={ui.error}>{t('auditHata')}</div>}
 
 			<div className={s.auditList}>
-				{kayitlar.length === 0 && (
+				{records.length === 0 && (
 					<div className={s.auditEmpty}>{data ? t('auditBos') : t('loading')}</div>
 				)}
-				{kayitlar.map((k) => (
+				{records.map((k) => (
 					<AuditHistoryRow
 						key={k.id}
 						record={k}

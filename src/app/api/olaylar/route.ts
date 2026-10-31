@@ -41,7 +41,7 @@ export async function GET(request: Request) {
 	const token = readSessionToken(request) ?? '';
 	const enc = new TextEncoder();
 
-	let bitir: () => void = () => {};
+	let finish: () => void = () => {};
 	const stream = new ReadableStream<Uint8Array>({
 		start(controller) {
 			let kapali = false;
@@ -52,17 +52,17 @@ export async function GET(request: Request) {
 				try {
 					controller.enqueue(enc.encode(parca));
 				} catch {
-					bitir();
+					finish();
 				}
 			};
 			const gonder = (ad: string) => yaz(`event: ${ad}\ndata: {}\n\n`);
 
-			bitir = () => {
+			finish = () => {
 				if (kapali) return;
 				kapali = true;
 				clearInterval(kalpAtisi);
 				aboneligiKaldir();
-				request.signal.removeEventListener('abort', bitir);
+				request.signal.removeEventListener('abort', finish);
 				try {
 					controller.close();
 				} catch {
@@ -78,7 +78,7 @@ export async function GET(request: Request) {
 				if (user === undefined) return;
 				if (!user || (user.status !== 'aktif' && user.status !== 'mezun')) {
 					gonder('oturum-sonlandi');
-					bitir();
+					finish();
 				}
 			};
 
@@ -108,17 +108,17 @@ export async function GET(request: Request) {
 				}
 			};
 
-			request.signal.addEventListener('abort', bitir, { once: true });
+			request.signal.addEventListener('abort', finish, { once: true });
 			if (request.signal.aborted) {
-				bitir();
+				finish();
 				return;
 			}
-			aboneligiKaldir = aboneOl({ userId, ilet, kapat: bitir });
+			aboneligiKaldir = aboneOl({ userId, ilet, kapat: finish });
 			// First bytes out at once, so the browser sees the stream open.
 			yaz('retry: 3000\n: baglandi\n\n');
 		},
 		cancel() {
-			bitir();
+			finish();
 		},
 	});
 

@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { ArrowLeft, FileCheck2, Lock, PenLine, XCircle } from 'lucide-react';
 import { getDecisionByNumber } from '@/db';
 import { belgeOzeti } from '@/lib/server/documentDigest';
-import { evrakSayisi } from '@/lib/documents';
+import { documentCount } from '@/lib/documents';
 import styles from './verify.module.css';
 
 const DOCUMENT_TYPES: Record<string, string> = {
@@ -92,7 +92,7 @@ export async function DocumentVerification({ kod, no }: { kod: string; no: numbe
 							<div className={styles.ledgerField}>
 								<span className={styles.ledgerLabel}>Document Reference</span>
 								<span className={styles.ledgerMono}>
-									{evrakSayisi(Number(belge.kararNo))} · {kod}
+									{documentCount(Number(belge.kararNo))} · {kod}
 								</span>
 							</div>
 							<div className={styles.ledgerField} style={{ textAlign: 'right' }}>

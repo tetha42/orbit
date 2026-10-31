@@ -53,6 +53,7 @@ const manifest = {
 					{ id: 'soc-tab-sessions', label: { tr: 'Aktif Oturumlar & Kimlik Kalkanı', en: 'Active Sessions & Identity Shield' }, shortcut: '⌥3', permission: 'kullan', komut: 'tab-sessions' },
 					{ id: 'soc-tab-siem', label: { tr: 'SIEM & Adli Log Analizi', en: 'SIEM & Log Forensics' }, shortcut: '⌥4', permission: 'kullan', komut: 'tab-siem' },
 					{ id: 'soc-tab-inspection', label: { tr: 'Mavi Takım Teftiş', en: 'Blue Team Inspection' }, shortcut: '⌥5', permission: 'kullan', komut: 'tab-inspection' },
+					{ id: 'soc-tab-audit', label: { tr: 'Değişiklik Geçmişi', en: 'Change History' }, shortcut: '⌥A', permission: 'yonet', komut: 'tab-audit' },
 				],
 			},
 			{

@@ -1,3 +1,4 @@
+import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
 import { getMailEmailSetting, setMailEmailSetting } from '@/db/posta';
 import { requireApp } from '@/lib/auth/access';
@@ -16,7 +17,7 @@ export async function GET(request: Request) {
 	}
 }
 
-export async function PATCH(request: Request) {
+async function handlePATCH(request: Request) {
 	const auth = await requireApp(request, 'mail', 'kullan');
 	if (!auth.authorized) return auth.response;
 	try {
@@ -29,3 +30,5 @@ export async function PATCH(request: Request) {
 		return NextResponse.json({ error: 'Ayar kaydedilemedi.' }, { status: 500 });
 	}
 }
+
+export const PATCH = withAudit(handlePATCH, { action: 'posta.ayarlar.update', target: 'posta.ayarlar' });

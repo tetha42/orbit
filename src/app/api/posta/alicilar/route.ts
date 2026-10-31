@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { searchMailCandidates, getMailCandidate, getMailCandidateRoles, getRecentMailThreads } from '@/db/posta';
 import { requireApp } from '@/lib/auth/access';
 import { consumeRateLimit } from '@/lib/rateLimit';
-import { aliciListesi, ulasilabilirIdler } from '@/lib/server/posta';
-import { POSTA_ARAMA_LIMITI, POSTA_ARAMA_MAX, type PostaAliciListesi } from '@/lib/posta';
+import { recipientList, ulasilabilirIdler } from '@/lib/server/posta';
+import { MAIL_SEARCH_LIMIT, MAIL_SEARCH_MAX, type MailRecipientList } from '@/lib/posta';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,16 +41,16 @@ export async function GET(request: Request) {
 		const id = params.get('id');
 		if (id) {
 			const aday = await getMailCandidate(user.id, id.slice(0, 64));
-			const body: PostaAliciListesi = { q: '', alicilar: aday ? await aliciListesi([aday]) : [], oneri: false };
+			const body: MailRecipientList = { q: '', alicilar: aday ? await recipientList([aday]) : [], oneri: false };
 			return NextResponse.json(body, { headers: NO_STORE });
 		}
 
-		const q = (params.get('q') ?? '').trim().slice(0, POSTA_ARAMA_MAX);
-		const adaylar = q ? await searchMailCandidates(user.id, q, POSTA_ARAMA_LIMITI) : await getRecentMailThreads(user.id, POSTA_ARAMA_LIMITI);
+		const q = (params.get('q') ?? '').trim().slice(0, MAIL_SEARCH_MAX);
+		const adaylar = q ? await searchMailCandidates(user.id, q, MAIL_SEARCH_LIMIT) : await getRecentMailThreads(user.id, MAIL_SEARCH_LIMIT);
 		// Nobody written with yet: show the directory's first names rather than an empty box.
-		const oneri = !q && adaylar.length > 0;
-		const secilen = !q && adaylar.length === 0 ? await searchMailCandidates(user.id, '', POSTA_ARAMA_LIMITI) : adaylar;
-		const body: PostaAliciListesi = { q, alicilar: await aliciListesi(secilen), oneri };
+		const suggestion = !q && adaylar.length > 0;
+		const secilen = !q && adaylar.length === 0 ? await searchMailCandidates(user.id, '', MAIL_SEARCH_LIMIT) : adaylar;
+		const body: MailRecipientList = { q, alicilar: await recipientList(secilen), oneri: suggestion };
 		return NextResponse.json(body, { headers: NO_STORE });
 	} catch (error) {
 		console.error('API /api/posta/alicilar error:', error);

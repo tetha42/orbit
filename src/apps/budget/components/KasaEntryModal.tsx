@@ -3,34 +3,35 @@
 import React, { useState } from 'react';
 import { Receipt } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
-import { BUTCE_KATEGORILERI, MAX_TUTAR_KURUS } from '@/types/budget';
-import { formatKurus, parseTutar, tarihInputToMs } from '@/lib/budget';
+import { BUDGET_CATEGORIES, MAX_AMOUNT_CENTS } from '@/types/budget';
+import { formatKurus, parseAmount, dateInputToMs } from '@/lib/budget';
 import { toDateInput } from '@/lib/kanban';
 import ui from '@/core/ui/ui.module.css';
 import { sendJson } from '@/core/data/http';
 import k from './Kasa.module.css';
-import type { KasaRecord } from '../types';
+import type { VaultRecord } from '../types';
 import { Sheet } from '@/core/ui/Sheet';
 import { ReceiptUploadField } from './ReceiptUploadField';
 import { useNow } from '@/lib/client/useSheet';
 import { compressImageToWebp } from '@/lib/client/imageCompress';
 import { fill } from '@/lib/text';
+import { orbitBus } from '@/core/ipc/orbitBus';
 
-interface KasaEntryModalProps {
+interface VaultEntryModalProps {
 	teamId: string | null;
-	registration?: KasaRecord;
+	registration?: VaultRecord;
 	netBakiyeKurus: number;
 	onClose: () => void;
 	onSaved: (message: string) => void;
 }
 
-export function KasaEntryModal({
+export function VaultEntryModal({
 	teamId,
 	registration,
 	netBakiyeKurus,
 	onClose,
 	onSaved,
-}: KasaEntryModalProps) {
+}: VaultEntryModalProps) {
 	const { t } = useI18n();
 	const editing = !!registration;
 	const transfer = !!registration?.aktarimId;
@@ -47,7 +48,7 @@ export function KasaEntryModal({
 	const [error, setError] = useState('');
 	const [busy, setBusy] = useState(false);
 
-	const kurus = editing ? registration.tutarKurus : parseTutar(tutar);
+	const kurus = editing ? registration.tutarKurus : parseAmount(tutar);
 	const overdraft = !editing && tur === 'gider' && kurus !== null && kurus > netBakiyeKurus;
 
 	const upload = async (file: File | undefined) => {
@@ -73,13 +74,13 @@ export function KasaEntryModal({
 	const submit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setError('');
-		const ms = tarihInputToMs(date, Date.now());
+		const ms = dateInputToMs(date, Date.now());
 		if (ms === null) return setError(t('kasaInvalidDate'));
 		if (!aciklama.trim()) return setError(t('kasaDescRequired'));
 		if (!editing) {
 			if (kurus === null) return setError(t('kasaInvalidAmount'));
-			if (kurus > MAX_TUTAR_KURUS)
-				return setError(fill(t('kasaMaxAmountError'), { max: formatKurus(MAX_TUTAR_KURUS) }));
+			if (kurus > MAX_AMOUNT_CENTS)
+				return setError(fill(t('kasaMaxAmountError'), { max: formatKurus(MAX_AMOUNT_CENTS) }));
 		}
 		setBusy(true);
 		const res = editing
@@ -100,6 +101,14 @@ export function KasaEntryModal({
 				});
 		setBusy(false);
 		if (!res.ok) return setError(res.error || t('actionFailed'));
+		if (!editing) {
+			orbitBus.emit('budget:record_created', {
+				recordId: String((res.data as Record<string, unknown>)?.id || ''),
+				amount: kurus ?? 0,
+				type: tur as 'gelir' | 'gider',
+				teamId: teamId || undefined,
+			});
+		}
 		onSaved(editing ? t('kasaRecordUpdated') : t('kasaRecordAdded'));
 	};
 
@@ -158,7 +167,7 @@ export function KasaEntryModal({
 							value={kategori}
 							onChange={(e) => setKategori(e.target.value)}
 						>
-							{BUTCE_KATEGORILERI.map((c) => (
+							{BUDGET_CATEGORIES.map((c) => (
 								<option key={c} value={c}>
 									{c}
 								</option>

@@ -6,15 +6,15 @@ import { fill } from '@/lib/text';
 import { getAppMeta } from '@/configs/apps.config';
 import type { AppID } from '@/types/workspace';
 import { Lock, Pencil, Trash2, Users } from 'lucide-react';
-import { MEZUN_ROL_ID, YETKI_ACIKLAMALARI, YETKI_UYGULAMALARI, seviyeOf } from '@/core/permissions';
+import { ALUMNI_ROLE_ID, PERMISSION_DESCRIPTIONS, PERMISSION_APPS, seviyeOf } from '@/core/permissions';
 import ui from '@/core/ui/ui.module.css';
-import type { RolView } from './RoleEditor';
+import type { RoleView } from './RoleEditor';
 import s from './Roles.module.css';
 
 interface RolesListProps {
-	roller: RolView[];
-	onEdit: (role: RolView) => void;
-	onRemove: (role: RolView) => void;
+	roller: RoleView[];
+	onEdit: (role: RoleView) => void;
+	onRemove: (role: RoleView) => void;
 }
 
 export function RolesList({ roller, onEdit, onRemove }: RolesListProps) {
@@ -22,7 +22,7 @@ export function RolesList({ roller, onEdit, onRemove }: RolesListProps) {
 	return (
 		<div className={s.list}>
 			{roller.map((r) => {
-				const apps = YETKI_UYGULAMALARI.filter((a) => seviyeOf(r.izinler, a) !== 'yok' && a !== 'settings');
+				const apps = PERMISSION_APPS.filter((a) => seviyeOf(r.izinler, a) !== 'yok' && a !== 'settings');
 				return (
 					<article key={r.id} className={s.role} data-role-id={r.id}>
 						<span className={s.swatch} style={{ background: r.renk }} />
@@ -45,7 +45,7 @@ export function RolesList({ roller, onEdit, onRemove }: RolesListProps) {
 								) : (
 									apps.map((a) => (
 										<span key={a} className={`${s.app} ${seviyeOf(r.izinler, a) === 'yonet' ? s.appManage : ''}`}>
-											{getAppMeta(a as AppID, language)?.shortTitle || YETKI_ACIKLAMALARI[a].ad}
+											{getAppMeta(a as AppID, language)?.shortTitle || PERMISSION_DESCRIPTIONS[a].ad}
 											{seviyeOf(r.izinler, a) === 'yonet' ? ` · ${t('rolesLevelManage')}` : ''}
 										</span>
 									))
@@ -60,7 +60,7 @@ export function RolesList({ roller, onEdit, onRemove }: RolesListProps) {
 								<button type="button" className={ui.iconBtn} onClick={() => onEdit(r)} aria-label={fill(t('rolesEditAria'), { name: r.ad })}>
 									<Pencil size={14} />
 								</button>
-								{r.id !== MEZUN_ROL_ID && (
+								{r.id !== ALUMNI_ROLE_ID && (
 									<button type="button" className={ui.iconBtn} onClick={() => onRemove(r)} aria-label={fill(t('rolesDeleteAria'), { name: r.ad })}>
 										<Trash2 size={14} />
 									</button>

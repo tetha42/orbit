@@ -1,3 +1,4 @@
+import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
 import { requireApp } from '@/lib/auth/access';
 import {
@@ -50,7 +51,7 @@ export async function GET(request: Request) {
 	}
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
 	const auth = await requireApp(request, 'chat', 'kullan');
 	if (!auth.authorized) return auth.response;
 
@@ -105,3 +106,5 @@ export async function POST(request: Request) {
 		return NextResponse.json({ error: 'İşlem gerçekleştirilemedi.' }, { status: 500, headers: NO_CACHE });
 	}
 }
+
+export const POST = withAudit(handlePOST, { action: 'chat.rooms.create', target: 'chat.rooms' });

@@ -3,7 +3,7 @@
 import React from 'react';
 import { X, Award, Trophy, Medal, Crown } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
-import type { KulupBilgileri } from '@/db';
+import type { CommunityProfile } from '@/db';
 import { ModalOverlay, useDraggableSheet } from '@/core/ui/Sheet';
 import { CertificateQr } from './CertificateQr';
 import { CertificateModalActions } from './CertificateModalActions';
@@ -13,7 +13,7 @@ import { CERTIFICATE_THEMES, inferCertificateCategory } from '@/lib/certificates
 interface CertificateDetailModalProps {
 	cert: Certificate;
 	currentUserName?: string;
-	kulup: KulupBilgileri | null;
+	kulup: CommunityProfile | null;
 	copied: boolean;
 	verifyUrl: (kod: string) => string;
 	onClose: () => void;

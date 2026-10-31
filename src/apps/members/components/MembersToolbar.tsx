@@ -2,22 +2,23 @@
 
 import React from 'react';
 import { Search, RefreshCw, UserPlus } from 'lucide-react';
-import { DEPARTMENTS } from '@/data/departments';
 import { useI18n } from '@/core/i18n';
-import { fill } from '@/lib/text';
 import ui from '@/core/ui/ui.module.css';
+import { optionLabel, type FormFieldOption } from '@/lib/formFields';
 
 interface MembersToolbarProps {
 	searchQuery: string;
 	onSearchChange: (query: string) => void;
-	selectedDept: string;
+	selectedDepartment: string;
 	onDeptChange: (dept: string) => void;
-	selectedClass: number;
+	selectedGrade: number;
 	onClassChange: (c: number) => void;
-	rolFilter: string;
+	trackOptions: FormFieldOption[];
+	levelOptions: FormFieldOption[];
+	roleFilter: string;
 	onRolFilterChange: (role: string) => void;
-	rolSecenekleri: [string, string][];
-	rolsuzVar: boolean;
+	roleOptions: [string, string][];
+	hasRolelessMember: boolean;
 	activeFilter: 'all' | 'aktif' | 'beklemede' | 'mezun';
 	onActiveFilterChange: (filter: 'all' | 'aktif' | 'beklemede' | 'mezun') => void;
 	totalMembersCount: number;
@@ -30,14 +31,16 @@ interface MembersToolbarProps {
 export function MembersToolbar({
 	searchQuery,
 	onSearchChange,
-	selectedDept,
+	selectedDepartment,
 	onDeptChange,
-	selectedClass,
+	selectedGrade,
 	onClassChange,
-	rolFilter,
+	trackOptions,
+	levelOptions,
+	roleFilter,
 	onRolFilterChange,
-	rolSecenekleri,
-	rolsuzVar,
+	roleOptions,
+	hasRolelessMember,
 	activeFilter,
 	onActiveFilterChange,
 	totalMembersCount,
@@ -46,7 +49,7 @@ export function MembersToolbar({
 	onRefresh,
 	onOpenAdd,
 }: MembersToolbarProps) {
-	const { t } = useI18n();
+	const { t, language } = useI18n();
 
 	return (
 		<div
@@ -107,44 +110,46 @@ export function MembersToolbar({
 				<div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: '0 0 auto' }}>
 					<select
 						className={ui.select}
-						value={selectedDept}
+						value={selectedDepartment}
 						onChange={(e) => onDeptChange(e.target.value)}
 						style={{ minWidth: 140, maxWidth: 200 }}
 						title={t('membersFilterDeptTitle')}
 					>
 						<option value="">{t('membersFilterAllDepts')}</option>
-						{DEPARTMENTS.map((d) => (
-							<option key={d.id} value={d.name}>{d.name}</option>
+						{trackOptions.map((option) => (
+							<option key={option.value} value={option.value}>{optionLabel(option, language)}</option>
 						))}
 					</select>
 
 					<select
 						className={ui.select}
-						value={selectedClass}
+						value={selectedGrade}
 						onChange={(e) => onClassChange(Number(e.target.value))}
 						style={{ minWidth: 110, maxWidth: 130 }}
 						title={t('membersFilterClassTitle')}
 					>
 						<option value={0}>{t('membersFilterAllClasses')}</option>
 						<option value={-1}>{t('membersFilterPrep')}</option>
-						{[1, 2, 3, 4, 5].map((n) => (
-							<option key={n} value={n}>{fill(t('certsGradeFormat'), { grade: n })}</option>
+						{levelOptions.map((option) => (
+							<option key={option.value} value={Number(option.value)}>
+								{optionLabel(option, language)}
+							</option>
 						))}
 					</select>
 
 					<select
 						className={ui.select}
-						value={rolFilter}
+						value={roleFilter}
 						onChange={(e) => onRolFilterChange(e.target.value)}
 						data-role-filter
 						style={{ minWidth: 120, maxWidth: 150 }}
 						title={t('membersFilterRoleTitle')}
 					>
 						<option value="">{t('membersAllRoles')}</option>
-						{rolSecenekleri.map(([id, ad]) => (
+						{roleOptions.map(([id, ad]) => (
 							<option key={id} value={id}>{ad}</option>
 						))}
-						{rolsuzVar && <option value="-">{t('membersCtxNoRole')}</option>}
+						{hasRolelessMember && <option value="-">{t('membersCtxNoRole')}</option>}
 					</select>
 				</div>
 			</div>

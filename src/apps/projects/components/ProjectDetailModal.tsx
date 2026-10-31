@@ -77,6 +77,11 @@ export function ProjectDetailModal({ proje, currentUserId, manage, onClose, onEd
 								<Users size={11} /> {proje.takimAdi}
 							</button>
 						)}
+						{(proje.ownerUserAdSoyad || proje.ownerTeamAd) && (
+							<span className={styles.pill} title={t('pjOwner')}>
+								{t('pjOwner')}: {proje.ownerUserAdSoyad || proje.ownerTeamAd}
+							</span>
+						)}
 					</div>
 				</div>
 			}

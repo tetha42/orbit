@@ -27,6 +27,7 @@ export async function POST(request: Request) {
 	if (!auth.authorized) return auth.response;
 
 	const ip = clientAddress(request);
+	const body = (await request.json().catch(() => ({}))) as CreateSessionBody;
 	const rateKey = `2fa:terminal:${auth.user.id}`;
 	const gate = isRateLimited(rateKey, MAX_ATTEMPTS);
 	if (!gate.allowed) {
@@ -44,6 +45,22 @@ export async function POST(request: Request) {
 		return NextResponse.json({ error: 'Kullanıcı bulunamadı.' }, { status: 404 });
 	}
 
+	// A passkey sign-in is already multi-factor. The session can open a shell
+	// without replaying a TOTP code; a password/TOTP session still steps up.
+	if ((user.authMethod ?? 'password') === 'passkey') {
+		const cols = typeof body.cols === 'number' && body.cols > 10 ? body.cols : 80;
+		const rows = typeof body.rows === 'number' && body.rows > 5 ? body.rows : 24;
+		const sessionId = createTerminalSession(auth.user.id, cols, rows);
+		await logSystemEvent({
+			servis: 'terminal',
+			seviye: 'INFO',
+			mesaj: `${user.ad} ${user.soyad} (${user.email}) terminal oturumu başlattı (passkey oturumu).`,
+			userId: user.id,
+			ip,
+		});
+		return NextResponse.json({ sessionId, ok: true, authMethod: 'passkey' });
+	}
+
 	if (Number(user.totpEnabled) !== 1) {
 		return NextResponse.json(
 			{
@@ -55,7 +72,6 @@ export async function POST(request: Request) {
 	}
 
 	try {
-		const body = (await request.json().catch(() => ({}))) as CreateSessionBody;
 		const code = String(body.code || '').trim();
 
 		if (!code) {

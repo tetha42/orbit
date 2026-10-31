@@ -12,10 +12,10 @@ import {
 import { useI18n } from '@/core/i18n';
 import { ModalOverlay, useDraggableSheet } from '@/core/ui/Sheet';
 import { NEWS_VISIBILITIES, type NewsVisibility } from '@/types/news';
-import type { HaberItem } from '../types';
+import type { NewsEntry } from '../types';
 
 interface NewsDetailModalProps {
-	article: HaberItem;
+	article: NewsEntry;
 	isAdmin: boolean;
 	copied: boolean;
 	onClose: () => void;

@@ -112,7 +112,7 @@ export function formatDossierMarkdown(dossier: ForensicCaseDossier): string {
 	}
 
 	md += `---\n`;
-	md += `*Generated automatically by ClubPanel SoC Studio Pro. Tamper-evident record.*`;
+	md += `*Generated automatically by Orbit SoC Studio Pro. Tamper-evident record.*`;
 
 	return md;
 }

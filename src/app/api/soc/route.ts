@@ -89,7 +89,7 @@ export async function GET(request: Request) {
 			return NextResponse.json({ incidents });
 		}
 
-		const parseSiemFiltre = () => {
+		const parseSiemFilter = () => {
 			const servis = searchParams.get('servis') || undefined;
 			const servisOp = (searchParams.get('servisOp') as 'eq' | 'neq') || undefined;
 			const seviye = searchParams.get('seviye') || undefined;
@@ -108,7 +108,7 @@ export async function GET(request: Request) {
 		};
 
 		if (action === 'siem') {
-			const result = await getSystemLogsPaginated(parseSiemFiltre());
+			const result = await getSystemLogsPaginated(parseSiemFilter());
 			return NextResponse.json({
 				siem: result.logs,
 				totalCount: result.totalCount,
@@ -125,7 +125,7 @@ export async function GET(request: Request) {
 			getSecurityBlocks(),
 			getActiveSessions(),
 			getSocIncidents(),
-			getSystemLogsPaginated(parseSiemFiltre()),
+			getSystemLogsPaginated(parseSiemFilter()),
 		]);
 
 		return NextResponse.json({

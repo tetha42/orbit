@@ -6,7 +6,7 @@ import { notifyPasswordResetCode, notifyPasswordReset } from '@/lib/mail/notific
 import { isValidEmail } from '@/lib/mail/address';
 import { clearRateLimit, consumeRateLimit, isRateLimited, recordFailure } from '@/lib/rateLimit';
 import { clientAddress } from '@/lib/http';
-import { sifreHatasi } from '@/lib/profile';
+import { passwordProblem } from '@/lib/profile';
 import { inspectRequestPayload } from '@/lib/waf';
 import { logSystemEvent } from '@/server/db/domains/logs.repo';
 import { getLockdownState, isIpBanned, recordSecurityStrike } from '@/server/db/domains/security.repo';
@@ -62,9 +62,9 @@ export async function POST(request: Request) {
 	try {
 		const body = await request.json().catch(() => ({}));
 		const { action, email, kod, yeniSifre } = body;
-		const normalizedEposta = String(email || '').trim().toLowerCase();
+		const normalizedEmail = String(email || '').trim().toLowerCase();
 
-		if (!normalizedEposta || !isValidEmail(normalizedEposta)) {
+		if (!normalizedEmail || !isValidEmail(normalizedEmail)) {
 			return NextResponse.json({ error: 'Geçerli bir e-posta adresi giriniz.' }, { status: 400 });
 		}
 
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
 
 		// ADIM 1: Şifre sıfırlama kodu talep etme
 		if (action === 'request_code') {
-			const reqEmailLimit = consumeRateLimit(`pwd_reset:req:${normalizedEposta}`, 5, 15 * 60_000);
+			const reqEmailLimit = consumeRateLimit(`pwd_reset:req:${normalizedEmail}`, 5, 15 * 60_000);
 			if (!reqEmailLimit.allowed) {
 				return NextResponse.json(
 					{ error: 'Bu e-posta adresi için çok fazla kod talep edildi. Lütfen daha sonra tekrar deneyin.' },
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
 			const UNIFORM_MESSAGE =
 				'Eğer bu e-posta adresi sistemde kayıtlı ise 6 haneli şifre sıfırlama kodu gönderilmiştir.';
 
-			const user = await getUserByEmail(normalizedEposta);
+			const user = await getUserByEmail(normalizedEmail);
 			if (!user) {
 				// Prevent email enumeration by returning the exact same message as when the user exists
 				return NextResponse.json({
@@ -103,10 +103,10 @@ export async function POST(request: Request) {
 				`INSERT INTO email_verifications (email, code, type, expires_at, created_at)
 				 VALUES ($1, $2, 'sifre_sifirlama', $3, $4)
 				 ON CONFLICT (email) DO UPDATE SET code = $2, type = 'sifre_sifirlama', expires_at = $3, created_at = $4`,
-				[normalizedEposta, hashedCode, sonGecerlilik, Date.now()]
+				[normalizedEmail, hashedCode, sonGecerlilik, Date.now()]
 			);
 
-			clearRateLimit(`pwd_reset:verify:${normalizedEposta}`);
+			clearRateLimit(`pwd_reset:verify:${normalizedEmail}`);
 
 			void notifyPasswordResetCode(
 				{ ad: user.ad, soyad: user.soyad, email: user.email },
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
 			await logSystemEvent({
 				servis: 'auth',
 				seviye: 'INFO',
-				mesaj: `Şifre sıfırlama kodu gönderildi: ${normalizedEposta}`,
+				mesaj: `Şifre sıfırlama kodu gönderildi: ${normalizedEmail}`,
 				userId: user.id,
 				ip,
 			});
@@ -129,11 +129,11 @@ export async function POST(request: Request) {
 
 		// ADIM 2: Kodu doğrula ve yeni şifreyi kaydet
 		if (action === 'verify_and_reset') {
-			const verifyKey = `pwd_reset:verify:${normalizedEposta}`;
+			const verifyKey = `pwd_reset:verify:${normalizedEmail}`;
 			const gate = isRateLimited(verifyKey, MAX_OTP_ATTEMPTS);
 			if (!gate.allowed) {
 				await pool.query('DELETE FROM email_verifications WHERE email = $1 AND type = $2', [
-					normalizedEposta,
+					normalizedEmail,
 					'sifre_sifirlama',
 				]);
 				return NextResponse.json(
@@ -147,14 +147,14 @@ export async function POST(request: Request) {
 			}
 
 			const cleanPass = String(yeniSifre || '').trim();
-			const passProblem = sifreHatasi(cleanPass, { email: normalizedEposta });
+			const passProblem = passwordProblem(cleanPass, { email: normalizedEmail });
 			if (passProblem) {
 				return NextResponse.json({ error: passProblem }, { status: 400 });
 			}
 
 			const codeRes = await pool.query(
 				'SELECT code AS kod, expires_at AS songecerlilik FROM email_verifications WHERE email = $1 AND type = $2',
-				[normalizedEposta, 'sifre_sifirlama']
+				[normalizedEmail, 'sifre_sifirlama']
 			);
 
 			const record = codeRes.rows[0];
@@ -164,15 +164,15 @@ export async function POST(request: Request) {
 				const attempts = recordFailure(verifyKey, OTP_WINDOW_MS);
 				if (attempts >= MAX_OTP_ATTEMPTS) {
 					await pool.query('DELETE FROM email_verifications WHERE email = $1 AND type = $2', [
-						normalizedEposta,
+						normalizedEmail,
 						'sifre_sifirlama',
 					]);
 				}
 				await logSystemEvent({
 					servis: 'auth',
 					seviye: 'WARN',
-					mesaj: `Şifre sıfırlama hatalı OTP denemesi: ${normalizedEposta}`,
-					detay: { email: normalizedEposta, denemeSayisi: attempts },
+					mesaj: `Şifre sıfırlama hatalı OTP denemesi: ${normalizedEmail}`,
+					detay: { email: normalizedEmail, denemeSayisi: attempts },
 					ip,
 				});
 				return NextResponse.json({ error: 'Şifre sıfırlama kodu hatalıdır.' }, { status: 400 });
@@ -183,7 +183,7 @@ export async function POST(request: Request) {
 				return NextResponse.json({ error: 'Sıfırlama kodunun süresi dolmuş. Lütfen yeni kod talep edin.' }, { status: 400 });
 			}
 
-			const user = await getUserByEmail(normalizedEposta);
+			const user = await getUserByEmail(normalizedEmail);
 			if (!user) {
 				return NextResponse.json({ error: 'Kullanıcı bulunamadı.' }, { status: 404 });
 			}
@@ -196,7 +196,7 @@ export async function POST(request: Request) {
 			]);
 
 			// Kodu ve sayacı temizle
-			await pool.query('DELETE FROM email_verifications WHERE email = $1', [normalizedEposta]);
+			await pool.query('DELETE FROM email_verifications WHERE email = $1', [normalizedEmail]);
 			clearRateLimit(verifyKey);
 
 			void notifyPasswordReset({ ad: user.ad, soyad: user.soyad, email: user.email });

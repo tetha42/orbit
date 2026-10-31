@@ -3,13 +3,13 @@
 import React from 'react';
 import { ShieldAlert, Trash2 } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
-import type { HaberItem } from '../types';
+import type { NewsEntry } from '../types';
 
 interface UrgentHeadlineBannerProps {
-	article: HaberItem;
+	article: NewsEntry;
 	isAdmin: boolean;
 	deletingId: string | null;
-	onSelect: (article: HaberItem) => void;
+	onSelect: (article: NewsEntry) => void;
 	onDelete: (id: string, e: React.MouseEvent) => void;
 }
 

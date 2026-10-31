@@ -278,7 +278,8 @@ export function DatabaseSchemaGraph({ dbToken, onSelectTable, onOpenCreateTable 
 							})}
 
 							{/* Table Node Cards */}
-							{data.tables.map((table) => {
+							{data.tables.map((table, tableIndex) => {
+								if (!table || typeof table.name !== 'string') return null;
 								const pos = nodePositions.get(table.name);
 								if (!pos) return null;
 
@@ -286,7 +287,7 @@ export function DatabaseSchemaGraph({ dbToken, onSelectTable, onOpenCreateTable 
 
 								return (
 									<foreignObject
-										key={table.name}
+										key={`${table.name}-${tableIndex}`}
 										x={pos.x}
 										y={pos.y}
 										width={pos.width}

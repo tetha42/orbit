@@ -19,8 +19,8 @@ import {
 } from 'lucide-react';
 import { useJsonResource } from '@/core/data/useJsonResource';
 import { useDialog } from '@/components/Common/DialogProvider';
-import { iadeDurumu, iadeMetni } from '@/lib/inventory';
-import type { EnvanterDurum } from '@/types/inventory';
+import { returnStatus, returnText } from '@/lib/inventory';
+import type { InventoryStatus } from '@/types/inventory';
 import ui from '@/core/ui/ui.module.css';
 import { sendJson } from '@/core/data/http';
 import s from './Inventory.module.css';
@@ -57,7 +57,7 @@ const EVENT_ICONS: Record<Hareket['tur'], typeof History> = {
 export function ItemDetailModal({
 	item,
 	isManager,
-	isMezun = false,
+	isAlumni = false,
 	selfId,
 	now,
 	onClose,
@@ -67,7 +67,7 @@ export function ItemDetailModal({
 }: {
 	item: InventoryItem;
 	isManager: boolean;
-	isMezun?: boolean;
+	isAlumni?: boolean;
 	selfId: string | null;
 	now: number;
 	onClose: () => void;
@@ -101,7 +101,7 @@ export function ItemDetailModal({
 	);
 	const [qr, setQr] = useState('');
 
-	const statusBadgeText = (d: EnvanterDurum) => {
+	const statusBadgeText = (d: InventoryStatus) => {
 		switch (d) {
 			case 'saglam': return t('invBadgeAvailable');
 			case 'oduncte': return t('invBadgeOnLoan');
@@ -126,7 +126,7 @@ export function ItemDetailModal({
 	}, [item.status, item.iadeTarihi, item.ad, item.konum, refetch]);
 
 	const mine = !!selfId && item.oduncAlanId === selfId;
-	const due = item.status === 'oduncte' ? iadeDurumu(item.iadeTarihi, now) : null;
+	const due = item.status === 'oduncte' ? returnStatus(item.iadeTarihi, now) : null;
 
 	const confirm = async (message: string, tone: 'danger' | 'warning' = 'warning') => {
 		dialogOpen.current = true;
@@ -240,13 +240,13 @@ export function ItemDetailModal({
 								<span
 									className={`${s.due} ${due?.gecikti ? s.dueLate : due && due.gun <= 2 ? s.dueSoon : ''}`}
 								>
-									· {iadeMetni(item.iadeTarihi, now)}
+									· {returnText(item.iadeTarihi, now)}
 								</span>
 							</span>
 						</div>
 					)}
 					<div className={ui.btnRow} style={{ justifyContent: 'flex-start', flexWrap: 'wrap' }}>
-						{item.status === 'saglam' && !isMezun && (
+						{item.status === 'saglam' && !isAlumni && (
 							<button type="button" className={ui.primaryBtn} onClick={() => onLoan('borrow')}>
 								<PackageOpen size={14} /> {t('invBorrowBtn')}
 							</button>

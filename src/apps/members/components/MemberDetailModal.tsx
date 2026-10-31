@@ -14,15 +14,19 @@ import {
 	BookOpen,
 	Hash,
 	Users,
+	Pencil,
+	KeyRound,
 } from 'lucide-react';
 import { Sheet } from '@/core/ui/Sheet';
 import { AvatarFallback } from '@/components/Common/AvatarFallback';
 import { RoleBadge } from '@/core/ui/RoleBadge';
-import { isMezunRol } from '@/core/permissions';
+import { isAlumniRole } from '@/core/permissions';
 import { useI18n } from '@/core/i18n';
 import { fill } from '@/lib/text';
 import ui from '@/core/ui/ui.module.css';
 import type { MemberRecord } from '../types';
+import { fieldLabel, type FormField } from '@/lib/formFields';
+import { MemberEditSheet } from './MemberEditSheet';
 
 interface MemberDetailModalProps {
 	member: MemberRecord | null;
@@ -32,6 +36,9 @@ interface MemberDetailModalProps {
 	mailUser: boolean;
 	isReachable: boolean;
 	onSendMessage?: (memberId: string) => void;
+	canEdit?: boolean;
+	onSaved?: () => void;
+	onSendPasswordReset?: () => void;
 }
 
 export function MemberDetailModal({
@@ -42,20 +49,57 @@ export function MemberDetailModal({
 	mailUser,
 	isReachable: _isReachable,
 	onSendMessage,
+	canEdit = false,
+	onSaved,
+	onSendPasswordReset,
 }: MemberDetailModalProps) {
 	const { t, language } = useI18n();
+	const [memberFields, setMemberFields] = React.useState<FormField[]>([]);
+	const [editOpen, setEditOpen] = React.useState(false);
+
+	React.useEffect(() => {
+		if (!isOpen) return;
+		let cancelled = false;
+		fetch('/api/form-fields?scope=directory', { cache: 'no-store' })
+			.then((res) => (res.ok ? res.json() : null))
+			.then((data) => {
+				if (!cancelled && Array.isArray(data?.fields)) setMemberFields(data.fields);
+			})
+			.catch(() => {});
+		return () => {
+			cancelled = true;
+		};
+	}, [isOpen]);
+
+	const memberTeams = React.useMemo(() => {
+		const teams = member?.takimlar ?? [];
+		return [...new Map(teams.map((team) => [team.id, team])).values()];
+	}, [member]);
 
 	if (!isOpen || !member) return null;
 
+	if (editOpen) {
+		return (
+			<MemberEditSheet
+				memberId={member.id}
+				onClose={() => setEditOpen(false)}
+				onSaved={() => {
+					onSaved?.();
+					onClose();
+				}}
+			/>
+		);
+	}
+
 	const isSelf = member.id === currentUserId;
 	const canMessage = mailUser && !isSelf && member.status === 'aktif';
-	const isMezun = member.status === 'mezun' || isMezunRol({ id: member.roleId, ad: member.rolAd });
-	const displayRol = isMezun
+	const isAlumni = member.status === 'mezun' || isAlumniRole({ id: member.roleId, ad: member.rolAd });
+	const displayRole = isAlumni
 		? {
-				ad: isMezunRol({ id: member.roleId, ad: member.rolAd })
+				ad: isAlumniRole({ id: member.roleId, ad: member.rolAd })
 					? (member.rolAd ?? t('membersStatusAlumni', 'Mezun'))
 					: t('membersStatusAlumni', 'Mezun'),
-				renk: isMezunRol({ id: member.roleId, ad: member.rolAd }) ? (member.rolRenk ?? '#64d2ff') : '#64d2ff',
+				renk: isAlumniRole({ id: member.roleId, ad: member.rolAd }) ? (member.rolRenk ?? '#64d2ff') : '#64d2ff',
 		  }
 		: member.roleId
 		? { ad: member.rolAd ?? '—', renk: member.rolRenk ?? '#8e8e93' }
@@ -110,7 +154,7 @@ export function MemberDetailModal({
 						</div>
 						<div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
 							<RoleBadge
-								role={displayRol}
+								role={displayRole}
 								bosMetin={t('roleNone')}
 							/>
 							<span
@@ -231,7 +275,7 @@ export function MemberDetailModal({
 				</div>
 
 				{/* Associated Teams Section */}
-				{member.takimlar && member.takimlar.length > 0 ? (
+				{memberTeams.length > 0 ? (
 					<div
 						style={{
 							padding: '12px 14px',
@@ -247,11 +291,11 @@ export function MemberDetailModal({
 							<Users size={12} color="var(--accent)" />
 							<span>{t('membersConnectedTeams', 'Bağlı Olduğu Ar-Ge Takımları')}</span>
 							<span style={{ marginLeft: 'auto', background: 'var(--fill-soft)', padding: '1px 6px', borderRadius: '10px', fontSize: '10px' }}>
-								{member.takimlar.length}
+								{memberTeams.length}
 							</span>
 						</div>
 						<div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '2px' }}>
-							{member.takimlar.map((tm) => (
+							{memberTeams.map((tm) => (
 								<div
 									key={tm.id}
 									style={{
@@ -328,6 +372,31 @@ export function MemberDetailModal({
 					</div>
 				)}
 
+				{member.customFields && Object.keys(member.customFields).length > 0 && (
+					<div
+						style={{
+							padding: '10px 12px',
+							background: 'rgba(255, 255, 255, 0.03)',
+							borderRadius: '8px',
+							border: '1px solid var(--window-border)',
+							display: 'flex',
+							flexDirection: 'column',
+							gap: '8px',
+						}}
+					>
+						<div style={{ fontSize: '11px', opacity: 0.6 }}>{t('membersAdditionalFields')}</div>
+						{Object.entries(member.customFields).map(([key, value]) => {
+							const definition = memberFields.find((field) => field.fieldKey === key);
+							return (
+								<div key={key} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', fontSize: '12px' }}>
+									<span style={{ opacity: 0.65 }}>{definition ? fieldLabel(definition, language) : key}</span>
+									<span style={{ fontWeight: 600, textAlign: 'right', wordBreak: 'break-word' }}>{value}</span>
+								</div>
+							);
+						})}
+					</div>
+				)}
+
 				{/* Bio if present */}
 				{member.bio && (
 					<div
@@ -367,6 +436,28 @@ export function MemberDetailModal({
 						>
 							<Mail size={14} />
 							{fill(t('membersSendMessageTo'), { name: member.ad })}
+						</button>
+					)}
+					{canEdit && (
+						<button
+							type="button"
+							className={ui.btn}
+							onClick={() => setEditOpen(true)}
+							style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+						>
+							<Pencil size={14} />
+							{t('edit')}
+						</button>
+					)}
+					{canEdit && onSendPasswordReset && member.status === 'aktif' && (
+						<button
+							type="button"
+							className={ui.btn}
+							onClick={onSendPasswordReset}
+							style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+						>
+							<KeyRound size={14} />
+							{t('membersSendResetEmail')}
 						</button>
 					)}
 					<button type="button" className={ui.primaryBtn} onClick={onClose}>

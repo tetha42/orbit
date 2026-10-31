@@ -5,10 +5,10 @@ import { CalendarClock, PackageCheck, PackageOpen } from 'lucide-react';
 import { useJsonResource } from '@/core/data/useJsonResource';
 import { toDateInput } from '@/lib/kanban';
 import {
-	EN_UZUN_ODUNC_GUN,
-	VARSAYILAN_ODUNC_GUN,
-	YONETIM_EN_UZUN_ODUNC_GUN,
-	gunSonu,
+	MAX_LOAN_DAYS,
+	DEFAULT_LOAN_DAYS,
+	MANAGEMENT_MAX_LOAN_DAYS,
+	endOfDay,
 } from '@/lib/inventory';
 import ui from '@/core/ui/ui.module.css';
 import { sendJson } from '@/core/data/http';
@@ -54,12 +54,12 @@ export function LoanModal({
 	// Dates for the picker's bounds; taken once so rendering stays pure.
 	const [now] = useState(() => Date.now());
 	const start = mode === 'extend' ? (item.oduncTarihi ?? now) : now;
-	const maxDays = isManager ? YONETIM_EN_UZUN_ODUNC_GUN : EN_UZUN_ODUNC_GUN;
+	const maxDays = isManager ? MANAGEMENT_MAX_LOAN_DAYS : MAX_LOAN_DAYS;
 	const maxDate = toDateInput(start + maxDays * DAY);
 	const initial =
 		mode === 'extend'
 			? Math.min((item.iadeTarihi ?? now) + 7 * DAY, start + maxDays * DAY)
-			: now + VARSAYILAN_ODUNC_GUN * DAY;
+			: now + DEFAULT_LOAN_DAYS * DAY;
 	const [date, setTarih] = useState(() => toDateInput(initial));
 	const [userId, setKullaniciId] = useState('');
 	const [ariza, setAriza] = useState(false);
@@ -90,12 +90,12 @@ export function LoanModal({
 		} else {
 			const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
 			if (!m) return setError(t('invSelectDate'));
-			const iadeTarihi = gunSonu(new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getTime());
+			const returnDate = endOfDay(new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getTime());
 			if (mode === 'lend' && !userId) return setError(t('invSelectMemberPrompt'));
 			body = {
 				action: mode === 'extend' ? 'uzat' : 'oduncAl',
 				envanterId: item.id,
-				iadeTarihi,
+				returnDate,
 				...(mode === 'lend' ? { userId } : {}),
 			};
 		}
@@ -175,8 +175,8 @@ export function LoanModal({
 							? `${fill(t('invCurrentDue'), { date: trDate(item.iadeTarihi) })} `
 							: ''}
 						{isManager
-							? fill(t('invManagerMaxDays'), { days: YONETIM_EN_UZUN_ODUNC_GUN })
-							: fill(t('invMemberMaxDays'), { days: EN_UZUN_ODUNC_GUN })}
+							? fill(t('invManagerMaxDays'), { days: MANAGEMENT_MAX_LOAN_DAYS })
+							: fill(t('invMemberMaxDays'), { days: MAX_LOAN_DAYS })}
 					</div>
 				</>
 			) : (

@@ -1,3 +1,4 @@
+import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
 import { requireApp } from '@/lib/auth/access';
 import { executeSoarPlaybook } from '@/lib/server/soarPlaybooks';
@@ -6,7 +7,7 @@ import type { SoarPlaybookId } from '@/apps/soc/types';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
 	try {
 		const auth = await requireApp(request, 'soc', 'yonet');
 		if (!auth.authorized) return auth.response;
@@ -52,3 +53,5 @@ export async function POST(request: Request) {
 		return NextResponse.json({ error: `Sunucu hatası: ${msg}` }, { status: 500 });
 	}
 }
+
+export const POST = withAudit(handlePOST, { action: 'soc.playbooks.create', target: 'soc.playbooks' });

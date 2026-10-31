@@ -3,7 +3,7 @@
 import React from 'react';
 import { Plus, Search, X } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
-import type { GorevOnceligi } from '@/lib/kanban';
+import type { TaskPriority } from '@/lib/kanban';
 import styles from './Kanban.module.css';
 import ui from '@/core/ui/ui.module.css';
 import { COLUMNS, PRIORITIES, type TeamTask } from '../types';
@@ -16,8 +16,8 @@ interface KanbanToolbarProps {
 	setQuery: (q: string) => void;
 	assignee: AssigneeFilter;
 	setAssignee: (a: AssigneeFilter) => void;
-	priority: GorevOnceligi | '';
-	setPriority: (p: GorevOnceligi | '') => void;
+	priority: TaskPriority | '';
+	setPriority: (p: TaskPriority | '') => void;
 	label: string;
 	setLabel: (l: string) => void;
 	allLabels: string[];
@@ -87,7 +87,7 @@ export function KanbanToolbar({
 				<select
 					className={ui.select}
 					value={priority}
-					onChange={(e) => setPriority(e.target.value as GorevOnceligi | '')}
+					onChange={(e) => setPriority(e.target.value as TaskPriority | '')}
 					aria-label={t('kbPriority')}
 				>
 					<option value="">{t('kbAnyPriority')}</option>

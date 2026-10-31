@@ -1,6 +1,6 @@
 import type { NewsVisibility } from '@/types/news';
 
-export interface HaberItem {
+export interface NewsEntry {
 	id: string;
 	slug: string;
 	baslik: string;

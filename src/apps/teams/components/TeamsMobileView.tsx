@@ -24,14 +24,14 @@ import { useSound } from '@/core/sound';
 import { useToast } from '@/core/ui/Toast';
 import { useNow } from '@/lib/client/useSheet';
 import { sendJson } from '@/core/data/http';
-import { teslimDurumu } from '@/lib/kanban';
-import { COLUMNS, priorityMeta, columnMeta, type GorevDurumu, type TeamTask } from '../types';
+import { dueStatus } from '@/lib/kanban';
+import { COLUMNS, priorityMeta, columnMeta, type TaskStatus, type TeamTask } from '../types';
 import type { useTeams } from '../hooks/useTeams';
 import { TeamJoinButton } from './TeamJoinButton';
 import { LockedTeamView } from './LockedTeamView';
 import { TeamMembers } from './TeamMembers';
 import { TeamChatRoom } from './TeamChatRoom';
-import { KasaPanel } from '@/apps/budget/components/KasaPanel';
+import { VaultPanel } from '@/apps/budget/components/KasaPanel';
 import { TaskDetailModal } from './TaskDetailModal';
 import { NewTaskModal } from './NewTaskModal';
 import { EditTeamModal, NewTeamModal, ApplyModal } from './TeamDialogs';
@@ -52,8 +52,8 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 
 	const [activeTab, setActiveTab] = useState<TeamsMobileTab>('discover');
 	const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<MobileWorkspaceTab>('kanban');
-	const [selectedKanbanCol, setSelectedKanbanCol] = useState<GorevDurumu>('yapilacak');
-	const [newTaskCol, setNewTaskCol] = useState<GorevDurumu | null>(null);
+	const [selectedKanbanCol, setSelectedKanbanCol] = useState<TaskStatus>('yapilacak');
+	const [newTaskCol, setNewTaskCol] = useState<TaskStatus | null>(null);
 	const scrollAreaRef = useRef<HTMLDivElement>(null);
 
 	// User's joined or captained teams
@@ -79,7 +79,7 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 	);
 
 	const tasksByCol = useMemo(() => {
-		const map = new Map<GorevDurumu, TeamTask[]>();
+		const map = new Map<TaskStatus, TeamTask[]>();
 		for (const col of COLUMNS) {
 			map.set(
 				col.id,
@@ -157,7 +157,7 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 		return Array.from(set).sort();
 	}, [teamTasks]);
 
-	const dueText = (stateDue: ReturnType<typeof teslimDurumu>, ts: number) => {
+	const dueText = (stateDue: ReturnType<typeof dueStatus>, ts: number) => {
 		if (stateDue === 'gecikti') return t('kbDueOverdue');
 		if (stateDue === 'bugun') return t('kbDueToday');
 		return new Date(ts).toLocaleDateString(language === 'en' ? 'en-GB' : 'tr-TR', {
@@ -516,7 +516,7 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 								{/* Workspace Sub-Tabs Switcher */}
 								<div
 									className={`${s.workspaceTabsBar} ${
-										state.canSeeKasa(activeBoardTeam) ? s.workspaceTabsBarFour : ''
+										state.canSeeVault(activeBoardTeam) ? s.workspaceTabsBarFour : ''
 									}`}
 								>
 									<button
@@ -552,7 +552,7 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 										<MessageSquare size={13} />
 										<span>{t('tmTabChat')}</span>
 									</button>
-									{state.canSeeKasa(activeBoardTeam) && (
+									{state.canSeeVault(activeBoardTeam) && (
 										<button
 											type="button"
 											className={`${s.workspaceTabBtn} ${
@@ -630,7 +630,7 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 														(tasksByCol.get(selectedKanbanCol) || []).map((task) => {
 															const prio = priorityMeta(task.oncelik);
 															const due = task.teslimTarihi
-																? teslimDurumu(task.teslimTarihi, task.status, now)
+																? dueStatus(task.teslimTarihi, task.status, now)
 																: null;
 															const colIdx = COLUMNS.findIndex((c) => c.id === task.status);
 															const canWork = canWorkOnTask(task);
@@ -782,8 +782,8 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 								)}
 
 								{/* 4. KASA TAB */}
-								{activeWorkspaceTab === 'kasa' && state.canSeeKasa(activeBoardTeam) && (
-									<KasaPanel
+								{activeWorkspaceTab === 'kasa' && state.canSeeVault(activeBoardTeam) && (
+									<VaultPanel
 										key={activeBoardTeam.id}
 										teamId={activeBoardTeam.id}
 										embedded
@@ -860,6 +860,7 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 				<EditTeamModal
 					team={state.editingTeam}
 					roster={state.roster}
+					categories={state.teamCategories}
 					onClose={() => state.setEditingTeam(null)}
 					onSaved={async () => {
 						state.setEditingTeam(null);
@@ -872,6 +873,7 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 			{state.creating && (
 				<NewTeamModal
 					roster={state.roster}
+					categories={state.teamCategories}
 					onClose={() => state.setCreating(false)}
 					onCreated={async () => {
 						state.setCreating(false);

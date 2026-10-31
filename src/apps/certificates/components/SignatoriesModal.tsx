@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { PenLine, Loader2 } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
-import type { KulupBilgileri } from '@/db';
+import type { CommunityProfile } from '@/db';
 import ui from '@/core/ui/ui.module.css';
 import { sendJson } from '@/core/data/http';
 import { Sheet } from '@/core/ui/Sheet';
@@ -15,7 +15,7 @@ export function SignatoriesModal({
 	onClose,
 	onSaved,
 }: {
-	initial: KulupBilgileri;
+	initial: CommunityProfile;
 	onClose: () => void;
 	onSaved: () => void;
 }) {

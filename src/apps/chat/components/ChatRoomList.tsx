@@ -22,7 +22,7 @@ export function ChatRoomList({ rooms, activeRoomId, onSelectRoom }: ChatRoomList
 	};
 
 	const genelRooms = rooms.filter((r) => r.tur !== 'takim' && r.tur !== 'ozel');
-	const takimRooms = rooms.filter((r) => r.tur === 'takim');
+	const teamRooms = rooms.filter((r) => r.tur === 'takim');
 	const ozelRooms = rooms.filter((r) => r.tur === 'ozel');
 
 	const renderRoomItem = (room: ChatOdaItem) => {
@@ -96,10 +96,10 @@ export function ChatRoomList({ rooms, activeRoomId, onSelectRoom }: ChatRoomList
 				</div>
 			)}
 
-			{takimRooms.length > 0 && (
+			{teamRooms.length > 0 && (
 				<div>
 					<div style={sectionHeaderStyle}>{t('chatTeamRooms')}</div>
-					{takimRooms.map(renderRoomItem)}
+					{teamRooms.map(renderRoomItem)}
 				</div>
 			)}
 

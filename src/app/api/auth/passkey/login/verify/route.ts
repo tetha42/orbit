@@ -7,13 +7,11 @@ import {
 	updateWebauthnCounter,
 } from '@/db';
 import { getWebauthnConfig, toAuthenticatorDevice } from '@/lib/auth/webauthn';
-import { attachSessionCookie, establishSession, toSessionUser } from '@/lib/auth/session';
-import { getRolePermission } from '@/db/roles';
-import { createLoginChallenge } from '@/lib/auth/authToken';
+import { attachSessionCookie, establishSession, sessionUserOf } from '@/lib/auth/session';
 import { consumeRateLimit } from '@/lib/rateLimit';
 import { clientAddress } from '@/lib/http';
 import { inspectRequestPayload } from '@/lib/waf';
-import { ADMIN_ROL_ID } from '@/core/permissions';
+import { ADMIN_ROLE_ID } from '@/core/permissions';
 import { logSystemEvent } from '@/server/db/domains/logs.repo';
 import { getLockdownState, isIpBanned, recordSecurityStrike } from '@/server/db/domains/security.repo';
 
@@ -175,16 +173,8 @@ export async function POST(request: Request) {
 			await updateWebauthnCounter(credentialRow.id, newCounter);
 		}
 
-		// A role that requires two-factor auth still asks for the authenticator
-		// code after a passkey. Single-session policy applies: this replaces any other device.
-		const permission = await getRolePermission(user.roleId);
-		if (permission.ikiAdimZorunlu && Number(user.totpEnabled) === 1) {
-			const challengeToken = await createLoginChallenge(user.id);
-			return NextResponse.json({ success: false, require2fa: true, challengeToken });
-		}
-
 		const lockdown = await getLockdownState();
-		if (lockdown.active && user.roleId !== ADMIN_ROL_ID) {
+		if (lockdown.active && user.roleId !== ADMIN_ROLE_ID) {
 			return NextResponse.json(
 				{
 					error: 'Sistem şu anda siber saldırı savunması kapsamında Kalkan Modundadır (Lockdown). Yalnızca yöneticiler giriş yapabilir.',
@@ -194,7 +184,7 @@ export async function POST(request: Request) {
 			);
 		}
 
-		const sessionToken = await establishSession(user, request);
+		const sessionToken = await establishSession(user, request, 'passkey');
 		await logSystemEvent({
 			servis: 'auth',
 			seviye: 'INFO',
@@ -202,7 +192,7 @@ export async function POST(request: Request) {
 			userId: user.id,
 			ip,
 		});
-		const res = NextResponse.json({ success: true, user: toSessionUser(user, permission) });
+		const res = NextResponse.json({ success: true, user: await sessionUserOf(user) });
 		return attachSessionCookie(res, sessionToken);
 	} catch (error) {
 		console.error('API /api/auth/passkey/login/verify error:', error);

@@ -7,15 +7,20 @@ import type { SettingsSection } from '../types';
 import {
 	Building2,
 	Database,
+	FileText,
 	Globe,
+	ListChecks,
 	Image as ImageIcon,
 	KeyRound,
 	Layout,
 	Mail,
 	Network,
+	ShieldAlert,
 	ShieldCheck,
 	Sparkles,
+	UserPlus,
 	UserRound,
+	Users,
 	type LucideIcon,
 } from 'lucide-react';
 
@@ -28,7 +33,12 @@ const TAB_ICONS: Record<SettingsTabId, LucideIcon> = {
 	language: Globe,
 	security: ShieldCheck,
 	community: Building2,
+	membership: UserPlus,
+	legal: FileText,
+	forms: ListChecks,
+	teams: Users,
 	roles: KeyRound,
+	privacy: ShieldAlert,
 	smtp: Mail,
 	integrations: Network,
 };

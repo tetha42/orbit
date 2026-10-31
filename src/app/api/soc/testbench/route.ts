@@ -1,3 +1,4 @@
+import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { can, requireApp } from '@/lib/auth/access';
@@ -6,7 +7,7 @@ import { getRolePermission } from '@/db/roles';
 import { getOAuthClientById, getOAuthClients } from '@/db/oauth';
 import { readSmtpConfig } from '@/lib/mail/smtpSettings';
 import { signOAuthJwt, verifyOAuthJwt, type JwtPayload } from '@/lib/auth/jwt';
-import { YETKI_UYGULAMALARI, seviyeOf } from '@/core/permissions';
+import { PERMISSION_APPS, seviyeOf } from '@/core/permissions';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,7 +40,7 @@ export async function GET(request: Request) {
 			const start = performance.now();
 			const res = await pool.query(`
 				SELECT 
-					(SELECT count(*) FROM kullanicilar) as users,
+					(SELECT count(*) FROM users) as users,
 					(SELECT count(*) FROM roller) as roles,
 					(SELECT count(*) FROM oauth_clients) as clients
 			`);
@@ -113,7 +114,7 @@ export async function GET(request: Request) {
 	if (action === 'session') {
 		const user = auth.user;
 		const perms: Record<string, string> = {};
-		for (const app of YETKI_UYGULAMALARI) {
+		for (const app of PERMISSION_APPS) {
 			perms[app] = seviyeOf(user.permission.izinler, app);
 		}
 
@@ -158,7 +159,7 @@ export async function GET(request: Request) {
 	return NextResponse.json({ error: 'Bilinmeyen işlem.' }, { status: 400 });
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
 	const auth = await requireApp(request, 'soc', 'yonet');
 	if (!auth.authorized) return auth.response;
 
@@ -330,3 +331,5 @@ export async function POST(request: Request) {
 
 	return NextResponse.json({ error: 'Geçersiz aksiyon.' }, { status: 400 });
 }
+
+export const POST = withAudit(handlePOST, { action: 'soc.testbench.create', target: 'soc.testbench' });

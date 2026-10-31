@@ -64,7 +64,7 @@ export function AccountProfileHero({
 			const blob = await squareImage(file);
 			const form = new FormData();
 			form.append('file', blob, blob.type === 'image/webp' ? 'avatar.webp' : 'avatar.jpg');
-			const res = await fetch('/api/profilee/photo', { method: 'POST', body: form });
+			const res = await fetch('/api/profile/photo', { method: 'POST', body: form });
 			const body = await res.json().catch(() => ({}));
 			onPhotoDone(res.ok, res.ok ? t('acPhotoSaved') : body.error || t('kbActionFailed'));
 		} catch {
@@ -75,7 +75,7 @@ export function AccountProfileHero({
 
 	const removePhoto = async () => {
 		onSetBusy('photo');
-		const res = await fetch('/api/profilee/photo', { method: 'DELETE' });
+		const res = await fetch('/api/profile/photo', { method: 'DELETE' });
 		onPhotoDone(res.ok, res.ok ? t('acPhotoRemoved') : t('kbActionFailed'));
 	};
 

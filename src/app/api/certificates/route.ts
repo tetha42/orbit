@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCertificates, createCertificate, deleteCertificate, createEventCertificates, getEventById, getUserById } from '@/db';
 import { can, requireApp } from '@/lib/auth/access';
+import { withAudit } from '@/lib/audit/withAudit';
 
 export async function GET(request: Request) {
 	// Previously unauthenticated: with no `userId` this returned every
@@ -23,7 +24,7 @@ export async function GET(request: Request) {
 	}
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
 	// Issuing a certificate mints a publicly verifiable credential, so it is a
 	// management action.
 	const auth = await requireApp(request, 'certificates', 'yonet');
@@ -32,8 +33,8 @@ export async function POST(request: Request) {
 	try {
 		const body = await request.json();
 		const { userId, etkinlikId, pdfUrl, kategori, dil, aciklama } = body;
-		const baslik = typeof body.baslik === 'string' ? body.baslik.trim() : '';
-		if (!baslik || baslik.length > 160) {
+		const title = typeof body.baslik === 'string' ? body.baslik.trim() : '';
+		if (!title || title.length > 160) {
 			return NextResponse.json({ error: 'Başlık zorunludur (en fazla 160 karakter).' }, { status: 400 });
 		}
 
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
 		if (body.action === 'bulk') {
 			const ev = typeof etkinlikId === 'string' ? await getEventById(etkinlikId) : null;
 			if (!ev) return NextResponse.json({ error: 'CommunityEvent bulunamadı.' }, { status: 404 });
-			const r = await createEventCertificates(ev.id, baslik, {
+			const r = await createEventCertificates(ev.id, title, {
 				kategori: typeof kategori === 'string' ? kategori : undefined,
 				dil: typeof dil === 'string' ? dil : undefined,
 				aciklama: typeof aciklama === 'string' ? aciklama.trim() : undefined,
@@ -62,7 +63,7 @@ export async function POST(request: Request) {
 
 		const result = await createCertificate({
 			userId,
-			baslik,
+			baslik: title,
 			etkinlikId: etkinlikId || undefined,
 			pdfUrl: pdfUrl || undefined,
 			kategori: typeof kategori === 'string' ? kategori : undefined,
@@ -77,7 +78,9 @@ export async function POST(request: Request) {
 	}
 }
 
-export async function DELETE(request: Request) {
+export const POST = withAudit(handlePOST, { action: 'certificates.create', target: 'certificate' });
+
+async function handleDELETE(request: Request) {
 	const auth = await requireApp(request, 'certificates', 'yonet');
 	if (!auth.authorized) return auth.response;
 
@@ -100,3 +103,9 @@ export async function DELETE(request: Request) {
 		return NextResponse.json({ error: 'İşlem tamamlanamadı.' }, { status: 500 });
 	}
 }
+
+export const DELETE = withAudit(handleDELETE, {
+	action: 'certificates.delete',
+	target: 'certificate',
+	getTargetId: (req) => new URL(req.url).searchParams.get('id'),
+});

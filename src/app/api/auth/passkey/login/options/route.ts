@@ -100,6 +100,8 @@ export async function POST(request: Request) {
 			})),
 			// The passkey itself is the second factor, so no extra user check is needed.
 			userVerification: 'preferred',
+			// Give password-manager extensions time to open their picker.
+			timeout: 120_000,
 		});
 
 		const challengeId = newChallengeId();

@@ -1,3 +1,4 @@
+import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
 import { getNews, getNewsById, createNews, updateNews, deleteNews, getPgPool } from '@/db';
 import { notificationEvents, publishEventQuiet } from '@/db/olaylar';
@@ -98,15 +99,15 @@ export async function GET(request: Request) {
 
 	try {
 		const manager = can(auth.user, 'news', 'yonet');
-		const haberler = await getNews(manager ? 'yonetim' : 'uye');
-		return NextResponse.json(haberler, { headers: { 'Cache-Control': 'no-store' } });
+		const newsItems = await getNews(manager ? 'yonetim' : 'uye');
+		return NextResponse.json(newsItems, { headers: { 'Cache-Control': 'no-store' } });
 	} catch (error) {
 		console.error('API /api/haberler GET error:', error);
 		return NextResponse.json({ error: 'Haberler okunamadı.' }, { status: 500 });
 	}
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
 	try {
 		const auth = await requireApp(request, 'news', 'yonet');
 		if (!auth.authorized) {
@@ -145,7 +146,7 @@ export async function POST(request: Request) {
 }
 
 /** Edits an article — its text, category, image or who can read it. Body: `{ id, …fields to change }`. */
-export async function PATCH(request: Request) {
+async function handlePATCH(request: Request) {
 	try {
 		const auth = await requireApp(request, 'news', 'yonet');
 		if (!auth.authorized) {
@@ -177,7 +178,7 @@ export async function PATCH(request: Request) {
 	}
 }
 
-export async function DELETE(request: Request) {
+async function handleDELETE(request: Request) {
 	try {
 		const auth = await requireApp(request, 'news', 'yonet');
 		if (!auth.authorized) {
@@ -199,3 +200,7 @@ export async function DELETE(request: Request) {
 		return NextResponse.json({ error: 'NewsItem silinemedi.' }, { status: 500 });
 	}
 }
+
+export const POST = withAudit(handlePOST, { action: 'news.create', target: 'news' });
+export const PATCH = withAudit(handlePATCH, { action: 'news.update', target: 'news' });
+export const DELETE = withAudit(handleDELETE, { action: 'news.delete', target: 'news' });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSession } from '@/core/session';
 import { useSound } from '@/core/sound';
 import { useI18n } from '@/core/i18n';
@@ -8,9 +8,10 @@ import { useDialog } from '@/components/Common/DialogProvider';
 import { useFocusTarget } from '@/lib/client/useFocusTarget';
 import { useJsonResource } from '@/core/data/useJsonResource';
 import { foldTr, fill } from '@/lib/text';
-import { TAKIM_KATEGORILERI } from '@/lib/teams';
+import { TEAM_CATEGORIES } from '@/lib/teams';
 import { sendJson } from '@/core/data/http';
 import { useToast } from '@/core/ui/Toast';
+import { useOrbitEvent } from '@/core/ipc/orbitBus';
 import type { Team } from '../types';
 import type { TeamWorkspaceTab } from '../components/TeamWorkspaceHeader';
 
@@ -24,6 +25,11 @@ export function useTeams() {
 	const notify = useToast();
 
 	const { data: teamsData, setData: setTeamsData, refetch: fetchTeams } = useJsonResource<Team[]>('/api/teams');
+	const { data: categoryData, refetch: refetchCategories } = useJsonResource<{ categories: string[] }>('/api/team-categories');
+	const teamCategories = useMemo(
+		() => (categoryData?.categories?.length ? categoryData.categories : [...TEAM_CATEGORIES]),
+		[categoryData]
+	);
 	const teams = useMemo(() => teamsData ?? [], [teamsData]);
 
 	const { data: rosterData } = useJsonResource<{ members: Array<{ id: string; ad: string; soyad: string; status?: string }> }>('/api/members');
@@ -41,6 +47,18 @@ export function useTeams() {
 	const [busy, setBusy] = useState(false);
 
 	const canCreateTeam = canManageApp('teams') || teams.some((tm) => tm.izinler.editAll);
+
+	useEffect(() => {
+		const refresh = () => void refetchCategories();
+		window.addEventListener('orbit:team-categories-updated', refresh);
+		return () => window.removeEventListener('orbit:team-categories-updated', refresh);
+	}, [refetchCategories]);
+
+	useOrbitEvent('budget:record_created', (evt) => {
+		if (evt.teamId) {
+			void fetchTeams();
+		}
+	});
 
 	useFocusTarget('teams', {
 		ready: teamsData !== null,
@@ -82,8 +100,8 @@ export function useTeams() {
 
 	const categories = useMemo(() => {
 		const used = new Set(teams.map((tm) => tm.kategori));
-		return [...TAKIM_KATEGORILERI.filter((c) => used.has(c)), ...[...used].filter((c) => !(TAKIM_KATEGORILERI as readonly string[]).includes(c))];
-	}, [teams]);
+		return [...teamCategories.filter((c) => used.has(c)), ...[...used].filter((c) => !teamCategories.includes(c))];
+	}, [teams, teamCategories]);
 
 	const post = async (body: Record<string, unknown>) => {
 		setBusy(true);
@@ -113,9 +131,9 @@ export function useTeams() {
 	};
 
 	const canEnter = (tm: Team) => tm.izinler.manage || tm.benimDurumum === 'aktif';
-	const canSeeKasa = (tm: Team) => tm.izinler.manage;
+	const canSeeVault = (tm: Team) => tm.izinler.manage;
 	const visibleTab: TeamWorkspaceTab =
-		selectedTeam && ((activeTab === 'kasa' && !canSeeKasa(selectedTeam)) || (activeTab === 'settings' && !selectedTeam.izinler.manage))
+		selectedTeam && ((activeTab === 'kasa' && !canSeeVault(selectedTeam)) || (activeTab === 'settings' && !selectedTeam.izinler.manage))
 			? 'kanban'
 			: activeTab;
 
@@ -149,13 +167,14 @@ export function useTeams() {
 		myTeams,
 		visibleTeams,
 		categories,
+		teamCategories,
 		showTeam,
 		post,
 		join,
 		leave,
 		remove,
 		canEnter,
-		canSeeKasa,
+		canSeeVault,
 		fetchTeams,
 		setTeamsData,
 		notify,

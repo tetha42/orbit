@@ -37,7 +37,7 @@ export async function GET(request: Request) {
 
 	try {
 		// 1. Fetch public base tables
-		const tablesRes = await pool.query<{ table_name: string }>(`
+		const tablesRes = await pool.query<{ table_name?: string; tableName?: string }>(`
 			SELECT table_name
 			FROM information_schema.tables
 			WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
@@ -45,7 +45,7 @@ export async function GET(request: Request) {
 		`);
 
 		// 2. Fetch primary key mappings
-		const pkRes = await pool.query<{ table_name: string; column_name: string }>(`
+		const pkRes = await pool.query<{ table_name?: string; tableName?: string; column_name?: string; columnName?: string }>(`
 			SELECT
 				kcu.table_name,
 				kcu.column_name
@@ -60,15 +60,18 @@ export async function GET(request: Request) {
 
 		const pkMap: Record<string, string[]> = {};
 		for (const r of pkRes.rows) {
-			if (!pkMap[r.table_name]) pkMap[r.table_name] = [];
-			pkMap[r.table_name].push(r.column_name);
+			const tableName = String(r.tableName ?? r.table_name ?? '').trim();
+			const columnName = String(r.columnName ?? r.column_name ?? '').trim();
+			if (!tableName || !columnName) continue;
+			if (!pkMap[tableName]) pkMap[tableName] = [];
+			pkMap[tableName].push(columnName);
 		}
 
 		// 3. Count rows for each table safely
 		const tables = [];
 		for (const row of tablesRes.rows) {
-			const tableName = row.table_name;
-			if (!/^[a-zA-Z0-9_]+$/.test(tableName)) continue;
+			const tableName = String(row.tableName ?? row.table_name ?? '').trim();
+			if (!tableName || !/^[a-zA-Z0-9_]+$/.test(tableName)) continue;
 
 			let rowCount = 0;
 			try {

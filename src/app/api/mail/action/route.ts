@@ -1,3 +1,4 @@
+import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth/access';
 import { performMailAction, emptyTrashFolder } from '@/lib/mail/imap';
@@ -17,7 +18,7 @@ const ALLOWED_ACTIONS = [
 ] as const;
 type ActionType = (typeof ALLOWED_ACTIONS)[number];
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
 	const auth = await requireAdmin(request);
 	if (!auth.authorized) return auth.response;
 
@@ -73,3 +74,5 @@ export async function POST(request: Request) {
 		);
 	}
 }
+
+export const POST = withAudit(handlePOST, { action: 'mail.action.create', target: 'mail.action' });

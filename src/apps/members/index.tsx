@@ -27,38 +27,46 @@ export function MemberDirectoryApp() {
 		isLoading,
 		members,
 		filteredMembers,
-		atanabilir,
-		rolById,
-		rolData,
-		rolSecenekleri,
-		rolsuzVar,
-		dokunulabilir,
+		assignableRoles,
+		rolesById,
+		roleData,
+		roleOptions,
+		hasRolelessMember,
+		trackOptions,
+		isMemberTouchable,
 		searchQuery,
 		setSearchQuery,
 		activeFilter,
 		setActiveFilter,
-		rolFilter,
-		setRolFilter,
-		selectedDept,
-		setSelectedDept,
-		selectedClass,
-		setSelectedClass,
+		roleFilter,
+		setRoleFilter,
+		selectedDepartment,
+		setSelectedDepartment,
+		selectedGrade,
+		setSelectedGrade,
 		showAddModal,
 		setShowAddModal,
-		newAd,
-		setNewAd,
-		newSoyad,
-		setNewSoyad,
-		newEposta,
-		setNewEposta,
-		newBolum,
-		setNewBolum,
-		newSinif,
-		setNewSinif,
-		newRolId,
-		setNewRolId,
-		newOgrenciNo,
-		setNewOgrenciNo,
+		newFirstName,
+		setNewFirstName,
+		newLastName,
+		setNewLastName,
+		newEmail,
+		setNewEmail,
+		newTrack,
+		setNewTrack,
+		newGrade,
+		setNewGrade,
+		newRoleId,
+		setNewRoleId,
+		newMemberHandle,
+		setNewMemberHandle,
+		newPassword,
+		setNewPassword,
+		memberFields,
+		coreConfig,
+		customValues,
+		setCustomValues,
+		fieldErrors,
 		isSubmitting,
 		formError,
 		fetchMembers,
@@ -70,6 +78,7 @@ export function MemberDirectoryApp() {
 		selectedMemberForProfile,
 		setSelectedMemberForProfile,
 		handleResetPassword,
+		handleSendPasswordResetEmail,
 	} = m;
 
 	return (
@@ -77,14 +86,16 @@ export function MemberDirectoryApp() {
 			<MembersToolbar
 				searchQuery={searchQuery}
 				onSearchChange={setSearchQuery}
-				selectedDept={selectedDept}
-				onDeptChange={setSelectedDept}
-				selectedClass={selectedClass}
-				onClassChange={setSelectedClass}
-				rolFilter={rolFilter}
-				onRolFilterChange={setRolFilter}
-				rolSecenekleri={rolSecenekleri}
-				rolsuzVar={rolsuzVar}
+				selectedDepartment={selectedDepartment}
+				onDeptChange={setSelectedDepartment}
+				selectedGrade={selectedGrade}
+				onClassChange={setSelectedGrade}
+				trackOptions={trackOptions}
+				levelOptions={coreConfig.level.options}
+				roleFilter={roleFilter}
+				onRolFilterChange={setRoleFilter}
+				roleOptions={roleOptions}
+				hasRolelessMember={hasRolelessMember}
 				activeFilter={activeFilter}
 				onActiveFilterChange={setActiveFilter}
 				totalMembersCount={members.length}
@@ -101,8 +112,8 @@ export function MemberDirectoryApp() {
 				reachable={reachable}
 				isAuthorizedToAdd={isAuthorizedToAdd}
 				isLoading={isLoading}
-				atanabilir={atanabilir}
-				dokunulabilir={dokunulabilir}
+				assignableRoles={assignableRoles}
+				isMemberTouchable={isMemberTouchable}
 				onOpenProfile={(m) => setSelectedMemberForProfile(m)}
 				onResetPassword={handleResetPassword}
 				onSendMessage={(id) => openApp('chat', { section: 'compose', itemId: id })}
@@ -117,24 +128,31 @@ export function MemberDirectoryApp() {
 				onClose={() => setShowAddModal(false)}
 				onSubmit={handleAddMember}
 				formError={formError}
-				newAd={newAd}
-				setNewAd={setNewAd}
-				newSoyad={newSoyad}
-				setNewSoyad={setNewSoyad}
-				newEposta={newEposta}
-				setNewEposta={setNewEposta}
-				newBolum={newBolum}
-				setNewBolum={setNewBolum}
-				newSinif={newSinif}
-				setNewSinif={setNewSinif}
-				newRolId={newRolId}
-				setNewRolId={setNewRolId}
-				newOgrenciNo={newOgrenciNo}
-				setNewOgrenciNo={setNewOgrenciNo}
+				newFirstName={newFirstName}
+				setNewFirstName={setNewFirstName}
+				newLastName={newLastName}
+				setNewLastName={setNewLastName}
+				newEmail={newEmail}
+				setNewEmail={setNewEmail}
+				newTrack={newTrack}
+				setNewTrack={setNewTrack}
+				newGrade={newGrade}
+				setNewGrade={setNewGrade}
+				newRoleId={newRoleId}
+				setNewRoleId={setNewRoleId}
+				newMemberHandle={newMemberHandle}
+				setNewMemberHandle={setNewMemberHandle}
+				newPassword={newPassword}
+				setNewPassword={setNewPassword}
+				memberFields={memberFields}
+				coreConfig={coreConfig}
+				customValues={customValues}
+				setCustomValues={setCustomValues}
+				fieldErrors={fieldErrors}
 				isSubmitting={isSubmitting}
-				rolData={rolData}
-				rolById={rolById}
-				atanabilir={atanabilir}
+				roleData={roleData}
+				rolesById={rolesById}
+				assignableRoles={assignableRoles}
 			/>
 
 			<MemberDetailModal
@@ -145,6 +163,17 @@ export function MemberDirectoryApp() {
 				mailUser={mailUser}
 				isReachable={Boolean(selectedMemberForProfile && reachable.has(selectedMemberForProfile.id))}
 				onSendMessage={(id) => openApp('chat', { section: 'compose', itemId: id })}
+				canEdit={isAuthorizedToAdd}
+				onSaved={fetchMembers}
+				onSendPasswordReset={
+					selectedMemberForProfile
+						? () =>
+								void handleSendPasswordResetEmail(
+									selectedMemberForProfile.id,
+									`${selectedMemberForProfile.ad} ${selectedMemberForProfile.soyad}`.trim()
+								)
+						: undefined
+				}
 			/>
 		</div>
 	);

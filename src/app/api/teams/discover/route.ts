@@ -1,8 +1,9 @@
+import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
 import { getUserTeamIds, getPgPool, getTeamById, getTeamShowcase, joinTeam, leaveTeam } from '@/db';
 import { notificationEvents, publishEventQuiet } from '@/db/olaylar';
 import { authenticateEnrolled } from '@/lib/auth/access';
-import { BEKLEYEN_BASVURU_MAX, TAKIM_SINIRI, basvuruNotuOlustur } from '@/lib/teams';
+import { PENDING_APPLICATION_MAX, TEAM_LIMIT, buildApplicationNote } from '@/lib/teams';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +27,7 @@ export async function GET(request: Request) {
 			{
 				takimlar,
 				benimTakimSayim: aktifTakimlar.length,
-				limitler: { takim: TAKIM_SINIRI, bekleyenBasvuru: BEKLEYEN_BASVURU_MAX },
+				limitler: { takim: TEAM_LIMIT, bekleyenBasvuru: PENDING_APPLICATION_MAX },
 				saltOkunur: auth.user.status === 'mezun',
 			},
 			{ headers: NO_STORE }
@@ -37,7 +38,7 @@ export async function GET(request: Request) {
 	}
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
 	const auth = await authenticateEnrolled(request);
 	if (!auth.authorized) return auth.response;
 	if (auth.user.status === 'mezun') {
@@ -65,8 +66,8 @@ export async function POST(request: Request) {
 				: NextResponse.json({ error: r.message }, { status: r.status ?? 400 });
 		}
 
-		const basvuruNotu = basvuruNotuOlustur(body?.uzmanliklar, body?.basvuruNotu);
-		const result = await joinTeam({ teamId, userId: auth.user.id, basvuruNotu, basvuruZorunlu: true });
+		const applicationNote = buildApplicationNote(body?.uzmanliklar, body?.basvuruNotu);
+		const result = await joinTeam({ teamId, userId: auth.user.id, basvuruNotu: applicationNote, basvuruZorunlu: true });
 		if (!result.ok) return NextResponse.json({ error: result.message }, { status: typeof result.status === 'number' ? result.status : 400 });
 
 		// The roster screens refresh, and the captain's bell shows the new application at once.
@@ -78,3 +79,5 @@ export async function POST(request: Request) {
 		return NextResponse.json({ error: 'İşlem tamamlanamadı.' }, { status: 500 });
 	}
 }
+
+export const POST = withAudit(handlePOST, { action: 'teams.discover.create', target: 'teams.discover' });

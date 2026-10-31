@@ -9,12 +9,22 @@ import {
 	getUserById,
 	getMemberRoster,
 	updateUserPassword,
+	getFormFields,
+	getRegistrationCoreConfig,
+	setMemberFieldValues,
+	createMembershipApplication,
+	recordApplicationDecision,
+	getMembershipPolicy,
 } from '@/db';
+import { defaultLevelValue, defaultTrackValue } from '@/lib/registrationConfig';
+import { validateFormValues } from '@/lib/formFields';
 import { auditContext } from '@/db/audit';
-import { countAktifAdmin, getRolePermission, getDefaultRoleId, setUserRole, setMemberStatus } from '@/db/roles';
-import { can, requireApp, type YetkiliKullanici } from '@/lib/auth/access';
-import { ADMIN_ROL_ID, YETKI_ACIKLAMALARI, fazlaYetkiler, isMezunRol } from '@/core/permissions';
+import { countActiveAdmins, getRolePermission, getDefaultRoleId, setUserRole, setMemberStatus } from '@/db/roles';
+import { can, requireApp } from '@/lib/auth/access';
+import { roleLimitProblem } from '@/server/members/access';
+import { ADMIN_ROLE_ID, isAlumniRole } from '@/core/permissions';
 import { isValidEmail } from '@/lib/mail/address';
+import { passwordProblem } from '@/lib/profile';
 import {
 	notifyMemberCreatedByAdmin,
 	notifyMembershipApproved,
@@ -24,17 +34,6 @@ import {
 
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status });
 const readOnly = () => bad('Mezunlar sadece okuma erişimine sahiptir.', 403);
-
-/**
- * Whether `actor` may hand out or act on `roleId`: nobody may give a role, or
- * touch a member, stronger than themselves; the admin role is the admin's.
- */
-async function rolSinirHatasi(actor: YetkiliKullanici, roleId: string | null | undefined): Promise<string | null> {
-	if (!roleId) return null;
-	if (roleId === ADMIN_ROL_ID && !actor.permission.admin) return 'Admin roleünü yalnızca bir admin verebilir.';
-	const fazla = fazlaYetkiler((await getRolePermission(roleId)).izinler, actor.permission.izinler);
-	return fazla.length ? `Kendinizden daha yetkili bir role veremezsiniz (${fazla.map((a) => YETKI_ACIKLAMALARI[a].ad).join(', ')}).` : null;
-}
 
 export async function GET(request: Request) {
 	const auth = await requireApp(request, 'members', 'kullan');
@@ -67,43 +66,108 @@ export async function POST(request: Request) {
 	const auth = await requireApp(request, 'members', 'yonet');
 	if (!auth.authorized) return auth.response;
 	if (auth.user.status === 'mezun') return readOnly();
+	const policy = await getMembershipPolicy();
+	if (!policy.adminCreate) {
+		return bad('Yönetici üye oluşturma üyelik politikasında kapatılmış.', 403);
+	}
 
 	try {
 		const body = await request.json();
-		const { ad, soyad, email, bolum, sinif, ogrenciNo, bio } = body;
-		if (!ad || !soyad || !email || !bolum) return bad('Ad, soyad, e-posta ve bölüm alanları zorunludur');
-		const normalizedEposta = String(email).trim().toLowerCase();
-		if (!isValidEmail(normalizedEposta)) return bad('Geçerli bir e-posta adresi girin');
+		const { ad, soyad, email, bolum, sinif, ogrenciNo, bio, password } = body;
+		const coreConfig = await getRegistrationCoreConfig();
+		const allowedLevels = new Set(coreConfig.level.options.map((option) => Number(option.value)));
+		const parsedGrade = Number(sinif) || defaultLevelValue(coreConfig);
+		if (!Number.isInteger(parsedGrade) || !allowedLevels.has(parsedGrade)) {
+			return bad('Experience level must be one of the configured options.');
+		}
+		const rawHandle = String(ogrenciNo ?? '').trim();
+		if (coreConfig.memberId.required && !rawHandle) return bad('Please enter a member ID / handle.');
+		if (rawHandle && !/^[a-zA-Z0-9_-]{3,32}$/.test(rawHandle)) {
+			return bad('Member ID / Handle must be 3-32 characters using letters, numbers, hyphens, or underscores.');
+		}
+		const cleanTrack = String(bolum || '').trim() || defaultTrackValue(coreConfig);
+		if (!ad || !soyad || !email) return bad('First name, last name and e-mail are required.');
+		const normalizedEmail = String(email).trim().toLowerCase();
+		if (!isValidEmail(normalizedEmail)) return bad('Enter a valid e-mail address.');
+
+		const memberFields = await getFormFields({ scope: 'member', enabledOnly: true });
+		const customValidation = validateFormValues(memberFields, body.customFields, 'member');
+		if (!customValidation.ok) {
+			return NextResponse.json(
+				{
+					error: 'Please correct the highlighted fields.',
+					code: 'INVALID_FORM_FIELDS',
+					fieldErrors: customValidation.errors,
+				},
+				{ status: 400 }
+			);
+		}
+
+		let memberPassword =
+			typeof password === 'string' && password.length > 0 ? password : '';
+		let generatedPassword = false;
+		if (memberPassword) {
+			const problem = passwordProblem(memberPassword, { email: normalizedEmail });
+			if (problem) return bad(problem);
+		} else {
+			// Random, not derived from the name: `<ad><3 digits>` had only 900 possibilities.
+			memberPassword = randomBytes(9).toString('base64url');
+			generatedPassword = true;
+		}
 
 		// No role given: the club's default role for new members.
 		const roleId: string | null = typeof body.roleId === 'string' && body.roleId ? body.roleId : await getDefaultRoleId();
-		const sinir = await rolSinirHatasi(auth.user, roleId);
+		const sinir = await roleLimitProblem(auth.user, roleId);
 		if (sinir) return bad(sinir, 403);
-		const rolYetki = roleId ? await getRolePermission(roleId) : null;
-		if (roleId && !rolYetki?.role) return bad('Role bulunamadı.', 404);
+		const rolePermission = roleId ? await getRolePermission(roleId) : null;
+		if (roleId && !rolePermission?.role) return bad('Role bulunamadı.', 404);
 
-		if (await getUserByEmail(normalizedEposta)) return bad('Bu e-posta adresiyle kayıtlı bir üye zaten mevcut', 409);
+		if (await getUserByEmail(normalizedEmail)) return bad('Bu e-posta adresiyle kayıtlı bir üye zaten mevcut', 409);
 
-		// Random, not derived from the name: `<ad><3 digits>` had only 900 possibilities.
-		const defaultPass = randomBytes(9).toString('base64url');
 		const newUser = await createUser({
 			ad: String(ad).trim(),
 			soyad: String(soyad).trim(),
-			email: normalizedEposta,
-			passwordHash: await bcrypt.hash(defaultPass, 12),
-			ogrenciNo: ogrenciNo?.trim() || `24010${randomInt(1000, 10000)}`,
-			bolum: String(bolum).trim(),
-			sinif: Number(sinif) || 1,
+			email: normalizedEmail,
+			passwordHash: await bcrypt.hash(memberPassword, 12),
+			ogrenciNo: rawHandle || `24010${randomInt(1000, 10000)}`,
+			bolum: cleanTrack,
+			sinif: parsedGrade,
 			roleId,
 			bio: bio?.trim() || '',
-			status: isMezunRol(rolYetki?.role) ? 'mezun' : 'aktif',
+			status: isAlumniRole(rolePermission?.role) ? 'mezun' : 'aktif',
 		}, auditContext(request, auth.user));
-		void notifyMemberCreatedByAdmin(
-			{ ad: newUser.ad, soyad: newUser.soyad, email: newUser.email },
-			defaultPass
-		);
+		if (Object.keys(customValidation.clean).length > 0) {
+			await setMemberFieldValues(newUser.id, customValidation.clean, memberFields);
+		}
+		await createMembershipApplication({
+			userId: newUser.id,
+			source: 'admin',
+			status: 'approved',
+			snapshot: {
+				ad: newUser.ad,
+				soyad: newUser.soyad,
+				email: newUser.email,
+				ogrenciNo: newUser.ogrenciNo,
+				bolum: newUser.bolum,
+				sinif: newUser.sinif,
+				customFields: customValidation.clean,
+				createdBy: auth.user.id,
+			},
+			reviewedBy: auth.user.id,
+			reviewedAt: Date.now(),
+		});
+		if (generatedPassword) {
+			void notifyMemberCreatedByAdmin(
+				{ ad: newUser.ad, soyad: newUser.soyad, email: newUser.email },
+				memberPassword
+			);
+		}
 		const { passwordHash: _h, ...safe } = newUser;
-		return NextResponse.json({ success: true, member: safe, geciciSifre: defaultPass });
+		return NextResponse.json({
+			success: true,
+			member: safe,
+			...(generatedPassword ? { geciciSifre: memberPassword } : {}),
+		});
 	} catch (error) {
 		console.error('API /api/uyeler POST error:', error);
 		return bad('İşlem tamamlanamadı.', 500);
@@ -118,13 +182,15 @@ export async function PATCH(request: Request) {
 	try {
 		const body = await request.json();
 		const { id, status, addXp } = body;
+		const rejectionReason =
+			typeof body.rejectionReason === 'string' ? body.rejectionReason.trim().slice(0, 500) : null;
 		if (!id) return bad('Kullanıcı ID zorunludur.');
 		const target = await getUserById(id);
 		if (!target) return bad('Üye bulunamadı.', 404);
 
 		// A member stronger than you is out of reach (an admin cannot be demoted by a manager).
 		if (target.id !== auth.user.id) {
-			const sinir = await rolSinirHatasi(auth.user, target.roleId);
+			const sinir = await roleLimitProblem(auth.user, target.roleId);
 			if (sinir) return bad('Sizden daha yetkili bir üyeyi değiştiremezsiniz.', 403);
 		}
 
@@ -142,7 +208,7 @@ export async function PATCH(request: Request) {
 
 		if (body.roleId !== undefined) {
 			const roleId: string | null = typeof body.roleId === 'string' && body.roleId ? body.roleId : null;
-			const sinir = await rolSinirHatasi(auth.user, roleId);
+			const sinir = await roleLimitProblem(auth.user, roleId);
 			if (sinir) return bad(sinir, 403);
 			const r = await setUserRole(id, roleId, auditContext(request, auth.user));
 			if (r === 'role-yok') return bad('Role bulunamadı.', 404);
@@ -152,12 +218,20 @@ export async function PATCH(request: Request) {
 
 		if (status) {
 			if (!['aktif', 'beklemede', 'reddedildi', 'mezun'].includes(status)) return bad('Geçersiz status.');
-			if (target.roleId === ADMIN_ROL_ID && status !== 'aktif' && (await countAktifAdmin()) <= 1) {
+			if (target.roleId === ADMIN_ROLE_ID && status !== 'aktif' && (await countActiveAdmins()) <= 1) {
 				return bad('Kulübün son admininin hesabı pasifleştirilemez.', 409);
 			}
 			// Approving someone without a role gives them the club's default role;
 			// setMemberStatus does both (and the welcome XP) in one transaction.
 			if ((await setMemberStatus(id, status, auditContext(request, auth.user))) === 'yok') return bad('Üye bulunamadı.', 404);
+			if (status === 'aktif' || status === 'reddedildi') {
+				await recordApplicationDecision(
+					id,
+					status === 'aktif' ? 'approved' : 'rejected',
+					auth.user.id,
+					rejectionReason
+				);
+			}
 
 			const recipient = { ad: target.ad, soyad: target.soyad, email: target.email };
 			if ((target.status === 'beklemede' || target.status === 'reddedildi') && status === 'aktif') {
@@ -187,8 +261,8 @@ export async function DELETE(request: Request) {
 		if (id === auth.user.id) return bad('Kendinizi silemezsiniz.');
 		const target = await getUserById(id);
 		if (!target) return bad('Kullanıcı bulunamadı.', 404);
-		if (await rolSinirHatasi(auth.user, target.roleId)) return bad('Sizden daha yetkili bir üyeyi silemezsiniz.', 403);
-		if (target.roleId === ADMIN_ROL_ID && (await countAktifAdmin()) <= 1) return bad('Kulübün son admini silinemez.', 409);
+		if (await roleLimitProblem(auth.user, target.roleId)) return bad('Sizden daha yetkili bir üyeyi silemezsiniz.', 403);
+		if (target.roleId === ADMIN_ROLE_ID && (await countActiveAdmins()) <= 1) return bad('Kulübün son admini silinemez.', 409);
 
 		if (!(await deleteUser(id, auditContext(request, auth.user)))) return bad('Kullanıcı bulunamadı veya silinemedi.', 400);
 		return NextResponse.json({ success: true, message: 'Üye kaydı silindi.' });

@@ -18,6 +18,7 @@ import { useI18n } from '@/core/i18n';
 import { useWindowActions } from '@/core/windows';
 import { initials } from '@/core/text/initials';
 import { fill } from '@/lib/text';
+import { optionLabel } from '@/lib/formFields';
 import type { useMembers } from '../hooks/useMembers';
 import { AddMemberModal } from './AddMemberModal';
 import { MemberDetailModal } from './MemberDetailModal';
@@ -30,7 +31,7 @@ export interface MembersMobileViewProps {
 type MembersMobileTab = 'members' | 'pending' | 'roles' | 'add';
 
 export function MembersMobileView({ m }: MembersMobileViewProps) {
-	const { t } = useI18n();
+	const { t, language } = useI18n();
 	const { openApp } = useWindowActions();
 	const [activeTab, setActiveTab] = useState<MembersMobileTab>('members');
 	const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -40,13 +41,7 @@ export function MembersMobileView({ m }: MembersMobileViewProps) {
 		[m.members]
 	);
 
-	const departments = useMemo(() => {
-		const depts = new Set<string>();
-		for (const mbr of m.members) {
-			if (mbr.bolum) depts.add(mbr.bolum);
-		}
-		return Array.from(depts).sort((a, b) => a.localeCompare(b, 'tr'));
-	}, [m.members]);
+	const departments = m.trackOptions;
 
 	const handleTabChange = (tabId: MembersMobileTab) => {
 		if (tabId === 'add') {
@@ -99,19 +94,19 @@ export function MembersMobileView({ m }: MembersMobileViewProps) {
 			<div className={s.chipRow}>
 				<button
 					type="button"
-					className={`${s.chip} ${m.selectedDept === '' ? s.chipActive : ''}`}
-					onClick={() => m.setSelectedDept('')}
+					className={`${s.chip} ${m.selectedDepartment === '' ? s.chipActive : ''}`}
+					onClick={() => m.setSelectedDepartment('')}
 				>
 					{t('membersFilterAllDepts')} ({m.members.length})
 				</button>
 				{departments.map((dept) => (
 					<button
-						key={dept}
+						key={dept.value}
 						type="button"
-						className={`${s.chip} ${m.selectedDept === dept ? s.chipActive : ''}`}
-						onClick={() => m.setSelectedDept(m.selectedDept === dept ? '' : dept)}
+						className={`${s.chip} ${m.selectedDepartment === dept.value ? s.chipActive : ''}`}
+						onClick={() => m.setSelectedDepartment(m.selectedDepartment === dept.value ? '' : dept.value)}
 					>
-						<span>{dept}</span>
+						<span>{optionLabel(dept, language)}</span>
 					</button>
 				))}
 			</div>
@@ -247,7 +242,7 @@ export function MembersMobileView({ m }: MembersMobileViewProps) {
 								<button
 									type="button"
 									className={s.btnReject}
-									onClick={() => void m.handleDeleteMember(member.id, `${member.ad} ${member.soyad}`)}
+									onClick={() => void m.handleUpdateMemberStatus(member.id, 'reddedildi')}
 								>
 									<X size={16} strokeWidth={2.5} />
 									<span>{t('reject')}</span>
@@ -272,15 +267,15 @@ export function MembersMobileView({ m }: MembersMobileViewProps) {
 
 			{/* Roles List */}
 			<div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-				{m.rolData?.roller.map((role) => {
+				{m.roleData?.roller.map((role) => {
 					const count = m.members.filter((mbr) => mbr.roleId === role.id).length;
 					return (
 						<div
 							key={role.id}
 							className={s.memberCard}
 							onClick={() => {
-								m.setRolFilter(role.id);
-								m.setSelectedDept('');
+								m.setRoleFilter(role.id);
+								m.setSelectedDepartment('');
 								setActiveTab('members');
 							}}
 						>
@@ -289,7 +284,7 @@ export function MembersMobileView({ m }: MembersMobileViewProps) {
 								<div>
 									<div style={{ fontSize: '13.5px', fontWeight: 700, color: '#f8fafc' }}>{role.ad}</div>
 									<div style={{ fontSize: '11px', opacity: 0.6 }}>
-										{role.atanabilir ? t('membersRoleStandardDesc') : t('membersRoleSystemDesc')}
+										{role.assignableRoles ? t('membersRoleStandardDesc') : t('membersRoleSystemDesc')}
 									</div>
 								</div>
 							</div>
@@ -308,20 +303,20 @@ export function MembersMobileView({ m }: MembersMobileViewProps) {
 					{t('membersDepartmentsTitle')}
 				</div>
 				{departments.map((dept) => {
-					const count = m.members.filter((mbr) => mbr.bolum === dept).length;
+					const count = m.members.filter((mbr) => mbr.bolum === dept.value).length;
 					return (
 						<div
-							key={dept}
+							key={dept.value}
 							className={s.memberCard}
 							onClick={() => {
-								m.setSelectedDept(dept);
-								m.setRolFilter('');
+								m.setSelectedDepartment(dept.value);
+								m.setRoleFilter('');
 								setActiveTab('members');
 							}}
 						>
 							<div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
 								<Building2 size={18} opacity={0.7} />
-								<div style={{ fontSize: '13px', fontWeight: 600 }}>{dept}</div>
+								<div style={{ fontSize: '13px', fontWeight: 600 }}>{optionLabel(dept, language)}</div>
 							</div>
 							<div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
 								<span style={{ fontSize: '12px', opacity: 0.65 }}>{count}</span>
@@ -378,24 +373,31 @@ export function MembersMobileView({ m }: MembersMobileViewProps) {
 				onClose={() => m.setShowAddModal(false)}
 				onSubmit={m.handleAddMember}
 				formError={m.formError}
-				newAd={m.newAd}
-				setNewAd={m.setNewAd}
-				newSoyad={m.newSoyad}
-				setNewSoyad={m.setNewSoyad}
-				newEposta={m.newEposta}
-				setNewEposta={m.setNewEposta}
-				newBolum={m.newBolum}
-				setNewBolum={m.setNewBolum}
-				newSinif={m.newSinif}
-				setNewSinif={m.setNewSinif}
-				newRolId={m.newRolId}
-				setNewRolId={m.setNewRolId}
-				newOgrenciNo={m.newOgrenciNo}
-				setNewOgrenciNo={m.setNewOgrenciNo}
+				newFirstName={m.newFirstName}
+				setNewFirstName={m.setNewFirstName}
+				newLastName={m.newLastName}
+				setNewLastName={m.setNewLastName}
+				newEmail={m.newEmail}
+				setNewEmail={m.setNewEmail}
+				newTrack={m.newTrack}
+				setNewTrack={m.setNewTrack}
+				newGrade={m.newGrade}
+				setNewGrade={m.setNewGrade}
+				newRoleId={m.newRoleId}
+				setNewRoleId={m.setNewRoleId}
+				newMemberHandle={m.newMemberHandle}
+				setNewMemberHandle={m.setNewMemberHandle}
+				newPassword={m.newPassword}
+				setNewPassword={m.setNewPassword}
+				memberFields={m.memberFields}
+				coreConfig={m.coreConfig}
+				customValues={m.customValues}
+				setCustomValues={m.setCustomValues}
+				fieldErrors={m.fieldErrors}
 				isSubmitting={m.isSubmitting}
-				rolData={m.rolData}
-				rolById={m.rolById}
-				atanabilir={m.atanabilir}
+				roleData={m.roleData}
+				rolesById={m.rolesById}
+				assignableRoles={m.assignableRoles}
 			/>
 
 			<MemberDetailModal
@@ -406,6 +408,17 @@ export function MembersMobileView({ m }: MembersMobileViewProps) {
 				mailUser={m.mailUser}
 				isReachable={Boolean(m.selectedMemberForProfile && m.reachable.has(m.selectedMemberForProfile.id))}
 				onSendMessage={(id) => openApp('chat', { section: 'compose', itemId: id })}
+				canEdit={m.isAuthorizedToAdd}
+				onSaved={m.fetchMembers}
+				onSendPasswordReset={
+					m.selectedMemberForProfile
+						? () =>
+								void m.handleSendPasswordResetEmail(
+									m.selectedMemberForProfile!.id,
+									`${m.selectedMemberForProfile!.ad} ${m.selectedMemberForProfile!.soyad}`.trim()
+								)
+						: undefined
+				}
 			/>
 		</div>
 	);

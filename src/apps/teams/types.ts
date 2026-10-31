@@ -1,5 +1,5 @@
-import type { GorevDurumu, GorevOnceligi } from '@/lib/kanban';
-export type { GorevDurumu, GorevOnceligi };
+import type { TaskStatus, TaskPriority } from '@/lib/kanban';
+export type { TaskStatus, TaskPriority };
 
 export interface TeamMember {
 	id: string;
@@ -16,8 +16,8 @@ export interface TeamTask {
 	teamId: string;
 	baslik: string;
 	aciklama: string | null;
-	status: GorevDurumu;
-	oncelik: GorevOnceligi;
+	status: TaskStatus;
+	oncelik: TaskPriority;
 	atananUyeId: string | null;
 	atananAdSoyad: string | null;
 	teslimTarihi: number | null;
@@ -62,22 +62,22 @@ export interface Team {
 	yonetebilir?: boolean;
 }
 
-export const COLUMNS: { id: GorevDurumu; color: string; key: string }[] = [
+export const COLUMNS: { id: TaskStatus; color: string; key: string }[] = [
 	{ id: 'yapilacak', color: 'var(--kb-todo)', key: 'kbColTodo' },
 	{ id: 'suruyor', color: 'var(--kb-doing)', key: 'kbColDoing' },
 	{ id: 'inceleme', color: 'var(--kb-review)', key: 'kbColReview' },
 	{ id: 'tamamlandi', color: 'var(--kb-done)', key: 'kbColDone' },
 ];
 
-export const PRIORITIES: { id: GorevOnceligi; color: string; key: string }[] = [
+export const PRIORITIES: { id: TaskPriority; color: string; key: string }[] = [
 	{ id: 'dusuk', color: 'var(--kb-low)', key: 'kbPrioLow' },
 	{ id: 'orta', color: 'var(--kb-medium)', key: 'kbPrioMedium' },
 	{ id: 'yuksek', color: 'var(--kb-high)', key: 'kbPrioHigh' },
 	{ id: 'kritik', color: 'var(--kb-critical)', key: 'kbPrioCritical' },
 ];
 
-export const priorityMeta = (id: GorevOnceligi) => PRIORITIES.find((p) => p.id === id) ?? PRIORITIES[1];
-export const columnMeta = (id: GorevDurumu) => COLUMNS.find((c) => c.id === id) ?? COLUMNS[0];
+export const priorityMeta = (id: TaskPriority) => PRIORITIES.find((p) => p.id === id) ?? PRIORITIES[1];
+export const columnMeta = (id: TaskStatus) => COLUMNS.find((c) => c.id === id) ?? COLUMNS[0];
 
 const LABEL_HUES = ['#0a84ff', '#30d158', '#ff9f0a', '#bf5af2', '#ff375f', '#64d2ff', '#ac8e68', '#5e5ce6'];
 

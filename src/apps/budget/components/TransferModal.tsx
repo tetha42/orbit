@@ -2,25 +2,25 @@
 
 import React, { useState } from 'react';
 import { ArrowRightLeft } from 'lucide-react';
-import { formatKurus, parseTutar, tarihInputToMs } from '@/lib/budget';
+import { formatKurus, parseAmount, dateInputToMs } from '@/lib/budget';
 import { toDateInput } from '@/lib/kanban';
 import ui from '@/core/ui/ui.module.css';
 import { sendJson } from '@/core/data/http';
 import k from './Kasa.module.css';
-import { kasaKey, type KasaSummary } from '../types';
+import { vaultKey, type VaultSummary } from '../types';
 import { Sheet } from '@/core/ui/Sheet';
 import { useI18n } from '@/core/i18n';
 import { useNow } from '@/lib/client/useSheet';
 
 interface TransferModalProps {
-	kasalar: KasaSummary[];
+	vaults: VaultSummary[];
 	initialSource: string | null;
 	onClose: () => void;
 	onSaved: (message: string) => void;
 }
 
 export function TransferModal({
-	kasalar,
+	vaults,
 	initialSource,
 	onClose,
 	onSaved,
@@ -29,19 +29,19 @@ export function TransferModal({
 	const now = useNow(60_000);
 	const today = toDateInput(now);
 
-	const firstOther = kasalar.find((x) => x.teamId !== initialSource)?.teamId ?? null;
-	const [kaynak, setKaynak] = useState(kasaKey(initialSource));
-	const [hedef, setHedef] = useState(kasaKey(firstOther));
+	const firstOther = vaults.find((x) => x.teamId !== initialSource)?.teamId ?? null;
+	const [kaynak, setKaynak] = useState(vaultKey(initialSource));
+	const [hedef, setHedef] = useState(vaultKey(firstOther));
 	const [tutar, setTutar] = useState('');
 	const [date, setTarih] = useState(() => toDateInput(now));
 	const [aciklama, setAciklama] = useState('');
 	const [error, setError] = useState('');
 	const [busy, setBusy] = useState(false);
 
-	const byKey = new Map(kasalar.map((x) => [kasaKey(x.teamId), x]));
+	const byKey = new Map(vaults.map((x) => [vaultKey(x.teamId), x]));
 	const source = byKey.get(kaynak);
 	const target = byKey.get(hedef);
-	const kurus = parseTutar(tutar);
+	const kurus = parseAmount(tutar);
 	const tooMuch = kurus !== null && !!source && kurus > source.netBakiyeKurus;
 
 	const submit = async (e: React.FormEvent) => {
@@ -49,7 +49,7 @@ export function TransferModal({
 		setError('');
 		if (kaynak === hedef) return setError(t('kasaTransferSameError'));
 		if (kurus === null) return setError(t('kasaInvalidAmount'));
-		const ms = tarihInputToMs(date, Date.now());
+		const ms = dateInputToMs(date, Date.now());
 		if (ms === null) return setError(t('kasaInvalidDate'));
 		setBusy(true);
 		const res = await sendJson('/api/budget', 'POST', {
@@ -96,8 +96,8 @@ export function TransferModal({
 						value={kaynak}
 						onChange={(e) => setKaynak(e.target.value)}
 					>
-						{kasalar.map((x) => (
-							<option key={kasaKey(x.teamId)} value={kasaKey(x.teamId)}>
+						{vaults.map((x) => (
+							<option key={vaultKey(x.teamId)} value={vaultKey(x.teamId)}>
 								{x.ad} ({formatKurus(x.netBakiyeKurus)} ₺)
 							</option>
 						))}
@@ -111,11 +111,11 @@ export function TransferModal({
 						value={hedef}
 						onChange={(e) => setHedef(e.target.value)}
 					>
-						{kasalar.map((x) => (
+						{vaults.map((x) => (
 							<option
-								key={kasaKey(x.teamId)}
-								value={kasaKey(x.teamId)}
-								disabled={kasaKey(x.teamId) === kaynak}
+								key={vaultKey(x.teamId)}
+								value={vaultKey(x.teamId)}
+								disabled={vaultKey(x.teamId) === kaynak}
 							>
 								{x.ad}
 							</option>

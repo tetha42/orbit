@@ -18,11 +18,11 @@ import { useI18n } from '@/core/i18n';
 import { useContextMenu } from '@/core/shell/useContextMenu';
 import { copyToClipboard } from '@/lib/clipboard';
 import { VisibilityBadge } from './VisibilityBadge';
-import type { HaberItem } from '../types';
+import type { NewsEntry } from '../types';
 import type { MenuItem } from '@/types/workspace';
 
 interface NewsCardProps {
-	article: HaberItem;
+	article: NewsEntry;
 	isAdmin: boolean;
 	deletingId: string | null;
 	onSelect: () => void;

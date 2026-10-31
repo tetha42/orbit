@@ -9,17 +9,16 @@ import { sendJson } from '@/core/data/http';
 import { useToast } from '@/core/ui/Toast';
 import { useDialog } from '@/components/Common/DialogProvider';
 import ui from '@/core/ui/ui.module.css';
-import { isMezunRol, type Izinler } from '@/core/permissions';
+import { isAlumniRole, type Permissions } from '@/core/permissions';
 import { RolesList } from './RolesList';
-import { RoleEditor, type RolView } from './RoleEditor';
+import { RoleEditor, type RoleView } from './RoleEditor';
 import { DeleteRoleSheet } from './DeleteRoleSheet';
-import { AuditHistory } from './AuditHistory';
 import s from './Roles.module.css';
 
 interface RolesResponse {
-	roller: RolView[];
+	roller: RoleView[];
 	varsayilanRolId: string | null;
-	benimIzinlerim: Izinler;
+	benimIzinlerim: Permissions;
 }
 
 export function RolesPanel() {
@@ -27,13 +26,13 @@ export function RolesPanel() {
 	const notify = useToast();
 	const dialog = useDialog();
 	const { data, refetch, httpStatus } = useJsonResource<RolesResponse>('/api/roles');
-	const [editing, setEditing] = useState<RolView | 'new' | null>(null);
-	const [deleting, setDeleting] = useState<RolView | null>(null);
+	const [editing, setEditing] = useState<RoleView | 'new' | null>(null);
+	const [deleting, setDeleting] = useState<RoleView | null>(null);
 
 	if (httpStatus === 403) return <div className={ui.error}>{t('rolesUnauthorized')}</div>;
 	if (!data) return <div className={ui.muted}>{t('rolesLoading')}</div>;
 
-	const remove = async (shown: RolView) => {
+	const remove = async (shown: RoleView) => {
 		const fresh = await fetch('/api/roles')
 			.then((r) => (r.ok ? (r.json() as Promise<RolesResponse>) : null))
 			.catch(() => null);
@@ -43,7 +42,7 @@ export function RolesPanel() {
 		await deleteRole(role, null);
 	};
 
-	const deleteRole = async (role: RolView, tasi: string | null) => {
+	const deleteRole = async (role: RoleView, tasi: string | null) => {
 		const res = await sendJson('/api/roles', 'DELETE', { id: role.id, tasi });
 		if (res.ok) notify(t('rolesDeleted'));
 		else notify(res.error || t('rolesDeleteFailed'), 'error');
@@ -85,7 +84,7 @@ export function RolesPanel() {
 				>
 					<option value="">{t('rolesOnlyPersonal')}</option>
 					{data.roller
-						.filter((r) => !r.sistem && !isMezunRol(r))
+						.filter((r) => !r.sistem && !isAlumniRole(r))
 						.map((r) => (
 							<option key={r.id} value={r.id}>
 								{r.ad}
@@ -96,7 +95,6 @@ export function RolesPanel() {
 
 			<RolesList roller={data.roller} onEdit={(r) => setEditing(r)} onRemove={(r) => void remove(r)} />
 
-			<AuditHistory roller={data.roller} />
 
 			{deleting && (
 				<DeleteRoleSheet

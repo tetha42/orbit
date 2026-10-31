@@ -6,12 +6,17 @@ import {
 	ChevronRight,
 	Search,
 	X,
+	FileText,
+	ListChecks,
 	UserRound,
+	UserPlus,
+	Users,
 	Image as ImageIcon,
 	Layout,
 	Sparkles,
 	Database,
 	Globe,
+	ShieldAlert,
 	ShieldCheck,
 	KeyRound,
 	Mail,
@@ -35,6 +40,11 @@ import { StorageSettingsPanel } from './Panels/StorageSettingsPanel';
 import { LanguageSettingsPanel } from './Panels/LanguageSettingsPanel';
 import { SecurityPanel } from './Panels/SecurityPanel';
 import { CommunitySettingsPanel } from './Panels/CommunitySettingsPanel';
+import { MembershipPolicyPanel } from './Panels/MembershipPolicyPanel';
+import { PrivacyDataPanel } from './Panels/PrivacyDataPanel';
+import { LegalSettingsPanel } from './Panels/LegalSettingsPanel';
+import { FormDesignerPanel } from './Panels/FormDesignerPanel';
+import { TeamCategoriesPanel } from './Panels/TeamCategoriesPanel';
 import { RolesPanel } from './Roles/RolesPanel';
 import { SmtpSettingsPanel } from './Panels/SmtpSettingsPanel';
 import { OAuthAppsPanel } from './Panels/OAuthAppsPanel';
@@ -59,7 +69,12 @@ const IOS_SETTING_META: Record<SettingsTabId, SettingMeta> = {
 	language: { bg: 'linear-gradient(135deg, #ff9500, #c97700)', icon: Globe },
 	security: { bg: 'linear-gradient(135deg, #34c759, #248a3d)', icon: ShieldCheck },
 	community: { bg: 'linear-gradient(135deg, #6366f1, #4338ca)', icon: Building2 },
+	membership: { bg: 'linear-gradient(135deg, #0a84ff, #0056b3)', icon: UserPlus },
+	legal: { bg: 'linear-gradient(135deg, #0a84ff, #0056b3)', icon: FileText },
+	forms: { bg: 'linear-gradient(135deg, #30d158, #248a3d)', icon: ListChecks },
+	teams: { bg: 'linear-gradient(135deg, #0a84ff, #0056b3)', icon: Users },
 	roles: { bg: 'linear-gradient(135deg, #ff3b30, #c41c14)', icon: KeyRound },
+	privacy: { bg: 'linear-gradient(135deg, #ff453a, #7f1d1d)', icon: ShieldAlert },
 	smtp: { bg: 'linear-gradient(135deg, #007aff, #0056b3)', icon: Mail },
 	integrations: { bg: 'linear-gradient(135deg, #af52de, #7e22ce)', icon: Network },
 };
@@ -183,8 +198,13 @@ export function SettingsMobileView({ nav }: SettingsMobileViewProps) {
 					)}
 					{activeSubTab === 'language' && <LanguageSettingsPanel />}
 					{activeSubTab === 'security' && <SecurityPanel />}
-					{activeSubTab === 'community' && nav.isAdmin && <CommunitySettingsPanel />}
+					{activeSubTab === 'community' && nav.yonetici && <CommunitySettingsPanel />}
+					{activeSubTab === 'membership' && nav.yonetici && <MembershipPolicyPanel />}
+					{activeSubTab === 'legal' && nav.yonetici && <LegalSettingsPanel />}
+					{activeSubTab === 'forms' && nav.yonetici && <FormDesignerPanel />}
+					{activeSubTab === 'teams' && nav.yonetici && <TeamCategoriesPanel />}
 					{activeSubTab === 'roles' && nav.isAdmin && <RolesPanel />}
+					{activeSubTab === 'privacy' && nav.isAdmin && <PrivacyDataPanel />}
 					{activeSubTab === 'smtp' && <SmtpSettingsPanel />}
 					{activeSubTab === 'integrations' && nav.isAdmin && <OAuthAppsPanel />}
 				</main>

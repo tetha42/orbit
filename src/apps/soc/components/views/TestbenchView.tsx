@@ -8,7 +8,7 @@ import { ApiSuiteTab } from '../../testbench/components/ApiSuiteTab';
 import { HealthDiagnosticsTab } from '../../testbench/components/HealthDiagnosticsTab';
 import { SessionInspectorTab } from '../../testbench/components/SessionInspectorTab';
 import { WafAttackSimulatorTab } from '../../testbench/components/WafAttackSimulatorTab';
-import { LAB_SEGMENTS, LAB_KULLAN_TABS } from '../../types';
+import { LAB_SEGMENTS, SOC_LAB_TABS } from '../../types';
 import type { TestbenchTab } from '../../types';
 import s from '../../Soc.module.css';
 
@@ -24,7 +24,7 @@ export const TestbenchView = React.memo(function TestbenchView() {
 		<div className={s.viewContainer}>
 			<div className={s.labSegmentBar}>
 				<nav className={s.labSegment} aria-label={isEn ? 'Test lab tabs' : 'Test laboratuvarı sekmeleri'}>
-					{LAB_SEGMENTS.filter((seg) => canManage || LAB_KULLAN_TABS.includes(seg.id)).map((seg) => (
+					{LAB_SEGMENTS.filter((seg) => canManage || SOC_LAB_TABS.includes(seg.id)).map((seg) => (
 						<button
 							key={seg.id}
 							type="button"

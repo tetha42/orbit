@@ -2,7 +2,7 @@ import { createReadStream } from 'fs';
 import { stat } from 'fs/promises';
 import path from 'path';
 import { Readable } from 'stream';
-import { getDosya } from '@/db';
+import { getStoredFile } from '@/db';
 import { authenticate } from '@/lib/auth/access';
 import { canReadUpload } from '@/lib/kasaAccess';
 import { UPLOAD_NAME_RE, mimeForName, uploadDir } from '@/lib/uploads';
@@ -34,17 +34,25 @@ export async function GET(request: Request, { params }: { params: Promise<{ name
 		return notFound();
 	}
 
-	const dosya = await getDosya(name);
+	const dosya = await getStoredFile(name);
+	const mime = dosya?.mime ?? mimeForName(name);
 	const stream = Readable.toWeb(createReadStream(filePath)) as ReadableStream;
+
+	// Chrome's native PDF viewer refuses to initialise under a sandboxed CSP, so
+	// PDF gets the same strict sniffing/nosniff treatment without `sandbox`.
+	const contentSecurityPolicy =
+		mime === 'application/pdf'
+			? "default-src 'none'; style-src 'unsafe-inline'"
+			: "default-src 'none'; style-src 'unsafe-inline'; sandbox";
 
 	return new Response(stream, {
 		headers: {
-			'Content-Type': dosya?.mime ?? mimeForName(name),
+			'Content-Type': mime,
 			'Content-Length': String(size),
 			'Content-Disposition': `inline; filename="${name}"`,
 			// The type is fixed by the bytes we sniffed at upload; never let a browser guess.
 			'X-Content-Type-Options': 'nosniff',
-			'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+			'Content-Security-Policy': contentSecurityPolicy,
 			'Cache-Control': 'private, no-cache',
 		},
 	});

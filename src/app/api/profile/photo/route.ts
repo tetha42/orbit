@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { mkdir, unlink, writeFile } from 'fs/promises';
 import path from 'path';
 import { randomBytes } from 'crypto';
-import { addDosya, deleteDosya, getDosya, updateUserProfile, getEmergencyKillSwitches } from '@/db';
+import { addStoredFile, deleteStoredFile, getStoredFile, updateUserProfile, getEmergencyKillSwitches } from '@/db';
+import { auditContext } from '@/db/audit';
 import { verifyAuth } from '@/lib/auth/authGuard';
 import { consumeRateLimit } from '@/lib/rateLimit';
 import { UPLOAD_NAME_RE, sniffFile, uploadDir } from '@/lib/uploads';
@@ -17,10 +18,10 @@ async function removeOld(current: string | null | undefined, userId: string) {
 	if (!current?.startsWith(PREFIX)) return;
 	const name = current.slice(PREFIX.length);
 	if (!UPLOAD_NAME_RE.test(name)) return;
-	const dosya = await getDosya(name);
+	const dosya = await getStoredFile(name);
 	if (!dosya || dosya.yukleyenId !== userId) return;
 	await unlink(path.join(uploadDir(), name)).catch(() => {});
-	await deleteDosya(name);
+	await deleteStoredFile(name);
 }
 
 /**
@@ -65,8 +66,8 @@ export async function POST(request: Request) {
 	const name = `${Date.now()}_${randomBytes(9).toString('hex')}${sniffed.ext}`;
 	await mkdir(uploadDir(), { recursive: true });
 	await writeFile(path.join(uploadDir(), name), buffer, { flag: 'wx' });
-	await addDosya({ ad: name, yukleyenId: auth.user.id, mime: sniffed.mime, boyut: buffer.length, herkeseAcik: true });
-	await updateUserProfile(auth.user.id, { profilFoto: `${PREFIX}${name}` });
+	await addStoredFile({ ad: name, yukleyenId: auth.user.id, mime: sniffed.mime, boyut: buffer.length, herkeseAcik: true });
+	await updateUserProfile(auth.user.id, { profilFoto: `${PREFIX}${name}` }, auditContext(request, auth.user));
 	await removeOld(auth.user.profilFoto, auth.user.id);
 	return NextResponse.json({ success: true, profilFoto: `${PREFIX}${name}` });
 }
@@ -74,7 +75,7 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
 	const auth = await verifyAuth(request);
 	if (!auth.authorized) return auth.response;
-	await updateUserProfile(auth.user.id, { profilFoto: null });
+	await updateUserProfile(auth.user.id, { profilFoto: null }, auditContext(request, auth.user));
 	await removeOld(auth.user.profilFoto, auth.user.id);
 	return NextResponse.json({ success: true });
 }

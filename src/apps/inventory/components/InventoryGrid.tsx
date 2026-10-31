@@ -11,7 +11,7 @@ interface InventoryGridProps {
 	totalCount: number;
 	currentUserId?: string | null;
 	isManager: boolean;
-	isMezun?: boolean;
+	isAlumni?: boolean;
 	now: number;
 	onDetail: (id: string) => void;
 	onLoan: (loan: { id: string; mode: LoanMode }) => void;
@@ -23,7 +23,7 @@ export function InventoryGrid({
 	totalCount,
 	currentUserId,
 	isManager,
-	isMezun = false,
+	isAlumni = false,
 	now,
 	onDetail,
 	onLoan,
@@ -50,7 +50,7 @@ export function InventoryGrid({
 					item={item}
 					currentUserId={currentUserId}
 					isManager={isManager}
-					isMezun={isMezun}
+					isAlumni={isAlumni}
 					now={now}
 					onDetail={onDetail}
 					onLoan={onLoan}

@@ -129,7 +129,7 @@ export const FirewallView = React.memo(function FirewallView() {
 										: 'Engelleme nedeni (örn. Brute-force / AI tarayıcı)'
 									: isEn
 									? 'Note (e.g. Lab static gateway IP)'
-									: 'Açıklama (örn. Kulüp Laboratuvarı Statik IP)'
+									: 'Açıklama (örn. Topluluk Laboratuvarı Statik IP)'
 							}
 							value={fwReason}
 							onChange={(e) => setFwReason(e.target.value)}

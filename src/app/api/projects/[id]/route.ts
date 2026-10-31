@@ -1,10 +1,11 @@
+import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
 import { deleteProject, getProjectById, toggleProjectLike, updateProject, getPgPool } from '@/db';
 import { publishEventQuiet } from '@/db/olaylar';
 import type { Project } from '@/db/schema';
-import { can, requireApp, type YetkiliKullanici } from '@/lib/auth/access';
-import { isProjeDurumu } from '@/lib/projects';
-import { parseProjeInput } from '@/lib/server/projectInput';
+import { can, requireApp, type AuthorizedUser } from '@/lib/auth/access';
+import { isProjectStatus } from '@/lib/projects';
+import { parseProjectInput } from '@/lib/server/projectInput';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,13 +15,13 @@ const notFound = () => NextResponse.json({ error: 'Project bulunamadı.' }, { st
 const forbidden = (error: string) => NextResponse.json({ error }, { status: 403 });
 
 /** Someone else's proposal is invisible — "not found", not "forbidden". */
-async function load(id: string, user: YetkiliKullanici): Promise<{ proje: Project; manage: boolean; owner: boolean } | null> {
-	const proje = await getProjectById(id, user.id);
-	if (!proje) return null;
+async function load(id: string, user: AuthorizedUser): Promise<{ proje: Project; manage: boolean; owner: boolean } | null> {
+	const project = await getProjectById(id, user.id);
+	if (!project) return null;
 	const manage = can(user, 'projects', 'yonet');
-	const owner = proje.olusturanId === user.id;
-	if (proje.status !== 'yayinda' && !manage && !owner) return null;
-	return { proje, manage, owner };
+	const owner = project.olusturanId === user.id;
+	if (project.status !== 'yayinda' && !manage && !owner) return null;
+	return { proje: project, manage, owner };
 }
 
 export async function GET(request: Request, { params }: Params) {
@@ -35,7 +36,7 @@ export async function GET(request: Request, { params }: Params) {
  * Content fields: the author (unless archived) and management.
  * `status` and `oneCikan` (publishing, archiving, pinning): management only.
  */
-export async function PATCH(request: Request, { params }: Params) {
+async function handlePATCH(request: Request, { params }: Params) {
 	const auth = await requireApp(request, 'projects', 'kullan');
 	if (!auth.authorized) return auth.response;
 	if (auth.user.status === 'mezun') return forbidden('Mezunlar sadece okuma erişimine sahiptir.');
@@ -55,14 +56,14 @@ export async function PATCH(request: Request, { params }: Params) {
 		if ((body.status !== undefined || body.oneCikan !== undefined) && !manage) {
 			return forbidden('Yayınlama ve öne çıkarma yönetim kuruluna aittir.');
 		}
-		if (body.status !== undefined && !isProjeDurumu(body.status)) {
+		if (body.status !== undefined && !isProjectStatus(body.status)) {
 			return NextResponse.json({ error: 'Geçersiz status.' }, { status: 400 });
 		}
 		if (body.oneCikan !== undefined && typeof body.oneCikan !== 'boolean') {
 			return NextResponse.json({ error: 'Geçersiz değer.' }, { status: 400 });
 		}
 
-		const parsed = await parseProjeInput(body, auth.user, true);
+		const parsed = await parseProjectInput(body, auth.user, true);
 		if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
 		const next = { ...proje, ...parsed.value };
 		if (!next.repoUrl && !next.canliUrl) {
@@ -89,7 +90,7 @@ export async function PATCH(request: Request, { params }: Params) {
 }
 
 /** Management, or the author while it is still a proposal. */
-export async function DELETE(request: Request, { params }: Params) {
+async function handleDELETE(request: Request, { params }: Params) {
 	const auth = await requireApp(request, 'projects', 'kullan');
 	if (!auth.authorized) return auth.response;
 	if (auth.user.status === 'mezun') return forbidden('Mezunlar sadece okuma erişimine sahiptir.');
@@ -105,7 +106,7 @@ export async function DELETE(request: Request, { params }: Params) {
 }
 
 /** `{ action: 'star' }` toggles the caller's star on a published project. */
-export async function POST(request: Request, { params }: Params) {
+async function handlePOST(request: Request, { params }: Params) {
 	const auth = await requireApp(request, 'projects', 'kullan');
 	if (!auth.authorized) return auth.response;
 	const { id } = await params;
@@ -120,3 +121,7 @@ export async function POST(request: Request, { params }: Params) {
 	await publishEventQuiet(getPgPool(), [{ k: 'proje_guncellendi' }]);
 	return NextResponse.json({ success: true, ...result });
 }
+
+export const POST = withAudit(handlePOST, { action: 'projects.item.create', target: 'projects.item' });
+export const PATCH = withAudit(handlePATCH, { action: 'projects.item.update', target: 'projects.item' });
+export const DELETE = withAudit(handleDELETE, { action: 'projects.item.delete', target: 'projects.item' });

@@ -26,13 +26,6 @@ export async function GET() {
 	addCandidate(process.env.DATABASE_URL, 'Environment (DATABASE_URL)', 'env');
 	addCandidate(CONFIG.database.url, 'Runtime Configuration', 'env');
 
-	// 2. Common Docker / Localhost ports and standard credentials
-	addCandidate('postgresql://orbit:orbit_secret_2026@localhost:5432/orbit', 'Docker Compose / Localhost (orbit:orbit)', 'docker');
-	addCandidate('postgresql://orbit:orbit_secret_2026@orbit-db:5432/orbit', 'Docker Internal Network (orbit-db)', 'docker');
-	addCandidate('postgresql://postgres:postgres@localhost:5432/orbit_db', 'Local PostgreSQL (orbit_db)', 'baremetal');
-	addCandidate('postgresql://postgres:postgres@localhost:5432/postgres', 'Local PostgreSQL (default postgres)', 'baremetal');
-	addCandidate('postgresql://kulup:kulup_secret_2026@localhost:5432/kulup', 'Local Legacy Database (kulup)', 'baremetal');
-
 	// Probe each candidate concurrently with a timeout
 	const probePromises = candidates.map(async (candidate) => {
 		try {

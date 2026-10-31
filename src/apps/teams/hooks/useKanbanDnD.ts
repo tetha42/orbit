@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { SIRA_ADIMI, siraBetween, siraFits, type GorevDurumu } from '@/lib/kanban';
+import { SIRA_ADIMI, siraBetween, siraFits, type TaskStatus } from '@/lib/kanban';
 import { COLUMNS, type TeamTask } from '../types';
 import { sendJson } from '@/core/data/http';
 
 interface UseKanbanDnDParams {
 	tasks: TeamTask[];
-	byColumn: Map<GorevDurumu, TeamTask[]>;
+	byColumn: Map<TaskStatus, TeamTask[]>;
 	sort: string;
 	now: number;
 	canWork: (task: TeamTask) => boolean;
@@ -31,9 +31,9 @@ export function useKanbanDnD({
 	t,
 }: UseKanbanDnDParams) {
 	const [dragId, setDragId] = useState<string | null>(null);
-	const [drop, setDrop] = useState<{ col: GorevDurumu; index: number } | null>(null);
+	const [drop, setDrop] = useState<{ col: TaskStatus; index: number } | null>(null);
 
-	const move = async (task: TeamTask, to: GorevDurumu, index?: number) => {
+	const move = async (task: TeamTask, to: TaskStatus, index?: number) => {
 		if (!canWork(task)) return;
 		const shown = (byColumn.get(to) ?? []).filter((g) => g.id !== task.id);
 		const i = index === undefined ? 0 : Math.max(0, Math.min(index, shown.length));

@@ -65,7 +65,7 @@ export async function getChatAudience(odaId: string): Promise<ChatAudience | nul
 	try {
 		const p = getPgPool();
 		const roomRes = await p.query(
-			`SELECT tur, teamId AS "teamId" FROM sohbet_odalari WHERE id = $1 LIMIT 1`,
+			`SELECT tur, teamId AS "teamId" FROM chat_rooms WHERE id = $1 LIMIT 1`,
 			[odaId]
 		);
 		const room = roomRes.rows[0];
@@ -82,14 +82,14 @@ export async function getChatAudience(odaId: string): Promise<ChatAudience | nul
 			tur === 'takim' && teamId
 				? await p.query(
 						`SELECT DISTINCT userId AS "userId" FROM (
-							SELECT userId FROM takim_uyeleri WHERE teamId = $1 AND status = 'aktif'
+							SELECT userId FROM team_members WHERE teamId = $1 AND status = 'aktif'
 							UNION
-							SELECT userId FROM sohbet_uyeleri WHERE odaId = $2
+							SELECT userId FROM chat_members WHERE odaId = $2
 						 ) t`,
 						[teamId, odaId]
 					)
 				: await p.query(
-						`SELECT userId AS "userId" FROM sohbet_uyeleri WHERE odaId = $1`,
+						`SELECT userId AS "userId" FROM chat_members WHERE odaId = $1`,
 						[odaId]
 					);
 

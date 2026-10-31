@@ -1,0 +1,405 @@
+.appBody {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	background: var(--window-bg);
+	color: var(--text-primary);
+	overflow: hidden;
+}
+
+.stage {
+	position: relative;
+	flex: 1 1 auto;
+	min-height: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	background: var(--fill-softer);
+}
+
+.stageImage {
+	overflow: hidden;
+	align-items: stretch;
+	justify-content: stretch;
+}
+
+.imageScroller {
+	width: 100%;
+	height: 100%;
+	min-width: 0;
+	min-height: 0;
+	overflow: auto;
+	overscroll-behavior: contain;
+	display: block;
+	cursor: grab;
+}
+
+.imageCanvas {
+	min-width: 100%;
+	min-height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.imageScrollerPanning {
+	cursor: grabbing;
+	user-select: none;
+}
+
+.actions {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	z-index: 5;
+	display: flex;
+	align-items: center;
+	gap: 3px;
+	max-width: calc(100% - 20px);
+	padding: 4px;
+	border-radius: 9px;
+	border: 1px solid var(--window-border);
+	background: color-mix(in srgb, var(--window-bg) 82%, transparent);
+	backdrop-filter: blur(14px);
+	box-shadow: var(--shadow-window-inactive);
+}
+
+.fileLabel {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+	max-width: 320px;
+	padding: 0 7px;
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--text-secondary);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.fileLabel > span:first-of-type {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.fileMeta {
+	opacity: 0.55;
+	font-weight: 500;
+	font-size: 10.5px;
+	flex: 0 0 auto;
+}
+
+.actionButton {
+	width: 27px;
+	height: 27px;
+	display: grid;
+	place-items: center;
+	border: none;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--text-secondary);
+	cursor: pointer;
+	text-decoration: none;
+	transition: background 120ms ease, color 120ms ease;
+}
+
+.actionButton:hover {
+	background: var(--fill-soft);
+	color: var(--text-primary);
+}
+
+.actionButton:disabled {
+	opacity: 0.35;
+	cursor: not-allowed;
+}
+
+.actionButtonActive {
+	background: var(--fill-soft);
+	color: var(--text-primary);
+}
+
+.zoomControls {
+	display: flex;
+	align-items: center;
+	gap: 1px;
+	padding-left: 3px;
+	margin-left: 3px;
+	border-left: 1px solid var(--window-border);
+}
+
+.zoomValue {
+	min-width: 36px;
+	text-align: center;
+	font-size: 10.5px;
+	font-variant-numeric: tabular-nums;
+	color: var(--text-secondary);
+}
+
+.image {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+	user-select: none;
+	pointer-events: none;
+}
+
+.video {
+	display: block;
+	width: 100%;
+	height: 100%;
+	max-height: 100%;
+	background: #000;
+	object-fit: contain;
+}
+
+.audioWrap {
+	width: min(560px, 90%);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 16px;
+	padding: 28px;
+	color: var(--text-secondary);
+}
+
+.audioIcon {
+	width: 64px;
+	height: 64px;
+	border-radius: 18px;
+	display: grid;
+	place-items: center;
+	background: var(--fill-soft);
+	border: 1px solid var(--window-border);
+	color: var(--text-primary);
+}
+
+.audioName {
+	font-size: 13px;
+	font-weight: 600;
+	text-align: center;
+	word-break: break-word;
+	color: var(--text-primary);
+}
+
+.audio {
+	width: 100%;
+}
+
+.pdfFrame {
+	width: 100%;
+	height: 100%;
+	border: 0;
+	background: #fff;
+}
+
+.textBody {
+	width: 100%;
+	height: 100%;
+	overflow: auto;
+	padding: 18px 20px;
+	box-sizing: border-box;
+}
+
+.textPre {
+	margin: 0;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	font-size: 12px;
+	line-height: 1.65;
+	color: var(--text-primary);
+}
+
+.loading,
+.error,
+.empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	padding: 30px;
+	text-align: center;
+	color: var(--text-secondary);
+	font-size: 12.5px;
+}
+
+.empty {
+	height: 100%;
+	background: var(--window-bg);
+}
+
+.errorTitle {
+	color: var(--text-primary);
+	font-weight: 600;
+	font-size: 13px;
+}
+
+.downloadButton {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 7px 13px;
+	border-radius: 8px;
+	border: 1px solid var(--window-border);
+	background: var(--fill-soft);
+	color: var(--text-primary);
+	font-size: 11.5px;
+	font-weight: 600;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.downloadButton:hover {
+	background: var(--fill-softer);
+}
+
+.spinner {
+	animation: media-viewer-spin 900ms linear infinite;
+}
+
+@keyframes media-viewer-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+@media (max-width: 767px) {
+	.fileLabel {
+		max-width: 180px;
+	}
+}
+
+
+/* ==================== file information panel ==================== */
+
+.infoPanel {
+	position: absolute;
+	top: 52px;
+	right: 10px;
+	bottom: 10px;
+	z-index: 6;
+	width: min(330px, calc(100% - 20px));
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 13px;
+	overflow-y: auto;
+	border-radius: 10px;
+	border: 1px solid var(--window-border);
+	background: color-mix(in srgb, var(--window-bg) 88%, transparent);
+	backdrop-filter: blur(18px);
+	box-shadow: var(--shadow-window-inactive);
+	color: var(--text-primary);
+}
+
+.infoHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	font-size: 12px;
+}
+
+.infoClose {
+	width: 23px;
+	height: 23px;
+	display: grid;
+	place-items: center;
+	border: none;
+	border-radius: 5px;
+	background: transparent;
+	color: var(--text-secondary);
+	cursor: pointer;
+}
+
+.infoClose:hover {
+	background: var(--fill-soft);
+	color: var(--text-primary);
+}
+
+.infoSection {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	padding-top: 10px;
+	border-top: 1px solid var(--window-border);
+}
+
+.infoSectionTitle {
+	font-size: 9.5px;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--text-secondary);
+	opacity: 0.65;
+	margin-bottom: 3px;
+}
+
+.exifGrid {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+}
+
+.infoRow {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 2.5px 0;
+	font-size: 11px;
+}
+
+.infoLabel {
+	color: var(--text-secondary);
+	white-space: nowrap;
+	flex: 0 0 auto;
+}
+
+.infoValue {
+	text-align: right;
+	overflow-wrap: anywhere;
+	user-select: text;
+	font-variant-numeric: tabular-nums;
+}
+
+.infoEmpty {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 7px;
+	padding: 8px 2px;
+	font-size: 10.5px;
+	line-height: 1.45;
+	color: var(--text-secondary);
+	opacity: 0.75;
+}
+
+.infoHint {
+	margin-top: auto;
+	padding-top: 9px;
+	border-top: 1px solid var(--window-border);
+	font-size: 10px;
+	line-height: 1.45;
+	color: var(--text-secondary);
+	opacity: 0.6;
+}
+
+@media (max-width: 620px) {
+	.fileLabel {
+		max-width: 150px;
+	}
+	.infoPanel {
+		top: 48px;
+		left: 10px;
+		width: auto;
+	}
+}

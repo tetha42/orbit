@@ -33,7 +33,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
 	title: 'Orbit — Community OS',
 	description: 'Orbit Community OS by tetha42 — Modern Web-Desktop & Collaboration Suite',
-	manifest: '/manifest.json',
+	manifest: '/manifest.webmanifest',
 	icons: {
 		icon: [
 			{ url: '/favicon.ico', sizes: 'any' },

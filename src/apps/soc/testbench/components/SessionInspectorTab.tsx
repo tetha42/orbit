@@ -6,7 +6,7 @@ import { useI18n } from '@/core/i18n';
 import type { AppID } from '@/types/workspace';
 import s from './Testbench.module.css';
 import type { UserSessionInfo } from '../types';
-import { YETKI_ACIKLAMALARI } from '@/core/permissions';
+import { PERMISSION_DESCRIPTIONS } from '@/core/permissions';
 
 interface SessionInspectorTabProps {
 	sessionInfo: UserSessionInfo | null;
@@ -128,7 +128,7 @@ export function SessionInspectorTab({ sessionInfo, isLoading }: SessionInspector
 					</thead>
 					<tbody>
 						{Object.entries(permissions).map(([appId, level]) => {
-							const meta = YETKI_ACIKLAMALARI[appId as keyof typeof YETKI_ACIKLAMALARI];
+							const meta = PERMISSION_DESCRIPTIONS[appId as keyof typeof PERMISSION_DESCRIPTIONS];
 							let ad = meta?.ad ?? appId;
 							try {
 								const appMeta = getAppMeta(appId as AppID);

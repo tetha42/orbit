@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server';
-import { getSetupStatus, setupFirstAdmin, reconfigurePgPool, getPgPool, getUserByEmail } from '@/db';
-import { createKurulumCache, kurulumYaniti } from '@/lib/kurulum';
+import {
+	getLegalDocuments,
+	getSetupStatus,
+	setupFirstAdmin,
+	reconfigurePgPool,
+	getPgPool,
+	getUserByEmail,
+	seedSetupDefaults,
+} from '@/db';
+import { createSetupCache, setupResponse } from '@/lib/kurulum';
 import { clientAddress } from '@/lib/http';
 import { consumeRateLimit } from '@/lib/rateLimit';
 import { inspectRequestPayload } from '@/lib/waf';
@@ -14,10 +22,10 @@ import { buildSmtpUpdates } from '@/lib/mail/smtpSettings';
 
 export const dynamic = 'force-dynamic';
 
-let cachedSetupStatus = createKurulumCache(getSetupStatus, 5000);
+let cachedSetupStatus = createSetupCache(getSetupStatus, 5000);
 
-export function resetKurulumCache() {
-	cachedSetupStatus = createKurulumCache(getSetupStatus, 5000);
+export function resetSetupCache() {
+	cachedSetupStatus = createSetupCache(getSetupStatus, 5000);
 }
 
 const BRAND_DEFAULTS = {
@@ -44,24 +52,24 @@ export async function GET(request: Request) {
 
 		const status = await cachedSetupStatus();
 		const brand = {
-			studioName: CONFIG.clubPreset.university || BRAND_DEFAULTS.studioName,
+			studioName: 'tetha42',
 			communityName: CONFIG.clubPreset.name || BRAND_DEFAULTS.communityName,
 			domain: CONFIG.clubPreset.domain || BRAND_DEFAULTS.domain,
 		};
 
 		return NextResponse.json(
-			kurulumYaniti({ ...status, brand }, process.env.NODE_ENV),
+			setupResponse({ ...status, brand }, process.env.NODE_ENV),
 			{ headers: { 'Cache-Control': 'no-store' } }
 		);
 	} catch (error) {
 		console.error('[Orbit Setup] Setup status check error:', error);
 		const brand = {
-			studioName: CONFIG.clubPreset.university || BRAND_DEFAULTS.studioName,
+			studioName: 'tetha42',
 			communityName: CONFIG.clubPreset.name || BRAND_DEFAULTS.communityName,
 			domain: CONFIG.clubPreset.domain || BRAND_DEFAULTS.domain,
 		};
 		return NextResponse.json(
-			kurulumYaniti(
+			setupResponse(
 				{
 					hazir: false,
 					firstRun: true,
@@ -140,7 +148,9 @@ export async function handleSetupSubmission(request: Request) {
 
 		const dbUrl = (body.dbUrl || body.databaseUrl || '').trim();
 		const communityName = (body.communityName || body.identity?.communityName || 'Orbit Community').trim();
-		const studioName = (body.studioName || body.identity?.studioName || 'tetha42').trim();
+		// The studio is the product maker and is not white-label configurable,
+		// not even during first-run setup.
+		const studioName = 'tetha42';
 		const domain = (body.domain || body.identity?.domain || 'orbit.local').trim();
 
 		const smtp = body.smtp || {};
@@ -190,20 +200,10 @@ export async function handleSetupSubmission(request: Request) {
 			console.warn('[Orbit Setup] Runtime configuration update warning:', iniErr);
 		}
 
-		// 3. Create the initial administrator
-		const result = await setupFirstAdmin({ ad, soyad, email, password });
-		if (!result.ok) {
-			void logSystemEvent({
-				servis: 'security',
-				seviye: 'WARN',
-				mesaj: `Setup wizard failed attempt: ${result.error}`,
-				detay: { email: String(email).slice(0, 120) },
-				ip,
-			});
-			return NextResponse.json({ error: result.error }, { status: 400 });
-		}
-
-		// 4. Update system settings in DB
+		// 3. Persist the community identity and the newly editable defaults before
+		// creating the administrator. If this fails the setup marker is not written,
+		// so the wizard can safely be run again instead of reporting a half-seeded
+		// installation as complete.
 		try {
 			const dbSettings: Record<string, string> = {
 				kulup_adi: communityName,
@@ -221,8 +221,30 @@ export async function handleSetupSubmission(request: Request) {
 				Object.assign(dbSettings, smtpUpdates);
 			}
 			await setSystemSettings(dbSettings);
+			// Materialise the factory defaults for the editable settings so the
+			// database describes the same state the UI reads through its fallbacks.
+			await seedSetupDefaults(communityName);
+			// Seed the three bundled legal documents once; later calls are no-ops.
+			await getLegalDocuments();
 		} catch (dbSetErr) {
-			console.warn('[Orbit Setup] sistem_ayarlari update warning:', dbSetErr);
+			console.error('[Orbit Setup] Branding/defaults could not be persisted:', dbSetErr);
+			return NextResponse.json(
+				{ error: 'Setup could not save the initial branding to the database. Please try again.' },
+				{ status: 503 }
+			);
+		}
+
+		// 4. Create the initial administrator
+		const result = await setupFirstAdmin({ ad, soyad, email, password });
+		if (!result.ok) {
+			void logSystemEvent({
+				servis: 'security',
+				seviye: 'WARN',
+				mesaj: `Setup wizard failed attempt: ${result.error}`,
+				detay: { email: String(email).slice(0, 120) },
+				ip,
+			});
+			return NextResponse.json({ error: result.error }, { status: 400 });
 		}
 
 		// 5. Seed default Orbit chat room
@@ -238,7 +260,7 @@ export async function handleSetupSubmission(request: Request) {
 		}
 
 		// Reset setup cache
-		resetKurulumCache();
+		resetSetupCache();
 
 		void logSystemEvent({
 			servis: 'auth',
@@ -252,7 +274,7 @@ export async function handleSetupSubmission(request: Request) {
 		let sessionToken: string | null = null;
 		let sessionUser = null;
 		if (adminUser) {
-			sessionToken = await establishSession(adminUser, request);
+			sessionToken = await establishSession(adminUser, request, 'password');
 			sessionUser = await sessionUserOf(adminUser);
 		}
 

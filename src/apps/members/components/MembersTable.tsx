@@ -4,7 +4,7 @@ import React from 'react';
 import { useI18n } from '@/core/i18n';
 import { MemberRow } from './MemberRow';
 import { MemberCard } from './MemberCard';
-import type { MemberRecord, AtanabilirRol } from '../types';
+import type { MemberRecord, AssignableRole } from '../types';
 
 interface MembersTableProps {
 	members: MemberRecord[];
@@ -13,8 +13,8 @@ interface MembersTableProps {
 	reachable: Set<string>;
 	isAuthorizedToAdd: boolean;
 	isLoading: boolean;
-	atanabilir: AtanabilirRol[];
-	dokunulabilir: (m: MemberRecord) => boolean;
+	assignableRoles: AssignableRole[];
+	isMemberTouchable: (m: MemberRecord) => boolean;
 	onOpenProfile: (member: MemberRecord) => void;
 	onResetPassword: (memberId: string, name: string) => void;
 	onSendMessage: (memberId: string) => void;
@@ -31,8 +31,8 @@ export function MembersTable({
 	reachable,
 	isAuthorizedToAdd,
 	isLoading,
-	atanabilir,
-	dokunulabilir,
+	assignableRoles,
+	isMemberTouchable,
 	onOpenProfile,
 	onResetPassword,
 	onSendMessage,
@@ -62,8 +62,8 @@ export function MembersTable({
 						mailUser={mailUser}
 						isReachable={reachable.has(m.id)}
 						isAuthorizedToAdd={isAuthorizedToAdd}
-						erisilebilir={dokunulabilir(m)}
-						atanabilir={atanabilir}
+						erisilebilir={isMemberTouchable(m)}
+						assignableRoles={assignableRoles}
 						onOpenProfile={onOpenProfile}
 						onResetPassword={onResetPassword}
 						onSendMessage={onSendMessage}
@@ -113,8 +113,8 @@ export function MembersTable({
 							mailUser={mailUser}
 							isReachable={reachable.has(m.id)}
 							isAuthorizedToAdd={isAuthorizedToAdd}
-							erisilebilir={dokunulabilir(m)}
-							atanabilir={atanabilir}
+							erisilebilir={isMemberTouchable(m)}
+							assignableRoles={assignableRoles}
 							onOpenProfile={onOpenProfile}
 							onResetPassword={onResetPassword}
 							onSendMessage={onSendMessage}

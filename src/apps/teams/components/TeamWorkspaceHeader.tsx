@@ -13,7 +13,7 @@ interface TeamWorkspaceHeaderProps {
 	team: Team;
 	visibleTab: TeamWorkspaceTab;
 	setActiveTab: (tab: TeamWorkspaceTab) => void;
-	canSeeKasa: boolean;
+	canSeeVault: boolean;
 	onBack: () => void;
 }
 
@@ -21,7 +21,7 @@ export function TeamWorkspaceHeader({
 	team,
 	visibleTab,
 	setActiveTab,
-	canSeeKasa,
+	canSeeVault,
 	onBack,
 }: TeamWorkspaceHeaderProps) {
 	const { t } = useI18n();
@@ -72,7 +72,7 @@ export function TeamWorkspaceHeader({
 				>
 					<MessageSquare size={14} /> {t('tmTabChat')}
 				</button>
-				{canSeeKasa && (
+				{canSeeVault && (
 					<button
 						type="button"
 						className={`${styles.tab} ${visibleTab === 'kasa' ? styles.tabActive : ''}`}

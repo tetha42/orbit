@@ -25,11 +25,12 @@ export interface MemberRecord {
 	takimAdi?: string;
 	takimlar?: MemberTeamInfo[];
 	yoklamaSayisi?: number;
+	customFields?: Record<string, string>;
 }
 
-export interface AtanabilirRol {
+export interface AssignableRole {
 	id: string;
 	ad: string;
 	renk: string;
-	atanabilir: boolean;
+	assignableRoles: boolean;
 }

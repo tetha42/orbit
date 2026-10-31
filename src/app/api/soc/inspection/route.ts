@@ -1,3 +1,4 @@
+import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
 import { requireApp } from '@/lib/auth/access';
 import { canManage } from '@/core/permissions';
@@ -52,7 +53,7 @@ export async function GET(request: Request) {
 	}
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
 	const auth = await requireApp(request, 'soc', 'kullan');
 	if (!auth.authorized) return auth.response;
 
@@ -119,3 +120,5 @@ export async function POST(request: Request) {
 		return NextResponse.json({ error: message }, { status });
 	}
 }
+
+export const POST = withAudit(handlePOST, { action: 'soc.inspection.create', target: 'soc.inspection' });

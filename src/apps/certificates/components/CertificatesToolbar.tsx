@@ -4,7 +4,7 @@ import React from 'react';
 import { Award, ShieldCheck, Trophy, PenLine, Plus } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
 import { fill } from '@/lib/text';
-import type { KulupBilgileri } from '@/db';
+import type { CommunityProfile } from '@/db';
 import { LevelXpBanner } from './LevelXpBanner';
 
 interface CertificatesToolbarProps {
@@ -17,7 +17,7 @@ interface CertificatesToolbarProps {
 	isManager: boolean;
 	myCertsCount: number;
 	allCertsCount: number;
-	kulup: KulupBilgileri | null;
+	kulup: CommunityProfile | null;
 	onEditSignatories: () => void;
 	onOpenIssue: () => void;
 	message: { text: string; type: 'success' | 'error' } | null;

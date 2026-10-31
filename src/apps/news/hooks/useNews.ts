@@ -8,7 +8,7 @@ import { useDialog } from '@/components/Common/DialogProvider';
 import { useFocusTarget } from '@/lib/client/useFocusTarget';
 import { useJsonResource } from '@/core/data/useJsonResource';
 import type { NewsVisibility } from '@/types/news';
-import type { HaberItem } from '../types';
+import type { NewsEntry } from '../types';
 
 export function useNews() {
 	const { canManageApp } = useSession();
@@ -17,12 +17,12 @@ export function useNews() {
 	const dialog = useDialog();
 	const isAdmin = canManageApp('news');
 
-	const { data: newsData, refetch: fetchNews } = useJsonResource<HaberItem[]>('/api/news');
+	const { data: newsData, refetch: fetchNews } = useJsonResource<NewsEntry[]>('/api/news');
 	const news = newsData ?? [];
 
 	const [activeCategory, setActiveCategory] = useState<string>('all');
 	const [searchQuery, setSearchQuery] = useState<string>('');
-	const [selectedArticle, setSelectedArticle] = useState<HaberItem | null>(null);
+	const [selectedArticle, setSelectedArticle] = useState<NewsEntry | null>(null);
 	const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 	const [copied, setCopied] = useState(false);
 
@@ -62,7 +62,7 @@ export function useNews() {
 		setIsCreateModalOpen(true);
 	};
 
-	const openEditForm = (article: HaberItem, e?: React.MouseEvent) => {
+	const openEditForm = (article: NewsEntry, e?: React.MouseEvent) => {
 		if (e) e.stopPropagation();
 		setEditingId(article.id);
 		setNewTitle(article.baslik);
@@ -107,7 +107,7 @@ export function useNews() {
 				return;
 			}
 
-			const saved: HaberItem = await res.json();
+			const saved: NewsEntry = await res.json();
 			playSystemSound();
 			setIsCreateModalOpen(false);
 			setEditingId(null);
@@ -121,7 +121,7 @@ export function useNews() {
 		}
 	};
 
-	const changeVisibility = async (article: HaberItem, publishStatus: NewsVisibility) => {
+	const changeVisibility = async (article: NewsEntry, publishStatus: NewsVisibility) => {
 		if (publishStatus === article.publishStatus) return;
 		try {
 			const res = await fetch('/api/news', {
@@ -134,7 +134,7 @@ export function useNews() {
 				void dialog.alert({ message: errData.error || t('newsVisibilityError'), tone: 'danger' });
 				return;
 			}
-			const saved: HaberItem = await res.json();
+			const saved: NewsEntry = await res.json();
 			playSystemSound();
 			await fetchNews();
 			if (selectedArticle?.id === article.id) setSelectedArticle(saved);
@@ -176,7 +176,7 @@ export function useNews() {
 		}
 	};
 
-	const handleShare = (article: HaberItem) => {
+	const handleShare = (article: NewsEntry) => {
 		const text = `${article.baslik}\n\n${article.ozet}\n\n${t('newsShareClubSuffix')}`;
 		navigator.clipboard.writeText(text);
 		setCopied(true);

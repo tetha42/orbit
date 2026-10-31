@@ -74,7 +74,7 @@ export function TeamsApp() {
 						team={state.selectedTeam}
 						visibleTab={state.visibleTab}
 						setActiveTab={state.setActiveTab}
-						canSeeKasa={state.canSeeKasa(state.selectedTeam)}
+						canSeeVault={state.canSeeVault(state.selectedTeam)}
 						onBack={() => state.showTeam(null)}
 					/>
 					{!state.canEnter(state.selectedTeam) ? (
@@ -96,10 +96,11 @@ export function TeamsApp() {
 							visibleTab={state.visibleTab}
 							currentUserId={state.currentUserId}
 							currentUserName={state.currentUser ? `${state.currentUser.ad} ${state.currentUser.soyad}`.trim() : undefined}
-							canSeeKasa={state.canSeeKasa(state.selectedTeam)}
+							canSeeVault={state.canSeeVault(state.selectedTeam)}
 							openTaskId={state.openTaskId}
 							setOpenTaskId={state.setOpenTaskId}
 							roster={state.roster}
+							categories={state.teamCategories}
 							notify={state.notify}
 							fetchTeams={state.fetchTeams}
 							setTeamsData={state.setTeamsData}
@@ -111,6 +112,7 @@ export function TeamsApp() {
 			{state.creating && (
 				<NewTeamModal
 					roster={state.roster}
+					categories={state.teamCategories}
 					onClose={() => state.setCreating(false)}
 					onCreated={async () => {
 						state.setCreating(false);
@@ -135,6 +137,7 @@ export function TeamsApp() {
 				<EditTeamModal
 					team={state.editingTeam}
 					roster={state.roster}
+					categories={state.teamCategories}
 					onClose={() => state.setEditingTeam(null)}
 					onSaved={async () => {
 						state.setEditingTeam(null);

@@ -3,13 +3,13 @@
 import React from 'react';
 import { FolderGit2, Landmark } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
-import type { KasaSummary } from '../types';
+import type { VaultSummary } from '../types';
 
 interface BudgetSidebarProps {
-	kasalar: KasaSummary[];
-	active: KasaSummary | undefined;
-	general: KasaSummary[];
-	projects: KasaSummary[];
+	vaults: VaultSummary[];
+	active: VaultSummary | undefined;
+	general: VaultSummary[];
+	projects: VaultSummary[];
 	onSelect: (teamId: string | null) => void;
 }
 
@@ -28,7 +28,7 @@ const sectionLabel: React.CSSProperties = {
 export function BudgetSidebar({ active, general, projects, onSelect }: BudgetSidebarProps) {
 	const { t } = useI18n();
 
-	const renderItem = (kasa: KasaSummary) => {
+	const renderItem = (kasa: VaultSummary) => {
 		const isActive = active && kasa.teamId === active.teamId;
 		const Icon = kasa.kind === 'genel' ? Landmark : FolderGit2;
 		return (

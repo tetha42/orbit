@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getUserById } from '@/db';
+import { getUserById, recordApplicationDecision } from '@/db';
 import { auditContext } from '@/db/audit';
 import { setMemberStatus } from '@/db/roles';
 import { requireApp } from '@/lib/auth/access';
@@ -16,6 +16,8 @@ export async function POST(request: Request) {
 	try {
 		const body = await request.json();
 		const { userId, aksiyon } = body;
+		const rejectionReason =
+			typeof body.rejectionReason === 'string' ? body.rejectionReason.trim().slice(0, 500) : null;
 
 		if (!userId || (aksiyon !== 'onayla' && aksiyon !== 'reddet')) {
 			return NextResponse.json({ error: 'Geçersiz parametreler' }, { status: 400 });
@@ -41,6 +43,12 @@ export async function POST(request: Request) {
 		if ((await setMemberStatus(userId, newStatus, auditContext(request, auth.user))) === 'yok') {
 			return NextResponse.json({ error: 'Kullanıcı bulunamadı' }, { status: 404 });
 		}
+		await recordApplicationDecision(
+			userId,
+			newStatus === 'aktif' ? 'approved' : 'rejected',
+			auth.user.id,
+			rejectionReason
+		);
 
 		// Fire-and-forget: the decision is already persisted, so a mail failure must
 		// not roll it back or fail the request.

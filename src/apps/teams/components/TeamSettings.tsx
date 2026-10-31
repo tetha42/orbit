@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Settings2, Trash2 } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
-import { KONTENJAN_MAX, TAKIM_ACIKLAMA_MAX, TAKIM_ADI_MAX, TAKIM_KATEGORILERI } from '@/lib/teams';
+import { CAPACITY_MAX, TEAM_DESCRIPTION_MAX, TEAM_NAME_MAX } from '@/lib/teams';
 import ui from '@/core/ui/ui.module.css';
 import styles from './Teams.module.css';
 import { sendJson } from '@/core/data/http';
@@ -12,13 +12,14 @@ import type { Team } from '../types';
 interface Props {
 	team: Team;
 	roster: { id: string; ad: string; soyad: string }[];
+	categories: string[];
 	notify: (text: string, tone?: 'success' | 'error') => void;
 	onChanged: () => Promise<void>;
 	onDelete: () => void;
 }
 
 /** Captain: description, quota, repo, membership mode. Management: everything, including handing over. */
-export function TeamSettings({ team, roster, notify, onChanged, onDelete }: Props) {
+export function TeamSettings({ team, roster, categories, notify, onChanged, onDelete }: Props) {
 	const { t } = useI18n();
 	const all = team.izinler.editAll;
 	const [ad, setAd] = useState(team.ad);
@@ -59,7 +60,7 @@ export function TeamSettings({ team, roster, notify, onChanged, onDelete }: Prop
 	};
 
 	// Legacy rows may hold a category outside the list; keep it selectable.
-	const categories = (TAKIM_KATEGORILERI as readonly string[]).includes(team.kategori) ? TAKIM_KATEGORILERI : [team.kategori, ...TAKIM_KATEGORILERI];
+	const categoryOptions = categories.includes(team.kategori) ? categories : [team.kategori, ...categories];
 
 	return (
 		<form className={styles.settings} onSubmit={save} aria-label={t('tmSettingsTitle')}>
@@ -70,12 +71,12 @@ export function TeamSettings({ team, roster, notify, onChanged, onDelete }: Prop
 			<div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
 				<label className={ui.field}>
 					<span className={ui.fieldLabel}>{t('tmFieldName')}</span>
-					<input className={ui.input} value={ad} disabled={!all} maxLength={TAKIM_ADI_MAX} onChange={(e) => setAd(e.target.value)} />
+					<input className={ui.input} value={ad} disabled={!all} maxLength={TEAM_NAME_MAX} onChange={(e) => setAd(e.target.value)} />
 				</label>
 				<label className={ui.field}>
 					<span className={ui.fieldLabel}>{t('tmFieldCategory')}</span>
 					<select className={ui.select} style={{ maxWidth: 'none' }} value={kategori} disabled={!all} onChange={(e) => setKategori(e.target.value)}>
-						{categories.map((c) => (
+						{categoryOptions.map((c) => (
 							<option key={c} value={c}>
 								{c}
 							</option>
@@ -85,12 +86,12 @@ export function TeamSettings({ team, roster, notify, onChanged, onDelete }: Prop
 			</div>
 			<label className={ui.field}>
 				<span className={ui.fieldLabel}>{t('tmFieldDesc')}</span>
-				<textarea className={ui.textarea} rows={4} maxLength={TAKIM_ACIKLAMA_MAX} value={aciklama} onChange={(e) => setAciklama(e.target.value)} />
+				<textarea className={ui.textarea} rows={4} maxLength={TEAM_DESCRIPTION_MAX} value={aciklama} onChange={(e) => setAciklama(e.target.value)} />
 			</label>
 			<div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12 }}>
 				<label className={ui.field}>
 					<span className={ui.fieldLabel}>{t('tmFieldQuota')}</span>
-					<input className={ui.input} type="number" min={Math.max(1, team.doluKontenjan)} max={KONTENJAN_MAX} value={kontenjan} onChange={(e) => setKontenjan(e.target.value)} />
+					<input className={ui.input} type="number" min={Math.max(1, team.doluKontenjan)} max={CAPACITY_MAX} value={kontenjan} onChange={(e) => setKontenjan(e.target.value)} />
 				</label>
 				<label className={ui.field}>
 					<span className={ui.fieldLabel}>{t('tmFieldRepo')}</span>

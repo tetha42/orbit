@@ -165,7 +165,7 @@ export async function GET(request: Request) {
 			sinif: user.sinif,
 			profilFoto: user.profilFoto || null,
 			bio: user.bio || null,
-			rolAd: user.permission?.role?.ad || 'Üye',
+			rolAd: user.permission?.role?.ad || 'Member',
 			xp: user.xp,
 		},
 		client: {

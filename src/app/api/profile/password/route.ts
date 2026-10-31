@@ -5,7 +5,7 @@ import { verifyAuth } from '@/lib/auth/authGuard';
 import { attachSessionCookie, establishSession } from '@/lib/auth/session';
 import { clientAddress } from '@/lib/http';
 import { clearRateLimit, isRateLimited, recordFailure } from '@/lib/rateLimit';
-import { sifreHatasi, SIFRE_MAX } from '@/lib/profile';
+import { passwordProblem, PASSWORD_MAX } from '@/lib/profile';
 import { closeUserTerminalSessions } from '@/lib/server/terminalManager';
 import { logSystemEvent } from '@/server/db/domains/logs.repo';
 
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
 		const body = (await request.json()) as Record<string, unknown>;
 		const mevcut = typeof body.mevcut === 'string' ? body.mevcut : '';
 		const yeni = body.yeni;
-		if (!mevcut || mevcut.length > SIFRE_MAX || !(await bcrypt.compare(mevcut, auth.user.passwordHash))) {
+		if (!mevcut || mevcut.length > PASSWORD_MAX || !(await bcrypt.compare(mevcut, auth.user.passwordHash))) {
 			const attempts = recordFailure(key, WINDOW_MS);
 			await logSystemEvent({
 				servis: 'auth',
@@ -47,12 +47,12 @@ export async function POST(request: Request) {
 			});
 			return NextResponse.json({ error: 'Mevcut şifre hatalı.' }, { status: 400 });
 		}
-		const problem = sifreHatasi(yeni, { mevcut, email: auth.user.email });
+		const problem = passwordProblem(yeni, { mevcut, email: auth.user.email });
 		if (problem) return NextResponse.json({ error: problem }, { status: 400 });
 		await updateUserPassword(auth.user.id, await bcrypt.hash(String(yeni), 12), true);
 		try { closeUserTerminalSessions(auth.user.id); } catch {}
 		clearRateLimit(key);
-		const newSessionToken = await establishSession(auth.user, request);
+		const newSessionToken = await establishSession(auth.user, request, auth.user.authMethod ?? 'password');
 		await logSystemEvent({
 			servis: 'auth',
 			seviye: 'INFO',
