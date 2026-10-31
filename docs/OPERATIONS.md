@@ -6,7 +6,7 @@ This runbook covers Day-2 operations for **Orbit Community OS** by **tetha42**: 
 
 ## Table of Contents
 
-1. [Health Checks & Readiness Probes (`/api/health` & `/api/kurulum`)](#1-health-checks--readiness-probes-apihealth--apikurulum)
+1. [Health Checks & Readiness Probes (`/api/healthz` & `/api/kurulum`)](#1-health-checks--readiness-probes-apihealthz--apikurulum)
 2. [Autonomous SoC Pro Studio Monitoring](#2-autonomous-soc-pro-studio-monitoring)
 3. [DEFCON 1–5 Posture Management & Emergency Lockdown Recovery](#3-defcon-15-posture-management--emergency-lockdown-recovery)
 4. [SOAR Incident Response Playbooks](#4-soar-incident-response-playbooks)
@@ -17,14 +17,14 @@ This runbook covers Day-2 operations for **Orbit Community OS** by **tetha42**: 
 
 ---
 
-## 1. Health Checks & Readiness Probes (`/api/health` & `/api/kurulum`)
+## 1. Health Checks & Readiness Probes (`/api/healthz` & `/api/kurulum`)
 
 ### Container & Load Balancer Liveness Probe
 Docker Compose (`docker-compose.yml`), Kubernetes, and reverse proxies monitor instance availability via HTTP probes against port `3000`:
 
 ```bash
-# Check HTTP liveness
-curl -fsS http://127.0.0.1:3000/ >/dev/null && echo "UP"
+# Check HTTP health & database connectivity
+curl -fsS http://127.0.0.1:3000/api/healthz | jq .
 
 # Inspect database connectivity & setup readiness
 curl -s http://127.0.0.1:3000/api/kurulum | jq .

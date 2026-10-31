@@ -55,7 +55,7 @@ export async function reconfigurePgPool(url: string): Promise<{ ok: boolean; err
 2. **Auto Database Detection (`GET /api/setup/auto-detect`):** Concurrently probes standard PostgreSQL ports on `localhost:5432`, Docker Compose services, and container network aliases (`orbit-db`). Discovered instances can be selected with a single click.
 3. **Docker Quickstart:** If no database is detected, the Setup Wizard displays a 1-click Docker run command to spin up PostgreSQL 16 on the host in seconds:
    ```bash
-   docker run --name orbit-postgres -e POSTGRES_DB=orbit -e POSTGRES_USER=orbit -e POSTGRES_PASSWORD=orbit_secret_2026 -p 5432:5432 -d postgres:16-alpine
+   docker run --name orbit-postgres -e POSTGRES_DB=orbit -e POSTGRES_USER=orbit -e POSTGRES_PASSWORD=<your-password> -p 127.0.0.1:5432:5432 -d postgres:16-alpine
    ```
 4. **`testPostgresConnection(url)`:** Spins up an isolated 1-connection pool (`SELECT 1`) with a 4-second timeout to verify credentials before mutating server state.
 5. **`reconfigurePgPool(url)`:** Gracefully drains any existing pool, updates the in-memory runtime configuration, resets initialization flags, and runs `ensurePostgresInit()` to provision all database tables and system roles immediately.

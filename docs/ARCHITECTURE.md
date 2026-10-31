@@ -1,6 +1,6 @@
 # Orbit Community OS — System Architecture
 
-**Orbit Community OS** is a modular, full-stack digital community operating system and collaborative web-desktop engineered from scratch by **tetha42**. Built on **Next.js 16 (App Router)**, **React 19**, and **PostgreSQL 16**, the system combines a hardware-accelerated desktop window compositor with 15 domain-driven mini-applications, a three-channel real-time Server-Sent Events (SSE) bus, an Autonomous Security Operations Center (**SoC Pro Studio**), and a **Zero Config Files** runtime architecture.
+**Orbit Community OS** is a modular, full-stack digital community operating system and collaborative web-desktop engineered from scratch by **tetha42**. Built on **Next.js 16 (App Router)**, **React 19**, and **PostgreSQL 16**, the system combines a hardware-accelerated desktop window compositor with 16 user-facing workspace applications (plus an internal media preview window), a three-channel real-time Server-Sent Events (SSE) bus, an Autonomous Security Operations Center (**SoC Pro Studio**), and a **Zero Config Files** runtime architecture.
 
 ---
 
@@ -16,6 +16,7 @@
 8. [Real-Time Event Bus (`LISTEN/NOTIFY` & Triple-Stream SSE)](#8-real-time-event-bus-listennotify--triple-stream-sse)
 9. [RBAC Permission Engine & Zero-Trust Guards](#9-rbac-permission-engine--zero-trust-guards)
 10. [Pure Modules & Compile-Time Verification](#10-pure-modules--compile-time-verification)
+11. [Data Architecture & Source-of-Truth Ownership](#11-data-architecture--source-of-truth-ownership)
 
 ---
 
@@ -27,7 +28,7 @@ Orbit Community OS is structured as a **single-package modular monolith**:
 flowchart TD
     subgraph Client["Browser Client (React 19 + Hardware-Accelerated Shell)"]
         Shell["Desktop Shell (TopBar, Dock, Spotlight, MobileLauncher, WindowManager)"]
-        Apps["15 Isolated Mini-Apps (src/apps/<id>/)"]
+        Apps["16 Workspace Applications (src/apps/<id>/)"]
         Core["Shared Client Kernel (src/core/*: SWR, Session, Windows, Theme, ContextMenu)"]
         IDB[("IndexedDB & LocalStorage\n(Window coordinates, Theme, Locale)")]
     end
@@ -86,7 +87,7 @@ flowchart TD
 │   │   ├── globals.css       # Semantic CSS custom properties & adaptive theme tokens
 │   │   ├── layout.tsx        # Root HTML shell, zero-flash theme boot script & global providers
 │   │   └── page.tsx          # Primary Web-Desktop entry point & setup status gate
-│   ├── apps/                 # 15 self-contained mini-applications
+│   ├── apps/                 # 16 self-contained workspace applications
 │   │   ├── <app-id>/         # Isolated module: manifest.ts + index.tsx + components/ + hooks/
 │   │   ├── loaders.gen.ts    # Auto-generated dynamic import loaders (DO NOT EDIT MANUALLY)
 │   │   └── registry.gen.ts   # Auto-generated manifest registry (DO NOT EDIT MANUALLY)
@@ -268,7 +269,7 @@ Domain Mutation (withTransaction)
 
 Full details of the authentication and security architecture are covered in **[`docs/AUTH_SECURITY.md`](AUTH_SECURITY.md)**. From an architectural standpoint:
 
-- **Three Permission Levels per Mini-App:** Every role grants `yok` (None), `kullan` (Use), or `yonet` (Manage) to each of the 15 mini-apps (`src/core/permissions/index.ts`).
+- **Three Permission Levels per Mini-App:** Every role grants `yok` (None), `kullan` (Use), or `yonet` (Manage) to each of the 16 workspace applications (`src/core/permissions/index.ts`).
 - **Centralized Route Guard (`requireApp`):** Every mini-app API handler begins with:
   ```ts
   const auth = await requireApp(request, 'events', 'yonet');
@@ -297,3 +298,32 @@ Every commit and CI run executes `npm run verify` (`make verify`), which runs:
 4. `node scripts/check-pure.mjs` — Pure module unit assertions.
 5. `node scripts/check-i18n.mjs` — Strict parity check between English (`en`) and Turkish (`tr`) localization keys.
 6. `node scripts/check-tokens.mjs` — CSS design token compliance check.
+7. `node scripts/check-audit-coverage.mjs` — Verification of 100% audit logging coverage across mutation routes.
+
+---
+
+## 11. Data Architecture & Source-of-Truth Ownership
+
+To prevent data drift and architectural ambiguity, every domain in Orbit Community OS has an explicit single source of truth, designated service owner, and derived cache boundary.
+
+### Source-of-Truth Domain Ownership
+
+| Domain | Owning Table / Service | Service Owner | Derived Caches & Replicas | Lifetime / Invalidation |
+|---|---|---|---|---|
+| **Identity & Authentication** | `users` | `src/lib/auth/`, `src/db/identity.ts` | In-memory session cache | Token TTL (30d), invalidated on logout or password/2FA reset |
+| **Community Settings** | `system_settings` | `src/db/settings.ts` | In-memory settings cache, fallback to `SYSTEM_SETTINGS_DEFAULTS` | Invalidated on `sistem_ayarlari` update; synced to clients |
+| **Roles & Permissions** | `roles`, `role_permissions` | `src/db/roles.ts` | `roller_raw` cache in `src/lib/server/cache.ts` | Invalidated immediately on role create/update/delete |
+| **Community Identity & Showcase** | `teams`, `projects` | `src/server/db/domains/projects.repo.ts`, `teams.repo.ts` | Direct DB queries + SWR client cache | Revalidated on SSE `orbit_events` (`yetki-degisti`, etc.) |
+| **Events & Attendance** | `events`, `event_registrations`, `attendances` | `src/server/db/domains/events.repo.ts` | SWR client cache | Revalidated on poll/SSE and mutate |
+| **Financial Kasa** | `budget_records` | `src/server/db/domains/budget.repo.ts` | Real-time SSE `butce_guncellendi` | Immediate cross-tab broadcast via SSE bus |
+| **Governance & Minutes** | `decisions` | `src/server/db/domains/decisions.repo.ts` | SWR client cache | Invalidated on mutate |
+| **Audit & Accountability** | `audit_logs` | `src/db/audit.ts`, `src/lib/audit/withAudit.ts` | Immutable append-only; 730-day retention prune | Write-through on every HTTP mutation |
+| **Client Desktop State** | `user_workspace_preferences` & `IndexedDB` | `src/core/persistence/*`, `src/app/api/profile/workspace` | **Hybrid Local-Cloud Roaming**: Instant sub-millisecond startup from local IndexedDB with background cloud roaming from `user_workspace_preferences` | Auto-synced upon mutation; roaming across laptops/devices on login |
+
+### Hybrid Workspace Synchronization Policy
+
+Client-side desktop preferences (active wallpaper, window coordinates, dock pinned apps, volume, brightness, and dock auto-hide) utilize a **Hybrid Local-Cloud Architecture**:
+1. **Sub-millisecond Zero-Flicker Startup:** On initial page load, the shell instantly hydrates from local browser `IndexedDB`.
+2. **Cloud Roaming Across Devices:** When authenticated, `useWorkspacePersistence` synchronizes with `/api/profile/workspace` backed by PostgreSQL's `user_workspace_preferences` table. A member signing in on a new laptop or smartphone immediately inherits their customized desktop layout, pinned applications, and active wallpaper.
+3. **Graceful Offline Fallback:** If disconnected, all workspace customizations persist locally in client `IndexedDB` and synchronize to the cloud once network connectivity is re-established.
+

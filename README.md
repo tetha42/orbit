@@ -1,8 +1,10 @@
 # Orbit Community OS
 
-**Engineered from the ground up by [tetha42](https://github.com/tetha42)**
+![CI](https://img.shields.io/github/actions/workflow/status/tetha42/orbit/ci-cd.yml?branch=main&label=CI)
+![License](https://img.shields.io/badge/license-Apache%202.0-blue)
 
-**Orbit Community OS** is a flagship open-source, self-hosted digital community operating system and collaborative web-desktop suite built for developer collectives, research labs, decentralized organizations (DAOs), and engineering communities. Built on **Next.js 16 (App Router)**, **React 19**, and **PostgreSQL 16**, Orbit delivers a hardware-accelerated multi-window desktop shell alongside **15 integrated workspace applications**, an **Autonomous Security Operations Center (SoC Pro Studio)** with automated **SOAR defense playbooks**, a built-in **OAuth 2.0 / OIDC Identity Provider**, cryptographic document and certificate verification, and real-time event check-in.
+**Engineered from the ground up by [tetha42](https://github.com/tetha42)**
+**Orbit Community OS** is a flagship open-source, self-hosted digital community operating system and collaborative web-desktop suite built for developer collectives, research labs, decentralized organizations (DAOs), and engineering communities. Built on **Next.js 16 (App Router)**, **React 19**, and **PostgreSQL 16**, Orbit delivers a hardware-accelerated multi-window desktop shell alongside **16 user-facing workspace applications** plus an internal media preview window, an **Autonomous Security Operations Center (SoC Pro Studio)** with automated **SOAR defense playbooks**, a built-in **OAuth 2.0 / OIDC Identity Provider**, cryptographic document and certificate verification, and real-time event check-in.
 
 ---
 
@@ -32,7 +34,7 @@ Orbit Community OS is architected with a **Zero Config Files** philosophy:
 
 ---
 
-## The 15 Integrated Mini-Apps
+## The 16 User-Facing Mini-Apps
 
 Every application in Orbit Community OS is a self-contained module under `src/apps/<id>/` governed by a declarative `manifest.ts` contract:
 
@@ -68,7 +70,9 @@ Every application in Orbit Community OS is a self-contained module under `src/ap
     - Multi-tier community publishing (`draft`, `members-only`, `public`) with Markdown support and public REST syndication.
 14. **Notes (`notes`):**
     - Personal encrypted-at-rest workspace notes with color-coded folders, pinning, and trash recovery.
-15. **System Settings (`settings`):**
+15. **Governance & Committees (`decisions`):**
+    - Committee directory, chair/member voting rights, meetings and decisions with quorum/vote records.
+16. **System Settings (`settings`):**
     - Granular RBAC role designer, Studio & Community identity configuration, OAuth 2.0 application registry, SMTP configuration, wallpaper/theme studio, Passkey & 2FA enrollment, and full audit history.
 
 ---
@@ -113,7 +117,7 @@ When you first access Orbit Community OS in your browser, the 5-step Zero-Config
 
 ## Granular Role-Based Access Control (RBAC)
 
-Roles in Orbit are dynamic database records—never hardcoded enums. Every role assigns one of three permission levels to each of the 15 mini-apps:
+Roles in Orbit are dynamic database records—never hardcoded enums. Every role assigns one of three permission levels to each of the 16 mini-apps:
 
 | Permission Level | Behavior Across UI, Search, Notifications & API |
 | :--- | :--- |
@@ -196,9 +200,9 @@ All canonical documentation lives in [`docs/`](docs/README.md):
 - **[`docs/DATABASE.md`](docs/DATABASE.md)** — PostgreSQL schema reference (45 tables), dynamic runtime pool reconfiguration (`reconfigurePgPool`), concurrency locks, idempotent migrations, and backup/restore flows.
 - **[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)** — Zero-Config self-hosting with Docker Compose, bare-metal Node.js/PM2, Nginx/Caddy reverse proxies, and first-run web onboarding at `/setup`.
 - **[`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)** — Developer onboarding, Makefile targets, building new mini-apps, i18n localization (`en` primary, `tr` secondary), `useContextMenu` hooks, and verification gates.
-- **[`docs/OPERATIONS.md`](docs/OPERATIONS.md)** — Day-2 operations, SoC Studio monitoring, DEFCON lockdown recovery, database maintenance, and `/api/health` checks.
+- **[`docs/OPERATIONS.md`](docs/OPERATIONS.md)** — Day-2 operations, SoC Studio monitoring, DEFCON lockdown recovery, database maintenance, and `/api/healthz` checks.
 - **[`docs/UI_AND_DESIGN.md`](docs/UI_AND_DESIGN.md)** — Dual design language specification: Adaptive Desktop Shell & Mini-Apps vs. Standalone High-Contrast Monochrome Flat Surfaces.
-- **[`docs/USER_GUIDE.md`](docs/USER_GUIDE.md)** — Complete end-user and administrator handbook covering registration with Member ID / Handle, desktop navigation, all 15 mini-apps, and community governance.
+- **[`docs/USER_GUIDE.md`](docs/USER_GUIDE.md)** — Complete end-user and administrator handbook covering registration with Member ID / Handle, desktop navigation, all 16 mini-apps, and community governance.
 
 ---
 

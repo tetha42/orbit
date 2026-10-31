@@ -40,7 +40,7 @@
 - Powered by `otplib` (`src/lib/auth/totp.ts`), members can enroll any standard authenticator app (1Password, Apple Passwords, Google Authenticator, Authy, Aegis).
 - **Single-Use Replay Protection (`totpSonAdim`):** Standard TOTP codes remain mathematically valid for a 30-second window. To prevent a network eavesdropper or shoulder-surfer from reusing a captured 6-digit code within the same 30-second window, Orbit records the accepted time-step in `kullanicilar.totpSonAdim` and rejects any code whose time-step is `<= totpSonAdim`.
 - **Recovery Codes:** Enabling 2FA generates 8 single-use recovery codes, each individually hashed with `bcrypt` in `kullanicilar.totpRecoveryCodes`.
-- **Role-Enforced Mandatory 2FA (`ikiAdimZorunlu`):** Any role configured with mandatory 2FA (including the built-in `Admin` role) blocks all workspace mini-apps and API endpoints (`403 { code: '2FA_SETUP_REQUIRED' }`) until the user completes 2FA enrollment in **System Settings → Security**.
+- **Role-Enforced Mandatory 2FA (`ikiAdimZorunlu`):** A role configured with mandatory 2FA (including the built-in `Admin` role) blocks password-only sessions (`403 { code: '2FA_SETUP_REQUIRED' }`) until a TOTP authenticator is enrolled. A session established with a WebAuthn passkey already satisfies the second factor and is not asked for a TOTP code afterwards.
 
 ### FIDO2 / WebAuthn Hardware & Biometric Passkeys
 - Powered by `@simplewebauthn/server` and `@simplewebauthn/browser` (`src/lib/auth/webauthn.ts`), Orbit supports passwordless and second-factor sign-in via Touch ID, Face ID, Windows Hello, Android Biometrics, and hardware security keys (YubiKey).
@@ -131,7 +131,7 @@ From **SoC Pro Studio**, operators (or automated threshold triggers) can execute
 
 ### Zero-Trust DB Studio Guard (`src/lib/server/databaseAccess.ts`)
 Access to the raw PostgreSQL database via **DB Studio** is never granted by session cookie alone—even for super-administrators:
-- Opening DB Studio requires completing a live TOTP 2FA verification at `POST /api/database/auth`, which issues a short-lived, memory-tracked `x-db-token`.
+- Opening DB Studio requires a second factor: a live TOTP verification at `POST /api/database/auth` for password/TOTP sessions, or a short-lived rememberable `x-db-token` issued directly for a passkey-authenticated session. Terminal access follows the same rule.
 - The SQL execution engine (`POST /api/database/query`) parses and blocks dangerous superuser primitives such as `COPY ... PROGRAM`, `pg_read_file`, and direct tampering with `denetim_kaydi` or `kullanicilar.sifreHash`.
 
 ---

@@ -91,7 +91,7 @@ When visiting a fresh instance at `/` or `/setup` (`/kurulum`), Orbit presents a
    - **Auto Database Detection:** Orbit automatically probes whether PostgreSQL is running locally on the host, inside Docker Compose, or over internal container networks (`orbit-db`). If detected, click **"Use This DB"** to connect instantly.
    - **Docker Database Quickstart:** If no PostgreSQL instance exists, the wizard provides a 1-click copyable Docker command to spin up an isolated PostgreSQL 16 container:
      ```bash
-     docker run --name orbit-postgres -e POSTGRES_DB=orbit -e POSTGRES_USER=orbit -e POSTGRES_PASSWORD=orbit_secret_2026 -p 5432:5432 -d postgres:16-alpine
+     docker run --name orbit-postgres -e POSTGRES_DB=orbit -e POSTGRES_USER=orbit -e POSTGRES_PASSWORD=<your-password> -p 127.0.0.1:5432:5432 -d postgres:16-alpine
      ```
    - **Custom Connection URI:** Alternatively, enter any custom PostgreSQL connection URI and click **Test Database Connection** (`POST /api/setup/test-db`) to verify connectivity.
 2. **Step 2 — Studio & Community Identity + Reverse Proxy Assistant:**
@@ -207,6 +207,7 @@ server {
 | :--- | :--- | :--- |
 | **PostgreSQL 16 Database** | `/var/lib/postgresql/data` (`orbit-pgdata` volume) | `make db-backup` (`pg_dump` SQL snapshots in `./backups/`) |
 | **Uploaded Receipts & Avatars** | `/app/data/uploads` (`orbit-uploads` volume / `./data/uploads`) | Incremental filesystem or volume snapshot |
+| **Custom Branding & Wallpapers** | `/app/data/custom` (`orbit-custom` volume / `./data/custom`) | Volume snapshot; metadata lives in `system_settings`, `custom_wallpapers`, `legal_documents`, `form_fields` and `member_field_values` |
 | **Client Window Layout & Theme** | Browser `IndexedDB` (`macos_workspace_db`) & `localStorage` | Ephemeral client UI state (zero sensitive domain data) |
 
 ---
@@ -223,5 +224,13 @@ make db-backup
 make update
 # (Equivalent to: docker compose pull && docker compose up -d)
 ```
+
+### Customisation persistence
+
+Production customisations are split deliberately:
+
+- **Structured configuration** (site identity, legal documents, custom member fields, custom wallpapers, member field values) lives in PostgreSQL and therefore travels with the `orbit-pgdata` volume.
+- **Binary customisations** (uploaded site icon and custom wallpaper images) live under `ORBIT_CUSTOM_DIR` (`/app/data/custom` in Docker), mounted as the `orbit-custom` named volume.
+- If a custom image or setting is absent, the application falls back to the compile-time defaults shipped in the image. A redeploy therefore never overwrites operator customisations.
 
 On startup, `ensurePostgresInit()` automatically applies any new idempotent schema additions (`CREATE TABLE IF NOT EXISTS`, `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`) while preserving all existing community data.

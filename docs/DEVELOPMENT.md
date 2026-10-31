@@ -36,7 +36,7 @@ make db-up
 make dev
 ```
 
-Open `http://localhost:3000`. If your local PostgreSQL database is empty, the **Web UI Setup Wizard (`/setup`)** opens automatically so you can bind `postgresql://orbit:orbit_secret_2026@localhost:5432/orbit` and create your local administrator account in seconds.
+Open `http://localhost:3000`. If your local PostgreSQL database is empty, the **Web UI Setup Wizard (`/setup`)** opens automatically so you can bind `postgresql://orbit:<your-password>@localhost:5432/orbit` and create your local administrator account in seconds.
 
 > [!IMPORTANT]
 > **Next.js 16 Notice:** As noted in `AGENTS.md`, this codebase runs on **Next.js 16.3+ (App Router)**. Before using framework-specific APIs, consult `node_modules/next/dist/docs/` to ensure compliance with Next.js 16 async `params`/`searchParams` and route handler conventions.

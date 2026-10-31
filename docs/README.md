@@ -36,17 +36,22 @@ The `docs/` directory is organized into **10 canonical reference documents**:
 
 | Document | Scope & Purpose | Target Audience |
 | :--- | :--- | :--- |
-| **[`README.md`](../README.md)** | Flagship project overview, 15 mini-apps summary, Zero-Config quick start, RBAC model, and CLI reference | Everyone |
+| **[`README.md`](../README.md)** | Flagship project overview, 16 mini-apps summary, Zero-Config quick start, RBAC model, and CLI reference | Everyone |
 | **[`docs/README.md`](README.md)** | Documentation index, reading paths, architectural snapshot, and governance policy | Contributors & Maintainers |
 | **[`docs/ARCHITECTURE.md`](ARCHITECTURE.md)** | Full-stack architecture, App Router & modular mini-app registry, in-memory SWR (`useJsonResource`), 60/120fps window compositor, Zero-Config runtime configuration (`sistem_ayarlari` + in-memory state), and directory structure | Software Engineers & Architects |
 | **[`docs/API.md`](API.md)** | REST & SSE API contracts, `/api/setup` onboarding endpoints, OAuth 2.0 Identity Provider endpoints, SoC telemetry & SOAR playbooks, Events, Certificates, Finance, and standard response envelopes | Frontend, Backend & Integration Engineers |
 | **[`docs/AUTH_SECURITY.md`](AUTH_SECURITY.md)** | Authentication lifecycle (Argon2id/bcrypt, `HttpOnly` cookies, TOTP 2FA, WebAuthn Passkeys), Global Legal Compliance (Terms of Service, GDPR Privacy Policy, Cookie Policy), Autonomous SoC Defense, DEFCON levels, Canary Honeypots, and FIM | Security Engineers & Auditors |
 | **[`docs/DATABASE.md`](DATABASE.md)** | PostgreSQL 16 schema reference (45 tables), dynamic runtime pool reconfiguration (`reconfigurePgPool`), advisory & row-level locking patterns, idempotent startup migrations, and backup/restore workflows | Database Administrators & Backend Engineers |
+| **[`docs/DATA_MODEL_ROADMAP.md`](DATA_MODEL_ROADMAP.md)** | Single-community member data platform: person/account/membership separation, field policies, registration lifecycle, committee/team model, phased migration plan | Product, Backend & Data Engineers |
+| **[`docs/DATA_DICTIONARY.md`](DATA_DICTIONARY.md)** | Field-level data dictionary: ownership, visibility, edit authority, cardinality, retention, and privacy classification for every member/team/role/legal entity | Backend, Security & Compliance Engineers |
+| **[`docs/USER_DATA_SECURITY.md`](USER_DATA_SECURITY.md)** | Current `users` data inventory, invitation lifecycle, password reset, passkey/2FA behavior and PWA fullscreen | Security, Privacy & Support Engineers |
+| **[`docs/ARCHITECTURE_AUDIT.md`](ARCHITECTURE_AUDIT.md)** | Full architecture/data-flow/app-by-app audit, release blockers and prioritized remediation roadmap | Architects, Maintainers & Auditors |
+| **[`docs/APP_SURFACE_INDEX.md`](APP_SURFACE_INDEX.md)** | Generated button/onClick/input/API surface index per mini-app | QA, Frontend & Product Engineers |
 | **[`docs/DEPLOYMENT.md`](DEPLOYMENT.md)** | Zero-Config self-hosting with Docker Compose, bare-metal Node.js/PM2, reverse proxy configurations (Nginx & Caddy), TLS/WebAuthn requirements, and first-run web onboarding at `/setup` | DevOps & Systems Administrators |
 | **[`docs/DEVELOPMENT.md`](DEVELOPMENT.md)** | Developer onboarding, Makefile targets, creating new mini-apps (`manifest.ts`), i18n localization (`en` primary, `tr` secondary), context menu hooks (`useContextMenu`), and verification gates (`npm run verify`) | Core Contributors & Plugin Authors |
-| **[`docs/OPERATIONS.md`](OPERATIONS.md)** | Day-2 operations, Autonomous SoC Studio monitoring, DEFCON lockdown recovery, database maintenance, audit retention, and health checks (`/api/health`) | Site Reliability Engineers (SRE) & Operators |
+| **[`docs/OPERATIONS.md`](OPERATIONS.md)** | Day-2 operations, Autonomous SoC Studio monitoring, DEFCON lockdown recovery, database maintenance, audit retention, and health checks (`/api/healthz`) | Site Reliability Engineers (SRE) & Operators |
 | **[`docs/UI_AND_DESIGN.md`](UI_AND_DESIGN.md)** | Dual design language specification: (1) Workspace Desktop Shell & Mini-Apps (adaptive light/dark glass & flat studio surfaces) and (2) Standalone & Static Surfaces (high-contrast monochrome flat surfaces for `/setup`, `/verify`, `/checkin`, `/oauth/authorize`, offline, and error boundaries) | UI/UX Designers & Frontend Engineers |
-| **[`docs/USER_GUIDE.md`](USER_GUIDE.md)** | End-user and administrator handbook covering registration with global Member ID / Handle, desktop navigation, all 15 mini-apps, and community governance | Community Members, Leads & Administrators |
+| **[`docs/USER_GUIDE.md`](USER_GUIDE.md)** | End-user and administrator handbook covering registration with global Member ID / Handle, desktop navigation, all 16 mini-apps, and community governance | Community Members, Leads & Administrators |
 
 ---
 
