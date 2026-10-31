@@ -3,7 +3,7 @@
  * imports, so `scripts/check-pure.mjs` can load it directly.
  */
 
-export interface KasaSatiri {
+export interface VaultRow {
 	id: string;
 	date: number;
 	olusturma?: number;
@@ -20,7 +20,7 @@ export interface KasaSatiri {
  * "1.234,56", "1234,56", "1234.56", "1 234,5", "₺12". Returns null when the
  * text is not a positive amount with at most two decimals.
  */
-export function parseTutar(input: string): number | null {
+export function parseAmount(input: string): number | null {
 	let s = String(input ?? '')
 		.replace(/[₺\s ]/g, '')
 		.replace(/TL$/i, '');
@@ -59,7 +59,7 @@ export function formatKurus(kurus: number): string {
 }
 
 /** Oldest first, then by entry time: the order money actually moved in. */
-function chronological<T extends KasaSatiri>(rows: T[]): T[] {
+function chronological<T extends VaultRow>(rows: T[]): T[] {
 	return [...rows].sort(
 		(a, b) =>
 			a.date - b.date || (a.olusturma ?? 0) - (b.olusturma ?? 0) || a.id.localeCompare(b.id),
@@ -67,18 +67,18 @@ function chronological<T extends KasaSatiri>(rows: T[]): T[] {
 }
 
 /** The balance right after each entry, keyed by entry id. */
-export function yuruyenBakiye(rows: KasaSatiri[]): Map<string, number> {
+export function runningBalance(rows: VaultRow[]): Map<string, number> {
 	const out = new Map<string, number>();
-	let bakiye = 0;
+	let balance = 0;
 	for (const r of chronological(rows)) {
-		bakiye += r.tur === 'gelir' ? r.tutarKurus : -r.tutarKurus;
-		out.set(r.id, bakiye);
+		balance += r.tur === 'gelir' ? r.tutarKurus : -r.tutarKurus;
+		out.set(r.id, balance);
 	}
 	return out;
 }
 
 /** Spending per category, largest first, with each one's share of the total. */
-export function kategoriDagilimi(rows: KasaSatiri[], tur: 'gelir' | 'gider' = 'gider') {
+export function kategoriDagilimi(rows: VaultRow[], tur: 'gelir' | 'gider' = 'gider') {
 	const totals = new Map<string, number>();
 	for (const r of rows)
 		if (r.tur === tur) totals.set(r.kategori, (totals.get(r.kategori) ?? 0) + r.tutarKurus);
@@ -99,7 +99,7 @@ export function ayAnahtari(ms: number): string {
 }
 
 /** Income and expense of the last `count` calendar months up to `now`, oldest first. */
-export function aylikAkis(rows: KasaSatiri[], now: number, count = 6) {
+export function aylikAkis(rows: VaultRow[], now: number, count = 6) {
 	const d = new Date(now);
 	const months: { ay: string; gelir: number; gider: number }[] = [];
 	for (let i = count - 1; i >= 0; i--) {
@@ -114,7 +114,7 @@ export function aylikAkis(rows: KasaSatiri[], now: number, count = 6) {
 	return months;
 }
 
-export interface KasaFiltresi {
+export interface VaultFilter {
 	tur?: 'hepsi' | 'gelir' | 'gider';
 	kategori?: string;
 	/** "2026-10"; empty for all months. */
@@ -124,7 +124,7 @@ export interface KasaFiltresi {
 	fold?: (s: string) => string;
 }
 
-export function filtreleKayitlar<T extends KasaSatiri>(rows: T[], f: KasaFiltresi): T[] {
+export function filterRecords<T extends VaultRow>(rows: T[], f: VaultFilter): T[] {
 	const fold = f.fold ?? ((s: string) => s.toLocaleLowerCase('tr'));
 	const q = f.arama?.trim() ? fold(f.arama.trim()) : '';
 	return rows.filter(
@@ -137,7 +137,7 @@ export function filtreleKayitlar<T extends KasaSatiri>(rows: T[], f: KasaFiltres
 }
 
 /** Bounds for a transaction date: not in the future (a day's slack for time zones), not older than three years. */
-export function tarihGecerliMi(ms: number, now: number): boolean {
+export function isValidDate(ms: number, now: number): boolean {
 	return Number.isFinite(ms) && ms <= now + 86_400_000 && ms >= now - 3 * 365 * 86_400_000;
 }
 
@@ -146,7 +146,7 @@ export function tarihGecerliMi(ms: number, now: number): boolean {
  * current time (so a new entry sorts after today's earlier ones); any other day
  * is taken at noon, which stays on that day in every time zone near ours.
  */
-export function tarihInputToMs(value: string, now: number): number | null {
+export function dateInputToMs(value: string, now: number): number | null {
 	const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
 	if (!m) return null;
 	const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0, 0, 0);

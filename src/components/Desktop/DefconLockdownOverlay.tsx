@@ -121,7 +121,7 @@ export function DefconLockdownOverlay() {
 					}}
 				>
 					{lockdownMessage ||
-						'Sistem otomatik siber savunma kalkanı ve acil status izolasyon modundadır. Kulüp altyapısı ve veri güvenliği gereği yönetici harici tüm erişimler geçici olarak askıya alınmıştır.'}
+						'Sistem otomatik siber savunma kalkanı ve acil status izolasyon modundadır. Topluluk altyapısı ve veri güvenliği gereği yönetici harici tüm erişimler geçici olarak askıya alınmıştır.'}
 				</p>
 
 				{/* Bullet Status Box */}

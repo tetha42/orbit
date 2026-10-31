@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { NextResponse } from 'next/server';
-import { authenticate, type YetkiliKullanici } from '@/lib/auth/access';
+import { authenticate, type AuthorizedUser } from '@/lib/auth/access';
 import { deriveKey } from '@/lib/auth/serverSecret';
 
 const DATABASE_SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
@@ -77,7 +77,7 @@ export function isUserDatabaseFrozen(userId: string): boolean {
 export async function requireDatabaseAdmin(
 	request: Request
 ): Promise<
-	| { authorized: true; user: YetkiliKullanici; response?: never }
+	| { authorized: true; user: AuthorizedUser; response?: never }
 	| { authorized: false; user?: never; response: NextResponse }
 > {
 	const auth = await authenticate(request);

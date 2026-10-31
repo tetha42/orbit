@@ -105,6 +105,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
 			void showAppNotification(String(newest.data.from || 'Yeni Mesaj'), {
 				body: newest.data.title,
 				tag: `chat-${newest.target.itemId || newest.id}`,
+				data: { target: newest.target, messageId: newest.data.messageId ?? null },
 			});
 		}
 	}, [data, playSystemSound]);
@@ -123,11 +124,11 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
 	});
 	// The server says something new is there (or the role changed, which changes what the feed shows): read it now.
 	useLiveEvent((event) => {
-		if (event !== 'oturum-sonlandi') void refetchRef.current();
+		if (event !== 'oturum-sonlandi') void refetchRef.current().catch(() => {});
 	});
 	useEffect(() => {
 		const tick = () => {
-			if (!document.hidden) void refetchRef.current();
+			if (!document.hidden) void refetchRef.current().catch(() => {});
 		};
 		const timer = setInterval(tick, POLL_MS);
 		// Coming back to the tab is the moment a stale badge is most noticeable.
@@ -147,7 +148,11 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
 			hasUrgent: !!data?.items.some((item) => item.urgent && item.at > seenAt),
 			viewSince,
 			refresh: async () => {
-				await refetchRef.current();
+				try {
+					await refetchRef.current();
+				} catch {
+					// Keep the last good feed; the badge shows the error state.
+				}
 			},
 		}),
 		[data, error, seenAt, viewSince]

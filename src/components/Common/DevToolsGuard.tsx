@@ -199,8 +199,8 @@ export function DevToolsGuard() {
 					}}
 				>
 					{language === 'tr'
-						? 'Club Portal OS korumalı bir PWA çalışma ortamında çalışmaktadır. Güvenlik politikaları gereğince geliştirici konsoluna, sayfa kaynağına ve web eklentilerine erişim sınırlandırılmıştır.'
-						: 'Club Portal OS runs in an isolated, secure PWA environment. Security policy bars access to the developer console, page source inspection, and web extensions.'}
+						? 'Orbit Community OS korumalı bir PWA çalışma ortamında çalışmaktadır. Güvenlik politikaları gereğince geliştirici konsoluna, sayfa kaynağına ve web eklentilerine erişim sınırlandırılmıştır.'
+						: 'Orbit Community OS runs in an isolated, secure PWA environment. Security policy bars access to the developer console, page source inspection, and web extensions.'}
 				</p>
 
 				{/* Shortcut badge */}

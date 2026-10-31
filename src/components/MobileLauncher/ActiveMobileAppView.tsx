@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { AppID } from '@/types/workspace';
-import { APPS_CONFIG } from '@/configs/apps.config';
+import { ALL_APPS_CONFIG } from '@/configs/apps.config';
 import { ArrowLeft } from 'lucide-react';
 import { AppContent } from '@/core/apps/registry';
 import { MOBILE_SUBVIEW_EVENT } from '@/lib/client/useMobileSubView';
@@ -13,7 +13,7 @@ interface ActiveMobileAppViewProps {
 }
 
 export function ActiveMobileAppView({ activeMobileApp, onClose }: ActiveMobileAppViewProps) {
-	const meta = APPS_CONFIG[activeMobileApp];
+	const meta = ALL_APPS_CONFIG[activeMobileApp];
 	const [hasSubViewHeader, setHasSubViewHeader] = useState(false);
 
 	useEffect(() => {
@@ -138,7 +138,7 @@ export function ActiveMobileAppView({ activeMobileApp, onClose }: ActiveMobileAp
 					flexDirection: 'column',
 				}}
 			>
-				<AppContent appId={activeMobileApp} />
+				<AppContent appId={activeMobileApp} close={onClose} />
 			</div>
 		</div>
 	);

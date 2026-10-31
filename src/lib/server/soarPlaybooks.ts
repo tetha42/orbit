@@ -87,7 +87,7 @@ export async function executeSoarPlaybook(
 			actionsTaken.push(`Revoked all active session tokens for user #${target.userId}`);
 
 			// 2. Suspend account in PostgreSQL to prevent immediate re-login
-			await pool.query("UPDATE kullanicilar SET status = 'askida' WHERE id = $1", [target.userId]);
+			await pool.query("UPDATE users SET status = 'askida' WHERE id = $1", [target.userId]);
 			actionsTaken.push(`Suspended account status to 'askida' for user #${target.userId}`);
 
 			// 3. Kill all active Linux PTY terminal shells
@@ -100,12 +100,12 @@ export async function executeSoarPlaybook(
 
 			// 4. Dispatch security notification email
 			try {
-				const userRes = await pool.query<{ email: string; ad: string }>('SELECT email, ad FROM kullanicilar WHERE id = $1', [target.userId]);
+				const userRes = await pool.query<{ email: string; ad: string }>('SELECT email, first_name AS ad FROM users WHERE id = $1', [target.userId]);
 				if (userRes.rows.length > 0 && userRes.rows[0].email) {
 					await sendMail({
 						to: userRes.rows[0].email,
 						subject: '[Security Alert] Account Quarantined - Unusual Activity Detected',
-						html: `<p>Hello ${userRes.rows[0].ad},</p><p>Your account was quarantined by the Security Operations Center due to suspected credential compromise. All active sessions and shell access have been terminated. Please contact your club administrator immediately.</p>`,
+						html: `<p>Hello ${userRes.rows[0].ad},</p><p>Your account was quarantined by the Security Operations Center due to suspected credential compromise. All active sessions and shell access have been terminated. Please contact your community administrator immediately.</p>`,
 						text: `Security Alert: Your account #${target.userId} was quarantined by SOC. Contact administrator.`,
 					});
 					actionsTaken.push(`Dispatched security notification email to ${userRes.rows[0].email}`);

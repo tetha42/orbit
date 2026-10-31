@@ -4,6 +4,8 @@ import dynamic from 'next/dynamic';
 import type { ComponentType } from 'react';
 import type { AppID } from '@/types/workspace';
 import { APP_LOADERS } from '@/apps/loaders.gen';
+import { MiniAppErrorBoundary } from '@/core/windows/MiniAppErrorBoundary';
+import type { MiniAppProps } from '@/core/apps/sdk';
 
 /**
  * Which component is each mini app — the one list the window manager and the
@@ -21,7 +23,7 @@ function Loading() {
 
 export const APP_COMPONENTS = Object.fromEntries(
 	Object.entries(APP_LOADERS).map(([id, load]) => [id, dynamic(load, { ssr: false, loading: Loading })])
-) as Record<AppID, ComponentType>;
+) as Record<AppID, ComponentType<Record<string, unknown>>>;
 
 const PREFETCHED_APPS = new Set<AppID>();
 
@@ -41,9 +43,51 @@ export function prefetchApp(appId: AppID): void {
 	}
 }
 
-/** Renders a mini app by id (nothing for an unknown id). */
-export function AppContent({ appId }: { appId: AppID }) {
+export interface AppContentProps<TTarget = unknown> {
+	appId: AppID;
+	instanceId?: string;
+	target?: TTarget;
+	isForeground?: boolean;
+	close?: () => void;
+	minimize?: () => void;
+	maximize?: () => void;
+	setTitle?: (title: string) => void;
+	setBadge?: (count: number) => void;
+	onReset?: () => void;
+}
+
+/** Renders a mini app by id wrapped in MiniAppErrorBoundary with typed MiniAppProps. */
+export function AppContent<TTarget = unknown>({
+	appId,
+	instanceId = appId,
+	target,
+	isForeground = true,
+	close = () => {},
+	minimize = () => {},
+	maximize = () => {},
+	setTitle,
+	setBadge,
+	onReset,
+}: AppContentProps<TTarget>) {
 	const Component = APP_COMPONENTS[appId];
-	return Component ? <Component /> : null;
+	if (!Component) return null;
+
+	const miniAppProps: MiniAppProps<TTarget> = {
+		appId,
+		instanceId,
+		target,
+		isForeground,
+		close,
+		minimize,
+		maximize,
+		setTitle,
+		setBadge,
+	};
+
+	return (
+		<MiniAppErrorBoundary appId={appId} instanceId={instanceId} onReset={onReset} onClose={close}>
+			<Component {...(miniAppProps as unknown as Record<string, unknown>)} />
+		</MiniAppErrorBoundary>
+	);
 }
 

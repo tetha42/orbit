@@ -132,7 +132,7 @@ function buildConfig(): SystemConfig {
 	const authSecret = get('AUTH_SECRET', 'security', 'auth_secret') || undefined;
 	const adminEmail = get('BOOTSTRAP_ADMIN_EMAIL', 'bootstrap_admin', 'email', 'admin@orbit.local');
 	const adminPass = get('BOOTSTRAP_ADMIN_PASSWORD', 'bootstrap_admin', 'password') || undefined;
-	const adminAd = get('BOOTSTRAP_ADMIN_AD', 'bootstrap_admin', 'first_name', 'Orbit');
+	const adminName = get('BOOTSTRAP_ADMIN_AD', 'bootstrap_admin', 'first_name', 'Orbit');
 	const adminSoyad = get('BOOTSTRAP_ADMIN_SOYAD', 'bootstrap_admin', 'last_name', 'Admin');
 
 	const clubName = get('CLUB_NAME', 'club_preset', 'name', 'Orbit Community');
@@ -158,7 +158,7 @@ function buildConfig(): SystemConfig {
 	if (authSecret && !process.env.AUTH_SECRET) process.env.AUTH_SECRET = authSecret;
 	if (!process.env.BOOTSTRAP_ADMIN_EMAIL) process.env.BOOTSTRAP_ADMIN_EMAIL = adminEmail;
 	if (adminPass && !process.env.BOOTSTRAP_ADMIN_PASSWORD) process.env.BOOTSTRAP_ADMIN_PASSWORD = adminPass;
-	if (!process.env.BOOTSTRAP_ADMIN_AD) process.env.BOOTSTRAP_ADMIN_AD = adminAd;
+	if (!process.env.BOOTSTRAP_ADMIN_AD) process.env.BOOTSTRAP_ADMIN_AD = adminName;
 	if (!process.env.BOOTSTRAP_ADMIN_SOYAD) process.env.BOOTSTRAP_ADMIN_SOYAD = adminSoyad;
 	if (!process.env.CLUB_NAME) process.env.CLUB_NAME = clubName;
 	if (!process.env.CLUB_UNIVERSITY) process.env.CLUB_UNIVERSITY = clubUniv;
@@ -179,7 +179,7 @@ function buildConfig(): SystemConfig {
 		bootstrapAdmin: {
 			email: adminEmail,
 			password: adminPass,
-			firstName: adminAd,
+			firstName: adminName,
 			lastName: adminSoyad,
 		},
 		clubPreset: {

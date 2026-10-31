@@ -1,4 +1,4 @@
-import { sendMail, wasDelivered } from './mailer';
+import { sendMail, wasDelivered, type MailerResult } from './mailer';
 import { safeName, safeRecipient } from './address';
 import { CONFIG } from '@/lib/server/config';
 
@@ -45,12 +45,12 @@ async function sendNotification(
 	user: Recipient,
 	subject: string,
 	bodyFor: (greeting: string) => string
-): Promise<void> {
+): Promise<MailerResult> {
 	const to = safeRecipient(user.email);
 	if (!to) {
 		// Address is missing or unsafe (multi-recipient list, CRLF, malformed).
 		console.warn(`[notify] Geçersiz alıcı adresi, bildirim atlandı: ${String(user.email).slice(0, 60)}`);
-		return;
+		return { success: false, error: 'Geçersiz alıcı e-posta adresi.' };
 	}
 
 	const greeting = `Merhaba ${safeName(user.ad)} ${safeName(user.soyad)},`;
@@ -66,8 +66,10 @@ async function sendNotification(
 				: `gönderim hatası: ${result.error ?? 'bilinmeyen'}`;
 			console.warn(`[notify] Bildirim gönderilemedi (${reason}): ${to}`);
 		}
+		return result;
 	} catch (error) {
 		console.error('[notify] sendNotification failed:', error);
+		return { success: false, error: error instanceof Error ? error.message : 'Bildirim gönderilemedi.' };
 	}
 }
 
@@ -90,8 +92,8 @@ export async function notifyRegistrationReceived(user: Recipient, customTemplate
 }
 
 /** Sent when a user registers to verify their email address. */
-export async function notifyEmailVerificationCode(user: Recipient, code: string): Promise<void> {
-	await sendNotification(
+export async function notifyEmailVerificationCode(user: Recipient, code: string): Promise<MailerResult> {
+	return sendNotification(
 		user,
 		`E-posta Doğrulama Kodunuz: ${code} — ${getClubName()}`,
 		(greeting) =>
@@ -106,9 +108,39 @@ export async function notifyEmailVerificationCode(user: Recipient, code: string)
 	);
 }
 
-/** Sent when a user requests a password reset code. */
-export async function notifyPasswordResetCode(user: Recipient, code: string): Promise<void> {
+/** Sent to the new address when a member asks to change their e-mail. */
+export async function notifyEmailChangeCode(user: Recipient, code: string): Promise<void> {
 	await sendNotification(
+		user,
+		`E-posta Değişikliği Doğrulama Kodunuz: ${code} — ${getClubName()}`,
+		(greeting) =>
+			paragraph(greeting) +
+			paragraph(
+				'Hesabınızın e-posta adresini bu adrese taşımak için aşağıdaki 6 haneli kodu kullanın:'
+			) +
+			`<div style="text-align: center; margin: 20px 0;">
+				<span style="font-family: monospace; font-size: 26px; font-weight: 700; letter-spacing: 6px; color: #0a84ff; background: #f0f7ff; padding: 10px 20px; border-radius: 8px; border: 1px solid #bfdbfe; display: inline-block;">${safeName(code)}</span>
+			</div>` +
+			paragraph('Bu kod 15 dakika boyunca geçerlidir. Talebi siz başlatmadıysanız bu e-postayı dikkate almayınız.')
+	);
+}
+
+/** Sent to the previous address after the change is completed. */
+export async function notifyEmailChanged(user: Recipient, newEmail: string): Promise<void> {
+	await sendNotification(
+		user,
+		`E-posta adresiniz değişti — ${getClubName()}`,
+		(greeting) =>
+			paragraph(greeting) +
+			paragraph(
+				`Hesabınızın e-posta adresi <strong>${safeName(newEmail)}</strong> olarak güncellendi. Bu değişikliği siz yapmadıysanız derhal topluluk yönetimine başvurun.`
+			)
+	);
+}
+
+/** Sent when a user requests a password reset code. */
+export async function notifyPasswordResetCode(user: Recipient, code: string): Promise<MailerResult> {
+	return sendNotification(
 		user,
 		`Şifre Sıfırlama Kodunuz: ${code} — ${getClubName()}`,
 		(greeting) =>

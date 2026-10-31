@@ -91,7 +91,7 @@ export async function getWebhookConfig(): Promise<WebhookConfig> {
 		await ensurePostgresInit();
 		const p = getPgPool();
 		const res = await p.query(
-			`SELECT deger FROM sistem_ayarlari WHERE anahtar = 'soc_webhook_config' LIMIT 1`
+			`SELECT value AS deger FROM system_settings WHERE key = 'soc_webhook_config' LIMIT 1`
 		);
 		if (res.rows.length > 0 && res.rows[0].deger) {
 			const parsed = JSON.parse(res.rows[0].deger) as Partial<WebhookConfig>;

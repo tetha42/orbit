@@ -4,7 +4,7 @@ import { KeyRound, Settings } from 'lucide-react';
 import { useSession } from '@/core/session';
 import { useI18n } from '@/core/i18n';
 import { useWindowActions } from '@/core/windows';
-import { YETKI_UYGULAMALARI, canUse } from '@/core/permissions';
+import { PERMISSION_APPS, canUse } from '@/core/permissions';
 import { OnboardingTeamExplorer } from './OnboardingTeamExplorer';
 
 /**
@@ -21,10 +21,10 @@ export function NoRoleNotice({ compact = false }: { compact?: boolean }) {
 	const { t } = useI18n();
 	const { openApp } = useWindowActions();
 	if (!currentUser || currentUser.mustSetup2fa) return null;
-	const herhangiUygulama = YETKI_UYGULAMALARI.some((a) => a !== 'settings' && canUse(currentUser.izinler, a));
+	const herhangiUygulama = PERMISSION_APPS.some((a) => a !== 'settings' && canUse(currentUser.izinler, a));
 	if (herhangiUygulama) return null;
 
-	const rolYok = !currentUser.rolBilgi;
+	const hasNoRole = !currentUser.rolBilgi;
 	return (
 		<div
 			data-no-role-notice
@@ -33,7 +33,7 @@ export function NoRoleNotice({ compact = false }: { compact?: boolean }) {
 				...(compact
 					? {}
 					: { position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 1 }),
-				width: compact ? '100%' : rolYok ? '560px' : '420px',
+				width: compact ? '100%' : hasNoRole ? '560px' : '420px',
 				maxWidth: 'calc(100vw - 32px)',
 				maxHeight: compact ? undefined : 'calc(100vh - 120px)',
 				overflowY: compact ? undefined : 'auto',
@@ -56,8 +56,8 @@ export function NoRoleNotice({ compact = false }: { compact?: boolean }) {
 			<div style={{ width: 44, height: 44, borderRadius: '50%', display: 'grid', placeItems: 'center', background: 'rgba(10, 132, 255, 0.15)', color: '#0a84ff' }}>
 				<KeyRound size={22} />
 			</div>
-			<div style={{ fontSize: '15px', fontWeight: 700 }}>{rolYok ? t('noRoleTitle') : t('noAppsTitle')}</div>
-			<div style={{ fontSize: '12.5px', lineHeight: 1.5, opacity: 0.75 }}>{rolYok ? t('noRoleBody') : t('noAppsBody')}</div>
+			<div style={{ fontSize: '15px', fontWeight: 700 }}>{hasNoRole ? t('noRoleTitle') : t('noAppsTitle')}</div>
+			<div style={{ fontSize: '12.5px', lineHeight: 1.5, opacity: 0.75 }}>{hasNoRole ? t('noRoleBody') : t('noAppsBody')}</div>
 			<button
 				type="button"
 				data-no-role-settings
@@ -79,7 +79,7 @@ export function NoRoleNotice({ compact = false }: { compact?: boolean }) {
 			>
 				<Settings size={14} /> {t('noRoleOpenSettings')}
 			</button>
-			{rolYok && (
+			{hasNoRole && (
 				<>
 					<hr style={{ width: '100%', border: 0, borderTop: '1px solid var(--window-border)', margin: '8px 0 4px' }} />
 					<OnboardingTeamExplorer compact={compact} />

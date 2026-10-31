@@ -4,7 +4,7 @@ import { User } from '@/db/schema';
 import { clientAddress } from '@/lib/http';
 import { consumeRateLimit } from '@/lib/rateLimit';
 import { inspectRequestPayload } from '@/lib/waf';
-import { ADMIN_ROL_ID } from '@/core/permissions';
+import { ADMIN_ROLE_ID } from '@/core/permissions';
 import { logSystemEvent } from '@/server/db/domains/logs.repo';
 import { getLockdownState, isIpBanned, recordSecurityStrike, recordSessionActivity } from '@/server/db/domains/security.repo';
 import { SESSION_COOKIE } from './session';
@@ -191,7 +191,7 @@ export async function verifyAuth(request: Request): Promise<AuthResult> {
 
 		// 4. Defcon Lockdown check (Hard Lockdown: non-admins blocked with 503)
 		const lockdown = await getLockdownState();
-		if (lockdown.active && user.roleId !== ADMIN_ROL_ID) {
+		if (lockdown.active && user.roleId !== ADMIN_ROLE_ID) {
 			return {
 				authorized: false,
 				user: null,

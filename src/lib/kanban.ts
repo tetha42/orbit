@@ -5,17 +5,17 @@
  */
 
 /** Board columns, in order. `inceleme` is "waiting for review". */
-export const GOREV_DURUMLARI = ['yapilacak', 'suruyor', 'inceleme', 'tamamlandi'] as const;
-export type GorevDurumu = (typeof GOREV_DURUMLARI)[number];
+export const TASK_STATUSES = ['yapilacak', 'suruyor', 'inceleme', 'tamamlandi'] as const;
+export type TaskStatus = (typeof TASK_STATUSES)[number];
 
-export const GOREV_ONCELIKLERI = ['dusuk', 'orta', 'yuksek', 'kritik'] as const;
-export type GorevOnceligi = (typeof GOREV_ONCELIKLERI)[number];
+export const TASK_PRIORITIES = ['dusuk', 'orta', 'yuksek', 'kritik'] as const;
+export type TaskPriority = (typeof TASK_PRIORITIES)[number];
 
 /** Higher means more urgent; used for sorting. */
-export const ONCELIK_AGIRLIGI: Record<GorevOnceligi, number> = { dusuk: 0, orta: 1, yuksek: 2, kritik: 3 };
+export const ONCELIK_AGIRLIGI: Record<TaskPriority, number> = { dusuk: 0, orta: 1, yuksek: 2, kritik: 3 };
 
-export const BASLIK_MAX = 160;
-export const ACIKLAMA_MAX = 4000;
+export const TITLE_MAX = 160;
+export const DESCRIPTION_MAX = 4000;
 export const ETIKET_MAX = 24;
 export const ETIKET_SAYISI_MAX = 6;
 export const MADDE_MAX = 200;
@@ -25,7 +25,7 @@ export const YORUM_MAX = 2000;
  * Older clients sent `'bitti'` for "done" while the column stores `'tamamlandi'`.
  * Known aliases are mapped instead of persisting a value no client can filter on.
  */
-const DURUM_ALIASES: Record<string, GorevDurumu> = {
+const STATUS_ALIASES: Record<string, TaskStatus> = {
 	bitti: 'tamamlandi',
 	tamam: 'tamamlandi',
 	done: 'tamamlandi',
@@ -34,17 +34,17 @@ const DURUM_ALIASES: Record<string, GorevDurumu> = {
 	review: 'inceleme',
 };
 
-export function normalizeDurum(value: unknown): GorevDurumu | null {
+export function normalizeStatus(value: unknown): TaskStatus | null {
 	if (typeof value !== 'string') return null;
 	const key = value.trim().toLowerCase();
-	if ((GOREV_DURUMLARI as readonly string[]).includes(key)) return key as GorevDurumu;
-	return DURUM_ALIASES[key] ?? null;
+	if ((TASK_STATUSES as readonly string[]).includes(key)) return key as TaskStatus;
+	return STATUS_ALIASES[key] ?? null;
 }
 
-export function normalizeOncelik(value: unknown): GorevOnceligi | null {
+export function normalizeOncelik(value: unknown): TaskPriority | null {
 	if (typeof value !== 'string') return null;
 	const key = value.trim().toLowerCase();
-	return (GOREV_ONCELIKLERI as readonly string[]).includes(key) ? (key as GorevOnceligi) : null;
+	return (TASK_PRIORITIES as readonly string[]).includes(key) ? (key as TaskPriority) : null;
 }
 
 /**
@@ -74,7 +74,7 @@ export function normalizeEtiketler(value: unknown): string[] | null {
  * is unusable. Accepts a number or an ISO date (`2026-10-12` means the end of
  * that day in local time, so a task due "on the 12th" is not overdue at 00:01).
  */
-export function normalizeTeslimTarihi(value: unknown): number | null | undefined {
+export function normalizeDueDate(value: unknown): number | null | undefined {
 	if (value === null || value === '' || value === 0) return null;
 	if (typeof value === 'number') return Number.isFinite(value) && value > 0 ? Math.round(value) : undefined;
 	if (typeof value === 'string') {
@@ -122,16 +122,16 @@ export const SIRA_ADIMI = 1024;
 /** Most cards a renumbering request may list. */
 export const SIRALAMA_MAX = 500;
 
-export type TeslimDurumu = 'gecikti' | 'bugun' | 'yakin' | 'ileri';
+export type DueStatus = 'gecikti' | 'bugun' | 'yakin' | 'ileri';
 
 const DAY = 86_400_000;
 
 /** How pressing a due date is, relative to `now`. Done tasks are never late. */
-export function teslimDurumu(
+export function dueStatus(
 	teslimTarihi: number | null | undefined,
-	status: GorevDurumu,
+	status: TaskStatus,
 	now: number
-): TeslimDurumu | null {
+): DueStatus | null {
 	if (!teslimTarihi || status === 'tamamlandi') return null;
 	if (teslimTarihi < now) return 'gecikti';
 	const start = new Date(now);

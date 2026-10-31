@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useSession } from '@/core/session';
-import { canManage, canUse, type Izinler, type Seviye } from './index';
+import { canManage, canUse, type Permissions, type Seviye } from './index';
 
 /**
  * The signed-in member's permissions, for the UI.
@@ -15,7 +15,7 @@ import { canManage, canUse, type Izinler, type Seviye } from './index';
  */
 export function usePermissions() {
 	const { currentUser } = useSession();
-	const izinler: Izinler = currentUser?.izinler ?? {};
+	const izinler: Permissions = currentUser?.izinler ?? {};
 	const pending2fa = !!currentUser?.mustSetup2fa;
 	return useMemo(
 		() => ({

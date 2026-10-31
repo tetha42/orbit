@@ -18,6 +18,12 @@ export interface RegisterPayload {
 	password: string;
 	verificationCode?: string;
 	hp_website?: string;
+	/** Community-defined registration fields, keyed by their fieldKey. */
+	customFields?: Record<string, string>;
+	/** Accepted legal document ids from `/api/legal`. */
+	acceptedDocumentIds?: string[];
+	/** Optional invitation token from `/?invite=...`. */
+	inviteToken?: string;
 }
 
 export interface SessionContextValue {
@@ -49,7 +55,14 @@ export interface SessionContextValue {
 	 * needs the member's e-mail address.
 	 */
 	loginWithPasskey: (email: string) => Promise<{ success: boolean; error?: string; require2fa?: boolean; challengeToken?: string }>;
-	register: (formData: RegisterPayload) => Promise<{ success: boolean; message?: string; error?: string; requireVerification?: boolean }>;
+	register: (formData: RegisterPayload) => Promise<{
+		success: boolean;
+		message?: string;
+		error?: string;
+		requireVerification?: boolean;
+		mailQueued?: boolean;
+		fieldErrors?: Record<string, string>;
+	}>;
 	logout: () => Promise<void>;
 	/**
 	 * Screen lock. Hides the workspace behind a password prompt without ending the
@@ -208,7 +221,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 	 *
 	 * The WebAuthn ceremony (options → authenticator prompt → assertion) happens
 	 * here so the login form stays presentational. A successful assertion is
-	 * already multi-factor, so it completes the session directly.
+	 * already multi-factor (device possession + biometric/PIN), so it completes
+	 * the session directly and never asks for a TOTP code afterwards.
 	 */
 	const loginWithPasskey = useCallback(
 		async (email: string) => {
@@ -233,10 +247,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 					body: JSON.stringify({ challengeId: optData.challengeId, response: assertion }),
 				});
 				const verifyData = await verifyRes.json();
-				// A role that requires two-factor auth still wants the authenticator code after the passkey.
-				if (verifyRes.ok && verifyData.require2fa && verifyData.challengeToken) {
-					return { success: false, require2fa: true, challengeToken: verifyData.challengeToken };
-				}
+				// A passkey assertion is already multi-factor; no second TOTP step follows.
 				if (!verifyRes.ok || !verifyData.success) {
 					return { success: false, error: verifyData.error || 'Passkey doğrulanamadı.' };
 				}
@@ -315,10 +326,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 				return {
 					success: true,
 					requireVerification: Boolean(data.requireVerification),
+					mailQueued: Boolean(data.mailQueued),
 					message: data.message,
 				};
 			}
-			return { success: false, error: data.error };
+			return { success: false, error: data.error, fieldErrors: data.fieldErrors };
 		} catch (e) {
 			return { success: false, error: errorMessage(e) || 'Kayıt yapılamadı' };
 		}

@@ -7,7 +7,7 @@ import { Users, X } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
 import { ModalOverlay } from '@/core/ui/Sheet';
 import { fill } from '@/lib/text';
-import { YOKLAMA_PENCERESI_MS } from '@/lib/events';
+import { ATTENDANCE_WINDOW_MS } from '@/lib/events';
 import styles from './Events.module.css';
 import type { EventView } from './eventsShared';
 
@@ -93,7 +93,7 @@ export function ProjectorModal({ event, onClose }: { event: EventView; onClose: 
 							{qr ? <Image src={qr} alt="" width={380} height={380} unoptimized style={{ maxWidth: '100%', height: 'auto' }} /> : <div style={{ width: 380, height: 380 }} />}
 						</div>
 						<div className={styles.countdown} aria-hidden>
-							<span style={{ width: `${(left / YOKLAMA_PENCERESI_MS) * 100}%` }} />
+							<span style={{ width: `${(left / ATTENDANCE_WINDOW_MS) * 100}%` }} />
 						</div>
 						<div style={{ fontSize: 13, opacity: 0.75 }}>{fill(t('evRefreshIn'), { n: Math.ceil(left / 1000) })}</div>
 						{code?.kisaKod && (

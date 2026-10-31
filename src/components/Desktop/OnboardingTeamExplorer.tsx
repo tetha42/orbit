@@ -7,7 +7,7 @@ import { useLiveEvent } from '@/core/session';
 import { useJsonResource } from '@/core/data/useJsonResource';
 import { errorMessage } from '@/lib/errors';
 import { fill } from '@/lib/text';
-import { BASVURU_NOTU_MAX, UZMANLIK_ONERILERI } from '@/lib/teams';
+import { APPLICATION_NOTE_MAX, EXPERTISE_SUGGESTIONS } from '@/lib/teams';
 import type { TeamShowcaseRecord } from '@/server/db/domains/teams.repo';
 import ui from '@/core/ui/ui.module.css';
 
@@ -162,7 +162,7 @@ export function OnboardingTeamExplorer({ compact = false }: { compact?: boolean 
 									>
 										<div style={{ fontSize: '11.5px', fontWeight: 600 }}>{t('obSkills')}</div>
 										<div role="group" aria-label={t('obSkills')} style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-											{UZMANLIK_ONERILERI.map((skill) => {
+											{EXPERTISE_SUGGESTIONS.map((skill) => {
 												const on = skills.includes(skill);
 												return (
 													<button
@@ -189,7 +189,7 @@ export function OnboardingTeamExplorer({ compact = false }: { compact?: boolean 
 											{t('obNote')}
 											<textarea
 												value={note}
-												maxLength={BASVURU_NOTU_MAX}
+												maxLength={APPLICATION_NOTE_MAX}
 												rows={3}
 												placeholder={t('obNotePh')}
 												onChange={(e) => setNote(e.target.value)}

@@ -15,7 +15,7 @@ export function PasswordResetModal({ isOpen, onClose, onSuccess }: PasswordReset
 	const isTr = language === 'tr';
 
 	const [step, setStep] = useState<'email' | 'verify'>('email');
-	const [email, setEposta] = useState('');
+	const [email, setEmail] = useState('');
 	const [kod, setKod] = useState('');
 	const [yeniSifre, setYeniSifre] = useState('');
 	const [yeniSifreTekrar, setYeniSifreTekrar] = useState('');
@@ -202,7 +202,7 @@ export function PasswordResetModal({ isOpen, onClose, onSuccess }: PasswordReset
 								type="email"
 								required
 								value={email}
-								onChange={(e) => setEposta(e.target.value)}
+								onChange={(e) => setEmail(e.target.value)}
 								placeholder={isTr ? 'uye@orbit.local veya ad.soyad@example.com' : 'member@orbit.local or name@example.com'}
 								style={{
 									width: '100%',

@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { CalendarPlus } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
 import { toDateInput } from '@/lib/kanban';
-import { ETKINLIK_BASLIK_MAX, ETKINLIK_TURLERI, type EventType } from '@/lib/events';
+import { EVENT_TITLE_MAX, EVENT_TYPES, type EventType } from '@/lib/events';
 import ui from '@/core/ui/ui.module.css';
 import { sendJson } from '@/core/data/http';
 import { TYPE_META, type EventView } from './eventsShared';
@@ -53,11 +53,11 @@ export function EventFormModal({ event, onClose, onSaved }: Props) {
 	const save = async (draft: boolean) => {
 		if (busy) return;
 		setError('');
-		const baslangic = at(date, startTime);
+		const start = at(date, startTime);
 		let endTimestamp = at(date, endTime);
 		// An end time earlier than the start means it runs past midnight.
-		if (endTimestamp <= baslangic) endTimestamp += 86_400_000;
-		const fields = { baslik, tur, aciklama, konum, baslangic, endTime: endTimestamp, kapasite: Number(kapasite) };
+		if (endTimestamp <= start) endTimestamp += 86_400_000;
+		const fields = { baslik, tur, aciklama, konum, start, endTime: endTimestamp, kapasite: Number(kapasite) };
 		setBusy(true);
 		const res = event
 			? await sendJson('/api/events', 'POST', {
@@ -112,7 +112,7 @@ export function EventFormModal({ event, onClose, onSaved }: Props) {
 					autoFocus
 					required
 					minLength={3}
-					maxLength={ETKINLIK_BASLIK_MAX}
+					maxLength={EVENT_TITLE_MAX}
 					value={baslik}
 					onChange={(e) => setBaslik(e.target.value)}
 				/>
@@ -120,7 +120,7 @@ export function EventFormModal({ event, onClose, onSaved }: Props) {
 			<div className={ui.field}>
 				<span className={ui.fieldLabel}>{t('evFieldType')}</span>
 				<div className={ui.prioPicker} role="radiogroup">
-					{ETKINLIK_TURLERI.map((x) => (
+					{EVENT_TYPES.map((x) => (
 						<button
 							key={x}
 							type="button"

@@ -1,6 +1,6 @@
 'use client';
 
-import { iadeDurumu } from '@/lib/inventory';
+import { returnStatus } from '@/lib/inventory';
 import { formatKurus } from '@/lib/budget';
 import { escapeHtml } from '@/core/text/escape';
 import { openPrintWindow, writePrintWindow } from '@/core/data/print';
@@ -31,7 +31,7 @@ interface Team {
 	liderAdSoyad: string | null;
 	gorevler: { status: string }[];
 }
-interface Kasa {
+interface Vault {
 	ad: string;
 	toplamGelirKurus: number;
 	toplamGiderKurus: number;
@@ -57,7 +57,7 @@ export async function openActivityReport(): Promise<'ok' | 'popup' | 'error'> {
 			get<{ members: Member[] }>('/api/uyeler'),
 			get<{ etkinlikler: EventRow[] }>('/api/etkinlikler'),
 			get<Team[]>('/api/takimlar'),
-			get<{ kasalar: Kasa[] }>('/api/butce/kasalar'),
+			get<{ kasalar: Vault[] }>('/api/butce/kasalar'),
 			get<Item[]>('/api/envanter'),
 		]);
 		const now = Date.now();
@@ -69,7 +69,7 @@ export async function openActivityReport(): Promise<'ok' | 'popup' | 'error'> {
 		const att = events.reduce((a, e) => a + Number(e.katilimciSayisi || 0), 0);
 		const teams = takimlar ?? [];
 		const items = envanter ?? [];
-		const overdue = items.filter((i) => i.status === 'oduncte' && iadeDurumu(i.iadeTarihi, now)?.gecikti).length;
+		const overdue = items.filter((i) => i.status === 'oduncte' && returnStatus(i.iadeTarihi, now)?.gecikti).length;
 
 		const css = `body{font:12px/1.45 system-ui,sans-serif;margin:28px;color:#111}h1{font-size:19px;margin:0}h2{font-size:14px;margin:20px 0 6px;border-bottom:2px solid #0a84ff;padding-bottom:3px}
 table{width:100%;border-collapse:collapse}td,th{border-bottom:1px solid #ddd;padding:4px 6px;text-align:left}th{background:#f2f2f2}.n{text-align:right}

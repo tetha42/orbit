@@ -1,11 +1,13 @@
 'use client';
 
 import { useI18n } from '@/core/i18n';
+import { useIdentity } from '@/core/identity';
 import { useShell } from '@/core/shell';
 import { X, ShieldCheck } from 'lucide-react';
 
 export function AboutPortalModal() {
-	const { t } = useI18n();
+	const { t, language } = useI18n();
+	const { identity } = useIdentity();
 	const { isAboutModalOpen, setIsAboutModalOpen } = useShell();
 
 	if (!isAboutModalOpen) return null;
@@ -75,16 +77,29 @@ export function AboutPortalModal() {
 						color: '#fff',
 						boxShadow: '0 10px 24px rgba(0, 122, 255, 0.4)',
 						marginBottom: '16px',
+						overflow: 'hidden',
 					}}
 				>
-					<ShieldCheck size={36} strokeWidth={2} />
+					{identity.iconUrl ? (
+						// eslint-disable-next-line @next/next/no-img-element
+						<img
+							src={identity.iconUrl}
+							alt={identity.siteName}
+							style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+						/>
+					) : (
+						<ShieldCheck size={36} strokeWidth={2} />
+					)}
 				</div>
 
 				<h2 style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 2px 0' }}>
-					{t('aboutTitle')}
+					{identity.siteName}
 				</h2>
-				<span style={{ fontSize: '12px', opacity: 0.65, marginBottom: '16px' }}>
-					{t('aboutSubtitle')}
+				<span style={{ fontSize: '12px', opacity: 0.65, marginBottom: '4px' }}>
+					{identity.appName} · {identity.studio}
+				</span>
+				<span style={{ fontSize: '11.5px', opacity: 0.55, marginBottom: '16px', textAlign: 'center', maxWidth: '330px' }}>
+					{language === 'tr' ? identity.descriptionTr : identity.descriptionEn}
 				</span>
 
 				{/* Specs list */}

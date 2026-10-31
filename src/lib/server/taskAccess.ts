@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getTeamById, getTeamTaskById, getTeamMembers } from '@/db';
 import type { Team, TeamTask, TeamMember } from '@/db/schema';
-import { can, type YetkiliKullanici } from '@/lib/auth/access';
+import { can, type AuthorizedUser } from '@/lib/auth/access';
 
 /**
  * What the caller may do with one team's task board. Decided from stored rows
@@ -17,13 +17,13 @@ export interface TeamBoardAccess {
 	manage: boolean;
 }
 
-export async function getBoardAccess(user: YetkiliKullanici, teamId: string): Promise<TeamBoardAccess | null> {
+export async function getBoardAccess(user: AuthorizedUser, teamId: string): Promise<TeamBoardAccess | null> {
 	const team = await getTeamById(teamId);
 	if (!team) return null;
-	const uyeler = await getTeamMembers(teamId);
+	const members = await getTeamMembers(teamId);
 	const manage = can(user, 'teams', 'yonet') || team.liderId === user.id;
-	const member = uyeler.some((u) => u.userId === user.id && u.status === 'aktif');
-	return { team, uyeler, view: manage || member, manage };
+	const member = members.some((u) => u.userId === user.id && u.status === 'aktif');
+	return { team, uyeler: members, view: manage || member, manage };
 }
 
 /** `work`: whoever may move the card and tick its checklist — `manage`, or the assignee. */
@@ -32,7 +32,7 @@ export interface TaskAccess extends TeamBoardAccess {
 	work: boolean;
 }
 
-export async function getTaskAccess(user: YetkiliKullanici, gorevId: string): Promise<TaskAccess | null> {
+export async function getTaskAccess(user: AuthorizedUser, gorevId: string): Promise<TaskAccess | null> {
 	const task = await getTeamTaskById(gorevId);
 	if (!task) return null;
 	const board = await getBoardAccess(user, task.teamId);

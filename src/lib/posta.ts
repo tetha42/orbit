@@ -5,26 +5,26 @@
  */
 
 /** The folders of the Mail app. `gonderilen` is a view of what the member wrote, not a place to file things. */
-export const POSTA_KLASORLERI = ['gelen', 'gonderilen', 'arsiv', 'cop'] as const;
-export type MailFolder = (typeof POSTA_KLASORLERI)[number];
+export const MAIL_FOLDERS = ['gelen', 'gonderilen', 'arsiv', 'cop'] as const;
+export type MailFolder = (typeof MAIL_FOLDERS)[number];
 
 /** Where a member has filed a conversation (stored per member). */
 export type MailStorage = 'gelen' | 'gonderilen' | 'arsiv' | 'cop';
 
-export const POSTA_KONU_MAX = 120;
-export const POSTA_GOVDE_MAX = 10_000;
-export const POSTA_ALICI_MAX = 20;
-export const POSTA_SAYFA_BOYUTU = 25;
+export const MAIL_SUBJECT_MAX = 120;
+export const MAIL_BODY_MAX = 10_000;
+export const MAIL_RECIPIENT_MAX = 20;
+export const MAIL_PAGE_SIZE = 25;
 /** The most people the recipient lookup returns for one search. */
-export const POSTA_ARAMA_LIMITI = 20;
+export const MAIL_SEARCH_LIMIT = 20;
 /** The longest search text the recipient lookup reads. */
-export const POSTA_ARAMA_MAX = 64;
+export const MAIL_SEARCH_MAX = 64;
 /** Messages a member may send per minute (new conversations and replies together). */
-export const POSTA_DAKIKA_LIMITI = 20;
+export const MAIL_PER_MINUTE_LIMIT = 20;
 
 /** What the conversation endpoint's PATCH can do. */
-export const POSTA_ISLEMLERI = ['okundu', 'okunmadi', 'arsivle', 'gelene', 'cope', 'sil'] as const;
-export type PostaIslemi = (typeof POSTA_ISLEMLERI)[number];
+export const MAIL_ACTIONS = ['okundu', 'okunmadi', 'arsivle', 'gelene', 'cope', 'sil'] as const;
+export type MailAction = (typeof MAIL_ACTIONS)[number];
 
 export interface MailPerson {
 	id: string;
@@ -47,7 +47,7 @@ export interface MailThreadSummary {
 	okunmamis: number;
 }
 
-export interface PostaKonuListesi {
+export interface MailConversationList {
 	klasor: MailFolder;
 	konular: MailThreadSummary[];
 	toplam: number;
@@ -68,7 +68,7 @@ export interface MailMessage {
 	benimMi: boolean;
 }
 
-export interface PostaKonusu {
+export interface MailConversation {
 	id: string;
 	konu: string;
 	klasor: MailStorage;
@@ -77,35 +77,35 @@ export interface PostaKonusu {
 }
 
 /** A recipient the message did not reach, and why. */
-export interface PostaAtlanan {
+export interface MailSkipped {
 	id: string;
 	ad: string;
 	/** `role`: the member's role does not open Mail. `pasif`: no longer an active member. */
 	neden: 'role' | 'pasif';
 }
 
-export interface PostaGonderimSonucu {
+export interface MailSendResult {
 	konuId: string;
 	mesajId: string;
-	atlananlar: PostaAtlanan[];
+	atlananlar: MailSkipped[];
 }
 
 /** What the recipient picker gets: a name and an id, nothing else about the member (no e-mail address, department or student number). */
-export interface PostaAlici extends MailPerson {
+export interface MailRecipient extends MailPerson {
 	/** False when the member's role does not open Mail: a message to them would not arrive. */
 	ulasilabilir: boolean;
 }
 
 /** The recipient lookup's answer. `oneri`: no search text was given, these are the people written with most recently. */
-export interface PostaAliciListesi {
+export interface MailRecipientList {
 	/** The search text this answers, so a slow answer to an earlier text is not mistaken for the current one. */
 	q: string;
-	alicilar: PostaAlici[];
+	alicilar: MailRecipient[];
 	oneri: boolean;
 }
 
 /** What the sender is told about a recipient the message did not reach. */
-export function atlananAciklamasi(a: PostaAtlanan): string {
+export function skippedReason(a: MailSkipped): string {
 	return a.neden === 'role' ? `${a.ad} kişisinin roleü Posta'yı açmıyor.` : `${a.ad} artık aktif üye değil.`;
 }
 

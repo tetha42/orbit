@@ -3,7 +3,7 @@
  * production/development split and the cache are covered by scripts/check-pure.mjs.
  */
 
-export interface KurulumDurumu {
+export interface SetupStatus {
 	hazir: boolean;
 	firstRun?: boolean;
 	/** Why setup is incomplete, naming the missing variables. Never leaves the server in production. */
@@ -17,7 +17,7 @@ export interface KurulumDurumu {
 	};
 }
 
-export interface KurulumYaniti {
+export interface SetupResponse {
 	hazir: boolean;
 	firstRun?: boolean;
 	step?: 'database' | 'identity' | 'admin' | 'ready';
@@ -33,18 +33,18 @@ export interface KurulumYaniti {
 	sebep?: string;
 }
 
-export const KURULUM_GENEL_MESAJ = 'Sunucu yöneticisi kurulumu tamamlamalı';
+export const SETUP_GENERAL_MESSAGE = 'Sunucu yöneticisi kurulumu tamamlamalı';
 
 /** Production gets the generic message only, so no environment variable name can leak. */
-export function kurulumYaniti(status: KurulumDurumu, nodeEnv: string | undefined): KurulumYaniti {
+export function setupResponse(status: SetupStatus, nodeEnv: string | undefined): SetupResponse {
 	if (status.hazir) {
-		const res: KurulumYaniti = { hazir: true };
+		const res: SetupResponse = { hazir: true };
 		if (status.step) res.step = status.step;
 		if (status.brand) res.brand = status.brand;
 		if (status.dbStatus) res.dbStatus = status.dbStatus;
 		return res;
 	}
-	const yanit: KurulumYaniti = { hazir: false, mesaj: KURULUM_GENEL_MESAJ };
+	const yanit: SetupResponse = { hazir: false, mesaj: SETUP_GENERAL_MESSAGE };
 	if (status.firstRun) yanit.firstRun = true;
 	if (status.step) yanit.step = status.step;
 	if (status.brand) yanit.brand = status.brand;
@@ -58,8 +58,8 @@ export function kurulumYaniti(status: KurulumDurumu, nodeEnv: string | undefined
  * the answer (or the failure) is shared for `ttlMs`, and concurrent callers
  * share one lookup, so the database sees at most one query per window.
  */
-export function createKurulumCache(lookup: () => Promise<KurulumDurumu>, ttlMs: number, now: () => number = Date.now) {
-	let entry: { at: number; result: Promise<KurulumDurumu> } | null = null;
+export function createSetupCache(lookup: () => Promise<SetupStatus>, ttlMs: number, now: () => number = Date.now) {
+	let entry: { at: number; result: Promise<SetupStatus> } | null = null;
 	return () => {
 		if (!entry || now() - entry.at >= ttlMs) entry = { at: now(), result: lookup() };
 		return entry.result;

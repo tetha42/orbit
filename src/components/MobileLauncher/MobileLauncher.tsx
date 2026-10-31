@@ -20,9 +20,9 @@ import { AlertTriangle } from 'lucide-react';
 
 export function MobileLauncher() {
 	const { canUseApp, canManageApp, currentUser } = useSession();
-	const { t } = useI18n();
+	const { t, getAppMeta } = useI18n();
 	const { playSystemSound } = useSound();
-	const { openApp: windowOpenApp } = useWindowActions();
+	const { openApp: windowOpenApp, closeApp: windowCloseApp } = useWindowActions();
 	const [selectedMobileApp, setActiveMobileApp] = useState<AppID | null>(null);
 	const [tab, setTab] = useState<MobileTab>('home');
 	const [smtpMissing, setSmtpMissing] = useState(false);
@@ -85,6 +85,7 @@ export function MobileLauncher() {
 				activeMobileApp={activeMobileApp}
 				onClose={() => {
 					playSystemSound();
+					if (activeMobileApp) windowCloseApp(activeMobileApp);
 					setActiveMobileApp(null);
 				}}
 			/>
@@ -208,7 +209,7 @@ export function MobileLauncher() {
 						}}
 					>
 						{appKeys.map((appId) => {
-							const meta = APPS_CONFIG[appId];
+							const meta = getAppMeta(appId);
 
 							return (
 								<button
@@ -255,19 +256,6 @@ export function MobileLauncher() {
 										<div style={{ fontSize: '14px', fontWeight: 700 }}>
 											{meta.shortTitle}
 										</div>
-										{meta.badge && (
-											<div
-												style={{
-													fontSize: '10px',
-													opacity: 0.7,
-													marginTop: '2px',
-													color: meta.accentColor,
-													fontWeight: 600,
-												}}
-											>
-												{meta.badge}
-											</div>
-										)}
 									</div>
 								</button>
 							);

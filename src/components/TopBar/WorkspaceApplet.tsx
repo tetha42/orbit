@@ -35,7 +35,7 @@ export function WorkspaceApplet() {
 
 	// Build authentic macOS Status Extra Context Menu items
 	const menuItems: MenuItem[] = [
-		{ id: 'hdr-apps', label: 'Club Management Tools', header: true },
+		{ id: 'hdr-apps', label: 'Community Management Tools', header: true },
 		...(Object.keys(APPS_CONFIG) as AppID[])
 			.filter((appId) => canUseApp(appId))
 			.map((appId) => {
@@ -69,7 +69,7 @@ export function WorkspaceApplet() {
 				},
 				{
 					id: 'act-new-event',
-					label: 'CommunityEvent & QR Attendance...',
+					label: 'Events & QR Attendance...',
 					shortcut: '⇧⌘E',
 					action: () => openApp('events'),
 				},
@@ -120,7 +120,7 @@ export function WorkspaceApplet() {
 		{ id: 'sep-bottom', label: '', separator: true },
 		{
 			id: 'portal-about',
-			label: 'About Club Portal OS...',
+			label: 'About Orbit Community OS...',
 			action: () => setIsAboutModalOpen(true),
 		},
 	];
@@ -130,7 +130,7 @@ export function WorkspaceApplet() {
 			{/* Menu Bar Status Icon */}
 			<button
 				onClick={() => setIsWorkspaceAppletOpen(!isWorkspaceAppletOpen)}
-				title="University Club Management Suite"
+				title="Community Management Suite"
 				style={{
 					display: 'flex',
 					alignItems: 'center',

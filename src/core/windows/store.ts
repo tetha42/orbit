@@ -1,5 +1,5 @@
 import { DEFAULT_DOCK_APPS } from '@/configs/apps.config';
-import { WINDOW_MANIFESTS } from '@/apps';
+import { ALL_WINDOW_MANIFESTS, INTERNAL_WINDOW_MANIFESTS } from '@/apps';
 import type { AppID, FocusTarget, FocusTargetInput, WindowState } from '@/types/workspace';
 
 /**
@@ -14,7 +14,7 @@ import type { AppID, FocusTarget, FocusTargetInput, WindowState } from '@/types/
  */
 
 export const INITIAL_WINDOWS = Object.fromEntries(
-	WINDOW_MANIFESTS.map((m): [AppID, WindowState] => [
+	ALL_WINDOW_MANIFESTS.map((m): [AppID, WindowState] => [
 		m.id as AppID,
 		{
 			isOpen: !!m.window.open,
@@ -74,6 +74,8 @@ const readCycleSetting = () => {
 		return true;
 	}
 };
+
+const INTERNAL_WINDOW_IDS = new Set(INTERNAL_WINDOW_MANIFESTS.map((m) => m.id));
 
 const nextZ = (windows: Record<AppID, WindowState>) => Math.max(15, ...Object.values(windows).map((w) => w.zIndex || 0)) + 1;
 
@@ -340,6 +342,7 @@ export function createWindowStore() {
 			const sanitized: Record<AppID, WindowState> = { ...INITIAL_WINDOWS };
 
 			for (const id of Object.keys(sanitized) as AppID[]) {
+				if (INTERNAL_WINDOW_IDS.has(id)) continue;
 				const src = saved.windows[id];
 				if (!src) continue;
 				const def = INITIAL_WINDOWS[id];

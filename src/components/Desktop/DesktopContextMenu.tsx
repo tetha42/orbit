@@ -168,7 +168,7 @@ export function GlobalContextMenu() {
 			{
 				id: 'dt-wallpaper',
 				label: t('ctxChangeWallpaper'),
-				action: () => openApp('settings'),
+				action: () => openApp('settings', { section: 'wallpaper' }),
 			},
 			{
 				id: 'dt-next-wallpaper',

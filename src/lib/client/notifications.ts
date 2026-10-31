@@ -57,12 +57,22 @@ export async function showAppNotification(
 		}
 
 		// Fallback to standard Notification constructor
-		new Notification(title, {
+		const notification = new Notification(title, {
 			icon: '/assets/img/logo-girdap.svg',
 			body: options.body,
 			tag: options.tag,
 			silent: options.silent,
+			data: options.data,
 		});
+		notification.onclick = () => {
+			window.focus();
+			window.dispatchEvent(
+				new CustomEvent('orbit:notification-click', {
+					detail: { target: options.data?.target, messageId: options.data?.messageId },
+				})
+			);
+			notification.close();
+		};
 		return true;
 	} catch {
 		return false;

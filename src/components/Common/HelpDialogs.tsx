@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Copy, Globe, Mail, MapPin, Phone } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
+import { useIdentity } from '@/core/identity';
 import { useDialog } from './DialogProvider';
 
 /**
@@ -117,6 +118,8 @@ function ContactRow({
 
 /** Help → Topluluk Destek & İletişim. */
 export function SupportCard() {
+	const { t } = useI18n();
+	const { identity } = useIdentity();
 	const [info, setInfo] = useState<{ studio: string; community: string; domain: string } | null>(null);
 
 	useEffect(() => {
@@ -134,9 +137,9 @@ export function SupportCard() {
 			.catch(() => {});
 	}, []);
 
-	const studio = info?.studio || 'tetha42';
-	const community = info?.community || 'Orbit Community';
-	const domain = info?.domain || 'orbit.local';
+	const studio = info?.studio || identity.studio;
+	const community = info?.community || identity.siteName;
+	const domain = info?.domain || identity.domain;
 	const supportMail = `support@${domain}`;
 
 	return (
@@ -148,23 +151,23 @@ export function SupportCard() {
 			</p>
 			<ContactRow
 				icon={MapPin}
-				label="Ekosistem"
+				label={t('helpEcosystem')}
 				value={`${studio} Open Source Labs & Studio`}
 			/>
 			<ContactRow
 				icon={Mail}
-				label="E-posta"
+				label={t('helpEmail')}
 				value={supportMail}
 				href={`mailto:${supportMail}`}
 			/>
 			<ContactRow
 				icon={Phone}
-				label="Topluluk"
+				label={t('helpCommunity')}
 				value={`${community} Platform Hub`}
 			/>
 			<ContactRow
 				icon={Globe}
-				label="Domain"
+				label={t('helpDomain')}
 				value={domain}
 				href={`https://${domain}`}
 			/>
@@ -221,23 +224,23 @@ export function DocumentationShortcuts() {
  */
 export function useHelpDialogs() {
 	const dialog = useDialog();
+	const { t } = useI18n();
 	return useMemo(
 		() => ({
 			showDocumentation: () =>
 				void dialog.alert({
-					title: 'Portal Kullanım Kılavuzu',
-					message:
-						'Toplam 320 senaryo, role tabanlı erişim, WebAuthn & 2FA güvenlik katmanı, Ar-Ge takımları, karar defteri ve etkinlik yönetimi aktif olarak çalışmaktadır.',
+					title: t('helpGuideTitle'),
+					message: t('helpGuideMessage'),
 					tone: 'info',
 					body: <DocumentationShortcuts />,
 				}),
 			showSupport: () =>
 				void dialog.alert({
-					title: 'Topluluk Destek & İletişim',
+					title: t('helpSupportTitle'),
 					tone: 'info',
 					body: <SupportCard />,
 				}),
 		}),
-		[dialog]
+		[dialog, t]
 	);
 }

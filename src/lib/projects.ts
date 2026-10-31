@@ -8,17 +8,17 @@
  * `oneri`: proposed by a member, visible to them and to management only.
  * `yayinda`: in the showcase for every member. `arsiv`: kept, but out of the way.
  */
-export const PROJE_DURUMLARI = ['oneri', 'yayinda', 'arsiv'] as const;
-export type ProjeDurumu = (typeof PROJE_DURUMLARI)[number];
+export const PROJECT_STATUSES = ['oneri', 'yayinda', 'arsiv'] as const;
+export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
 
-export const PROJE_BASLIK_MAX = 120;
-export const PROJE_OZET_MAX = 280;
-export const PROJE_ACIKLAMA_MAX = 6000;
+export const PROJECT_TITLE_MAX = 120;
+export const PROJECT_SUMMARY_MAX = 280;
+export const PROJECT_DESCRIPTION_MAX = 6000;
 export const TEKNOLOJI_MAX = 24;
 export const TEKNOLOJI_SAYISI_MAX = 12;
 
-export function isProjeDurumu(value: unknown): value is ProjeDurumu {
-	return typeof value === 'string' && (PROJE_DURUMLARI as readonly string[]).includes(value);
+export function isProjectStatus(value: unknown): value is ProjectStatus {
+	return typeof value === 'string' && (PROJECT_STATUSES as readonly string[]).includes(value);
 }
 
 /**

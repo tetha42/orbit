@@ -15,9 +15,9 @@ import type { AppMenuItem, L10n } from '@/core/apps/manifest';
 const PORTAL_MENUS: MenuCategory[] = [
 	{
 		id: 'default',
-		title: 'Kulüp Portali',
+		title: 'Topluluk Portali',
 		items: [
-			{ id: 'about-portal', label: 'Kulüp Portali Hakkında', shortcut: '⌘I' },
+			{ id: 'about-portal', label: 'Topluluk Portali Hakkında', shortcut: '⌘I' },
 			{ id: 'preferences', label: 'Sistem Tercihleri...', shortcut: '⌘,' },
 			{ id: 'sep1', label: '', separator: true },
 			{ id: 'refresh-data', label: 'Tüm Verileri Yenile' },

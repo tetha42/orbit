@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { User } from '@/db/schema';
 import { getRolePermission, type Permission } from '@/db/roles';
-import { canManage, canUse, seviyeOf, type Seviye, YETKI_ACIKLAMALARI, isYetkiUygulamasi } from '@/core/permissions';
+import { canManage, canUse, seviyeOf, type Seviye, PERMISSION_DESCRIPTIONS, isPermissionApp } from '@/core/permissions';
 import { clientAddress } from '@/lib/http';
 import { consumeRateLimit } from '@/lib/rateLimit';
 import { logSystemEvent } from '@/server/db/domains/logs.repo';
@@ -20,14 +20,17 @@ import { verifyAuth } from './authGuard';
  * enrolled. Routes that decide per record (a captain on their own team) call
  * `authenticate` and combine `can()` with their own rule.
  */
-export type YetkiliKullanici = User & { permission: Permission };
+export type AuthorizedUser = User & { permission: Permission };
 
 export type AccessResult =
-	| { authorized: true; user: YetkiliKullanici; response?: never }
+	| { authorized: true; user: AuthorizedUser; response?: never }
 	| { authorized: false; user?: never; response: NextResponse };
 
 /** Whether this member still has to enrol a second factor before using any app. */
-export function ikiAdimBekliyor(user: YetkiliKullanici): boolean {
+export function ikiAdimBekliyor(user: AuthorizedUser): boolean {
+	// A passkey assertion is itself multi-factor, so a passkey session satisfies
+	// the role's two-factor rule even when no TOTP authenticator is enrolled.
+	if (user.authMethod === 'passkey') return false;
 	return user.permission.ikiAdimZorunlu && Number(user.totpEnabled) !== 1;
 }
 
@@ -57,7 +60,7 @@ export async function authenticateEnrolled(request: Request): Promise<AccessResu
 }
 
 /** `can(user, 'events', 'yonet')` — the role's level, and the second factor where required. */
-export function can(user: YetkiliKullanici, appId: string, seviye: Seviye = 'kullan'): boolean {
+export function can(user: AuthorizedUser, appId: string, seviye: Seviye = 'kullan'): boolean {
 	if (ikiAdimBekliyor(user)) return false;
 	return seviye === 'yonet' ? canManage(user.permission.izinler, appId) : canUse(user.permission.izinler, appId);
 }
@@ -68,7 +71,7 @@ export async function requireApp(request: Request, appId: string, seviye: Seviye
 	const user = auth.user;
 	const ok = seviye === 'yonet' ? canManage(user.permission.izinler, appId) : canUse(user.permission.izinler, appId);
 	if (!ok) {
-		const ad = isYetkiUygulamasi(appId) ? YETKI_ACIKLAMALARI[appId].ad : appId;
+		const ad = isPermissionApp(appId) ? PERMISSION_DESCRIPTIONS[appId].ad : appId;
 		const has = seviyeOf(user.permission.izinler, appId);
 		const ip = clientAddress(request);
 		const pathname = new URL(request.url).pathname;

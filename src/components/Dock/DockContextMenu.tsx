@@ -63,7 +63,7 @@ export function DockContextMenu() {
 	} else if (appId === 'members' && canManageApp('members')) {
 		items.push({
 			id: 'dock-new-member',
-			label: 'Register Club Member...',
+			label: 'Register Community Member...',
 			shortcut: '⇧⌘M',
 			action: () => {
 				openApp('members');

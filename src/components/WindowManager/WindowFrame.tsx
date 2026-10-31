@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { AppID } from '@/types/workspace';
 import { useIsActive, useWindow, useWindowActions } from '@/core/windows';
 import { useI18n } from '@/core/i18n';
@@ -28,9 +28,30 @@ const RESIZE_CURSORS: Record<ResizeDirection, string> = {
 };
 type SnapTarget = 'none' | 'maximize' | 'left' | 'right' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
 
-// Memoised so a window move or focus change does not re-render the app inside it.
-const WindowAppContent = React.memo(function WindowAppContent({ appId }: { appId: AppID }) {
-	return <AppContent appId={appId} />;
+// Memoised so a window move or drag does not re-render the app inside it.
+const WindowAppContent = React.memo(function WindowAppContent({
+	appId,
+	isForeground,
+	close,
+	minimize,
+	maximize,
+}: {
+	appId: AppID;
+	isForeground: boolean;
+	close: () => void;
+	minimize: () => void;
+	maximize: () => void;
+}) {
+	return (
+		<AppContent
+			appId={appId}
+			instanceId={appId}
+			isForeground={isForeground}
+			close={close}
+			minimize={minimize}
+			maximize={maximize}
+		/>
+	);
 });
 
 export function WindowFrame({ appId }: WindowFrameProps) {
@@ -45,6 +66,10 @@ export function WindowFrame({ appId }: WindowFrameProps) {
 	const minW = meta.minWidth || 380;
 	const minH = meta.minHeight || 260;
 	const isActive = useIsActive(appId);
+
+	const handleClose = useCallback(() => closeApp(appId), [closeApp, appId]);
+	const handleMinimize = useCallback(() => minimizeApp(appId), [minimizeApp, appId]);
+	const handleMaximize = useCallback(() => toggleMaximize(appId), [toggleMaximize, appId]);
 
 	// Dragging & Resizing States
 	const [isDragging, setIsDragging] = useState(false);
@@ -634,7 +659,13 @@ export function WindowFrame({ appId }: WindowFrameProps) {
 							display: 'block',
 						}}
 					>
-						<WindowAppContent appId={appId} />
+						<WindowAppContent
+							appId={appId}
+							isForeground={isActive}
+							close={handleClose}
+							minimize={handleMinimize}
+							maximize={handleMaximize}
+						/>
 					</div>
 				</div>
 

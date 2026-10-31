@@ -5,10 +5,13 @@
  */
 
 export const BIO_MAX = 280;
-export const SINIF_MIN = 1;
-export const SINIF_MAX = 6;
-export const SIFRE_MIN = 8;
-export const SIFRE_MAX = 128;
+export const GRADE_MIN = 1;
+// Experience levels are configured per community; `users.grade` is a plain
+// Postgres INTEGER, so the storage ceiling is the column's own maximum rather
+// than an arbitrary six-level UI list.
+export const GRADE_MAX = 2_147_483_647;
+export const PASSWORD_MIN = 8;
+export const PASSWORD_MAX = 128;
 /** Profile photos are downscaled in the browser; the server still checks the bytes and the size. */
 export const PROFIL_FOTO_MAX_BYTES = 2 * 1024 * 1024;
 export const PROFIL_FOTO_PX = 320;
@@ -47,10 +50,10 @@ const COMMONLY_BREACHED_PASSWORDS = new Set([
  * Why a new password is not acceptable, or null when it is. Turkish, because the
  * API returns it to the member as is.
  */
-export function sifreHatasi(yeni: unknown, opts: { mevcut?: string; email?: string } = {}): string | null {
+export function passwordProblem(yeni: unknown, opts: { mevcut?: string; email?: string } = {}): string | null {
 	if (typeof yeni !== 'string') return 'Yeni şifre gerekli.';
-	if (yeni.length < SIFRE_MIN) return `Yeni şifre en az ${SIFRE_MIN} karakter olmalıdır.`;
-	if (yeni.length > SIFRE_MAX) return `Yeni şifre en fazla ${SIFRE_MAX} karakter olabilir.`;
+	if (yeni.length < PASSWORD_MIN) return `Yeni şifre en az ${PASSWORD_MIN} karakter olmalıdır.`;
+	if (yeni.length > PASSWORD_MAX) return `Yeni şifre en fazla ${PASSWORD_MAX} karakter olabilir.`;
 	if (!/\p{L}/u.test(yeni) || !/\d/.test(yeni)) return 'Yeni şifre en az bir harf ve bir rakam içermelidir.';
 	if (opts.mevcut !== undefined && yeni === opts.mevcut) return 'Yeni şifre mevcut şifreyle aynı olamaz.';
 	const local = opts.email?.split('@')[0]?.toLocaleLowerCase('tr-TR');

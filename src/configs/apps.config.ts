@@ -1,6 +1,6 @@
 import { AppID, AppMetadata } from '@/types/workspace';
 import { Language } from '@/lib/i18n';
-import { DEFAULT_DOCK_ORDER, WINDOW_MANIFESTS } from '@/apps';
+import { ALL_WINDOW_MANIFESTS, DEFAULT_DOCK_ORDER, WINDOW_MANIFESTS } from '@/apps';
 
 /**
  * What the desktop knows about each app, derived from the manifests under
@@ -12,8 +12,8 @@ import { DEFAULT_DOCK_ORDER, WINDOW_MANIFESTS } from '@/apps';
 export type ExtendedAppMetadata = AppMetadata;
 
 export function getAppMeta(appId: AppID, lang: Language = 'en'): ExtendedAppMetadata {
-	const base = APPS_CONFIG[appId];
-	const manifest = WINDOW_MANIFESTS.find((m) => m.id === appId);
+	const base = ALL_APPS_CONFIG[appId];
+	const manifest = ALL_WINDOW_MANIFESTS.find((m) => m.id === appId);
 	if (!base || !manifest) return base;
 	const localized = lang === 'tr' ? (manifest.tr ?? undefined) : (lang === 'en' ? manifest.en : undefined);
 	const badge = typeof manifest.badge === 'object' ? manifest.badge[lang] : manifest.badge;
@@ -30,8 +30,8 @@ export function getAppMeta(appId: AppID, lang: Language = 'en'): ExtendedAppMeta
 	};
 }
 
-export const APPS_CONFIG = Object.fromEntries(
-	WINDOW_MANIFESTS.map((m): [AppID, ExtendedAppMetadata] => [
+export const ALL_APPS_CONFIG = Object.fromEntries(
+	ALL_WINDOW_MANIFESTS.map((m): [AppID, ExtendedAppMetadata] => [
 		m.id as AppID,
 		{
 			id: m.id as AppID,
@@ -48,5 +48,10 @@ export const APPS_CONFIG = Object.fromEntries(
 		},
 	])
 ) as Record<AppID, ExtendedAppMetadata>;
+
+/** Launcher, dock, Spotlight and context menus only list user-facing apps. */
+export const APPS_CONFIG = Object.fromEntries(
+	WINDOW_MANIFESTS.map((m) => [m.id, ALL_APPS_CONFIG[m.id as AppID]])
+) as Record<string, ExtendedAppMetadata>;
 
 export const DEFAULT_DOCK_APPS: AppID[] = [...DEFAULT_DOCK_ORDER];

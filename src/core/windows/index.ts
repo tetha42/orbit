@@ -12,3 +12,4 @@ export {
 	useWindows,
 } from './hooks';
 export type { WindowActions, WindowStore, WindowsState } from './store';
+export { MiniAppErrorBoundary, type MiniAppErrorBoundaryProps } from './MiniAppErrorBoundary';

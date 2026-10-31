@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useWorkspace, type RegisterPayload } from '@/state/workspaceStore';
-import type { KurulumYaniti } from '@/lib/kurulum';
+import type { SetupResponse } from '@/lib/kurulum';
 
 export type AuthTab = 'login' | 'register';
 
@@ -23,20 +23,20 @@ export function useAuthFlow() {
 	const [challengeToken, setChallengeToken] = useState<string | null>(null);
 
 	// Whether anyone can sign in yet.
-	const [kurulum, setKurulum] = useState<KurulumYaniti | null>(null);
+	const [setup, setSetup] = useState<SetupResponse | null>(null);
 	useEffect(() => {
 		let cancelled = false;
 		fetch('/api/setup', { cache: 'no-store' })
-			.then((res) => (res.ok ? (res.json() as Promise<KurulumYaniti>) : null))
+			.then((res) => (res.ok ? (res.json() as Promise<SetupResponse>) : null))
 			.then((data) => {
-				if (!cancelled && data && typeof data.hazir === 'boolean') setKurulum(data);
+				if (!cancelled && data && typeof data.hazir === 'boolean') setSetup(data);
 			})
 			.catch(() => {});
 		return () => {
 			cancelled = true;
 		};
 	}, []);
-	const kurulumEksik = kurulum?.hazir === false;
+	const setupIncomplete = setup?.hazir === false;
 
 	const clearFeedback = useCallback(() => {
 		setErrorMessage(null);
@@ -54,7 +54,7 @@ export function useAuthFlow() {
 
 	const submitLogin = useCallback(
 		async (email: string, password: string) => {
-			if (kurulumEksik) return;
+			if (setupIncomplete) return;
 			clearFeedback();
 			setLoading(true);
 			const result = await login(email, password);
@@ -75,12 +75,12 @@ export function useAuthFlow() {
 				setErrorMessage(result.error || 'Invalid email or password.');
 			}
 		},
-		[clearFeedback, kurulumEksik, login]
+		[clearFeedback, setupIncomplete, login]
 	);
 
 	const submitPasskey = useCallback(
 		async (email: string) => {
-			if (kurulumEksik) return;
+			if (setupIncomplete) return;
 			clearFeedback();
 
 			if (!email.trim()) {
@@ -92,16 +92,11 @@ export function useAuthFlow() {
 			const result = await loginWithPasskey(email.trim());
 			setLoading(false);
 
-			if (result.require2fa && result.challengeToken) {
-				setChallengeToken(result.challengeToken);
-				return;
-			}
-
 			if (!result.success) {
 				setErrorMessage(result.error || 'Passkey sign-in could not be completed.');
 			}
 		},
-		[clearFeedback, kurulumEksik, loginWithPasskey]
+		[clearFeedback, setupIncomplete, loginWithPasskey]
 	);
 
 	const submitTwoFactor = useCallback(
@@ -124,7 +119,7 @@ export function useAuthFlow() {
 
 	const submitRegister = useCallback(
 		async (formData: RegisterPayload) => {
-			if (kurulumEksik) return { success: false };
+			if (setupIncomplete) return { success: false };
 			clearFeedback();
 			setLoading(true);
 			const result = await register(formData);
@@ -138,10 +133,15 @@ export function useAuthFlow() {
 				setActiveTab('login');
 			} else if (!result.success) {
 				setErrorMessage(result.error || 'Registration failed.');
+			} else if (result.mailQueued) {
+				setSuccessMessage(
+					result.message ||
+						'E-posta servisi kullanılamıyor; doğrulama kodunuz yönetici onayına alındı.'
+				);
 			}
 			return result;
 		},
-		[clearFeedback, kurulumEksik, register]
+		[clearFeedback, setupIncomplete, register]
 	);
 
 	const cancelTwoFactor = useCallback(() => {
@@ -157,8 +157,8 @@ export function useAuthFlow() {
 		successMessage,
 		pendingNotice,
 		challengeToken,
-		kurulum,
-		kurulumEksik,
+		setup,
+		setupIncomplete,
 		sessionConflict,
 		submitLogin,
 		submitPasskey,

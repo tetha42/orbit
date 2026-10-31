@@ -18,7 +18,11 @@ const SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
  * only tells the browser when to stop sending it — the server needs its own
  * record to reject a cookie that is replayed after that point.
  */
-export async function establishSession(user: User, request?: Request): Promise<string> {
+export async function establishSession(
+	user: User,
+	request?: Request,
+	authMethod: 'password' | 'totp' | 'passkey' = 'password'
+): Promise<string> {
 	const sessionToken = crypto.randomBytes(32).toString('base64url');
 	const telemetry = request
 		? {
@@ -30,8 +34,13 @@ export async function establishSession(user: User, request?: Request): Promise<s
 		user.id,
 		sessionToken,
 		Date.now() + SESSION_MAX_AGE_SECONDS * 1000,
-		telemetry
+		telemetry,
+		authMethod
 	);
+	// Keep the in-memory row consistent with what was just stored, so a caller
+	// that builds the session user from this object does not briefly report
+	// `mustSetup2fa` to a passkey-authenticated member.
+	user.authMethod = authMethod;
 	return sessionToken;
 }
 
@@ -68,6 +77,7 @@ export function clearSessionCookie(response: NextResponse): NextResponse {
 export function toSessionUser(user: User, permission: Permission): SessionUser {
 	const twoFactorEnabled = Number(user.totpEnabled) === 1;
 	const twoFactorRequired = permission.ikiAdimZorunlu;
+	const passkeySession = (user.authMethod ?? 'password') === 'passkey';
 
 	return {
 		id: user.id,
@@ -84,7 +94,8 @@ export function toSessionUser(user: User, permission: Permission): SessionUser {
 		sonGirisTarihi: user.sonGirisTarihi,
 		twoFactorEnabled,
 		twoFactorRequired,
-		mustSetup2fa: twoFactorRequired && !twoFactorEnabled,
+		authMethod: user.authMethod ?? 'password',
+		mustSetup2fa: twoFactorRequired && !twoFactorEnabled && !passkeySession,
 		rolBilgi: permission.role,
 		izinler: permission.izinler,
 		admin: permission.admin,

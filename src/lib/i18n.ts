@@ -1,4 +1,5 @@
 import { EXTRA_TRANSLATIONS } from './i18nExtra.ts';
+import { FEATURE_TRANSLATIONS } from './i18nFeatures.ts';
 
 export type Language = 'tr' | 'en';
 
@@ -62,7 +63,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 		appTerminal: 'SSH & Terminal',
 
 		// Top Menu Bar
-		menuAboutPortal: 'Kulüp Portali Hakkında',
+		menuAboutPortal: 'Topluluk Portali Hakkında',
 		menuPreferences: 'Sistem Tercihleri...',
 		menuHide: 'Portali Gizle',
 		menuHideOthers: 'Diğerlerini Gizle',
@@ -87,7 +88,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 		menuZoom: 'Büyüt / Küçült',
 		menuTileWindows: 'Tüm Pencereleri Hizala',
 		menuDocumentation: 'Portal Kullanım Kılavuzu',
-		menuSupport: 'Öğrenci Kulüpleri Koordinatörlüğü',
+		menuSupport: 'Öğrenci Topluluklari Koordinatörlüğü',
 		menuLockScreen: 'Ekranı Kilitle',
 		menuRestart: 'Portali Yeniden Başlat...',
 		menuLogout: 'Oturumu Kapat...',
@@ -117,7 +118,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 		menuNewInventoryItem: 'Yeni Demirbaş Kaydı',
 		menuExportInventory: 'Zimmet Listesi Çıktısı (CSV)',
 		menuRoster: 'Kadro',
-		menuAddNewMember: 'Yeni Kulüp Üyesi Kaydet',
+		menuAddNewMember: 'Yeni Topluluk Üyesi Kaydet',
 		menuApproveMembers: 'Onay Bekleyen Başvurular',
 		menuExportMembersCsv: 'Tam Üye Listesi (CSV)',
 		menuNotesFile: 'Notlar',
@@ -139,7 +140,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 		profile: 'Kullanıcı Profili',
 		roleNone: 'Rol atanmadı',
 		noRoleTitle: 'Henüz bir rol atanmadı',
-		noRoleBody: 'Kulüp yöneticiniz size bir rol atadığında uygulamalarınız burada görünecek. Bu sırada Ayarlar\'dan hesabınızı ve güvenliğinizi düzenleyebilirsiniz.',
+		noRoleBody: 'Topluluk yöneticiniz size bir rol atadığında uygulamalarınız burada görünecek. Bu sırada Ayarlar\'dan hesabınızı ve güvenliğinizi düzenleyebilirsiniz.',
 		noAppsTitle: 'Rolünüz henüz bir uygulama açmıyor',
 		noAppsBody: 'Rolünüze uygulama izni verildiğinde burada görünecek. Bu sırada Ayarlar\'dan hesabınızı düzenleyebilirsiniz.',
 		noRoleOpenSettings: 'Ayarları aç',
@@ -165,12 +166,14 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 		tabCommunity: 'Topluluk Kimliği',
 		tabSmtp: 'E-posta Hesabı',
 		tabRoles: 'Roller ve Yetkiler',
+		tabAudit: 'Denetim Kaydı',
+		tabPrivacy: 'Veri ve Gizlilik',
 		tabIntegrations: 'Entegre Uygulamalar (OAuth)',
 		settingsGroupSystem: 'Sistem & Topluluk',
 
 		// Settings Content
 		settingsWallpaperTitle: 'Masaüstü Duvar Kağıdı',
-		settingsWallpaperDesc: 'Kulüp Portali çalışma alanınız için 3D sahne, Uzay & Galaksi ve yüksek çözünürlüklü duvar kağıtlarını seçin.',
+		settingsWallpaperDesc: 'Topluluk Portali çalışma alanınız için 3D sahne, Uzay & Galaksi ve yüksek çözünürlüklü duvar kağıtlarını seçin.',
 		settingsWallpaperCurrent: 'Aktif Duvar Kağıdı',
 		settingsWallpaperCatalog: 'Duvar Kağıtları Kataloğu',
 		settingsWallpaperCategoryAll: 'Tümü',
@@ -206,7 +209,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 		settingsSecurityTitle: 'Hesap Güvenliği & İki Aşamalı Doğrulama',
 		settingsSecurityDesc: 'WebAuthn passkey anahtarlarınızı ve TOTP 2FA korumanızı yönetin.',
 		settingsSmtpTitle: 'E-Posta Hesabı (SMTP)',
-		settingsSmtpDesc: 'Üniversite duyuruları ve doğrulama e-postaları için SMTP sunucu yapılandırması.',
+		settingsSmtpDesc: 'Stüdyo duyuruları ve doğrulama e-postaları için SMTP sunucu yapılandırması.',
 
 		// Desktop & Context Menus
 		ctxNewEvent: 'Yeni Etkinlik Oluştur...',
@@ -333,8 +336,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 
 		// Budget App
 		budgetHeader: 'Kasa, Bütçe & Mali Döküm',
-		budgetSubtitle: 'Kulüp sponsorluk gelirleri, malzeme faturaları ve resmi fiş kayıtları.',
-		budgetNetBalance: 'Net Kulüp Bakiyesi',
+		budgetSubtitle: 'Topluluk sponsorluk gelirleri, malzeme faturaları ve resmi fiş kayıtları.',
+		budgetNetBalance: 'Net Topluluk Bakiyesi',
 		budgetTotalIncome: 'Toplam Gelir',
 		budgetTotalExpense: 'Toplam Gider',
 		budgetNewEntry: 'Yeni Gelir / Gider Girişi',
@@ -365,7 +368,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 
 		// Certificates App
 		certsHeader: 'Sertifikalarım & Başarı Rozetleri',
-		certsSubtitle: 'Kulüp atölyeleri, hackathon dereceleri ve doğrulanabilir dijital belgeler.',
+		certsSubtitle: 'Topluluk atölyeleri, hackathon dereceleri ve doğrulanabilir dijital belgeler.',
 		certsLevel: 'Seviye',
 		certsExplorer: 'Teknoloji Kaşifi',
 		certsEarnedXp: 'Kazanılan XP',
@@ -379,7 +382,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 
 		// Inventory App
 		invHeader: 'Laboratuvar & Demirbaş Envanteri',
-		invSubtitle: 'Kulüp geliştirme kitleri, sensör modülleri, 3D yazıcılar ve zimmet takip sistemi.',
+		invSubtitle: 'Topluluk geliştirme kitleri, sensör modülleri, 3D yazıcılar ve zimmet takip sistemi.',
 		invTotalItems: 'Toplam Demirbaş',
 		invAssigned: 'Zimmetli / Kullanımda',
 		invAvailable: 'Depoda / Müsait',
@@ -393,7 +396,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 		invColAssignedTo: 'Zimmetli Kişi',
 
 		// Member Directory App
-		membersHeader: 'Kulüp Üye & Kadro Rehberi',
+		membersHeader: 'Topluluk Üye & Kadro Rehberi',
 		membersSubtitle: 'Tüm kayıtlı üyeler, yetki kademeleri, bölümler ve proje atamaları.',
 		membersSearchPlaceholder: 'İsim, e-posta, bölüm veya takım ara...',
 		membersFilterAll: 'Tüm Üyeler',
@@ -410,7 +413,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 		membersColXp: 'XP / Katılım',
 		membersColActions: 'İşlemler',
 		membersRefresh: 'Yenile',
-		membersAddMemberModalTitle: 'Yeni Kulüp Üyesi Kaydı',
+		membersAddMemberModalTitle: 'Yeni Topluluk Üyesi Kaydı',
 
 		// Quick Notes App
 		notesPlaceholder: 'Toplantı notları, kararlar ve yapılacakları yazmaya başlayın...',
@@ -428,7 +431,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 		terminalConnected: 'Bağlandı (Yerel PTY)',
 		terminalDisconnected: 'Bağlantı kesildi',
 		terminalRestricted: 'Yetkisiz Erişim / Erişim Kısıtlandı',
-		terminalRestrictedDesc: 'SSH Terminal erişimi yalnızca Yönetim Kurulu ve Kulüp Başkanı için yetkilendirilmiştir.',
+		terminalRestrictedDesc: 'SSH Terminal erişimi yalnızca Yönetim Kurulu ve Topluluk Başkanı için yetkilendirilmiştir.',
 		terminalCopy: 'Kopyala',
 		terminalCopied: 'Kopyalandı',
 		terminalClear: 'Temizle',
@@ -436,7 +439,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 
 		// PWA Gateway
 		pwaRequiredTitle: 'Portal Uygulamasını Yükleyin',
-		pwaRequiredDesc: 'Club Portal OS güvenli, izole ve yerel donanım ivmeli çalışma ortamı için PWA (Progressive Web App) olarak çalışacak şekilde tasarlanmıştır.',
+		pwaRequiredDesc: 'Community Portal OS güvenli, izole ve yerel donanım ivmeli çalışma ortamı için PWA (Progressive Web App) olarak çalışacak şekilde tasarlanmıştır.',
 		pwaInstallBtn: 'Uygulamayı Cihaza Yükle (Install PWA)',
 		pwaDevBypassBtn: 'Tarayıcıda Devam Et (Geliştirici Modu)',
 		pwaInstructionsDesktop: 'Chrome / Edge adres çubuğundaki Yükle simgesine tıklayın veya Safari menüsünden "Dock\'a Ekle" seçin.',
@@ -499,7 +502,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 		appTerminal: 'SSH & Terminal',
 
 		// Top Menu Bar
-		menuAboutPortal: 'About Club Portal',
+		menuAboutPortal: 'About Community Portal',
 		menuPreferences: 'System Preferences...',
 		menuHide: 'Hide Portal',
 		menuHideOthers: 'Hide Others',
@@ -524,7 +527,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 		menuZoom: 'Zoom / Toggle Maximize',
 		menuTileWindows: 'Tile All Windows',
 		menuDocumentation: 'Portal User Guide',
-		menuSupport: 'Student Clubs Coordination Support',
+		menuSupport: 'Student Communitys Coordination Support',
 		menuLockScreen: 'Lock Screen',
 		menuRestart: 'Restart Portal...',
 		menuLogout: 'Log Out...',
@@ -576,7 +579,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 		profile: 'User Profile',
 		roleNone: 'No role assigned',
 		noRoleTitle: 'No role assigned yet',
-		noRoleBody: 'Your apps will appear here once a club admin gives you a role. Meanwhile you can manage your account and security in Settings.',
+		noRoleBody: 'Your apps will appear here once a community admin gives you a role. Meanwhile you can manage your account and security in Settings.',
 		noAppsTitle: 'Your role does not open any apps yet',
 		noAppsBody: 'Apps appear here once your role is granted access. Meanwhile you can manage your account in Settings.',
 		noRoleOpenSettings: 'Open Settings',
@@ -602,6 +605,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 		tabCommunity: 'Community Identity',
 		tabSmtp: 'Email Account',
 		tabRoles: 'Roles & Permissions',
+		tabAudit: 'Audit Log',
+		tabPrivacy: 'Data & Privacy',
 		tabIntegrations: 'Connected Apps (OAuth)',
 		settingsGroupSystem: 'System & Community',
 
@@ -643,7 +648,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 		settingsSecurityTitle: 'Account Security & Two-Factor Authentication',
 		settingsSecurityDesc: 'Manage your WebAuthn passkeys and TOTP two-factor authentication safeguards.',
 		settingsSmtpTitle: 'Email Account (SMTP)',
-		settingsSmtpDesc: 'Configure SMTP credentials for outgoing university announcements and notifications.',
+		settingsSmtpDesc: 'Configure SMTP credentials for outgoing studio announcements and notifications.',
 
 		// Desktop & Context Menus
 		ctxNewEvent: 'Create New Event...',
@@ -760,7 +765,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 		eventsConfirmedTitle: 'Your Registration is Confirmed',
 		eventsConfirmedDesc: 'You can present your digital Apple Wallet pass to the event staff at the entrance.',
 		eventsReservationTitle: 'Event Reservation',
-		eventsReservationDesc: 'Register with 1 click and earn +30 XP towards your club profile.',
+		eventsReservationDesc: 'Register with 1 click and earn +30 XP towards your community profile.',
 		eventsShowTicketWallet: 'Show Digital Pass (Wallet)',
 		eventsCancelMyRegistration: 'Cancel My Registration',
 		eventsRegisterButtonXp: 'Register for Event (+30 XP)',
@@ -770,8 +775,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 
 		// Budget App
 		budgetHeader: 'Treasury, Budget & Financial Ledger',
-		budgetSubtitle: 'Club sponsorship revenues, lab procurement invoices, and verified receipts.',
-		budgetNetBalance: 'Net Club Balance',
+		budgetSubtitle: 'Community sponsorship revenues, lab procurement invoices, and verified receipts.',
+		budgetNetBalance: 'Net Community Balance',
 		budgetTotalIncome: 'Total Revenue',
 		budgetTotalExpense: 'Total Expenses',
 		budgetNewEntry: 'Add Financial Entry',
@@ -865,7 +870,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 		terminalConnected: 'Connected (Native PTY)',
 		terminalDisconnected: 'Disconnected',
 		terminalRestricted: 'Access Restricted',
-		terminalRestrictedDesc: 'SSH Terminal is strictly reserved for Executive Board and Club President.',
+		terminalRestrictedDesc: 'SSH Terminal is strictly reserved for Executive Board and Community President.',
 		terminalCopy: 'Copy',
 		terminalCopied: 'Copied',
 		terminalClear: 'Clear',
@@ -873,7 +878,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 
 		// PWA Gateway
 		pwaRequiredTitle: 'Install Portal Desktop App',
-		pwaRequiredDesc: 'Club Portal OS is optimized for secure, isolated hardware-accelerated execution as a Progressive Web App (PWA).',
+		pwaRequiredDesc: 'Community Portal OS is optimized for secure, isolated hardware-accelerated execution as a Progressive Web App (PWA).',
 		pwaInstallBtn: 'Install App on Device (PWA)',
 		pwaDevBypassBtn: 'Continue in Browser (Developer Mode)',
 		pwaInstructionsDesktop: 'Click the Install icon in the Chrome / Edge address bar, or choose "Add to Dock" in Safari.',
@@ -883,5 +888,5 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 
 // Newer features keep their copy in i18nExtra.ts; fold it into the main dictionary.
 for (const language of ['tr', 'en'] as const) {
-	Object.assign(TRANSLATIONS[language], EXTRA_TRANSLATIONS[language]);
+	Object.assign(TRANSLATIONS[language], EXTRA_TRANSLATIONS[language], FEATURE_TRANSLATIONS[language]);
 }

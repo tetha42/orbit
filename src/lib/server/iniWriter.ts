@@ -15,11 +15,11 @@ export function updateConfigIniSync(
 	// Normalize updates structure
 	const pendingUpdates: Record<string, Record<string, string>> = {};
 	for (const [sec, kv] of Object.entries(updates)) {
-		const normalizedSec = sec.trim().toLowerCase();
-		pendingUpdates[normalizedSec] = {};
+		const normalizedSection = sec.trim().toLowerCase();
+		pendingUpdates[normalizedSection] = {};
 		for (const [k, v] of Object.entries(kv)) {
 			if (v !== undefined && v !== null) {
-				pendingUpdates[normalizedSec][k.trim().toLowerCase()] = String(v);
+				pendingUpdates[normalizedSection][k.trim().toLowerCase()] = String(v);
 			}
 		}
 	}

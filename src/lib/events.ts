@@ -5,52 +5,52 @@
  * signing itself lives in `src/lib/server/attendanceToken.ts`.
  */
 
-export const ETKINLIK_TURLERI = ['atolye', 'seminer', 'yarisma', 'toplanti'] as const;
-export type EventType = (typeof ETKINLIK_TURLERI)[number];
+export const EVENT_TYPES = ['atolye', 'seminer', 'yarisma', 'toplanti'] as const;
+export type EventType = (typeof EVENT_TYPES)[number];
 
 /** `taslak` is visible to management only; `iptal` stays listed, marked as cancelled. */
-export const ETKINLIK_DURUMLARI = ['taslak', 'yayinda', 'tamamlandi', 'iptal'] as const;
-export type EventStatus = (typeof ETKINLIK_DURUMLARI)[number];
+export const EVENT_STATUSES = ['taslak', 'yayinda', 'tamamlandi', 'iptal'] as const;
+export type EventStatus = (typeof EVENT_STATUSES)[number];
 
 /** How attendance was recorded: the rotating projector QR, a ticket scanned at the door, or by hand. */
 export type AttendanceMethod = 'qr' | 'bilet' | 'manuel';
 
 /** XP for attending, paid once per member and event. Registering pays nothing. */
-export const KATILIM_XP = 150;
+export const PARTICIPATION_XP = 150;
 
 /** The projector QR changes every window; the previous window is still accepted. */
-export const YOKLAMA_PENCERESI_MS = 30_000;
+export const ATTENDANCE_WINDOW_MS = 30_000;
 
 /** Check-in is possible from this long before the start until this long after the end. */
-export const YOKLAMA_TOLERANS_MS = 30 * 60_000;
+export const ATTENDANCE_TOLERANCE_MS = 30 * 60_000;
 
-export const ETKINLIK_BASLIK_MAX = 140;
-export const ETKINLIK_ACIKLAMA_MAX = 4000;
+export const EVENT_TITLE_MAX = 140;
+export const EVENT_DESCRIPTION_MAX = 4000;
 export const KAPASITE_MAX = 5000;
 
-export function yoklamaPenceresi(now: number): number {
-	return Math.floor(now / YOKLAMA_PENCERESI_MS);
+export function attendanceWindow(now: number): number {
+	return Math.floor(now / ATTENDANCE_WINDOW_MS);
 }
 
 /** Milliseconds until the current window rolls over — the projector's countdown. */
-export function pencereKalanMs(now: number): number {
-	return YOKLAMA_PENCERESI_MS - (now % YOKLAMA_PENCERESI_MS);
+export function windowRemainingMs(now: number): number {
+	return ATTENDANCE_WINDOW_MS - (now % ATTENDANCE_WINDOW_MS);
 }
 
 /** Whether check-in can happen at `now` for an event running from `baslangic` to `endTime`. */
-export function yoklamaZamaniMi(baslangic: number, endTime: number, now: number): boolean {
-	return now >= baslangic - YOKLAMA_TOLERANS_MS && now <= endTime + YOKLAMA_TOLERANS_MS;
+export function isAttendanceTime(baslangic: number, endTime: number, now: number): boolean {
+	return now >= baslangic - ATTENDANCE_TOLERANCE_MS && now <= endTime + ATTENDANCE_TOLERANCE_MS;
 }
 
 /** A projector code: which event, which time window, and the server's signature over both. */
-export interface YoklamaKodu {
+export interface AttendanceCode {
 	etkinlikId: string;
 	pencere: number;
 	imza: string;
 }
 
 /** A member's ticket: which event, whose, and the server's signature over both. */
-export interface BiletKodu {
+export interface TicketCode {
 	etkinlikId: string;
 	userId: string;
 	imza: string;
@@ -58,8 +58,8 @@ export interface BiletKodu {
 
 const ID = '[A-Za-z0-9_-]{1,80}';
 const SIG = '[A-Za-z0-9_-]{16,64}';
-const YOKLAMA_RE = new RegExp(`^BY1\\.(${ID})\\.(\\d{1,12})\\.(${SIG})$`);
-const BILET_RE = new RegExp(`^BB1\\.(${ID})\\.(${ID})\\.(${SIG})$`);
+const ATTENDANCE_RE = new RegExp(`^BY1\\.(${ID})\\.(\\d{1,12})\\.(${SIG})$`);
+const TICKET_RE = new RegExp(`^BB1\\.(${ID})\\.(${ID})\\.(${SIG})$`);
 
 /** The token part of a scan: either the bare token or the last path segment of a `/yoklama/<token>` link. */
 function tokenOf(text: string): string {
@@ -68,23 +68,23 @@ function tokenOf(text: string): string {
 	return m ? decodeURIComponent(m[1]) : trimmed;
 }
 
-export function yoklamaKoduMetni(k: YoklamaKodu): string {
+export function attendanceCodeText(k: AttendanceCode): string {
 	return `BY1.${k.etkinlikId}.${k.pencere}.${k.imza}`;
 }
 
-export function biletKoduMetni(k: BiletKodu): string {
+export function ticketCodeText(k: TicketCode): string {
 	return `BB1.${k.etkinlikId}.${k.userId}.${k.imza}`;
 }
 
-export function parseYoklamaKodu(text: unknown): YoklamaKodu | null {
+export function parseAttendanceCode(text: unknown): AttendanceCode | null {
 	if (typeof text !== 'string') return null;
-	const m = YOKLAMA_RE.exec(tokenOf(text));
+	const m = ATTENDANCE_RE.exec(tokenOf(text));
 	return m ? { etkinlikId: m[1], pencere: Number(m[2]), imza: m[3] } : null;
 }
 
-export function parseBiletKodu(text: unknown): BiletKodu | null {
+export function parseTicketCode(text: unknown): TicketCode | null {
 	if (typeof text !== 'string') return null;
-	const m = BILET_RE.exec(text.trim());
+	const m = TICKET_RE.exec(text.trim());
 	return m ? { etkinlikId: m[1], userId: m[2], imza: m[3] } : null;
 }
 

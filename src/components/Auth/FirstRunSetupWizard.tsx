@@ -22,6 +22,8 @@ import {
 	Cpu,
 } from 'lucide-react';
 import styles from './VsCodeSetup.module.css';
+import { DEFAULT_TEAM_CATEGORIES } from '@/lib/teamCategories';
+import { DEFAULT_REGISTRATION_CORE_CONFIG } from '@/lib/registrationConfig';
 
 interface FirstRunSetupWizardProps {
 	onComplete: () => void;
@@ -123,9 +125,9 @@ export function FirstRunSetupWizard({ onComplete }: FirstRunSetupWizardProps) {
 	// Step 3: Admin Credentials
 	const [ad, setAd] = useState('Orbit');
 	const [soyad, setSoyad] = useState('Admin');
-	const [email, setEposta] = useState('admin@orbit.local');
-	const [password, setSifre] = useState('');
-	const [sifreTekrar, setSifreTekrar] = useState('');
+	const [email, setEmail] = useState('admin@orbit.local');
+	const [password, setPassword] = useState('');
+	const [passwordConfirm, setPasswordConfirm] = useState('');
 
 	// Step 4: SMTP (Optional)
 	const [smtpHost, setSmtpHost] = useState('');
@@ -328,8 +330,17 @@ ${dom} {
 		URL.revokeObjectURL(url);
 	};
 
+	const [generatedDbPassword] = useState(() => {
+		if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
+			const buf = new Uint8Array(16);
+			window.crypto.getRandomValues(buf);
+			return Array.from(buf, (b) => b.toString(16).padStart(2, '0')).join('');
+		}
+		return 'change_this_password';
+	});
+
 	const dockerRunCmd =
-		'docker run --name orbit-postgres -e POSTGRES_DB=orbit -e POSTGRES_USER=orbit -e POSTGRES_PASSWORD=orbit_secret_2026 -p 5432:5432 -d postgres:16-alpine';
+		`docker run --name orbit-postgres -e POSTGRES_DB=orbit -e POSTGRES_USER=orbit -e POSTGRES_PASSWORD=${generatedDbPassword} -p 127.0.0.1:5432:5432 -d postgres:16-alpine`;
 
 	const handleCopyDocker = async () => {
 		try {
@@ -417,7 +428,7 @@ ${dom} {
 				setError('Administrator password must be at least 12 characters.');
 				return false;
 			}
-			if (password !== sifreTekrar) {
+			if (password !== passwordConfirm) {
 				setError('Passwords do not match.');
 				return false;
 			}
@@ -689,7 +700,7 @@ ${dom} {
 											className={`${styles.input} ${styles.inputWithIcon}`}
 											value={dbUrl}
 											onChange={(e) => setDbUrl(e.target.value)}
-											placeholder="postgresql://orbit:orbit_secret_2026@localhost:5432/orbit"
+											placeholder="postgresql://orbit:<password>@localhost:5432/orbit"
 										/>
 									</div>
 									<button
@@ -919,7 +930,7 @@ ${dom} {
 										type="email"
 										className={`${styles.input} ${styles.inputWithIcon}`}
 										value={email}
-										onChange={(e) => setEposta(e.target.value)}
+										onChange={(e) => setEmail(e.target.value)}
 										placeholder="admin@orbit.local"
 										required
 									/>
@@ -947,7 +958,7 @@ ${dom} {
 											type="password"
 											className={`${styles.input} ${styles.inputWithIcon}`}
 											value={password}
-											onChange={(e) => setSifre(e.target.value)}
+											onChange={(e) => setPassword(e.target.value)}
 											placeholder="Minimum 12 characters"
 											required
 										/>
@@ -957,14 +968,14 @@ ${dom} {
 								<div className={styles.formGroup}>
 									<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
 										<label className={styles.label}>Confirm Password</label>
-										{password && sifreTekrar && (
+										{password && passwordConfirm && (
 											<span
 												style={{
 													fontSize: '11px',
-													color: password === sifreTekrar ? '#4ec9b0' : '#f48771',
+													color: password === passwordConfirm ? '#4ec9b0' : '#f48771',
 												}}
 											>
-												{password === sifreTekrar ? '✓ Match' : 'Mismatch'}
+												{password === passwordConfirm ? '✓ Match' : 'Mismatch'}
 											</span>
 										)}
 									</div>
@@ -973,8 +984,8 @@ ${dom} {
 										<input
 											type="password"
 											className={`${styles.input} ${styles.inputWithIcon}`}
-											value={sifreTekrar}
-											onChange={(e) => setSifreTekrar(e.target.value)}
+											value={passwordConfirm}
+											onChange={(e) => setPasswordConfirm(e.target.value)}
 											placeholder="Re-enter password"
 											required
 										/>
@@ -1115,6 +1126,38 @@ ${dom} {
 									</div>
 								</div>
 							)}
+
+							<div className={styles.card} style={{ marginTop: '12px' }}>
+								<h3 style={{ margin: '0 0 6px', fontSize: '13px', fontWeight: 700, color: '#ffffff' }}>
+									Provisioned workspace defaults
+								</h3>
+								<p style={{ margin: '0 0 12px', fontSize: '11.5px', lineHeight: 1.5, color: '#9d9d9d' }}>
+									Everything below is written to PostgreSQL in English during initialization and can be changed later in Settings.
+								</p>
+								<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px', fontSize: '11.5px' }}>
+									<div>
+										<strong style={{ display: 'block', color: '#ffffff', marginBottom: '2px' }}>Access roles</strong>
+										<span style={{ color: '#9d9d9d' }}>Admin · Management Board · Member · Alumni</span>
+									</div>
+									<div>
+										<strong style={{ display: 'block', color: '#ffffff', marginBottom: '2px' }}>Team categories</strong>
+										<span style={{ color: '#9d9d9d' }}>{DEFAULT_TEAM_CATEGORIES.join(' · ')}</span>
+									</div>
+									<div>
+										<strong style={{ display: 'block', color: '#ffffff', marginBottom: '2px' }}>Registration form</strong>
+										<span style={{ color: '#9d9d9d' }}>
+											{DEFAULT_REGISTRATION_CORE_CONFIG.track.options.length} tracks · {DEFAULT_REGISTRATION_CORE_CONFIG.level.options.length} experience levels
+										</span>
+									</div>
+									<div>
+										<strong style={{ display: 'block', color: '#ffffff', marginBottom: '2px' }}>Legal & branding</strong>
+										<span style={{ color: '#9d9d9d' }}>3 agreements · identity · favicon/PWA icon pipeline</span>
+									</div>
+								</div>
+								<div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #333333', fontSize: '11.5px', lineHeight: 1.55, color: '#9d9d9d' }}>
+									<strong style={{ color: '#ffffff' }}>After launch:</strong> sign in with the root administrator and enroll two-factor authentication. Then review Settings → Identity & Branding, Registration & Member Form, Teams and Roles & Permissions before inviting members.
+								</div>
+							</div>
 						</div>
 					)}
 

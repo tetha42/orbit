@@ -4,10 +4,12 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { AppID, FocusTarget, FocusTargetInput, WindowState } from '@/types/workspace';
 import { DEFAULT_DOCK_APPS, type ExtendedAppMetadata } from '@/configs/apps.config';
 import { I18nProvider, useI18n, type I18nContextValue } from '@/core/i18n';
+import { IdentityProvider } from '@/core/identity';
 import { SessionProvider, useSession, useSessionEvent, type SessionContextValue } from '@/core/session';
 import { DEFAULT_WALLPAPER, WALLPAPERS, ThemeSync, nextWallpaper, useTheme } from '@/core/theme';
 import { SoundProvider, useSound, type SoundContextValue } from '@/core/sound';
 import { WindowsProvider, useActiveApp, useWindowActions, useWindowCycleSetting, useWindowFocusTarget, useWindows, useWindowStore, type WindowActions } from '@/core/windows';
+import { NotificationClickBridge } from '@/components/NotificationCenter/NotificationClickBridge';
 import { ShellActionsContext, ShellStateContext, useShell, type ShellActions, type ShellState } from '@/core/shell/shell';
 import { useContextMenus } from '@/core/contextMenu/useContextMenus';
 import { useDock } from '@/core/dock/useDock';
@@ -48,14 +50,17 @@ type WorkspaceContextType = SessionContextValue &
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 	return (
 		<I18nProvider>
-			<ThemeSync />
-			<SoundProvider>
-				<SessionProvider>
-					<WindowsProvider>
-						<ShellProvider>{children}</ShellProvider>
-					</WindowsProvider>
-				</SessionProvider>
-			</SoundProvider>
+			<IdentityProvider>
+				<ThemeSync />
+				<SoundProvider>
+					<SessionProvider>
+						<WindowsProvider>
+							<NotificationClickBridge />
+							<ShellProvider>{children}</ShellProvider>
+						</WindowsProvider>
+					</SessionProvider>
+				</SoundProvider>
+			</IdentityProvider>
 		</I18nProvider>
 	);
 }
@@ -72,7 +77,15 @@ function ShellProvider({ children }: { children: React.ReactNode }) {
 		if (typeof window !== 'undefined') {
 			try {
 				const saved = localStorage.getItem('kulup_active_wallpaper');
-				if (saved && WALLPAPERS.some((w) => w.src === saved)) return saved;
+				// Custom wallpapers live under the custom asset route and are not in the
+				// compile-time catalogue, so accept any well-formed image path here.
+				if (
+					saved &&
+					(WALLPAPERS.some((w) => w.src === saved) ||
+						saved.startsWith('/wallpapers/') ||
+						saved.startsWith('/api/custom-assets/wallpapers/'))
+				)
+					return saved;
 			} catch {}
 		}
 		return DEFAULT_WALLPAPER;

@@ -113,6 +113,8 @@ export interface PermissionOnlyManifest extends ManifestBase {
 
 /** An app with a window on the desktop. */
 export interface WindowManifest extends ManifestBase {
+	/** Window-only, system-managed app: never listed in the launcher, dock or Spotlight. */
+	internal?: true;
 	title: string;
 	shortTitle: string;
 	description: string;

@@ -8,6 +8,7 @@ import { TwoFactorForm } from './TwoFactorForm';
 import { Notice } from './AuthControls';
 import { useAuthFlow } from './useAuthFlow';
 import { useI18n } from '@/core/i18n';
+import { useIdentity } from '@/core/identity';
 import { useRouter } from 'next/navigation';
 import styles from './AuthPortal.module.css';
 
@@ -32,6 +33,7 @@ export function AuthPortal() {
 	const router = useRouter();
 	const flow = useAuthFlow();
 	const { t, language, setLanguage } = useI18n();
+	const { identity } = useIdentity();
 
 	const heading = flow.challengeToken
 		? {
@@ -48,13 +50,21 @@ export function AuthPortal() {
 					subtitle: t('authRegisterSubtitle', 'Submit your membership application to join the workspace.'),
 				};
 
-	const showSetup = flow.kurulum?.firstRun || flow.kurulumEksik;
+	const showSetup = flow.setup?.firstRun || flow.setupIncomplete;
 
 	useEffect(() => {
 		if (showSetup) {
 			router.replace('/setup');
 		}
 	}, [showSetup, router]);
+
+	useEffect(() => {
+		if (typeof window === 'undefined') return;
+		const invite = new URLSearchParams(window.location.search).get('invite');
+		if (invite) flow.switchTab('register');
+		// `switchTab` is stable; the flow object itself changes on every render.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [flow.switchTab]);
 
 	if (showSetup) {
 		return (
@@ -73,14 +83,25 @@ export function AuthPortal() {
 					{/* eslint-disable-next-line @next/next/no-img-element */}
 					<img
 						className={styles.brandLogo}
-						src="/assets/img/logo-girdap.svg"
-						alt="Orbit Community OS"
+						src={identity.iconUrl || '/assets/img/logo-girdap.svg'}
+						alt={identity.siteName}
 					/>
 					<span className={styles.brandName}>
-						<strong>ORBIT</strong>
-						<span>{'// TETHA42'}</span>
+						<strong>{identity.appName.toUpperCase()}</strong>
+						<span>{`// ${identity.studio.toUpperCase()}`}</span>
+					</span>
+					<span className={styles.siteTag} title={identity.siteName}>
+						{identity.siteName}
 					</span>
 				</div>
+
+				{flow.sessionConflict && (
+					<div className={styles.headerNotice}>
+						<Notice tone="error" title={t('authSessionEndedTitle', 'Session Terminated')}>
+							{t('authSessionEndedBody', 'Your session on this device was closed because your account signed in on another device.')}
+						</Notice>
+					</div>
+				)}
 
 				<nav className={styles.nav}>
 					<div
@@ -127,7 +148,11 @@ export function AuthPortal() {
 			</header>
 
 			<main className={styles.main}>
-				<div className={styles.card}>
+				<div
+					className={`${styles.card} ${
+						!flow.challengeToken && flow.activeTab === 'register' ? styles.registerCard : ''
+					}`}
+				>
 					{showSetup ? (
 						<FirstRunSetupWizard onComplete={() => router.push('/')} />
 					) : (
@@ -158,12 +183,6 @@ export function AuthPortal() {
 								<p>{heading.subtitle}</p>
 							</div>
 
-							{flow.sessionConflict && (
-								<Notice tone="error" title={t('authSessionEndedTitle', 'Session Terminated')}>
-									{t('authSessionEndedBody', 'Your session on this device was closed because your account signed in on another device.')}
-								</Notice>
-							)}
-
 							{flow.pendingNotice && (
 								<Notice tone="warning" title={t('authPendingApprovalTitle', 'Pending Approval')}>
 									{flow.pendingNotice}
@@ -193,15 +212,11 @@ export function AuthPortal() {
 						<span>Community OS</span>
 					</h1>
 					<p className={styles.heroSubtitle}>
-						{t('authHeroSubtitle', 'Self-hosted digital workspace, community governance, and engineering suite — by tetha42.')}
+						{language === 'tr' ? identity.descriptionTr : identity.descriptionEn}
 					</p>
 				</div>
 			</main>
 
-			<footer className={styles.footer}>
-				<div>ORBIT COMMUNITY OS // TETHA42</div>
-				<div>ZERO-CONFIG SELF-HOSTED PLATFORM</div>
-			</footer>
 		</div>
 	);
 }

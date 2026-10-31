@@ -38,8 +38,8 @@ const PASSKEY_ICON = (
 
 export function LoginForm({ flow }: { flow: AuthFlow }) {
 	const { t } = useI18n();
-	const [email, setEposta] = useState('');
-	const [password, setSifre] = useState('');
+	const [email, setEmail] = useState('');
+	const [password, setPassword] = useState('');
 	const [showResetModal, setShowResetModal] = useState(false);
 	const passkeysAvailable = useClientValue(() => Boolean(window.PublicKeyCredential), false);
 
@@ -57,7 +57,7 @@ export function LoginForm({ flow }: { flow: AuthFlow }) {
 						required
 						autoComplete="email"
 						value={email}
-						onChange={(e) => setEposta(e.target.value)}
+						onChange={(e) => setEmail(e.target.value)}
 						placeholder={t('authEmailPlaceholder', 'you@example.com')}
 						icon={MAIL_ICON}
 					/>
@@ -68,7 +68,7 @@ export function LoginForm({ flow }: { flow: AuthFlow }) {
 						required
 						autoComplete="current-password"
 						value={password}
-						onChange={(e) => setSifre(e.target.value)}
+						onChange={(e) => setPassword(e.target.value)}
 						placeholder={t('authPasswordPlaceholder', 'Your password')}
 					/>
 				</Field>
@@ -87,7 +87,7 @@ export function LoginForm({ flow }: { flow: AuthFlow }) {
 
 				<SubmitButton
 					loading={flow.loading}
-					disabled={flow.kurulumEksik}
+					disabled={flow.setupIncomplete}
 					label={t('authTabLogin', 'Sign In')}
 					loadingLabel={t('authSigningIn', 'Signing in...')}
 				/>
@@ -100,7 +100,7 @@ export function LoginForm({ flow }: { flow: AuthFlow }) {
 						<button
 							type="button"
 							className={styles.passkeyButton}
-							disabled={flow.loading || flow.kurulumEksik}
+							disabled={flow.loading || flow.setupIncomplete}
 							onClick={() => flow.submitPasskey(email)}
 						>
 							{PASSKEY_ICON}

@@ -5,9 +5,9 @@
  * exactly the notifications of the apps their role opens: an admin gets them
  * all, a role that only reads news gets only news. Pure.
  */
-import { ALL_MANIFESTS, type NotificationKind, type YetkiUygulamasi } from '../../apps/index.ts';
+import { ALL_MANIFESTS, type NotificationKind, type PermissionApp } from '../../apps/index.ts';
 import type { Seviye } from '../permissions/index.ts';
 
-export const BILDIRIM_TURLERI = Object.fromEntries(
+export const NOTIFICATION_KINDS = Object.fromEntries(
 	ALL_MANIFESTS.flatMap((m) => Object.entries(m.notifications ?? {}).map(([kind, seviye]) => [kind, { appId: m.id, seviye }]))
-) as Record<NotificationKind, { appId: YetkiUygulamasi; seviye: Seviye }>;
+) as Record<NotificationKind, { appId: PermissionApp; seviye: Seviye }>;

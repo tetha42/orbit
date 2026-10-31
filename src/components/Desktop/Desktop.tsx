@@ -12,7 +12,7 @@ import { SpotlightModal } from './SpotlightModal';
 import { NotificationsProvider } from '@/components/NotificationCenter/NotificationsProvider';
 import { NotificationPanel } from '@/components/NotificationCenter/NotificationPanel';
 import { isAuroraWallpaper } from '@/core/theme';
-import { APPS_CONFIG } from '@/configs/apps.config';
+import { ALL_APPS_CONFIG } from '@/configs/apps.config';
 import { AppID } from '@/types/workspace';
 import { NoRoleNotice } from './NoRoleNotice';
 
@@ -78,7 +78,7 @@ export function Desktop() {
 					overflow: 'hidden',
 				}}
 			>
-				{(Object.keys(APPS_CONFIG) as AppID[]).map((appId) => (
+				{(Object.keys(ALL_APPS_CONFIG) as AppID[]).map((appId) => (
 					<WindowFrame key={appId} appId={appId} />
 				))}
 			</div>
