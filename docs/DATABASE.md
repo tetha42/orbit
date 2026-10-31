@@ -196,7 +196,8 @@ Orbit requires no external migration CLI (`prisma migrate` or `flyway`) to deplo
 1. On the first database call (or immediately after `reconfigurePgPool` in `/setup`), `ensurePostgresInit()` acquires `pg_advisory_xact_lock(hashtext('roller.sema'))` so multiple server workers starting concurrently never race.
 2. `runSchemaMigrations(client)` (`src/server/db/schema.init.ts`) executes idempotent `CREATE TABLE IF NOT EXISTS`, `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`, and `CREATE INDEX IF NOT EXISTS` statements across all 45 tables.
 3. Versioned one-time data transformations execute once via `runMigrationStep(client, migrationId, fn)` and record completion in `schema_migrations`.
-4. `ensureRoleSchema`, `ensureAuditSchema`, `ensureMailSchema`, and `ensureOAuthSchema` verify core system tables and seed the immutable `rol_admin` role.
+4. Migrations `2026_31_index_unindexed_foreign_keys` and `2026_32_index_fk_completeness` establish 100% foreign key index coverage across all tables (including full unconditional indexes on lifecycle models to eliminate partial-index sequential scan hazards), eliminating sequential table scans on cascade and join paths.
+5. `ensureRoleSchema`, `ensureAuditSchema`, `ensureMailSchema`, and `ensureOAuthSchema` verify core system tables and seed the immutable `rol_admin` role.
 
 ---
 

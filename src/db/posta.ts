@@ -31,6 +31,7 @@ export async function ensureMailSchema(client: PoolClient): Promise<void> {
 			olusturma BIGINT NOT NULL,
 			sonMesaj BIGINT NOT NULL
 		);
+		CREATE INDEX IF NOT EXISTS idx_mail_threads_olusturanid ON mail_threads (olusturanId);
 		CREATE TABLE IF NOT EXISTS mail_messages (
 			id TEXT PRIMARY KEY,
 			konuId TEXT NOT NULL REFERENCES mail_threads(id) ON DELETE CASCADE,
@@ -39,6 +40,7 @@ export async function ensureMailSchema(client: PoolClient): Promise<void> {
 			olusturma BIGINT NOT NULL
 		);
 		CREATE INDEX IF NOT EXISTS idx_mail_messages_konu ON mail_messages (konuId, olusturma);
+		CREATE INDEX IF NOT EXISTS idx_mail_messages_gonderenid ON mail_messages (gonderenId);
 		CREATE TABLE IF NOT EXISTS mail_recipients (
 			mesajId TEXT NOT NULL REFERENCES mail_messages(id) ON DELETE CASCADE,
 			userId TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

@@ -36,6 +36,7 @@ export async function ensureOAuthSchema(client: PoolClient): Promise<void> {
 			olusturma BIGINT NOT NULL,
 			guncellenme BIGINT NOT NULL
 		);
+		CREATE INDEX IF NOT EXISTS idx_oauth_clients_olusturanid ON oauth_clients (olusturanId);
 
 		ALTER TABLE oauth_clients ADD COLUMN IF NOT EXISTS allowedScopes TEXT NOT NULL DEFAULT '["openid","profile","email","academic","roles"]';
 
@@ -53,6 +54,7 @@ export async function ensureOAuthSchema(client: PoolClient): Promise<void> {
 
 		CREATE INDEX IF NOT EXISTS idx_oauth_auth_codes_lookup 
 			ON oauth_auth_codes (clientId, kullanildi, sonGecerlilik);
+		CREATE INDEX IF NOT EXISTS idx_oauth_auth_codes_userid ON oauth_auth_codes (userId);
 
 		CREATE TABLE IF NOT EXISTS oauth_consents (
 			userId TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -61,6 +63,7 @@ export async function ensureOAuthSchema(client: PoolClient): Promise<void> {
 			onayTarihi BIGINT NOT NULL,
 			PRIMARY KEY (userId, clientId)
 		);
+		CREATE INDEX IF NOT EXISTS idx_oauth_consents_clientid ON oauth_consents (clientId);
 	`);
 }
 

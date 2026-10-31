@@ -503,3 +503,49 @@ Yalnız e-posta adresleri döner; SMTP katmanına profil verisi taşınmaz. Comp
 - Tüm yazmalar `withTransaction` + audit.
 - İstemci ve sunucu aynı doğrulama modülünü kullanır.
 - Her API yalnız kendi domaininin sahibi; çapraz yazma yok.
+
+---
+
+## 14. İndeksleme ve İlişkisel Performans Kapsamı (Index Coverage)
+
+Migration `2026_31_index_unindexed_foreign_keys` ve `2026_32_index_fk_completeness` ile Orbit PostgreSQL veritabanındaki tüm yabancı anahtarlar (foreign keys) ve kritik ilişkisel filtre kolonları için indeks kapsamı %100'e çıkarılmıştır. Koşullu/kısmi indekslerin (`WHERE` clause) foreign key `ON DELETE CASCADE` ve `JOIN` işlemlerinde sequential scan engellemediği doğrulanmış; lifecycle tablolarındaki (`email_change_requests`, `membership_applications`) kısmi indekslere ek olarak tam B-Tree indeksler oluşturulmuştur. Bu sayede `ON DELETE CASCADE`, `ON DELETE SET NULL` ve `JOIN` işlemlerinde sequential scan (ardışık tablo taraması) ve kilitlenme (lock contention) riskleri tamamen ortadan kaldırılmıştır.
+
+| Tablo | Kolon | Referans Tablosu | İndeks Adı |
+|---|---|---|---|
+| `attendances` | `kaydedenid`, `userid` | `users` | `idx_attendances_kaydedenid`, `idx_attendances_userid` |
+| `budget_records` | `guncelleyenid`, `kaydedenid` | `users` | `idx_budget_records_guncelleyenid`, `idx_budget_records_kaydedenid` |
+| `certificates` | `etkinlikid`, `userid` | `events`, `users` | `idx_certificates_etkinlikid`, `idx_certificates_userid` |
+| `chat_members` | `userid` | `users` | `idx_chat_members_userid` |
+| `chat_messages` | `gonderenid` | `users` | `idx_chat_messages_gonderenid` |
+| `chat_poll_votes` | `secenekid` | `chat_poll_options` | `idx_chat_poll_votes_secenekid` |
+| `chat_polls` | `olusturanid` | `users` | `idx_chat_polls_olusturanid` |
+| `committee_meetings` | `created_by` | `users` | `idx_committee_meetings_created_by` |
+| `decisions` | `olusturanid` | `users` | `idx_decisions_olusturanid` |
+| `email_change_requests` | `user_id` | `users` | `idx_email_change_requests_user_id` |
+| `event_registrations` | `userid` | `users` | `idx_event_registrations_userid` |
+| `events` | `created_by`, `olusturanid` | `users` | `idx_events_created_by`, `idx_events_olusturanid` |
+| `files` | `yukleyenid` | `users` | `idx_files_yukleyenid` |
+| `inventory` | `oduncalanid` | `users` | `idx_inventory_oduncalanid` |
+| `inventory_activities` | `aktorid`, `userid` | `users` | `idx_inventory_activities_aktorid`, `idx_inventory_activities_userid` |
+| `invitations` | `created_by`, `used_by` | `users` | `idx_invitations_created_by`, `idx_invitations_used_by` |
+| `legal_document_versions` | `archived_by` | `users` | `idx_legal_document_versions_archived_by` |
+| `mail_messages` | `gonderenid` | `users` | `idx_mail_messages_gonderenid` |
+| `mail_outbox` | `approved_by`, `requested_by`, `target_user_id` | `users` | `idx_mail_outbox_approved_by`, `idx_mail_outbox_requested_by`, `idx_mail_outbox_target_user_id` |
+| `mail_threads` | `olusturanid` | `users` | `idx_mail_threads_olusturanid` |
+| `member_field_values` | `field_id` | `form_fields` | `idx_member_field_values_field_id` |
+| `membership_applications` | `reapply_of`, `user_id` | `membership_applications`, `users` | `idx_membership_applications_reapply_of`, `idx_membership_applications_user_id` |
+| `news` | `yazarid` | `users` | `idx_news_yazarid` |
+| `oauth_auth_codes` | `userid` | `users` | `idx_oauth_auth_codes_userid` |
+| `oauth_clients` | `olusturanid` | `users` | `idx_oauth_clients_olusturanid` |
+| `oauth_consents` | `clientid` | `oauth_clients` | `idx_oauth_consents_clientid` |
+| `project_likes` | `userid` | `users` | `idx_project_likes_userid` |
+| `projects` | `created_by`, `olusturanid`, `teamid` | `users`, `teams` | `idx_projects_created_by`, `idx_projects_olusturanid`, `idx_projects_teamid` |
+| `team_application_decisions` | `userid` | `users` | `idx_team_application_decisions_userid` |
+| `team_members` | `userid` | `users` | `idx_team_members_userid` |
+| `team_task_activities` | `aktorid` | `users` | `idx_team_task_activities_aktorid` |
+| `team_task_comments` | `userid` | `users` | `idx_team_task_comments_userid` |
+| `team_tasks` | `atananuyeid`, `olusturanid`, `teamid` | `users`, `teams` | `idx_team_tasks_atananuyeid`, `idx_team_tasks_olusturanid`, `idx_team_tasks_teamid` |
+| `teams` | `liderid` | `users` | `idx_teams_liderid` |
+| `users` | `role_id` | `roles` | `idx_users_role_id` |
+
+

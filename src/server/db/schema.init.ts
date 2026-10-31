@@ -114,6 +114,7 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 			created_at BIGINT NOT NULL
 		);
 		CREATE INDEX IF NOT EXISTS idx_users_session_token ON users (session_token);
+		CREATE INDEX IF NOT EXISTS idx_users_role_id ON users (role_id);
 
 		CREATE TABLE IF NOT EXISTS teams (
 			id TEXT PRIMARY KEY,
@@ -1336,6 +1337,9 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 		await client.query(
 			`CREATE INDEX IF NOT EXISTS idx_email_change_expiry ON email_change_requests (expires_at) WHERE used_at IS NULL`
 		);
+		await client.query(
+			`CREATE INDEX IF NOT EXISTS idx_email_change_requests_user_id ON email_change_requests (user_id)`
+		);
 	});
 
 	await runMigrationStep('2026_20_email_verified_at', 'Track when the current e-mail address was verified', async () => {
@@ -1367,6 +1371,10 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 		await client.query(
 			`CREATE INDEX IF NOT EXISTS idx_membership_application_status
 			 ON membership_applications (status, submitted_at)`
+		);
+		await client.query(
+			`CREATE INDEX IF NOT EXISTS idx_membership_applications_user_id
+			 ON membership_applications (user_id)`
 		);
 
 		await client.query(
@@ -1676,6 +1684,88 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 				updated_at BIGINT NOT NULL
 			);
 			CREATE INDEX IF NOT EXISTS idx_workspace_pref_updated_at ON user_workspace_preferences(updated_at DESC);
+		`);
+	});
+
+	await runMigrationStep('2026_31_index_unindexed_foreign_keys', 'Create indexes for unindexed foreign keys to prevent sequential scans', async () => {
+		const fkIndexes: [string, string, string][] = [
+			['attendances', 'kaydedenid', 'idx_attendances_kaydedenid'],
+			['attendances', 'userid', 'idx_attendances_userid'],
+			['budget_records', 'guncelleyenid', 'idx_budget_records_guncelleyenid'],
+			['budget_records', 'kaydedenid', 'idx_budget_records_kaydedenid'],
+			['certificates', 'etkinlikid', 'idx_certificates_etkinlikid'],
+			['certificates', 'userid', 'idx_certificates_userid'],
+			['chat_members', 'userid', 'idx_chat_members_userid'],
+			['chat_messages', 'gonderenid', 'idx_chat_messages_gonderenid'],
+			['chat_poll_votes', 'secenekid', 'idx_chat_poll_votes_secenekid'],
+			['chat_polls', 'olusturanid', 'idx_chat_polls_olusturanid'],
+			['committee_meetings', 'created_by', 'idx_committee_meetings_created_by'],
+			['decisions', 'olusturanid', 'idx_decisions_olusturanid'],
+			['email_change_requests', 'user_id', 'idx_email_change_requests_user_id'],
+			['event_registrations', 'userid', 'idx_event_registrations_userid'],
+			['events', 'created_by', 'idx_events_created_by'],
+			['events', 'olusturanid', 'idx_events_olusturanid'],
+			['files', 'yukleyenid', 'idx_files_yukleyenid'],
+			['inventory', 'oduncalanid', 'idx_inventory_oduncalanid'],
+			['inventory_activities', 'aktorid', 'idx_inventory_activities_aktorid'],
+			['inventory_activities', 'userid', 'idx_inventory_activities_userid'],
+			['invitations', 'created_by', 'idx_invitations_created_by'],
+			['invitations', 'used_by', 'idx_invitations_used_by'],
+			['legal_document_versions', 'archived_by', 'idx_legal_document_versions_archived_by'],
+			['mail_messages', 'gonderenid', 'idx_mail_messages_gonderenid'],
+			['mail_outbox', 'approved_by', 'idx_mail_outbox_approved_by'],
+			['mail_outbox', 'requested_by', 'idx_mail_outbox_requested_by'],
+			['mail_outbox', 'target_user_id', 'idx_mail_outbox_target_user_id'],
+			['mail_threads', 'olusturanid', 'idx_mail_threads_olusturanid'],
+			['member_field_values', 'field_id', 'idx_member_field_values_field_id'],
+			['membership_applications', 'reapply_of', 'idx_membership_applications_reapply_of'],
+			['membership_applications', 'user_id', 'idx_membership_applications_user_id'],
+			['news', 'yazarid', 'idx_news_yazarid'],
+			['oauth_auth_codes', 'userid', 'idx_oauth_auth_codes_userid'],
+			['oauth_clients', 'olusturanid', 'idx_oauth_clients_olusturanid'],
+			['oauth_consents', 'clientid', 'idx_oauth_consents_clientid'],
+			['project_likes', 'userid', 'idx_project_likes_userid'],
+			['projects', 'created_by', 'idx_projects_created_by'],
+			['projects', 'olusturanid', 'idx_projects_olusturanid'],
+			['projects', 'teamid', 'idx_projects_teamid'],
+			['team_application_decisions', 'userid', 'idx_team_application_decisions_userid'],
+			['team_members', 'userid', 'idx_team_members_userid'],
+			['team_task_activities', 'aktorid', 'idx_team_task_activities_aktorid'],
+			['team_task_comments', 'userid', 'idx_team_task_comments_userid'],
+			['team_tasks', 'atananuyeid', 'idx_team_tasks_atananuyeid'],
+			['team_tasks', 'olusturanid', 'idx_team_tasks_olusturanid'],
+			['team_tasks', 'teamid', 'idx_team_tasks_teamid'],
+			['teams', 'liderid', 'idx_teams_liderid'],
+			['users', 'role_id', 'idx_users_role_id'],
+		];
+
+		for (const [table, column, indexName] of fkIndexes) {
+			try {
+				const tbl = await client.query(
+					`SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = $1`,
+					[table]
+				);
+				if ((tbl.rowCount ?? 0) === 0) continue;
+
+				const col = await client.query(
+					`SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1 AND lower(column_name) = $2`,
+					[table, column.toLowerCase()]
+				);
+				if ((col.rowCount ?? 0) === 0 || !col.rows[0]?.column_name) continue;
+
+				const actualCol = col.rows[0].column_name;
+				await client.query(`CREATE INDEX IF NOT EXISTS "${indexName}" ON "${table}" ("${actualCol}")`);
+			} catch (err: unknown) {
+				console.warn(`[Migration 2026_31] Failed indexing ${table}.${column}:`, errorMessage(err));
+			}
+		}
+	});
+
+	await runMigrationStep('2026_32_index_fk_completeness', 'Create full indexes for lifecycle foreign keys and roles to eliminate partial-index seq scan hazards', async () => {
+		await client.query(`
+			CREATE INDEX IF NOT EXISTS idx_email_change_requests_user_id ON email_change_requests (user_id);
+			CREATE INDEX IF NOT EXISTS idx_membership_applications_user_id ON membership_applications (user_id);
+			CREATE INDEX IF NOT EXISTS idx_users_role_id ON users (role_id);
 		`);
 	});
 }
