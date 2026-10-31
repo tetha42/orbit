@@ -4,7 +4,7 @@ import type { UserNote, UserNoteFolder } from '@/db/schema';
 export async function getUserNotes(userId: string): Promise<UserNote[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT * FROM kullanici_notlari 
+		`SELECT * FROM user_notes 
 		 WHERE userId = $1 
 		 ORDER BY sabitliMi DESC, guncellenme DESC`,
 		[userId]
@@ -58,13 +58,13 @@ export async function saveUserNote(params: {
 	const noteId = params.id || `not_${now}_${Math.random().toString(36).substring(2, 6)}`;
 	const renk = params.renk || 'sari';
 	const sabitliMi = params.sabitliMi ? 1 : 0;
-	const klasorId = params.klasorId || params.renk || 'quick';
+	const folderId = params.klasorId || params.renk || 'quick';
 	const copteMi = params.copteMi ? 1 : 0;
 
 	// IDOR Protection: verify note ownership if existing id is provided
 	if (params.id) {
 		const existing = await pool.query(
-			'SELECT userId FROM kullanici_notlari WHERE id = $1',
+			'SELECT userId FROM user_notes WHERE id = $1',
 			[params.id]
 		);
 		if (existing.rows.length > 0) {
@@ -88,7 +88,7 @@ export async function saveUserNote(params: {
 		   guncellenme = EXCLUDED.guncellenme
 		 WHERE user_notes.userId = EXCLUDED.userId
 		 RETURNING id`,
-		[noteId, params.userId, params.baslik, params.icerik, renk, sabitliMi, klasorId, copteMi, now]
+		[noteId, params.userId, params.baslik, params.icerik, renk, sabitliMi, folderId, copteMi, now]
 	);
 
 	if (params.id && (res.rowCount ?? 0) === 0) {
@@ -102,7 +102,7 @@ export async function saveUserNote(params: {
 		icerik: params.icerik,
 		renk,
 		sabitliMi: Boolean(sabitliMi),
-		klasorId,
+		klasorId: folderId,
 		copteMi: Boolean(copteMi),
 		guncellenme: now,
 		olusturma: now,
@@ -112,7 +112,7 @@ export async function saveUserNote(params: {
 export async function deleteUserNote(id: string, userId: string): Promise<boolean> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		'DELETE FROM kullanici_notlari WHERE id = $1 AND userId = $2',
+		'DELETE FROM user_notes WHERE id = $1 AND userId = $2',
 		[id, userId]
 	);
 	return (res.rowCount ?? 0) > 0;
@@ -121,7 +121,7 @@ export async function deleteUserNote(id: string, userId: string): Promise<boolea
 export async function emptyUserNotesTrash(userId: string): Promise<number> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		'DELETE FROM kullanici_notlari WHERE userId = $1 AND copteMi = 1',
+		'DELETE FROM user_notes WHERE userId = $1 AND copteMi = 1',
 		[userId]
 	);
 	return res.rowCount ?? 0;
@@ -130,7 +130,7 @@ export async function emptyUserNotesTrash(userId: string): Promise<number> {
 export async function getUserNoteFolders(userId: string): Promise<UserNoteFolder[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		'SELECT * FROM kullanici_not_klasorleri WHERE userId = $1 ORDER BY sira ASC, olusturma ASC',
+		'SELECT * FROM user_note_folders WHERE userId = $1 ORDER BY sira ASC, olusturma ASC',
 		[userId]
 	);
 	return res.rows.map((r) => ({
@@ -160,7 +160,7 @@ export async function saveUserNoteFolder(params: {
 	// IDOR Protection: verify folder ownership if existing id is provided
 	if (params.id) {
 		const existing = await pool.query(
-			'SELECT userId FROM kullanici_not_klasorleri WHERE id = $1',
+			'SELECT userId FROM user_note_folders WHERE id = $1',
 			[params.id]
 		);
 		if (existing.rows.length > 0) {
@@ -201,11 +201,11 @@ export async function deleteUserNoteFolder(id: string, userId: string): Promise<
 	await ensurePostgresInit();
 	// Move any notes in this folder to 'quick'
 	await getPgPool().query(
-		`UPDATE kullanici_notlari SET klasorId = 'quick' WHERE userId = $1 AND klasorId = $2`,
+		`UPDATE user_notes SET klasorId = 'quick' WHERE userId = $1 AND klasorId = $2`,
 		[userId, id]
 	);
 	const res = await getPgPool().query(
-		'DELETE FROM kullanici_not_klasorleri WHERE id = $1 AND userId = $2',
+		'DELETE FROM user_note_folders WHERE id = $1 AND userId = $2',
 		[id, userId]
 	);
 	return (res.rowCount ?? 0) > 0;

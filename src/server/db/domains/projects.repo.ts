@@ -2,17 +2,21 @@ import { randomUUID } from 'crypto';
 import { ensurePostgresInit, getPgPool, withTransaction } from '@/db/index';
 import { slugify, uniqueSlug } from '@/lib/text';
 import type { Project } from '@/db/schema';
-import type { ProjeDurumu } from '@/lib/projects';
+import type { ProjectStatus } from '@/lib/projects';
 
 const PROJECT_SELECT = `
 	SELECT p.*,
 	       t.ad AS "takimAdi",
-	       k.ad || ' ' || k.soyad AS "olusturanAdSoyad",
-	       (SELECT COUNT(*) FROM proje_begenileri b WHERE b.projeId = p.id)::int AS "begeniSayisi",
-	       EXISTS (SELECT 1 FROM proje_begenileri b WHERE b.projeId = p.id AND b.userId = $1) AS "begendimMi"
-	FROM projeler p
-	LEFT JOIN takimlar t ON t.id = p.teamId
-	LEFT JOIN kullanicilar k ON k.id = p.olusturanId
+	       k.first_name || ' ' || k.last_name AS "olusturanAdSoyad",
+	       ot.ad AS "ownerTeamAd",
+	       ou.first_name || ' ' || ou.last_name AS "ownerUserAdSoyad",
+	       (SELECT COUNT(*) FROM project_likes b WHERE b.projeId = p.id)::int AS "begeniSayisi",
+	       EXISTS (SELECT 1 FROM project_likes b WHERE b.projeId = p.id AND b.userId = $1) AS "begendimMi"
+	FROM projects p
+	LEFT JOIN teams t ON t.id = p.teamId
+	LEFT JOIN users k ON k.id = p.olusturanId
+	LEFT JOIN teams ot ON ot.id = p.owner_team_id
+	LEFT JOIN users ou ON ou.id = p.owner_user_id
 `;
 
 function toProject(row: Record<string, unknown>): Project {
@@ -55,21 +59,25 @@ export interface ProjectInput {
 	canliUrl: string | null;
 	teknolojiler: string[];
 	teamId: string | null;
+	ownerTeamId?: string | null;
+	ownerUserId?: string | null;
 }
 
-export async function createProject(input: ProjectInput & { olusturanId: string; status: ProjeDurumu }): Promise<Project> {
+export async function createProject(input: ProjectInput & { olusturanId: string; status: ProjectStatus }): Promise<Project> {
 	await ensurePostgresInit();
 	const db = getPgPool();
 	const id = randomUUID();
 	const now = Date.now();
 	const slug = await uniqueSlug(
 		slugify(input.baslik),
-		async (candidate) => ((await db.query('SELECT 1 FROM projeler WHERE slug = $1', [candidate])).rowCount ?? 0) > 0,
+		async (candidate) => ((await db.query('SELECT 1 FROM projects WHERE slug = $1', [candidate])).rowCount ?? 0) > 0,
 		'proje'
 	);
 	await db.query(
-		`INSERT INTO projeler (id, slug, baslik, ozet, aciklama, repoUrl, canliUrl, teknolojiler, teamId, olusturanId, status, oneCikan, olusturma, guncellenme)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 0, $12, $12)`,
+		`INSERT INTO projects
+			(id, slug, baslik, ozet, aciklama, repoUrl, canliUrl, teknolojiler, teamId, olusturanId,
+			 status, oneCikan, olusturma, guncellenme, owner_team_id, owner_user_id, created_by)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 0, $12, $12, $13, $14, $10)`,
 		[
 			id,
 			slug,
@@ -83,6 +91,8 @@ export async function createProject(input: ProjectInput & { olusturanId: string;
 			input.olusturanId,
 			input.status,
 			now,
+			input.ownerTeamId ?? input.teamId,
+			input.ownerUserId ?? input.olusturanId,
 		]
 	);
 	return (await getProjectById(id, input.olusturanId)) as Project;
@@ -91,7 +101,7 @@ export async function createProject(input: ProjectInput & { olusturanId: string;
 /** Applies the given fields; omitted ones stay. Returns false when the project is gone. */
 export async function updateProject(
 	id: string,
-	patch: Partial<ProjectInput> & { status?: ProjeDurumu; oneCikan?: boolean }
+	patch: Partial<ProjectInput> & { status?: ProjectStatus; oneCikan?: boolean }
 ): Promise<boolean> {
 	await ensurePostgresInit();
 	const sets: string[] = [];
@@ -107,17 +117,19 @@ export async function updateProject(
 	if (patch.canliUrl !== undefined) set('canliUrl', patch.canliUrl);
 	if (patch.teknolojiler !== undefined) set('teknolojiler', JSON.stringify(patch.teknolojiler));
 	if (patch.teamId !== undefined) set('teamId', patch.teamId);
+	if (patch.ownerTeamId !== undefined) set('owner_team_id', patch.ownerTeamId);
+	if (patch.ownerUserId !== undefined) set('owner_user_id', patch.ownerUserId);
 	if (patch.status !== undefined) set('status', patch.status);
 	if (patch.oneCikan !== undefined) set('oneCikan', patch.oneCikan ? 1 : 0);
 	set('guncellenme', Date.now());
 	values.push(id);
-	const res = await getPgPool().query(`UPDATE projeler SET ${sets.join(', ')} WHERE id = $${values.length}`, values);
+	const res = await getPgPool().query(`UPDATE projects SET ${sets.join(', ')} WHERE id = $${values.length}`, values);
 	return (res.rowCount ?? 0) > 0;
 }
 
 export async function deleteProject(id: string): Promise<boolean> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query('DELETE FROM projeler WHERE id = $1', [id]);
+	const res = await getPgPool().query('DELETE FROM projects WHERE id = $1', [id]);
 	return (res.rowCount ?? 0) > 0;
 }
 

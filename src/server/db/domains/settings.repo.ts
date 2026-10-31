@@ -46,10 +46,10 @@ export async function setSystemSettings(
 ): Promise<void> {
 	const now = Date.now();
 	await withTransaction(async (client) => {
-		let onceki: Record<string, string | undefined> = {};
+		let previous: Record<string, string | undefined> = {};
 		if (denetim) {
 			const res = await client.query('SELECT key AS anahtar, value AS deger FROM system_settings WHERE key = ANY($1) FOR UPDATE', [Object.keys(ayarlar)]);
-			onceki = Object.fromEntries(res.rows.map((r) => [r.anahtar as string, r.deger as string]));
+			previous = Object.fromEntries(res.rows.map((r) => [r.anahtar as string, r.deger as string]));
 		}
 		for (const [anahtar, deger] of Object.entries(ayarlar)) {
 			await client.query(
@@ -61,7 +61,7 @@ export async function setSystemSettings(
 				[anahtar, deger, now]
 			);
 		}
-		const fark = denetim?.fark(onceki, ayarlar);
+		const fark = denetim?.fark(previous, ayarlar);
 		if (denetim && fark) await logAuditEvent(client, denetim.ctx, { ...denetim.registration, onceki: fark.onceki, sonraki: fark.sonraki });
 	});
 }

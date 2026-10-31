@@ -3,10 +3,10 @@ import { ensurePostgresInit, getPgPool, getSystemSettings } from '@/db/index';
 import type { Certificate } from '@/db/schema';
 import { notificationEvents, publishEventQuiet } from '@/db/olaylar';
 
-const KOD_ALFABESI = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+const CODE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
 
 function newVerificationCode(): string {
-	const chars = Array.from({ length: 8 }, () => KOD_ALFABESI[randomInt(KOD_ALFABESI.length)]).join('');
+	const chars = Array.from({ length: 8 }, () => CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]).join('');
 	return `BEU-${new Date().getFullYear()}-${chars.slice(0, 4)}-${chars.slice(4)}`;
 }
 
@@ -14,12 +14,12 @@ export async function getCertificates(userId?: string): Promise<Certificate[]> {
 	await ensurePostgresInit();
 	let query = `
 		SELECT s.*,
-		       k.ad || ' ' || k.soyad as "kullaniciAdSoyad",
-		       k.ogrenciNo,
+		       k.first_name || ' ' || k.last_name as "kullaniciAdSoyad",
+		       k.handle as "ogrenciNo",
 		       e.baslik as "etkinlikBaslik"
-		FROM sertifikalar s
-		JOIN kullanicilar k ON s.userId = k.id
-		LEFT JOIN etkinlikler e ON s.etkinlikId = e.id
+		FROM certificates s
+		JOIN users k ON s.userId = k.id
+		LEFT JOIN events e ON s.etkinlikId = e.id
 	`;
 	const params: unknown[] = [];
 	if (userId) {
@@ -37,13 +37,13 @@ export async function getCertificateByCode(kod: string): Promise<Certificate | n
 	const res = await getPgPool().query(
 		`
 		SELECT s.*,
-		       k.ad || ' ' || k.soyad as "kullaniciAdSoyad",
-		       k.ogrenciNo,
-		       k.bolum as "kullaniciBolum",
+		       k.first_name || ' ' || k.last_name as "kullaniciAdSoyad",
+		       k.handle as "ogrenciNo",
+		       k.department as "kullaniciBolum",
 		       e.baslik as "etkinlikBaslik"
-		FROM sertifikalar s
-		JOIN kullanicilar k ON s.userId = k.id
-		LEFT JOIN etkinlikler e ON s.etkinlikId = e.id
+		FROM certificates s
+		JOIN users k ON s.userId = k.id
+		LEFT JOIN events e ON s.etkinlikId = e.id
 		WHERE s.verificationCode = $1
 	`,
 		[kod]
@@ -67,7 +67,7 @@ export async function createCertificate(params: {
 		const verificationCode = newVerificationCode();
 		try {
 			await getPgPool().query(
-				`INSERT INTO sertifikalar (id, verificationCode, userId, etkinlikId, baslik, verilisTarihi, pdfUrl, olusturma, kategori, dil, aciklama)
+				`INSERT INTO certificates (id, verificationCode, userId, etkinlikId, baslik, verilisTarihi, pdfUrl, olusturma, kategori, dil, aciklama)
 				 VALUES ($1, $2, $3, $4, $5, $6, $7, $6, $8, $9, $10)`,
 				[
 					id,
@@ -98,8 +98,8 @@ export async function createEventCertificates(
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`SELECT y.userId AS "userId",
-		        EXISTS (SELECT 1 FROM sertifikalar s WHERE s.userId = y.userId AND s.etkinlikId = $1) AS "var"
-		 FROM yoklamalar y WHERE y.etkinlikId = $1`,
+		        EXISTS (SELECT 1 FROM certificates s WHERE s.userId = y.userId AND s.etkinlikId = $1) AS "var"
+		 FROM attendances y WHERE y.etkinlikId = $1`,
 		[etkinlikId]
 	);
 	let verilen = 0;
@@ -122,33 +122,33 @@ export async function createEventCertificates(
 	return { verilen, zatenVar };
 }
 
-export interface KulupBilgileri {
+export interface CommunityProfile {
 	universite: string;
 	kulupAdi: string;
 	imzalar: { ad: string; unvan: string }[];
 }
 
-export async function getKulupBilgileri(): Promise<KulupBilgileri> {
-	const ayar = await getSystemSettings();
+export async function getCommunityProfile(): Promise<CommunityProfile> {
+	const setting = await getSystemSettings();
 	let lead = '';
-	if (!ayar.imza1_ad) {
+	if (!setting.imza1_ad) {
 		const res = await getPgPool().query(
-			"SELECT ad || ' ' || soyad AS ad FROM kullanicilar WHERE roleId = 'rol_admin' AND status = 'aktif' ORDER BY olusturma ASC LIMIT 1"
+			"SELECT first_name || ' ' || last_name AS ad FROM users WHERE role_id = 'rol_admin' AND status = 'aktif' ORDER BY created_at ASC LIMIT 1"
 		);
 		lead = res.rows[0]?.ad ?? '';
 	}
 	return {
-		universite: ayar.universite,
-		kulupAdi: ayar.kulup_adi,
+		universite: setting.universite,
+		kulupAdi: setting.kulup_adi,
 		imzalar: [
-			{ ad: ayar.imza1_ad || lead, unvan: ayar.imza1_unvan },
-			{ ad: ayar.imza2_ad, unvan: ayar.imza2_unvan },
+			{ ad: setting.imza1_ad || lead, unvan: setting.imza1_unvan },
+			{ ad: setting.imza2_ad, unvan: setting.imza2_unvan },
 		],
 	};
 }
 
 export async function deleteCertificate(id: string): Promise<boolean> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query('DELETE FROM sertifikalar WHERE id = $1', [id]);
+	const res = await getPgPool().query('DELETE FROM certificates WHERE id = $1', [id]);
 	return (res.rowCount ?? 0) > 0;
 }

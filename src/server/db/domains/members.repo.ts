@@ -5,7 +5,7 @@ import type { User, MemberRosterRow } from '@/db/schema';
 import { MEMBER_ROSTER_SQL } from '@/db/schema';
 import { logAuditEvent, type AuditContext } from '@/db/audit';
 import { notificationEvents, publishEvent, publishEventQuiet } from '@/db/olaylar';
-import { temizIp, uyeHedefAdi, uyeOzeti } from '@/lib/audit';
+import { temizIp, memberTargetName, memberSummary } from '@/lib/audit';
 import { decryptSecret } from '@/lib/auth/secretBox';
 
 export async function normalizeUserRow(row: Record<string, unknown> | undefined | null): Promise<User | null> {
@@ -26,6 +26,9 @@ export async function normalizeUserRow(row: Record<string, unknown> | undefined 
 		bio: (row.bio ?? '') ? String(row.bio) : undefined,
 		xp: Number(row.xp ?? 0),
 		status: ((row.status ?? row.status) as User['status']) || 'aktif',
+		authMethod: (['password', 'totp', 'passkey'].includes(String(row.authMethod ?? ''))
+			? String(row.authMethod)
+			: 'password') as User['authMethod'],
 		aktifOturumToken: (row.aktivoturumtoken ?? row.aktifOturumToken ?? row.sessionToken ?? row.session_token) ? String(row.aktivoturumtoken ?? row.aktifOturumToken ?? row.sessionToken ?? row.session_token) : undefined,
 		sonGirisTarihi: row.songiristarihi ? Number(row.songiristarihi) : (row.sonGirisTarihi ? Number(row.sonGirisTarihi) : (row.lastLoginAt ? Number(row.lastLoginAt) : (row.last_login_at ? Number(row.last_login_at) : undefined))),
 		sonGirisIp: (row.songirisip ?? row.sonGirisIp ?? row.lastLoginIp ?? row.last_login_ip) ? String(row.songirisip ?? row.sonGirisIp ?? row.lastLoginIp ?? row.last_login_ip) : null,
@@ -57,20 +60,24 @@ export async function getUsers(): Promise<User[]> {
 }
 
 function parseRosterTeams(raw: unknown): MemberRosterRow['takimlar'] {
-	if (Array.isArray(raw)) {
-		return raw.filter((item): item is NonNullable<MemberRosterRow['takimlar']>[number] => Boolean(item && typeof item === 'object' && (item as { id?: unknown }).id));
-	}
+	let parsed: unknown = raw;
 	if (typeof raw === 'string' && raw.trim()) {
 		try {
-			const parsed = JSON.parse(raw);
-			if (Array.isArray(parsed)) {
-				return parsed.filter((item): item is NonNullable<MemberRosterRow['takimlar']>[number] => Boolean(item && typeof item === 'object' && (item as { id?: unknown }).id));
-			}
+			parsed = JSON.parse(raw);
 		} catch {
 			return [];
 		}
 	}
-	return [];
+	if (!Array.isArray(parsed)) return [];
+	// Legacy/foreign rows may contain the same team twice (leader + member).
+	const byId = new Map<string, NonNullable<MemberRosterRow['takimlar']>[number]>();
+	for (const item of parsed) {
+		if (!item || typeof item !== 'object' || !(item as { id?: unknown }).id) continue;
+		const team = item as NonNullable<MemberRosterRow['takimlar']>[number];
+		const id = String(team.id);
+		if (!byId.has(id)) byId.set(id, team);
+	}
+	return [...byId.values()];
 }
 
 export async function getMemberRoster(): Promise<MemberRosterRow[]> {
@@ -79,7 +86,7 @@ export async function getMemberRoster(): Promise<MemberRosterRow[]> {
 		await ensurePostgresInit();
 		const res = await getPgPool().query(MEMBER_ROSTER_SQL);
 		if (!res.rows?.length) return [];
-		return res.rows.map((r: Record<string, unknown>) => ({
+		const rows = res.rows.map((r: Record<string, unknown>) => ({
 			...(r as unknown as MemberRosterRow),
 			id: String(r.id ?? ''),
 			ad: String(r.ad ?? r.firstName ?? r.first_name ?? ''),
@@ -100,6 +107,34 @@ export async function getMemberRoster(): Promise<MemberRosterRow[]> {
 			takimlar: parseRosterTeams(r.takimlar),
 			yoklamaSayisi: Number(r.yoklamaSayisi ?? r.yoklamasayisi ?? 0),
 		}));
+
+		// Custom field values are fetched in one query, never per member. The roster
+		// is a directory view: only fields explicitly meant for member profiles and
+		// currently enabled may leave the server here. Registration-only answers stay
+		// in the application/member record for the manager detail view.
+		const ids = rows.map((row) => row.id).filter(Boolean);
+		if (ids.length > 0) {
+			const values = await getPgPool().query(
+				`SELECT v.user_id AS "userId", f.field_key AS "fieldKey", f.type, v.value
+				 FROM member_field_values v
+				 JOIN form_fields f ON f.id = v.field_id
+				 WHERE v.user_id = ANY($1)
+				   AND f.enabled = 1
+				   AND f.archived_at IS NULL
+				   AND f.directory_visibility = 'members'`,
+				[ids]
+			);
+			const byUser = new Map<string, Record<string, string>>();
+			for (const row of values.rows) {
+				const map = byUser.get(String(row.userId)) ?? {};
+				map[String(row.fieldKey)] =
+					String(row.type) === 'password' ? '••••••••' : String(row.value ?? '');
+				byUser.set(String(row.userId), map);
+			}
+			for (const row of rows) row.customFields = byUser.get(row.id) ?? {};
+		}
+
+		return rows;
 	} catch (err) {
 		console.warn('[members.repo] getMemberRoster read warning:', err);
 		return [];
@@ -186,7 +221,8 @@ export async function updateUserSession(
 	userId: string,
 	token: string | null,
 	expiresAt: number | null = null,
-	telemetry?: { ip?: string | null; userAgent?: string | null }
+	telemetry?: { ip?: string | null; userAgent?: string | null },
+	authMethod: 'password' | 'totp' | 'passkey' = 'password'
 ): Promise<void> {
 	if (!isDatabaseConfigured()) return;
 	await ensurePostgresInit();
@@ -206,14 +242,15 @@ export async function updateUserSession(
 			     last_login_ip = $4,
 			     last_login_user_agent = $5,
 			     last_active_ip = $4,
-			     last_active_at = $2
-			 WHERE id = $6`,
-			[storedToken, now, expiresAt, cleanIp, cleanUa, userId]
+			     last_active_at = $2,
+			     auth_method = $6
+			 WHERE id = $7`,
+			[storedToken, now, expiresAt, cleanIp, cleanUa, authMethod, userId]
 		);
 	} else {
 		await getPgPool().query(
-			'UPDATE users SET session_token = $1, last_login_at = $2, session_expires_at = $3 WHERE id = $4',
-			[storedToken, token ? now : null, token ? expiresAt : null, userId]
+			'UPDATE users SET session_token = $1, last_login_at = $2, session_expires_at = $3, auth_method = $4 WHERE id = $5',
+			[storedToken, token ? now : null, token ? expiresAt : null, token ? authMethod : 'password', userId]
 		);
 	}
 	await publishEventQuiet(getPgPool(), { k: 'oturum', userId });
@@ -279,7 +316,7 @@ export async function createUser(
 				islem: 'uye.rol_ata',
 				hedefTur: 'uye',
 				hedefId: id,
-				hedefAd: uyeHedefAdi(newUser),
+				hedefAd: memberTargetName(newUser),
 				onceki: { roleId: null, rolAd: null },
 				sonraki: { roleId: newUser.roleId, rolAd: role.rows[0]?.ad ?? null, uyeEklendi: true },
 			});
@@ -339,7 +376,7 @@ export async function deleteUser(id: string, denetim: AuditContext): Promise<boo
 		);
 		const u = res.rows[0];
 		if (!u) return false;
-		await logAuditEvent(client, denetim, { islem: 'uye.sil', hedefTur: 'uye', hedefId: id, hedefAd: uyeHedefAdi(u), onceki: uyeOzeti(u), sonraki: null });
+		await logAuditEvent(client, denetim, { islem: 'uye.sil', hedefTur: 'uye', hedefId: id, hedefAd: memberTargetName(u), onceki: memberSummary(u), sonraki: null });
 		await publishEvent(client, { k: 'oturum', userId: id });
 		return true;
 	});

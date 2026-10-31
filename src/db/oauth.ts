@@ -180,11 +180,11 @@ export async function getOAuthClients(): Promise<OAuthClient[]> {
 			c.guvenilir,
 			c.aktif,
 			c.olusturanId,
-			CONCAT(k.ad, ' ', k.soyad) AS "olusturanad",
+			CONCAT(k.first_name, ' ', k.last_name) AS "olusturanad",
 			c.olusturma,
 			c.guncellenme
 		 FROM oauth_clients c
-		 LEFT JOIN kullanicilar k ON k.id = c.olusturanId
+		 LEFT JOIN users k ON k.id = c.olusturanId
 		 ORDER BY c.olusturma DESC`
 	);
 
@@ -205,11 +205,11 @@ export async function getOAuthClientById(id: string): Promise<OAuthClient | null
 			c.guvenilir,
 			c.aktif,
 			c.olusturanId,
-			CONCAT(k.ad, ' ', k.soyad) AS "olusturanad",
+			CONCAT(k.first_name, ' ', k.last_name) AS "olusturanad",
 			c.olusturma,
 			c.guncellenme
 		 FROM oauth_clients c
-		 LEFT JOIN kullanicilar k ON k.id = c.olusturanId
+		 LEFT JOIN users k ON k.id = c.olusturanId
 		 WHERE c.id = $1`,
 		[id]
 	);
@@ -290,7 +290,7 @@ export async function updateOAuthClient(
 	const pool = getPgPool();
 	const now = Date.now();
 
-	const newAd = data.ad !== undefined ? data.ad.trim() : existing.ad;
+	const newName = data.ad !== undefined ? data.ad.trim() : existing.ad;
 	const newDescription = data.aciklama !== undefined ? data.aciklama.trim() : existing.aciklama;
 	const newLogo = data.logoUrl !== undefined ? data.logoUrl : existing.logoUrl;
 	let newRedirect = JSON.stringify(existing.redirectUris);
@@ -308,13 +308,13 @@ export async function updateOAuthClient(
 		? JSON.stringify(data.allowedScopes)
 		: JSON.stringify(existing.allowedScopes);
 	const newGuvenilir = data.guvenilir !== undefined ? (data.guvenilir ? 1 : 0) : (existing.guvenilir ? 1 : 0);
-	const newAktif = data.aktif !== undefined ? (data.aktif ? 1 : 0) : (existing.aktif ? 1 : 0);
+	const newActive = data.aktif !== undefined ? (data.aktif ? 1 : 0) : (existing.aktif ? 1 : 0);
 
 	await pool.query(
 		`UPDATE oauth_clients
 		 SET ad = $1, aciklama = $2, logoUrl = $3, redirectUris = $4, allowedScopes = $5, guvenilir = $6, aktif = $7, guncellenme = $8
 		 WHERE id = $9`,
-		[newAd, newDescription, newLogo, newRedirect, newAllowedScopes, newGuvenilir, newAktif, now, id]
+		[newName, newDescription, newLogo, newRedirect, newAllowedScopes, newGuvenilir, newActive, now, id]
 	);
 
 	return true;

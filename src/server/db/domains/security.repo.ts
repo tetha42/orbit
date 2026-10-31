@@ -62,7 +62,7 @@ export interface SocIncident {
 	updatedAt: number;
 }
 
-export interface AktifOturumBilgisi {
+export interface ActiveSessionInfo {
 	id: string;
 	ad: string;
 	soyad: string;
@@ -204,7 +204,7 @@ export async function getEmergencyKillSwitches(): Promise<EmergencyKillSwitches>
 		await ensurePostgresInit();
 		const p = getPgPool();
 		const res = await p.query(
-			`SELECT deger FROM sistem_ayarlari WHERE anahtar = 'soc_emergency_switches' LIMIT 1`
+			`SELECT value AS deger FROM system_settings WHERE key = 'soc_emergency_switches' LIMIT 1`
 		);
 		if (res.rows.length > 0 && res.rows[0].deger) {
 			const parsed = JSON.parse(res.rows[0].deger) as Partial<EmergencyKillSwitches>;
@@ -903,7 +903,7 @@ export function recordSessionActivity(
 	return { suspiciousJump: false };
 }
 
-export async function getActiveSessions(): Promise<AktifOturumBilgisi[]> {
+export async function getActiveSessions(): Promise<ActiveSessionInfo[]> {
 	await ensurePostgresInit();
 	const now = Date.now();
 	const res = await getPgPool().query(
@@ -923,7 +923,7 @@ export async function getActiveSessions(): Promise<AktifOturumBilgisi[]> {
 		const aktifIp = (r.sonaktifip ?? r.sonAktifIp) ? String(r.sonaktifip ?? r.sonAktifIp) : girisIp;
 		const roleId = (r.rolid ?? r.roleId) ? String(r.rolid ?? r.roleId) : null;
 		const ipDegisti = Boolean(girisIp && aktifIp && girisIp !== aktifIp);
-		let impossibleTravel: AktifOturumBilgisi['impossibleTravel'] = undefined;
+		let impossibleTravel: ActiveSessionInfo['impossibleTravel'] = undefined;
 
 		if (ipDegisti && girisIp && aktifIp) {
 			const girisTime = r.songiristarihi || r.sonGirisTarihi ? Number(r.songiristarihi ?? r.sonGirisTarihi) : now;
@@ -960,7 +960,7 @@ export async function getActiveSessions(): Promise<AktifOturumBilgisi[]> {
 			soyad: String(r.soyad),
 			email: String(r.email),
 			roleId,
-			rolAd: r.rolAd ? String(r.rolAd) : 'Üye',
+			rolAd: r.rolAd ? String(r.rolAd) : 'Member',
 			admin: roleId === 'rol_admin',
 			status: String(r.status || 'aktif'),
 			totpEnabled: Number(r.totpenabled ?? r.totpEnabled ?? 0) === 1,
@@ -1175,7 +1175,7 @@ export async function getHourlyStrikeDistribution(): Promise<HourlyAttackPoint[]
 				COUNT(*) FILTER (WHERE seviye IN ('ERROR', 'CRITICAL'))::int AS "blockedCount",
 				COUNT(*) FILTER (WHERE seviye = 'WARN')::int AS "warningCount",
 				COUNT(*)::int AS "totalCount"
-			 FROM sistem_loglari
+			 FROM system_logs
 			 WHERE zaman >= $1 AND servis IN ('security', 'auth') AND seviye IN ('WARN', 'ERROR', 'CRITICAL')
 			 GROUP BY 1
 			 ORDER BY 1 ASC`,
@@ -1215,7 +1215,7 @@ export async function getDefconResetAt(): Promise<number> {
 		await ensurePostgresInit();
 		const p = getPgPool();
 		const res = await p.query(
-			`SELECT deger FROM sistem_ayarlari WHERE anahtar = 'soc_defcon_reset_at' LIMIT 1`
+			`SELECT value AS deger FROM system_settings WHERE key = 'soc_defcon_reset_at' LIMIT 1`
 		);
 		if (res.rows.length > 0 && res.rows[0].deger) {
 			const n = Number(res.rows[0].deger);
@@ -1277,7 +1277,7 @@ export async function getSocOverview(): Promise<SocOverviewData> {
 				COUNT(*) FILTER (WHERE servis = 'security' AND (mesaj ILIKE '%CSRF%' OR mesaj ILIKE '%IDOR%' OR mesaj ILIKE '%Yetkisiz%' OR mesaj ILIKE '%Unauthorized%' OR mesaj ILIKE '%WAF%' OR mesaj ILIKE '%Honeypot%' OR mesaj ILIKE '%FIM%'))::int AS "csrfIdor",
 				COUNT(*) FILTER (WHERE servis = 'security' AND (mesaj ILIKE '%Oturum IP%' OR mesaj ILIKE '%Session IP%'))::int AS "sessionAnomalies",
 				COUNT(*) FILTER (WHERE seviye = 'CRITICAL')::int AS "criticalEvents"
-			 FROM sistem_loglari
+			 FROM system_logs
 			 WHERE zaman >= $1
 			   AND ip NOT IN ('127.0.0.1', '::1', 'localhost', 'unknown')`,
 			[effectiveSince]
@@ -1288,7 +1288,7 @@ export async function getSocOverview(): Promise<SocOverviewData> {
 				COUNT(*)::int AS "eventCount",
 				MAX(zaman) AS "sonGorulme",
 				(ARRAY_AGG(mesaj ORDER BY zaman DESC))[1] AS "sonMesaj"
-			 FROM sistem_loglari
+			 FROM system_logs
 			 WHERE zaman >= $1
 			   AND seviye IN ('WARN', 'ERROR', 'CRITICAL')
 			   AND ip IS NOT NULL
@@ -1304,7 +1304,7 @@ export async function getSocOverview(): Promise<SocOverviewData> {
 				(zaman / 3600000) * 3600000 AS "hourBucket",
 				COUNT(*) FILTER (WHERE seviye = 'WARN')::int AS "warnCount",
 				COUNT(*) FILTER (WHERE seviye IN ('ERROR', 'CRITICAL'))::int AS "errorCount"
-			 FROM sistem_loglari
+			 FROM system_logs
 			 WHERE zaman >= $1 AND seviye IN ('WARN', 'ERROR', 'CRITICAL')
 			 GROUP BY 1
 			 ORDER BY 1 ASC`,

@@ -1,6 +1,12 @@
 import type { PoolClient } from 'pg';
 import { errorMessage } from '@/lib/errors';
 import { slugify, uniqueSlug } from '@/lib/text';
+import { DEFAULT_REGISTRATION_CORE_CONFIG } from '@/lib/registrationConfig';
+import { DEFAULT_TEAM_CATEGORIES, LEGACY_TEAM_CATEGORY_MAP } from '@/lib/teamCategories';
+import {
+	DEFAULT_MEMBERSHIP_POLICY,
+	MEMBERSHIP_POLICY_SETTINGS_KEY,
+} from '@/lib/membershipPolicy';
 
 export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 	// Normalize legacy columns in base tables ('kullaniciId' -> 'userId', 'durum' -> 'status', 'takimId' -> 'teamId')
@@ -81,6 +87,7 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 			first_name TEXT NOT NULL,
 			last_name TEXT NOT NULL,
 			email TEXT UNIQUE NOT NULL,
+			email_verified_at BIGINT,
 			password_hash TEXT NOT NULL,
 			handle TEXT UNIQUE,
 			department TEXT NOT NULL,
@@ -101,6 +108,7 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 			totp_confirmed_at BIGINT,
 			totp_last_step BIGINT,
 			session_expires_at BIGINT,
+			auth_method TEXT NOT NULL DEFAULT 'password',
 			mail_notifications_enabled INTEGER NOT NULL DEFAULT 0,
 			role_id TEXT,
 			created_at BIGINT NOT NULL
@@ -126,7 +134,7 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 			id TEXT PRIMARY KEY,
 			teamId TEXT NOT NULL,
 			userId TEXT NOT NULL,
-			takimRolu TEXT NOT NULL DEFAULT 'Geliştirici',
+			takimRolu TEXT NOT NULL DEFAULT 'Developer',
 			basvuruNotu TEXT,
 			status TEXT NOT NULL DEFAULT 'aktif',
 			katilimTarihi BIGINT NOT NULL,
@@ -369,6 +377,61 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 			updated_at BIGINT NOT NULL
 		);
 
+		CREATE TABLE IF NOT EXISTS legal_documents (
+			id TEXT PRIMARY KEY,
+			doc_type TEXT UNIQUE NOT NULL,
+			scope TEXT NOT NULL DEFAULT 'registration',
+			title_tr TEXT NOT NULL,
+			title_en TEXT NOT NULL,
+			body_tr TEXT NOT NULL,
+			body_en TEXT NOT NULL,
+			required INTEGER NOT NULL DEFAULT 0,
+			enabled INTEGER NOT NULL DEFAULT 1,
+			sort_order INTEGER NOT NULL DEFAULT 0,
+			updated_at BIGINT NOT NULL,
+			updated_by TEXT
+		);
+
+		CREATE TABLE IF NOT EXISTS form_fields (
+			id TEXT PRIMARY KEY,
+			scope TEXT NOT NULL DEFAULT 'registration',
+			field_key TEXT NOT NULL,
+			type TEXT NOT NULL DEFAULT 'text',
+			section TEXT NOT NULL DEFAULT 'custom',
+			label_tr TEXT NOT NULL,
+			label_en TEXT NOT NULL,
+			placeholder_tr TEXT,
+			placeholder_en TEXT,
+			options TEXT NOT NULL DEFAULT '[]',
+			required INTEGER NOT NULL DEFAULT 0,
+			enabled INTEGER NOT NULL DEFAULT 1,
+			sort_order INTEGER NOT NULL DEFAULT 0,
+			created_at BIGINT NOT NULL,
+			updated_at BIGINT NOT NULL,
+			UNIQUE (scope, field_key)
+		);
+
+		CREATE TABLE IF NOT EXISTS member_field_values (
+			user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			field_id TEXT NOT NULL REFERENCES form_fields(id) ON DELETE CASCADE,
+			value TEXT NOT NULL,
+			updated_at BIGINT NOT NULL,
+			PRIMARY KEY (user_id, field_id)
+		);
+
+		CREATE TABLE IF NOT EXISTS custom_wallpapers (
+			id TEXT PRIMARY KEY,
+			title_tr TEXT NOT NULL,
+			title_en TEXT NOT NULL,
+			type TEXT NOT NULL DEFAULT 'custom',
+			filename TEXT UNIQUE NOT NULL,
+			mime TEXT NOT NULL,
+			size INTEGER NOT NULL DEFAULT 0,
+			created_by TEXT,
+			created_at BIGINT NOT NULL,
+			sort_order INTEGER NOT NULL DEFAULT 0
+		);
+
 		CREATE TABLE IF NOT EXISTS webauthn_credentials (
 			id TEXT PRIMARY KEY,
 			userId TEXT NOT NULL,
@@ -494,93 +557,47 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 		CREATE INDEX IF NOT EXISTS idx_soc_incidents_status ON soc_incidents (status, created_at DESC);
 		CREATE INDEX IF NOT EXISTS idx_soc_incidents_ip ON soc_incidents (source_ip);
 
-		-- Backwards-compatible updatable views for legacy Turkish names
-		DROP VIEW IF EXISTS kullanicilar CASCADE;
-		CREATE VIEW kullanicilar AS
-		SELECT id,
-		       first_name AS ad,
-		       first_name,
-		       last_name AS soyad,
-		       last_name,
-		       email AS email,
-		       password_hash AS sifrehash,
-		       password_hash,
-		       handle AS ogrencino,
-		       handle,
-		       department AS bolum,
-		       department,
-		       grade AS sinif,
-		       grade,
-		       role_id AS rolid,
-		       role_id AS roleid,
-		       role_id,
-		       avatar_url AS profilfoto,
-		       avatar_url,
-		       bio,
-		       xp,
-		       status AS status,
-		       session_token AS aktifoturumtoken,
-		       session_token,
-		       last_login_at AS songiristarihi,
-		       last_login_at,
-		       last_login_ip AS songirisip,
-		       last_login_ip,
-		       last_login_user_agent AS songirisuseragent,
-		       last_login_user_agent,
-		       last_active_ip AS sonaktifip,
-		       last_active_ip,
-		       last_active_at AS sonaktiftarihi,
-		       last_active_at,
-		       totp_secret AS totpsecret,
-		       totp_secret,
-		       totp_enabled AS totpenabled,
-		       totp_enabled,
-		       totp_recovery_codes AS totprecoverycodes,
-		       totp_recovery_codes,
-		       totp_confirmed_at AS totpconfirmedat,
-		       totp_confirmed_at,
-		       totp_last_step AS totpsonadim,
-		       totp_last_step,
-		       session_expires_at AS oturumbitis,
-		       session_expires_at,
-		       mail_notifications_enabled AS postaeposta,
-		       mail_notifications_enabled,
-		       created_at AS olusturma,
-		       created_at
-		FROM users;
+		CREATE TABLE IF NOT EXISTS user_workspace_preferences (
+			user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+			state JSONB NOT NULL DEFAULT '{}'::jsonb,
+			updated_at BIGINT NOT NULL
+		);
+		CREATE INDEX IF NOT EXISTS idx_workspace_pref_updated_at ON user_workspace_preferences(updated_at DESC);
 
-		DROP VIEW IF EXISTS takimlar CASCADE; CREATE VIEW takimlar AS SELECT * FROM teams;
-		DROP VIEW IF EXISTS takim_uyeleri CASCADE; CREATE VIEW takim_uyeleri AS SELECT * FROM team_members;
-		DROP VIEW IF EXISTS takim_basvuru_kararlari CASCADE; CREATE VIEW takim_basvuru_kararlari AS SELECT * FROM team_application_decisions;
-		DROP VIEW IF EXISTS takim_gorevleri CASCADE; CREATE VIEW takim_gorevleri AS SELECT * FROM team_tasks;
-		DROP VIEW IF EXISTS takim_gorev_maddeleri CASCADE; CREATE VIEW takim_gorev_maddeleri AS SELECT * FROM team_task_items;
-		DROP VIEW IF EXISTS takim_gorev_yorumlari CASCADE; CREATE VIEW takim_gorev_yorumlari AS SELECT * FROM team_task_comments;
-		DROP VIEW IF EXISTS takim_gorev_aktivite CASCADE; CREATE VIEW takim_gorev_aktivite AS SELECT * FROM team_task_activities;
-		DROP VIEW IF EXISTS etkinlikler CASCADE; CREATE VIEW etkinlikler AS SELECT *, endtime AS bitis FROM events;
-		DROP VIEW IF EXISTS etkinlik_kayitlari CASCADE; CREATE VIEW etkinlik_kayitlari AS SELECT * FROM event_registrations;
-		DROP VIEW IF EXISTS yoklamalar CASCADE; CREATE VIEW yoklamalar AS SELECT * FROM attendances;
-		DROP VIEW IF EXISTS butce_kayitlari CASCADE; CREATE VIEW butce_kayitlari AS SELECT * FROM budget_records;
-		DROP VIEW IF EXISTS dosyalar CASCADE; CREATE VIEW dosyalar AS SELECT * FROM files;
-		DROP VIEW IF EXISTS tutanaklar_kararlar CASCADE; CREATE VIEW tutanaklar_kararlar AS SELECT * FROM decisions;
-		DROP VIEW IF EXISTS haberler CASCADE; CREATE VIEW haberler AS SELECT * FROM news;
-		DROP VIEW IF EXISTS sertifikalar CASCADE; CREATE VIEW sertifikalar AS SELECT * FROM certificates;
-		DROP VIEW IF EXISTS envanter CASCADE; CREATE VIEW envanter AS SELECT * FROM inventory;
-		DROP VIEW IF EXISTS envanter_hareketleri CASCADE; CREATE VIEW envanter_hareketleri AS SELECT * FROM inventory_activities;
-		DROP VIEW IF EXISTS kullanici_notlari CASCADE; CREATE VIEW kullanici_notlari AS SELECT * FROM user_notes;
-		DROP VIEW IF EXISTS kullanici_not_klasorleri CASCADE; CREATE VIEW kullanici_not_klasorleri AS SELECT * FROM user_note_folders;
+		-- All domain queries now target canonical English physical tables directly.
+		-- Drop all legacy Turkish compatibility views:
+		DROP VIEW IF EXISTS kullanicilar CASCADE;
+		DROP VIEW IF EXISTS takimlar CASCADE;
+		DROP VIEW IF EXISTS takim_uyeleri CASCADE;
+		DROP VIEW IF EXISTS takim_basvuru_kararlari CASCADE;
+		DROP VIEW IF EXISTS takim_gorevleri CASCADE;
+		DROP VIEW IF EXISTS takim_gorev_maddeleri CASCADE;
+		DROP VIEW IF EXISTS takim_gorev_yorumlari CASCADE;
+		DROP VIEW IF EXISTS takim_gorev_aktivite CASCADE;
+		DROP VIEW IF EXISTS etkinlikler CASCADE;
+		DROP VIEW IF EXISTS etkinlik_kayitlari CASCADE;
+		DROP VIEW IF EXISTS yoklamalar CASCADE;
+		DROP VIEW IF EXISTS butce_kayitlari CASCADE;
+		DROP VIEW IF EXISTS dosyalar CASCADE;
+		DROP VIEW IF EXISTS tutanaklar_kararlar CASCADE;
+		DROP VIEW IF EXISTS haberler CASCADE;
+		DROP VIEW IF EXISTS sertifikalar CASCADE;
+		DROP VIEW IF EXISTS envanter CASCADE;
+		DROP VIEW IF EXISTS envanter_hareketleri CASCADE;
+		DROP VIEW IF EXISTS kullanici_notlari CASCADE;
+		DROP VIEW IF EXISTS kullanici_not_klasorleri CASCADE;
 		DROP VIEW IF EXISTS sistem_ayarlari CASCADE;
-		CREATE VIEW sistem_ayarlari AS SELECT key AS anahtar, value AS deger, updated_at AS guncellenme FROM system_settings;
-		DROP VIEW IF EXISTS sohbet_odalari CASCADE; CREATE VIEW sohbet_odalari AS SELECT * FROM chat_rooms;
-		DROP VIEW IF EXISTS sohbet_mesajlari CASCADE; CREATE VIEW sohbet_mesajlari AS SELECT * FROM chat_messages;
-		DROP VIEW IF EXISTS sohbet_uyeleri CASCADE; CREATE VIEW sohbet_uyeleri AS SELECT * FROM chat_members;
+		DROP VIEW IF EXISTS sohbet_odalari CASCADE;
+		DROP VIEW IF EXISTS sohbet_mesajlari CASCADE;
+		DROP VIEW IF EXISTS sohbet_uyeleri CASCADE;
 		DROP VIEW IF EXISTS eposta_dogrulama CASCADE;
-		CREATE VIEW eposta_dogrulama AS
-		SELECT email AS email, code AS kod, type AS tur, expires_at AS songecerlilik, created_at AS olusturma
-		FROM email_verifications;
 		DROP VIEW IF EXISTS sistem_loglari CASCADE;
-		CREATE VIEW sistem_loglari AS SELECT * FROM system_logs;
-		DROP VIEW IF EXISTS projeler CASCADE; CREATE VIEW projeler AS SELECT * FROM projects;
-		DROP VIEW IF EXISTS proje_begenileri CASCADE; CREATE VIEW proje_begenileri AS SELECT * FROM project_likes;
+		DROP VIEW IF EXISTS projeler CASCADE;
+		DROP VIEW IF EXISTS proje_begenileri CASCADE;
+		DROP VIEW IF EXISTS sohbet_anketleri CASCADE;
+		DROP VIEW IF EXISTS sohbet_anket_secenekleri CASCADE;
+		DROP VIEW IF EXISTS sohbet_anket_oylari CASCADE;
+		DROP VIEW IF EXISTS guvenlik_engelleri CASCADE;
 	`);
 
 	try {
@@ -744,7 +761,7 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 	});
 
 	await runMigrationStep('2026_02_profil_foto_cleanup', 'Clean legacy mock profile photos', async () => {
-		await client.query(`UPDATE kullanicilar SET profilFoto = NULL WHERE profilFoto LIKE '/purus-profile/%'`);
+		await client.query(`UPDATE users SET avatar_url = NULL WHERE avatar_url LIKE '/purus-profile/%'`);
 	});
 
 	await runMigrationStep('2026_03_haberler_slugs', 'Backfill unique slugs for news', async () => {
@@ -1035,58 +1052,6 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 		// Create backwards-compatible updatable views for legacy queries
 		await client.query(`
 			DROP VIEW IF EXISTS kullanicilar CASCADE;
-			CREATE VIEW kullanicilar AS
-			SELECT id,
-			       first_name AS ad,
-			       first_name,
-			       last_name AS soyad,
-			       last_name,
-			       email AS email,
-			       password_hash AS sifrehash,
-			       password_hash,
-			       handle AS ogrencino,
-			       handle,
-			       department AS bolum,
-			       department,
-			       grade AS sinif,
-			       grade,
-			       role_id AS rolid,
-			       role_id AS roleid,
-			       role_id,
-			       avatar_url AS profilfoto,
-			       avatar_url,
-			       bio,
-			       xp,
-			       status AS status,
-			       session_token AS aktifoturumtoken,
-			       session_token,
-			       last_login_at AS songiristarihi,
-			       last_login_at,
-			       last_login_ip AS songirisip,
-			       last_login_ip,
-			       last_login_user_agent AS songirisuseragent,
-			       last_login_user_agent,
-			       last_active_ip AS sonaktifip,
-			       last_active_ip,
-			       last_active_at AS sonaktiftarihi,
-			       last_active_at,
-			       totp_secret AS totpsecret,
-			       totp_secret,
-			       totp_enabled AS totpenabled,
-			       totp_enabled,
-			       totp_recovery_codes AS totprecoverycodes,
-			       totp_recovery_codes,
-			       totp_confirmed_at AS totpconfirmedat,
-			       totp_confirmed_at,
-			       totp_last_step AS totpsonadim,
-			       totp_last_step,
-			       session_expires_at AS oturumbitis,
-			       session_expires_at,
-			       mail_notifications_enabled AS postaeposta,
-			       mail_notifications_enabled,
-			       created_at AS olusturma,
-			       created_at
-			FROM users;
 
 			DROP VIEW IF EXISTS etkinlikler CASCADE;
 			CREATE VIEW etkinlikler AS
@@ -1113,6 +1078,604 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 			DROP VIEW IF EXISTS sistem_loglari CASCADE;
 			CREATE VIEW sistem_loglari AS
 			SELECT * FROM system_logs;
+		`);
+	});
+
+	await runMigrationStep('2026_13_user_auth_method', 'Track whether the active session used a password, TOTP or a passkey', async () => {
+		await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_method TEXT NOT NULL DEFAULT 'password'`);
+	});
+
+	await runMigrationStep('2026_14_customization_schema', 'Create legal documents, custom form fields and custom wallpapers', async () => {
+		await client.query(`
+			CREATE TABLE IF NOT EXISTS legal_documents (
+				id TEXT PRIMARY KEY,
+				doc_type TEXT UNIQUE NOT NULL,
+				scope TEXT NOT NULL DEFAULT 'registration',
+				title_tr TEXT NOT NULL,
+				title_en TEXT NOT NULL,
+				body_tr TEXT NOT NULL,
+				body_en TEXT NOT NULL,
+				required INTEGER NOT NULL DEFAULT 0,
+				enabled INTEGER NOT NULL DEFAULT 1,
+				sort_order INTEGER NOT NULL DEFAULT 0,
+				updated_at BIGINT NOT NULL,
+				updated_by TEXT
+			);
+
+			CREATE TABLE IF NOT EXISTS form_fields (
+				id TEXT PRIMARY KEY,
+				scope TEXT NOT NULL DEFAULT 'registration',
+				field_key TEXT NOT NULL,
+				type TEXT NOT NULL DEFAULT 'text',
+				section TEXT NOT NULL DEFAULT 'custom',
+				label_tr TEXT NOT NULL,
+				label_en TEXT NOT NULL,
+				placeholder_tr TEXT,
+				placeholder_en TEXT,
+				options TEXT NOT NULL DEFAULT '[]',
+				required INTEGER NOT NULL DEFAULT 0,
+				enabled INTEGER NOT NULL DEFAULT 1,
+				sort_order INTEGER NOT NULL DEFAULT 0,
+				created_at BIGINT NOT NULL,
+				updated_at BIGINT NOT NULL,
+				UNIQUE (scope, field_key)
+			);
+
+			CREATE TABLE IF NOT EXISTS member_field_values (
+				user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+				field_id TEXT NOT NULL REFERENCES form_fields(id) ON DELETE CASCADE,
+				value TEXT NOT NULL,
+				updated_at BIGINT NOT NULL,
+				PRIMARY KEY (user_id, field_id)
+			);
+
+			CREATE TABLE IF NOT EXISTS custom_wallpapers (
+				id TEXT PRIMARY KEY,
+				title_tr TEXT NOT NULL,
+				title_en TEXT NOT NULL,
+				type TEXT NOT NULL DEFAULT 'custom',
+				filename TEXT UNIQUE NOT NULL,
+				mime TEXT NOT NULL,
+				size INTEGER NOT NULL DEFAULT 0,
+				created_by TEXT,
+				created_at BIGINT NOT NULL,
+				sort_order INTEGER NOT NULL DEFAULT 0
+			);
+
+			ALTER TABLE files ADD COLUMN IF NOT EXISTS sohbetOdaId TEXT;
+		`);
+	});
+
+
+	await runMigrationStep('2026_15_editable_defaults', 'Seed defaults for editable registration and team settings', async () => {
+		const defaults: Record<string, string> = {
+			site_description_tr:
+				'Tetha42 tarafından geliştirilen kendi sunucunuzda barındırılan topluluk işletim sistemi.',
+			site_description_en: 'Self-hosted community operating system engineered by tetha42.',
+			site_brand_version: 'default',
+			registration_core_fields: JSON.stringify(DEFAULT_REGISTRATION_CORE_CONFIG),
+			team_categories: JSON.stringify(DEFAULT_TEAM_CATEGORIES),
+		};
+		const now = Date.now();
+		for (const [key, value] of Object.entries(defaults)) {
+			await client.query(
+				`INSERT INTO system_settings (key, value, updated_at)
+				 VALUES ($1, $2, $3)
+				 ON CONFLICT (key) DO NOTHING`,
+				[key, value, now]
+			);
+		}
+		// Existing installs may already have a community name but no short name.
+		// Fresh installs do not have a name yet, so setup supplies this row itself.
+		const community = await client.query(
+			`SELECT value FROM system_settings WHERE key = 'kulup_adi' LIMIT 1`
+		);
+		const communityName = String(community.rows[0]?.value ?? '').trim();
+		if (communityName) {
+			await client.query(
+				`INSERT INTO system_settings (key, value, updated_at)
+				 VALUES ('site_short_name', $1, $2)
+				 ON CONFLICT (key) DO NOTHING`,
+				[communityName.slice(0, 24), now]
+			);
+		}
+	});
+
+	await runMigrationStep('2026_16_english_defaults', 'Translate seed roles, team categories and team roles to English', async () => {
+		// These tables are created by ensureRoleSchema *after* schema migrations on a
+		// brand-new database. Fresh seeds are already English, so only translate the
+		// legacy rows when the tables are present.
+		const relationExists = async (name: string) =>
+			Boolean((await client.query(`SELECT to_regclass($1) AS name`, [`public.${name}`])).rows[0]?.name);
+		const hasRoles = await relationExists('roles');
+		const hasTeamMembers = await relationExists('team_members');
+		const hasTeams = await relationExists('teams');
+		const hasSettings = await relationExists('system_settings');
+		// Only rename the known built-in role rows. Custom roles (and a role a
+		// community already renamed itself) are left exactly as they are.
+		if (hasRoles) {
+		const roleRenames: Array<{ id: string; oldName: string; newName: string; oldDescription?: string; newDescription?: string }> = [
+			{ id: 'rol_yonetim_kurulu', oldName: 'Yönetim Kurulu', newName: 'Management Board', oldDescription: 'Kulübün günlük yönetimi', newDescription: 'Daily operations of the community' },
+			{ id: 'rol_uye', oldName: 'Üye', newName: 'Member', oldDescription: 'Aktif topluluk üyesi', newDescription: 'Active community member' },
+			{ id: 'rol_mezun', oldName: 'Mezun', newName: 'Alumni', oldDescription: 'Mezun topluluk üyesi (salt okunur erişim).', newDescription: 'Alumni community member (read-only access).' },
+		];
+		for (const role of roleRenames) {
+			await client.query(
+				`UPDATE roles SET ad = $1
+				 WHERE id = $2 AND ad = $3
+				   AND NOT EXISTS (SELECT 1 FROM roles WHERE lower(ad) = lower($1) AND id <> $2)`,
+				[role.newName, role.id, role.oldName]
+			);
+			if (role.oldDescription && role.newDescription) {
+				await client.query(
+					`UPDATE roles SET aciklama = $1 WHERE id = $2 AND aciklama = $3`,
+					[role.newDescription, role.id, role.oldDescription]
+				);
+			}
+		}
+		await client.query(
+			`UPDATE roles SET aciklama = 'Manages all applications. Cannot be changed.'
+			 WHERE id = 'rol_admin' AND aciklama = 'Tüm uygulamaları yönetir. Değiştirilemez.'`
+		);
+		}
+
+		// Team member titles created by the old seed/default.
+		if (hasTeamMembers) {
+			for (const [oldRole, newRole] of [
+				['Takım Kaptanı', 'Team Captain'],
+				['Geliştirici', 'Developer'],
+				['Ar-Ge Üyesi', 'R&D Member'],
+			] as const) {
+				await client.query(`UPDATE team_members SET takimRolu = $1 WHERE takimRolu = $2`, [newRole, oldRole]);
+			}
+			await client.query(`ALTER TABLE team_members ALTER COLUMN takimRolu SET DEFAULT 'Developer'`);
+		}
+
+		// Existing teams and the saved category menu.
+		if (hasTeams) {
+			for (const [oldCategory, newCategory] of Object.entries(LEGACY_TEAM_CATEGORY_MAP)) {
+				await client.query(`UPDATE teams SET kategori = $1 WHERE kategori = $2`, [newCategory, oldCategory]);
+			}
+		}
+		if (hasSettings) {
+		const stored = await client.query(`SELECT value FROM system_settings WHERE key = 'team_categories' LIMIT 1`);
+		const rawCategories = stored.rows[0]?.value;
+		if (typeof rawCategories === 'string' && rawCategories.trim()) {
+			try {
+				const parsed = JSON.parse(rawCategories);
+				if (Array.isArray(parsed)) {
+					const translated = parsed.map((value: unknown) =>
+						typeof value === 'string' && LEGACY_TEAM_CATEGORY_MAP[value]
+							? LEGACY_TEAM_CATEGORY_MAP[value]
+							: value
+					);
+					if (JSON.stringify(translated) !== JSON.stringify(parsed)) {
+						await client.query(
+							`UPDATE system_settings SET value = $1, updated_at = $2 WHERE key = 'team_categories'`,
+							[JSON.stringify(translated), Date.now()]
+						);
+					}
+				}
+			} catch {
+				// Invalid JSON is left to the normalizer/fallback.
+			}
+		}
+		}
+	});
+
+	await runMigrationStep('2026_17_legal_acceptance_evidence', 'Version legal documents and record immutable member consent evidence', async () => {
+		await client.query(
+			`ALTER TABLE legal_documents ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 1`
+		);
+		await client.query(
+			`CREATE TABLE IF NOT EXISTS legal_acceptances (
+				id TEXT PRIMARY KEY,
+				user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+				document_id TEXT NOT NULL REFERENCES legal_documents(id) ON DELETE RESTRICT,
+				document_version INTEGER NOT NULL,
+				content_hash TEXT NOT NULL,
+				accepted_at BIGINT NOT NULL,
+				ip TEXT,
+				user_agent TEXT,
+				source TEXT NOT NULL DEFAULT 'registration',
+				UNIQUE (user_id, document_id, document_version)
+			)`
+		);
+		await client.query(
+			`CREATE INDEX IF NOT EXISTS idx_legal_acceptances_user ON legal_acceptances (user_id, accepted_at DESC)`
+		);
+		await client.query(
+			`CREATE INDEX IF NOT EXISTS idx_legal_acceptances_document ON legal_acceptances (document_id, document_version)`
+		);
+	});
+
+	await runMigrationStep('2026_18_member_field_policies', 'Separate where a custom field is collected, required, visible and editable', async () => {
+		await client.query(`ALTER TABLE form_fields ADD COLUMN IF NOT EXISTS collect_at TEXT NOT NULL DEFAULT 'registration'`);
+		await client.query(`ALTER TABLE form_fields ADD COLUMN IF NOT EXISTS required_at TEXT NOT NULL DEFAULT 'none'`);
+		await client.query(`ALTER TABLE form_fields ADD COLUMN IF NOT EXISTS directory_visibility TEXT NOT NULL DEFAULT 'hidden'`);
+		await client.query(`ALTER TABLE form_fields ADD COLUMN IF NOT EXISTS self_editable INTEGER NOT NULL DEFAULT 0`);
+		await client.query(`ALTER TABLE form_fields ADD COLUMN IF NOT EXISTS admin_editable INTEGER NOT NULL DEFAULT 1`);
+		await client.query(`ALTER TABLE form_fields ADD COLUMN IF NOT EXISTS archived_at BIGINT`);
+
+		// Backfill the legacy `scope`/`required` pair without changing behaviour.
+		await client.query(`
+			UPDATE form_fields SET
+				collect_at = CASE scope WHEN 'member' THEN 'admin' ELSE scope END,
+				required_at = CASE
+					WHEN required = 1 AND scope = 'registration' THEN 'registration'
+					WHEN required = 1 AND scope = 'member' THEN 'admin'
+					WHEN required = 1 AND scope = 'both' THEN 'both'
+					ELSE 'none'
+				END,
+				directory_visibility = CASE scope WHEN 'registration' THEN 'hidden' ELSE 'members' END,
+				self_editable = CASE scope WHEN 'both' THEN 1 ELSE 0 END,
+				admin_editable = 1
+		`);
+		await client.query(`CREATE INDEX IF NOT EXISTS idx_form_fields_collect ON form_fields (collect_at, archived_at)`);
+	});
+
+	await runMigrationStep('2026_19_email_change_requests', 'Add verified self-service e-mail change requests', async () => {
+		await client.query(
+			`CREATE TABLE IF NOT EXISTS email_change_requests (
+				id TEXT PRIMARY KEY,
+				user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+				new_email TEXT NOT NULL,
+				code_hash TEXT NOT NULL,
+				attempts INTEGER NOT NULL DEFAULT 0,
+				expires_at BIGINT NOT NULL,
+				created_at BIGINT NOT NULL,
+				requested_ip TEXT,
+				user_agent TEXT,
+				used_at BIGINT
+			)`
+		);
+		await client.query(
+			`CREATE UNIQUE INDEX IF NOT EXISTS idx_email_change_open
+			 ON email_change_requests (user_id) WHERE used_at IS NULL`
+		);
+		await client.query(
+			`CREATE INDEX IF NOT EXISTS idx_email_change_expiry ON email_change_requests (expires_at) WHERE used_at IS NULL`
+		);
+	});
+
+	await runMigrationStep('2026_20_email_verified_at', 'Track when the current e-mail address was verified', async () => {
+		await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at BIGINT`);
+	});
+
+	await runMigrationStep('2026_21_membership_lifecycle', 'Add membership applications, invitations and policy', async () => {
+		await client.query(
+			`CREATE TABLE IF NOT EXISTS membership_applications (
+				id TEXT PRIMARY KEY,
+				user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+				source TEXT NOT NULL DEFAULT 'self',
+				status TEXT NOT NULL DEFAULT 'pending_review',
+				snapshot TEXT NOT NULL DEFAULT '{}',
+				invitation_id TEXT,
+				submitted_at BIGINT NOT NULL,
+				email_verified_at BIGINT,
+				reviewed_by TEXT,
+				reviewed_at BIGINT,
+				rejection_reason TEXT,
+				created_at BIGINT NOT NULL
+			)`
+		);
+		await client.query(
+			`CREATE UNIQUE INDEX IF NOT EXISTS idx_membership_application_open
+			 ON membership_applications (user_id)
+			 WHERE status IN ('submitted', 'email_verified', 'pending_review')`
+		);
+		await client.query(
+			`CREATE INDEX IF NOT EXISTS idx_membership_application_status
+			 ON membership_applications (status, submitted_at)`
+		);
+
+		await client.query(
+			`CREATE TABLE IF NOT EXISTS invitations (
+				id TEXT PRIMARY KEY,
+				token_hash TEXT UNIQUE NOT NULL,
+				email TEXT,
+				role_id TEXT,
+				team_id TEXT,
+				note TEXT,
+				created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+				expires_at BIGINT NOT NULL,
+				used_at BIGINT,
+				used_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+				created_at BIGINT NOT NULL
+			)`
+		);
+		await client.query(
+			`CREATE INDEX IF NOT EXISTS idx_invitations_open ON invitations (expires_at) WHERE used_at IS NULL`
+		);
+
+		await client.query(
+			`INSERT INTO system_settings (key, value, updated_at)
+			 VALUES ($1, $2, $3)
+			 ON CONFLICT (key) DO NOTHING`,
+			[MEMBERSHIP_POLICY_SETTINGS_KEY, JSON.stringify(DEFAULT_MEMBERSHIP_POLICY), Date.now()]
+		);
+	});
+
+	await runMigrationStep('2026_22_application_reapply_link', 'Link a re-application to the rejected application it follows', async () => {
+		await client.query(
+			`ALTER TABLE membership_applications
+			 ADD COLUMN IF NOT EXISTS reapply_of TEXT REFERENCES membership_applications(id) ON DELETE SET NULL`
+		);
+	});
+
+	await runMigrationStep('2026_23_committees', 'Separate committees from working groups and link meetings and decisions', async () => {
+		await client.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS type TEXT NOT NULL DEFAULT 'working_group'`);
+		await client.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS quorum INTEGER NOT NULL DEFAULT 0`);
+		await client.query(`ALTER TABLE team_members ADD COLUMN IF NOT EXISTS voting_right INTEGER NOT NULL DEFAULT 0`);
+		await client.query(`ALTER TABLE team_members ADD COLUMN IF NOT EXISTS term_start BIGINT`);
+		await client.query(`ALTER TABLE team_members ADD COLUMN IF NOT EXISTS term_end BIGINT`);
+		await client.query(
+			`CREATE TABLE IF NOT EXISTS committee_meetings (
+				id TEXT PRIMARY KEY,
+				committee_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+				title TEXT NOT NULL,
+				date BIGINT NOT NULL,
+				agenda TEXT NOT NULL DEFAULT '',
+				minutes TEXT NOT NULL DEFAULT '',
+				status TEXT NOT NULL DEFAULT 'planned',
+				created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+				created_at BIGINT NOT NULL,
+				updated_at BIGINT NOT NULL
+			)`
+		);
+		await client.query(
+			`CREATE INDEX IF NOT EXISTS idx_committee_meetings_body ON committee_meetings (committee_id, date DESC)`
+		);
+		await client.query(`ALTER TABLE decisions ADD COLUMN IF NOT EXISTS body_id TEXT REFERENCES teams(id) ON DELETE SET NULL`);
+		await client.query(`ALTER TABLE decisions ADD COLUMN IF NOT EXISTS decision_type TEXT NOT NULL DEFAULT 'resolution'`);
+		await client.query(`ALTER TABLE decisions ADD COLUMN IF NOT EXISTS quorum_met INTEGER NOT NULL DEFAULT 0`);
+		await client.query(`ALTER TABLE decisions ADD COLUMN IF NOT EXISTS votes_for INTEGER NOT NULL DEFAULT 0`);
+		await client.query(`ALTER TABLE decisions ADD COLUMN IF NOT EXISTS votes_against INTEGER NOT NULL DEFAULT 0`);
+		await client.query(`ALTER TABLE decisions ADD COLUMN IF NOT EXISTS votes_abstain INTEGER NOT NULL DEFAULT 0`);
+		await client.query(`ALTER TABLE decisions ADD COLUMN IF NOT EXISTS published_at BIGINT`);
+		await client.query(`CREATE INDEX IF NOT EXISTS idx_decisions_body ON decisions (body_id, date DESC)`);
+		// The legacy compatibility views were created with an explicit column list;
+		// re-create them at the end of the migration so they include the new fields.
+		await client.query(`CREATE OR REPLACE VIEW takimlar AS SELECT * FROM teams`);
+		await client.query(`CREATE OR REPLACE VIEW takim_uyeleri AS SELECT * FROM team_members`);
+		await client.query(`CREATE OR REPLACE VIEW tutanaklar_kararlar AS SELECT * FROM decisions`);
+	});
+
+	await runMigrationStep('2026_24_project_event_ownership', 'Separate created_by from the owning team and owner user', async () => {
+		for (const table of ['projects', 'events']) {
+			await client.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS owner_team_id TEXT REFERENCES teams(id) ON DELETE SET NULL`);
+			await client.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS owner_user_id TEXT REFERENCES users(id) ON DELETE SET NULL`);
+			await client.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS created_by TEXT REFERENCES users(id) ON DELETE SET NULL`);
+		}
+		await client.query(`UPDATE projects SET
+			owner_team_id = COALESCE(owner_team_id, teamId),
+			owner_user_id = COALESCE(owner_user_id, olusturanId),
+			created_by = COALESCE(created_by, olusturanId)`);
+		await client.query(`UPDATE events SET
+			owner_user_id = COALESCE(owner_user_id, olusturanId),
+			created_by = COALESCE(created_by, olusturanId)`);
+		await client.query(`CREATE INDEX IF NOT EXISTS idx_projects_owner_team ON projects (owner_team_id)`);
+		await client.query(`CREATE INDEX IF NOT EXISTS idx_projects_owner_user ON projects (owner_user_id)`);
+		await client.query(`CREATE INDEX IF NOT EXISTS idx_events_owner_team ON events (owner_team_id)`);
+		await client.query(`CREATE INDEX IF NOT EXISTS idx_events_owner_user ON events (owner_user_id)`);
+		// The event compatibility view has a trailing `bitis` alias, so adding
+		// columns in place is not possible with CREATE OR REPLACE; recreate it.
+		await client.query(`DROP VIEW IF EXISTS projeler CASCADE; CREATE VIEW projeler AS SELECT * FROM projects`);
+		await client.query(`DROP VIEW IF EXISTS etkinlikler CASCADE; CREATE VIEW etkinlikler AS SELECT *, endtime AS bitis FROM events`);
+	});
+
+	await runMigrationStep('2026_25_legal_document_versions', 'Archive every legal document version for an auditable history', async () => {
+		await client.query(
+			`CREATE TABLE IF NOT EXISTS legal_document_versions (
+				id TEXT PRIMARY KEY,
+				document_id TEXT NOT NULL REFERENCES legal_documents(id) ON DELETE CASCADE,
+				doc_type TEXT NOT NULL,
+				version INTEGER NOT NULL,
+				scope TEXT NOT NULL,
+				title_tr TEXT NOT NULL,
+				title_en TEXT NOT NULL,
+				body_tr TEXT NOT NULL,
+				body_en TEXT NOT NULL,
+				required INTEGER NOT NULL DEFAULT 0,
+				content_hash TEXT NOT NULL,
+				archived_at BIGINT NOT NULL,
+				archived_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+				UNIQUE (document_id, version)
+			)`
+		);
+		await client.query(
+			`CREATE INDEX IF NOT EXISTS idx_legal_versions_doc ON legal_document_versions (document_id, version DESC)`
+		);
+	});
+
+	await runMigrationStep('2026_26_mail_outbox', 'Queue transactional e-mail for admin approval when SMTP is unavailable', async () => {
+		await client.query(
+			`CREATE TABLE IF NOT EXISTS mail_outbox (
+				id TEXT PRIMARY KEY,
+				kind TEXT NOT NULL,
+				recipient TEXT NOT NULL,
+				subject TEXT NOT NULL,
+				payload TEXT NOT NULL DEFAULT '',
+				status TEXT NOT NULL DEFAULT 'pending',
+				target_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+				requested_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+				error TEXT,
+				attempts INTEGER NOT NULL DEFAULT 0,
+				created_at BIGINT NOT NULL,
+				approved_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+				approved_at BIGINT,
+				sent_at BIGINT
+			)`
+		);
+		await client.query(
+			`CREATE INDEX IF NOT EXISTS idx_mail_outbox_status ON mail_outbox (status, created_at DESC)`
+		);
+	});
+
+	await runMigrationStep('2026_27_drop_legacy_kullanicilar_view', 'Drop legacy kullanicilar view now that all repos use users directly', async () => {
+		await client.query(`DROP VIEW IF EXISTS kullanicilar CASCADE`);
+	});
+
+	await runMigrationStep('2026_28_normalize_user_tables', 'Decompose users table into accounts, memberships, profiles with auto-synchronization triggers', async () => {
+		// 1. Create normalized accounts table
+		await client.query(`
+			CREATE TABLE IF NOT EXISTS accounts (
+				id TEXT PRIMARY KEY,
+				email TEXT UNIQUE NOT NULL,
+				password_hash TEXT,
+				totp_secret TEXT,
+				totp_enabled INTEGER NOT NULL DEFAULT 0,
+				totp_recovery_codes TEXT,
+				totp_confirmed_at BIGINT,
+				totp_last_step BIGINT,
+				session_token TEXT,
+				session_expires_at BIGINT,
+				auth_method TEXT NOT NULL DEFAULT 'password',
+				last_login_at BIGINT,
+				last_login_ip TEXT,
+				last_login_user_agent TEXT,
+				last_active_at BIGINT,
+				last_active_ip TEXT,
+				created_at BIGINT NOT NULL
+			);
+			CREATE INDEX IF NOT EXISTS idx_accounts_email ON accounts (email);
+			CREATE INDEX IF NOT EXISTS idx_accounts_session ON accounts (session_token);
+		`);
+
+		// 2. Create normalized memberships table
+		await client.query(`
+			CREATE TABLE IF NOT EXISTS memberships (
+				id TEXT PRIMARY KEY,
+				user_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+				role_id TEXT REFERENCES roles(id) ON DELETE SET NULL,
+				status TEXT NOT NULL DEFAULT 'beklemede',
+				department TEXT,
+				grade TEXT,
+				handle TEXT,
+				mail_notifications_enabled INTEGER NOT NULL DEFAULT 1,
+				created_at BIGINT NOT NULL,
+				UNIQUE (user_id)
+			);
+			CREATE INDEX IF NOT EXISTS idx_memberships_role ON memberships (role_id);
+			CREATE INDEX IF NOT EXISTS idx_memberships_status ON memberships (status);
+		`);
+
+		// 3. Create normalized profiles table
+		await client.query(`
+			CREATE TABLE IF NOT EXISTS profiles (
+				id TEXT PRIMARY KEY,
+				user_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+				first_name TEXT NOT NULL,
+				last_name TEXT NOT NULL,
+				avatar_url TEXT,
+				bio TEXT,
+				contact_info JSONB,
+				created_at BIGINT NOT NULL,
+				UNIQUE (user_id)
+			);
+		`);
+
+		// 4. Backfill from users table if accounts table is empty
+		await client.query(`
+			INSERT INTO accounts (id, email, password_hash, totp_secret, totp_enabled, totp_recovery_codes, totp_confirmed_at, totp_last_step, session_token, session_expires_at, auth_method, last_login_at, last_login_ip, last_login_user_agent, last_active_at, last_active_ip, created_at)
+			SELECT id, email, password_hash, totp_secret, COALESCE(totp_enabled, 0), totp_recovery_codes, totp_confirmed_at, totp_last_step, session_token, session_expires_at, COALESCE(auth_method, 'password'), last_login_at, last_login_ip, last_login_user_agent, last_active_at, last_active_ip, COALESCE(created_at, (EXTRACT(EPOCH FROM NOW()) * 1000)::bigint)
+			FROM users
+			ON CONFLICT (id) DO NOTHING;
+
+			INSERT INTO memberships (id, user_id, role_id, status, department, grade, handle, mail_notifications_enabled, created_at)
+			SELECT id, id, role_id, COALESCE(status, 'beklemede'), department, grade, handle, COALESCE(mail_notifications_enabled, 1), COALESCE(created_at, (EXTRACT(EPOCH FROM NOW()) * 1000)::bigint)
+			FROM users
+			ON CONFLICT (user_id) DO NOTHING;
+
+			INSERT INTO profiles (id, user_id, first_name, last_name, avatar_url, bio, contact_info, created_at)
+			SELECT id, id, COALESCE(first_name, ''), COALESCE(last_name, ''), avatar_url, NULL, '{}'::jsonb, COALESCE(created_at, (EXTRACT(EPOCH FROM NOW()) * 1000)::bigint)
+			FROM users
+			ON CONFLICT (user_id) DO NOTHING;
+		`);
+
+		// 5. Create real-time sync trigger from users to accounts/memberships/profiles
+		await client.query(`
+			CREATE OR REPLACE FUNCTION sync_users_to_normalized() RETURNS TRIGGER AS $$
+			BEGIN
+				IF (TG_OP = 'INSERT') THEN
+					INSERT INTO accounts (id, email, password_hash, totp_secret, totp_enabled, totp_recovery_codes, totp_confirmed_at, totp_last_step, session_token, session_expires_at, auth_method, last_login_at, last_login_ip, last_login_user_agent, last_active_at, last_active_ip, created_at)
+					VALUES (NEW.id, NEW.email, NEW.password_hash, NEW.totp_secret, COALESCE(NEW.totp_enabled, 0), NEW.totp_recovery_codes, NEW.totp_confirmed_at, NEW.totp_last_step, NEW.session_token, NEW.session_expires_at, COALESCE(NEW.auth_method, 'password'), NEW.last_login_at, NEW.last_login_ip, NEW.last_login_user_agent, NEW.last_active_at, NEW.last_active_ip, COALESCE(NEW.created_at, (EXTRACT(EPOCH FROM NOW()) * 1000)::bigint))
+					ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email, password_hash = EXCLUDED.password_hash, totp_secret = EXCLUDED.totp_secret, totp_enabled = EXCLUDED.totp_enabled, session_token = EXCLUDED.session_token, session_expires_at = EXCLUDED.session_expires_at, auth_method = EXCLUDED.auth_method, last_login_at = EXCLUDED.last_login_at, last_active_at = EXCLUDED.last_active_at;
+
+					INSERT INTO memberships (id, user_id, role_id, status, department, grade, handle, mail_notifications_enabled, created_at)
+					VALUES (NEW.id, NEW.id, NEW.role_id, COALESCE(NEW.status, 'beklemede'), NEW.department, NEW.grade, NEW.handle, COALESCE(NEW.mail_notifications_enabled, 1), COALESCE(NEW.created_at, (EXTRACT(EPOCH FROM NOW()) * 1000)::bigint))
+					ON CONFLICT (user_id) DO UPDATE SET role_id = EXCLUDED.role_id, status = EXCLUDED.status, department = EXCLUDED.department, grade = EXCLUDED.grade, handle = EXCLUDED.handle, mail_notifications_enabled = EXCLUDED.mail_notifications_enabled;
+
+					INSERT INTO profiles (id, user_id, first_name, last_name, avatar_url, created_at)
+					VALUES (NEW.id, NEW.id, COALESCE(NEW.first_name, ''), COALESCE(NEW.last_name, ''), NEW.avatar_url, COALESCE(NEW.created_at, (EXTRACT(EPOCH FROM NOW()) * 1000)::bigint))
+					ON CONFLICT (user_id) DO UPDATE SET first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name, avatar_url = EXCLUDED.avatar_url;
+
+					RETURN NEW;
+				ELSIF (TG_OP = 'UPDATE') THEN
+					UPDATE accounts SET email = NEW.email, password_hash = NEW.password_hash, totp_secret = NEW.totp_secret, totp_enabled = COALESCE(NEW.totp_enabled, 0), totp_recovery_codes = NEW.totp_recovery_codes, totp_confirmed_at = NEW.totp_confirmed_at, totp_last_step = NEW.totp_last_step, session_token = NEW.session_token, session_expires_at = NEW.session_expires_at, auth_method = COALESCE(NEW.auth_method, 'password'), last_login_at = NEW.last_login_at, last_login_ip = NEW.last_login_ip, last_login_user_agent = NEW.last_login_user_agent, last_active_at = NEW.last_active_at, last_active_ip = NEW.last_active_ip WHERE id = NEW.id;
+
+					UPDATE memberships SET role_id = NEW.role_id, status = COALESCE(NEW.status, 'beklemede'), department = NEW.department, grade = NEW.grade, handle = NEW.handle, mail_notifications_enabled = COALESCE(NEW.mail_notifications_enabled, 1) WHERE user_id = NEW.id;
+
+					UPDATE profiles SET first_name = COALESCE(NEW.first_name, ''), last_name = COALESCE(NEW.last_name, ''), avatar_url = NEW.avatar_url WHERE user_id = NEW.id;
+
+					RETURN NEW;
+				ELSIF (TG_OP = 'DELETE') THEN
+					DELETE FROM accounts WHERE id = OLD.id;
+					RETURN OLD;
+				END IF;
+				RETURN NULL;
+			END;
+			$$ LANGUAGE plpgsql;
+
+			DROP TRIGGER IF EXISTS trg_sync_users_to_normalized ON users;
+			CREATE TRIGGER trg_sync_users_to_normalized AFTER INSERT OR UPDATE OR DELETE ON users FOR EACH ROW EXECUTE FUNCTION sync_users_to_normalized();
+		`);
+	});
+
+	await runMigrationStep('2026_29_drop_all_compatibility_views', 'Drop all legacy SQL compatibility views across all domains', async () => {
+		await client.query(`
+			DROP VIEW IF EXISTS takimlar CASCADE;
+			DROP VIEW IF EXISTS takim_uyeleri CASCADE;
+			DROP VIEW IF EXISTS takim_basvuru_kararlari CASCADE;
+			DROP VIEW IF EXISTS takim_gorevleri CASCADE;
+			DROP VIEW IF EXISTS takim_gorev_maddeleri CASCADE;
+			DROP VIEW IF EXISTS takim_gorev_yorumlari CASCADE;
+			DROP VIEW IF EXISTS takim_gorev_aktivite CASCADE;
+			DROP VIEW IF EXISTS etkinlikler CASCADE;
+			DROP VIEW IF EXISTS etkinlik_kayitlari CASCADE;
+			DROP VIEW IF EXISTS yoklamalar CASCADE;
+			DROP VIEW IF EXISTS butce_kayitlari CASCADE;
+			DROP VIEW IF EXISTS dosyalar CASCADE;
+			DROP VIEW IF EXISTS tutanaklar_kararlar CASCADE;
+			DROP VIEW IF EXISTS haberler CASCADE;
+			DROP VIEW IF EXISTS sertifikalar CASCADE;
+			DROP VIEW IF EXISTS envanter CASCADE;
+			DROP VIEW IF EXISTS envanter_hareketleri CASCADE;
+			DROP VIEW IF EXISTS kullanici_notlari CASCADE;
+			DROP VIEW IF EXISTS kullanici_not_klasorleri CASCADE;
+			DROP VIEW IF EXISTS sistem_ayarlari CASCADE;
+			DROP VIEW IF EXISTS sohbet_odalari CASCADE;
+			DROP VIEW IF EXISTS sohbet_mesajlari CASCADE;
+			DROP VIEW IF EXISTS sohbet_uyeleri CASCADE;
+			DROP VIEW IF EXISTS eposta_dogrulama CASCADE;
+			DROP VIEW IF EXISTS sistem_loglari CASCADE;
+			DROP VIEW IF EXISTS projeler CASCADE;
+			DROP VIEW IF EXISTS proje_begenileri CASCADE;
+			DROP VIEW IF EXISTS sohbet_anketleri CASCADE;
+			DROP VIEW IF EXISTS sohbet_anket_secenekleri CASCADE;
+			DROP VIEW IF EXISTS sohbet_anket_oylari CASCADE;
+			DROP VIEW IF EXISTS guvenlik_engelleri CASCADE;
+		`);
+	});
+
+	await runMigrationStep('2026_30_user_workspace_preferences', 'Create user workspace preferences table for cross-device desktop state synchronization', async () => {
+		await client.query(`
+			CREATE TABLE IF NOT EXISTS user_workspace_preferences (
+				user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+				state JSONB NOT NULL DEFAULT '{}'::jsonb,
+				updated_at BIGINT NOT NULL
+			);
+			CREATE INDEX IF NOT EXISTS idx_workspace_pref_updated_at ON user_workspace_preferences(updated_at DESC);
 		`);
 	});
 }

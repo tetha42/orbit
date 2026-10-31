@@ -95,7 +95,7 @@ export function notificationEvents(kullaniciIds?: Iterable<string | null | undef
 	return [...new Set([...kullaniciIds].filter((id): id is string => !!id))].map((userId) => ({ k: 'bildirim', userId }));
 }
 
-function hedefOf(olay: AppEvent): string | undefined {
+function targetOf(olay: AppEvent): string | undefined {
 	return olay.k === 'yenile' ? undefined : olay.userId;
 }
 
@@ -107,9 +107,9 @@ function dagit(olay: AppEvent) {
 			console.error('[olaylar] işleyici hatası:', err);
 		}
 	}
-	const hedef = hedefOf(olay);
+	const target = targetOf(olay);
 	for (const abone of [...hub.aboneler]) {
-		if (hedef && hedef !== abone.userId) continue;
+		if (target && target !== abone.userId) continue;
 		try {
 			abone.ilet(olay);
 		} catch (err) {
@@ -119,12 +119,12 @@ function dagit(olay: AppEvent) {
 }
 
 function ayrilVeYenidenDene() {
-	const eski = hub.client;
+	const previous = hub.client;
 	hub.client = null;
-	if (eski) {
-		eski.removeAllListeners();
-		eski.on('error', () => {});
-		eski.end().catch(() => {});
+	if (previous) {
+		previous.removeAllListeners();
+		previous.on('error', () => {});
+		previous.end().catch(() => {});
 	}
 	if (hub.zamanlayici) return;
 	// 1 s, 2 s, 4 s … up to 30 s.
@@ -132,7 +132,7 @@ function ayrilVeYenidenDene() {
 	hub.deneme += 1;
 	hub.zamanlayici = setTimeout(() => {
 		hub.zamanlayici = null;
-		void dinleyiciyiBaslat();
+		void startListener();
 	}, bekleme);
 	hub.zamanlayici.unref?.();
 }
@@ -141,7 +141,7 @@ function ayrilVeYenidenDene() {
  * Starts this process's shared LISTEN connection (idempotent, fire and forget).
  * Whoever needs live events or the cross-process cache invalidation calls it.
  */
-export function dinleyiciyiBaslat(): Promise<void> {
+export function startListener(): Promise<void> {
 	if (hub.client || hub.baglaniyor || hub.zamanlayici) return Promise.resolve();
 	const connectionString = process.env.DATABASE_URL;
 	if (!connectionString) return Promise.resolve();
@@ -189,9 +189,9 @@ export function dinleyiciyiBaslat(): Promise<void> {
  * function that removes it again — every stream must call it when it ends.
  */
 export function aboneOl(abone: EventSubscriber): () => void {
-	void dinleyiciyiBaslat();
+	void startListener();
 	const userItems = [...hub.aboneler].filter((a) => a.userId === abone.userId);
-	for (const eski of userItems.slice(0, Math.max(0, userItems.length - MAX_CONNECTIONS_PER_USER + 1))) eski.kapat();
+	for (const previous of userItems.slice(0, Math.max(0, userItems.length - MAX_CONNECTIONS_PER_USER + 1))) previous.kapat();
 	hub.aboneler.add(abone);
 	return () => {
 		hub.aboneler.delete(abone);

@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import type { PoolClient } from 'pg';
 import { ensurePostgresInit, getPgPool, withTransaction } from '@/db/index';
 import type { Team, TeamMember } from '@/db/schema';
-import { BEKLEYEN_BASVURU_MAX, KAPTAN_ROLU, TAKIM_SINIRI } from '@/lib/teams';
+import { PENDING_APPLICATION_MAX, CAPTAIN_ROLE, TEAM_LIMIT } from '@/lib/teams';
 import { slugify, uniqueSlug } from '@/lib/text';
 import { unassignTeamMemberTasks } from './kanban.repo';
 
@@ -24,9 +24,9 @@ export interface TeamPatch {
 }
 
 const TEAM_QUERY = `
-	SELECT t.*, k.ad || ' ' || k.soyad as "liderAdSoyad",
-	       (SELECT COUNT(*) FROM takim_uyeleri tu WHERE tu.teamId = t.id AND tu.status = 'aktif')::int as "aktifUyeSayisi"
-	FROM takimlar t LEFT JOIN kullanicilar k ON t.liderId = k.id
+	SELECT t.*, k.first_name || ' ' || k.last_name as "liderAdSoyad",
+	       (SELECT COUNT(*) FROM team_members tu WHERE tu.teamId = t.id AND tu.status = 'aktif')::int as "aktifUyeSayisi"
+	FROM teams t LEFT JOIN users k ON t.liderId = k.id
 `;
 
 export async function getTeams(): Promise<Team[]> {
@@ -44,9 +44,9 @@ export async function getTeamById(id: string): Promise<Team | null> {
 export async function getTeamMembers(teamId: string): Promise<TeamMember[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT tu.*, k.ad || ' ' || k.soyad as "kullaniciAdSoyad", k.profilFoto as "kullaniciProfilFoto",
-		       k.bolum as "kullaniciBolum", k.sinif as "kullaniciSinif"
-		FROM takim_uyeleri tu JOIN kullanicilar k ON tu.userId = k.id
+		`SELECT tu.*, k.first_name || ' ' || k.last_name as "kullaniciAdSoyad", k.avatar_url as "kullaniciProfilFoto",
+		       k.department as "kullaniciBolum", k.grade as "kullaniciSinif"
+		FROM team_members tu JOIN users k ON tu.userId = k.id
 		WHERE tu.teamId = $1 ORDER BY tu.katilimTarihi ASC`,
 		[teamId]
 	);
@@ -55,13 +55,13 @@ export async function getTeamMembers(teamId: string): Promise<TeamMember[]> {
 
 export async function getUserTeamIds(userId: string): Promise<string[]> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query("SELECT teamId FROM takim_uyeleri WHERE userId = $1 AND status = 'aktif'", [userId]);
+	const res = await getPgPool().query("SELECT teamId FROM team_members WHERE userId = $1 AND status = 'aktif'", [userId]);
 	return res.rows.map((r) => r.teamId);
 }
 
 export async function getLedTeams(userId: string): Promise<Team[]> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query('SELECT * FROM takimlar WHERE liderId = $1 ORDER BY ad', [userId]);
+	const res = await getPgPool().query('SELECT * FROM teams WHERE liderId = $1 ORDER BY ad', [userId]);
 	return res.rows;
 }
 
@@ -79,11 +79,11 @@ export async function joinTeam(params: {
 }): Promise<TeamJoinResult> {
 	await ensurePostgresInit();
 	return withTransaction(async (client) => {
-		const team = (await client.query('SELECT * FROM takimlar WHERE id = $1 FOR UPDATE', [params.teamId])).rows[0];
+		const team = (await client.query('SELECT * FROM teams WHERE id = $1 FOR UPDATE', [params.teamId])).rows[0];
 		if (!team) return { ok: false, status: 404, message: 'Takım bulunamadı.' };
 		if (team.status !== 'aktif') return { ok: false, status: 409, message: 'Bu takım şu anda yeni üye almıyor.' };
 
-		const existing = (await client.query('SELECT status FROM takim_uyeleri WHERE teamId = $1 AND userId = $2', [params.teamId, params.userId])).rows[0];
+		const existing = (await client.query('SELECT status FROM team_members WHERE teamId = $1 AND userId = $2', [params.teamId, params.userId])).rows[0];
 		const current = existing?.status as string | undefined;
 		if (current === 'aktif') return { ok: false, status: 409, message: 'Bu takıma zaten üyesiniz.' };
 		if (current === 'basvurdu' && !params.direct) return { ok: false, status: 409, message: 'Başvurunuz zaten değerlendirmede.' };
@@ -92,30 +92,30 @@ export async function joinTeam(params: {
 		// A direct join takes a seat now. A normal application waits for the captain, who is
 		// held to the quota when accepting; the onboarding application is refused up front.
 		if (!asApp || params.basvuruZorunlu) {
-			const count = await client.query("SELECT COUNT(*)::int AS n FROM takim_uyeleri WHERE teamId = $1 AND status = 'aktif'", [params.teamId]);
+			const count = await client.query("SELECT COUNT(*)::int AS n FROM team_members WHERE teamId = $1 AND status = 'aktif'", [params.teamId]);
 			if (Number(count.rows[0].n) >= Number(team.kontenjan)) return { ok: false, status: 409, message: 'Takım kontenjanı dolu.' };
 		}
-		const mine = await client.query("SELECT COUNT(*)::int AS n FROM takim_uyeleri WHERE userId = $1 AND status = 'aktif'", [params.userId]);
-		if (Number(mine.rows[0].n) >= TAKIM_SINIRI) {
-			return { ok: false, status: 409, message: `Aynı anda en fazla ${TAKIM_SINIRI} takımda yer alabilirsiniz.` };
+		const mine = await client.query("SELECT COUNT(*)::int AS n FROM team_members WHERE userId = $1 AND status = 'aktif'", [params.userId]);
+		if (Number(mine.rows[0].n) >= TEAM_LIMIT) {
+			return { ok: false, status: 409, message: `Aynı anda en fazla ${TEAM_LIMIT} takımda yer alabilirsiniz.` };
 		}
 
 		if (params.basvuruZorunlu) {
-			const pending = await client.query("SELECT COUNT(*)::int AS n FROM takim_uyeleri WHERE userId = $1 AND status = 'basvurdu'", [params.userId]);
-			if (Number(pending.rows[0].n) >= BEKLEYEN_BASVURU_MAX) {
-				return { ok: false, status: 429, message: `Aynı anda en fazla ${BEKLEYEN_BASVURU_MAX} başvurunuz bekleyebilir.` };
+			const pending = await client.query("SELECT COUNT(*)::int AS n FROM team_members WHERE userId = $1 AND status = 'basvurdu'", [params.userId]);
+			if (Number(pending.rows[0].n) >= PENDING_APPLICATION_MAX) {
+				return { ok: false, status: 429, message: `Aynı anda en fazla ${PENDING_APPLICATION_MAX} başvurunuz bekleyebilir.` };
 			}
 		}
 
 		const status = asApp ? 'basvurdu' : 'aktif';
 		// A new try starts from a clean slate: the previous answer no longer applies.
-		await client.query('DELETE FROM takim_basvuru_kararlari WHERE teamId = $1 AND userId = $2', [params.teamId, params.userId]);
+		await client.query('DELETE FROM team_application_decisions WHERE teamId = $1 AND userId = $2', [params.teamId, params.userId]);
 		if (current) {
-			await client.query('UPDATE takim_uyeleri SET status = $1, katilimTarihi = $2 WHERE teamId = $3 AND userId = $4', [status, Date.now(), params.teamId, params.userId]);
+			await client.query('UPDATE team_members SET status = $1, katilimTarihi = $2 WHERE teamId = $3 AND userId = $4', [status, Date.now(), params.teamId, params.userId]);
 		} else {
 			await client.query(
-				`INSERT INTO takim_uyeleri (id, teamId, userId, takimRolu, status, basvuruNotu, katilimTarihi) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-				[randomUUID(), params.teamId, params.userId, params.takimRolu || 'Geliştirici', status, params.basvuruNotu || null, Date.now()]
+				`INSERT INTO team_members (id, teamId, userId, takimRolu, status, basvuruNotu, katilimTarihi) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+				[randomUUID(), params.teamId, params.userId, params.takimRolu || 'Developer', status, params.basvuruNotu || null, Date.now()]
 			);
 		}
 		return { ok: true, status, message: asApp ? 'Başvurunuz takım kaptanına iletildi.' : 'Takıma katıldınız.' };
@@ -125,13 +125,13 @@ export async function joinTeam(params: {
 export async function leaveTeam(params: { teamId: string; userId: string; aktorId?: string }): Promise<{ success: boolean; status?: number; message: string }> {
 	await ensurePostgresInit();
 	return withTransaction(async (client) => {
-		const team = (await client.query('SELECT liderId FROM takimlar WHERE id = $1', [params.teamId])).rows[0];
+		const team = (await client.query('SELECT liderId FROM teams WHERE id = $1', [params.teamId])).rows[0];
 		if (!team) return { success: false, status: 404, message: 'Takım bulunamadı.' };
 		if (team.liderId === params.userId) return { success: false, status: 409, message: 'Kaptan takımdan çıkarılamaz; önce kaptanlığı devredin.' };
 
-		const res = await client.query('DELETE FROM takim_uyeleri WHERE teamId = $1 AND userId = $2 RETURNING status', [params.teamId, params.userId]);
+		const res = await client.query('DELETE FROM team_members WHERE teamId = $1 AND userId = $2 RETURNING status', [params.teamId, params.userId]);
 		if (!res.rowCount) return { success: false, status: 404, message: 'Takım üyeliği bulunamadı.' };
-		await client.query('DELETE FROM takim_basvuru_kararlari WHERE teamId = $1 AND userId = $2', [params.teamId, params.userId]);
+		await client.query('DELETE FROM team_application_decisions WHERE teamId = $1 AND userId = $2', [params.teamId, params.userId]);
 
 		await unassignTeamMemberTasks(client, params.teamId, params.userId, params.aktorId ?? params.userId);
 		return { success: true, message: res.rows[0].status === 'basvurdu' ? 'Başvurunuz geri çekildi.' : 'Takımdan ayrıldınız.' };
@@ -172,13 +172,13 @@ export async function getTeamShowcase(userId: string): Promise<TeamShowcaseRecor
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`SELECT t.id, t.ad, t.slug, t.aciklama, t.kategori, t.kontenjan, t.katilimTuru AS "katilimTuru",
-		        k.ad || ' ' || k.soyad AS "liderAdSoyad",
-		        (SELECT COUNT(*) FROM takim_uyeleri a WHERE a.teamId = t.id AND a.status = 'aktif')::int AS "aktifUyeSayisi",
+		        k.first_name || ' ' || k.last_name AS "liderAdSoyad",
+		        (SELECT COUNT(*) FROM team_members a WHERE a.teamId = t.id AND a.status = 'aktif')::int AS "aktifUyeSayisi",
 		        me.status AS "benimDurumum", d.karar AS "benimKararim", d.date AS "kararTarihi"
-		 FROM takimlar t
-		 LEFT JOIN kullanicilar k ON k.id = t.liderId
-		 LEFT JOIN takim_uyeleri me ON me.teamId = t.id AND me.userId = $1
-		 LEFT JOIN takim_basvuru_kararlari d ON d.teamId = t.id AND d.userId = $1
+		 FROM teams t
+		 LEFT JOIN users k ON k.id = t.liderId
+		 LEFT JOIN team_members me ON me.teamId = t.id AND me.userId = $1
+		 LEFT JOIN team_application_decisions d ON d.teamId = t.id AND d.userId = $1
 		 WHERE t.status = 'aktif' OR me.status IS NOT NULL
 		 ORDER BY t.olusturma DESC`,
 		[userId]
@@ -197,7 +197,7 @@ export async function getUserApplicationDecisions(
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`SELECT d.teamId AS "teamId", t.ad AS "takimAdi", d.karar, d.date
-		 FROM takim_basvuru_kararlari d JOIN takimlar t ON t.id = d.teamId
+		 FROM team_application_decisions d JOIN teams t ON t.id = d.teamId
 		 WHERE d.userId = $1 AND d.date >= $2
 		 ORDER BY d.date DESC LIMIT 10`,
 		[userId, since]
@@ -208,20 +208,20 @@ export async function getUserApplicationDecisions(
 export async function decideTeamApplication(params: { teamId: string; userId: string; accept: boolean }): Promise<{ success: boolean; status?: number; message: string }> {
 	await ensurePostgresInit();
 	return withTransaction(async (client) => {
-		const team = (await client.query('SELECT * FROM takimlar WHERE id = $1 FOR UPDATE', [params.teamId])).rows[0];
+		const team = (await client.query('SELECT * FROM teams WHERE id = $1 FOR UPDATE', [params.teamId])).rows[0];
 		if (!team) return { success: false, status: 404, message: 'Takım bulunamadı.' };
-		const app = await client.query("SELECT 1 FROM takim_uyeleri WHERE teamId = $1 AND userId = $2 AND status = 'basvurdu'", [params.teamId, params.userId]);
+		const app = await client.query("SELECT 1 FROM team_members WHERE teamId = $1 AND userId = $2 AND status = 'basvurdu'", [params.teamId, params.userId]);
 		if (!app.rowCount) return { success: false, status: 404, message: 'Bekleyen başvuru bulunamadı.' };
 		if (!params.accept) {
-			await client.query('DELETE FROM takim_uyeleri WHERE teamId = $1 AND userId = $2', [params.teamId, params.userId]);
+			await client.query('DELETE FROM team_members WHERE teamId = $1 AND userId = $2', [params.teamId, params.userId]);
 			await saveDecision(client, params.teamId, params.userId, 'red');
 			return { success: true, message: 'Başvuru reddedildi.' };
 		}
-		const count = await client.query("SELECT COUNT(*)::int AS n FROM takim_uyeleri WHERE teamId = $1 AND status = 'aktif'", [params.teamId]);
+		const count = await client.query("SELECT COUNT(*)::int AS n FROM team_members WHERE teamId = $1 AND status = 'aktif'", [params.teamId]);
 		if (Number(count.rows[0].n) >= Number(team.kontenjan)) return { success: false, status: 409, message: 'Takım kontenjanı dolu.' };
-		const mine = await client.query("SELECT COUNT(*)::int AS n FROM takim_uyeleri WHERE userId = $1 AND status = 'aktif'", [params.userId]);
-		if (Number(mine.rows[0].n) >= TAKIM_SINIRI) return { success: false, status: 409, message: `Bu üye zaten ${TAKIM_SINIRI} takımda.` };
-		await client.query("UPDATE takim_uyeleri SET status = 'aktif', katilimTarihi = $3 WHERE teamId = $1 AND userId = $2", [params.teamId, params.userId, Date.now()]);
+		const mine = await client.query("SELECT COUNT(*)::int AS n FROM team_members WHERE userId = $1 AND status = 'aktif'", [params.userId]);
+		if (Number(mine.rows[0].n) >= TEAM_LIMIT) return { success: false, status: 409, message: `Bu üye zaten ${TEAM_LIMIT} takımda.` };
+		await client.query("UPDATE team_members SET status = 'aktif', katilimTarihi = $3 WHERE teamId = $1 AND userId = $2", [params.teamId, params.userId, Date.now()]);
 		await saveDecision(client, params.teamId, params.userId, 'kabul');
 		return { success: true, message: 'Başvuru kabul edildi.' };
 	});
@@ -229,14 +229,14 @@ export async function decideTeamApplication(params: { teamId: string; userId: st
 
 export async function setTeamMemberRole(teamId: string, userId: string, role: string): Promise<boolean> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query("UPDATE takim_uyeleri SET takimRolu = $3 WHERE teamId = $1 AND userId = $2 AND status = 'aktif'", [teamId, userId, role]);
+	const res = await getPgPool().query("UPDATE team_members SET takimRolu = $3 WHERE teamId = $1 AND userId = $2 AND status = 'aktif'", [teamId, userId, role]);
 	return (res.rowCount ?? 0) > 0;
 }
 
 export async function updateTeam(id: string, patch: TeamPatch): Promise<boolean> {
 	await ensurePostgresInit();
 	return withTransaction(async (client) => {
-		const team = (await client.query('SELECT * FROM takimlar WHERE id = $1 FOR UPDATE', [id])).rows[0];
+		const team = (await client.query('SELECT * FROM teams WHERE id = $1 FOR UPDATE', [id])).rows[0];
 		if (!team) return false;
 		const sets: string[] = [];
 		const values: unknown[] = [];
@@ -252,15 +252,15 @@ export async function updateTeam(id: string, patch: TeamPatch): Promise<boolean>
 			await client.query(
 				`INSERT INTO team_members (id, teamId, userId, takimRolu, status, katilimTarihi) VALUES ($1, $2, $3, $4, 'aktif', $5)
 				 ON CONFLICT (teamId, userId) DO UPDATE SET status = 'aktif', takimRolu = $4`,
-				[randomUUID(), id, patch.liderId, KAPTAN_ROLU, Date.now()]
+				[randomUUID(), id, patch.liderId, CAPTAIN_ROLE, Date.now()]
 			);
 			if (team.liderId) {
-				await client.query(`UPDATE team_members SET takimRolu = 'Ar-Ge Üyesi' WHERE teamId = $1 AND userId = $2 AND takimRolu = $3`, [id, team.liderId, KAPTAN_ROLU]);
+				await client.query(`UPDATE team_members SET takimRolu = 'R&D Member' WHERE teamId = $1 AND userId = $2 AND takimRolu = $3`, [id, team.liderId, CAPTAIN_ROLE]);
 			}
 		}
 		if (!sets.length) return true;
 		values.push(id);
-		await client.query(`UPDATE takimlar SET ${sets.join(', ')} WHERE id = $${values.length}`, values);
+		await client.query(`UPDATE teams SET ${sets.join(', ')} WHERE id = $${values.length}`, values);
 		return true;
 	});
 }
@@ -273,25 +273,28 @@ export async function createTeam(params: {
 	repoUrl?: string;
 	liderId?: string;
 	katilimTuru?: 'acik' | 'onayli';
+	type?: 'working_group' | 'committee';
+	quorum?: number;
 }): Promise<Team> {
 	await ensurePostgresInit();
 	const id = `tkm_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-	const slug = await uniqueSlug(slugify(params.ad), async (c) => ((await getPgPool().query('SELECT 1 FROM takimlar WHERE slug = $1', [c])).rowCount ?? 0) > 0, 'takim');
+	const slug = await uniqueSlug(slugify(params.ad), async (c) => ((await getPgPool().query('SELECT 1 FROM teams WHERE slug = $1', [c])).rowCount ?? 0) > 0, 'takim');
 	const now = Date.now();
 	const kontenjan = Number(params.kontenjan) || 6;
+	const type = params.type ?? 'working_group';
 
 	await getPgPool().query(
-		`INSERT INTO takimlar (id, ad, slug, kategori, aciklama, liderId, kontenjan, repoUrl, status, olusturma, katilimTuru)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'aktif', $9, $10)`,
-		[id, params.ad.trim(), slug, params.kategori.trim(), params.aciklama.trim(), params.liderId || null, kontenjan, params.repoUrl?.trim() || null, now, params.katilimTuru ?? 'acik']
+		`INSERT INTO teams (id, ad, slug, kategori, aciklama, liderId, kontenjan, repoUrl, status, olusturma, katilimTuru, type, quorum)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'aktif', $9, $10, $11, $12)`,
+		[id, params.ad.trim(), slug, params.kategori.trim(), params.aciklama.trim(), params.liderId || null, kontenjan, params.repoUrl?.trim() || null, now, params.katilimTuru ?? 'acik', type, Number(params.quorum) || 0]
 	);
 
 	if (params.liderId) {
 		const tuId = `tu_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
 		await getPgPool().query(
-			`INSERT INTO team_members (id, teamId, userId, takimRolu, status, katilimTarihi)
-			 VALUES ($1, $2, $3, 'Takım Kaptanı', 'aktif', $4) ON CONFLICT (teamId, userId) DO NOTHING`,
-			[tuId, id, params.liderId, now]
+			`INSERT INTO team_members (id, teamId, userId, takimRolu, status, katilimTarihi, voting_right)
+			 VALUES ($1, $2, $3, $4, 'aktif', $5, $6) ON CONFLICT (teamId, userId) DO NOTHING`,
+			[tuId, id, params.liderId, CAPTAIN_ROLE, now, type === 'committee' ? 1 : 0]
 		);
 	}
 	const team = await getTeamById(id);
@@ -301,7 +304,7 @@ export async function createTeam(params: {
 
 export async function deleteTeam(id: string): Promise<boolean> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query('DELETE FROM takimlar WHERE id = $1', [id]);
+	const res = await getPgPool().query('DELETE FROM teams WHERE id = $1', [id]);
 	return (res.rowCount ?? 0) > 0;
 }
 
@@ -312,8 +315,8 @@ export async function getPendingTeamApplications(
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`SELECT tu.teamId AS "teamId", t.ad AS "takimAdi", tu.userId AS "userId",
-		        k.ad || ' ' || k.soyad AS "adSoyad", k.bolum AS "bolum", tu.katilimTarihi AS "olusturma"
-		 FROM takim_uyeleri tu JOIN takimlar t ON t.id = tu.teamId JOIN kullanicilar k ON k.id = tu.userId
+		        k.first_name || ' ' || k.last_name AS "adSoyad", k.department AS "bolum", tu.katilimTarihi AS "olusturma"
+		 FROM team_members tu JOIN teams t ON t.id = tu.teamId JOIN users k ON k.id = tu.userId
 		 WHERE tu.status = 'basvurdu' AND ($2::boolean OR t.liderId = $1)
 		 ORDER BY tu.katilimTarihi DESC LIMIT 20`,
 		[userId, allTeams]

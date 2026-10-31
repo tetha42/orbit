@@ -19,7 +19,7 @@ import { randomUUID } from 'crypto';
 import { ensurePostgresInit, getPgPool, withTransaction } from './index';
 import { notificationEvents, publishEvent } from './olaylar';
 import { foldTr } from '@/lib/text';
-import { onizlemeSatiri, POSTA_SAYFA_BOYUTU, type MailPerson, type MailThreadSummary, type MailFolder, type MailMessage, type MailStorage } from '@/lib/posta';
+import { onizlemeSatiri, MAIL_PAGE_SIZE, type MailPerson, type MailThreadSummary, type MailFolder, type MailMessage, type MailStorage } from '@/lib/posta';
 
 /** Called from ensurePostgresInit with its raw (lower-case) client, inside its transaction. */
 export async function ensureMailSchema(client: PoolClient): Promise<void> {
@@ -86,7 +86,7 @@ export async function getMailMembers(ids: string[]): Promise<MailMember[]> {
 	if (ids.length === 0) return [];
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT id, ad, soyad, status, roleId, email, postaEposta FROM kullanicilar WHERE id = ANY($1::text[])`,
+		`SELECT id, first_name AS ad, last_name AS soyad, status, role_id AS "roleId", email, mail_notifications_enabled AS "postaEposta" FROM users WHERE id = ANY($1::text[])`,
 		[ids]
 	);
 	return res.rows;
@@ -116,16 +116,16 @@ export async function searchMailCandidates(userId: string, q: string, limit: num
 	await ensurePostgresInit();
 	const terms = foldTr(q).split(/\s+/).filter(Boolean).slice(0, 5);
 	const params: unknown[] = [userId, limit];
-	const name = foldSql(`ad || ' ' || soyad`);
+	const name = foldSql(`first_name || ' ' || last_name`);
 	const conditions = terms.map((term) => {
 		const esc = likeEscape(term);
 		params.push(`%${esc}%`);
 		const contains = `$${params.length}`;
-		let clause = `${name} LIKE ${contains} ${LIKE_ESC} OR ${foldSql('bolum')} LIKE ${contains} ${LIKE_ESC}`;
+		let clause = `${name} LIKE ${contains} ${LIKE_ESC} OR ${foldSql('department')} LIKE ${contains} ${LIKE_ESC}`;
 		if (term.length >= MAIL_IDENTITY_MIN) {
 			params.push(`${esc}%`);
 			const prefix = `$${params.length}`;
-			clause += ` OR ${foldSql('email')} LIKE ${prefix} ${LIKE_ESC} OR ${foldSql('ogrenciNo')} LIKE ${prefix} ${LIKE_ESC}`;
+			clause += ` OR ${foldSql('email')} LIKE ${prefix} ${LIKE_ESC} OR ${foldSql('handle')} LIKE ${prefix} ${LIKE_ESC}`;
 		}
 		return `(${clause})`;
 	});
@@ -137,9 +137,9 @@ export async function searchMailCandidates(userId: string, q: string, limit: num
 		rank = `CASE WHEN ${name} LIKE $${params.length - 1} ${LIKE_ESC} OR ${name} LIKE $${params.length} ${LIKE_ESC} THEN 0 ELSE 1 END, `;
 	}
 	const res = await getPgPool().query(
-		`SELECT id, ad, soyad, roleId FROM kullanicilar
+		`SELECT id, first_name AS ad, last_name AS soyad, role_id AS "roleId" FROM users
 		 WHERE status = 'aktif' AND id <> $1 ${conditions.map((c) => `AND ${c}`).join(' ')}
-		 ORDER BY ${rank}ad, soyad, id
+		 ORDER BY ${rank}first_name, last_name, id
 		 LIMIT $2`,
 		params
 	);
@@ -150,13 +150,13 @@ export async function searchMailCandidates(userId: string, q: string, limit: num
 export async function getRecentMailThreads(userId: string, limit: number): Promise<MailCandidate[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT x.id, x.ad, x.soyad, x.roleId, MAX(m.olusturma) AS son
+		`SELECT x.id, x.first_name AS ad, x.last_name AS soyad, x.role_id AS "roleId", MAX(m.olusturma) AS son
 		 FROM mesaj_alicilari me
 		 JOIN mesajlar m ON m.id = me.mesajId
 		 JOIN mesaj_alicilari o ON o.mesajId = m.id AND o.userId <> $1
-		 JOIN kullanicilar x ON x.id = o.userId AND x.status = 'aktif'
+		 JOIN users x ON x.id = o.userId AND x.status = 'aktif'
 		 WHERE me.userId = $1 AND me.silindi = 0
-		 GROUP BY x.id, x.ad, x.soyad, x.roleId
+		 GROUP BY x.id, x.first_name, x.last_name, x.role_id
 		 ORDER BY son DESC, x.id
 		 LIMIT $2`,
 		[userId, limit]
@@ -167,26 +167,26 @@ export async function getRecentMailThreads(userId: string, limit: number): Promi
 /** One active member (not the caller) by id, or null. */
 export async function getMailCandidate(userId: string, id: string): Promise<MailCandidate | null> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query(`SELECT id, ad, soyad, roleId FROM kullanicilar WHERE id = $2 AND id <> $1 AND status = 'aktif'`, [userId, id]);
+	const res = await getPgPool().query(`SELECT id, first_name AS ad, last_name AS soyad, role_id AS "roleId" FROM users WHERE id = $2 AND id <> $1 AND status = 'aktif'`, [userId, id]);
 	return res.rows[0] ?? null;
 }
 
 /** Every active member (not the caller) with the role they hold: what "who can I message" is worked out from. */
 export async function getMailCandidateRoles(userId: string): Promise<{ id: string; roleId: string | null }[]> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query(`SELECT id, roleId FROM kullanicilar WHERE status = 'aktif' AND id <> $1`, [userId]);
+	const res = await getPgPool().query(`SELECT id, role_id AS "roleId" FROM users WHERE status = 'aktif' AND id <> $1`, [userId]);
 	return res.rows;
 }
 
 export async function getMailEmailSetting(userId: string): Promise<boolean> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query('SELECT postaEposta FROM kullanicilar WHERE id = $1', [userId]);
+	const res = await getPgPool().query('SELECT mail_notifications_enabled AS "postaEposta" FROM users WHERE id = $1', [userId]);
 	return Number(res.rows[0]?.postaEposta) === 1;
 }
 
 export async function setMailEmailSetting(userId: string, acik: boolean): Promise<void> {
 	await ensurePostgresInit();
-	await getPgPool().query('UPDATE kullanicilar SET postaEposta = $2 WHERE id = $1', [userId, acik ? 1 : 0]);
+	await getPgPool().query('UPDATE users SET mail_notifications_enabled = $2 WHERE id = $1', [userId, acik ? 1 : 0]);
 }
 
 const kisi = (row: Record<string, unknown>, prefix = ''): MailPerson => ({
@@ -200,7 +200,7 @@ export async function getMailThreads(
 	userId: string,
 	klasor: MailFolder,
 	sayfa: number,
-	sayfaBoyutu = POSTA_SAYFA_BOYUTU
+	sayfaBoyutu = MAIL_PAGE_SIZE
 ): Promise<{ konular: MailThreadSummary[]; toplam: number }> {
 	await ensurePostgresInit();
 	const pool = getPgPool();
@@ -222,8 +222,8 @@ export async function getMailThreads(
 			: klasor === 'gelen'
 				? `COALESCE(t.sonGelen, t.son)`
 				: `t.son`;
-	const adetExpr = klasor === 'gonderilen' ? `t.gonderilenAdet` : `t.adet`;
-	const okunmamisExpr = klasor === 'gonderilen' ? `0` : `t.okunmamis`;
+	const countExpr = klasor === 'gonderilen' ? `t.gonderilenAdet` : `t.adet`;
+	const unreadExpr = klasor === 'gonderilen' ? `0` : `t.okunmamis`;
 	const base = `
 		WITH mine AS (
 			SELECT m.konuId, m.gonderenId, m.govde, m.olusturma, ma.okundu, ma.klasor
@@ -245,11 +245,11 @@ export async function getMailThreads(
 	const total = await pool.query(`${base} SELECT COUNT(*)::int AS n FROM t WHERE ${folder}`, [userId]);
 	const rows = await pool.query(
 		`${base}
-		SELECT t.konuId AS id, k.konu, ${sonExpr} AS sonMesaj, ${adetExpr} AS adet, ${okunmamisExpr} AS okunmamis, l.govde, u.id AS gid, u.ad AS gad, u.soyad AS gsoyad
+		SELECT t.konuId AS id, k.konu, ${sonExpr} AS sonMesaj, ${countExpr} AS adet, ${unreadExpr} AS okunmamis, l.govde, u.id AS gid, u.first_name AS gad, u.last_name AS gsoyad
 		FROM t
 		JOIN mesaj_konulari k ON k.id = t.konuId
 		JOIN LATERAL (SELECT govde, gonderenId FROM mine WHERE mine.konuId = t.konuId ${lateralFilter} ORDER BY olusturma DESC LIMIT 1) l ON true
-		LEFT JOIN kullanicilar u ON u.id = l.gonderenId
+		LEFT JOIN users u ON u.id = l.gonderenId
 		WHERE ${folder}
 		ORDER BY ${sonExpr} DESC, t.konuId
 		LIMIT $2 OFFSET $3`,
@@ -279,10 +279,10 @@ async function getAttendees(konuIds: string[], haric: string): Promise<Map<strin
 	const out = new Map<string, MailPerson[]>();
 	if (konuIds.length === 0) return out;
 	const res = await getPgPool().query(
-		`SELECT DISTINCT m.konuId, x.id, x.ad, x.soyad
-		 FROM mesajlar m JOIN mesaj_alicilari ma ON ma.mesajId = m.id JOIN kullanicilar x ON x.id = ma.userId
+		`SELECT DISTINCT m.konuId, x.id, x.first_name AS ad, x.last_name AS soyad
+		 FROM mesajlar m JOIN mesaj_alicilari ma ON ma.mesajId = m.id JOIN users x ON x.id = ma.userId
 		 WHERE m.konuId = ANY($1::text[]) AND x.id <> $2
-		 ORDER BY x.ad, x.soyad`,
+		 ORDER BY x.first_name, x.last_name`,
 		[konuIds, haric]
 	);
 	for (const r of res.rows) {
@@ -318,11 +318,11 @@ export async function getUnreadMailThreads(userId: string, limit: number): Promi
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`SELECT * FROM (
-			SELECT DISTINCT ON (m.konuId) m.konuId AS id, k.konu, m.olusturma AS zaman, u.id AS gid, u.ad AS gad, u.soyad AS gsoyad
+			SELECT DISTINCT ON (m.konuId) m.konuId AS id, k.konu, m.olusturma AS zaman, u.id AS gid, u.first_name AS gad, u.last_name AS gsoyad
 			FROM mesaj_alicilari ma
 			JOIN mesajlar m ON m.id = ma.mesajId
 			JOIN mesaj_konulari k ON k.id = m.konuId
-			LEFT JOIN kullanicilar u ON u.id = m.gonderenId
+			LEFT JOIN users u ON u.id = m.gonderenId
 			WHERE ma.userId = $1 AND ma.silindi = 0 AND ma.okundu = 0 AND ma.klasor = 'gelen'
 			  AND m.gonderenId IS DISTINCT FROM $1
 			ORDER BY m.konuId, m.olusturma DESC
@@ -345,11 +345,11 @@ export async function getMailThread(userId: string, konuId: string): Promise<Mai
 	await ensurePostgresInit();
 	const pool = getPgPool();
 	const res = await pool.query(
-		`SELECT m.id, m.govde, m.olusturma, m.gonderenId, ma.okundu, ma.klasor, k.konu, u.ad AS gad, u.soyad AS gsoyad
+		`SELECT m.id, m.govde, m.olusturma, m.gonderenId, ma.okundu, ma.klasor, k.konu, u.first_name AS gad, u.last_name AS gsoyad
 		 FROM mesaj_alicilari ma
 		 JOIN mesajlar m ON m.id = ma.mesajId
 		 JOIN mesaj_konulari k ON k.id = m.konuId
-		 LEFT JOIN kullanicilar u ON u.id = m.gonderenId
+		 LEFT JOIN users u ON u.id = m.gonderenId
 		 WHERE ma.userId = $1 AND ma.silindi = 0 AND m.konuId = $2
 		 ORDER BY m.olusturma, m.id`,
 		[userId, konuId]
@@ -382,26 +382,26 @@ export async function getMailParticipantIds(konuId: string): Promise<string[]> {
 	return res.rows.map((r) => String(r.userId));
 }
 
-async function insertMesaj(client: PoolClient, konuId: string, gonderenId: string, govde: string, aliciIds: string[], now: number, gonderenKlasor: 'gelen' | 'gonderilen' = 'gonderilen'): Promise<string> {
-	const mesajId = randomUUID();
-	await client.query(`INSERT INTO mesajlar (id, konuId, gonderenId, govde, olusturma) VALUES ($1, $2, $3, $4, $5)`, [mesajId, konuId, gonderenId, govde, now]);
-	await client.query(`INSERT INTO mesaj_alicilari (mesajId, userId, okundu, klasor, silindi) VALUES ($1, $2, 1, $3, 0)`, [mesajId, gonderenId, gonderenKlasor]);
+async function insertMessage(client: PoolClient, konuId: string, gonderenId: string, govde: string, aliciIds: string[], now: number, gonderenKlasor: 'gelen' | 'gonderilen' = 'gonderilen'): Promise<string> {
+	const messageId = randomUUID();
+	await client.query(`INSERT INTO mesajlar (id, konuId, gonderenId, govde, olusturma) VALUES ($1, $2, $3, $4, $5)`, [messageId, konuId, gonderenId, govde, now]);
+	await client.query(`INSERT INTO mesaj_alicilari (mesajId, userId, okundu, klasor, silindi) VALUES ($1, $2, 1, $3, 0)`, [messageId, gonderenId, gonderenKlasor]);
 	for (const id of aliciIds) {
-		await client.query(`INSERT INTO mesaj_alicilari (mesajId, userId, okundu, klasor, silindi) VALUES ($1, $2, 0, 'gelen', 0)`, [mesajId, id]);
+		await client.query(`INSERT INTO mesaj_alicilari (mesajId, userId, okundu, klasor, silindi) VALUES ($1, $2, 0, 'gelen', 0)`, [messageId, id]);
 	}
 	await client.query(`UPDATE mesaj_konulari SET sonMesaj = $2 WHERE id = $1`, [konuId, now]);
 	await publishEvent(client, notificationEvents(aliciIds));
-	return mesajId;
+	return messageId;
 }
 
 /** Starts a conversation. The recipients have been vetted by the caller (active, role opens Mail). */
 export async function createMailThread(gonderenId: string, konu: string, govde: string, aliciIds: string[]): Promise<{ konuId: string; mesajId: string }> {
 	return withTransaction(async (client) => {
-		const konuId = randomUUID();
+		const subjectId = randomUUID();
 		const now = Date.now();
-		await client.query(`INSERT INTO mesaj_konulari (id, konu, olusturanId, olusturma, sonMesaj) VALUES ($1, $2, $3, $4, $4)`, [konuId, konu, gonderenId, now]);
-		const mesajId = await insertMesaj(client, konuId, gonderenId, govde, aliciIds, now, 'gonderilen');
-		return { konuId, mesajId };
+		await client.query(`INSERT INTO mesaj_konulari (id, konu, olusturanId, olusturma, sonMesaj) VALUES ($1, $2, $3, $4, $4)`, [subjectId, konu, gonderenId, now]);
+		const messageId = await insertMessage(client, subjectId, gonderenId, govde, aliciIds, now, 'gonderilen');
+		return { konuId: subjectId, mesajId: messageId };
 	});
 }
 
@@ -420,12 +420,12 @@ export async function addMailReply(konuId: string, gonderenId: string, govde: st
 			 WHERE ma.userId = $2 AND ma.silindi = 0 AND m.konuId = $1 AND m.gonderenId IS DISTINCT FROM $2 LIMIT 1`,
 			[konuId, gonderenId]
 		);
-		const gonderenKlasor: 'gelen' | 'gonderilen' = incomingRes.rows.length > 0 ? 'gelen' : 'gonderilen';
+		const senderFolder: 'gelen' | 'gonderilen' = incomingRes.rows.length > 0 ? 'gelen' : 'gonderilen';
 		await client.query(
 			`UPDATE mesaj_alicilari SET klasor = $3 WHERE userId = $2 AND silindi = 0 AND mesajId IN (SELECT id FROM mesajlar WHERE konuId = $1)`,
-			[konuId, gonderenId, gonderenKlasor]
+			[konuId, gonderenId, senderFolder]
 		);
-		return insertMesaj(client, konuId, gonderenId, govde, aliciIds, Date.now(), gonderenKlasor);
+		return insertMessage(client, konuId, gonderenId, govde, aliciIds, Date.now(), senderFolder);
 	});
 }
 
@@ -484,12 +484,12 @@ export async function getMailSearchThreads(userId: string, limit = 200): Promise
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`SELECT m.konuId AS id, k.konu, MAX(m.olusturma) AS son,
-			COALESCE(string_agg(DISTINCT u.ad || ' ' || u.soyad, ', '), '') AS kisiler,
+			COALESCE(string_agg(DISTINCT u.first_name || ' ' || u.last_name, ', '), '') AS kisiler,
 			string_agg(left(m.govde, 300), ' ') AS metin
 		 FROM mesaj_alicilari ma
 		 JOIN mesajlar m ON m.id = ma.mesajId
 		 JOIN mesaj_konulari k ON k.id = m.konuId
-		 LEFT JOIN kullanicilar u ON u.id = m.gonderenId
+		 LEFT JOIN users u ON u.id = m.gonderenId
 		 WHERE ma.userId = $1 AND ma.silindi = 0 AND ma.klasor <> 'cop'
 		 GROUP BY m.konuId, k.konu
 		 ORDER BY son DESC

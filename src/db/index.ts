@@ -7,7 +7,8 @@ import { ensureRoleSchema } from './roles';
 import { ensureMailSchema } from './posta';
 import { ensureOAuthSchema } from './oauth';
 import { startAuditMaintenance, ensureAuditSchema } from './audit';
-import { ADMIN_ROL_ID } from '@/core/permissions';
+
+import { ADMIN_ROLE_ID } from '@/core/permissions';
 import { runSchemaMigrations } from '@/server/db/schema.init';
 import { CONFIG } from '@/lib/server/config';
 import { updateConfigIniSync } from '@/lib/server/iniWriter';
@@ -35,7 +36,7 @@ const CAMEL_CASE_COLUMNS = [
 	'xpVerildi', 'canliUrl', 'publishStatus', 'yayinTarihi', 'yazarAdSoyad',
 	'yazarId', 'yoklamaAcik', 'yukleyenId', 'yapanId', 'yapanAd',
 	'hedefTur', 'hedefId', 'hedefAd', 'konuId', 'mesajId',
-	'gonderenId', 'gonderenAd', 'gonderenFoto', 'odaId', 'sonOkuma',
+	'gonderenId', 'gonderenAd', 'gonderenFoto', 'odaId', 'sonOkuma', 'sohbetOdaId',
 	'peerUserId', 'memberCount', 'okunmamisSayisi', 'sonMesaj', 'postaEposta',
 	'silinmeTarihi', 'duzenlenmeTarihi',
 	'pollId', 'secenekId', 'olusturanId', 'cokluSecim', 'endsAt', 'userAvatar',
@@ -110,71 +111,13 @@ export function getPgPool(): Pool {
 	return globalForPg.__pgPool;
 }
 
-const AUTO_DISCOVERY_CANDIDATES = [
-	'postgresql://orbit:orbit_secret_2026@localhost:5432/orbit',
-	'postgresql://orbit:orbit_secret_2026@orbit-db:5432/orbit',
-	'postgresql://postgres:postgres@localhost:5432/orbit_db',
-	'postgresql://postgres:postgres@localhost:5432/postgres',
-	'postgresql://kulup:kulup_secret_2026@localhost:5432/kulup',
-];
-
-async function probeDatabaseCandidate(url: string): Promise<{
-	ok: boolean;
-	url: string;
-	databaseName?: string;
-	hasAdmin?: boolean;
-}> {
-	let tempPool: Pool | null = null;
-	try {
-		tempPool = new Pool({
-			connectionString: url,
-			max: 1,
-			connectionTimeoutMillis: 1500,
-			idleTimeoutMillis: 1000,
-		});
-		const client = await tempPool.connect();
-		try {
-			const res = await client.query('SELECT current_database() AS db');
-			const databaseName = String(res.rows[0]?.db || '');
-			let hasAdmin = false;
-			try {
-				const adminCheck = await client.query(
-					`SELECT COUNT(*)::int AS n FROM users WHERE role_id = $1`,
-					[ADMIN_ROL_ID]
-				);
-				hasAdmin = Number(adminCheck.rows[0]?.n || 0) > 0;
-			} catch {
-				// Table may not exist yet or still use legacy name
-				try {
-					const legacyCheck = await client.query(
-						`SELECT COUNT(*)::int AS n FROM kullanicilar WHERE rolId = $1`,
-						[ADMIN_ROL_ID]
-					);
-					hasAdmin = Number(legacyCheck.rows[0]?.n || 0) > 0;
-				} catch {
-					hasAdmin = false;
-				}
-			}
-			return { ok: true, url, databaseName, hasAdmin };
-		} finally {
-			client.release();
-		}
-	} catch {
-		return { ok: false, url };
-	} finally {
-		if (tempPool) {
-			await tempPool.end().catch(() => {});
-		}
-	}
-}
-
 export async function checkDatabaseStatus(): Promise<{
 	connected: boolean;
 	configured: boolean;
 	databaseName?: string;
 	error?: string;
 }> {
-	const connectionString = (process.env.DATABASE_URL || CONFIG.database.url || '').trim();
+	const connectionString = (process.env.DATABASE_URL || CONFIG.database.url || "").trim();
 	if (connectionString) {
 		let tempPool: Pool | null = null;
 		try {
@@ -186,21 +129,14 @@ export async function checkDatabaseStatus(): Promise<{
 			});
 			const client = await tempPool.connect();
 			try {
-				const res = await client.query('SELECT current_database() AS db');
-				const databaseName = String(res.rows[0]?.db || '');
+				const res = await client.query("SELECT current_database() AS db");
+				const databaseName = String(res.rows[0]?.db || "");
 				return { connected: true, configured: true, databaseName };
 			} finally {
 				client.release();
 			}
 		} catch (err: unknown) {
 			const msg = err instanceof Error ? err.message : String(err);
-			// If explicitly configured via env and unreachable, report error unless auto-discovery finds an active DB
-			const discovered = await Promise.all(AUTO_DISCOVERY_CANDIDATES.map(probeDatabaseCandidate));
-			const best = discovered.find((d) => d.ok && d.hasAdmin) || discovered.find((d) => d.ok);
-			if (best) {
-				updateConfigIniSync({ database: { url: best.url } });
-				return { connected: true, configured: true, databaseName: best.databaseName };
-			}
 			return { connected: false, configured: true, error: msg };
 		} finally {
 			if (tempPool) {
@@ -209,15 +145,7 @@ export async function checkDatabaseStatus(): Promise<{
 		}
 	}
 
-	// Zero-config auto-discovery when DATABASE_URL is not set on startup
-	const discovered = await Promise.all(AUTO_DISCOVERY_CANDIDATES.map(probeDatabaseCandidate));
-	const best = discovered.find((d) => d.ok && d.hasAdmin) || discovered.find((d) => d.ok);
-	if (best) {
-		updateConfigIniSync({ database: { url: best.url } });
-		return { connected: true, configured: true, databaseName: best.databaseName };
-	}
-
-	return { connected: false, configured: false, error: 'DATABASE_URL is not configured.' };
+	return { connected: false, configured: false, error: "DATABASE_URL is not configured." };
 }
 
 export async function testPostgresConnection(url: string): Promise<{ ok: boolean; error?: string }> {
@@ -323,7 +251,7 @@ async function bootstrapFirstAdmin(client: PoolClient): Promise<void> {
 		`INSERT INTO users (id, first_name, last_name, email, password_hash, handle, department, grade, role_id, avatar_url, bio, xp, status, created_at)
 		 VALUES ($1, $2, $3, $4, $5, NULL, 'Management', 1, $6, NULL, '', 0, 'aktif', $7)
 		 ON CONFLICT (email) DO NOTHING`,
-		[randomUUID(), ad, soyad, email, await bcrypt.hash(password, 12), ADMIN_ROL_ID, Date.now()]
+		[randomUUID(), ad, soyad, email, await bcrypt.hash(password, 12), ADMIN_ROLE_ID, Date.now()]
 	);
 	console.log(`[PostgreSQL] Initial bootstrap administrator created: ${email}`);
 }
@@ -348,7 +276,7 @@ export async function getSetupStatus(): Promise<{
 
 	try {
 		await ensurePostgresInit();
-		const r = await getPgPool().query(`SELECT COUNT(*)::int AS n FROM users WHERE role_id = $1`, [ADMIN_ROL_ID]);
+		const r = await getPgPool().query(`SELECT COUNT(*)::int AS n FROM users WHERE role_id = $1`, [ADMIN_ROLE_ID]);
 		if (Number(r.rows[0].n) > 0) return { hazir: true, step: 'ready', dbStatus };
 		return {
 			hazir: false,
@@ -381,7 +309,7 @@ export async function setupFirstAdmin(params: {
 	try {
 		await client.query('BEGIN');
 		await client.query("SELECT pg_advisory_xact_lock(hashtext('setup.first_admin'))");
-		const r = await client.query(`SELECT COUNT(*)::int AS n FROM users WHERE role_id = $1`, [ADMIN_ROL_ID]);
+		const r = await client.query(`SELECT COUNT(*)::int AS n FROM users WHERE role_id = $1`, [ADMIN_ROLE_ID]);
 		if (Number(r.rows[0].n) > 0) {
 			await client.query('ROLLBACK');
 			return { ok: false, error: 'Setup is already complete. An administrator account already exists.' };
@@ -403,7 +331,7 @@ export async function setupFirstAdmin(params: {
 		await client.query(
 			`INSERT INTO users (id, first_name, last_name, email, password_hash, handle, department, grade, role_id, avatar_url, bio, xp, status, created_at)
 			 VALUES ($1, $2, $3, $4, $5, NULL, 'Management', 1, $6, NULL, '', 0, 'aktif', $7)`,
-			[id, params.ad.trim(), params.soyad.trim(), email, passwordHash, ADMIN_ROL_ID, now]
+			[id, params.ad.trim(), params.soyad.trim(), email, passwordHash, ADMIN_ROLE_ID, now]
 		);
 		const userRes = await client.query('SELECT * FROM users WHERE id = $1', [id]);
 		await client.query('COMMIT');
@@ -442,6 +370,30 @@ export async function ensurePostgresInit(): Promise<void> {
 			if (countRes.rows[0].count === 0) await bootstrapFirstAdmin(client);
 			await client.query('COMMIT');
 
+			// The community name/domain live in system_settings and can be edited at
+			// runtime. data/runtime-config.json can be stale from an earlier setup,
+			// so mail used to say "English Community" while the UI showed the real
+			// community. Reconcile the process config once the database is ready.
+			try {
+				const identityRes = await client.query(
+					"SELECT key, value FROM system_settings WHERE key IN ('kulup_adi', 'kulup_domain')"
+				);
+				const identity = Object.fromEntries(
+					identityRes.rows.map((row) => [String(row.key), String(row.value ?? '').trim()])
+				);
+				const name = identity.kulup_adi || CONFIG.clubPreset.name;
+				const domain = identity.kulup_domain || CONFIG.clubPreset.domain;
+				if (name !== CONFIG.clubPreset.name || domain !== CONFIG.clubPreset.domain) {
+					CONFIG.clubPreset.name = name;
+					CONFIG.clubPreset.domain = domain;
+					process.env.CLUB_NAME = name;
+					process.env.CLUB_DOMAIN = domain;
+					updateConfigIniSync({ club_preset: { name, domain } });
+				}
+			} catch (identityError) {
+				console.warn('[config] Could not reconcile community identity from system_settings:', identityError);
+			}
+
 			isInitialized = true;
 			startAuditMaintenance();
 		} catch (err) {
@@ -469,7 +421,12 @@ export * from '@/server/db/domains/users.repo';
 export * from '@/server/db/domains/files.repo';
 export * from '@/server/db/domains/notifications.repo';
 export * from '@/server/db/domains/members.repo';
+export * from '@/server/db/domains/membership.repo';
 export * from '@/server/db/domains/teams.repo';
+export * from '@/server/db/domains/committees.repo';
+export * from '@/server/db/domains/mailGroups.repo';
+export * from '@/server/db/domains/mailOutbox.repo';
+export * from '@/server/db/domains/privacy.repo';
 export * from '@/server/db/domains/kanban.repo';
 export * from '@/server/db/domains/budget.repo';
 export * from '@/server/db/domains/certificates.repo';
@@ -481,4 +438,5 @@ export * from '@/server/db/domains/settings.repo';
 export * from '@/server/db/domains/projects.repo';
 export * from '@/server/db/domains/events.repo';
 export * from '@/server/db/domains/security.repo';
+export * from '@/server/db/domains/customization.repo';
 

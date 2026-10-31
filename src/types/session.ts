@@ -1,5 +1,5 @@
 import type { User } from '@/db/schema';
-import type { Izinler } from '@/core/permissions';
+import type { Permissions } from '@/core/permissions';
 
 /**
  * The user object the client receives.
@@ -23,6 +23,7 @@ export interface SessionUser {
 	sonGirisTarihi?: number | null;
 	/** Two-factor auth is switched on for this account. */
 	twoFactorEnabled: boolean;
+	authMethod?: 'password' | 'totp' | 'passkey';
 	/** The account's role requires two-factor auth. */
 	twoFactorRequired: boolean;
 	/** Required but not yet configured — drives the blocking setup prompt. */
@@ -30,7 +31,7 @@ export interface SessionUser {
 	/** The member's role (name and colour for badges); null until one is assigned. */
 	rolBilgi: { id: string; ad: string; renk: string } | null;
 	/** What the role grants per app — the UI shows only what this allows. */
-	izinler: Izinler;
+	izinler: Permissions;
 	/** Holds the built-in admin role. */
 	admin: boolean;
 }

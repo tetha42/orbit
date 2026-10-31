@@ -19,9 +19,9 @@ import type { PoolClient } from 'pg';
 import { ensurePostgresInit, getPgPool } from './index';
 import { clientAddress } from '@/lib/http';
 import {
-	gunBaslangici,
-	kayitAlanlari,
-	saklamaGunu,
+	startOfDay,
+	recordFields,
+	retentionDays,
 	temizIp,
 	type AuditFields,
 	type AuditContext,
@@ -76,13 +76,51 @@ export interface AuditEntry {
  */
 export async function logAuditEvent(client: PoolClient, ctx: AuditContext, g: AuditEntry): Promise<void> {
 	const json = (v: Record<string, unknown> | null) => {
-		const alanlar = kayitAlanlari(v);
+		const alanlar = recordFields(v);
 		return alanlar ? JSON.stringify(alanlar) : null;
 	};
 	await client.query(
 		`INSERT INTO audit_logs (zaman, yapanId, yapanAd, islem, hedefTur, hedefId, hedefAd, onceki, sonraki, ip)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10)`,
 		[Date.now(), ctx.yapanId, ctx.yapanAd.slice(0, 200), g.islem, g.hedefTur, g.hedefId, (g.hedefAd ?? '').slice(0, 200), json(g.onceki), json(g.sonraki), ctx.ip]
+	);
+}
+
+/**
+ * Direct audit log writer using the global connection pool.
+ * Used by withAudit middleware to ensure all mutations are recorded.
+ */
+export async function writeAuditLog(entry: {
+	yapanId: string | null;
+	yapanAd: string;
+	islem: string;
+	hedefTur: string;
+	hedefId: string | null;
+	hedefAd?: string;
+	onceki?: Record<string, unknown> | null;
+	sonraki?: Record<string, unknown> | null;
+	ip: string;
+}): Promise<void> {
+	await ensurePostgresInit();
+	const json = (v: Record<string, unknown> | null | undefined) => {
+		const alanlar = recordFields(v);
+		return alanlar ? JSON.stringify(alanlar) : null;
+	};
+	await getPgPool().query(
+		`INSERT INTO audit_logs (zaman, yapanId, yapanAd, islem, hedefTur, hedefId, hedefAd, onceki, sonraki, ip)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10)`,
+		[
+			Date.now(),
+			entry.yapanId,
+			entry.yapanAd.slice(0, 200),
+			entry.islem,
+			entry.hedefTur,
+			entry.hedefId,
+			(entry.hedefAd ?? '').slice(0, 200),
+			json(entry.onceki),
+			json(entry.sonraki),
+			entry.ip,
+		]
 	);
 }
 
@@ -109,9 +147,9 @@ function where(f: AuditFilter): { sql: string; params: unknown[] } {
 		parts.push(`((hedefTur = 'role' AND hedefId = ${r}) OR onceki->>'roleId' = ${r} OR sonraki->>'roleId' = ${r} OR sonraki->>'tasinanRolId' = ${r})`);
 	}
 	if (f.islem) parts.push(`islem = ${add(f.islem)}`);
-	if (f.from) parts.push(`zaman >= ${add(gunBaslangici(f.from))}`);
+	if (f.from) parts.push(`zaman >= ${add(startOfDay(f.from))}`);
 	// The end day is inclusive: everything before the next day starts.
-	if (f.to) parts.push(`zaman < ${add(gunBaslangici(f.to) + 24 * 3600 * 1000)}`);
+	if (f.to) parts.push(`zaman < ${add(startOfDay(f.to) + 24 * 3600 * 1000)}`);
 	return { sql: parts.length ? `WHERE ${parts.join(' AND ')}` : '', params };
 }
 
@@ -140,9 +178,9 @@ export async function listAuditLogs(
 		await ensurePostgresInit();
 		const w = where(f as AuditFilter);
 		const rawBoyut = Number.isFinite(f.boyut) && Number(f.boyut) > 0 ? Number(f.boyut) : 50;
-		const rawSayfa = Number.isFinite(f.sayfa) && Number(f.sayfa) > 0 ? Number(f.sayfa) : 1;
+		const rawPage = Number.isFinite(f.sayfa) && Number(f.sayfa) > 0 ? Number(f.sayfa) : 1;
 		const limit = Number.isFinite(opts.limit) && Number(opts.limit) > 0 ? Math.floor(Number(opts.limit)) : rawBoyut;
-		const offset = Number.isFinite(opts.offset) && Number(opts.offset) >= 0 ? Math.floor(Number(opts.offset)) : (rawSayfa - 1) * rawBoyut;
+		const offset = Number.isFinite(opts.offset) && Number(opts.offset) >= 0 ? Math.floor(Number(opts.offset)) : (rawPage - 1) * rawBoyut;
 		const [rows, count] = await Promise.all([
 			getPgPool().query(
 				`SELECT id::text AS id, zaman, yapanId AS "yapanId", yapanAd AS "yapanAd", islem, hedefTur AS "hedefTur", hedefId AS "hedefId", hedefAd AS "hedefAd", onceki, sonraki, ip FROM audit_logs ${w.sql} ORDER BY zaman DESC, audit_logs.id DESC LIMIT ${limit} OFFSET ${offset}`,
@@ -162,7 +200,7 @@ export async function listAuditLogs(
 /** Deletes records past the retention period — one statement, safe to repeat. */
 export async function clearAuditLogs(): Promise<number> {
 	await ensurePostgresInit();
-	const sinir = Date.now() - saklamaGunu(process.env.AUDIT_RETENTION_DAYS) * 24 * 3600 * 1000;
+	const sinir = Date.now() - retentionDays(process.env.AUDIT_RETENTION_DAYS) * 24 * 3600 * 1000;
 	const r = await getPgPool().query('DELETE FROM audit_logs WHERE zaman < $1', [sinir]);
 	return r.rowCount ?? 0;
 }

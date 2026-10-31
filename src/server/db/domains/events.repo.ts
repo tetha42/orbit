@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { ensurePostgresInit, getPgPool, withTransaction } from '@/db/index';
 import { notificationEvents, publishEventQuiet } from '@/db/olaylar';
-import { KATILIM_XP, YOKLAMA_TOLERANS_MS, type EventStatus, type EventType, type AttendanceMethod } from '@/lib/events';
+import { PARTICIPATION_XP, ATTENDANCE_TOLERANCE_MS, type EventStatus, type EventType, type AttendanceMethod } from '@/lib/events';
 import { slugify, uniqueSlug } from '@/lib/text';
 import type { CommunityEvent, Attendance } from '@/db/schema';
 
@@ -25,9 +25,9 @@ export async function getEvents(opts: { includeDrafts?: boolean } = {}): Promise
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`SELECT e.*,
-		        (SELECT COUNT(*) FROM etkinlik_kayitlari r WHERE r.etkinlikId = e.id)::int AS "kayitliSayisi",
-		        (SELECT COUNT(*) FROM yoklamalar y WHERE y.etkinlikId = e.id)::int AS "katilimciSayisi"
-		 FROM etkinlikler e
+		        (SELECT COUNT(*) FROM event_registrations r WHERE r.etkinlikId = e.id)::int AS "kayitliSayisi",
+		        (SELECT COUNT(*) FROM attendances y WHERE y.etkinlikId = e.id)::int AS "katilimciSayisi"
+		 FROM events e
 		 WHERE $1::boolean OR e.status <> 'taslak'
 		 ORDER BY e.baslangic ASC`,
 		[Boolean(opts.includeDrafts)]
@@ -39,9 +39,9 @@ export async function getEvents(opts: { includeDrafts?: boolean } = {}): Promise
 export async function getUserEventRegistrationIds(userId: string): Promise<string[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT etkinlikId FROM etkinlik_kayitlari WHERE userId = $1
+		`SELECT etkinlikId FROM event_registrations WHERE userId = $1
 		 UNION
-		 SELECT etkinlikId FROM yoklamalar WHERE userId = $1`,
+		 SELECT etkinlikId FROM attendances WHERE userId = $1`,
 		[userId]
 	);
 	return res.rows.map((r) => r.etkinlikId as string);
@@ -51,12 +51,12 @@ export async function getAttendancesByEvent(etkinlikId: string): Promise<Attenda
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`SELECT y.*,
-		        k.ad || ' ' || k.soyad AS "kullaniciAdSoyad",
-		        k.ogrenciNo AS "kullaniciOgrenciNo",
-		        k.bolum AS "kullaniciBolum",
-		        k.profilFoto AS "kullaniciProfilFoto"
-		 FROM yoklamalar y
-		 LEFT JOIN kullanicilar k ON y.userId = k.id
+		        k.first_name || ' ' || k.last_name AS "kullaniciAdSoyad",
+		        k.handle AS "kullaniciOgrenciNo",
+		        k.department AS "kullaniciBolum",
+		        k.avatar_url AS "kullaniciProfilFoto"
+		 FROM attendances y
+		 LEFT JOIN users k ON y.userId = k.id
 		 WHERE y.etkinlikId = $1
 		 ORDER BY y.katilimZamani DESC`,
 		[etkinlikId]
@@ -74,19 +74,23 @@ export async function createEvent(params: {
 	kapasite?: number;
 	olusturanId?: string;
 	status?: 'taslak' | 'yayinda';
+	ownerTeamId?: string | null;
+	ownerUserId?: string | null;
 }): Promise<{ id: string; slug: string }> {
 	await ensurePostgresInit();
 	const id = `evt_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
 	const slug = await uniqueSlug(
 		slugify(params.baslik),
-		async (candidate) => ((await getPgPool().query('SELECT 1 FROM etkinlikler WHERE slug = $1', [candidate])).rowCount ?? 0) > 0,
+		async (candidate) => ((await getPgPool().query('SELECT 1 FROM events WHERE slug = $1', [candidate])).rowCount ?? 0) > 0,
 		'etkinlik'
 	);
 	const now = Date.now();
 
 	await getPgPool().query(
-		`INSERT INTO etkinlikler (id, slug, baslik, tur, aciklama, konum, baslangic, endTime, kapasite, status, olusturanId, olusturma, guncellenme)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $12, $10, $11, $11)`,
+		`INSERT INTO events
+			(id, slug, baslik, tur, aciklama, konum, baslangic, endTime, kapasite, status, olusturanId,
+			 olusturma, guncellenme, owner_team_id, owner_user_id, created_by)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $12, $10, $11, $11, $13, $14, $10)`,
 		[
 			id,
 			slug,
@@ -100,6 +104,8 @@ export async function createEvent(params: {
 			params.olusturanId || null,
 			now,
 			params.status ?? 'yayinda',
+			params.ownerTeamId ?? null,
+			params.ownerUserId ?? params.olusturanId ?? null,
 		]
 	);
 	if ((params.status ?? 'yayinda') === 'yayinda') await publishEventQuiet(getPgPool(), notificationEvents());
@@ -112,8 +118,8 @@ export async function getPublicEvents(limit = 24): Promise<PublicEventRow[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`SELECT e.id, e.baslik, e.tur, e.aciklama, e.konum, e.baslangic, e.endTime, e.kapasite,
-		        (SELECT COUNT(*) FROM etkinlik_kayitlari r WHERE r.etkinlikId = e.id)::int AS "katilimciSayisi"
-		 FROM etkinlikler e
+		        (SELECT COUNT(*) FROM event_registrations r WHERE r.etkinlikId = e.id)::int AS "katilimciSayisi"
+		 FROM events e
 		 WHERE e.status = 'yayinda' AND e.endTime >= $1
 		 ORDER BY e.baslangic ASC
 		 LIMIT $2`,
@@ -136,13 +142,13 @@ export async function getEventViews(viewerId: string, includeDrafts: boolean): P
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`SELECT e.*,
-		        (SELECT COUNT(*) FROM etkinlik_kayitlari r WHERE r.etkinlikId = e.id)::int AS "kayitliSayisi",
-		        (SELECT COUNT(*) FROM yoklamalar y WHERE y.etkinlikId = e.id)::int AS "katilimciSayisi",
-		        EXISTS (SELECT 1 FROM etkinlik_kayitlari r WHERE r.etkinlikId = e.id AND r.userId = $1) AS "benimKaydim",
+		        (SELECT COUNT(*) FROM event_registrations r WHERE r.etkinlikId = e.id)::int AS "kayitliSayisi",
+		        (SELECT COUNT(*) FROM attendances y WHERE y.etkinlikId = e.id)::int AS "katilimciSayisi",
+		        EXISTS (SELECT 1 FROM event_registrations r WHERE r.etkinlikId = e.id AND r.userId = $1) AS "benimKaydim",
 		        my.yontem AS "benimYontem",
 		        my.katilimZamani AS "benimKatilimZamani"
-		 FROM etkinlikler e
-		 LEFT JOIN yoklamalar my ON my.etkinlikId = e.id AND my.userId = $1
+		 FROM events e
+		 LEFT JOIN attendances my ON my.etkinlikId = e.id AND my.userId = $1
 		 WHERE $2::boolean OR e.status <> 'taslak'
 		 ORDER BY e.baslangic ASC`,
 		[viewerId, includeDrafts]
@@ -161,7 +167,7 @@ export async function getEventViews(viewerId: string, includeDrafts: boolean): P
 
 export async function getEventById(id: string): Promise<(CommunityEvent & { yoklamaAcik: number }) | null> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query('SELECT * FROM etkinlikler WHERE id = $1', [id]);
+	const res = await getPgPool().query('SELECT * FROM events WHERE id = $1', [id]);
 	return res.rows[0] ?? null;
 }
 
@@ -172,9 +178,9 @@ export async function getEventById(id: string): Promise<(CommunityEvent & { yokl
 export async function closeFinishedAttendances(): Promise<number> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`UPDATE etkinlikler SET yoklamaAcik = 0
+		`UPDATE events SET yoklamaAcik = 0
 		 WHERE yoklamaAcik = 1 AND $1 > endTime + $2`,
-		[Date.now(), YOKLAMA_TOLERANS_MS]
+		[Date.now(), ATTENDANCE_TOLERANCE_MS]
 	);
 	return res.rowCount ?? 0;
 }
@@ -184,10 +190,10 @@ export async function getOpenAttendanceEvents(): Promise<string[]> {
 	await ensurePostgresInit();
 	const now = Date.now();
 	const res = await getPgPool().query(
-		`SELECT id FROM etkinlikler
+		`SELECT id FROM events
 		 WHERE status = 'yayinda' AND yoklamaAcik = 1
 		   AND $1 >= baslangic - $2 AND $1 <= endTime + $2`,
-		[now, YOKLAMA_TOLERANS_MS]
+		[now, ATTENDANCE_TOLERANCE_MS]
 	);
 	return res.rows.map((r) => String(r.id));
 }
@@ -209,23 +215,23 @@ export async function getEventAttendeeList(etkinlikId: string): Promise<Attendee
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`SELECT k.id AS "userId",
-		        k.ad || ' ' || k.soyad AS "adSoyad",
-		        k.ogrenciNo AS "ogrenciNo",
-		        k.bolum AS "bolum",
+		        k.first_name || ' ' || k.last_name AS "adSoyad",
+		        k.handle AS "ogrenciNo",
+		        k.department AS "bolum",
 		        r.olusturma AS "kayitZamani",
 		        y.katilimZamani AS "katilimZamani",
 		        y.yontem AS "yontem",
-		        kd.ad || ' ' || kd.soyad AS "kaydedenAdSoyad"
+		        kd.first_name || ' ' || kd.last_name AS "kaydedenAdSoyad"
 		 FROM (
-		   SELECT userId FROM etkinlik_kayitlari WHERE etkinlikId = $1
+		   SELECT userId FROM event_registrations WHERE etkinlikId = $1
 		   UNION
-		   SELECT userId FROM yoklamalar WHERE etkinlikId = $1
+		   SELECT userId FROM attendances WHERE etkinlikId = $1
 		 ) ids
-		 JOIN kullanicilar k ON k.id = ids.userId
-		 LEFT JOIN etkinlik_kayitlari r ON r.etkinlikId = $1 AND r.userId = k.id
-		 LEFT JOIN yoklamalar y ON y.etkinlikId = $1 AND y.userId = k.id
-		 LEFT JOIN kullanicilar kd ON kd.id = y.kaydedenId
-		 ORDER BY (y.katilimZamani IS NULL), k.ad, k.soyad`,
+		 JOIN users k ON k.id = ids.userId
+		 LEFT JOIN event_registrations r ON r.etkinlikId = $1 AND r.userId = k.id
+		 LEFT JOIN attendances y ON y.etkinlikId = $1 AND y.userId = k.id
+		 LEFT JOIN users kd ON kd.id = y.kaydedenId
+		 ORDER BY (y.katilimZamani IS NULL), k.first_name, k.last_name`,
 		[etkinlikId]
 	);
 	return res.rows as AttendeeRow[];
@@ -237,21 +243,21 @@ export type RegistrationResult = 'ok' | 'zaten' | 'dolu' | 'kapali' | 'bulunamad
  * Registers a member. The event row is locked, so two members racing for the
  * last seat cannot both get it — capacity used to be checked only in the browser.
  */
-export async function etkinligeKaydol(etkinlikId: string, userId: string): Promise<RegistrationResult> {
+export async function registerForEvent(etkinlikId: string, userId: string): Promise<RegistrationResult> {
 	await ensurePostgresInit();
 	return withTransaction(async (client) => {
-		const ev = await client.query('SELECT status, endTime, kapasite FROM etkinlikler WHERE id = $1 FOR UPDATE', [etkinlikId]);
+		const ev = await client.query('SELECT status, endTime, kapasite FROM events WHERE id = $1 FOR UPDATE', [etkinlikId]);
 		const row = ev.rows[0];
 		if (!row) return 'bulunamadi';
 		if (row.status !== 'yayinda' || Number(row.endTime) < Date.now()) return 'kapali';
-		const mine = await client.query('SELECT 1 FROM etkinlik_kayitlari WHERE etkinlikId = $1 AND userId = $2', [
+		const mine = await client.query('SELECT 1 FROM event_registrations WHERE etkinlikId = $1 AND userId = $2', [
 			etkinlikId,
 			userId,
 		]);
 		if (mine.rowCount) return 'zaten';
-		const count = await client.query('SELECT COUNT(*)::int AS n FROM etkinlik_kayitlari WHERE etkinlikId = $1', [etkinlikId]);
+		const count = await client.query('SELECT COUNT(*)::int AS n FROM event_registrations WHERE etkinlikId = $1', [etkinlikId]);
 		if (Number(row.kapasite) > 0 && Number(count.rows[0].n) >= Number(row.kapasite)) return 'dolu';
-		await client.query('INSERT INTO etkinlik_kayitlari (etkinlikId, userId, olusturma) VALUES ($1, $2, $3)', [
+		await client.query('INSERT INTO event_registrations (etkinlikId, userId, olusturma) VALUES ($1, $2, $3)', [
 			etkinlikId,
 			userId,
 			Date.now(),
@@ -266,7 +272,7 @@ export async function cancelEventRegistration(etkinlikId: string, userId: string
 	const ev = await getEventById(etkinlikId);
 	if (!ev) return 'yok';
 	if (Number(ev.baslangic) <= Date.now()) return 'basladi';
-	const res = await getPgPool().query('DELETE FROM etkinlik_kayitlari WHERE etkinlikId = $1 AND userId = $2', [
+	const res = await getPgPool().query('DELETE FROM event_registrations WHERE etkinlikId = $1 AND userId = $2', [
 		etkinlikId,
 		userId,
 	]);
@@ -276,7 +282,7 @@ export async function cancelEventRegistration(etkinlikId: string, userId: string
 /** Organiser removal of a registration (independent of event start time). */
 export async function deleteEventRegistration(etkinlikId: string, userId: string): Promise<boolean> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query('DELETE FROM etkinlik_kayitlari WHERE etkinlikId = $1 AND userId = $2', [
+	const res = await getPgPool().query('DELETE FROM event_registrations WHERE etkinlikId = $1 AND userId = $2', [
 		etkinlikId,
 		userId,
 	]);
@@ -302,7 +308,7 @@ export async function saveAttendance(params: {
 			[randomUUID(), params.etkinlikId, params.userId, params.yontem, Date.now(), params.kaydedenId ?? null]
 		);
 		if (!ins.rowCount) return 'zaten';
-		await client.query('UPDATE users SET xp = COALESCE(xp, 0) + $1 WHERE id = $2', [KATILIM_XP, params.userId]);
+		await client.query('UPDATE users SET xp = COALESCE(xp, 0) + $1 WHERE id = $2', [PARTICIPATION_XP, params.userId]);
 		return 'ok';
 	});
 }
@@ -311,13 +317,13 @@ export async function saveAttendance(params: {
 export async function deleteAttendance(etkinlikId: string, userId: string): Promise<boolean> {
 	await ensurePostgresInit();
 	return withTransaction(async (client) => {
-		const del = await client.query('DELETE FROM yoklamalar WHERE etkinlikId = $1 AND userId = $2', [
+		const del = await client.query('DELETE FROM attendances WHERE etkinlikId = $1 AND userId = $2', [
 			etkinlikId,
 			userId,
 		]);
 		if (!del.rowCount) return false;
 		await client.query('UPDATE users SET xp = GREATEST(0, COALESCE(xp, 0) - $1) WHERE id = $2', [
-			KATILIM_XP,
+			PARTICIPATION_XP,
 			userId,
 		]);
 		return true;
@@ -334,6 +340,8 @@ export interface EventPatch {
 	kapasite?: number;
 	status?: EventStatus;
 	yoklamaAcik?: boolean;
+	ownerTeamId?: string | null;
+	ownerUserId?: string | null;
 }
 
 export async function updateEvent(id: string, patch: EventPatch): Promise<boolean> {
@@ -348,9 +356,11 @@ export async function updateEvent(id: string, patch: EventPatch): Promise<boolea
 		if (patch[key] !== undefined) set(key, patch[key]);
 	}
 	if (patch.yoklamaAcik !== undefined) set('yoklamaAcik', patch.yoklamaAcik ? 1 : 0);
+	if (patch.ownerTeamId !== undefined) set('owner_team_id', patch.ownerTeamId);
+	if (patch.ownerUserId !== undefined) set('owner_user_id', patch.ownerUserId);
 	set('guncellenme', Date.now());
 	values.push(id);
-	const res = await getPgPool().query(`UPDATE etkinlikler SET ${sets.join(', ')} WHERE id = $${values.length}`, values);
+	const res = await getPgPool().query(`UPDATE events SET ${sets.join(', ')} WHERE id = $${values.length}`, values);
 	return (res.rowCount ?? 0) > 0;
 }
 
@@ -358,9 +368,9 @@ export async function updateEvent(id: string, patch: EventPatch): Promise<boolea
 export async function deleteEvent(id: string): Promise<'ok' | 'katilim-var' | 'yok'> {
 	await ensurePostgresInit();
 	return withTransaction(async (client) => {
-		const att = await client.query('SELECT 1 FROM yoklamalar WHERE etkinlikId = $1 LIMIT 1', [id]);
+		const att = await client.query('SELECT 1 FROM attendances WHERE etkinlikId = $1 LIMIT 1', [id]);
 		if (att.rowCount) return 'katilim-var';
-		const res = await client.query('DELETE FROM etkinlikler WHERE id = $1', [id]);
+		const res = await client.query('DELETE FROM events WHERE id = $1', [id]);
 		return (res.rowCount ?? 0) > 0 ? 'ok' : 'yok';
 	});
 }

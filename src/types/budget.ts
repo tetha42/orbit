@@ -6,7 +6,7 @@
  * category a user invented was silently outside the type and broke the
  * per-category summaries.
  */
-export const BUTCE_KATEGORILERI = [
+export const BUDGET_CATEGORIES = [
 	'İkram',
 	'Afiş/Baskı',
 	'Sponsorluk',
@@ -15,29 +15,29 @@ export const BUTCE_KATEGORILERI = [
 	'Diğer',
 ] as const;
 
-export type BudgetCategory = (typeof BUTCE_KATEGORILERI)[number];
+export type BudgetCategory = (typeof BUDGET_CATEGORIES)[number];
 
 /**
  * The category of the two rows an allocation writes (one in each kasa). It is not
  * in BUTCE_KATEGORILERI on purpose: an ordinary entry cannot claim to be one.
  */
-export const AKTARIM_KATEGORISI = 'Ödenek Aktarımı' as const;
+export const TRANSFER_CATEGORY = 'Ödenek Aktarımı' as const;
 
 /** Any category a stored row can carry. */
-export type KayitKategorisi = BudgetCategory | typeof AKTARIM_KATEGORISI;
+export type BudgetRecordCategory = BudgetCategory | typeof TRANSFER_CATEGORY;
 
-export function isButceKategorisi(value: unknown): value is BudgetCategory {
-	return typeof value === 'string' && (BUTCE_KATEGORILERI as readonly string[]).includes(value);
+export function isBudgetCategory(value: unknown): value is BudgetCategory {
+	return typeof value === 'string' && (BUDGET_CATEGORIES as readonly string[]).includes(value);
 }
 
 /**
  * Largest single entry: 20,000,000 TL in kuruş. `tutarKurus` is a 32-bit INTEGER
  * column, so this also keeps a sum of entries from ever overflowing it.
  */
-export const MAX_TUTAR_KURUS = 2_000_000_000;
+export const MAX_AMOUNT_CENTS = 2_000_000_000;
 
 /** One cash box: the club's general kasa, or the kasa of a single project (takım). */
-export interface KasaSummary {
+export interface VaultSummary {
 	/** `null` is the general kasa. */
 	teamId: string | null;
 	ad: string;

@@ -66,7 +66,7 @@ export interface SystemLogFilter {
 const SENSITIVE_LOG_KEY_RE =
 	/password|password|secret|pass_?hash|sifre_?hash|totp_?secret|recovery|cookie|authorization|private_?key|plain_?secret/i;
 
-const MAX_MESAJ_LEN = 1000;
+const MAX_MESSAGE_LENGTH = 1000;
 const MAX_SERVIS_LEN = 40;
 const MAX_DETAY_JSON_LEN = 8192;
 const DEFAULT_RETENTION_DAYS = 90;
@@ -137,13 +137,13 @@ export function startSystemLogMaintenance(): void {
 			const pool = getPgPool();
 			const sinir = Date.now() - systemLogRetentionDays() * 24 * 3600 * 1000;
 			// 1. Süreye dayalı genel temizlik
-			await pool.query('DELETE FROM sistem_loglari WHERE zaman < $1', [sinir]);
+			await pool.query('DELETE FROM system_logs WHERE zaman < $1', [sinir]);
 			// 2. Maksimum satır kotası (Yalnızca INFO ve WARN temizlenir; CRITICAL alarmlar ve denetim logları korunur)
 			await pool.query(
-				`DELETE FROM sistem_loglari
+				`DELETE FROM system_logs
 				 WHERE seviye NOT IN ('CRITICAL', 'ERROR')
 				   AND id NOT IN (
-					 SELECT id FROM sistem_loglari
+					 SELECT id FROM system_logs
 					 WHERE seviye NOT IN ('CRITICAL', 'ERROR')
 					 ORDER BY zaman DESC
 					 LIMIT $1
@@ -180,8 +180,8 @@ export async function logSystemEvent(params: {
 				? params.seviye
 				: 'INFO';
 		const servis = sanitizeLogText(params.servis || 'system', MAX_SERVIS_LEN).toLowerCase() || 'system';
-		const mesaj = sanitizeLogText(params.mesaj, MAX_MESAJ_LEN);
-		if (!mesaj) return;
+		const message = sanitizeLogText(params.mesaj, MAX_MESSAGE_LENGTH);
+		if (!message) return;
 
 		const ip = temizIp(params.ip || '');
 		// Localhost test isolation: Do not write CRITICAL for localhost traffic in development/test
@@ -200,10 +200,10 @@ export async function logSystemEvent(params: {
 		const zaman = Date.now();
 
 		const insertRes = await p.query(
-			`INSERT INTO sistem_loglari (zaman, seviye, servis, mesaj, detay, userId, ip)
+			`INSERT INTO system_logs (zaman, seviye, servis, mesaj, detay, userId, ip)
 			 VALUES ($1, $2, $3, $4, $5, $6, $7)
 			 RETURNING id`,
-			[zaman, seviye, servis, mesaj, detayJson, userId, ip]
+			[zaman, seviye, servis, message, detayJson, userId, ip]
 		);
 
 		const logId = Number(insertRes.rows[0]?.id ?? zaman);
@@ -212,7 +212,7 @@ export async function logSystemEvent(params: {
 			zaman,
 			seviye,
 			servis,
-			mesaj,
+			mesaj: message,
 			detay: safeDetay ?? null,
 			userId,
 			ip,
@@ -226,7 +226,7 @@ export async function logSystemEvent(params: {
 				zaman,
 				seviye,
 				servis,
-				mesaj: mesaj.slice(0, 500),
+				mesaj: message.slice(0, 500),
 				detay: safeDetay ? (typeof safeDetay === 'object' ? safeDetay : String(safeDetay)) : null,
 				userId,
 				ip,
@@ -540,7 +540,7 @@ export async function getSystemLogsPaginated(filtre: SystemLogFilter = {}): Prom
 
 	// 6. Query Total Count
 	const countRes = await p.query(
-		`SELECT COUNT(*)::int AS n FROM sistem_loglari ${whereClause}`,
+		`SELECT COUNT(*)::int AS n FROM system_logs ${whereClause}`,
 		values
 	);
 	const totalCount = Number(countRes.rows[0]?.n || 0);
@@ -571,7 +571,7 @@ export async function getSystemLogsPaginated(filtre: SystemLogFilter = {}): Prom
 				COUNT(*) FILTER (WHERE seviye = 'ERROR')::int AS error,
 				COUNT(*) FILTER (WHERE seviye = 'WARN')::int AS warn,
 				COUNT(*) FILTER (WHERE seviye = 'INFO')::int AS info
-			 FROM sistem_loglari
+			 FROM system_logs
 			 ${whereClause}
 			 GROUP BY 1
 			 ORDER BY 1 ASC`,
@@ -608,7 +608,7 @@ export async function getSystemLogsPaginated(filtre: SystemLogFilter = {}): Prom
 	const paginatedValues = [...values, limit, offset];
 	const rowsRes = await p.query(
 		`SELECT id, zaman, seviye, servis, mesaj, detay, userId, ip
-		 FROM sistem_loglari
+		 FROM system_logs
 		 ${whereClause}
 		 ORDER BY zaman DESC, id DESC
 		 LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,

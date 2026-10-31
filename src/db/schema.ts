@@ -1,8 +1,8 @@
 import type { NewsVisibility } from '@/types/news';
-import type { EnvanterDurum } from '@/types/inventory';
-import type { KayitKategorisi } from '@/types/budget';
-import type { GorevDurumu, GorevOnceligi } from '@/lib/kanban';
-import type { ProjeDurumu } from '@/lib/projects';
+import type { InventoryStatus } from '@/types/inventory';
+import type { BudgetRecordCategory } from '@/types/budget';
+import type { TaskStatus, TaskPriority } from '@/lib/kanban';
+import type { ProjectStatus } from '@/lib/projects';
 
 /**
  * Default `sistem_ayarlari` rows.
@@ -57,21 +57,31 @@ export const MEMBER_ROSTER_SQL = `
 			WHERE tu.userId = k.id OR t.liderId = k.id
 		) AS "takimAdi",
 		(
+			-- One row per team. A leader can also have a team_members row; without
+			-- DISTINCT ON that produced two JSON objects with the same id.
 			SELECT COALESCE(
 				JSON_AGG(
-					DISTINCT JSONB_BUILD_OBJECT(
-						'id', t.id,
-						'ad', t.ad,
-						'kategori', t.kategori,
-						'liderMi', CASE WHEN t.liderId = k.id THEN true ELSE false END,
-						'role', tu.takimRolu
+					JSONB_BUILD_OBJECT(
+						'id', x.id,
+						'ad', x.ad,
+						'kategori', x.kategori,
+						'liderMi', (x.liderId = k.id),
+						'role', x.role
 					)
 				),
 				'[]'::json
 			)
-			FROM teams t
-			LEFT JOIN team_members tu ON tu.teamId = t.id AND (tu.status = 'aktif' OR tu.status = 'active' OR tu.status IS NULL)
-			WHERE tu.userId = k.id OR t.liderId = k.id
+			FROM (
+				SELECT DISTINCT ON (t.id)
+					t.id, t.ad, t.kategori, t.liderId,
+					CASE WHEN t.liderId = k.id THEN NULL ELSE tu.takimRolu END AS role
+				FROM teams t
+				LEFT JOIN team_members tu ON tu.teamId = t.id
+					AND tu.userId = k.id
+					AND (tu.status = 'aktif' OR tu.status = 'active' OR tu.status IS NULL)
+				WHERE tu.userId = k.id OR t.liderId = k.id
+				ORDER BY t.id, (t.liderId = k.id) DESC, tu.katilimTarihi ASC NULLS LAST
+			) x
 		) AS "takimlar",
 		(
 			SELECT COUNT(*)::int
@@ -88,6 +98,8 @@ export const MEMBER_ROSTER_SQL = `
 
 /** A roster row: a member plus the derived directory columns. */
 export interface MemberRosterRow extends User {
+	/** Community-defined extra fields, with password values masked. */
+	customFields?: Record<string, string>;
 	rolAd?: string | null;
 	rolRenk?: string | null;
 	takimAdi?: string | null;
@@ -110,6 +122,8 @@ export interface User {
 	bio?: string;
 	xp: number;
 	status: 'aktif' | 'beklemede' | 'reddedildi' | 'mezun';
+	/** How the current session authenticated: password only, password+TOTP, or a passkey. */
+	authMethod?: 'password' | 'totp' | 'passkey';
 	aktifOturumToken?: string;
 	sonGirisTarihi?: number;
 	sonGirisIp?: string | null;
@@ -156,6 +170,10 @@ export interface Team {
 	status: 'aktif' | 'tamamlandi' | 'askida';
 	/** `acik`: join at once; `onayli`: apply, and the captain decides. */
 	katilimTuru?: 'acik' | 'onayli';
+	/** `working_group` (default) or the decision body `committee`. */
+	type?: 'working_group' | 'committee';
+	/** Quorum for a committee, 0 when unspecified. */
+	quorum?: number;
 	olusturma: number;
 }
 
@@ -170,18 +188,22 @@ export interface TeamMember {
 	/** What the applicant wrote with an application. */
 	basvuruNotu?: string | null;
 	katilimTarihi: number;
+	/** Committee members only. */
+	votingRight?: number;
+	termStart?: number | null;
+	termEnd?: number | null;
 }
 
 // Kanban vocabulary lives in a pure module the board shares with the API.
-export type { GorevDurumu, GorevOnceligi } from '@/lib/kanban';
+export type { TaskStatus, TaskPriority } from '@/lib/kanban';
 
 export interface TeamTask {
 	id: string;
 	teamId: string;
 	baslik: string;
 	aciklama?: string;
-	status: GorevDurumu;
-	oncelik: GorevOnceligi;
+	status: TaskStatus;
+	oncelik: TaskPriority;
 	atananUyeId?: string;
 	atananAdSoyad?: string;
 	teslimTarihi?: number;
@@ -283,6 +305,11 @@ export interface CommunityEvent {
 	kayitliSayisi?: number;
 	status: 'taslak' | 'yayinda' | 'tamamlandi' | 'iptal';
 	olusturanId: string;
+	ownerTeamId?: string | null;
+	ownerUserId?: string | null;
+	createdBy?: string | null;
+	ownerTeamAd?: string | null;
+	ownerUserAdSoyad?: string | null;
 	olusturma: number;
 }
 
@@ -298,7 +325,7 @@ export interface BudgetRecord {
 	id: string;
 	date: number;
 	tur: 'gelir' | 'gider';
-	kategori: KayitKategorisi;
+	kategori: BudgetRecordCategory;
 	tutarKurus: number; // Kuruş cinsinden (150000 = 1.500,00 TL)
 	aciklama: string;
 	fisFotoUrl?: string;
@@ -318,13 +345,15 @@ export interface BudgetRecord {
 }
 
 /** Ownership record for an uploaded receipt; the bytes live under UPLOAD_DIR. */
-export interface Dosya {
+export interface StoredFile {
 	ad: string;
 	yukleyenId: string | null;
 	mime: string;
 	boyut: number;
 	/** 1 for files every signed-in member may read (profile photos). */
 	herkeseAcik?: number;
+	/** Set for chat attachments; read access follows the room. */
+	sohbetOdaId?: string | null;
 	olusturma: number;
 }
 
@@ -341,6 +370,15 @@ export interface Decision {
 	olusturanId: string;
 	olusturanAdSoyad?: string;
 	olusturma: number;
+	/** Committee that issued the decision, if any. */
+	bodyId?: string | null;
+	bodyAd?: string | null;
+	decisionType?: string;
+	quorumMet?: number;
+	votesFor?: number;
+	votesAgainst?: number;
+	votesAbstain?: number;
+	publishedAt?: number | null;
 }
 
 export interface NewsItem {
@@ -384,7 +422,7 @@ export interface InventoryItem {
 	ad: string;
 	kategori: 'Gömülü Sistem' | 'Sensör' | 'Geliştirme Kartı' | 'Test Ekipmanı' | string;
 	/** Canonical status vocabulary — see src/types/inventory.ts. */
-	status: EnvanterDurum;
+	status: InventoryStatus;
 	konum: string;
 	oduncAlanId?: string;
 	oduncAlanAdSoyad?: string;
@@ -469,7 +507,12 @@ export interface Project {
 	takimAdi?: string | null;
 	olusturanId: string | null;
 	olusturanAdSoyad?: string | null;
-	status: ProjeDurumu;
+	ownerTeamId?: string | null;
+	ownerUserId?: string | null;
+	createdBy?: string | null;
+	ownerTeamAd?: string | null;
+	ownerUserAdSoyad?: string | null;
+	status: ProjectStatus;
 	/** Pinned to the top of the showcase by management. */
 	oneCikan: number;
 	begeniSayisi?: number;

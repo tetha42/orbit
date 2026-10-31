@@ -9,8 +9,8 @@ import type {
 	TeamTaskActivity,
 	UpcomingTask,
 	TaskActivityType,
-	GorevDurumu,
-	GorevOnceligi,
+	TaskStatus,
+	TaskPriority,
 } from '@/db/schema';
 import { notificationEvents, publishEvent } from '@/db/olaylar';
 import { SIRA_ADIMI } from '@/lib/kanban';
@@ -18,7 +18,7 @@ import { SIRA_ADIMI } from '@/lib/kanban';
 export interface TeamTaskPatch {
 	baslik?: string;
 	aciklama?: string;
-	oncelik?: GorevOnceligi;
+	oncelik?: TaskPriority;
 	atananUyeId?: string | null;
 	teslimTarihi?: number | null;
 	etiketler?: string[];
@@ -38,14 +38,14 @@ type TaskWriter = Pick<PoolClient, 'query'> | Pool;
 const TASK_SELECT = `
 	SELECT tg.*,
 	       COALESCE(tg.sira, -tg.olusturma) AS sira,
-	       k.ad || ' ' || k.soyad AS "atananAdSoyad",
-	       o.ad || ' ' || o.soyad AS "olusturanAdSoyad",
-	       (SELECT COUNT(*) FROM takim_gorev_maddeleri m WHERE m.gorevId = tg.id)::int AS "maddeSayisi",
-	       (SELECT COUNT(*) FROM takim_gorev_maddeleri m WHERE m.gorevId = tg.id AND m.tamamMi = 1)::int AS "tamamMaddeSayisi",
-	       (SELECT COUNT(*) FROM takim_gorev_yorumlari y WHERE y.gorevId = tg.id)::int AS "yorumSayisi"
-	FROM takim_gorevleri tg
-	LEFT JOIN kullanicilar k ON tg.atananUyeId = k.id
-	LEFT JOIN kullanicilar o ON tg.olusturanId = o.id
+	       k.first_name || ' ' || k.last_name AS "atananAdSoyad",
+	       o.first_name || ' ' || o.last_name AS "olusturanAdSoyad",
+	       (SELECT COUNT(*) FROM team_task_items m WHERE m.gorevId = tg.id)::int AS "maddeSayisi",
+	       (SELECT COUNT(*) FROM team_task_items m WHERE m.gorevId = tg.id AND m.tamamMi = 1)::int AS "tamamMaddeSayisi",
+	       (SELECT COUNT(*) FROM team_task_comments y WHERE y.gorevId = tg.id)::int AS "yorumSayisi"
+	FROM team_tasks tg
+	LEFT JOIN users k ON tg.atananUyeId = k.id
+	LEFT JOIN users o ON tg.olusturanId = o.id
 `;
 
 export function parseEtiketler(raw: unknown): string[] {
@@ -71,14 +71,14 @@ export async function logTaskActivity(
 	detay?: Record<string, string | number | null>
 ): Promise<void> {
 	await db.query(
-		`INSERT INTO takim_gorev_aktivite (id, gorevId, aktorId, tur, detay, olusturma)
+		`INSERT INTO team_task_activities (id, gorevId, aktorId, tur, detay, olusturma)
 		 VALUES ($1, $2, $3, $4, $5, $6)`,
 		[randomUUID(), gorevId, aktorId || null, tur, detay ? JSON.stringify(detay) : null, Date.now()]
 	);
 }
 
 export async function touchTask(db: TaskWriter, gorevId: string): Promise<void> {
-	await db.query('UPDATE takim_gorevleri SET guncellenme = $1 WHERE id = $2', [Date.now(), gorevId]);
+	await db.query('UPDATE team_tasks SET guncellenme = $1 WHERE id = $2', [Date.now(), gorevId]);
 }
 
 export async function getTeamTasks(teamId: string): Promise<TeamTask[]> {
@@ -99,8 +99,8 @@ export async function getUserUpcomingTasks(
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`SELECT tg.id, tg.teamId, tg.baslik, tg.oncelik, tg.teslimTarihi, t.ad AS "takimAdi"
-		FROM takim_gorevleri tg
-		JOIN takimlar t ON t.id = tg.teamId
+		FROM team_tasks tg
+		JOIN teams t ON t.id = tg.teamId
 		WHERE tg.atananUyeId = $1
 		  AND tg.status <> 'tamamlandi'
 		  AND tg.teslimTarihi IS NOT NULL
@@ -116,11 +116,11 @@ export async function createTeamTask(params: {
 	teamId: string;
 	baslik: string;
 	aciklama?: string;
-	oncelik?: GorevOnceligi;
+	oncelik?: TaskPriority;
 	atananUyeId?: string;
 	teslimTarihi?: number;
 	etiketler?: string[];
-	status?: GorevDurumu;
+	status?: TaskStatus;
 	olusturanId?: string;
 }): Promise<TeamTask> {
 	await ensurePostgresInit();
@@ -146,7 +146,7 @@ export async function createTeamTask(params: {
 
 	await withTransaction(async (client) => {
 		await client.query(
-			`INSERT INTO takim_gorevleri
+			`INSERT INTO team_tasks
 			   (id, teamId, baslik, aciklama, status, oncelik, atananUyeId, teslimTarihi, olusturma,
 			    sira, etiketler, olusturanId, guncellenme, tamamlanma)
 			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
@@ -186,14 +186,14 @@ export async function getTeamTaskById(gorevId: string): Promise<TeamTask | null>
 
 export async function updateTeamTaskStatus(params: {
 	gorevId: string;
-	status: GorevDurumu;
+	status: TaskStatus;
 	sira?: number;
 	sirala?: string[];
 	aktorId?: string;
 }): Promise<{ xpVerildi: boolean }> {
 	return withTransaction(async (client) => {
 		const prev = await client.query(
-			'SELECT teamId, status, atananUyeId, xpVerildi FROM takim_gorevleri WHERE id = $1 FOR UPDATE',
+			'SELECT teamId, status, atananUyeId, xpVerildi FROM team_tasks WHERE id = $1 FOR UPDATE',
 			[params.gorevId]
 		);
 		const row = prev.rows[0];
@@ -202,7 +202,7 @@ export async function updateTeamTaskStatus(params: {
 		const now = Date.now();
 		const statusChanged = row.status !== params.status;
 		await client.query(
-			`UPDATE takim_gorevleri
+			`UPDATE team_tasks
 			 SET status = $1,
 			     sira = COALESCE($2, sira),
 			     guncellenme = $3,
@@ -212,7 +212,7 @@ export async function updateTeamTaskStatus(params: {
 		);
 		if (params.sirala?.length) {
 			await client.query(
-				`UPDATE takim_gorevleri t
+				`UPDATE team_tasks t
 				 SET sira = v.idx * ${SIRA_ADIMI}
 				 FROM unnest($1::text[]) WITH ORDINALITY AS v(id, idx)
 				 WHERE t.id = v.id AND t.teamId = $2 AND t.status = $3`,
@@ -227,7 +227,7 @@ export async function updateTeamTaskStatus(params: {
 		}
 
 		if (params.status === 'tamamlandi' && row.atananUyeId && !Number(row.xpVerildi)) {
-			await client.query('UPDATE takim_gorevleri SET xpVerildi = 1 WHERE id = $1', [params.gorevId]);
+			await client.query('UPDATE team_tasks SET xpVerildi = 1 WHERE id = $1', [params.gorevId]);
 			await client.query('UPDATE users SET xp = COALESCE(xp, 0) + 100 WHERE id = $1', [
 				row.atananUyeId,
 			]);
@@ -244,7 +244,7 @@ export async function updateTeamTask(
 ): Promise<TeamTask | null> {
 	await ensurePostgresInit();
 	const found = await withTransaction(async (client) => {
-		const prev = await client.query('SELECT * FROM takim_gorevleri WHERE id = $1 FOR UPDATE', [gorevId]);
+		const prev = await client.query('SELECT * FROM team_tasks WHERE id = $1 FOR UPDATE', [gorevId]);
 		const row = prev.rows[0];
 		if (!row) return false;
 
@@ -276,7 +276,7 @@ export async function updateTeamTask(
 		values.push(Date.now());
 		sets.push(`guncellenme = $${values.length}`);
 		values.push(gorevId);
-		await client.query(`UPDATE takim_gorevleri SET ${sets.join(', ')} WHERE id = $${values.length}`, values);
+		await client.query(`UPDATE team_tasks SET ${sets.join(', ')} WHERE id = $${values.length}`, values);
 
 		const edited = changed.filter((f) => f !== 'atananUyeId');
 		if (edited.length) {
@@ -300,21 +300,21 @@ export async function getTeamTaskDetail(gorevId: string): Promise<TeamTaskDetail
 	const db = getPgPool();
 	const [maddeler, yorumlar, aktivite] = await Promise.all([
 		db.query(
-			'SELECT * FROM takim_gorev_maddeleri WHERE gorevId = $1 ORDER BY sira ASC, olusturma ASC',
+			'SELECT * FROM team_task_items WHERE gorevId = $1 ORDER BY sira ASC, olusturma ASC',
 			[gorevId]
 		),
 		db.query(
-			`SELECT y.*, k.ad || ' ' || k.soyad AS "kullaniciAdSoyad"
-			 FROM takim_gorev_yorumlari y
-			 LEFT JOIN kullanicilar k ON k.id = y.userId
+			`SELECT y.*, k.first_name || ' ' || k.last_name AS "kullaniciAdSoyad"
+			 FROM team_task_comments y
+			 LEFT JOIN users k ON k.id = y.userId
 			 WHERE y.gorevId = $1
 			 ORDER BY y.olusturma ASC`,
 			[gorevId]
 		),
 		db.query(
-			`SELECT a.*, k.ad || ' ' || k.soyad AS "aktorAdSoyad"
-			 FROM takim_gorev_aktivite a
-			 LEFT JOIN kullanicilar k ON k.id = a.aktorId
+			`SELECT a.*, k.first_name || ' ' || k.last_name AS "aktorAdSoyad"
+			 FROM team_task_activities a
+			 LEFT JOIN users k ON k.id = a.aktorId
 			 WHERE a.gorevId = $1
 			 ORDER BY a.olusturma DESC
 			 LIMIT 50`,
@@ -341,7 +341,7 @@ export async function addTaskItem(gorevId: string, metin: string, aktorId?: stri
 	await ensurePostgresInit();
 	return withTransaction(async (client) => {
 		const max = await client.query(
-			'SELECT COALESCE(MAX(sira), 0) AS m FROM takim_gorev_maddeleri WHERE gorevId = $1',
+			'SELECT COALESCE(MAX(sira), 0) AS m FROM team_task_items WHERE gorevId = $1',
 			[gorevId]
 		);
 		const madde: TeamTaskItem = {
@@ -353,7 +353,7 @@ export async function addTaskItem(gorevId: string, metin: string, aktorId?: stri
 			olusturma: Date.now(),
 		};
 		await client.query(
-			`INSERT INTO takim_gorev_maddeleri (id, gorevId, metin, tamamMi, sira, olusturma)
+			`INSERT INTO team_task_items (id, gorevId, metin, tamamMi, sira, olusturma)
 			 VALUES ($1, $2, $3, 0, $4, $5)`,
 			[madde.id, gorevId, metin, madde.sira, madde.olusturma]
 		);
@@ -365,7 +365,7 @@ export async function addTaskItem(gorevId: string, metin: string, aktorId?: stri
 
 export async function getTaskItem(id: string): Promise<TeamTaskItem | null> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query('SELECT * FROM takim_gorev_maddeleri WHERE id = $1', [id]);
+	const res = await getPgPool().query('SELECT * FROM team_task_items WHERE id = $1', [id]);
 	return (res.rows[0] as TeamTaskItem | undefined) ?? null;
 }
 
@@ -376,12 +376,12 @@ export async function updateTaskItem(
 ): Promise<boolean> {
 	await ensurePostgresInit();
 	return withTransaction(async (client) => {
-		const prev = await client.query('SELECT * FROM takim_gorev_maddeleri WHERE id = $1 FOR UPDATE', [id]);
+		const prev = await client.query('SELECT * FROM team_task_items WHERE id = $1 FOR UPDATE', [id]);
 		const row = prev.rows[0];
 		if (!row) return false;
 		const metin = patch.metin ?? row.metin;
 		const tamamMi = patch.tamamMi === undefined ? Number(row.tamamMi) : patch.tamamMi ? 1 : 0;
-		await client.query('UPDATE takim_gorev_maddeleri SET metin = $1, tamamMi = $2 WHERE id = $3', [metin, tamamMi, id]);
+		await client.query('UPDATE team_task_items SET metin = $1, tamamMi = $2 WHERE id = $3', [metin, tamamMi, id]);
 		await touchTask(client, row.gorevId as string);
 		if (tamamMi === 1 && Number(row.tamamMi) !== 1) {
 			await logTaskActivity(client, row.gorevId as string, aktorId, 'madde_tamamlandi', {
@@ -394,7 +394,7 @@ export async function updateTaskItem(
 
 export async function deleteTaskItem(id: string): Promise<boolean> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query('DELETE FROM takim_gorev_maddeleri WHERE id = $1', [id]);
+	const res = await getPgPool().query('DELETE FROM team_task_items WHERE id = $1', [id]);
 	return (res.rowCount ?? 0) > 0;
 }
 
@@ -409,7 +409,7 @@ export async function addTaskComment(gorevId: string, userId: string, icerik: st
 			olusturma: Date.now(),
 		};
 		await client.query(
-			`INSERT INTO takim_gorev_yorumlari (id, gorevId, userId, icerik, olusturma)
+			`INSERT INTO team_task_comments (id, gorevId, userId, icerik, olusturma)
 			 VALUES ($1, $2, $3, $4, $5)`,
 			[yorum.id, gorevId, userId, icerik, yorum.olusturma]
 		);
@@ -421,19 +421,19 @@ export async function addTaskComment(gorevId: string, userId: string, icerik: st
 
 export async function getTaskComment(id: string): Promise<TeamTaskComment | null> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query('SELECT * FROM takim_gorev_yorumlari WHERE id = $1', [id]);
+	const res = await getPgPool().query('SELECT * FROM team_task_comments WHERE id = $1', [id]);
 	return (res.rows[0] as TeamTaskComment | undefined) ?? null;
 }
 
 export async function deleteTaskComment(id: string): Promise<boolean> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query('DELETE FROM takim_gorev_yorumlari WHERE id = $1', [id]);
+	const res = await getPgPool().query('DELETE FROM team_task_comments WHERE id = $1', [id]);
 	return (res.rowCount ?? 0) > 0;
 }
 
 export async function deleteTeamTask(gorevId: string): Promise<boolean> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query('DELETE FROM takim_gorevleri WHERE id = $1', [gorevId]);
+	const res = await getPgPool().query('DELETE FROM team_tasks WHERE id = $1', [gorevId]);
 	return (res.rowCount ?? 0) > 0;
 }
 
@@ -444,7 +444,7 @@ export async function unassignTeamMemberTasks(
 	aktorId?: string
 ): Promise<void> {
 	const open = await db.query(
-		`UPDATE takim_gorevleri SET atananUyeId = NULL, guncellenme = $3
+		`UPDATE team_tasks SET atananUyeId = NULL, guncellenme = $3
 		 WHERE teamId = $1 AND atananUyeId = $2 AND status <> 'tamamlandi'
 		 RETURNING id`,
 		[teamId, userId, Date.now()]
@@ -462,11 +462,11 @@ export async function getUserNewAssignments(userId: string, since: number): Prom
 	const res = await getPgPool().query(
 		`SELECT DISTINCT ON (tg.id)
 		        tg.id, tg.teamId AS "teamId", t.ad AS "takimAdi", tg.baslik,
-		        k.ad || ' ' || k.soyad AS "atayan", a.olusturma AS "at"
-		 FROM takim_gorev_aktivite a
-		 JOIN takim_gorevleri tg ON tg.id = a.gorevId
-		 JOIN takimlar t ON t.id = tg.teamId
-		 LEFT JOIN kullanicilar k ON k.id = a.aktorId
+		        k.first_name || ' ' || k.last_name AS "atayan", a.olusturma AS "at"
+		 FROM team_task_activities a
+		 JOIN team_tasks tg ON tg.id = a.gorevId
+		 JOIN teams t ON t.id = tg.teamId
+		 LEFT JOIN users k ON k.id = a.aktorId
 		 WHERE a.tur = 'atandi'
 		   AND a.detay::jsonb ->> 'to' = $1
 		   AND (a.aktorId IS NULL OR a.aktorId <> $1)
