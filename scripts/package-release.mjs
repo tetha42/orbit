@@ -61,7 +61,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: \${POSTGRES_USER:-orbit}
-      POSTGRES_PASSWORD: \${POSTGRES_PASSWORD:-orbit_secret_2026}
+      POSTGRES_PASSWORD: \${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
       POSTGRES_DB: \${POSTGRES_DB:-orbit}
     ports:
       - '127.0.0.1:\${POSTGRES_PORT:-5432}:5432'
@@ -84,7 +84,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      DATABASE_URL: postgresql://\${POSTGRES_USER:-orbit}:\${POSTGRES_PASSWORD:-orbit_secret_2026}@db:5432/\${POSTGRES_DB:-orbit}
+      DATABASE_URL: postgresql://\${POSTGRES_USER:-orbit}:\${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@db:5432/\${POSTGRES_DB:-orbit}
       WEBAUTHN_ORIGIN: \${WEBAUTHN_ORIGIN:-}
       WEBAUTHN_RP_ID: \${WEBAUTHN_RP_ID:-}
       AUTH_SECRET: \${AUTH_SECRET:-}
@@ -94,12 +94,15 @@ services:
       BOOTSTRAP_ADMIN_SOYAD: \${BOOTSTRAP_ADMIN_SOYAD:-Admin}
       TERMINAL_ENABLED: \${TERMINAL_ENABLED:-0}
       UPLOAD_DIR: /app/data/uploads
+      ORBIT_DATA_DIR: /app/data
+      ORBIT_CUSTOM_DIR: /app/data/custom
       PUBLIC_API_ALLOWED_ORIGINS: \${PUBLIC_API_ALLOWED_ORIGINS:-http://localhost:3000,http://orbit.local}
       PUBLIC_BASE_URL: \${PUBLIC_BASE_URL:-}
     ports:
       - '\${PORT:-3000}:3000'
     volumes:
       - orbit-uploads:/app/data/uploads
+      - orbit-custom:/app/data/custom
     healthcheck:
       test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1:3000/']
       interval: 30s
@@ -110,6 +113,7 @@ services:
 volumes:
   orbit-pgdata:
   orbit-uploads:
+  orbit-custom:
 `;
 	await fs.writeFile(path.join(STAGING_DOCKER, 'docker-compose.yml'), standaloneCompose, 'utf8');
 
@@ -227,7 +231,7 @@ Only **Node.js 20+** and a PostgreSQL instance are required.
 
 ## 🚀 Run
 \`\`\`bash
-export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/orbit_db"
+export DATABASE_URL="postgresql://user:password@localhost:5432/orbit_db"
 export PORT=3000
 node server.js
 \`\`\`

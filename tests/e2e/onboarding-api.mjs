@@ -18,7 +18,11 @@ const arg = (n, d) => (process.argv.indexOf(n) > 0 ? process.argv[process.argv.i
 const BASE = arg('--base', 'http://localhost:3000');
 const FX = JSON.parse(fs.readFileSync(arg('--fixtures', '.fixtures.json'), 'utf8'));
 const ini = loadConfigIni(process.cwd());
-const DATABASE_URL = process.env.DATABASE_URL || ini?.database?.url || 'postgresql://kulup:kulup_secret_2026@localhost:5432/kulup';
+const DATABASE_URL = process.env.DATABASE_URL || ini?.database?.url;
+if (!DATABASE_URL) {
+	console.error('DATABASE_URL is required for tests/e2e/onboarding-api.mjs');
+	process.exit(1);
+}
 const db = new pg.Pool({ connectionString: DATABASE_URL, max: 2 });
 
 let pass = 0;

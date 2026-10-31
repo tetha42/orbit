@@ -37,9 +37,6 @@ const ini = loadConfigIni(rootDir);
 const candidateUrls = [
 	process.env.DATABASE_URL,
 	ini?.database?.url,
-	'postgresql://orbit:orbit_secret_2026@localhost:5432/orbit',
-	'postgresql://kulup:kulup_secret_2026@localhost:5432/kulup',
-	'postgresql://postgres:postgres@localhost:5432/orbit_db',
 ].filter(Boolean);
 
 let pool;

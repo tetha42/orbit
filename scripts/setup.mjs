@@ -72,7 +72,7 @@ const iniConfig = loadConfigIni(rootDir);
 // ---------------------------------------------------------------------------
 log.step(2, 'PostgreSQL Database Connectivity Check');
 
-const targetDbUrl = process.env.DATABASE_URL || iniConfig?.database?.url || 'postgresql://orbit:orbit_secret_2026@localhost:5432/orbit';
+const targetDbUrl = process.env.DATABASE_URL || iniConfig?.database?.url || '';
 
 async function testPostgresConnection(dbUrl, timeoutMs = 2500) {
 	try {
