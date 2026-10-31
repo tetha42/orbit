@@ -31,13 +31,21 @@ export function parseIpCandidate(raw: string | null | undefined): string | null 
 		candidate = candidate.slice(0, zoneIdx);
 	}
 
-	return isIP(candidate) !== 0 ? candidate.toLowerCase() : null;
+	let normalized = candidate.toLowerCase();
+	if (normalized.startsWith('::ffff:') && normalized.slice(7).includes('.')) {
+		const unwrapped = normalized.slice(7);
+		if (isIP(unwrapped) === 4) {
+			normalized = unwrapped;
+		}
+	}
+
+	return isIP(normalized) !== 0 ? normalized : (isIP(candidate) !== 0 ? candidate.toLowerCase() : null);
 }
 
 /**
  * Known internal proxy subnets and loopbacks.
  */
-function isTrustedProxyIp(ip: string): boolean {
+export function isTrustedProxyIp(ip: string): boolean {
 	if (ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1') return true;
 	// 10.0.0.0/8, 192.168.0.0/16
 	if (ip.startsWith('10.') || ip.startsWith('192.168.')) return true;

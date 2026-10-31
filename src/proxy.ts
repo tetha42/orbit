@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { inspectRequestComponents } from '@/lib/waf';
 import { consumeRateLimit } from '@/lib/rateLimit';
-import { clientAddress } from '@/lib/http';
+import { clientAddress, isTrustedProxyIp } from '@/lib/http';
 
 /**
  * Next.js 16 Global Proxy (Edge / Pre-routing Defense Layer).
@@ -22,14 +22,16 @@ export function proxy(request: NextRequest) {
 		return NextResponse.next();
 	}
 
-	if (pathname.startsWith('/api/auth/')) {
+	if (pathname.startsWith('/api/auth/') && pathname !== '/api/auth/me') {
 		const ip = clientAddress(request);
-		const r = consumeRateLimit(`auth:global:${ip}`, 30, 60_000);
-		if (!r.allowed) {
-			return NextResponse.json(
-				{ error: 'Too many requests.' },
-				{ status: 429, headers: { 'Retry-After': String(r.retryAfter) } }
-			);
+		if (!isTrustedProxyIp(ip)) {
+			const r = consumeRateLimit(`auth:global:${ip}`, 30, 60_000);
+			if (!r.allowed) {
+				return NextResponse.json(
+					{ error: 'Too many requests.' },
+					{ status: 429, headers: { 'Retry-After': String(r.retryAfter) } }
+				);
+			}
 		}
 	}
 

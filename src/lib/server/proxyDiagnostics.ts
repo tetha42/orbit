@@ -39,7 +39,10 @@ export function isRunningInContainer(): boolean {
  * MUST NEVER be banned to avoid self-lockout of the entire cluster.
  */
 export function isInfrastructureIp(ip: string): boolean {
-	const clean = parseIpCandidate(ip) || ip.trim().toLowerCase();
+	let clean = parseIpCandidate(ip) || ip.trim().toLowerCase();
+	if (clean.startsWith('::ffff:') && clean.slice(7).includes('.')) {
+		clean = clean.slice(7);
+	}
 	if (
 		clean === '127.0.0.1' ||
 		clean === '::1' ||

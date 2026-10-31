@@ -215,7 +215,7 @@ export async function getEmergencyKillSwitches(): Promise<EmergencyKillSwitches>
 	} catch {
 		killSwitchesCache = { ...DEFAULT_KILL_SWITCHES };
 	}
-	killSwitchesCacheExpiresAt = now + 500;
+	killSwitchesCacheExpiresAt = now + 100;
 	return killSwitchesCache;
 }
 
@@ -235,7 +235,7 @@ export async function setEmergencyKillSwitch(
 		[JSON.stringify(updated), Date.now()]
 	);
 	killSwitchesCache = updated;
-	killSwitchesCacheExpiresAt = Date.now() + 500;
+	killSwitchesCacheExpiresAt = Date.now() + 100;
 
 	await logSystemEvent({
 		servis: 'security',
@@ -252,13 +252,18 @@ export async function setEmergencyKillSwitch(
 const sessionActivityThrottle = new Map<string, { lastIp: string; updatedAt: number; anomalyLoggedAt: number }>();
 
 function isLocalOrUnknownIp(ip: string): boolean {
-	const clean = ip.trim().toLowerCase();
+	let clean = ip.trim().toLowerCase();
+	if (clean.startsWith('::ffff:') && clean.slice(7).includes('.')) {
+		clean = clean.slice(7);
+	}
 	return (
 		!clean ||
 		clean === 'unknown' ||
 		clean === '127.0.0.1' ||
 		clean === '::1' ||
-		clean === 'localhost'
+		clean === 'localhost' ||
+		clean.startsWith('127.') ||
+		clean === '0.0.0.0'
 	);
 }
 

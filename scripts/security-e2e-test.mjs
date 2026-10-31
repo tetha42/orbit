@@ -43,6 +43,8 @@ const ini = loadConfigIni(rootDir);
 const candidateUrls = [
 	process.env.DATABASE_URL,
 	ini?.database?.url,
+	'postgresql://orbit:orbit_secret_2026@localhost:5432/orbit',
+	'postgresql://postgres:postgres@localhost:5432/orbit',
 ].filter(Boolean);
 const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3000';
 
@@ -1873,7 +1875,13 @@ async function run() {
 				},
 				body: JSON.stringify({ action: 'toggle_kill_switch', key: 'passkeyOnly', value: false }),
 			}).catch(() => {});
+			await client.query(
+				`UPDATE system_settings SET value = '{"disableRegistrations":false,"disableUploads":false,"passkeyOnly":false}' WHERE key = 'soc_emergency_switches'`
+			).catch(() => {});
 			await client.query('DELETE FROM users WHERE id = $1', [s15AdminId]).catch(() => {});
+			await client.query("DELETE FROM security_blocks WHERE ip LIKE '%127.0.0.1%' OR ip = '::1' OR ip = 'localhost'").catch(() => {});
+			// Wait for worker cache expiration
+			await new Promise((r) => setTimeout(r, 600));
 		}
 
 		// =====================================================================
@@ -1981,7 +1989,11 @@ async function run() {
 				process.kill(-spawnedServer.pid, 'SIGTERM');
 			} catch {}
 		}
-		if (client) client.release();
+		if (client) {
+			await client.query("DELETE FROM security_blocks WHERE ip LIKE '%127.0.0.1%' OR ip = '::1' OR ip = 'localhost'").catch(() => {});
+			await client.query("UPDATE system_settings SET value = '{\"disableRegistrations\":false,\"disableUploads\":false,\"passkeyOnly\":false}' WHERE key = 'soc_emergency_switches'").catch(() => {});
+			client.release();
+		}
 		await pool.end();
 	}
 }
