@@ -9,6 +9,7 @@ import { verifyAuth } from '@/lib/auth/authGuard';
 import { sessionUserOf } from '@/lib/auth/session';
 import { seviye } from '@/lib/profile';
 import { updateSelfProfile } from '@/server/members/service';
+import { getUserDiskUsage } from '@/server/db/domains/files.repo';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,10 +17,11 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
 	const auth = await verifyAuth(request);
 	if (!auth.authorized) return auth.response;
-	const [ozet, fields, allValues] = await Promise.all([
+	const [ozet, fields, allValues, diskUsage] = await Promise.all([
 		getUserSummary(auth.user.id),
 		getFormFields({ scope: 'profile' }),
 		getMemberFieldValues(auth.user.id),
+		getUserDiskUsage(auth.user.id),
 	]);
 	const keys = new Set(fields.map((field) => field.fieldKey));
 	const customFields: Record<string, string> = {};
@@ -33,6 +35,7 @@ export async function GET(request: Request) {
 			ozet,
 			fields,
 			customFields,
+			diskUsage,
 		},
 		{ headers: { 'Cache-Control': 'no-store' } }
 	);

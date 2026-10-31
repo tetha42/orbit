@@ -39,6 +39,7 @@ export interface MemberAdminMember {
 export interface MemberAdminDetail {
 	member: MemberAdminMember;
 	fields: FormField[];
+	allFields?: FormField[];
 	customFields: FormFieldValueMap;
 	core: Awaited<ReturnType<typeof getRegistrationCoreConfig>>;
 }
@@ -80,7 +81,8 @@ export async function getMemberAdminDetail(id: string): Promise<MemberAdminDetai
 	const fields = allFields.filter(
 		(field) => field.enabled && field.adminEditable && field.type !== 'password'
 	);
-	const keys = new Set(fields.map((field) => field.fieldKey));
+	const activeFields = allFields.filter((field) => field.enabled);
+	const keys = new Set(activeFields.map((field) => field.fieldKey));
 	const customFields: FormFieldValueMap = {};
 	for (const [key, value] of Object.entries(values)) {
 		if (keys.has(key)) customFields[key] = value;
@@ -88,6 +90,7 @@ export async function getMemberAdminDetail(id: string): Promise<MemberAdminDetai
 	return {
 		member: safeMember(user, role?.role ?? null),
 		fields,
+		allFields: activeFields,
 		customFields,
 		core,
 	};

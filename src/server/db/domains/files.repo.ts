@@ -35,3 +35,41 @@ export async function getStoredFile(ad: string): Promise<StoredFile | null> {
 	const res = await getPgPool().query('SELECT * FROM files WHERE ad = $1', [ad]);
 	return (res.rows[0] as StoredFile | undefined) ?? null;
 }
+
+export async function getUserDiskUsage(userId: string): Promise<{ bytes: number; count: number }> {
+	if (!userId) return { bytes: 0, count: 0 };
+	await ensurePostgresInit();
+	const res = await getPgPool().query<{ bytes: string; count: string }>(
+		`SELECT COALESCE(SUM(boyut), 0)::bigint AS bytes, COUNT(*)::int AS count
+		 FROM files
+		 WHERE yukleyenId = $1`,
+		[userId]
+	);
+	return {
+		bytes: Number(res.rows[0]?.bytes || 0),
+		count: Number(res.rows[0]?.count || 0),
+	};
+}
+
+export async function getUsersDiskUsage(userIds: string[]): Promise<Map<string, { bytes: number; count: number }>> {
+	const map = new Map<string, { bytes: number; count: number }>();
+	if (!userIds || userIds.length === 0) return map;
+	await ensurePostgresInit();
+	const res = await getPgPool().query<{ userId: string; bytes: string; count: string }>(
+		`SELECT yukleyenId AS "userId",
+		        COALESCE(SUM(boyut), 0)::bigint AS bytes,
+		        COUNT(*)::int AS count
+		 FROM files
+		 WHERE yukleyenId = ANY($1)
+		 GROUP BY yukleyenId`,
+		[userIds]
+	);
+	for (const row of res.rows) {
+		map.set(String(row.userId), {
+			bytes: Number(row.bytes || 0),
+			count: Number(row.count || 0),
+		});
+	}
+	return map;
+}
+

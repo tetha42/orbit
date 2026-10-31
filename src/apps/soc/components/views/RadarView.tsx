@@ -75,6 +75,36 @@ export const RadarView = React.memo(function RadarView() {
 		});
 	}, [overview?.metrics.activeRateLimits, query]);
 
+	const histogramData = useMemo(() => {
+		const points =
+			overview?.hourlyDistribution && overview.hourlyDistribution.length > 0
+				? overview.hourlyDistribution
+				: (overview?.hourlyTimeline ?? []).map((h) => ({
+						hourLabel: h.hourLabel,
+						timestamp: h.timestamp,
+						blockedCount: h.errorCount,
+						warningCount: h.warnCount,
+						totalCount: h.warnCount + h.errorCount,
+				  }));
+
+		if (points.length === 0) {
+			return { points: [], maxVal: 5, barWidth: 24, totalWidth: 800, step: 800 };
+		}
+
+		const maxVal = Math.max(5, ...points.map((p) => p.totalCount));
+		const barWidth = 24;
+		const totalWidth = 800;
+		const step = totalWidth / Math.max(1, points.length);
+
+		return {
+			points,
+			maxVal,
+			barWidth,
+			totalWidth,
+			step,
+		};
+	}, [overview?.hourlyDistribution, overview?.hourlyTimeline]);
+
 	const filteredLiveEvents = useMemo(() => {
 		return siemLogs.filter((ev) => {
 			if (selectedHourFilter) {
@@ -537,7 +567,7 @@ export const RadarView = React.memo(function RadarView() {
 			)}
 
 			{/* Interactive 24-Hour Attack Spike Histogram (SVG) */}
-			<section className={s.histogramWrap}>
+			<section className={`${s.card} ${s.histogramWrap}`}>
 				<div className={s.histogramHeader}>
 					<div>
 						<h2 className={s.cardTitle} style={{ fontSize: 14 }}>
@@ -550,44 +580,46 @@ export const RadarView = React.memo(function RadarView() {
 								: 'Saatlik engellenen kritik saldırılar (kırmızı) ve uyarıların (turuncu) interaktif dağılımı'}
 						</p>
 					</div>
-					<div className={s.histogramLegend}>
-						<div className={s.legendItem}>
-							<div className={s.legendDotDanger} />
-							<span>{isEn ? 'Blocked (IPS/ERROR)' : 'Engellendi (IPS/ERROR)'}</span>
-						</div>
-						<div className={s.legendItem}>
-							<div className={s.legendDotWarn} />
-							<span>{isEn ? 'Warning (WARN)' : 'Uyarı (WARN)'}</span>
+					<div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+						{selectedHourFilter && (
+							<button
+								type="button"
+								className={s.btnSecondary}
+								style={{ padding: '3px 8px', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+								onClick={() => setSelectedHourFilter(null)}
+							>
+								<X size={12} />
+								{isEn ? `Clear filter: ${selectedHourFilter.hourLabel}` : `Filtreyi temizle: ${selectedHourFilter.hourLabel}`}
+							</button>
+						)}
+						<div className={s.histogramLegend}>
+							<div className={s.legendItem}>
+								<div className={s.legendDotDanger} />
+								<span>{isEn ? 'Blocked (IPS/ERROR)' : 'Engellendi (IPS/ERROR)'}</span>
+							</div>
+							<div className={s.legendItem}>
+								<div className={s.legendDotWarn} />
+								<span>{isEn ? 'Warning (WARN)' : 'Uyarı (WARN)'}</span>
+							</div>
 						</div>
 					</div>
 				</div>
 
-				<svg viewBox="0 0 800 130" className={s.histogramSvg} preserveAspectRatio="none">
-					<line x1="0" y1="20" x2="800" y2="20" stroke="var(--border-subtle, rgba(0,0,0,0.08))" strokeDasharray="3 3" />
-					<line x1="0" y1="60" x2="800" y2="60" stroke="var(--border-subtle, rgba(0,0,0,0.08))" strokeDasharray="3 3" />
-					<line x1="0" y1="100" x2="800" y2="100" stroke="var(--border-subtle, rgba(0,0,0,0.15))" />
+				{histogramData.points.length === 0 ? (
+					<div className={s.histogramEmpty}>
+						<ShieldCheck size={28} color="var(--success, #248a3d)" />
+						<span>{isEn ? 'No telemetry data recorded for the last 24 hours' : 'Son 24 saat için kayıtlı telemetri verisi bulunmuyor'}</span>
+					</div>
+				) : (
+					<svg viewBox="0 0 800 130" className={s.histogramSvg} preserveAspectRatio="none">
+						<line x1="0" y1="20" x2="800" y2="20" stroke="var(--border-subtle, rgba(0,0,0,0.08))" strokeDasharray="3 3" />
+						<line x1="0" y1="60" x2="800" y2="60" stroke="var(--border-subtle, rgba(0,0,0,0.08))" strokeDasharray="3 3" />
+						<line x1="0" y1="100" x2="800" y2="100" stroke="var(--border-subtle, rgba(0,0,0,0.15))" />
 
-					{(() => {
-						const points =
-							overview?.hourlyDistribution && overview.hourlyDistribution.length > 0
-								? overview.hourlyDistribution
-								: (overview?.hourlyTimeline ?? []).map((h) => ({
-										hourLabel: h.hourLabel,
-										timestamp: h.timestamp,
-										blockedCount: h.errorCount,
-										warningCount: h.warnCount,
-										totalCount: h.warnCount + h.errorCount,
-								  }));
-
-						const maxVal = Math.max(5, ...points.map((p) => p.totalCount));
-						const barWidth = 24;
-						const totalWidth = 800;
-						const step = totalWidth / Math.max(1, points.length);
-
-						return points.map((p, idx) => {
-							const x = idx * step + (step - barWidth) / 2;
-							const blockedH = (p.blockedCount / maxVal) * 80;
-							const warnH = (p.warningCount / maxVal) * 80;
+						{histogramData.points.map((p, idx) => {
+							const x = idx * histogramData.step + (histogramData.step - histogramData.barWidth) / 2;
+							const blockedH = (p.blockedCount / histogramData.maxVal) * 80;
+							const warnH = (p.warningCount / histogramData.maxVal) * 80;
 							const totalH = blockedH + warnH;
 							const yBlocked = 100 - blockedH;
 							const yWarn = yBlocked - warnH;
@@ -616,24 +648,24 @@ export const RadarView = React.memo(function RadarView() {
 											: `${p.hourLabel}: Toplam ${p.totalCount} olay (${p.blockedCount} engellendi, ${p.warningCount} uyarı) — Akışı filtrelemek için tıklayın`}
 									</title>
 									<rect
-										x={idx * step}
+										x={idx * histogramData.step}
 										y="0"
-										width={step}
+										width={histogramData.step}
 										height="115"
 										fill={isSelected ? 'color-mix(in srgb, var(--accent, #0071e3) 14%, transparent)' : 'transparent'}
 										rx="3"
 									/>
 									{warnH > 0 && (
-										<rect x={x} y={yWarn} width={barWidth} height={warnH} rx="2" fill="var(--warning, #c45500)" opacity={isSelected ? 1 : 0.9} />
+										<rect x={x} y={yWarn} width={histogramData.barWidth} height={warnH} rx="2" fill="var(--warning, #c45500)" opacity={isSelected ? 1 : 0.9} />
 									)}
 									{blockedH > 0 && (
-										<rect x={x} y={yBlocked} width={barWidth} height={blockedH} rx="2" fill="var(--danger, #d70015)" opacity={isSelected ? 1 : 0.95} />
+										<rect x={x} y={yBlocked} width={histogramData.barWidth} height={blockedH} rx="2" fill="var(--danger, #d70015)" opacity={isSelected ? 1 : 0.95} />
 									)}
 									{totalH === 0 && (
-										<circle cx={x + barWidth / 2} cy="98" r="1.5" fill="var(--text-secondary, #6e6e73)" opacity="0.3" />
+										<circle cx={x + histogramData.barWidth / 2} cy="98" r="1.5" fill="var(--text-secondary, #6e6e73)" opacity="0.3" />
 									)}
 									<text
-										x={x + barWidth / 2}
+										x={x + histogramData.barWidth / 2}
 										y={118}
 										textAnchor="middle"
 										fontSize="9"
@@ -644,9 +676,9 @@ export const RadarView = React.memo(function RadarView() {
 									</text>
 								</g>
 							);
-						});
-					})()}
-				</svg>
+						})}
+					</svg>
+				)}
 			</section>
 
 			{/* System & PostgreSQL Connection Pool Telemetry */}

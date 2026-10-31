@@ -333,3 +333,21 @@ export function retentionDays(env: string | undefined): number {
 	const n = Number(env);
 	return Number.isInteger(n) && n >= 30 ? n : AUDIT_RETENTION_DAYS;
 }
+
+/** Humanizes and translates audit action operation keys. */
+export function formatAuditAction(islem: string, t?: (key: string, fallback?: string) => string): string {
+	if (!islem) return '—';
+	const opKey = `auditOp_${islem.replace(/[.-]/g, '_')}`;
+	if (t) {
+		const translated = t(opKey, '');
+		if (translated && !translated.startsWith('auditOp_')) {
+			return translated;
+		}
+	}
+	return islem
+		.split(/[._-]/)
+		.filter(Boolean)
+		.map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+		.join(' ');
+}
+

@@ -38,8 +38,8 @@ const manifest = {
 	permission: {
 		sira: 6,
 		ad: 'Üyeler',
-		kullan: 'Aktif üyeleri ve iletişim bilgilerini görür.',
-		yonet: 'Başvuruları onaylar, üye ekler/çıkarır, role atar.',
+		kullan: 'Aktif üyeleri ve herkese açık profil bilgilerini görür.',
+		yonet: 'Başvuruları onaylar, gizli/özel form alanlarını inceler, üye ekler/çıkarır, role atar.',
 	},
 	menu: {
 		title: { tr: 'Rehber', en: 'Directory' },

@@ -24,6 +24,8 @@ export interface RegisterPayload {
 	acceptedDocumentIds?: string[];
 	/** Optional invitation token from `/?invite=...`. */
 	inviteToken?: string;
+	/** Preferred language ('tr' or 'en') chosen by the user in the UI. */
+	preferredLanguage?: 'tr' | 'en';
 }
 
 export interface SessionContextValue {

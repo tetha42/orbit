@@ -25,6 +25,8 @@ export interface MemberRecord {
 	takimAdi?: string;
 	takimlar?: MemberTeamInfo[];
 	yoklamaSayisi?: number;
+	diskUsageBytes?: number;
+	fileCount?: number;
 	customFields?: Record<string, string>;
 }
 

@@ -39,9 +39,41 @@ export async function GET(request: Request) {
 	const auth = await requireApp(request, 'members', 'kullan');
 	if (!auth.authorized) return auth.response;
 	try {
-		const rows = await getMemberRoster();
+		const isManager = can(auth.user, 'members', 'yonet');
+		const url = new URL(request.url);
+		const pageParam = url.searchParams.get('page');
+		const limitParam = url.searchParams.get('limit');
+		const qParam = url.searchParams.get('q') || url.searchParams.get('search') || undefined;
+
+		const isPaginated = pageParam !== null || limitParam !== null;
+
+		if (isPaginated) {
+			const page = Math.max(1, parseInt(pageParam || '1', 10) || 1);
+			const limit = Math.max(1, Math.min(200, parseInt(limitParam || '20', 10) || 20));
+			const result = await getMemberRoster({
+				isManager,
+				page,
+				limit,
+				search: qParam,
+			});
+			const members = isManager
+				? result.members
+				: result.members.filter((m) => m.status === 'aktif' || m.status === 'mezun');
+			return NextResponse.json({
+				success: true,
+				members,
+				count: members.length,
+				totalCount: result.totalCount,
+				page: result.page,
+				limit: result.limit,
+				totalPages: Math.ceil(result.totalCount / result.limit),
+				...(members.length === 0 ? { message: 'Henüz kayıtlı üye bulunmuyor.' } : {}),
+			});
+		}
+
+		const rows = await getMemberRoster({ isManager, search: qParam });
 		// Applications and rejected accounts are for those who manage members.
-		const members = can(auth.user, 'members', 'yonet')
+		const members = isManager
 			? rows
 			: rows.filter((m) => m.status === 'aktif' || m.status === 'mezun');
 		return NextResponse.json({
@@ -233,7 +265,12 @@ export async function PATCH(request: Request) {
 				);
 			}
 
-			const recipient = { ad: target.ad, soyad: target.soyad, email: target.email };
+			const recipient = {
+				ad: target.ad,
+				soyad: target.soyad,
+				email: target.email,
+				preferredLanguage: target.preferredLanguage,
+			};
 			if ((target.status === 'beklemede' || target.status === 'reddedildi') && status === 'aktif') {
 				void notifyMembershipApproved(recipient);
 			} else if (target.status === 'beklemede' && status === 'reddedildi') {

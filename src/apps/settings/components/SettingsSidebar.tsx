@@ -6,13 +6,11 @@ import type { SettingsTabId } from '@/configs/settings.config';
 import type { SettingsSection } from '../types';
 import {
 	Building2,
-	Database,
 	FileText,
 	Globe,
 	ListChecks,
 	Image as ImageIcon,
 	KeyRound,
-	Layout,
 	Mail,
 	Network,
 	ShieldAlert,
@@ -27,9 +25,7 @@ import {
 const TAB_ICONS: Record<SettingsTabId, LucideIcon> = {
 	account: UserRound,
 	wallpaper: ImageIcon,
-	dock: Layout,
 	appearance: Sparkles,
-	storage: Database,
 	language: Globe,
 	security: ShieldCheck,
 	community: Building2,

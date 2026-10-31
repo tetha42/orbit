@@ -72,37 +72,54 @@ export async function GET(request: Request) {
 async function parseEventFields(body: Record<string, unknown>, partial: boolean): Promise<{ ok: true; value: EventPatch; error?: undefined } | { ok: false; value?: undefined; error: string }> {
 	const v: EventPatch = {};
 	const has = (k: string) => body[k] !== undefined;
-	if (!partial || has('baslik')) {
-		const title = typeof body.baslik === 'string' ? body.baslik.trim() : '';
-		if (title.length < 3) return { ok: false, error: 'CommunityEvent başlığı en az 3 karakter olmalıdır.' };
-		if (title.length > EVENT_TITLE_MAX) return { ok: false, error: `Başlık en fazla ${EVENT_TITLE_MAX} karakter olabilir.` };
+
+	if (!partial || has('baslik') || has('title')) {
+		const rawTitle = body.title ?? body.baslik;
+		const title = typeof rawTitle === 'string' ? rawTitle.trim() : '';
+		if (title.length < 3) return { ok: false, error: 'Event title must be at least 3 characters.' };
+		if (title.length > EVENT_TITLE_MAX) return { ok: false, error: `Title cannot exceed ${EVENT_TITLE_MAX} characters.` };
 		v.baslik = title;
 	}
-	if (!partial || has('tur')) {
-		const tur = body.tur ?? 'atolye';
-		if (!(EVENT_TYPES as readonly unknown[]).includes(tur)) return { ok: false, error: 'Geçersiz etkinlik türü.' };
+	if (!partial || has('tur') || has('type')) {
+		const tur = (body.type ?? body.tur ?? 'atolye') as string;
+		if (!(EVENT_TYPES as readonly unknown[]).includes(tur)) return { ok: false, error: 'Invalid event type.' };
 		v.tur = tur as EventType;
 	}
-	if (!partial || has('aciklama')) {
-		const description = typeof body.aciklama === 'string' ? body.aciklama.trim() : '';
-		if (description.length > EVENT_DESCRIPTION_MAX) return { ok: false, error: 'Açıklama çok uzun.' };
+	if (!partial || has('aciklama') || has('description')) {
+		const rawDesc = body.description ?? body.aciklama;
+		const description = typeof rawDesc === 'string' ? rawDesc.trim() : '';
+		if (description.length > EVENT_DESCRIPTION_MAX) return { ok: false, error: 'Description is too long.' };
 		v.aciklama = description;
 	}
-	if (!partial || has('konum')) {
-		const konum = typeof body.konum === 'string' ? body.konum.trim() : '';
-		if (!konum) return { ok: false, error: 'Konum zorunludur.' };
+	if (!partial || has('konum') || has('location')) {
+		const rawLoc = body.location ?? body.konum;
+		const konum = typeof rawLoc === 'string' ? rawLoc.trim() : '';
+		if (!konum) return { ok: false, error: 'Location is required.' };
 		v.konum = konum.slice(0, 120);
 	}
-	for (const k of ['baslangic', 'endTime'] as const) {
-		if (!partial || has(k)) {
-			const n = Number(body[k]);
-			if (!Number.isFinite(n) || n <= 0) return { ok: false, error: 'Başlangıç ve bitiş zamanı geçerli olmalıdır.' };
-			v[k] = Math.round(n);
+	if (!partial || has('baslangic') || has('start')) {
+		const rawStart = body.start ?? body.baslangic;
+		const startNum = Number(rawStart);
+		if (!Number.isFinite(startNum) || startNum <= 0) {
+			return { ok: false, error: 'Start and end times must be valid.' };
 		}
+		v.baslangic = Math.round(startNum);
 	}
-	if (!partial || has('kapasite')) {
-		const n = Number(body.kapasite ?? 50);
-		if (!Number.isInteger(n) || n < 0 || n > KAPASITE_MAX) return { ok: false, error: `Kapasite 0 ile ${KAPASITE_MAX} arasında olmalıdır (0 = sınırsız).` };
+	if (!partial || has('endTime') || has('end') || has('bitis')) {
+		const rawEnd = body.endTime ?? body.end ?? body.bitis;
+		const endNum = Number(rawEnd);
+		if (!Number.isFinite(endNum) || endNum <= 0) {
+			return { ok: false, error: 'Start and end times must be valid.' };
+		}
+		v.endTime = Math.round(endNum);
+	}
+	if (v.baslangic && v.endTime && v.endTime <= v.baslangic) {
+		return { ok: false, error: 'End time must be after start time.' };
+	}
+	if (!partial || has('kapasite') || has('capacity')) {
+		const rawKap = body.capacity ?? body.kapasite ?? 50;
+		const n = Number(rawKap);
+		if (!Number.isInteger(n) || n < 0 || n > KAPASITE_MAX) return { ok: false, error: `Capacity must be between 0 and ${KAPASITE_MAX} (0 = unlimited).` };
 		v.kapasite = n;
 	}
 	if (has('status')) {

@@ -1,11 +1,12 @@
 'use client';
 
 import type { CSSProperties } from 'react';
-import { Check, Monitor, Moon, Sun, SunMedium, Volume2, VolumeX, type LucideIcon } from 'lucide-react';
+import { Check, Monitor, Moon, Sun, SunMedium, Volume2, VolumeX, Layout, type LucideIcon } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
 import { ACCENTS, THEME_MODES, useTheme, type ThemeMode } from '@/core/theme';
 import { useShell } from '@/core/shell';
 import { useSound } from '@/core/sound';
+import { useWindowCycleSetting } from '@/core/windows';
 
 const MODE_ICONS: Record<ThemeMode, LucideIcon> = { light: Sun, dark: Moon, system: Monitor };
 
@@ -81,7 +82,8 @@ const sectionStyle: CSSProperties = {
 export function AppearancePanel() {
 	const { t } = useI18n();
 	const { theme, accent, transparency, reduceMotion, setTheme, setAccent, setTransparency, setReduceMotion } = useTheme();
-	const { brightness, setBrightness } = useShell();
+	const { brightness, setBrightness, isDockAutoHide, toggleDockAutoHide } = useShell();
+	const { isWindowCycleEnabled, setIsWindowCycleEnabled } = useWindowCycleSetting();
 	const { volume, setVolume, isMuted, toggleMute, playSystemSound } = useSound();
 	const modeLabels: Record<ThemeMode, string> = { light: t('settingsThemeLight'), dark: t('settingsThemeDark'), system: t('settingsThemeSystem') };
 
@@ -254,6 +256,34 @@ export function AppearancePanel() {
 						{t('settingsTestSound')}
 					</button>
 				</div>
+			</div>
+
+			{/* Dock & Window Management */}
+			<div style={sectionStyle}>
+				<div>
+					<h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+						<Layout size={16} /> {t('settingsDockTitle')}
+					</h3>
+					<p style={{ fontSize: '12.5px', opacity: 0.65, margin: '2px 0 0 0' }}>{t('settingsDockDesc')}</p>
+				</div>
+
+				<Switch
+					name="dockAutoHide"
+					label={t('settingsDockAutoHide')}
+					desc={t('settingsDockAutoHideDesc')}
+					checked={isDockAutoHide}
+					onChange={toggleDockAutoHide}
+				/>
+
+				<div style={{ height: '1px', background: 'var(--card-border)' }} />
+
+				<Switch
+					name="windowCycle"
+					label={t('settingsWindowCycleTitle')}
+					desc={t('settingsWindowCycleDesc')}
+					checked={isWindowCycleEnabled}
+					onChange={setIsWindowCycleEnabled}
+				/>
 			</div>
 		</div>
 	);

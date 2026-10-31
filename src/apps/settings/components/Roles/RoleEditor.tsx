@@ -7,6 +7,7 @@ import { fill } from '@/lib/text';
 import { AlertTriangle, ShieldCheck } from 'lucide-react';
 import { Sheet } from '@/core/ui/Sheet';
 import { sendJson } from '@/core/data/http';
+import { invalidateResource } from '@/core/data/useJsonResource';
 import ui from '@/core/ui/ui.module.css';
 import {
 	ROLE_COLORS,
@@ -69,6 +70,7 @@ export function RoleEditor({ role, benimIzinlerim, onClose, onSaved }: RoleEdito
 		const res = role ? await sendJson('/api/roles', 'PATCH', { id: role.id, ...body }) : await sendJson('/api/roles', 'POST', body);
 		setBusy(false);
 		if (!res.ok) return setError(res.error || t('rolesSaveFailed'));
+		invalidateResource('/api/roles');
 		onSaved(role ? t('rolesSaved') : t('rolesCreated'));
 	};
 

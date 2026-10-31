@@ -234,6 +234,20 @@
 	height: calc(100vh - 72px);
 }
 
+@media (max-width: 640px) {
+	.overlay {
+		padding: 0;
+		align-items: flex-end;
+	}
+	.sheet {
+		width: 100% !important;
+		max-width: 100% !important;
+		border-radius: 18px 18px 0 0 !important;
+		max-height: 90dvh;
+		padding-bottom: max(16px, env(safe-area-inset-bottom));
+	}
+}
+
 .sheetTone_info {
 	border-top: 2px solid #0a84ff;
 }

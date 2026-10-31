@@ -21,6 +21,10 @@ import styles from './Account.module.css';
 import { AccountProfileHero } from './AccountProfileHero';
 import { AccountStatsCards } from './AccountStatsCards';
 import { AccountPasswordForm } from './AccountPasswordForm';
+import { HardDrive, Laptop, LogOut, RotateCcw } from 'lucide-react';
+import { useShell } from '@/core/shell';
+import { useDialog } from '@/components/Common/DialogProvider';
+import { formatBytes } from '@/core/data/format';
 import {
 	LegalDocumentModal,
 	type LegalDocumentContent,
@@ -45,13 +49,30 @@ interface ProfileResponse {
 	ozet: UserSummary;
 	fields?: FormField[];
 	customFields?: Record<string, string>;
+	diskUsage?: { bytes: number; count: number };
 }
 
 export function AccountPanel() {
-	const { refreshSession } = useSession();
+	const { refreshSession, logout } = useSession();
+	const { resetWorkspaceSession } = useShell();
+	const dialog = useDialog();
 	const { t, language } = useI18n();
 	const { playSystemSound } = useSound();
 	const { data, refetch } = useJsonResource<ProfileResponse>('/api/profile');
+	const [resetMessage, setResetMessage] = useState<string | null>(null);
+
+	const handleResetWorkspace = async () => {
+		const confirmed = await dialog.confirm({
+			message: t('settingsResetConfirm'),
+			tone: 'warning',
+			confirmLabel: t('dlgReset'),
+		});
+		if (confirmed) {
+			await resetWorkspaceSession();
+			setResetMessage(t('settingsResetDone'));
+			setTimeout(() => setResetMessage(null), 3000);
+		}
+	};
 
 	const [bolum, setBolum] = useState<string | null>(null);
 	const [sinif, setSinif] = useState<number | null>(null);
@@ -504,6 +525,112 @@ export function AccountPanel() {
 				onSetBusy={setBusy}
 				note={note('password')}
 			/>
+
+			{/* Storage & Active Session Management */}
+			<div className={styles.card}>
+				<h4 className={styles.cardTitle} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+					<HardDrive size={16} /> {t('settingsStorageTitle', 'Depolama ve Oturum')}
+				</h4>
+				<p style={{ margin: 0, fontSize: '12px', opacity: 0.65 }}>
+					{t('settingsStorageDesc', 'Kullanılan depolama alanı, çalışma alanı tercihleri ve aktif oturum denetimi.')}
+				</p>
+
+				<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginTop: '4px' }}>
+					<div
+						style={{
+							padding: '12px',
+							background: 'rgba(255, 255, 255, 0.03)',
+							borderRadius: '8px',
+							border: '1px solid var(--window-border)',
+						}}
+					>
+						<div style={{ fontSize: '11px', opacity: 0.6, display: 'flex', alignItems: 'center', gap: '5px' }}>
+							<HardDrive size={12} color="var(--accent)" />
+							<span>{t('membersColStorage', 'Kullanılan Depolama')}</span>
+						</div>
+						<div style={{ fontSize: '16px', fontWeight: 700, marginTop: '4px' }}>
+							{formatBytes(data?.diskUsage?.bytes)}
+						</div>
+						<div style={{ fontSize: '11.5px', opacity: 0.6, marginTop: '2px' }}>
+							{data?.diskUsage?.count ?? 0} {t('filesCountUnit', 'yüklenmiş dosya')}
+						</div>
+					</div>
+
+					<div
+						style={{
+							padding: '12px',
+							background: 'rgba(255, 255, 255, 0.03)',
+							borderRadius: '8px',
+							border: '1px solid var(--window-border)',
+							display: 'flex',
+							flexDirection: 'column',
+							justifyContent: 'space-between',
+						}}
+					>
+						<div>
+							<div style={{ fontSize: '11px', opacity: 0.6, display: 'flex', alignItems: 'center', gap: '5px' }}>
+								<Laptop size={12} />
+								<span>{t('settingsActiveSession', 'Aktif Oturum')}</span>
+							</div>
+							<div style={{ fontSize: '13px', fontWeight: 600, marginTop: '4px' }}>
+								{user.email}
+							</div>
+						</div>
+						<div style={{ marginTop: '8px' }}>
+							<button
+								type="button"
+								onClick={() => void logout()}
+								className={ui.btn}
+								style={{ fontSize: '12px', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+							>
+								<LogOut size={12} /> {t('navLogout', 'Çıkış Yap')}
+							</button>
+						</div>
+					</div>
+				</div>
+
+				<div style={{ height: '1px', background: 'var(--border-subtle)', margin: '4px 0' }} />
+
+				<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+					<div>
+						<div style={{ fontSize: '13.5px', fontWeight: 600 }}>{t('settingsResetWorkspace')}</div>
+						<div style={{ fontSize: '12px', opacity: 0.65 }}>{t('settingsResetWorkspaceDesc')}</div>
+					</div>
+					<button
+						type="button"
+						onClick={() => void handleResetWorkspace()}
+						style={{
+							background: 'rgba(255, 59, 48, 0.12)',
+							color: '#ff3b30',
+							border: '1px solid rgba(255, 59, 48, 0.3)',
+							padding: '6px 14px',
+							borderRadius: '6px',
+							fontSize: '13px',
+							fontWeight: 600,
+							display: 'flex',
+							alignItems: 'center',
+							gap: '6px',
+							cursor: 'pointer',
+						}}
+					>
+						<RotateCcw size={14} />
+						{t('dlgReset')}
+					</button>
+				</div>
+				{resetMessage && (
+					<div
+						style={{
+							fontSize: '12px',
+							color: '#34c759',
+							background: 'rgba(52, 199, 89, 0.1)',
+							padding: '6px 10px',
+							borderRadius: '6px',
+						}}
+					>
+						{resetMessage}
+					</div>
+				)}
+			</div>
 
 			{missingLegal.length > 0 && (
 				<div className={styles.card}>

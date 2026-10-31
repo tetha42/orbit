@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { AlertCircle, CheckCircle2, Eye, EyeOff, Info, Plus, Save, Trash2 } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
+import { invalidateResource } from '@/core/data/useJsonResource';
 import { errorMessage } from '@/lib/errors';
 import type {
 	RegistrationCoreConfig,
@@ -151,6 +152,7 @@ export function RegistrationCoreFieldsPanel() {
 			if (!res.ok || !data.ok) throw new Error(data.error || t('regCoreSaveFailed'));
 			setDraft(copyConfig(data.config));
 			setStatus({ text: t('regCoreSaved'), type: 'ok' });
+			invalidateResource('/api/registration-config');
 		} catch (error) {
 			setStatus({ text: errorMessage(error) || t('regCoreSaveFailed'), type: 'err' });
 		} finally {

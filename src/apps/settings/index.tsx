@@ -5,9 +5,7 @@ import { SettingsSidebar } from './components/SettingsSidebar';
 import { SettingsMobileView } from './components/SettingsMobileView';
 import { AccountPanel } from './components/Account/AccountPanel';
 import { WallpaperPanel } from './components/Panels/WallpaperPanel';
-import { DockSettingsPanel } from './components/Panels/DockSettingsPanel';
 import { AppearancePanel } from './components/Panels/AppearancePanel';
-import { StorageSettingsPanel } from './components/Panels/StorageSettingsPanel';
 import { LanguageSettingsPanel } from './components/Panels/LanguageSettingsPanel';
 import { SecurityPanel } from './components/Panels/SecurityPanel';
 import { RolesPanel } from './components/Roles/RolesPanel';
@@ -32,7 +30,7 @@ export function SettingsApp() {
 		return <SettingsMobileView nav={nav} />;
 	}
 
-	const { visibleSections, activeTab, setActiveTab, resetMessage, handleReset, isAdmin, yonetici } = nav;
+	const { visibleSections, activeTab, setActiveTab, isAdmin, yonetici } = nav;
 
 	return (
 		<div style={{ display: 'flex', height: '100%', minHeight: '100%', flex: 1, color: 'var(--text-primary)' }}>
@@ -55,13 +53,9 @@ export function SettingsApp() {
 					background: 'var(--right-content-bg)',
 				}}
 			>
-				{activeTab === 'account' && <AccountPanel />}
+				{(activeTab === 'account' || (activeTab as string) === 'storage') && <AccountPanel />}
 				{activeTab === 'wallpaper' && <WallpaperPanel />}
-				{activeTab === 'dock' && <DockSettingsPanel />}
-				{(activeTab === 'appearance' || (activeTab as string) === 'display' || (activeTab as string) === 'sound') && <AppearancePanel />}
-				{activeTab === 'storage' && (
-					<StorageSettingsPanel resetMessage={resetMessage} onReset={handleReset} />
-				)}
+				{(activeTab === 'appearance' || (activeTab as string) === 'dock' || (activeTab as string) === 'display' || (activeTab as string) === 'sound') && <AppearancePanel />}
 				{activeTab === 'language' && <LanguageSettingsPanel />}
 				{activeTab === 'security' && <SecurityPanel />}
 				{activeTab === 'community' && yonetici && <CommunitySettingsPanel />}

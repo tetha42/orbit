@@ -14,11 +14,13 @@ import {
 	ShieldAlert,
 	Trash2,
 	ChevronRight,
+	HardDrive,
 } from 'lucide-react';
 import { AvatarFallback } from '@/components/Common/AvatarFallback';
 import { RoleBadge } from '@/core/ui/RoleBadge';
 import { isAlumniRole } from '@/core/permissions';
 import { useI18n } from '@/core/i18n';
+import { formatBytes } from '@/core/data/format';
 import { useSession } from '@/core/session';
 import { useWindowActions } from '@/core/windows';
 import { fill } from '@/lib/text';
@@ -41,7 +43,7 @@ interface MemberCardProps {
 	onDelete: (memberId: string, name: string) => void;
 }
 
-export function MemberCard({
+export const MemberCard = React.memo(function MemberCard({
 	member,
 	currentUserId,
 	mailUser,
@@ -226,10 +228,18 @@ export function MemberCard({
 						{member.xp ?? 0} XP
 					</span>
 				</div>
+
+				<div>
+					<span style={{ opacity: 0.6, fontSize: '10.5px', display: 'block' }}>{t('membersColStorage', 'Depolama')}</span>
+					<span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontWeight: 600 }}>
+						<HardDrive size={12} style={{ opacity: 0.6 }} />
+						{formatBytes(member.diskUsageBytes)}
+					</span>
+				</div>
 			</div>
 
 			{/* Actions Row */}
-			<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', flexWrap: 'wrap', paddingTop: '4px' }}>
+			<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', flexWrap: 'wrap', paddingTop: '4px' }}>
 				{mailUser && !isSelf && member.status === 'aktif' && (
 					<button
 						type="button"
@@ -237,10 +247,13 @@ export function MemberCard({
 						style={{
 							display: 'inline-flex',
 							alignItems: 'center',
-							gap: '4px',
-							fontSize: '11px',
-							padding: '4px 8px',
-							borderRadius: '6px',
+							justifyContent: 'center',
+							gap: '5px',
+							fontSize: '11.5px',
+							minHeight: '44px',
+							minWidth: '44px',
+							padding: '0 12px',
+							borderRadius: '8px',
 							background: 'rgba(0, 122, 255, 0.1)',
 							color: 'var(--accent)',
 							border: '1px solid rgba(0, 122, 255, 0.2)',
@@ -248,8 +261,8 @@ export function MemberCard({
 							fontWeight: 600,
 						}}
 					>
-						<Mail size={12} />
-						<span>Mesaj</span>
+						<Mail size={13} />
+						<span>{t('membersCardMessage', 'Mesaj')}</span>
 					</button>
 				)}
 
@@ -259,19 +272,22 @@ export function MemberCard({
 					style={{
 						display: 'inline-flex',
 						alignItems: 'center',
-						gap: '4px',
-						fontSize: '11px',
-						padding: '4px 8px',
-						borderRadius: '6px',
-						background: 'rgba(255, 255, 255, 0.08)',
+						justifyContent: 'center',
+						gap: '5px',
+						fontSize: '11.5px',
+						minHeight: '44px',
+						minWidth: '44px',
+						padding: '0 12px',
+						borderRadius: '8px',
+						background: 'var(--fill-soft, rgba(255, 255, 255, 0.08))',
 						color: 'var(--text-primary)',
-						border: '1px solid rgba(255, 255, 255, 0.12)',
+						border: '1px solid var(--window-border, rgba(255, 255, 255, 0.12))',
 						cursor: 'pointer',
 						fontWeight: 500,
 					}}
 				>
-					<User size={12} />
-					<span>Profil</span>
+					<User size={13} />
+					<span>{t('membersCardProfile', 'Profil')}</span>
 				</button>
 
 				{canManage && (
@@ -282,10 +298,13 @@ export function MemberCard({
 							style={{
 								display: 'inline-flex',
 								alignItems: 'center',
-								gap: '4px',
-								fontSize: '11px',
-								padding: '4px 8px',
-								borderRadius: '6px',
+								justifyContent: 'center',
+								gap: '5px',
+								fontSize: '11.5px',
+								minHeight: '44px',
+								minWidth: '44px',
+								padding: '0 12px',
+								borderRadius: '8px',
 								background: 'rgba(255, 189, 46, 0.12)',
 								color: '#e5a50a',
 								border: '1px solid rgba(255, 189, 46, 0.25)',
@@ -293,8 +312,8 @@ export function MemberCard({
 								fontWeight: 600,
 							}}
 						>
-							<Award size={12} />
-							<span>+25 XP</span>
+							<Award size={13} />
+							<span>{fill(t('membersCardAwardXp', '+{amount} XP'), { amount: 25 })}</span>
 						</button>
 
 						<button
@@ -303,19 +322,22 @@ export function MemberCard({
 							style={{
 								display: 'inline-flex',
 								alignItems: 'center',
-								gap: '4px',
-								fontSize: '11px',
-								padding: '4px 8px',
-								borderRadius: '6px',
-								background: 'rgba(255, 255, 255, 0.08)',
+								justifyContent: 'center',
+								fontSize: '11.5px',
+								minHeight: '44px',
+								minWidth: '44px',
+								padding: '0 10px',
+								borderRadius: '8px',
+								background: 'var(--fill-soft, rgba(255, 255, 255, 0.08))',
 								color: 'var(--text-primary)',
-								border: '1px solid rgba(255, 255, 255, 0.12)',
+								border: '1px solid var(--window-border, rgba(255, 255, 255, 0.12))',
 								cursor: 'pointer',
 								fontWeight: 500,
 							}}
 							title={t('membersCtxResetPassword')}
+							aria-label={t('membersCtxResetPassword')}
 						>
-							<KeyRound size={12} />
+							<KeyRound size={14} />
 						</button>
 
 						{canSoc && (
@@ -325,20 +347,24 @@ export function MemberCard({
 								style={{
 									display: 'inline-flex',
 									alignItems: 'center',
-									gap: '4px',
-									fontSize: '11px',
-									padding: '4px 8px',
-									borderRadius: '6px',
-									background: 'rgba(255, 255, 255, 0.08)',
+									justifyContent: 'center',
+									gap: '5px',
+									fontSize: '11.5px',
+									minHeight: '44px',
+									minWidth: '44px',
+									padding: '0 12px',
+									borderRadius: '8px',
+									background: 'var(--fill-soft, rgba(255, 255, 255, 0.08))',
 									color: 'var(--text-primary)',
-									border: '1px solid rgba(255, 255, 255, 0.12)',
+									border: '1px solid var(--window-border, rgba(255, 255, 255, 0.12))',
 									cursor: 'pointer',
 									fontWeight: 500,
 								}}
 								title={t('membersCtxSocAudit')}
+								aria-label={t('membersCtxSocAudit')}
 							>
-								<ShieldAlert size={12} />
-								<span>SOC</span>
+								<ShieldAlert size={13} />
+								<span>{t('membersCardSoc', 'SOC')}</span>
 							</button>
 						)}
 
@@ -349,10 +375,12 @@ export function MemberCard({
 								style={{
 									display: 'inline-flex',
 									alignItems: 'center',
-									gap: '4px',
-									fontSize: '11px',
-									padding: '4px 8px',
-									borderRadius: '6px',
+									justifyContent: 'center',
+									fontSize: '11.5px',
+									minHeight: '44px',
+									minWidth: '44px',
+									padding: '0 10px',
+									borderRadius: '8px',
 									background: 'rgba(215, 0, 21, 0.1)',
 									color: 'var(--danger)',
 									border: '1px solid rgba(215, 0, 21, 0.2)',
@@ -360,8 +388,9 @@ export function MemberCard({
 									fontWeight: 500,
 								}}
 								title={t('membersCtxDelete')}
+								aria-label={t('membersCtxDelete')}
 							>
-								<Trash2 size={12} />
+								<Trash2 size={14} />
 							</button>
 						)}
 					</>
@@ -369,4 +398,4 @@ export function MemberCard({
 			</div>
 		</div>
 	);
-}
+});

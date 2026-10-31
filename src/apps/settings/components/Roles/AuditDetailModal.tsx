@@ -8,14 +8,12 @@ import { formatDateTime } from '@/core/data/format';
 import { isPermissionApp, PERMISSION_DESCRIPTIONS } from '@/core/permissions';
 import { getAppMeta } from '@/configs/apps.config';
 import type { AppID } from '@/types/workspace';
-import { diffRows, type AuditRecord } from '@/lib/audit';
+import { diffRows, formatAuditAction, type AuditRecord } from '@/lib/audit';
 
 interface AuditDetailModalProps {
 	detay: AuditRecord | null;
 	onClose: () => void;
 }
-
-const opKey = (islem: string) => `auditOp_${islem.replace(/\./g, '_')}`;
 
 export function AuditDetailModal({ detay, onClose }: AuditDetailModalProps) {
 	const { t, language } = useI18n();
@@ -43,10 +41,12 @@ export function AuditDetailModal({ detay, onClose }: AuditDetailModalProps) {
 		return String(val);
 	};
 
+	const actionTitle = formatAuditAction(detay.islem, t);
+
 	return (
 		<Sheet
-			title={t(opKey(detay.islem), detay.islem)}
-			label={t(opKey(detay.islem), detay.islem)}
+			title={actionTitle}
+			label={actionTitle}
 			icon={<History size={18} />}
 			onClose={onClose}
 			maxWidth={640}

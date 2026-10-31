@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useI18n } from '@/core/i18n';
 import { fill } from '@/lib/text';
 import { Plus, ShieldCheck } from 'lucide-react';
-import { useJsonResource } from '@/core/data/useJsonResource';
+import { useJsonResource, invalidateResource } from '@/core/data/useJsonResource';
 import { sendJson } from '@/core/data/http';
 import { useToast } from '@/core/ui/Toast';
 import { useDialog } from '@/components/Common/DialogProvider';
@@ -44,16 +44,24 @@ export function RolesPanel() {
 
 	const deleteRole = async (role: RoleView, tasi: string | null) => {
 		const res = await sendJson('/api/roles', 'DELETE', { id: role.id, tasi });
-		if (res.ok) notify(t('rolesDeleted'));
-		else notify(res.error || t('rolesDeleteFailed'), 'error');
+		if (res.ok) {
+			notify(t('rolesDeleted'));
+			invalidateResource('/api/roles');
+		} else {
+			notify(res.error || t('rolesDeleteFailed'), 'error');
+		}
 		setDeleting(null);
 		await refetch();
 	};
 
 	const setDefault = async (roleId: string) => {
 		const res = await sendJson('/api/roles', 'POST', { action: 'varsayilan', roleId: roleId || null });
-		if (res.ok) notify(t('rolesUpdatedDefault'));
-		else notify(res.error || t('rolesSaveFailed'), 'error');
+		if (res.ok) {
+			notify(t('rolesUpdatedDefault'));
+			invalidateResource('/api/roles');
+		} else {
+			notify(res.error || t('rolesSaveFailed'), 'error');
+		}
 		await refetch();
 	};
 

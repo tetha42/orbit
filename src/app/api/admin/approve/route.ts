@@ -56,6 +56,7 @@ export async function POST(request: Request) {
 			ad: targetUser.ad,
 			soyad: targetUser.soyad,
 			email: targetUser.email,
+			preferredLanguage: targetUser.preferredLanguage,
 		};
 		if (newStatus === 'aktif') {
 			notifyMembershipApproved(recipient);

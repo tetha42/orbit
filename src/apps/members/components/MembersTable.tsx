@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useI18n } from '@/core/i18n';
+import { useIsMobile } from '@/lib/client/useClientValue';
 import { MemberRow } from './MemberRow';
 import { MemberCard } from './MemberCard';
 import type { MemberRecord, AssignableRole } from '../types';
@@ -42,14 +43,7 @@ export function MembersTable({
 	onDelete,
 }: MembersTableProps) {
 	const { t } = useI18n();
-	const [isMobile, setIsMobile] = React.useState(false);
-
-	React.useEffect(() => {
-		const checkMobile = () => setIsMobile(window.innerWidth < 768);
-		checkMobile();
-		window.addEventListener('resize', checkMobile);
-		return () => window.removeEventListener('resize', checkMobile);
-	}, []);
+	const isMobile = useIsMobile();
 
 	if (isMobile) {
 		return (
@@ -100,6 +94,7 @@ export function MembersTable({
 						<th style={{ padding: '8px 10px' }}>{t('membersColDept')}</th>
 						<th style={{ padding: '8px 10px' }}>{t('membersColTeam')}</th>
 						<th style={{ padding: '8px 10px' }}>{t('membersColXp')}</th>
+						<th style={{ padding: '8px 10px' }}>{t('membersColStorage', 'Depolama')}</th>
 						<th style={{ padding: '8px 10px' }}>{t('membersColStatus')}</th>
 						{isAuthorizedToAdd && <th style={{ padding: '8px 10px', textAlign: 'center' }}>{t('membersColActions')}</th>}
 					</tr>

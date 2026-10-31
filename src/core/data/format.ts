@@ -41,3 +41,14 @@ export function relativeTime(ts: number, now: number, locale: string): string {
 	if (abs < DAY) return rtf.format(Math.round(diff / 3_600_000), 'hour');
 	return rtf.format(dayOffset(ts, now), 'day');
 }
+
+/** "12.4 MB" / "0 B" — human-readable byte sizing. Pure (no imports). */
+export function formatBytes(bytes?: number): string {
+	if (!bytes || bytes <= 0 || !Number.isFinite(bytes)) return '0 B';
+	const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+	const i = Math.floor(Math.log(bytes) / Math.log(1024));
+	const unitIndex = Math.min(i, units.length - 1);
+	const value = bytes / Math.pow(1024, unitIndex);
+	return `${value.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+}
+

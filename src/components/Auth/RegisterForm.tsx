@@ -260,6 +260,7 @@ export function RegisterForm({ flow }: { flow: AuthFlow }) {
 					.filter((document) => acceptedDocuments[document.id])
 					.map((document) => document.id),
 				inviteToken,
+				preferredLanguage: language === 'tr' ? 'tr' : 'en',
 			});
 			if (res?.fieldErrors) setFieldErrors(res.fieldErrors);
 			if (res?.requireVerification) {
@@ -290,6 +291,7 @@ export function RegisterForm({ flow }: { flow: AuthFlow }) {
 				.filter((document) => acceptedDocuments[document.id])
 				.map((document) => document.id),
 			inviteToken,
+			preferredLanguage: language === 'tr' ? 'tr' : 'en',
 		});
 	};
 

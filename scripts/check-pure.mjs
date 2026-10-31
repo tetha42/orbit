@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import { detectBrowser, detectPlatform, isInstalledApp } from '../src/lib/client/pwaDetect.ts';
 import { fill, foldTr, scoreMatch, slugify, uniqueSlug } from '../src/lib/text.ts';
 import { groupNotifications, unreadCount } from '../src/lib/notifications.ts';
-import { dayOffset, relativeTime } from '../src/core/data/format.ts';
+import { dayOffset, formatBytes, relativeTime } from '../src/core/data/format.ts';
 import { escapeHtml } from '../src/core/text/escape.ts';
 import { initials } from '../src/core/text/initials.ts';
 import { ADMIN_ROLE_ID, ALL_PERMISSIONS, PERMISSION_APPS, PERMISSION_DESCRIPTIONS, canManage, canUse, extraPermissions, hasManagementPermission, normalizePermissions, roleProblem, canAssignRole, seviyeOf } from '../src/core/permissions/index.ts';
@@ -98,6 +98,7 @@ import {
 	AUDIT_RETENTION_DAYS,
 	alanFarki,
 	auditCsvRows,
+	formatAuditAction,
 	statusAction,
 	diffRows,
 	recordFields,
@@ -312,6 +313,16 @@ check('relativeTime: picks a natural unit, in the requested language', () => {
 	assert.match(relativeTime(now - 20_000, now, 'en'), /now/);
 	assert.match(relativeTime(new Date(2026, 5, 9, 9, 0).getTime(), now, 'tr'), /dün/);
 	assert.match(relativeTime(new Date(2026, 5, 12, 9, 0).getTime(), now, 'en'), /in 2 days/);
+});
+
+check('formatBytes: scales byte sizes with units cleanly', () => {
+	assert.equal(formatBytes(0), '0 B');
+	assert.equal(formatBytes(-10), '0 B');
+	assert.equal(formatBytes(500), '500 B');
+	assert.equal(formatBytes(1024), '1.0 KB');
+	assert.equal(formatBytes(1536), '1.5 KB');
+	assert.equal(formatBytes(1024 * 1024 * 5), '5.0 MB');
+	assert.equal(formatBytes(1024 * 1024 * 1024 * 2.5), '2.5 GB');
 });
 
 /* ---------------- slugs and news ---------------- */
@@ -920,6 +931,13 @@ check('audit: CSV rows are flat, formula-safe through toCsv, one column per head
 	const csv = toCsv(AUDIT_CSV_HEADERS, satirlar);
 	assert.ok(csv.includes("'=cmd|x"), 'formula neutralised');
 	assert.ok(csv.includes('"Üye; ""Kurul"""'));
+});
+
+check('formatAuditAction: humanizes action strings when untranslated', () => {
+	assert.equal(formatAuditAction('profile.workspace.update'), 'Profile Workspace Update');
+	assert.equal(formatAuditAction('notes_create'), 'Notes Create');
+	assert.equal(formatAuditAction(''), '—');
+	assert.equal(formatAuditAction('role.olustur', (k) => k === 'auditOp_role_olustur' ? 'Rol oluşturuldu' : k), 'Rol oluşturuldu');
 });
 
 check('settings: one section per tab, system pages flagged', () => {

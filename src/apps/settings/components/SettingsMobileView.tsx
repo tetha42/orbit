@@ -12,9 +12,7 @@ import {
 	UserPlus,
 	Users,
 	Image as ImageIcon,
-	Layout,
 	Sparkles,
-	Database,
 	Globe,
 	ShieldAlert,
 	ShieldCheck,
@@ -34,9 +32,7 @@ import type { SettingsTabId } from '@/configs/settings.config';
 import type { useSettingsNav } from '../hooks/useSettingsNav';
 import { AccountPanel } from './Account/AccountPanel';
 import { WallpaperPanel } from './Panels/WallpaperPanel';
-import { DockSettingsPanel } from './Panels/DockSettingsPanel';
 import { AppearancePanel } from './Panels/AppearancePanel';
-import { StorageSettingsPanel } from './Panels/StorageSettingsPanel';
 import { LanguageSettingsPanel } from './Panels/LanguageSettingsPanel';
 import { SecurityPanel } from './Panels/SecurityPanel';
 import { CommunitySettingsPanel } from './Panels/CommunitySettingsPanel';
@@ -63,9 +59,7 @@ interface SettingMeta {
 const IOS_SETTING_META: Record<SettingsTabId, SettingMeta> = {
 	account: { bg: 'linear-gradient(135deg, #007aff, #0056b3)', icon: UserRound },
 	wallpaper: { bg: 'linear-gradient(135deg, #32ade6, #0077a6)', icon: ImageIcon },
-	dock: { bg: 'linear-gradient(135deg, #007aff, #0051ba)', icon: Layout },
 	appearance: { bg: 'linear-gradient(135deg, #5856d6, #3634a3)', icon: Sparkles },
-	storage: { bg: 'linear-gradient(135deg, #8e8e93, #636366)', icon: Database },
 	language: { bg: 'linear-gradient(135deg, #ff9500, #c97700)', icon: Globe },
 	security: { bg: 'linear-gradient(135deg, #34c759, #248a3d)', icon: ShieldCheck },
 	community: { bg: 'linear-gradient(135deg, #6366f1, #4338ca)', icon: Building2 },
@@ -83,7 +77,7 @@ export function SettingsMobileView({ nav }: SettingsMobileViewProps) {
 	const { t } = useI18n();
 	const { currentUser } = useSession();
 	const { theme } = useTheme();
-	const { isDockAutoHide, activeWallpaper } = useShellState();
+	const { activeWallpaper } = useShellState();
 	const { playSystemSound } = useSound();
 
 	const [activeSubTab, setActiveSubTab] = useState<SettingsTabId | null>(null);
@@ -124,10 +118,6 @@ export function SettingsMobileView({ nav }: SettingsMobileViewProps) {
 				return currentUser?.twoFactorEnabled
 					? t('settings2faEnabled')
 					: t('settingsSecurityPassword');
-			case 'dock':
-				return isDockAutoHide
-					? t('settingsDockHide')
-					: t('settingsDockPinned');
 			case 'wallpaper': {
 				if (!activeWallpaper) return '';
 				const info = wallpaperInfo(activeWallpaper);
@@ -188,14 +178,8 @@ export function SettingsMobileView({ nav }: SettingsMobileViewProps) {
 				<main className={s.detailContent}>
 					{activeSubTab === 'account' && <AccountPanel />}
 					{activeSubTab === 'wallpaper' && <WallpaperPanel />}
-					{activeSubTab === 'dock' && <DockSettingsPanel />}
-					{activeSubTab === 'appearance' && <AppearancePanel />}
-					{activeSubTab === 'storage' && (
-						<StorageSettingsPanel
-							resetMessage={nav.resetMessage}
-							onReset={nav.handleReset}
-						/>
-					)}
+					{(activeSubTab === 'appearance' || (activeSubTab as string) === 'dock') && <AppearancePanel />}
+					{(activeSubTab as string) === 'storage' && <AccountPanel />}
 					{activeSubTab === 'language' && <LanguageSettingsPanel />}
 					{activeSubTab === 'security' && <SecurityPanel />}
 					{activeSubTab === 'community' && nav.yonetici && <CommunitySettingsPanel />}

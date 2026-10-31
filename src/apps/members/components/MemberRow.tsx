@@ -14,11 +14,13 @@ import {
 	Shield,
 	ShieldAlert,
 	Trash2,
+	HardDrive,
 } from 'lucide-react';
 import { AvatarFallback } from '@/components/Common/AvatarFallback';
 import { RoleBadge } from '@/core/ui/RoleBadge';
 import { isAlumniRole } from '@/core/permissions';
 import { useI18n } from '@/core/i18n';
+import { formatBytes } from '@/core/data/format';
 import { useSession } from '@/core/session';
 import { useContextMenu, useShellActions } from '@/core/shell';
 import { useWindowActions } from '@/core/windows';
@@ -45,7 +47,7 @@ interface MemberRowProps {
 	onDelete: (memberId: string, name: string) => void;
 }
 
-export function MemberRow({
+export const MemberRow = React.memo(function MemberRow({
 	member,
 	currentUserId,
 	mailUser,
@@ -112,6 +114,13 @@ export function MemberRow({
 					action: () => openApp('soc', { section: 'siem', kind: 'user', itemId: member.id }),
 				});
 			}
+
+			items.push({
+				id: `inspect-storage-${member.id}`,
+				label: `${t('membersColStorage', 'Depolama')}: ${formatBytes(member.diskUsageBytes)} (${member.fileCount ?? 0} ${t('filesCountUnit', 'dosya')})`,
+				icon: <HardDrive size={14} />,
+				action: () => onOpenProfile(member),
+			});
 
 			if (member.status !== 'reddedildi') {
 				items.push({
@@ -274,6 +283,16 @@ export function MemberRow({
 				</div>
 			</td>
 
+			{/* Storage */}
+			<td style={{ padding: '10px' }}>
+				<div style={{ display: 'flex', alignItems: 'center', gap: '5px' }} title={`${member.fileCount ?? 0} files`}>
+					<HardDrive size={13} style={{ opacity: 0.6 }} />
+					<span style={{ fontSize: '12px', fontVariantNumeric: 'tabular-nums' }}>
+						{formatBytes(member.diskUsageBytes)}
+					</span>
+				</div>
+			</td>
+
 			{/* Status */}
 			<td style={{ padding: '10px' }}>
 				<span
@@ -354,4 +373,4 @@ export function MemberRow({
 			)}
 		</tr>
 	);
-}
+});

@@ -109,8 +109,14 @@ export async function POST(request: Request) {
 			clearRateLimit(`pwd_reset:verify:${normalizedEmail}`);
 
 			void notifyPasswordResetCode(
-				{ ad: user.ad, soyad: user.soyad, email: user.email },
-				code
+				{
+					ad: user.ad,
+					soyad: user.soyad,
+					email: user.email,
+					preferredLanguage: user.preferredLanguage,
+				},
+				code,
+				user.preferredLanguage
 			);
 
 			await logSystemEvent({

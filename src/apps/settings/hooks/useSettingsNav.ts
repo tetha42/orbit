@@ -28,8 +28,10 @@ export function useSettingsNav() {
 		apply: (target) => {
 			const section = target.section;
 			const tab: SettingsTabId | undefined =
-				section === 'display' || section === 'sound'
+				section === 'display' || section === 'sound' || section === 'dock'
 					? 'appearance'
+					: section === 'storage' || section === 'session'
+					? 'account'
 					: (section as SettingsTabId | undefined);
 			if (tab && visibleSections.some((sec) => sec.id === tab)) setActiveTab(tab);
 		},

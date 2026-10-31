@@ -9,9 +9,7 @@
 export const SETTINGS_TAB_IDS = [
 	'account',
 	'wallpaper',
-	'dock',
 	'appearance',
-	'storage',
 	'language',
 	'security',
 	'community',
@@ -42,11 +40,9 @@ export interface SettingsSection {
 }
 
 export const SETTINGS_SECTIONS: SettingsSection[] = [
-	{ id: 'account', tr: 'Hesabım', en: 'My Account', keywords: ['profil', 'profile', 'fotoğraf', 'photo', 'şifre değiştir', 'change password', 'bölüm', 'biyografi', 'seviye', 'xp'], labelKey: 'acTab', group: 'kisisel' },
+	{ id: 'account', tr: 'Hesabım', en: 'My Account', keywords: ['profil', 'profile', 'fotoğraf', 'photo', 'şifre değiştir', 'change password', 'bölüm', 'biyografi', 'seviye', 'xp', 'depolama', 'storage', 'sıfırla', 'reset', 'oturum', 'session', 'önbellek', 'cache'], labelKey: 'acTab', group: 'kisisel' },
 	{ id: 'wallpaper', tr: 'Duvar Kağıdı', en: 'Wallpaper', keywords: ['arka plan', 'background', 'manzara', 'tema resmi', 'uzay', 'space', 'galaksi'], labelKey: 'tabWallpaper', group: 'kisisel' },
-	{ id: 'dock', tr: 'Dock ve Pencereler', en: 'Dock & Windows', keywords: ['otomatik gizle', 'auto hide', 'shift tab', 'pencere değiştir', 'switch windows'], labelKey: 'tabDock', group: 'kisisel' },
-	{ id: 'appearance', tr: 'Görünüm', en: 'Appearance', keywords: ['tema', 'theme', 'karanlık', 'dark', 'aydınlık', 'light', 'parlaklık', 'brightness', 'ekran', 'display', 'ses', 'sound', 'ses seviyesi', 'volume', 'sessiz', 'mute', 'efekt'], labelKey: 'tabAppearance', group: 'kisisel' },
-	{ id: 'storage', tr: 'Depolama ve Sıfırlama', en: 'Storage & Reset', keywords: ['sıfırla', 'reset', 'oturum', 'önbellek'], labelKey: 'tabStorage', group: 'hesap' },
+	{ id: 'appearance', tr: 'Görünüm ve Tema', en: 'Appearance & Theme', keywords: ['tema', 'theme', 'karanlık', 'dark', 'aydınlık', 'light', 'parlaklık', 'brightness', 'ekran', 'display', 'ses', 'sound', 'ses seviyesi', 'volume', 'sessiz', 'mute', 'efekt', 'dock', 'rıhtım', 'otomatik gizle', 'auto hide', 'shift tab', 'pencere değiştir', 'switch windows'], labelKey: 'tabAppearance', group: 'kisisel' },
 	{ id: 'language', tr: 'Dil', en: 'Language', keywords: ['türkçe', 'english', 'lang'], labelKey: 'tabLanguage', group: 'hesap' },
 	{ id: 'security', tr: 'Güvenlik', en: 'Security', keywords: ['iki adımlı', '2fa', 'passkey', 'şifre', 'parola', 'doğrulama'], labelKey: 'tabSecurity', group: 'hesap' },
 	{ id: 'community', tr: 'Kimlik ve Marka', en: 'Identity & Branding', keywords: ['topluluk', 'community', 'site', 'isim', 'name', 'ikon', 'icon', 'logo', 'stüdyo', 'studio', 'tetha42', 'domain', 'imza', 'başkan', 'danışman'], labelKey: 'tabCommunity', group: 'sistem', sistem: true },

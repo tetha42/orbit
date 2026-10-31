@@ -786,28 +786,39 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 
 	if (!hadXpColumn) {
 		await runMigrationStep('2026_04_takim_gorevleri_xp', 'Backfill task xp flags', async () => {
-			await client.query(`UPDATE takim_gorevleri SET xpVerildi = 1 WHERE status = 'tamamlandi'`);
+			const check = await client.query(`SELECT to_regclass('takim_gorevleri') AS tbl, to_regclass('team_tasks') AS canonical`);
+			const target = check.rows[0]?.canonical ? 'team_tasks' : (check.rows[0]?.tbl ? 'takim_gorevleri' : null);
+			if (target) {
+				await client.query(`UPDATE "${target}" SET xpVerildi = 1 WHERE status = 'tamamlandi'`);
+			}
 		});
 	}
 
 	await runMigrationStep('2026_05_takim_gorevleri_sira', 'Backfill task ordering and timestamps', async () => {
-		await client.query(
-			`UPDATE takim_gorevleri
-			 SET sira = COALESCE(sira, -olusturma),
-			     guncellenme = COALESCE(guncellenme, olusturma),
-			     tamamlanma = CASE WHEN status = 'tamamlandi' THEN COALESCE(tamamlanma, olusturma) ELSE tamamlanma END
-			 WHERE sira IS NULL OR guncellenme IS NULL`
-		);
+		const check = await client.query(`SELECT to_regclass('takim_gorevleri') AS tbl, to_regclass('team_tasks') AS canonical`);
+		const target = check.rows[0]?.canonical ? 'team_tasks' : (check.rows[0]?.tbl ? 'takim_gorevleri' : null);
+		if (target) {
+			await client.query(
+				`UPDATE "${target}"
+				 SET sira = COALESCE(sira, -olusturma),
+				     guncellenme = COALESCE(guncellenme, olusturma),
+				     tamamlanma = CASE WHEN status = 'tamamlandi' THEN COALESCE(tamamlanma, olusturma) ELSE tamamlanma END
+				 WHERE sira IS NULL OR guncellenme IS NULL`
+			);
+		}
 	});
 
 	await runMigrationStep('2026_06_etkinlik_kayitlari', 'Migrate attendance to registrations', async () => {
-		await client.query(
-			`INSERT INTO etkinlik_kayitlari (etkinlikId, userId, olusturma)
-			 SELECT etkinlikId, userId, katilimZamani FROM yoklamalar
-			 WHERE yontem NOT IN ('qr', 'bilet', 'manuel')
-			 ON CONFLICT DO NOTHING`
-		);
-		await client.query(`DELETE FROM yoklamalar WHERE yontem NOT IN ('qr', 'bilet', 'manuel')`);
+		const check = await client.query(`SELECT to_regclass('etkinlik_kayitlari') AS reg, to_regclass('yoklamalar') AS yok`);
+		if (check.rows[0]?.reg && check.rows[0]?.yok) {
+			await client.query(
+				`INSERT INTO etkinlik_kayitlari (etkinlikId, userId, olusturma)
+				 SELECT etkinlikId, userId, katilimZamani FROM yoklamalar
+				 WHERE yontem NOT IN ('qr', 'bilet', 'manuel')
+				 ON CONFLICT DO NOTHING`
+			);
+			await client.query(`DELETE FROM yoklamalar WHERE yontem NOT IN ('qr', 'bilet', 'manuel')`);
+		}
 	});
 
 	await runMigrationStep('2026_07_sertifikalar_bigint', 'Cast certificate timestamps to BIGINT', async () => {
@@ -1766,6 +1777,12 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 			CREATE INDEX IF NOT EXISTS idx_email_change_requests_user_id ON email_change_requests (user_id);
 			CREATE INDEX IF NOT EXISTS idx_membership_applications_user_id ON membership_applications (user_id);
 			CREATE INDEX IF NOT EXISTS idx_users_role_id ON users (role_id);
+		`);
+	});
+
+	await runMigrationStep('2026_33_user_preferred_language', 'Add preferred_language to users table for bilingual notifications', async () => {
+		await client.query(`
+			ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_language TEXT NOT NULL DEFAULT 'tr';
 		`);
 	});
 }

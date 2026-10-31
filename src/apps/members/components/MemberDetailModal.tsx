@@ -16,16 +16,18 @@ import {
 	Users,
 	Pencil,
 	KeyRound,
+	HardDrive,
 } from 'lucide-react';
 import { Sheet } from '@/core/ui/Sheet';
 import { AvatarFallback } from '@/components/Common/AvatarFallback';
 import { RoleBadge } from '@/core/ui/RoleBadge';
 import { isAlumniRole } from '@/core/permissions';
 import { useI18n } from '@/core/i18n';
+import { formatBytes } from '@/core/data/format';
 import { fill } from '@/lib/text';
 import ui from '@/core/ui/ui.module.css';
 import type { MemberRecord } from '../types';
-import { fieldLabel, type FormField } from '@/lib/formFields';
+import { fieldLabel, optionLabel, type FormField } from '@/lib/formFields';
 import { MemberEditSheet } from './MemberEditSheet';
 
 interface MemberDetailModalProps {
@@ -55,6 +57,10 @@ export function MemberDetailModal({
 }: MemberDetailModalProps) {
 	const { t, language } = useI18n();
 	const [memberFields, setMemberFields] = React.useState<FormField[]>([]);
+	const [adminData, setAdminData] = React.useState<{
+		customFields?: Record<string, string>;
+		fields?: FormField[];
+	} | null>(null);
 	const [editOpen, setEditOpen] = React.useState(false);
 
 	React.useEffect(() => {
@@ -70,6 +76,30 @@ export function MemberDetailModal({
 			cancelled = true;
 		};
 	}, [isOpen]);
+
+	React.useEffect(() => {
+		if (!isOpen || !member?.id) {
+			setAdminData(null);
+			return;
+		}
+		if (canEdit) {
+			let cancelled = false;
+			fetch(`/api/members/${encodeURIComponent(member.id)}`, { cache: 'no-store' })
+				.then((res) => (res.ok ? res.json() : null))
+				.then((data) => {
+					if (!cancelled && data?.success) {
+						setAdminData({
+							customFields: data.customFields,
+							fields: data.allFields || data.fields,
+						});
+					}
+				})
+				.catch(() => {});
+			return () => {
+				cancelled = true;
+			};
+		}
+	}, [isOpen, member?.id, canEdit]);
 
 	const memberTeams = React.useMemo(() => {
 		const teams = member?.takimlar ?? [];
@@ -128,7 +158,7 @@ export function MemberDetailModal({
 						alignItems: 'center',
 						gap: '16px',
 						padding: '12px 14px',
-						background: 'rgba(255, 255, 255, 0.04)',
+						background: 'var(--fill-soft, rgba(255, 255, 255, 0.04))',
 						borderRadius: '12px',
 						border: '1px solid var(--window-border)',
 					}}
@@ -205,7 +235,7 @@ export function MemberDetailModal({
 					<div
 						style={{
 							padding: '10px 12px',
-							background: 'rgba(255, 255, 255, 0.03)',
+							background: 'var(--fill-soft, rgba(255, 255, 255, 0.04))',
 							borderRadius: '8px',
 							border: '1px solid var(--window-border)',
 						}}
@@ -225,7 +255,7 @@ export function MemberDetailModal({
 					<div
 						style={{
 							padding: '10px 12px',
-							background: 'rgba(255, 255, 255, 0.03)',
+							background: 'var(--fill-soft, rgba(255, 255, 255, 0.04))',
 							borderRadius: '8px',
 							border: '1px solid var(--window-border)',
 						}}
@@ -242,7 +272,7 @@ export function MemberDetailModal({
 					<div
 						style={{
 							padding: '10px 12px',
-							background: 'rgba(255, 255, 255, 0.03)',
+							background: 'var(--fill-soft, rgba(255, 255, 255, 0.04))',
 							borderRadius: '8px',
 							border: '1px solid var(--window-border)',
 						}}
@@ -259,7 +289,7 @@ export function MemberDetailModal({
 					<div
 						style={{
 							padding: '10px 12px',
-							background: 'rgba(255, 255, 255, 0.03)',
+							background: 'var(--fill-soft, rgba(255, 255, 255, 0.04))',
 							borderRadius: '8px',
 							border: '1px solid var(--window-border)',
 						}}
@@ -272,6 +302,27 @@ export function MemberDetailModal({
 							{member.xp || 0} XP
 						</div>
 					</div>
+
+					<div
+						style={{
+							gridColumn: '1 / -1',
+							padding: '10px 12px',
+							background: 'var(--fill-soft, rgba(255, 255, 255, 0.04))',
+							borderRadius: '8px',
+							border: '1px solid var(--window-border)',
+						}}
+					>
+						<div style={{ fontSize: '11px', opacity: 0.6, display: 'flex', alignItems: 'center', gap: '5px' }}>
+							<HardDrive size={12} color="var(--accent)" />
+							<span>{t('membersColStorage', 'Depolama')}</span>
+						</div>
+						<div style={{ fontSize: '13px', fontWeight: 600, marginTop: '4px' }}>
+							{formatBytes(member.diskUsageBytes)}
+							<span style={{ fontSize: '11px', opacity: 0.6, fontWeight: 'normal', marginLeft: '6px' }}>
+								({member.fileCount ?? 0} {t('filesCountUnit', 'dosya')})
+							</span>
+						</div>
+					</div>
 				</div>
 
 				{/* Associated Teams Section */}
@@ -279,7 +330,7 @@ export function MemberDetailModal({
 					<div
 						style={{
 							padding: '12px 14px',
-							background: 'rgba(255, 255, 255, 0.03)',
+							background: 'var(--fill-soft, rgba(255, 255, 255, 0.04))',
 							borderRadius: '10px',
 							border: '1px solid var(--window-border)',
 							display: 'flex',
@@ -340,7 +391,7 @@ export function MemberDetailModal({
 					<div
 						style={{
 							padding: '10px 12px',
-							background: 'rgba(255, 255, 255, 0.03)',
+							background: 'var(--fill-soft, rgba(255, 255, 255, 0.04))',
 							borderRadius: '8px',
 							border: '1px solid var(--window-border)',
 						}}
@@ -357,7 +408,7 @@ export function MemberDetailModal({
 					<div
 						style={{
 							padding: '10px 12px',
-							background: 'rgba(255, 255, 255, 0.02)',
+							background: 'var(--fill-soft, rgba(255, 255, 255, 0.04))',
 							borderRadius: '8px',
 							border: '1px solid var(--window-border)',
 						}}
@@ -372,37 +423,87 @@ export function MemberDetailModal({
 					</div>
 				)}
 
-				{member.customFields && Object.keys(member.customFields).length > 0 && (
-					<div
-						style={{
-							padding: '10px 12px',
-							background: 'rgba(255, 255, 255, 0.03)',
-							borderRadius: '8px',
-							border: '1px solid var(--window-border)',
-							display: 'flex',
-							flexDirection: 'column',
-							gap: '8px',
-						}}
-					>
-						<div style={{ fontSize: '11px', opacity: 0.6 }}>{t('membersAdditionalFields')}</div>
-						{Object.entries(member.customFields).map(([key, value]) => {
-							const definition = memberFields.find((field) => field.fieldKey === key);
-							return (
-								<div key={key} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', fontSize: '12px' }}>
-									<span style={{ opacity: 0.65 }}>{definition ? fieldLabel(definition, language) : key}</span>
-									<span style={{ fontWeight: 600, textAlign: 'right', wordBreak: 'break-word' }}>{value}</span>
-								</div>
-							);
-						})}
-					</div>
-				)}
+				{(() => {
+					const effectiveCustomFields = adminData?.customFields ?? member.customFields ?? {};
+					const effectiveFields = adminData?.fields && adminData.fields.length > 0 ? adminData.fields : memberFields;
+					if (!effectiveCustomFields || Object.keys(effectiveCustomFields).length === 0) return null;
+					return (
+						<div
+							style={{
+								padding: '10px 12px',
+								background: 'var(--fill-soft, rgba(255, 255, 255, 0.04))',
+								borderRadius: '8px',
+								border: '1px solid var(--window-border)',
+								display: 'flex',
+								flexDirection: 'column',
+								gap: '8px',
+							}}
+						>
+							<div style={{ fontSize: '11px', opacity: 0.6 }}>{t('membersAdditionalFields')}</div>
+							{Object.entries(effectiveCustomFields).map(([key, value]) => {
+								const definition = effectiveFields.find((field) => field.fieldKey === key);
+								let displayValue = value;
+								if (definition?.type === 'select' && definition.options?.length) {
+									const opt = definition.options.find((o) => o.value === value);
+									if (opt) displayValue = optionLabel(opt, language);
+								}
+								const isHidden = definition?.directoryVisibility === 'hidden';
+								const isManagersOnly = definition?.directoryVisibility === 'managers';
+								return (
+									<div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', fontSize: '12px' }}>
+										<span style={{ opacity: 0.75, display: 'inline-flex', alignItems: 'center', gap: '6px', minWidth: 0, flexWrap: 'wrap' }}>
+											<span>{definition ? fieldLabel(definition, language) : key}</span>
+											{canEdit && isHidden && (
+												<span
+													style={{
+														fontSize: '10px',
+														padding: '1px 6px',
+														borderRadius: '4px',
+														background: 'rgba(239, 68, 68, 0.15)',
+														color: 'var(--red-light, #fca5a5)',
+														fontWeight: 500,
+														display: 'inline-flex',
+														alignItems: 'center',
+														gap: '3px',
+													}}
+													title={t('formVisibilityHiddenAdminTooltip', 'Bu alan genel üye profilinde gizlidir, yalnızca yöneticiler görebilir.')}
+												>
+													🔒 {t('formVisibilityHiddenAdmin', 'Gizli (Yönetici)')}
+												</span>
+											)}
+											{canEdit && isManagersOnly && (
+												<span
+													style={{
+														fontSize: '10px',
+														padding: '1px 6px',
+														borderRadius: '4px',
+														background: 'rgba(245, 158, 11, 0.15)',
+														color: 'var(--amber-light, #fcd34d)',
+														fontWeight: 500,
+														display: 'inline-flex',
+														alignItems: 'center',
+														gap: '3px',
+													}}
+													title={t('formVisibilityManagersTooltip', 'Bu alan yalnızca yöneticilere açıktır.')}
+												>
+													🔒 {t('formDirectory_managers', 'Yalnız yöneticiler')}
+												</span>
+											)}
+										</span>
+										<span style={{ fontWeight: 600, textAlign: 'right', wordBreak: 'break-word' }}>{displayValue}</span>
+									</div>
+								);
+							})}
+						</div>
+					);
+				})()}
 
 				{/* Bio if present */}
 				{member.bio && (
 					<div
 						style={{
 							padding: '10px 12px',
-							background: 'rgba(255, 255, 255, 0.03)',
+							background: 'var(--fill-soft, rgba(255, 255, 255, 0.04))',
 							borderRadius: '8px',
 							border: '1px solid var(--window-border)',
 						}}

@@ -12,7 +12,7 @@ import { useContextMenu } from '@/core/shell/useContextMenu';
 import { copyToClipboard } from '@/lib/clipboard';
 import type { MenuItem } from '@/types/workspace';
 import ui from '@/core/ui/ui.module.css';
-import { AUDIT_CSV_HEADERS, AUDIT_PAGE_SIZE, auditCsvRows, type AuditRecord } from '@/lib/audit';
+import { AUDIT_CSV_HEADERS, AUDIT_PAGE_SIZE, auditCsvRows, formatAuditAction, type AuditRecord } from '@/lib/audit';
 import { fill } from '@/lib/text';
 import { AuditFilterBar, type Suzgec } from './AuditFilterBar';
 import { AuditDetailModal } from './AuditDetailModal';
@@ -26,7 +26,6 @@ interface AuditResponse {
 }
 
 const BOS: Suzgec = { kisi: '', role: '', islem: '', from: '', to: '', sayfa: 1 };
-const opKey = (islem: string) => `auditOp_${islem.replace(/\./g, '_')}`;
 
 function query(f: Suzgec, extra: Record<string, string> = {}): string {
 	const p = new URLSearchParams();
@@ -77,7 +76,9 @@ function AuditHistoryRow({ record, language, onSelect }: AuditHistoryRowProps) {
 			onClick={() => onSelect(record)}
 			{...contextMenuProps}
 		>
-			<span className={s.auditOp}>{t(opKey(record.islem))}</span>
+			<span className={s.auditOp} title={formatAuditAction(record.islem, t)}>
+				{formatAuditAction(record.islem, t)}
+			</span>
 			<span className={s.auditTarget} title={record.hedefAd || record.hedefId || ''}>
 				{record.hedefAd || record.hedefId || '—'}
 			</span>

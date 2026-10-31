@@ -105,6 +105,8 @@ export interface MemberRosterRow extends User {
 	takimAdi?: string | null;
 	takimlar?: Array<{ id: string; ad: string; kategori?: string; liderMi?: boolean; role?: string }> | null;
 	yoklamaSayisi?: number;
+	diskUsageBytes?: number;
+	fileCount?: number;
 }
 
 export interface User {
@@ -122,6 +124,7 @@ export interface User {
 	bio?: string;
 	xp: number;
 	status: 'aktif' | 'beklemede' | 'reddedildi' | 'mezun';
+	preferredLanguage?: 'tr' | 'en';
 	/** How the current session authenticated: password only, password+TOTP, or a passkey. */
 	authMethod?: 'password' | 'totp' | 'passkey';
 	aktifOturumToken?: string;

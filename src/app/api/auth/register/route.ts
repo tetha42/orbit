@@ -99,7 +99,8 @@ export async function POST(request: Request) {
 		if (!body || typeof body !== 'object') {
 			return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
 		}
-		const { ad, soyad, email, password, ogrenciNo, memberId, bolum, sinif, verificationCode, hp_website, inviteToken } = body;
+		const { ad, soyad, email, password, ogrenciNo, memberId, bolum, sinif, verificationCode, hp_website, inviteToken, preferredLanguage } = body;
+		const userLang: 'tr' | 'en' = preferredLanguage === 'en' ? 'en' : 'tr';
 
 		// Anti-bot Honeypot Check
 		if (hp_website || (body as Record<string, unknown>).trap_website) {
@@ -316,8 +317,9 @@ export async function POST(request: Request) {
 			clearRateLimit(verifyKey);
 
 			const delivery = await notifyEmailVerificationCode(
-				{ ad: cleanName, soyad: cleanSoyad, email: normalizedEmail },
-				code
+				{ ad: cleanName, soyad: cleanSoyad, email: normalizedEmail, preferredLanguage: userLang },
+				code,
+				userLang
 			);
 			let mailQueued = false;
 			if (!wasDelivered(delivery)) {
@@ -427,7 +429,7 @@ export async function POST(request: Request) {
 			const revived = await getPgPool().query(
 				`UPDATE users SET
 					first_name = $2, last_name = $3, handle = $4, department = $5, grade = $6,
-					password_hash = $7, status = 'beklemede', role_id = $8, email_verified_at = $9
+					password_hash = $7, status = 'beklemede', role_id = $8, email_verified_at = $9, preferred_language = $10
 				 WHERE id = $1 AND status = 'reddedildi'
 				 RETURNING id`,
 				[
@@ -440,6 +442,7 @@ export async function POST(request: Request) {
 					passwordHash,
 					invitation?.roleId ?? null,
 					emailVerifiedAt,
+					userLang,
 				]
 			);
 			if (!revived.rowCount) {
@@ -457,6 +460,7 @@ export async function POST(request: Request) {
 				sinif: parsedGrade,
 				status: 'beklemede' as const,
 				roleId: invitation?.roleId ?? null,
+				preferredLanguage: userLang,
 			};
 		} else {
 			newUser = await createUser({
@@ -469,6 +473,7 @@ export async function POST(request: Request) {
 				status: 'beklemede',
 				sinif: parsedGrade,
 				roleId: invitation?.roleId ?? null,
+				preferredLanguage: userLang,
 			});
 			await getPgPool().query('UPDATE users SET email_verified_at = $1 WHERE id = $2', [
 				emailVerifiedAt,
@@ -519,8 +524,10 @@ export async function POST(request: Request) {
 				ad: newUser.ad,
 				soyad: newUser.soyad,
 				email: newUser.email,
+				preferredLanguage: userLang,
 			},
-			welcomeTemplate
+			welcomeTemplate,
+			userLang
 		);
 
 		await logSystemEvent({

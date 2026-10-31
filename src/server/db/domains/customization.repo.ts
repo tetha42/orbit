@@ -565,6 +565,7 @@ export async function getFormFields(options?: {
 	enabledOnly?: boolean;
 	includeDisabled?: boolean;
 	includeArchived?: boolean;
+	isManager?: boolean;
 }): Promise<FormField[]> {
 	await ensurePostgresInit();
 	const conditions: string[] = [];
@@ -573,7 +574,10 @@ export async function getFormFields(options?: {
 	if (options?.enabledOnly) conditions.push('enabled = 1');
 	if (options?.scope) {
 		if (options.scope === 'directory') {
-			conditions.push("directory_visibility = 'members' AND enabled = 1");
+			conditions.push('enabled = 1');
+			if (!options.isManager) {
+				conditions.push("directory_visibility = 'members'");
+			}
 		} else if (options.scope === 'profile') {
 			conditions.push('self_editable = 1 AND enabled = 1');
 		} else {
@@ -582,7 +586,8 @@ export async function getFormFields(options?: {
 			conditions.push(`(collect_at = $${params.length} OR collect_at = 'both')`);
 		}
 	}
-	const where = conditions.length ? ` WHERE ${conditions.join(' AND ')}` : '';
+	const uniqueConditions = Array.from(new Set(conditions));
+	const where = uniqueConditions.length ? ` WHERE ${uniqueConditions.join(' AND ')}` : '';
 	const res = await getPgPool().query(
 		`SELECT ${FORM_FIELD_COLUMNS} FROM form_fields${where} ORDER BY sort_order ASC, created_at ASC`,
 		params

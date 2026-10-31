@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getFormFields } from '@/db';
+import { authenticate, can } from '@/lib/auth/access';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +20,9 @@ export async function GET(request: Request) {
 					? 'member'
 					: 'registration';
 	try {
-		const fields = await getFormFields({ scope, enabledOnly: true });
+		const auth = await authenticate(request).catch(() => ({ authorized: false as const }));
+		const isManager = auth.authorized ? can(auth.user, 'members', 'yonet') : false;
+		const fields = await getFormFields({ scope, enabledOnly: true, isManager });
 		return NextResponse.json(
 			{ ok: true, fields },
 			{ headers: { 'Cache-Control': 'no-store' } }
