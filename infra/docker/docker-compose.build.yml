@@ -1,0 +1,11 @@
+# Local Docker build override for Orbit Community OS.
+# Usage:
+#   docker compose -f infra/docker/docker-compose.yml -f infra/docker/docker-compose.build.yml up --build -d
+# Or simply:
+#   make local-up
+#   make local-build
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: ./infra/docker/Dockerfile

@@ -33,7 +33,7 @@ ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
 # Uploads directory with node user permissions
-RUN mkdir -p /app/data/uploads && chown -R node:node /app/data
+RUN mkdir -p /app/data/uploads /app/data/custom && chown -R node:node /app/data
 
 # Standalone production output
 COPY --from=builder /app/public ./public

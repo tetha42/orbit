@@ -1,9 +1,10 @@
 // Orbit Community OS — PWA Service Worker
-const CACHE_NAME = 'orbit-os-v7';
+const CACHE_NAME = 'orbit-os-v10';
 
 const PRECACHE_ASSETS = [
 	'/offline.html',
 	'/manifest.json',
+	'/manifest.webmanifest',
 	'/favicon.ico',
 	'/assets/img/logo-girdap.svg',
 ];
@@ -29,6 +30,38 @@ self.addEventListener('activate', (event) => {
 				})
 			);
 		}).then(() => self.clients.claim())
+	);
+});
+
+// Identity/icon update: drop cached install metadata and tell open windows to
+// reload the new branding. The OS owns the installed icon, but this is the
+// signal that makes the browser re-read the versioned manifest on its next check.
+self.addEventListener('message', (event) => {
+	const data = event.data;
+	if (!data || data.type !== 'IDENTITY_UPDATED') return;
+	event.waitUntil(
+		(async () => {
+			const cache = await caches.open(CACHE_NAME);
+			const requests = await cache.keys();
+			await Promise.all(
+				requests
+					.filter((request) => {
+						const url = new URL(request.url);
+						return (
+							url.pathname === '/manifest.webmanifest' ||
+							url.pathname === '/icon.png' ||
+							url.pathname === '/favicon.ico' ||
+							url.pathname.startsWith('/api/identity/icon/') ||
+							url.pathname.startsWith('/api/custom-assets/identity/')
+						);
+					})
+					.map((request) => cache.delete(request))
+			);
+			const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+			for (const client of clients) {
+				client.postMessage({ type: 'IDENTITY_UPDATED', version: data.version || null });
+			}
+		})()
 	);
 });
 
@@ -98,6 +131,13 @@ self.addEventListener('fetch', (event) => {
 		return;
 	}
 
+	// The installable manifest is dynamic (community name and icon); prefer the
+	// network, then fall back to the static manifest bundled with the app.
+	if (url.pathname === '/manifest.webmanifest') {
+		event.respondWith(fetch(request).catch(() => caches.match('/manifest.json')));
+		return;
+	}
+
 	// 3. Static assets, fonts & app icons
 	if (
 		url.pathname.startsWith('/_next/static/') ||
@@ -157,19 +197,28 @@ self.addEventListener('fetch', (event) => {
 	);
 });
 
-// Notification Click: Focus existing window or open portal
+// Notification Click: Focus the app and forward the record target so Chat can
+// reveal the exact room/message instead of only focusing the window.
 self.addEventListener('notificationclick', (event) => {
 	event.notification.close();
+	const data = event.notification.data || {};
 	event.waitUntil(
-		self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-			for (const client of clientList) {
-				if (client.url && 'focus' in client) {
-					return client.focus();
-				}
+		(async () => {
+			const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+			const client = clientList.find((candidate) => candidate.url);
+			if (client && 'focus' in client) {
+				await client.focus();
+				client.postMessage({ type: 'ORBIT_NOTIFICATION_CLICK', data });
+				return;
 			}
 			if (self.clients.openWindow) {
-				return self.clients.openWindow('/');
+				const url = new URL('/', self.location.origin);
+				if (data?.target?.appId === 'chat') {
+					if (data.target.itemId) url.searchParams.set('chatRoom', data.target.itemId);
+					if (data.target.parentId) url.searchParams.set('chatMessage', data.target.parentId);
+				}
+				await self.clients.openWindow(url.href);
 			}
-		})
+		})()
 	);
 });

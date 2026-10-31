@@ -35,7 +35,9 @@
     "src/**/*.ts",
     "src/**/*.tsx",
     ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts"
+    ".next/dev/types/**/*.ts",
+    ".next-notif/types/**/*.ts",
+    ".next-notif/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
