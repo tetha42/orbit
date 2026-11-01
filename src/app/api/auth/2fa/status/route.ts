@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth/access';
+import { getUserByEmail } from '@/db';
 
 /** Reports the caller's own two-factor state, used to drive the settings panel. */
 export async function GET(request: Request) {
@@ -7,7 +8,8 @@ export async function GET(request: Request) {
 	if (!auth.authorized) return auth.response;
 
 	const { user } = auth;
-	const enabled = Number(user.totpEnabled) === 1;
+	const fresh = await getUserByEmail(user.email);
+	const enabled = Number(fresh?.totpEnabled ?? user.totpEnabled) === 1;
 	const required = user.permission.ikiAdimZorunlu;
 
 	return NextResponse.json({
@@ -15,7 +17,7 @@ export async function GET(request: Request) {
 		enabled,
 		required,
 		// A secret exists but was never confirmed — the setup wizard should resume.
-		pendingSetup: !enabled && Boolean(user.totpSecret),
+		pendingSetup: !enabled && Boolean(fresh?.totpSecret ?? user.totpSecret),
 		mustSetup: required && !enabled,
 	});
 }

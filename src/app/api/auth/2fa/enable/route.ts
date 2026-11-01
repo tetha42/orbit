@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth/authGuard';
-import { enableUserTotp } from '@/db';
+import { enableUserTotp, getUserByEmail } from '@/db';
 import { generateRecoveryCodes, verifyTotpCode } from '@/lib/auth/totp';
 import { clearRateLimit, isRateLimited, recordFailure } from '@/lib/rateLimit';
 import { clientAddress } from '@/lib/http';
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
 	}
 
 	try {
-		const { user } = auth;
+		const user = (await getUserByEmail(auth.user.email)) ?? auth.user;
 		if (!user.totpSecret) {
 			return NextResponse.json(
 				{ error: 'Setup must be initiated first.', code: 'SETUP_REQUIRED' },

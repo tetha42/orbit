@@ -319,7 +319,7 @@ export async function getUserBySessionToken(token: string): Promise<User | null>
 			'SELECT * FROM users WHERE session_token = $1 OR session_token = $2 LIMIT 1',
 			[tokenHash, token]
 		);
-		const user = await normalizeUserRow(res.rows[0], { skipTotpDecryption: true });
+		const user = await normalizeUserRow(res.rows[0]);
 		if (!user) return null;
 
 		// Transparent seamless upgrade: if stored token was plaintext, upgrade to sha256 hash immediately
