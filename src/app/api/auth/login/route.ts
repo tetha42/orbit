@@ -79,7 +79,8 @@ export async function POST(request: Request) {
 		if (!body || typeof body !== 'object') {
 			return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
 		}
-		const { email, password } = body;
+		const email = (body as Record<string, unknown>).email ?? (body as Record<string, unknown>).eposta;
+		const password = (body as Record<string, unknown>).password ?? (body as Record<string, unknown>).sifre;
 
 		if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
 			return NextResponse.json({ error: 'Email and password are required.' }, { status: 400 });

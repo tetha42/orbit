@@ -127,7 +127,7 @@ async function ensureSeedRole(
 /** Called from ensurePostgresInit with its raw (lower-case) client, inside its transaction. */
 export async function ensureRoleSchema(client: PoolClient): Promise<void> {
 	await client.query(`
-		CREATE TABLE IF NOT EXISTS roles (
+		CREATE TABLE IF NOT EXISTS roller (
 			id TEXT PRIMARY KEY,
 			ad TEXT NOT NULL,
 			renk TEXT NOT NULL,
@@ -136,20 +136,20 @@ export async function ensureRoleSchema(client: PoolClient): Promise<void> {
 			ikiAdimZorunlu INTEGER NOT NULL DEFAULT 0,
 			olusturma BIGINT NOT NULL
 		);
-		CREATE UNIQUE INDEX IF NOT EXISTS roles_ad_ci ON roles (lower(ad));
+		CREATE UNIQUE INDEX IF NOT EXISTS roller_ad_ci ON roller (lower(ad));
 		CREATE TABLE IF NOT EXISTS role_permissions (
-			roleId TEXT NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+			roleId TEXT NOT NULL REFERENCES roller(id) ON DELETE CASCADE,
 			appId TEXT NOT NULL,
 			seviye TEXT NOT NULL,
 			PRIMARY KEY (roleId, appId)
 		);
-		ALTER TABLE users ADD COLUMN IF NOT EXISTS role_id TEXT REFERENCES roles(id) ON DELETE SET NULL;
-		DROP VIEW IF EXISTS roller CASCADE; CREATE VIEW roller AS SELECT * FROM roles;
-		DROP VIEW IF EXISTS rol_izinleri CASCADE; CREATE VIEW rol_izinleri AS SELECT * FROM role_permissions;
+		ALTER TABLE users ADD COLUMN IF NOT EXISTS role_id TEXT REFERENCES roller(id) ON DELETE SET NULL;
+		DROP VIEW IF EXISTS roles CASCADE; CREATE OR REPLACE VIEW roles AS SELECT * FROM roller;
+		DROP VIEW IF EXISTS rol_izinleri CASCADE; CREATE OR REPLACE VIEW rol_izinleri AS SELECT * FROM role_permissions;
 	`);
 	const now = Date.now();
 	await client.query(
-		`INSERT INTO roles (id, ad, renk, aciklama, sistem, ikiAdimZorunlu, olusturma)
+		`INSERT INTO roller (id, ad, renk, aciklama, sistem, ikiAdimZorunlu, olusturma)
 		 VALUES ($1, 'Admin', '#ff453a', 'Manages all applications. Cannot be changed.', 1, 1, $2)
 		 ON CONFLICT (id) DO NOTHING`,
 		[ADMIN_ROLE_ID, now]
@@ -391,7 +391,7 @@ export async function createRole(r: { ad: string; renk: string; aciklama: string
 	try {
 		await withTransaction(async (client) => {
 			await insertRole(client, id, r.ad, r.renk, r.aciklama, r.ikiAdimZorunlu, Date.now(), r.izinler);
-			await logAuditEvent(client, ctx, { islem: 'role.olustur', hedefTur: 'role', hedefId: id, hedefAd: r.ad, onceki: null, sonraki: await readRoleSummary(client, id) });
+			await logAuditEvent(client, ctx, { islem: 'rol.olustur', hedefTur: 'rol', hedefId: id, hedefAd: r.ad, onceki: null, sonraki: await readRoleSummary(client, id) });
 		});
 	} catch (err) {
 		if ((err as { code?: string }).code === '23505') return { ok: false, error: 'ad-var' };
@@ -414,7 +414,7 @@ export async function updateRole(id: string, r: { ad: string; renk: string; acik
 			// Saving without a change leaves nothing to record.
 			const fark = previous && sonraki ? roleDiff(previous, sonraki) : null;
 			if (fark) {
-				await logAuditEvent(client, ctx, { islem: 'role.duzenle', hedefTur: 'role', hedefId: id, hedefAd: sonraki?.ad ?? r.ad, onceki: fark.onceki, sonraki: fark.sonraki });
+				await logAuditEvent(client, ctx, { islem: 'rol.duzenle', hedefTur: 'rol', hedefId: id, hedefAd: sonraki?.ad ?? r.ad, onceki: fark.onceki, sonraki: fark.sonraki });
 				await publishEvent(client, { k: 'permission', roleId: id });
 			}
 			return { ok: true, id };
@@ -445,8 +445,8 @@ export async function deleteRole(id: string, tasi: string | null, ctx: AuditCont
 		const varsayilandi = def.rows[0]?.deger === id;
 		if (varsayilandi) await client.query(`DELETE FROM system_settings WHERE key = $1`, [DEFAULT_ROLE_KEY]);
 		await logAuditEvent(client, ctx, {
-			islem: 'role.sil',
-			hedefTur: 'role',
+			islem: 'rol.sil',
+			hedefTur: 'rol',
 			hedefId: id,
 			hedefAd: previous?.ad ?? '',
 			onceki: previous,
@@ -503,13 +503,15 @@ export async function setUserRole(userId: string, roleId: string | null, ctx: Au
 				hedefAd: memberTargetName(u.rows[0]),
 				onceki: {
 					roleId: previous,
+					rolId: previous,
 					rolAd: await roleName(client, previous),
-					...(newStatus !== previousStatus ? { status: previousStatus } : {}),
+					...(newStatus !== previousStatus ? { status: previousStatus, durum: previousStatus } : {}),
 				},
 				sonraki: {
 					roleId,
+					rolId: roleId,
 					rolAd: await roleName(client, roleId),
-					...(newStatus !== previousStatus ? { status: newStatus } : {}),
+					...(newStatus !== previousStatus ? { status: newStatus, durum: newStatus } : {}),
 				},
 			});
 			await publishEvent(client, { k: 'permission', userId });
@@ -569,8 +571,8 @@ export async function setMemberStatus(userId: string, status: 'aktif' | 'bekleme
 		if (!action) return 'ok';
 		const oldRole: string | null = row.roleId ?? null;
 		const fark = alanFarki(
-			{ status: row.status, roleId: oldRole, rolAd: currentRoleName },
-			{ status, roleId, rolAd: await roleName(client, roleId) }
+			{ durum: row.status, rolId: oldRole, rolAd: currentRoleName },
+			{ durum: status, rolId: roleId, rolAd: await roleName(client, roleId) }
 		);
 		if (fark) await logAuditEvent(client, ctx, { islem: action, hedefTur: 'uye', hedefId: userId, hedefAd: memberTargetName(row), onceki: fark.onceki, sonraki: fark.sonraki });
 		return 'ok';
@@ -606,12 +608,12 @@ export async function setDefaultRoleId(roleId: string | null, ctx: AuditContext)
 		);
 		if (previous !== roleId) {
 			await logAuditEvent(client, ctx, {
-				islem: 'role.varsayilan',
+				islem: 'rol.varsayilan',
 				hedefTur: 'ayar',
 				hedefId: DEFAULT_ROLE_KEY,
 				hedefAd: 'Varsayılan role',
-				onceki: { roleId: previous, rolAd: await roleName(client, previous) },
-				sonraki: { roleId, rolAd: await roleName(client, roleId) },
+				onceki: { roleId: previous, rolId: previous, rolAd: await roleName(client, previous) },
+				sonraki: { roleId, rolId: roleId, rolAd: await roleName(client, roleId) },
 			});
 		}
 		return 'ok';

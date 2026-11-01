@@ -105,7 +105,8 @@ export async function POST(request: Request) {
 
 	try {
 		const body = await request.json();
-		const { ad, soyad, email, bolum, sinif, ogrenciNo, bio, password } = body;
+		const email = body.email ?? body.eposta;
+		const { ad, soyad, bolum, sinif, ogrenciNo, bio, password } = body;
 		const coreConfig = await getRegistrationCoreConfig();
 		const allowedLevels = new Set(coreConfig.level.options.map((option) => Number(option.value)));
 		const parsedGrade = Number(sinif) || defaultLevelValue(coreConfig);
@@ -148,7 +149,8 @@ export async function POST(request: Request) {
 		}
 
 		// No role given: the club's default role for new members.
-		const roleId: string | null = typeof body.roleId === 'string' && body.roleId ? body.roleId : await getDefaultRoleId();
+		const rawRoleId = body.roleId ?? body.rolId;
+		const roleId: string | null = typeof rawRoleId === 'string' && rawRoleId ? rawRoleId : await getDefaultRoleId();
 		const sinir = await roleLimitProblem(auth.user, roleId);
 		if (sinir) return bad(sinir, 403);
 		const rolePermission = roleId ? await getRolePermission(roleId) : null;
@@ -197,8 +199,8 @@ export async function POST(request: Request) {
 		const { passwordHash: _h, ...safe } = newUser;
 		return NextResponse.json({
 			success: true,
-			member: safe,
-			...(generatedPassword ? { geciciSifre: memberPassword } : {}),
+			member: { ...safe, eposta: safe.email, rolId: safe.roleId, durum: safe.status },
+			...(generatedPassword ? { geciciSifre: memberPassword, temporaryPassword: memberPassword } : {}),
 		});
 	} catch (error) {
 		console.error('API /api/uyeler POST error:', error);
@@ -213,7 +215,9 @@ export async function PATCH(request: Request) {
 
 	try {
 		const body = await request.json();
-		const { id, status, addXp } = body;
+		const rawRoleId = body.roleId !== undefined ? body.roleId : body.rolId;
+		const status = body.status ?? body.durum;
+		const { id, addXp } = body;
 		const rejectionReason =
 			typeof body.rejectionReason === 'string' ? body.rejectionReason.trim().slice(0, 500) : null;
 		if (!id) return bad('Kullanıcı ID zorunludur.');
@@ -238,8 +242,8 @@ export async function PATCH(request: Request) {
 			});
 		}
 
-		if (body.roleId !== undefined) {
-			const roleId: string | null = typeof body.roleId === 'string' && body.roleId ? body.roleId : null;
+		if (rawRoleId !== undefined) {
+			const roleId: string | null = typeof rawRoleId === 'string' && rawRoleId ? rawRoleId : null;
 			const sinir = await roleLimitProblem(auth.user, roleId);
 			if (sinir) return bad(sinir, 403);
 			const r = await setUserRole(id, roleId, auditContext(request, auth.user));

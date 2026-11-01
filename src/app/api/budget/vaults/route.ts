@@ -27,6 +27,7 @@ export async function GET(request: Request) {
 			const expense = t?.toplamGiderKurus ?? 0;
 			return {
 				...vault,
+				takimId: vault.teamId,
 				toplamGelirKurus: income,
 				toplamGiderKurus: expense,
 				netBakiyeKurus: income - expense,

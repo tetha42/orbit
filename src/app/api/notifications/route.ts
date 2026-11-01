@@ -13,7 +13,7 @@ import {
 	getUserNewAssignments,
 	getPendingAttendanceEvents,
 } from '@/db';
-import { getUnreadChatRooms, getUnreadChatCount } from '@/server/db/domains/chat.repo';
+import { getUnreadMailThreads, getUnreadMailCount } from '@/db/messages';
 import { ATTENDANCE_TOLERANCE_MS } from '@/lib/events';
 import { authenticate, can } from '@/lib/auth/access';
 import { NOTIFICATION_KINDS } from '@/core/notifications/kinds';
@@ -81,9 +81,9 @@ export async function GET(request: Request) {
 			when('task', () => getUserUpcomingTasks(user.id, now + DUE_WINDOW)),
 			when('loan', () => getUserUpcomingReturns(user.id, now + DUE_WINDOW)),
 			when('certificate', () => getCertificates(user.id)),
-			when('message', () => getUnreadChatRooms(user.id, user.permission.admin, MAX_MESSAGES)),
+			when('message', () => getUnreadMailThreads(user.id, MAX_MESSAGES)),
 		]);
-		const unreadMessages = await (izinli('message') ? getUnreadChatCount(user.id, user.permission.admin) : Promise.resolve(0));
+		const unreadMessages = await (izinli('message') ? getUnreadMailCount(user.id) : Promise.resolve(0));
 
 		const items: NotificationItem[] = [];
 
@@ -186,7 +186,7 @@ export async function GET(request: Request) {
 		}
 
 		const upcoming = events
-			.filter((e) => e.status === 'yayinda' && e.endTime >= now && e.baslangic <= now + EVENT_WINDOW)
+			.filter((e) => e.status === 'yayinda' && Number(e.endTime ?? (e as { endtime?: number }).endtime) >= now && e.baslangic <= now + EVENT_WINDOW)
 			.slice(0, MAX_EVENTS);
 		for (const event of upcoming) {
 			items.push({
@@ -251,8 +251,8 @@ export async function GET(request: Request) {
 				kind: 'message',
 				priority: 'info',
 				at: m.at,
-				data: { title: m.konu, from: `${m.gonderen.ad} ${m.gonderen.soyad}`.trim(), messageId: m.messageId },
-				target: { appId: 'chat', kind: 'thread', itemId: m.id, parentId: m.messageId },
+				data: { title: m.konu, from: `${m.gonderen.ad} ${m.gonderen.soyad}`.trim() },
+				target: { appId: 'mail', kind: 'thread', itemId: m.id },
 			});
 		}
 

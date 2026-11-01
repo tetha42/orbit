@@ -25,6 +25,7 @@ export async function getEvents(opts: { includeDrafts?: boolean } = {}): Promise
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`SELECT e.*,
+		        e.endtime AS "endTime",
 		        (SELECT COUNT(*) FROM event_registrations r WHERE r.etkinlikId = e.id)::int AS "kayitliSayisi",
 		        (SELECT COUNT(*) FROM attendances y WHERE y.etkinlikId = e.id)::int AS "katilimciSayisi"
 		 FROM events e
@@ -142,6 +143,7 @@ export async function getEventViews(viewerId: string, includeDrafts: boolean): P
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`SELECT e.*,
+		        e.endtime AS "endTime",
 		        (SELECT COUNT(*) FROM event_registrations r WHERE r.etkinlikId = e.id)::int AS "kayitliSayisi",
 		        (SELECT COUNT(*) FROM attendances y WHERE y.etkinlikId = e.id)::int AS "katilimciSayisi",
 		        EXISTS (SELECT 1 FROM event_registrations r WHERE r.etkinlikId = e.id AND r.userId = $1) AS "benimKaydim",

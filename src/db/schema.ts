@@ -114,16 +114,19 @@ export interface User {
 	ad: string;
 	soyad: string;
 	email: string;
+	eposta?: string;
 	passwordHash: string;
 	ogrenciNo: string;
 	bolum: string;
 	sinif: number;
 	/** Role from the `roller` table; null = no role yet (personal settings only). */
 	roleId?: string | null;
+	rolId?: string | null;
 	profilFoto?: string;
 	bio?: string;
 	xp: number;
 	status: 'aktif' | 'beklemede' | 'reddedildi' | 'mezun';
+	durum?: 'aktif' | 'beklemede' | 'reddedildi' | 'mezun';
 	preferredLanguage?: 'tr' | 'en';
 	/** How the current session authenticated: password only, password+TOTP, or a passkey. */
 	authMethod?: 'password' | 'totp' | 'passkey';

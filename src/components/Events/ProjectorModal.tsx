@@ -34,7 +34,7 @@ export function ProjectorModal({ event, onClose }: { event: EventView; onClose: 
 		let timer: ReturnType<typeof setTimeout>;
 		const load = async () => {
 			try {
-				const res = await fetch(`/api/events/${encodeURIComponent(event.id)}/yoklama-kodu`, { cache: 'no-store' });
+				const res = await fetch(`/api/events/${encodeURIComponent(event.id)}/checkin-code`, { cache: 'no-store' });
 				const data = await res.json().catch(() => ({}));
 				if (!live) return;
 				if (!res.ok) {

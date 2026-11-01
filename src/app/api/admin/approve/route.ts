@@ -15,11 +15,14 @@ export async function POST(request: Request) {
 
 	try {
 		const body = await request.json();
-		const { userId, aksiyon } = body;
+		const userId = body.userId ?? body.kullaniciId;
+		const action = body.action ?? body.aksiyon;
 		const rejectionReason =
 			typeof body.rejectionReason === 'string' ? body.rejectionReason.trim().slice(0, 500) : null;
 
-		if (!userId || (aksiyon !== 'onayla' && aksiyon !== 'reddet')) {
+		const isApproval = action === 'approve' || action === 'onayla';
+		const isRejection = action === 'reject' || action === 'reddet';
+		if (!userId || (!isApproval && !isRejection)) {
 			return NextResponse.json({ error: 'Geçersiz parametreler' }, { status: 400 });
 		}
 
@@ -37,7 +40,7 @@ export async function POST(request: Request) {
 			);
 		}
 
-		const newStatus = aksiyon === 'onayla' ? 'aktif' : 'reddedildi';
+		const newStatus = isApproval ? 'aktif' : 'reddedildi';
 		// An approved member starts with the club's default role (none if unset:
 		// they then see only their own settings until someone assigns one).
 		if ((await setMemberStatus(userId, newStatus, auditContext(request, auth.user))) === 'yok') {
@@ -66,7 +69,7 @@ export async function POST(request: Request) {
 
 		return NextResponse.json({
 			success: true,
-			message: aksiyon === 'onayla'
+			message: isApproval
 				? `${targetUser.ad} ${targetUser.soyad} adlı üyenin başvurusu onaylandı ve hesabı aktifleşti.`
 				: `${targetUser.ad} ${targetUser.soyad} adlı kişinin başvurusu reddedildi.`,
 			userId,

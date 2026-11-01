@@ -8,9 +8,56 @@
 export const EVENT_TYPES = ['atolye', 'seminer', 'yarisma', 'toplanti'] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
+export const EVENT_TYPE_ALIASES: Record<string, EventType> = {
+	atolye: 'atolye',
+	seminer: 'seminer',
+	yarisma: 'yarisma',
+	toplanti: 'toplanti',
+	atölye: 'atolye',
+	yarışma: 'yarisma',
+	toplantı: 'toplanti',
+	workshop: 'atolye',
+	seminar: 'seminer',
+	hackathon: 'yarisma',
+	competition: 'yarisma',
+	contest: 'yarisma',
+	meeting: 'toplanti',
+};
+
+export function normalizeEventType(value: unknown): EventType | null {
+	if (typeof value !== 'string') return null;
+	const lower = value.trim().toLowerCase();
+	return EVENT_TYPE_ALIASES[lower] ?? null;
+}
+
+export function isEventType(value: unknown): value is EventType {
+	return typeof value === 'string' && (EVENT_TYPES as readonly string[]).includes(value);
+}
+
 /** `taslak` is visible to management only; `iptal` stays listed, marked as cancelled. */
 export const EVENT_STATUSES = ['taslak', 'yayinda', 'tamamlandi', 'iptal'] as const;
 export type EventStatus = (typeof EVENT_STATUSES)[number];
+
+export const EVENT_STATUS_ALIASES: Record<string, EventStatus> = {
+	taslak: 'taslak',
+	yayinda: 'yayinda',
+	yayında: 'yayinda',
+	tamamlandi: 'tamamlandi',
+	tamamlandı: 'tamamlandi',
+	iptal: 'iptal',
+	draft: 'taslak',
+	published: 'yayinda',
+	live: 'yayinda',
+	completed: 'tamamlandi',
+	cancelled: 'iptal',
+	canceled: 'iptal',
+};
+
+export function normalizeEventStatus(value: unknown): EventStatus | null {
+	if (typeof value !== 'string') return null;
+	const lower = value.trim().toLowerCase();
+	return EVENT_STATUS_ALIASES[lower] ?? null;
+}
 
 /** How attendance was recorded: the rotating projector QR, a ticket scanned at the door, or by hand. */
 export type AttendanceMethod = 'qr' | 'bilet' | 'manuel';
@@ -61,10 +108,10 @@ const SIG = '[A-Za-z0-9_-]{16,64}';
 const ATTENDANCE_RE = new RegExp(`^BY1\\.(${ID})\\.(\\d{1,12})\\.(${SIG})$`);
 const TICKET_RE = new RegExp(`^BB1\\.(${ID})\\.(${ID})\\.(${SIG})$`);
 
-/** The token part of a scan: either the bare token or the last path segment of a `/yoklama/<token>` link. */
+/** The token part of a scan: either the bare token or the last path segment of a `/checkin/<token>` or `/yoklama/<token>` link. */
 function tokenOf(text: string): string {
 	const trimmed = text.trim();
-	const m = /\/yoklama\/([^/?#\s]+)/.exec(trimmed);
+	const m = /\/(?:yoklama|checkin)\/([^/?#\s]+)/.exec(trimmed);
 	return m ? decodeURIComponent(m[1]) : trimmed;
 }
 

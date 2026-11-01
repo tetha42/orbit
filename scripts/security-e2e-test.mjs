@@ -80,7 +80,7 @@ async function run() {
 	let spawnedServer = null;
 	const checkReachable = async () => {
 		try {
-			await fetch(`${BASE_URL}/api/kurulum`, { signal: AbortSignal.timeout(1500) });
+			await fetch(`${BASE_URL}/api/setup`, { signal: AbortSignal.timeout(1500) });
 			return true;
 		} catch {
 			return false;
@@ -224,7 +224,7 @@ async function run() {
 		}
 
 		// 3.2 Certificate Verification API
-		const bannedCertRes = await fetch(`${BASE_URL}/api/sertifikalar/TEST-E2E-CERT`, {
+		const bannedCertRes = await fetch(`${BASE_URL}/api/certificates/TEST-E2E-CERT`, {
 			headers: { 'CF-Connecting-IP': testIp }
 		});
 		if (bannedCertRes.status === 403) {
@@ -234,7 +234,7 @@ async function run() {
 		}
 
 		// 3.3 First-Run Setup Wizard
-		const bannedKurulumRes = await fetch(`${BASE_URL}/api/kurulum`, {
+		const bannedKurulumRes = await fetch(`${BASE_URL}/api/setup`, {
 			headers: { 'CF-Connecting-IP': testIp }
 		});
 		if (bannedKurulumRes.status === 403) {
@@ -720,7 +720,7 @@ async function run() {
 			}
 
 			// 6.9 Global HTTP Security Headers Test (HSTS, COOP, CORP)
-			const headersCheckRes = await fetch(`${BASE_URL}/api/kurulum`);
+			const headersCheckRes = await fetch(`${BASE_URL}/api/setup`);
 			const hsts = headersCheckRes.headers.get('strict-transport-security');
 			const coop = headersCheckRes.headers.get('cross-origin-opener-policy');
 			const corp = headersCheckRes.headers.get('cross-origin-resource-policy');
@@ -821,7 +821,7 @@ async function run() {
 
 			// 7.3 Session Revocation and Fresh Session Issuance on Password Change
 			const newPassword = 'NewHardenedPass2026!';
-			const changePassRes = await fetch(`${BASE_URL}/api/profil/password`, {
+			const changePassRes = await fetch(`${BASE_URL}/api/profile/password`, {
 				method: 'POST',
 				headers: {
 					Cookie: `kulup_session_token=${initialSessionToken}`,
@@ -844,7 +844,7 @@ async function run() {
 			}
 
 			// Old session token must be invalidated (must return 401)
-			const oldSessionCheck = await fetch(`${BASE_URL}/api/profil`, {
+			const oldSessionCheck = await fetch(`${BASE_URL}/api/profile`, {
 				headers: { Cookie: `kulup_session_token=${initialSessionToken}` },
 			});
 			if (oldSessionCheck.status !== 401) {
@@ -853,7 +853,7 @@ async function run() {
 			log.ok('Old session token immediately revoked from database upon password change (HTTP 401).');
 
 			// New session token must work seamlessly (must return 200)
-			const newSessionCheck = await fetch(`${BASE_URL}/api/profil`, {
+			const newSessionCheck = await fetch(`${BASE_URL}/api/profile`, {
 				headers: { Cookie: `kulup_session_token=${freshSessionToken}` },
 			});
 			if (!newSessionCheck.ok) {
@@ -863,7 +863,7 @@ async function run() {
 
 			// 7.4 SoC Live Rate-Limit Telemetry & 1-Click Unthrottle Test
 			for (let i = 0; i < 6; i++) {
-				await fetch(`${BASE_URL}/api/profil/password`, {
+				await fetch(`${BASE_URL}/api/profile/password`, {
 					method: 'POST',
 					headers: {
 						Cookie: `kulup_session_token=${freshSessionToken}`,
@@ -905,7 +905,7 @@ async function run() {
 			}
 			log.ok(`SoC 1-Click Rate Limit Reset (clear_rate_limit) applied successfully for '${rateLimitKey}'.`);
 
-			const postUnthrottleTest = await fetch(`${BASE_URL}/api/profil/password`, {
+			const postUnthrottleTest = await fetch(`${BASE_URL}/api/profile/password`, {
 				method: 'POST',
 				headers: {
 					Cookie: `kulup_session_token=${freshSessionToken}`,
@@ -1003,7 +1003,7 @@ async function run() {
 			try {
 				// User A creates their own note
 				const noteAId = `not_a_${Date.now()}`;
-				const createNoteRes = await fetch(`${BASE_URL}/api/notlar`, {
+				const createNoteRes = await fetch(`${BASE_URL}/api/notes`, {
 					method: 'POST',
 					headers: {
 						Cookie: `kulup_session_token=${userASession}`,
@@ -1021,7 +1021,7 @@ async function run() {
 				log.ok(`Original note created for User A (ID: ${noteAId}).`);
 
 				// User B attempts to overwrite User A note using their own session (IDOR)
-				const idorNoteRes = await fetch(`${BASE_URL}/api/notlar`, {
+				const idorNoteRes = await fetch(`${BASE_URL}/api/notes`, {
 					method: 'POST',
 					headers: {
 						Cookie: `kulup_session_token=${userBSession}`,
@@ -1056,7 +1056,7 @@ async function run() {
 				log.ok('Secure logout (POST /api/auth/logout) completed successfully.');
 
 				// Verify session deleted from database (profile should no longer be readable)
-				const postLogoutProfileRes = await fetch(`${BASE_URL}/api/profil`, {
+				const postLogoutProfileRes = await fetch(`${BASE_URL}/api/profile`, {
 					headers: { Cookie: `kulup_session_token=${userASession}` },
 				});
 				if (postLogoutProfileRes.status !== 401) {
@@ -1175,6 +1175,12 @@ async function run() {
 		// (Hashed OTP, Bot Honeypot, 23505 Unique Violation, Sweeper)
 		// =====================================================================
 		console.log(`\n${c.bold}${c.cyan}[SCENARIO 9] Registration & Verification System Hardening...${c.reset}`);
+
+		await client.query(`
+			INSERT INTO system_settings (key, value, updated_at)
+			VALUES ('membership_policy', '{"selfRegistration":"open","adminCreate":true,"inviteEnabled":true,"emailVerification":true,"reapplyCooldownDays":30,"inviteExpiryDays":7,"allowedEmailDomains":[],"maxOpenApplications":1}', $1)
+			ON CONFLICT (key) DO UPDATE SET value = jsonb_set(system_settings.value::jsonb, '{emailVerification}', 'true')::text
+		`, [Date.now()]).catch(() => {});
 
 		const botIp = '198.51.100.233';
 		const honeypotRes = await fetch(`${BASE_URL}/api/auth/register`, {
@@ -1439,7 +1445,7 @@ async function run() {
 			try {
 				// Member A attempts to read a foreign mail thread
 				const fakeKonuId = 'konu_foreign_999999';
-				const idorReadRes = await fetch(`${BASE_URL}/api/posta/${fakeKonuId}`, {
+				const idorReadRes = await fetch(`${BASE_URL}/api/messages/${fakeKonuId}`, {
 					headers: { Cookie: `kulup_session_token=${memberASession}` },
 				});
 				if (idorReadRes.status !== 404) {
@@ -1448,7 +1454,7 @@ async function run() {
 				log.ok('Unauthorized user access to mail thread (IDOR) blocked with 404 (existence withheld).');
 
 				// Member A attempts to write reply to foreign mail thread
-				const idorReplyRes = await fetch(`${BASE_URL}/api/posta/${fakeKonuId}`, {
+				const idorReplyRes = await fetch(`${BASE_URL}/api/messages/${fakeKonuId}`, {
 					method: 'POST',
 					headers: {
 						Cookie: `kulup_session_token=${memberASession}`,
@@ -1462,7 +1468,7 @@ async function run() {
 				log.ok('Unauthorized reply injection to foreign mail thread (BOLA) blocked with 404.');
 
 				// Member A attempts to delete / move foreign thread
-				const idorPatchRes = await fetch(`${BASE_URL}/api/posta/${fakeKonuId}`, {
+				const idorPatchRes = await fetch(`${BASE_URL}/api/messages/${fakeKonuId}`, {
 					method: 'PATCH',
 					headers: {
 						Cookie: `kulup_session_token=${memberASession}`,
@@ -1683,7 +1689,7 @@ async function run() {
 			log.ok(`Session Verified: SHA-256 hashed token transparently and successfully resolved (HTTP 200).`);
 
 			// 14.3 JSON Body WAF Protection
-			const wafBodyRes = await fetch(`${BASE_URL}/api/notlar`, {
+			const wafBodyRes = await fetch(`${BASE_URL}/api/notes`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -1698,7 +1704,7 @@ async function run() {
 			if (wafBodyRes.status !== 403) {
 				throw new Error(`XSS payload in JSON body was not blocked by WAF! HTTP: ${wafBodyRes.status}`);
 			}
-			log.ok(`JSON Body WAF Verified: Malicious script in POST /api/notlar body repelled with 403 Forbidden.`);
+			log.ok(`JSON Body WAF Verified: Malicious script in POST /api/notes body repelled with 403 Forbidden.`);
 
 			// 14.4 Pass-the-Cookie attack attempt from different subnet / IP jump
 			const stolenCookieIp = '203.0.113.88';

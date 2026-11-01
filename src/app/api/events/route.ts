@@ -25,14 +25,12 @@ import { can, requireApp } from '@/lib/auth/access';
 import {
 	EVENT_DESCRIPTION_MAX,
 	EVENT_TITLE_MAX,
-	EVENT_STATUSES,
-	EVENT_TYPES,
 	KAPASITE_MAX,
 	PARTICIPATION_XP,
 	parseTicketCode,
 	isAttendanceTime,
-	type EventStatus,
-	type EventType,
+	normalizeEventType,
+	normalizeEventStatus,
 } from '@/lib/events';
 import { verifyTicketCode, createTicketCode, verifyShortCode } from '@/lib/server/attendanceToken';
 
@@ -81,9 +79,10 @@ async function parseEventFields(body: Record<string, unknown>, partial: boolean)
 		v.baslik = title;
 	}
 	if (!partial || has('tur') || has('type')) {
-		const tur = (body.type ?? body.tur ?? 'atolye') as string;
-		if (!(EVENT_TYPES as readonly unknown[]).includes(tur)) return { ok: false, error: 'Invalid event type.' };
-		v.tur = tur as EventType;
+		const rawTur = (body.type ?? body.tur ?? 'atolye') as string;
+		const tur = normalizeEventType(rawTur);
+		if (!tur) return { ok: false, error: 'Invalid event type.' };
+		v.tur = tur;
 	}
 	if (!partial || has('aciklama') || has('description')) {
 		const rawDesc = body.description ?? body.aciklama;
@@ -123,8 +122,9 @@ async function parseEventFields(body: Record<string, unknown>, partial: boolean)
 		v.kapasite = n;
 	}
 	if (has('status')) {
-		if (!(EVENT_STATUSES as readonly unknown[]).includes(body.status)) return { ok: false, error: 'Geçersiz status.' };
-		v.status = body.status as EventStatus;
+		const status = normalizeEventStatus(body.status);
+		if (!status) return { ok: false, error: 'Geçersiz status.' };
+		v.status = status;
 	}
 	if (has('ownerTeamId')) {
 		const ownerTeamId = typeof body.ownerTeamId === 'string' && body.ownerTeamId ? body.ownerTeamId : null;
@@ -159,10 +159,10 @@ async function handlePOST(request: Request) {
 	try {
 		const body = (await request.json()) as Record<string, unknown>;
 		const action = String(body.action ?? '');
-		const eventId = typeof body.etkinlikId === 'string' ? body.etkinlikId : '';
+		const eventId = typeof body.eventId === 'string' ? body.eventId : typeof body.etkinlikId === 'string' ? body.etkinlikId : '';
 
 		// ---- member actions ------------------------------------------------------
-		if (['kaydol', 'katil', 'rsvp', 'kaydiIptal', 'iptal', 'rsvp_iptal', 'yoklama'].includes(action)) {
+		if (['kaydol', 'katil', 'rsvp', 'kaydiIptal', 'iptal', 'rsvp_iptal', 'yoklama', 'checkin'].includes(action)) {
 			if (user.status === 'mezun') return bad('Mezunlar sadece okuma erişimine sahiptir.', 403);
 
 			if (action === 'kaydol' || action === 'katil' || action === 'rsvp') {
@@ -189,11 +189,11 @@ async function handlePOST(request: Request) {
 				return NextResponse.json({ success: true, message: 'Kaydınız iptal edildi.' });
 			}
 
-			// action === 'yoklama': the 6-character code shown on the projector (camera or typed).
+			// action === 'yoklama' | 'checkin': the 6-character code shown on the projector (camera or typed).
 			// It names no event by itself, so match it against the events checking in right now.
-			let rawKod = typeof body.kisaKod === 'string' ? body.kisaKod : typeof body.kod === 'string' ? body.kod : '';
+			let rawKod = typeof body.code === 'string' ? body.code : typeof body.shortCode === 'string' ? body.shortCode : typeof body.kisaKod === 'string' ? body.kisaKod : typeof body.kod === 'string' ? body.kod : '';
 			rawKod = rawKod.trim();
-			const urlMatch = rawKod.match(/\/yoklama\/([A-Za-z0-9_-]+)/i);
+			const urlMatch = rawKod.match(/\/(?:yoklama|checkin)\/([A-Za-z0-9_-]+)/i);
 			if (urlMatch) {
 				rawKod = urlMatch[1];
 			}
@@ -224,7 +224,9 @@ async function handlePOST(request: Request) {
 			return NextResponse.json({
 				success: true,
 				zaten: r === 'zaten',
-				etkinlik: { id: ev.id, baslik: ev.baslik },
+				already: r === 'zaten',
+				event: { id: ev.id, baslik: ev.baslik, title: ev.baslik },
+				etkinlik: { id: ev.id, baslik: ev.baslik, title: ev.baslik },
 				message: r === 'zaten' ? 'Yoklamanız zaten alınmış.' : `Yoklamanız alındı (+${PARTICIPATION_XP} XP).`,
 			});
 		}
@@ -246,7 +248,7 @@ async function handlePOST(request: Request) {
 				endTime: v.endTime!,
 				kapasite: v.kapasite,
 				olusturanId: user.id,
-				status: body.status === 'taslak' ? 'taslak' : 'yayinda',
+				status: v.status === 'taslak' || body.status === 'taslak' || body.status === 'draft' ? 'taslak' : 'yayinda',
 				ownerTeamId: v.ownerTeamId ?? null,
 				ownerUserId: v.ownerUserId ?? user.id,
 			});

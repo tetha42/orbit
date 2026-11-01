@@ -5,7 +5,7 @@ import type { User, MemberRosterRow } from '@/db/schema';
 import { MEMBER_ROSTER_SQL } from '@/db/schema';
 import { logAuditEvent, type AuditContext } from '@/db/audit';
 import { notificationEvents, publishEvent, publishEventQuiet } from '@/db/events';
-import { temizIp, memberTargetName, memberSummary } from '@/lib/audit';
+import { temizIp, memberTargetName } from '@/lib/audit';
 import { decryptSecret } from '@/lib/auth/secretBox';
 import { getUsersDiskUsage } from './files.repo';
 
@@ -101,22 +101,28 @@ export interface PaginatedMemberRoster {
 }
 
 function mapRosterRow(r: Record<string, unknown>): MemberRosterRow {
+	const email = String(r.email ?? r.eposta ?? '');
+	const roleId = (r.roleId ?? r.rolId ?? r.rolid ?? r.role_id ?? null) as string | null;
+	const status = ((r.status ?? r.durum) as User['status']) || 'aktif';
 	return {
 		id: String(r.id ?? ''),
 		ad: String(r.ad ?? r.firstName ?? r.first_name ?? ''),
 		soyad: String(r.soyad ?? r.lastName ?? r.last_name ?? ''),
-		email: String(r.email ?? ''),
+		email,
+		eposta: email,
 		passwordHash: String(r.passwordHash ?? r.password_hash ?? ''),
 		ogrenciNo: String(r.ogrenciNo ?? r.ogrencino ?? r.handle ?? ''),
 		bolum: String(r.bolum ?? r.department ?? ''),
 		sinif: Number(r.sinif ?? r.grade ?? 1),
-		roleId: (r.roleId ?? r.rolid ?? r.role_id ?? null) as string | null,
+		roleId,
+		rolId: roleId,
 		rolAd: (r.rolAd ?? r.rolad ?? null) as string | null,
 		rolRenk: (r.rolRenk ?? r.rolrenk ?? null) as string | null,
 		profilFoto: (r.profilFoto ?? r.profilfoto ?? r.avatarUrl ?? r.avatar_url ?? undefined) as string | undefined,
 		bio: (r.bio ?? undefined) as string | undefined,
 		xp: Number(r.xp ?? 0),
-		status: ((r.status as User['status']) || 'aktif'),
+		status,
+		durum: status,
 		olusturma: Number(r.olusturma ?? r.createdAt ?? r.created_at ?? 0),
 		takimAdi: (r.takimAdi ?? r.takimadi ?? undefined) as string | undefined,
 		takimlar: parseRosterTeams(r.takimlar),
@@ -444,8 +450,8 @@ export async function createUser(
 				hedefTur: 'uye',
 				hedefId: id,
 				hedefAd: memberTargetName(newUser),
-				onceki: { roleId: null, rolAd: null },
-				sonraki: { roleId: newUser.roleId, rolAd: role.rows[0]?.ad ?? null, uyeEklendi: true },
+				onceki: { roleId: null, rolId: null, rolAd: null },
+				sonraki: { roleId: newUser.roleId, rolId: newUser.roleId, rolAd: role.rows[0]?.ad ?? null, uyeEklendi: true },
 			});
 		}
 	});
@@ -503,7 +509,20 @@ export async function deleteUser(id: string, denetim: AuditContext): Promise<boo
 		);
 		const u = res.rows[0];
 		if (!u) return false;
-		await logAuditEvent(client, denetim, { islem: 'uye.sil', hedefTur: 'uye', hedefId: id, hedefAd: memberTargetName(u), onceki: memberSummary(u), sonraki: null });
+		await logAuditEvent(client, denetim, {
+			islem: 'uye.sil',
+			hedefTur: 'uye',
+			hedefId: id,
+			hedefAd: memberTargetName(u),
+			onceki: {
+				ad: `${u.ad} ${u.soyad}`.trim(),
+				eposta: u.email,
+				durum: u.status,
+				rolId: u.roleId ?? null,
+				rolAd: u.rolAd ?? null,
+			},
+			sonraki: null,
+		});
 		await publishEvent(client, { k: 'session', userId: id });
 		return true;
 	});

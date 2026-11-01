@@ -87,47 +87,88 @@ async function loginAdmin() {
 }
 
 const ROLES = {
-	yonetim: { ad: 'Operations Board', renk: '#ff9f0a', aciklama: 'Daily community operations and governance', ikiAdimZorunlu: true, izinler: { news: 'yonet', events: 'yonet', teams: 'yonet', projects: 'yonet', certificates: 'yonet', inventory: 'yonet', members: 'yonet', budget: 'yonet', notes: 'kullan', chat: 'yonet', mail: 'yonet', settings: 'kullan' } },
-	uye: { ad: 'Member', renk: '#0a84ff', aciklama: 'Active community member', ikiAdimZorunlu: false, izinler: { news: 'kullan', events: 'kullan', teams: 'kullan', projects: 'kullan', certificates: 'kullan', inventory: 'kullan', members: 'kullan', notes: 'kullan', chat: 'kullan', mail: 'kullan', settings: 'kullan' } },
-	haber: { ad: 'News Reader', renk: '#8e8e93', aciklama: 'Read-only announcement access', ikiAdimZorunlu: false, izinler: { news: 'kullan', chat: 'kullan', settings: 'kullan' } },
+	yonetim: { ad: 'Yönetim Kurulu', renk: '#ff9f0a', aciklama: 'Topluluk yönetim kurulu ve icra', ikiAdimZorunlu: true, izinler: { news: 'yonet', events: 'yonet', teams: 'yonet', projects: 'yonet', certificates: 'yonet', inventory: 'yonet', members: 'yonet', budget: 'yonet', notes: 'kullan', chat: 'yonet', mail: 'yonet', settings: 'kullan' } },
+	uye: { ad: 'Üye', renk: '#0a84ff', aciklama: 'Aktif topluluk üyesi', ikiAdimZorunlu: false, izinler: { news: 'kullan', events: 'kullan', teams: 'kullan', projects: 'kullan', certificates: 'kullan', inventory: 'kullan', members: 'kullan', notes: 'kullan', chat: 'kullan', mail: 'kullan', settings: 'kullan' } },
+	haber: { ad: 'Sadece Haberler', renk: '#8e8e93', aciklama: 'Salt okunur duyuru ve haber erişimi', ikiAdimZorunlu: false, izinler: { news: 'kullan' } },
 };
 
 const MEMBERS = [
-	{ key: 'alex', ad: 'Alex', soyad: 'Morgan', email: 'alex@orbit.test', role: 'yonetim', bolum: 'Software Engineering', sinif: 3 },
-	{ key: 'jordan', ad: 'Jordan', soyad: 'Lee', email: 'jordan@orbit.test', role: 'uye', bolum: 'AI & Data Science', sinif: 2 },
-	{ key: 'taylor', ad: 'Taylor', soyad: 'Smith', email: 'taylor@orbit.test', role: 'uye', bolum: 'Cloud Infrastructure', sinif: 1 },
-	{ key: 'sam', ad: 'Sam', soyad: 'Reader', email: 'sam@orbit.test', role: 'haber', bolum: 'Product Design', sinif: 2 },
+	{ key: 'zeynep', alias: 'alex', ad: 'Zeynep', soyad: 'Kaya', email: 'zeynep@kulup.test', role: 'yonetim', bolum: 'Bilgisayar Mühendisliği', sinif: 3 },
+	{ key: 'ege', alias: 'jordan', ad: 'Ege', soyad: 'Kılıç', email: 'ege@kulup.test', role: 'uye', bolum: 'Yazılım Mühendisliği', sinif: 3 },
+	{ key: 'can', alias: 'taylor', ad: 'Can', soyad: 'Demir', email: 'can@kulup.test', role: 'uye', bolum: 'Bilgisayar Mühendisliği', sinif: 2 },
+	{ key: 'okur', alias: 'sam', ad: 'Okur', soyad: 'Haber', email: 'okur@kulup.test', role: 'haber', bolum: 'Endüstri Mühendisliği', sinif: 1 },
 ];
 const PASSWORD = 'Orbit-Test-2026!';
 
 const admin = await loginAdmin();
-state.admin = { email: ADMIN_EMAIL, password: ADMIN_PASSWORD };
+state.admin = {
+	email: ADMIN_EMAIL,
+	eposta: ADMIN_EMAIL,
+	password: ADMIN_PASSWORD,
+	sifre: ADMIN_PASSWORD,
+};
 
 // Roles (idempotent by name)
-const existing = must(await admin.call('GET', '/api/roller'), 'list roles').roller;
+const rolesRes = must(await admin.call('GET', '/api/roles'), 'list roles');
+const existing = rolesRes.roles ?? rolesRes.roller;
 state.roles = {};
 for (const [key, role] of Object.entries(ROLES)) {
-	const found = existing.find((r) => r.ad === role.ad);
-	state.roles[key] = found ? found.id : must(await admin.call('POST', '/api/roller', role), `create role ${role.ad}`).id;
+	const found = existing.find((r) => r.ad === role.ad || r.name === role.ad);
+	if (found) {
+		await admin.call('PATCH', '/api/roles', { id: found.id, ad: role.ad, renk: role.renk, aciklama: role.aciklama, ikiAdimZorunlu: role.ikiAdimZorunlu, izinler: role.izinler });
+		state.roles[key] = found.id;
+	} else {
+		state.roles[key] = must(await admin.call('POST', '/api/roles', role), `create role ${role.ad}`).id;
+	}
 }
-must(await admin.call('POST', '/api/roller', { action: 'varsayilan', roleId: state.roles.uye }), 'default role');
+must(await admin.call('POST', '/api/roles', { action: 'varsayilan', roleId: state.roles.uye }), 'default role');
+must(await admin.call('PATCH', '/api/settings/membership-policy', { emailVerification: false }), 'membership policy');
+
+if (process.env.DATABASE_URL) {
+	try {
+		const { Client } = await import('pg');
+		const db = new Client({ connectionString: process.env.DATABASE_URL });
+		await db.connect();
+		await db.query("DELETE FROM system_settings WHERE key LIKE 'smtp%'");
+		await db.query("TRUNCATE TABLE denetim_kaydi CASCADE");
+		await db.query("DELETE FROM roller WHERE ad IN ('SilinemezRol', 'GeriAlinacak') OR ad LIKE 'Denetim Rolü%'");
+		await db.end();
+	} catch {}
+}
 
 // Members with known passwords
 state.users = state.users ?? {};
-const roster = must(await admin.call('GET', '/api/uyeler'), 'roster').members;
+const roster = must(await admin.call('GET', '/api/members'), 'roster').members;
 for (const m of MEMBERS) {
-	if (state.users[m.key] && roster.some((r) => r.email === m.email)) continue;
-	const created = must(await admin.call('POST', '/api/uyeler', { ad: m.ad, soyad: m.soyad, email: m.email, bolum: m.bolum, sinif: m.sinif, roleId: state.roles[m.role] }), `create ${m.email}`);
+	const inRoster = roster.find((r) => r.email === m.email || r.eposta === m.email);
+	if (state.users[m.key] && inRoster) {
+		await admin.call('PATCH', '/api/members', { id: inRoster.id, roleId: state.roles[m.role], status: 'aktif' });
+		continue;
+	}
+	const created = must(await admin.call('POST', '/api/members', { ad: m.ad, soyad: m.soyad, email: m.email, bolum: m.bolum, sinif: m.sinif, roleId: state.roles[m.role] }), `create ${m.email}`);
 	const u = client();
-	must(await u.call('POST', '/api/auth/login', { email: m.email, password: created.geciciSifre }), `first login ${m.email}`);
-	must(await u.call('POST', '/api/profil/password', { mevcut: created.geciciSifre, yeni: PASSWORD }), `password ${m.email}`);
-	state.users[m.key] = { id: created.member.id, email: m.email, password: PASSWORD, role: m.role };
+	const initialPw = created.geciciSifre || created.temporaryPassword;
+	must(await u.call('POST', '/api/auth/login', { email: m.email, password: initialPw }), `first login ${m.email}`);
+	must(await u.call('POST', '/api/profile/password', { mevcut: initialPw, yeni: PASSWORD, currentPassword: initialPw, newPassword: PASSWORD }), `password ${m.email}`);
+	let totpSecret = null;
 	// Roles that require a second factor: enrol it now, as the first sign-in would demand.
 	if (ROLES[m.role].ikiAdimZorunlu) {
 		const setup = must(await u.call('POST', '/api/auth/2fa/setup', {}), `2FA setup ${m.email}`);
 		must(await u.call('POST', '/api/auth/2fa/enable', { code: await freshCode(setup.secret) }), `2FA enable ${m.email}`);
-		state.users[m.key].totp = setup.secret;
+		totpSecret = setup.secret;
 	}
+	const userRecord = {
+		id: created.member.id,
+		eposta: m.email,
+		email: m.email,
+		sifre: PASSWORD,
+		password: PASSWORD,
+		rol: m.role,
+		role: m.role,
+		...(totpSecret ? { totp: totpSecret } : {}),
+	};
+	state.users[m.key] = userRecord;
+	if (m.alias) state.users[m.alias] = userRecord;
 	save();
 }
 
@@ -137,11 +178,16 @@ const once = async (key, fn) => {
 	if (!state.content[key]) state.content[key] = await fn();
 	save();
 };
-await once('team', async () => must(await admin.call('POST', '/api/takimlar', { action: 'createTeam', ad: 'Core Architecture & Web Platform', kategori: 'Web & Mobile', aciklama: 'Core platform development and client suites', kontenjan: 6, liderId: state.users.jordan.id }), 'team'));
-await once('news', async () => must(await admin.call('POST', '/api/haberler', { baslik: 'Orbit Community OS Launch Meeting', icerik: 'Welcome all core contributors and maintainers to Orbit Community OS.', kategori: 'genel', publishStatus: 'yayinda' }), 'news'));
-await once('event', async () => must(await admin.call('POST', '/api/etkinlikler', { action: 'createEvent', baslik: 'Modern Web Architecture & Git Workshop', aciklama: 'Decentralized collaboration and release workflows', tur: 'workshop', konum: 'Virtual Lab Stage A', baslangic: Date.now() + 3 * 86400000, endTime: Date.now() + 3 * 86400000 + 2 * 3600000, kapasite: 30, status: 'yayinda' }), 'event'));
-await once('income', async () => must(await admin.call('POST', '/api/butce', { tur: 'gelir', kategori: 'Sponsorship', tutarKurus: 2500000, aciklama: 'Open source ecosystem grant' }), 'income'));
-await once('item', async () => must(await admin.call('POST', '/api/envanter', { action: 'create', kod: 'LAB-RPI-001', ad: 'Raspberry Pi 5 (8GB)', kategori: 'Development Board', konum: 'Hardware Lab Rack B-1' }), 'item'));
+await once('team', async () => must(await admin.call('POST', '/api/teams', { action: 'createTeam', ad: 'Core Architecture & Web Platform', kategori: 'Web & Mobile', aciklama: 'Core platform development and client suites', kontenjan: 6, liderId: state.users.ege.id }), 'team'));
+await once('news', async () => must(await admin.call('POST', '/api/news', { baslik: 'Güz Dönemi Tanışma Toplantısı', icerik: 'Orbit topluluğu yeni dönem tanışma toplantısı ve platform tanıtımı.', kategori: 'genel', publishStatus: 'yayinda' }), 'news'));
+await once('event', async () => must(await admin.call('POST', '/api/events', { action: 'createEvent', baslik: 'Modern Web ve Git Atölyesi', aciklama: 'Sürüm kontrolü ve açık kaynak işbirliği atölye çalışması', tur: 'atolye', konum: 'Virtual Lab Stage A', baslangic: Date.now() + 3 * 86400000, endTime: Date.now() + 3 * 86400000 + 2 * 3600000, kapasite: 30, status: 'yayinda' }), 'event'));
+await once('income', async () => must(await admin.call('POST', '/api/budget', { tur: 'gelir', kategori: 'Sponsorluk', tutarKurus: 2500000, aciklama: 'Açık Kaynak Ekosistem Sponsorluk Hibesi' }), 'income'));
+await once('item', async () => must(await admin.call('POST', '/api/inventory', { action: 'create', kod: 'LAB-RPI-001', ad: 'Raspberry Pi 5 (8GB)', kategori: 'Development Board', konum: 'Hardware Lab Rack B-1' }), 'item'));
+
+if (state.totpUsedAt) {
+	const elapsed = Date.now() % 30000;
+	await new Promise((r) => setTimeout(r, 30500 - elapsed));
+}
 
 save();
 console.log(`fixtures ready → ${OUT}: ${Object.keys(state.users).length} members, ${Object.keys(state.roles).length} roles`);

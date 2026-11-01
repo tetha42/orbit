@@ -366,6 +366,31 @@ export async function ensurePostgresInit(): Promise<void> {
 			await ensureAuditSchema(client);
 			await ensureMailSchema(client);
 			await ensureOAuthSchema(client);
+			await client.query(`
+				CREATE OR REPLACE VIEW kullanicilar AS
+				SELECT
+				  id,
+				  first_name AS ad,
+				  last_name AS soyad,
+				  email AS eposta,
+				  role_id AS "rolId",
+				  role_id AS rolid,
+				  status AS durum,
+				  status,
+				  department AS bolum,
+				  grade AS sinif,
+				  bio,
+				  xp,
+				  created_at AS olusturma
+				FROM users;
+
+				CREATE OR REPLACE VIEW sistem_ayarlari AS
+				SELECT
+				  key AS anahtar,
+				  value AS deger,
+				  updated_at AS guncellenme_tarihi
+				FROM system_settings;
+			`);
 			const countRes = await client.query('SELECT count(*)::int as count FROM users');
 			if (countRes.rows[0].count === 0) await bootstrapFirstAdmin(client);
 			await client.query('COMMIT');

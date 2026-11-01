@@ -1064,6 +1064,22 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 		// Create backwards-compatible updatable views for legacy queries
 		await client.query(`
 			DROP VIEW IF EXISTS kullanicilar CASCADE;
+			CREATE VIEW kullanicilar AS
+			SELECT
+			  id,
+			  first_name AS ad,
+			  last_name AS soyad,
+			  email AS eposta,
+			  role_id AS "rolId",
+			  role_id AS rolid,
+			  status AS durum,
+			  status,
+			  department AS bolum,
+			  grade AS sinif,
+			  bio,
+			  xp,
+			  created_at AS olusturma
+			FROM users;
 
 			DROP VIEW IF EXISTS etkinlikler CASCADE;
 			CREATE VIEW etkinlikler AS

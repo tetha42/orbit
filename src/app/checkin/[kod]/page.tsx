@@ -1,4 +1,4 @@
-import { CheckInClient } from '@/app/yoklama/[kod]/CheckInClient';
+import { CheckInClient } from './CheckInClient';
 
 export const metadata = { title: 'Event Check-In · Orbit Community OS' };
 

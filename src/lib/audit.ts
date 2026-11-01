@@ -13,6 +13,10 @@
 export const AUDIT_RETENTION_DAYS = 730;
 
 export const AUDIT_ACTIONS = [
+	'rol.olustur',
+	'rol.duzenle',
+	'rol.sil',
+	'rol.varsayilan',
 	'role.olustur',
 	'role.duzenle',
 	'role.sil',
@@ -34,7 +38,7 @@ export const AUDIT_ACTIONS = [
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
-export const AUDIT_TARGET_TYPES = ['role', 'uye', 'ayar'] as const;
+export const AUDIT_TARGET_TYPES = ['rol', 'role', 'uye', 'ayar'] as const;
 export type AuditTargetType = (typeof AUDIT_TARGET_TYPES)[number];
 
 /** Who is acting and from where; built once per request. */
@@ -50,14 +54,23 @@ export type AuditFields = { [key: string]: AuditValue };
 /** What the API and the panel exchange. */
 export interface AuditRecord {
 	id: string;
+	timestamp?: number;
 	zaman: number;
+	actorId?: string | null;
 	yapanId: string | null;
+	actorName?: string;
 	yapanAd: string;
+	action?: string;
 	islem: string;
+	targetType?: string;
 	hedefTur: string;
+	targetId?: string | null;
 	hedefId: string | null;
+	targetName?: string;
 	hedefAd: string;
+	before?: AuditFields | null;
 	onceki: AuditFields | null;
+	after?: AuditFields | null;
 	sonraki: AuditFields | null;
 	ip: string;
 }
@@ -303,15 +316,15 @@ export function parseAuditFilter(q: URLSearchParams): AuditFilter {
 		const v = q.get(k) ?? '';
 		return DAY.test(v) && !Number.isNaN(new Date(`${v}T00:00:00`).getTime()) ? v : '';
 	};
-	const action = q.get('islem') ?? '';
+	const rawAction = q.get('action') ?? q.get('islem') ?? '';
 	return {
-		kisi: (q.get('kisi') ?? '').trim().slice(0, 80),
-		role: (q.get('role') ?? '').trim().slice(0, 80),
-		islem: (AUDIT_ACTIONS as readonly string[]).includes(action) ? action : '',
+		kisi: (q.get('person') ?? q.get('user') ?? q.get('kisi') ?? '').trim().slice(0, 80),
+		role: (q.get('role') ?? q.get('rol') ?? '').trim().slice(0, 80),
+		islem: (AUDIT_ACTIONS as readonly string[]).includes(rawAction) ? rawAction : '',
 		from: day('from'),
 		to: day('to'),
-		sayfa: sayi(q.get('sayfa'), 1, 1, 1_000_000),
-		boyut: sayi(q.get('boyut'), AUDIT_PAGE_SIZE, 1, AUDIT_MAX_PAGE_SIZE),
+		sayfa: sayi(q.get('page') ?? q.get('sayfa'), 1, 1, 1_000_000),
+		boyut: sayi(q.get('limit') ?? q.get('pageSize') ?? q.get('boyut'), AUDIT_PAGE_SIZE, 1, AUDIT_MAX_PAGE_SIZE),
 	};
 }
 export const suzgecOku = parseAuditFilter;
@@ -348,11 +361,17 @@ export function retentionDays(env: string | undefined): number {
 /** Humanizes and translates audit action operation keys. */
 export function formatAuditAction(islem: string, t?: (key: string, fallback?: string) => string): string {
 	if (!islem) return '—';
+	const normalized = islem.startsWith('rol.') ? `role.${islem.slice(4)}` : islem;
 	const opKey = `auditOp_${islem.replace(/[.-]/g, '_')}`;
+	const altOpKey = `auditOp_${normalized.replace(/[.-]/g, '_')}`;
 	if (t) {
 		const translated = t(opKey, '');
 		if (translated && !translated.startsWith('auditOp_')) {
 			return translated;
+		}
+		const altTranslated = t(altOpKey, '');
+		if (altTranslated && !altTranslated.startsWith('auditOp_')) {
+			return altTranslated;
 		}
 	}
 	return islem

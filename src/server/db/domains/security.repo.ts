@@ -849,6 +849,9 @@ export function recordSessionActivity(
 	// Check if login IP differs from current request IP
 	const loginIp = user.sonGirisIp ? temizIp(user.sonGirisIp) : (prev?.lastIp ?? null);
 	if (loginIp && loginIp !== 'unknown' && loginIp !== cleanIp) {
+		if (loginIp === '127.0.0.1' || loginIp === '::1' || cleanIp === '127.0.0.1' || cleanIp === '::1') {
+			return { suspiciousJump: false };
+		}
 		const isSubnetMatch = isSameSubnet(loginIp, cleanIp);
 		const lastAnomaly = prev?.anomalyLoggedAt ?? 0;
 		if (now - lastAnomaly > 5 * 60_000) {

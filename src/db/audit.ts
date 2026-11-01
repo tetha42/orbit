@@ -36,7 +36,7 @@ export type { AuditContext } from '@/lib/audit';
 /** Called from ensurePostgresInit with its raw (lower-case) client, inside its transaction. */
 export async function ensureAuditSchema(client: PoolClient): Promise<void> {
 	await client.query(`
-		CREATE TABLE IF NOT EXISTS audit_logs (
+		CREATE TABLE IF NOT EXISTS denetim_kaydi (
 			id BIGSERIAL PRIMARY KEY,
 			zaman BIGINT NOT NULL,
 			yapanId TEXT,
@@ -49,10 +49,11 @@ export async function ensureAuditSchema(client: PoolClient): Promise<void> {
 			sonraki JSONB,
 			ip TEXT NOT NULL DEFAULT ''
 		);
-		CREATE INDEX IF NOT EXISTS idx_audit_logs_zaman ON audit_logs (zaman DESC, id DESC);
-		CREATE INDEX IF NOT EXISTS idx_audit_logs_yapan ON audit_logs (yapanId);
-		CREATE INDEX IF NOT EXISTS idx_audit_logs_hedef ON audit_logs (hedefTur, hedefId);
-		DROP VIEW IF EXISTS denetim_kaydi CASCADE; CREATE VIEW denetim_kaydi AS SELECT * FROM audit_logs;
+		CREATE INDEX IF NOT EXISTS idx_denetim_kaydi_zaman ON denetim_kaydi (zaman DESC, id DESC);
+		CREATE INDEX IF NOT EXISTS idx_denetim_kaydi_yapan ON denetim_kaydi (yapanId);
+		CREATE INDEX IF NOT EXISTS idx_denetim_kaydi_hedef ON denetim_kaydi (hedefTur, hedefId);
+		DROP VIEW IF EXISTS audit_logs CASCADE;
+		CREATE OR REPLACE VIEW audit_logs AS SELECT * FROM denetim_kaydi;
 	`);
 }
 
@@ -80,7 +81,7 @@ export async function logAuditEvent(client: PoolClient, ctx: AuditContext, g: Au
 		return alanlar ? JSON.stringify(alanlar) : null;
 	};
 	await client.query(
-		`INSERT INTO audit_logs (zaman, yapanId, yapanAd, islem, hedefTur, hedefId, hedefAd, onceki, sonraki, ip)
+		`INSERT INTO denetim_kaydi (zaman, yapanId, yapanAd, islem, hedefTur, hedefId, hedefAd, onceki, sonraki, ip)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10)`,
 		[Date.now(), ctx.yapanId, ctx.yapanAd.slice(0, 200), g.islem, g.hedefTur, g.hedefId, (g.hedefAd ?? '').slice(0, 200), json(g.onceki), json(g.sonraki), ctx.ip]
 	);
@@ -107,7 +108,7 @@ export async function writeAuditLog(entry: {
 		return alanlar ? JSON.stringify(alanlar) : null;
 	};
 	await getPgPool().query(
-		`INSERT INTO audit_logs (zaman, yapanId, yapanAd, islem, hedefTur, hedefId, hedefAd, onceki, sonraki, ip)
+		`INSERT INTO denetim_kaydi (zaman, yapanId, yapanAd, islem, hedefTur, hedefId, hedefAd, onceki, sonraki, ip)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10)`,
 		[
 			Date.now(),
@@ -139,14 +140,18 @@ function where(f: AuditFilter): { sql: string; params: unknown[] } {
 		const exact = add(f.kisi);
 		const like = add(`%${likeKacis(f.kisi)}%`);
 		parts.push(
-			`(yapanId = ${exact} OR (hedefTur = 'uye' AND hedefId = ${exact}) OR yapanAd ILIKE ${like} OR hedefAd ILIKE ${like} OR onceki->>'email' ILIKE ${like} OR sonraki->>'email' ILIKE ${like})`
+			`(yapanId = ${exact} OR (hedefTur = 'uye' AND hedefId = ${exact}) OR yapanAd ILIKE ${like} OR hedefAd ILIKE ${like} OR onceki->>'email' ILIKE ${like} OR sonraki->>'email' ILIKE ${like} OR onceki->>'eposta' ILIKE ${like} OR sonraki->>'eposta' ILIKE ${like})`
 		);
 	}
 	if (f.role) {
 		const r = add(f.role);
-		parts.push(`((hedefTur = 'role' AND hedefId = ${r}) OR onceki->>'roleId' = ${r} OR sonraki->>'roleId' = ${r} OR sonraki->>'tasinanRolId' = ${r})`);
+		parts.push(
+			`(((hedefTur = 'role' OR hedefTur = 'rol') AND hedefId = ${r}) OR onceki->>'roleId' = ${r} OR onceki->>'rolId' = ${r} OR sonraki->>'roleId' = ${r} OR sonraki->>'rolId' = ${r} OR sonraki->>'tasinanRolId' = ${r})`
+		);
 	}
-	if (f.islem) parts.push(`islem = ${add(f.islem)}`);
+	if (f.islem) {
+		parts.push(`islem = ${add(f.islem)}`);
+	}
 	if (f.from) parts.push(`zaman >= ${add(startOfDay(f.from))}`);
 	// The end day is inclusive: everything before the next day starts.
 	if (f.to) parts.push(`zaman < ${add(startOfDay(f.to) + 24 * 3600 * 1000)}`);
@@ -154,18 +159,39 @@ function where(f: AuditFilter): { sql: string; params: unknown[] } {
 }
 
 function toRecord(r: Record<string, unknown>): AuditRecord {
+	const id = String(r.id);
+	const timestamp = Number(r.zaman ?? r.timestamp ?? 0);
+	const actorId = ((r.yapanId ?? r.actorId ?? r.yapanid) as string | null) ?? null;
+	const actorName = String(r.yapanAd ?? r.actorName ?? r.yapanad ?? '');
+	const action = String(r.islem ?? r.action ?? '');
+	const targetType = String(r.hedefTur ?? r.targetType ?? r.hedeftur ?? '');
+	const targetId = ((r.hedefId ?? r.targetId ?? r.hedefid) as string | null) ?? null;
+	const targetName = String(r.hedefAd ?? r.targetName ?? r.hedefad ?? '');
+	const before = (r.onceki !== undefined && r.onceki !== null ? r.onceki : (r.before !== undefined && r.before !== null ? r.before : null)) as AuditFields | null;
+	const after = (r.sonraki !== undefined && r.sonraki !== null ? r.sonraki : (r.after !== undefined && r.after !== null ? r.after : null)) as AuditFields | null;
+	const ip = String(r.ip ?? '');
+
 	return {
-		id: String(r.id),
-		zaman: Number(r.zaman ?? 0),
-		yapanId: ((r.yapanId ?? r.yapanid) as string | null) ?? null,
-		yapanAd: String(r.yapanAd ?? r.yapanad ?? ''),
-		islem: String(r.islem ?? ''),
-		hedefTur: String(r.hedefTur ?? r.hedeftur ?? ''),
-		hedefId: ((r.hedefId ?? r.hedefid) as string | null) ?? null,
-		hedefAd: String(r.hedefAd ?? r.hedefad ?? ''),
-		onceki: (r.onceki as AuditFields | null) ?? null,
-		sonraki: (r.sonraki as AuditFields | null) ?? null,
-		ip: String(r.ip ?? ''),
+		id,
+		timestamp,
+		zaman: timestamp,
+		actorId,
+		yapanId: actorId,
+		actorName,
+		yapanAd: actorName,
+		action,
+		islem: action,
+		targetType,
+		hedefTur: targetType,
+		targetId,
+		hedefId: targetId,
+		targetName,
+		hedefAd: targetName,
+		before: before ?? null,
+		onceki: before ?? null,
+		after: after ?? null,
+		sonraki: after ?? null,
+		ip,
 	};
 }
 
@@ -183,10 +209,10 @@ export async function listAuditLogs(
 		const offset = Number.isFinite(opts.offset) && Number(opts.offset) >= 0 ? Math.floor(Number(opts.offset)) : (rawPage - 1) * rawBoyut;
 		const [rows, count] = await Promise.all([
 			getPgPool().query(
-				`SELECT id::text AS id, zaman, yapanId AS "yapanId", yapanAd AS "yapanAd", islem, hedefTur AS "hedefTur", hedefId AS "hedefId", hedefAd AS "hedefAd", onceki, sonraki, ip FROM audit_logs ${w.sql} ORDER BY zaman DESC, audit_logs.id DESC LIMIT ${limit} OFFSET ${offset}`,
+				`SELECT id::text AS id, zaman, yapanId AS "yapanId", yapanAd AS "yapanAd", islem, hedefTur AS "hedefTur", hedefId AS "hedefId", hedefAd AS "hedefAd", onceki, sonraki, ip FROM denetim_kaydi ${w.sql} ORDER BY zaman DESC, denetim_kaydi.id DESC LIMIT ${limit} OFFSET ${offset}`,
 				w.params
 			),
-			getPgPool().query(`SELECT COUNT(*)::int AS n FROM audit_logs ${w.sql}`, w.params),
+			getPgPool().query(`SELECT COUNT(*)::int AS n FROM denetim_kaydi ${w.sql}`, w.params),
 		]);
 		return { kayitlar: rows.rows.map(toRecord), toplam: Number(count.rows[0]?.n ?? 0) };
 	} catch (error) {
@@ -201,14 +227,14 @@ export async function listAuditLogs(
 export async function clearAuditLogs(): Promise<number> {
 	await ensurePostgresInit();
 	const sinir = Date.now() - retentionDays(process.env.AUDIT_RETENTION_DAYS) * 24 * 3600 * 1000;
-	const r = await getPgPool().query('DELETE FROM audit_logs WHERE zaman < $1', [sinir]);
+	const r = await getPgPool().query('DELETE FROM denetim_kaydi WHERE zaman < $1', [sinir]);
 	return r.rowCount ?? 0;
 }
 
 /** Purges all audit log records from the database. */
 export async function resetAuditLogs(): Promise<void> {
 	await ensurePostgresInit();
-	await getPgPool().query('TRUNCATE TABLE audit_logs');
+	await getPgPool().query('TRUNCATE TABLE denetim_kaydi CASCADE');
 }
 
 const BAKIM_ARALIGI_MS = 24 * 3600 * 1000;

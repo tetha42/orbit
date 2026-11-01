@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createRole, deleteRole, getRolePermission, getRoles, getDefaultRoleId, setDefaultRoleId, updateRole } from '@/db/roles';
 import { auditContext } from '@/db/audit';
 import { authenticateEnrolled, can, requireAdmin, type AuthorizedUser } from '@/lib/auth/access';
-import { ADMIN_ROLE_ID, ALUMNI_ROLE_ID, PERMISSION_DESCRIPTIONS, extraPermissions, hasManagementPermission, normalizePermissions, roleProblem, canAssignRole, type Permissions } from '@/core/permissions';
+import { ADMIN_ROLE_ID, ALUMNI_ROLE_ID, PERMISSION_DESCRIPTIONS, extraPermissions, normalizePermissions, roleProblem, canAssignRole, type Permissions } from '@/core/permissions';
 import { getCached, setCached, invalidateCache } from '@/lib/server/cache';
 
 /**
@@ -20,14 +20,13 @@ function readRole(body: Record<string, unknown>, user: AuthorizedUser) {
 	if (izin.error !== undefined) return { error: izin.error };
 	const excess = extraPermissions(izin.value, user.permission.izinler);
 	if (excess.length) return { error: `Kendinizde olmayan yetkileri veremezsiniz: ${excess.map((a) => PERMISSION_DESCRIPTIONS[a].ad).join(', ')}`, status: 403 };
-	const isManagement = hasManagementPermission(izin.value as Permissions);
 	return {
 		value: {
 			ad: String(body.ad).trim(),
 			renk: String(body.renk).toLowerCase(),
 			aciklama: typeof body.aciklama === 'string' ? body.aciklama.trim() : '',
 			izinler: izin.value as Permissions,
-			ikiAdimZorunlu: isManagement ? true : body.ikiAdimZorunlu === true,
+			ikiAdimZorunlu: body.ikiAdimZorunlu === true,
 		},
 	};
 }
@@ -46,11 +45,27 @@ export async function GET(request: Request) {
 		setCached('roller_raw', raw, 60_000);
 	}
 
-	const isaretli = raw.roller.map((r) => ({ ...r, assignableRoles: canAssignRole(r, user.permission) }));
+	const isaretli = raw.roller.map((r) => {
+		const assignable = canAssignRole(r, user.permission);
+		return { ...r, assignableRoles: assignable, atanabilir: assignable };
+	});
 	if (!settings) {
-		return NextResponse.json({ roller: isaretli.map(({ id, ad, renk, sistem, assignableRoles }) => ({ id, ad, renk, sistem, assignableRoles })), varsayilanRolId: raw.varsayilanRolId });
+		const rolesOnly = isaretli.map(({ id, ad, renk, sistem, assignableRoles, atanabilir }) => ({ id, ad, renk, sistem, assignableRoles, atanabilir }));
+		return NextResponse.json({
+			roles: rolesOnly,
+			roller: rolesOnly,
+			defaultRoleId: raw.varsayilanRolId,
+			varsayilanRolId: raw.varsayilanRolId,
+		});
 	}
-	return NextResponse.json({ roller: isaretli, varsayilanRolId: raw.varsayilanRolId, benimIzinlerim: user.permission.izinler });
+	return NextResponse.json({
+		roles: isaretli,
+		roller: isaretli,
+		defaultRoleId: raw.varsayilanRolId,
+		varsayilanRolId: raw.varsayilanRolId,
+		myPermissions: user.permission.izinler,
+		benimIzinlerim: user.permission.izinler,
+	});
 }
 
 /** A role the caller may not touch answers 403 before anything is changed. */
@@ -65,12 +80,14 @@ export async function POST(request: Request) {
 	try {
 		const body = (await request.json()) as Record<string, unknown>;
 		if (body.action === 'varsayilan') {
-			const roleId = typeof body.roleId === 'string' && body.roleId ? body.roleId : null;
+			const rawRoleId = body.roleId ?? body.rolId;
+			const roleId = typeof rawRoleId === 'string' && rawRoleId ? rawRoleId : null;
 			if (roleId && extraPermissions((await getRolePermission(roleId)).izinler, auth.user.permission.izinler).length) {
 				return bad('Varsayılan role sizden daha yetkili olamaz.', 403);
 			}
 			const r = await setDefaultRoleId(roleId, auditContext(request, auth.user));
 			if (r === 'yok') return bad('Role bulunamadı.', 404);
+			if (r === 'sistem') return bad('Admin cannot be the default role', 400);
 			invalidateCache('roller_raw');
 			return NextResponse.json({ success: true });
 		}

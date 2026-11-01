@@ -53,9 +53,10 @@ async function handlePOST(request: Request) {
 	const user = auth.user;
 	try {
 		const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
-		const subject = typeof body?.konu === 'string' ? body.konu.trim() : '';
-		const messageBody = typeof body?.govde === 'string' ? body.govde.trim() : '';
-		const recipients = Array.isArray(body?.alicilar) ? body.alicilar.filter((x): x is string => typeof x === 'string') : [];
+		const subject = typeof body?.subject === 'string' ? body.subject.trim() : typeof body?.konu === 'string' ? body.konu.trim() : '';
+		const messageBody = typeof body?.body === 'string' ? body.body.trim() : typeof body?.govde === 'string' ? body.govde.trim() : '';
+		const rawRecipients = body?.recipients ?? body?.alicilar;
+		const recipients = Array.isArray(rawRecipients) ? rawRecipients.filter((x): x is string => typeof x === 'string') : [];
 		if (!subject || subject.length > MAIL_SUBJECT_MAX) {
 			return NextResponse.json({ error: `Konu 1 ile ${MAIL_SUBJECT_MAX} karakter arasında olmalıdır.` }, { status: 400 });
 		}
@@ -80,7 +81,14 @@ async function handlePOST(request: Request) {
 
 		const { konuId, mesajId } = await createMailThread(user.id, subject, messageBody, gidecek.map((u) => u.id));
 		notifyByEmail(gidecek, user, subject);
-		const result: MailSendResult = { konuId, mesajId, atlananlar };
+		const result: MailSendResult = {
+			threadId: konuId,
+			messageId: mesajId,
+			skipped: atlananlar,
+			konuId,
+			mesajId,
+			atlananlar,
+		};
 		return NextResponse.json(result, { status: 201 });
 	} catch (error) {
 		console.error('API /api/messages POST error:', error);

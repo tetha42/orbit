@@ -40,7 +40,7 @@ export function useCertificates() {
 	const { data: kulup, refetch: refetchKulup } = useJsonResource<CommunityProfile>('/api/community');
 	const [editingSignatories, setEditingSignatories] = useState(false);
 	const [issueMode, setIssueMode] = useState<'single' | 'bulk'>('single');
-	const verifyUrl = (kod: string) => (typeof window === 'undefined' ? `/dogrula/${kod}` : `${window.location.origin}/dogrula/${kod}`);
+	const verifyUrl = (kod: string) => (typeof window === 'undefined' ? `/verify/${kod}` : `${window.location.origin}/verify/${kod}`);
 
 	const { data: uyelerData } = useJsonResource<{
 		members: MemberRankItem[];
@@ -58,7 +58,7 @@ export function useCertificates() {
 	});
 
 	const handleCopyVerification = (kod: string) => {
-		const url = `${window.location.origin}/dogrula/${kod}`;
+		const url = `${window.location.origin}/verify/${kod}`;
 		navigator.clipboard.writeText(url);
 		setCopied(true);
 		playSystemSound();
@@ -69,7 +69,7 @@ export function useCertificates() {
 		const certDate = new Date(cert.verilisTarihi);
 		const year = certDate.getFullYear();
 		const month = certDate.getMonth() + 1;
-		const certUrl = `${window.location.origin}/dogrula/${cert.verificationCode}`;
+		const certUrl = `${window.location.origin}/verify/${cert.verificationCode}`;
 		const linkedInUrl = `https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=${encodeURIComponent(cert.baslik)}&organizationName=${encodeURIComponent(t('newsShareClubSuffix'))}&issueYear=${year}&issueMonth=${month}&certUrl=${encodeURIComponent(certUrl)}&certId=${encodeURIComponent(cert.verificationCode)}`;
 		window.open(linkedInUrl, '_blank', 'noopener,noreferrer');
 	};

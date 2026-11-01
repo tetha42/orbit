@@ -145,8 +145,8 @@ export function useCameraQRScanner({
 		const raw = manualCode.trim();
 		if (!raw) return;
 		let code = raw;
-		if (code.includes('/yoklama/')) {
-			const m = /\/yoklama\/([^/?#\s]+)/.exec(code);
+		if (code.includes('/checkin/') || code.includes('/yoklama/')) {
+			const m = /\/(?:checkin|yoklama)\/([^/?#\s]+)/.exec(code);
 			if (m) code = decodeURIComponent(m[1]);
 		}
 		// If short code (no period delimiters like BB1/BY1), strip spaces and dashes and uppercase

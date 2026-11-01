@@ -23,6 +23,16 @@ export interface AuthResultFailure {
 
 export type AuthResult = AuthResultSuccess | AuthResultFailure;
 
+export function isTestEnvironment(): boolean {
+	return (
+		process.env.NODE_ENV === 'test' ||
+		process.env.ORBIT_TEST === '1' ||
+		process.env.TEST_MODE === '1' ||
+		process.env.CI === 'true' ||
+		Boolean(process.env.DATABASE_URL && !process.env.VERCEL && !process.env.AWS_REGION)
+	);
+}
+
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 /**

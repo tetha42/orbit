@@ -30,3 +30,5 @@ config.ini
 # UI e2e (tests/e2e/ui): screenshots, server logs and run fixtures stay local.
 /tests/e2e/shots/
 /tests/e2e/.tmp/
+.fixtures.json
+

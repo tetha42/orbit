@@ -28,8 +28,8 @@ export async function GET(request: Request) {
 		const params = new URL(request.url).searchParams;
 
 		if (params.get('ulasilabilir') === '1' || params.get('reachable') === '1') {
-			const idler = await reachableIds(await getMailCandidateRoles(user.id));
-			return NextResponse.json({ ids: idler, idler }, { headers: NO_STORE });
+			const ids = await reachableIds(await getMailCandidateRoles(user.id));
+			return NextResponse.json({ ids, idler: ids }, { headers: NO_STORE });
 		}
 
 		const id = params.get('id');

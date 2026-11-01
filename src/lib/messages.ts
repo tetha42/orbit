@@ -80,11 +80,14 @@ export interface MailConversation {
 export interface MailSkipped {
 	id: string;
 	ad: string;
-	/** `role`: the member's role does not open Mail. `pasif`: no longer an active member. */
-	neden: 'role' | 'pasif';
+	/** `role` / `rol`: the member's role does not open Mail. `pasif`: no longer an active member. */
+	neden: 'role' | 'rol' | 'pasif';
 }
 
 export interface MailSendResult {
+	threadId?: string;
+	messageId?: string;
+	skipped?: MailSkipped[];
 	konuId: string;
 	mesajId: string;
 	atlananlar: MailSkipped[];
@@ -106,7 +109,7 @@ export interface MailRecipientList {
 
 /** What the sender is told about a recipient the message did not reach. */
 export function skippedReason(a: MailSkipped): string {
-	return a.neden === 'role' ? `${a.ad} kişisinin roleü Posta'yı açmıyor.` : `${a.ad} artık aktif üye değil.`;
+	return a.neden === 'role' || a.neden === 'rol' ? `${a.ad} kişisinin roleü Posta'yı açmıyor.` : `${a.ad} artık aktif üye değil.`;
 }
 
 /** The first line of a message body, for lists and notifications. */

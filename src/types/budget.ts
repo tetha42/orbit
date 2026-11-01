@@ -17,6 +17,41 @@ export const BUDGET_CATEGORIES = [
 
 export type BudgetCategory = (typeof BUDGET_CATEGORIES)[number];
 
+export const BUDGET_CATEGORY_ALIASES: Record<string, BudgetCategory> = {
+	ikram: 'İkram',
+	catering: 'İkram',
+	refreshments: 'İkram',
+	food: 'İkram',
+	'afiş/baskı': 'Afiş/Baskı',
+	'afis/baski': 'Afiş/Baskı',
+	printing: 'Afiş/Baskı',
+	print: 'Afiş/Baskı',
+	poster: 'Afiş/Baskı',
+	marketing: 'Afiş/Baskı',
+	sponsorluk: 'Sponsorluk',
+	sponsorship: 'Sponsorluk',
+	sponsor: 'Sponsorluk',
+	donanım: 'Donanım',
+	donanim: 'Donanım',
+	hardware: 'Donanım',
+	equipment: 'Donanım',
+	ulaşım: 'Ulaşım',
+	ulasim: 'Ulaşım',
+	transportation: 'Ulaşım',
+	travel: 'Ulaşım',
+	diğer: 'Diğer',
+	diger: 'Diğer',
+	other: 'Diğer',
+};
+
+export function normalizeBudgetCategory(value: unknown): BudgetCategory | null {
+	if (typeof value !== 'string') return null;
+	const trimmed = value.trim();
+	if ((BUDGET_CATEGORIES as readonly string[]).includes(trimmed)) return trimmed as BudgetCategory;
+	const lower = trimmed.toLowerCase();
+	return BUDGET_CATEGORY_ALIASES[lower] ?? null;
+}
+
 /**
  * The category of the two rows an allocation writes (one in each kasa). It is not
  * in BUTCE_KATEGORILERI on purpose: an ordinary entry cannot claim to be one.
@@ -40,6 +75,7 @@ export const MAX_AMOUNT_CENTS = 2_000_000_000;
 export interface VaultSummary {
 	/** `null` is the general kasa. */
 	teamId: string | null;
+	takimId?: string | null;
 	ad: string;
 	kind: 'genel' | 'proje';
 	toplamGelirKurus: number;

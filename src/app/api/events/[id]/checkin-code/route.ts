@@ -30,8 +30,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 		{
 			// The projector shows and encodes only this short code.
 			kisaKod: code.kisaKod,
+			shortCode: code.kisaKod,
 			kalanMs: windowRemainingMs(now),
+			remainingMs: windowRemainingMs(now),
 			katilimciSayisi: participant,
+			attendeeCount: participant,
 		},
 		{ headers: { 'Cache-Control': 'no-store' } }
 	);

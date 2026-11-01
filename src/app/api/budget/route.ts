@@ -14,7 +14,7 @@ import {
 import { publishEventQuiet } from '@/db/events';
 import { verifyVaultAccess } from '@/lib/kasaAccess';
 import { isValidDate } from '@/lib/budget';
-import { BUDGET_CATEGORIES, MAX_AMOUNT_CENTS, isBudgetCategory } from '@/types/budget';
+import { BUDGET_CATEGORIES, MAX_AMOUNT_CENTS, normalizeBudgetCategory } from '@/types/budget';
 import { withAudit } from '@/lib/audit/withAudit';
 
 /** `?teamId=` selects a project's kasa; missing or `genel` is the general kasa. */
@@ -43,8 +43,8 @@ async function transfer(request: Request, body: Record<string, unknown>) {
 	if (!access.authorized) return access.response;
 	if (!access.isManagement) return bad('Kasalar arası aktarım Kasa yönetim yetkisi gerektirir.', 403);
 
-	const kaynak = parseVault(body.kaynak);
-	const target = parseVault(body.hedef);
+	const kaynak = parseVault(body.kaynak ?? body.kaynakTakimId);
+	const target = parseVault(body.hedef ?? body.hedefTakimId);
 	if (kaynak === target) return bad('Kaynak ve hedef kasa aynı olamaz.');
 	for (const id of [kaynak, target]) {
 		if (id && !(await getTeamById(id))) return bad('Project bulunamadı.', 404);
@@ -74,7 +74,8 @@ async function transfer(request: Request, body: Record<string, unknown>) {
 }
 
 export async function GET(request: Request) {
-	const teamId = parseVault(new URL(request.url).searchParams.get('teamId'));
+	const url = new URL(request.url);
+	const teamId = parseVault(url.searchParams.get('teamId') ?? url.searchParams.get('takimId'));
 
 	// Kasa readers and managers see every kasa; a captain sees their project's.
 	const access = await verifyVaultAccess(request, teamId, 'oku');
@@ -99,7 +100,7 @@ export async function GET(request: Request) {
 		const netBalanceCents = toplamGelirKurus - toplamGiderKurus;
 
 		return NextResponse.json({
-			kasa: { teamId, ad, kind: teamId ? 'proje' : 'genel' },
+			kasa: { teamId, takimId: teamId, ad, kind: teamId ? 'proje' : 'genel' },
 			// What the caller may do here — the panel hides what the server would refuse.
 			izin: { yaz: access.erisim === 'yaz' && access.user.status !== 'mezun', yonet: access.isManagement },
 			kayitlar: records,
@@ -121,7 +122,7 @@ export const POST = withAudit(async function POST(request: Request) {
 	try {
 		const body = await request.json();
 		if (body?.action === 'aktar') return await transfer(request, body);
-		const teamId = parseVault(body?.teamId);
+		const teamId = parseVault(body?.teamId ?? body?.takimId);
 
 		const access = await verifyVaultAccess(request, teamId, 'yaz');
 		if (!access.authorized) return access.response;
@@ -140,7 +141,8 @@ export const POST = withAudit(async function POST(request: Request) {
 
 		// Reject unknown categories instead of storing free text the summaries
 		// cannot group — the form offers a fixed set for exactly that reason.
-		if (!isBudgetCategory(kategori)) {
+		const resolvedCategory = normalizeBudgetCategory(kategori);
+		if (!resolvedCategory) {
 			return NextResponse.json(
 				{ error: `Geçersiz kategori. Beklenen: ${BUDGET_CATEGORIES.join(', ')}` },
 				{ status: 400 }
@@ -174,7 +176,7 @@ export const POST = withAudit(async function POST(request: Request) {
 		try {
 			const result = await createBudgetRecord({
 				tur,
-				kategori,
+				kategori: resolvedCategory,
 				tutarKurus: amountCents,
 				aciklama: description,
 				fisFotoUrl: fisFotoUrl || undefined,
@@ -227,8 +229,9 @@ export const PATCH = withAudit(async function PATCH(request: Request) {
 			changes.aciklama = description;
 		}
 		if (body.kategori !== undefined) {
-			if (!isBudgetCategory(body.kategori)) return bad(`Geçersiz kategori. Beklenen: ${BUDGET_CATEGORIES.join(', ')}`);
-			changes.kategori = body.kategori;
+			const resolvedCategory = normalizeBudgetCategory(body.kategori);
+			if (!resolvedCategory) return bad(`Geçersiz kategori. Beklenen: ${BUDGET_CATEGORIES.join(', ')}`);
+			changes.kategori = resolvedCategory;
 		}
 		if (body.date !== undefined) {
 			const date = parseDate(body.date);

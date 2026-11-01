@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { CheckCircle2, Clock, LogIn, XCircle } from 'lucide-react';
-import styles from './yoklama.module.css';
+import styles from './checkin.module.css';
 
 type State =
 	| { kind: 'pending' }

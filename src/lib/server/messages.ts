@@ -41,7 +41,7 @@ export async function recipientDecision(
 			continue;
 		}
 		const permission = await getRolePermission(u.roleId);
-		if (!canUse(permission.izinler, 'mail')) atlananlar.push({ id, ad: fullName(u), neden: 'role' });
+		if (!canUse(permission.izinler, 'mail')) atlananlar.push({ id, ad: fullName(u), neden: 'rol' });
 		else gidecek.push(u);
 	}
 	return { gidecek, atlananlar };

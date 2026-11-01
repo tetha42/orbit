@@ -85,6 +85,9 @@ import {
 	attendanceCodeText,
 	attendanceWindow,
 	isAttendanceTime,
+	normalizeEventType,
+	normalizeEventStatus,
+	isEventType,
 } from '../src/lib/events.ts';
 import { APPLICATION_NOTE_MAX, EXPERTISE_MAX, buildApplicationNote, isKategori, isParticipationType, isTeamStatus, capacityProblem, normalizeRole } from '../src/lib/teams.ts';
 import { myOpenTasks, nextEvent } from '../src/lib/mobileCockpit.ts';
@@ -503,6 +506,23 @@ check('CSV: quoting, separators and spreadsheet formula injection', () => {
 	assert.equal(csvCell('@cmd'), "'@cmd");
 	assert.equal(csvCell(null), '');
 	assert.equal(toCsv(['a', 'b'], [[1, 'x\ny']]), 'a;b\r\n1;"x\ny"');
+});
+
+check('event vocabulary: types, aliases and statuses', () => {
+	assert.equal(normalizeEventType('workshop'), 'atolye');
+	assert.equal(normalizeEventType('seminar'), 'seminer');
+	assert.equal(normalizeEventType('hackathon'), 'yarisma');
+	assert.equal(normalizeEventType('meeting'), 'toplanti');
+	assert.equal(normalizeEventType('atolye'), 'atolye');
+	assert.equal(normalizeEventType('invalid'), null);
+	assert.equal(isEventType('atolye'), true);
+	assert.equal(isEventType('workshop'), false);
+	assert.equal(normalizeEventStatus('draft'), 'taslak');
+	assert.equal(normalizeEventStatus('published'), 'yayinda');
+	assert.equal(normalizeEventStatus('completed'), 'tamamlandi');
+	assert.equal(normalizeEventStatus('cancelled'), 'iptal');
+	assert.equal(normalizeEventStatus('yayinda'), 'yayinda');
+	assert.equal(normalizeEventStatus('bad_status'), null);
 });
 
 /* ---------------- teams ---------------- */

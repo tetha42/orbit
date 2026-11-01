@@ -619,7 +619,6 @@ const AUDIT_ENDPOINTS: Array<{
 	{ endpoint: '/api/oauth/token', category: 'core', isPublic: true, method: 'POST' },
 	{ endpoint: '/api/oauth/userinfo', category: 'core', isPublic: false, method: 'GET' },
 	{ endpoint: '/api/stream', category: 'core', isPublic: false, method: 'GET' },
-	{ endpoint: '/api/olaylar', category: 'core', isPublic: false, method: 'GET' },
 
 	// 4. Veritabanı Studio & Kulüp Modülleri (35 Endpoint)
 	{ endpoint: '/api/database/tables', category: 'data', isPublic: false, method: 'GET' },
@@ -653,11 +652,6 @@ const AUDIT_ENDPOINTS: Array<{
 	{ endpoint: '/api/mail/action', category: 'data', isPublic: false, method: 'POST' },
 	{ endpoint: '/api/mail/test', category: 'data', isPublic: false, method: 'GET' },
 	{ endpoint: '/api/mail/e2e-test-uid', category: 'data', isPublic: false, method: 'GET', expectedUnauthStatus: [401, 403, 404] },
-	{ endpoint: '/api/posta', category: 'data', isPublic: false, method: 'GET' },
-	{ endpoint: '/api/posta/alicilar', category: 'data', isPublic: false, method: 'GET' },
-	{ endpoint: '/api/posta/ayarlar', category: 'data', isPublic: false, method: 'GET' },
-	{ endpoint: '/api/posta/okunmamis', category: 'data', isPublic: false, method: 'GET' },
-	{ endpoint: '/api/posta/e2e-test-id', category: 'data', isPublic: false, method: 'GET', expectedUnauthStatus: [401, 403, 404] },
 	{ endpoint: '/api/messages', category: 'data', isPublic: false, method: 'GET' },
 	{ endpoint: '/api/messages/recipients', category: 'data', isPublic: false, method: 'GET' },
 	{ endpoint: '/api/messages/settings', category: 'data', isPublic: false, method: 'GET' },

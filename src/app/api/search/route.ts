@@ -295,7 +295,7 @@ export async function GET(request: Request) {
 				{
 					id: `message:${th.id}`,
 					kind: 'message',
-					appId: 'chat',
+					appId: 'mail',
 					title: th.konu,
 					subtitle: [th.kisiler, formatDate(th.son)].filter(Boolean).join(' · '),
 					target: { kind: 'thread', itemId: th.id },
@@ -308,14 +308,14 @@ export async function GET(request: Request) {
 			);
 		}
 
-		// People Chat can reach, for "send a message": a name only, found by the same rules as the recipient picker.
-		// Their role must open Chat (a hit that could not be messaged is not offered).
+		// People Mail can reach, for "send a message": a name only, found by the same rules as the recipient picker.
+		// Their role must open Mail (a hit that could not be messaged is not offered).
 		for (const p of people) {
 			add(
 				{
 					id: `compose:${p.id}`,
 					kind: 'message',
-					appId: 'chat',
+					appId: 'mail',
 					title: `${p.ad} ${p.soyad}`,
 					target: { section: 'compose', itemId: p.id },
 				},
