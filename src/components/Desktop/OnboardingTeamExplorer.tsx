@@ -36,8 +36,8 @@ async function post(body: Record<string, unknown>): Promise<void> {
  * `/api/teams/discover`, which any signed-in member may use; applications there
  * are always reviewed by the captain.
  *
- * The list re-reads itself when the captain answers (live `takim_guncellendi` /
- * `bildirim` events), so "waiting" turns into "accepted" without a reload.
+ * The list re-reads itself when the captain answers (live `team_updated` /
+ * `notification` events), so "waiting" turns into "accepted" without a reload.
  */
 export function OnboardingTeamExplorer({ compact = false }: { compact?: boolean }) {
 	const { t } = useI18n();
@@ -49,7 +49,7 @@ export function OnboardingTeamExplorer({ compact = false }: { compact?: boolean 
 	const [formError, setFormError] = useState<string | null>(null);
 
 	useLiveEvent((event) => {
-		if (event === 'takim_guncellendi' || event === 'bildirim') void refetch();
+		if (event === 'team_updated' || event === 'notification') void refetch();
 	});
 
 	const openForm = (id: string) => {

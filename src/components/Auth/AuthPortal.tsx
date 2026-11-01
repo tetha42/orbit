@@ -103,6 +103,14 @@ export function AuthPortal() {
 					</div>
 				)}
 
+				{flow.sessionIpMismatch && (
+					<div className={styles.headerNotice}>
+						<Notice tone="warning" title={t('authSessionIpMismatchTitle', 'Network Changed')}>
+							{t('authSessionIpMismatchBody', 'Your IP address changed. For security reasons, please sign in again to continue.')}
+						</Notice>
+					</div>
+				)}
+
 				<nav className={styles.nav}>
 					<div
 						style={{

@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { getPgPool, ensurePostgresInit, withTransaction } from '@/db';
-import { notificationEvents, publishEventQuiet } from '@/db/olaylar';
+import { notificationEvents, publishEventQuiet } from '@/db/events';
 import { getChatAudience, invalidateChatAudience } from '@/server/chat/chatAudience';
 import type { ChatPollItem, ChatPollOptionItem } from '@/apps/chat/types';
 
@@ -50,7 +50,7 @@ export interface UnreadChatRoomSummary {
 }
 
 /**
- * Emits a `bildirim` event on the global `beu_olaylar` SSE bus for all members
+ * Emits a `notification` event on the global `orbit_events` SSE bus for all members
  * of `odaId` (except `excludeUserId`), so their TopBar Notification Center,
  * Dock badge, and background PWA/OS notifications update even when the Chat window is closed.
  */
@@ -64,7 +64,7 @@ async function notifyChatRoomParticipants(odaId: string, excludeUserId?: string)
 
 		if (audience.all) {
 			// Broadcast to all connected members
-			await publishEventQuiet(p, { k: 'bildirim' });
+			await publishEventQuiet(p, { k: 'notification' });
 			return;
 		}
 
@@ -576,7 +576,7 @@ export async function createChatMessage(
 		console.warn('[Chat notify warning]:', err);
 	}
 
-	// 2. Notify global Notification Center & Dock Badge SSE stream (`beu_olaylar`)
+	// 2. Notify global Notification Center & Dock Badge SSE stream (`orbit_events`)
 	void notifyChatRoomParticipants(odaId, gonderen.id);
 
 	return createdMsg;
@@ -760,7 +760,7 @@ export async function markRoomAsRead(odaId: string, userId: string): Promise<voi
 		[odaId, userId, now]
 	);
 	// Refresh the reader's Notification Center & Dock badge
-	void publishEventQuiet(p, { k: 'bildirim', userId });
+	void publishEventQuiet(p, { k: 'notification', userId });
 }
 
 export async function ensureTeamChatRoom(teamId: string, takimAd: string): Promise<string> {

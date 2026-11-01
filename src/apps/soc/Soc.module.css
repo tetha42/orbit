@@ -1577,7 +1577,7 @@
 	display: block;
 	width: 100%;
 	min-width: 580px;
-	height: 140px;
+	height: 250px;
 	overflow: visible;
 }
 
@@ -1586,11 +1586,29 @@
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	height: 120px;
+	height: 220px;
 	gap: 6px;
 	color: var(--text-secondary, #6e6e73);
 	font-size: 12.5px;
 	text-align: center;
+}
+
+@media (max-width: 600px) {
+	.histogramSvg {
+		height: 210px;
+	}
+	.histogramEmpty {
+		height: 180px;
+	}
+}
+
+@container socCanvas (max-width: 600px) {
+	.histogramSvg {
+		height: 210px;
+	}
+	.histogramEmpty {
+		height: 180px;
+	}
 }
 
 .histogramBar {

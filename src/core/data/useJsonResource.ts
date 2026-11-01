@@ -49,8 +49,15 @@ export interface UseJsonResourceOptions {
 	persistSession?: boolean;
 }
 
+interface InFlightEntry {
+	promise: Promise<{ status: number; payload?: unknown; failure?: string }>;
+	controller: AbortController;
+	signals: Set<AbortSignal>;
+	untrackedCount: number;
+}
+
 const RESOURCE_CACHE = new Map<string, CacheEntry>();
-const IN_FLIGHT = new Map<string, Promise<{ status: number; payload?: unknown; failure?: string }>>();
+const IN_FLIGHT = new Map<string, InFlightEntry>();
 const SWR_STALE_MS = 25_000; // 25 seconds SWR freshness window
 
 const SESSION_CACHE_PREFIX = 'orbit_cache:';
@@ -130,6 +137,14 @@ export function invalidateResource(pattern: string | RegExp): void {
 			removeSessionCache(key);
 		}
 	}
+	for (const key of IN_FLIGHT.keys()) {
+		const matches = typeof pattern === 'string' ? key.startsWith(pattern) : pattern.test(key);
+		if (matches) {
+			const entry = IN_FLIGHT.get(key);
+			entry?.controller.abort();
+			IN_FLIGHT.delete(key);
+		}
+	}
 	clearSessionCacheByPattern(pattern);
 
 	invalidationListeners.forEach((listener) => {
@@ -187,18 +202,56 @@ export function mutateResource<T = unknown>(
 	});
 }
 
-/** Plain request helper: fetches JSON and returns it. Deduplicated across concurrent callers. */
+/** Plain request helper: fetches JSON and returns it. Deduplicated across concurrent callers with AbortSignal cancellation. */
 async function fetchJsonDeduplicated<T>(
-	url: string
+	url: string,
+	signal?: AbortSignal
 ): Promise<{ status: number; payload?: T; failure?: string }> {
+	if (signal?.aborted) {
+		const err = new Error('Aborted');
+		err.name = 'AbortError';
+		throw err;
+	}
+
 	const existing = IN_FLIGHT.get(url);
 	if (existing) {
-		return existing as Promise<{ status: number; payload?: T; failure?: string }>;
+		if (signal) {
+			existing.signals.add(signal);
+			const onAbort = () => {
+				existing.signals.delete(signal);
+				if (existing.signals.size === 0 && existing.untrackedCount === 0) {
+					existing.controller.abort();
+					IN_FLIGHT.delete(url);
+				}
+			};
+			signal.addEventListener('abort', onAbort, { once: true });
+		} else {
+			existing.untrackedCount += 1;
+		}
+		return existing.promise as Promise<{ status: number; payload?: T; failure?: string }>;
+	}
+
+	const fetchController = new AbortController();
+	const signals = new Set<AbortSignal>();
+	let untrackedCount = 0;
+	if (signal) {
+		signals.add(signal);
+		const onAbort = () => {
+			signals.delete(signal);
+			const current = IN_FLIGHT.get(url);
+			if (signals.size === 0 && (current?.untrackedCount ?? 0) === 0) {
+				fetchController.abort();
+				IN_FLIGHT.delete(url);
+			}
+		};
+		signal.addEventListener('abort', onAbort, { once: true });
+	} else {
+		untrackedCount = 1;
 	}
 
 	const promise = (async () => {
 		try {
-			const res = await fetch(url);
+			const res = await fetch(url, { signal: fetchController.signal });
 			if (!res.ok) {
 				const body = (await res.json().catch(() => null)) as { error?: unknown } | null;
 				return { status: res.status, failure: typeof body?.error === 'string' ? body.error : undefined };
@@ -210,7 +263,7 @@ async function fetchJsonDeduplicated<T>(
 		}
 	})();
 
-	IN_FLIGHT.set(url, promise);
+	IN_FLIGHT.set(url, { promise, controller: fetchController, signals, untrackedCount });
 	return promise;
 }
 
@@ -327,7 +380,7 @@ export function useJsonResource<T>(
 
 		(async () => {
 			try {
-				const { status, payload, failure: text } = await fetchJsonDeduplicated<T>(url);
+				const { status, payload, failure: text } = await fetchJsonDeduplicated<T>(url, controller.signal);
 				if (controller.signal.aborted) return;
 				setHttpStatus(status);
 				setFailure(text ?? null);
@@ -367,14 +420,19 @@ export function useJsonResource<T>(
 		const controller = new AbortController();
 		inFlightRef.current = controller;
 
-		// Force invalidate cache entry for explicit refetch
+		// Force invalidate cache entry and in-flight request for explicit refetch
 		RESOURCE_CACHE.delete(url);
+		const existingInFlight = IN_FLIGHT.get(url);
+		if (existingInFlight) {
+			existingInFlight.controller.abort();
+			IN_FLIGHT.delete(url);
+		}
 		if (isPersistent) {
 			removeSessionCache(url);
 		}
 
 		try {
-			const { status, payload, failure: text } = await fetchJsonDeduplicated<T>(url);
+			const { status, payload, failure: text } = await fetchJsonDeduplicated<T>(url, controller.signal);
 			if (controller.signal.aborted) return;
 			setHttpStatus(status);
 			setFailure(text ?? null);
@@ -449,4 +507,33 @@ export function useJsonResource<T>(
 		httpStatus,
 		failure,
 	};
+}
+
+const LIVE_EVENT_RESOURCE_MAP: Record<string, string> = {
+	team_updated: '/api/teams',
+	takim_guncellendi: '/api/teams',
+	budget_updated: '/api/budget',
+	butce_guncellendi: '/api/budget',
+	inventory_updated: '/api/inventory',
+	envanter_guncellendi: '/api/inventory',
+	news_updated: '/api/news',
+	haber_guncellendi: '/api/news',
+	event_updated: '/api/events',
+	etkinlik_guncellendi: '/api/events',
+	project_updated: '/api/projects',
+	proje_guncellendi: '/api/projects',
+	decision_updated: '/api/decisions',
+	karar_guncellendi: '/api/decisions',
+	note_updated: '/api/notes',
+	not_guncellendi: '/api/notes',
+};
+
+if (typeof window !== 'undefined') {
+	window.addEventListener('orbit:resource-invalidate', ((event: Event) => {
+		const custom = event as CustomEvent<{ kind?: string }>;
+		const kind = custom.detail?.kind;
+		if (kind && LIVE_EVENT_RESOURCE_MAP[kind]) {
+			invalidateResource(LIVE_EVENT_RESOURCE_MAP[kind]);
+		}
+	}) as EventListener);
 }

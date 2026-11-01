@@ -124,7 +124,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
 	});
 	// The server says something new is there (or the role changed, which changes what the feed shows): read it now.
 	useLiveEvent((event) => {
-		if (event !== 'oturum-sonlandi') void refetchRef.current().catch(() => {});
+		if (event !== 'session-ended') void refetchRef.current().catch(() => {});
 	});
 	useEffect(() => {
 		const tick = () => {

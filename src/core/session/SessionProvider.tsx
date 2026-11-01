@@ -40,6 +40,8 @@ export interface SessionContextValue {
 	isAuthenticated: boolean;
 	isAuthLoading: boolean;
 	sessionConflict: boolean;
+	sessionIpMismatch: boolean;
+	connectionState: 'live' | 'reconnecting' | 'offline';
 	login: (
 		email: string,
 		password: string
@@ -100,6 +102,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 	const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 	const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
 	const [sessionConflict, setSessionConflict] = useState<boolean>(false);
+	const [sessionIpMismatch, setSessionIpMismatch] = useState<boolean>(false);
+	const [connectionState, setConnectionState] = useState<'live' | 'reconnecting' | 'offline'>('offline');
 	const [isLocked, setIsLocked] = useState<boolean>(false);
 	const [isLockdownActive, setIsLockdownActive] = useState<boolean>(false);
 	const [lockdownMessage, setLockdownMessage] = useState<string>('');
@@ -128,6 +132,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 		setCurrentUserId(user.id);
 		setIsAuthenticated(true);
 		setSessionConflict(false);
+		setSessionIpMismatch(false);
 		setIsLockdownActive(false);
 	}, []);
 
@@ -137,6 +142,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 		setIsAuthenticated(false);
 		setCurrentUser(null);
 		setCurrentUserId('');
+		setConnectionState('offline');
 	}, []);
 
 	const dismissLockdown = useCallback(() => {
@@ -152,8 +158,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 				setIsLockdownActive(true);
 				setLockdownMessage(probe.message);
 				endSession(false);
-			} else if (probe.kind === 'ended') endSession(probe.conflict);
-			else if (probe.kind === 'failed') setIsAuthenticated(false);
+			} else if (probe.kind === 'ended') {
+				if (probe.ipMismatch) setSessionIpMismatch(true);
+				endSession(probe.conflict);
+			} else if (probe.kind === 'failed') setIsAuthenticated(false);
 			setIsAuthLoading(false);
 		})();
 	}, [applySession, endSession]);
@@ -172,9 +180,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 				setIsLockdownActive(true);
 				setLockdownMessage(probe.message);
 				endSession(false);
-			} else if (probe.kind === 'ended') endSession(probe.conflict);
+			} else if (probe.kind === 'ended') {
+				if (probe.ipMismatch) setSessionIpMismatch(true);
+				endSession(probe.conflict);
+			}
 			// Network blips and empty answers change nothing.
-		});
+		}, setConnectionState);
 	}, [isAuthenticated, applySession, endSession]);
 
 	/**
@@ -364,6 +375,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 			isAuthenticated,
 			isAuthLoading,
 			sessionConflict,
+			sessionIpMismatch,
+			connectionState,
 			login,
 			verify2fa,
 			loginWithPasskey,
@@ -377,7 +390,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 			lockdownMessage,
 			dismissLockdown,
 		}),
-		[canUseApp, canManageApp, isAdmin, currentUserId, currentUser, isAuthenticated, isAuthLoading, sessionConflict, login, verify2fa, loginWithPasskey, register, logout, isLocked, lockWorkspace, unlockWorkspace, refreshSession, isLockdownActive, lockdownMessage, dismissLockdown]
+		[canUseApp, canManageApp, isAdmin, currentUserId, currentUser, isAuthenticated, isAuthLoading, sessionConflict, sessionIpMismatch, connectionState, login, verify2fa, loginWithPasskey, register, logout, isLocked, lockWorkspace, unlockWorkspace, refreshSession, isLockdownActive, lockdownMessage, dismissLockdown]
 	);
 
 	return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

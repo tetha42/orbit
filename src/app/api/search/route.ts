@@ -10,10 +10,10 @@ import {
 	getMemberRoster,
 } from '@/db';
 import { getInventoryItems } from '@/server/db/domains/inventory.repo';
-import { searchMailCandidates, getMailSearchThreads } from '@/db/posta';
-import { recipientList } from '@/lib/server/posta';
+import { searchMailCandidates, getMailSearchThreads } from '@/db/messages';
+import { recipientList } from '@/lib/server/messages';
 import { authenticate, can } from '@/lib/auth/access';
-import { listAccessibleKasas } from '@/lib/kasaAccess';
+import { listAccessibleVaults } from '@/lib/vaultAccess';
 import { consumeRateLimit } from '@/lib/rateLimit';
 import { scoreMatch, type SearchField } from '@/lib/text';
 import { MAX_HITS_PER_KIND, type SearchHit, type SearchKind, type SearchResponse } from '@/types/search';
@@ -98,7 +98,7 @@ export async function GET(request: Request) {
 				when(uses('inventory'), () => getInventoryItems()),
 				when(uses('certificates'), () => getCertificates(manages('certificates') ? undefined : user.id)),
 				when(uses('teams') && !manages('teams'), () => getUserTeamIds(user.id)),
-				listAccessibleKasas(user),
+				listAccessibleVaults(user),
 				when(uses('mail'), () => getMailSearchThreads(user.id)),
 				when(uses('mail'), async () => (await recipientList(await searchMailCandidates(user.id, q, MAX_HITS_PER_KIND))).filter((p) => p.ulasilabilir)),
 			]);

@@ -4,7 +4,7 @@ import { jsonSuccess, jsonError } from '@/lib/server/apiResponse';
 import { createDecision, deleteDecision, getPgPool, getDecisionById, getDecisions, getCommitteeDetail, setDecisionLock, updateDecision } from '@/db';
 import { can, requireApp } from '@/lib/auth/access';
 import { belgeOzeti } from '@/lib/server/documentDigest';
-import { notificationEvents, publishEventQuiet } from '@/db/olaylar';
+import { notificationEvents, publishEventQuiet } from '@/db/events';
 
 const DOCUMENT_TYPES = ['karar', 'salon_tahsisi', 'etkinlik_izni', 'malzeme_talep', 'ust_yazi'];
 const DECISION_TYPES = ['resolution', 'motion', 'minutes', 'appointment', 'budget'];
@@ -103,7 +103,7 @@ async function handlePOST(request: Request) {
 			if (!(await getDecisionById(id))) return bad('Belge bulunamadı.', 404);
 			if (body.action === 'unlock' && !auth.user.permission.admin) return bad('Kilidi yalnızca bir admin açabilir.', 403);
 			await setDecisionLock(id, body.action === 'lock');
-			await publishEventQuiet(getPgPool(), [{ k: 'karar_guncellendi' }]);
+			await publishEventQuiet(getPgPool(), [{ k: 'decision_updated' }]);
 			return NextResponse.json({ success: true, kilitliMi: body.action === 'lock' ? 1 : 0 });
 		}
 
@@ -126,7 +126,7 @@ async function handlePOST(request: Request) {
 			votesAgainst: v.votesAgainst,
 			votesAbstain: v.votesAbstain,
 		});
-		await publishEventQuiet(getPgPool(), [{ k: 'karar_guncellendi' }, ...notificationEvents()]);
+		await publishEventQuiet(getPgPool(), [{ k: 'decision_updated' }, ...notificationEvents()]);
 		return NextResponse.json({ ...result, ozet: belgeOzeti(result) }, { status: 201 });
 	} catch (error) {
 		console.error('API /api/kararlar POST error:', error);
@@ -148,7 +148,7 @@ async function handlePATCH(request: Request) {
 		const r = await updateDecision(id, parsed.value);
 		if (r === 'yok') return bad('Belge bulunamadı.', 404);
 		if (r === 'kilitli') return bad('Kilitli belge düzenlenemez.', 409);
-		await publishEventQuiet(getPgPool(), [{ k: 'karar_guncellendi' }]);
+		await publishEventQuiet(getPgPool(), [{ k: 'decision_updated' }]);
 		return jsonSuccess({ success: true });
 	} catch (error) {
 		console.error('API /api/kararlar PATCH error:', error);
@@ -164,7 +164,7 @@ async function handleDELETE(request: Request) {
 	const r = await deleteDecision(id);
 	if (r === 'yok') return bad('Belge bulunamadı.', 404);
 	if (r === 'kilitli') return bad('Kilitli belge silinemez; önce başkanın kilidi açması gerekir.', 409);
-	await publishEventQuiet(getPgPool(), [{ k: 'karar_guncellendi' }]);
+	await publishEventQuiet(getPgPool(), [{ k: 'decision_updated' }]);
 	return jsonSuccess({ success: true });
 }
 

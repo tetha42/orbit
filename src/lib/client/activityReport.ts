@@ -53,23 +53,24 @@ export async function openActivityReport(): Promise<'ok' | 'popup' | 'error'> {
 	const w = openPrintWindow({ title: 'Rapor hazırlanıyor…', body: null, width: 960 });
 	if (!w) return 'popup';
 	try {
-		const [uyeler, etkinlik, takimlar, kasalar, envanter] = await Promise.all([
-			get<{ members: Member[] }>('/api/uyeler'),
-			get<{ etkinlikler: EventRow[] }>('/api/etkinlikler'),
-			get<Team[]>('/api/takimlar'),
-			get<{ kasalar: Vault[] }>('/api/butce/kasalar'),
-			get<Item[]>('/api/envanter'),
+		const [membersRes, eventsRes, teamsRes, vaultsRes, inventoryRes] = await Promise.all([
+			get<{ members: Member[] }>('/api/members'),
+			get<{ etkinlikler: EventRow[] }>('/api/events'),
+			get<Team[]>('/api/teams'),
+			get<{ kasalar: Vault[] }>('/api/budget/vaults'),
+			get<Item[]>('/api/inventory'),
 		]);
 		const now = Date.now();
-		const members = uyeler?.members ?? [];
+		const members = membersRes?.members ?? [];
 		const count = (pred: (m: Member) => boolean) => members.filter(pred).length;
 		const since = now - 183 * 86_400_000;
-		const events = (etkinlik?.etkinlikler ?? []).filter((e) => e.status !== 'taslak' && e.baslangic >= since && e.baslangic <= now).sort((a, b) => b.baslangic - a.baslangic);
+		const events = (eventsRes?.etkinlikler ?? []).filter((e) => e.status !== 'taslak' && e.baslangic >= since && e.baslangic <= now).sort((a, b) => b.baslangic - a.baslangic);
 		const reg = events.reduce((a, e) => a + Number(e.kayitliSayisi || 0), 0);
 		const att = events.reduce((a, e) => a + Number(e.katilimciSayisi || 0), 0);
-		const teams = takimlar ?? [];
-		const items = envanter ?? [];
+		const teams = teamsRes ?? [];
+		const items = inventoryRes ?? [];
 		const overdue = items.filter((i) => i.status === 'oduncte' && returnStatus(i.iadeTarihi, now)?.gecikti).length;
+		const kasalar = vaultsRes;
 
 		const css = `body{font:12px/1.45 system-ui,sans-serif;margin:28px;color:#111}h1{font-size:19px;margin:0}h2{font-size:14px;margin:20px 0 6px;border-bottom:2px solid #0a84ff;padding-bottom:3px}
 table{width:100%;border-collapse:collapse}td,th{border-bottom:1px solid #ddd;padding:4px 6px;text-align:left}th{background:#f2f2f2}.n{text-align:right}

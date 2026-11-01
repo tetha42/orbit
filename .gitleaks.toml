@@ -1,0 +1,12 @@
+# Gitleaks Configuration for Orbit Community OS
+# https://github.com/gitleaks/gitleaks
+
+[allowlist]
+description = "Global allowlist for FIM file integrity hashes and test mock credentials"
+paths = [
+    '''tools/fim/baseline\.json''',
+    '''examples/''',
+    '''tests/''',
+    '''\.fixtures\.json''',
+    '''scripts/dev-fixtures\.mjs''',
+]

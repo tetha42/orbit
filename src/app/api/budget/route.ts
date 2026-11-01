@@ -11,7 +11,7 @@ import {
 	updateBudgetRecord,
 	getPgPool,
 } from '@/db';
-import { publishEventQuiet } from '@/db/olaylar';
+import { publishEventQuiet } from '@/db/events';
 import { verifyVaultAccess } from '@/lib/kasaAccess';
 import { isValidDate } from '@/lib/budget';
 import { BUDGET_CATEGORIES, MAX_AMOUNT_CENTS, isBudgetCategory } from '@/types/budget';
@@ -60,7 +60,7 @@ async function transfer(request: Request, body: Record<string, unknown>) {
 
 	try {
 		const result = await addOdenekAktarimi({ kaynakTakimId: kaynak, hedefTakimId: target, tutarKurus: amountCents, aciklama: description, kaydedenId: access.user.id, date: date.date });
-		await publishEventQuiet(getPgPool(), { k: 'butce_guncellendi' });
+		await publishEventQuiet(getPgPool(), { k: 'budget_updated' });
 		return NextResponse.json(result, { status: 201 });
 	} catch (error) {
 		if (error instanceof InsufficientFundsError) {
@@ -182,7 +182,7 @@ export const POST = withAudit(async function POST(request: Request) {
 				teamId,
 				date: date.date,
 			});
-			await publishEventQuiet(getPgPool(), { k: 'butce_guncellendi' });
+			await publishEventQuiet(getPgPool(), { k: 'budget_updated' });
 			return jsonSuccess(result);
 		} catch (error) {
 			// Kasa bakiyesi eksiye düşme engeli (Senaryo 175 & 300), now per kasa.
@@ -243,7 +243,7 @@ export const PATCH = withAudit(async function PATCH(request: Request) {
 		const r = await updateBudgetRecord(id, changes, access.user.id);
 		if (r === 'yok') return bad('Kayıt bulunamadı.', 404);
 		if (r === 'aktarim') return bad('Ödenek aktarımının kategorisi ve fişi değiştirilemez.', 409);
-		await publishEventQuiet(getPgPool(), { k: 'butce_guncellendi' });
+		await publishEventQuiet(getPgPool(), { k: 'budget_updated' });
 		return jsonSuccess({ success: true });
 	} catch (error) {
 		console.error('API /api/butce PATCH error:', error);
@@ -277,7 +277,7 @@ export const DELETE = withAudit(async function DELETE(request: Request) {
 			if (!deleted) {
 				return NextResponse.json({ error: 'Kayıt bulunamadı veya silinemedi.' }, { status: 404 });
 			}
-			await publishEventQuiet(getPgPool(), { k: 'butce_guncellendi' });
+			await publishEventQuiet(getPgPool(), { k: 'budget_updated' });
 		} catch (error) {
 			if (error instanceof InsufficientFundsError) {
 				return NextResponse.json(

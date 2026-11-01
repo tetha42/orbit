@@ -618,6 +618,8 @@ const AUDIT_ENDPOINTS: Array<{
 	{ endpoint: '/api/oauth/clients', category: 'core', isPublic: false, method: 'GET' },
 	{ endpoint: '/api/oauth/token', category: 'core', isPublic: true, method: 'POST' },
 	{ endpoint: '/api/oauth/userinfo', category: 'core', isPublic: false, method: 'GET' },
+	{ endpoint: '/api/stream', category: 'core', isPublic: false, method: 'GET' },
+	{ endpoint: '/api/olaylar', category: 'core', isPublic: false, method: 'GET' },
 
 	// 4. Veritabanı Studio & Kulüp Modülleri (35 Endpoint)
 	{ endpoint: '/api/database/tables', category: 'data', isPublic: false, method: 'GET' },
@@ -656,6 +658,11 @@ const AUDIT_ENDPOINTS: Array<{
 	{ endpoint: '/api/posta/ayarlar', category: 'data', isPublic: false, method: 'GET' },
 	{ endpoint: '/api/posta/okunmamis', category: 'data', isPublic: false, method: 'GET' },
 	{ endpoint: '/api/posta/e2e-test-id', category: 'data', isPublic: false, method: 'GET', expectedUnauthStatus: [401, 403, 404] },
+	{ endpoint: '/api/messages', category: 'data', isPublic: false, method: 'GET' },
+	{ endpoint: '/api/messages/recipients', category: 'data', isPublic: false, method: 'GET' },
+	{ endpoint: '/api/messages/settings', category: 'data', isPublic: false, method: 'GET' },
+	{ endpoint: '/api/messages/unread', category: 'data', isPublic: false, method: 'GET' },
+	{ endpoint: '/api/messages/e2e-test-id', category: 'data', isPublic: false, method: 'GET', expectedUnauthStatus: [401, 403, 404] },
 	{ endpoint: '/api/teams', category: 'data', isPublic: false, method: 'GET' },
 	{ endpoint: '/api/teams/tasks/e2e-test-id', category: 'data', isPublic: false, method: 'GET', expectedUnauthStatus: [401, 403, 404] },
 	{ endpoint: '/api/teams/discover', category: 'data', isPublic: false, method: 'GET' },
@@ -667,12 +674,12 @@ const AUDIT_ENDPOINTS: Array<{
 	{ endpoint: '/api/terminal/resize', category: 'terminal', isPublic: false, method: 'POST' },
 	{ endpoint: '/api/terminal/stream', category: 'terminal', isPublic: false, method: 'GET' },
 
-	// 6. SoC Siber Savunma & Adli Bilişim (5 Endpoint)
+	// 6. SoC Siber Savunma & Adli Bilişim (6 Endpoint)
 	{ endpoint: '/api/soc', category: 'soc', isPublic: false, method: 'GET' },
 	{ endpoint: '/api/soc/export', category: 'soc', isPublic: false, method: 'GET' },
 	{ endpoint: '/api/soc/inspection', category: 'soc', isPublic: false, method: 'GET' },
+	{ endpoint: '/api/soc/stream', category: 'soc', isPublic: false, method: 'GET' },
 	{ endpoint: '/api/audit', category: 'soc', isPublic: false, method: 'GET' },
-	{ endpoint: '/api/olaylar', category: 'soc', isPublic: false, method: 'GET' },
 ];
 
 /**

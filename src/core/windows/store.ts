@@ -329,6 +329,40 @@ export function createWindowStore() {
 		getVisible: () => ({ windows: visible(), activeApp: visibleActiveApp(state.activeApp, gate.canOpen) }),
 		/** Hands the store the member's permissions and what to do when an app is refused. */
 		configure: (next: WindowGate) => {
+			const revoked = (Object.keys(state.windows) as AppID[]).filter(
+				(id) => state.windows[id].isOpen && !next.canOpen(id)
+			);
+			if (revoked.length > 0) {
+				for (const id of revoked) {
+					const manifest = ALL_WINDOW_MANIFESTS.find((m) => m.id === id);
+					const title = manifest?.title ?? id;
+					if (typeof window !== 'undefined') {
+						window.dispatchEvent(
+							new CustomEvent('orbit:toast', {
+								detail: {
+									message: `Erişim yetkiniz güncellendiği için "${title}" penceresi kapatıldı.`,
+									tone: 'error',
+								},
+							})
+						);
+						try {
+							window.dispatchEvent(new CustomEvent('workspace:app-closed', { detail: { appId: id } }));
+						} catch {
+							/* ignore */
+						}
+					}
+				}
+				set((s) => {
+					const updated = { ...s.windows };
+					for (const id of revoked) {
+						updated[id] = { ...updated[id], isOpen: false, isMinimized: false, isMaximized: false };
+					}
+					return {
+						windows: updated,
+						activeApp: topWindow(updated, s.activeApp === 'portal' ? 'portal' as AppID : s.activeApp),
+					};
+				});
+			}
 			gate = next;
 		},
 		/** Puts back a saved workspace (windows and active app) — see core/persistence. */

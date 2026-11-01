@@ -25,7 +25,8 @@
 	# compression and no response buffering (flush_interval -1 writes every chunk
 	# through at once), no timeout on the open response, and a config reload keeps
 	# open streams for a while instead of cutting them (the browser reconnects anyway).
-	handle /api/olaylar {
+	@sse path /api/olaylar* /api/stream* /api/chat/stream* /api/soc/stream* /api/terminal/stream*
+	handle @sse {
 		reverse_proxy 127.0.0.1:3000 {
 			flush_interval -1
 			stream_close_delay 5m

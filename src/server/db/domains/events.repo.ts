@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { ensurePostgresInit, getPgPool, withTransaction } from '@/db/index';
-import { notificationEvents, publishEventQuiet } from '@/db/olaylar';
+import { notificationEvents, publishEventQuiet } from '@/db/events';
 import { PARTICIPATION_XP, ATTENDANCE_TOLERANCE_MS, type EventStatus, type EventType, type AttendanceMethod } from '@/lib/events';
 import { slugify, uniqueSlug } from '@/lib/text';
 import type { CommunityEvent, Attendance } from '@/db/schema';

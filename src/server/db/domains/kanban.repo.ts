@@ -12,7 +12,7 @@ import type {
 	TaskStatus,
 	TaskPriority,
 } from '@/db/schema';
-import { notificationEvents, publishEvent } from '@/db/olaylar';
+import { notificationEvents, publishEvent } from '@/db/events';
 import { SIRA_ADIMI } from '@/lib/kanban';
 
 export interface TeamTaskPatch {

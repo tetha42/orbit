@@ -19,7 +19,7 @@ import {
 	getPgPool,
 	type TeamPatch,
 } from '@/db';
-import { notificationEvents, publishEventQuiet } from '@/db/olaylar';
+import { notificationEvents, publishEventQuiet } from '@/db/events';
 import {
 	APPLICATION_NOTE_MAX,
 	CAPTAIN_ROLE,
@@ -110,7 +110,7 @@ async function handlePOST(request: Request) {
 			if (!teamId) return NextResponse.json({ error: 'Eksik parametreler.' }, { status: 400 });
 			const note = typeof body.basvuruNotu === 'string' ? body.basvuruNotu.trim().slice(0, APPLICATION_NOTE_MAX) : null;
 			const result = await joinTeam({ teamId, userId: auth.user.id, basvuruNotu: note });
-			if (result.ok) await publishEventQuiet(getPgPool(), { k: 'takim_guncellendi', teamId });
+			if (result.ok) await publishEventQuiet(getPgPool(), { k: 'team_updated', teamId });
 			return result.ok
 				? NextResponse.json({ success: true, status: result.status, message: result.message })
 				: NextResponse.json({ error: result.message }, { status: typeof result.status === 'number' ? result.status : 400 });
@@ -119,7 +119,7 @@ async function handlePOST(request: Request) {
 		if (action === 'leave') {
 			if (!teamId) return NextResponse.json({ error: 'Eksik parametreler.' }, { status: 400 });
 			const result = await leaveTeam({ teamId, userId: auth.user.id });
-			if (result.success) await publishEventQuiet(getPgPool(), { k: 'takim_guncellendi', teamId });
+			if (result.success) await publishEventQuiet(getPgPool(), { k: 'team_updated', teamId });
 			return result.success
 				? NextResponse.json({ success: true, message: result.message })
 				: NextResponse.json({ error: result.message }, { status: result.status ?? 400 });
@@ -139,7 +139,7 @@ async function handlePOST(request: Request) {
 				if (!userId) return NextResponse.json({ error: 'Üye belirtilmedi.' }, { status: 400 });
 				const r = await decideTeamApplication({ teamId, userId, accept: action === 'approve' });
 				// The applicant hears it at once: their open screens re-read the team list, and their bell the feed.
-				if (r.success) await publishEventQuiet(getPgPool(), [{ k: 'takim_guncellendi', teamId }, ...notificationEvents([userId])]);
+				if (r.success) await publishEventQuiet(getPgPool(), [{ k: 'team_updated', teamId }, ...notificationEvents([userId])]);
 				return r.success
 					? NextResponse.json({ success: true, message: r.message })
 					: NextResponse.json({ error: r.message }, { status: r.status ?? 400 });
@@ -152,7 +152,7 @@ async function handlePOST(request: Request) {
 					return NextResponse.json({ error: 'Kaptanın unvanı kaptanlık devredilerek değişir.' }, { status: 409 });
 				}
 				const ok = await setTeamMemberRole(teamId, userId, role);
-				if (ok) await publishEventQuiet(getPgPool(), { k: 'takim_guncellendi', teamId });
+				if (ok) await publishEventQuiet(getPgPool(), { k: 'team_updated', teamId });
 				return ok
 					? NextResponse.json({ success: true, message: 'Role güncellendi.' })
 					: NextResponse.json({ error: 'Aktif üye bulunamadı.' }, { status: 404 });
@@ -161,7 +161,7 @@ async function handlePOST(request: Request) {
 			if (action === 'removeMember') {
 				if (!userId) return NextResponse.json({ error: 'Üye belirtilmedi.' }, { status: 400 });
 				const r = await leaveTeam({ teamId, userId, aktorId: auth.user.id });
-				if (r.success) await publishEventQuiet(getPgPool(), { k: 'takim_guncellendi', teamId });
+				if (r.success) await publishEventQuiet(getPgPool(), { k: 'team_updated', teamId });
 				return r.success
 					? NextResponse.json({ success: true, message: 'Üye takımdan çıkarıldı.' })
 					: NextResponse.json({ error: r.message }, { status: r.status ?? 400 });
@@ -174,7 +174,7 @@ async function handlePOST(request: Request) {
 				}
 				if (!userId) return NextResponse.json({ error: 'Üye belirtilmedi.' }, { status: 400 });
 				const r = await joinTeam({ teamId, userId, direct: true, takimRolu: normalizeRole(body.takimRolu) ?? undefined });
-				if (r.ok) await publishEventQuiet(getPgPool(), { k: 'takim_guncellendi', teamId });
+				if (r.ok) await publishEventQuiet(getPgPool(), { k: 'team_updated', teamId });
 				return r.ok
 					? NextResponse.json({ success: true, message: 'Üye takıma eklendi.' })
 					: NextResponse.json({ error: r.message }, { status: typeof r.status === 'number' ? r.status : 400 });
@@ -231,7 +231,7 @@ async function handlePOST(request: Request) {
 				patch.liderId = leader.id;
 			}
 			await updateTeam(teamId, patch);
-			await publishEventQuiet(getPgPool(), { k: 'takim_guncellendi', teamId });
+			await publishEventQuiet(getPgPool(), { k: 'team_updated', teamId });
 			return NextResponse.json({ success: true, message: 'Takım güncellendi.' });
 		}
 
@@ -296,7 +296,7 @@ async function handlePOST(request: Request) {
 				status: column,
 				olusturanId: auth.user.id,
 			});
-			await publishEventQuiet(getPgPool(), { k: 'takim_guncellendi', teamId });
+			await publishEventQuiet(getPgPool(), { k: 'team_updated', teamId });
 			return NextResponse.json({ success: true, task });
 		}
 
@@ -343,7 +343,7 @@ async function handlePOST(request: Request) {
 				sirala,
 				aktorId: auth.user.id,
 			});
-			await publishEventQuiet(getPgPool(), { k: 'takim_guncellendi', teamId: access.task.teamId });
+			await publishEventQuiet(getPgPool(), { k: 'team_updated', teamId: access.task.teamId });
 			return NextResponse.json({ success: true, status: normalized, xpVerildi: result.xpVerildi });
 		}
 
@@ -378,7 +378,7 @@ async function handlePOST(request: Request) {
 				liderId,
 				katilimTuru: isParticipationType(katilimTuru) ? katilimTuru : 'acik',
 			});
-			await publishEventQuiet(getPgPool(), { k: 'takim_guncellendi', teamId: newTeam.id });
+			await publishEventQuiet(getPgPool(), { k: 'team_updated', teamId: newTeam.id });
 			return NextResponse.json({ success: true, team: newTeam });
 		}
 
@@ -410,7 +410,7 @@ async function handlePOST(request: Request) {
 			if (!deleted) {
 				return NextResponse.json({ error: 'Takım bulunamadı veya silinemedi.' }, { status: 404 });
 			}
-			await publishEventQuiet(getPgPool(), { k: 'takim_guncellendi', teamId });
+			await publishEventQuiet(getPgPool(), { k: 'team_updated', teamId });
 			return NextResponse.json({ success: true, message: 'Takım silindi.' });
 		}
 
@@ -432,7 +432,7 @@ async function handlePOST(request: Request) {
 				);
 			}
 			const deleted = await deleteTeamTask(gorevId);
-			if (deleted) await publishEventQuiet(getPgPool(), { k: 'takim_guncellendi', teamId: access.task.teamId });
+			if (deleted) await publishEventQuiet(getPgPool(), { k: 'team_updated', teamId: access.task.teamId });
 			return NextResponse.json({ success: true, deleted });
 		}
 

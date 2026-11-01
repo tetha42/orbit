@@ -34,7 +34,7 @@ const encoder = new TextEncoder();
  *
  * This deliberately does not borrow a client from the query pool: the listener
  * lives for the process lifetime, and taking one of the pool's slots away from
- * request traffic was unnecessary. `db/olaylar.ts` uses the same pattern.
+ * request traffic was unnecessary. `db/events.ts` uses the same pattern.
  */
 async function ensurePgListener() {
 	if (globalStore.__chatPgListening) return;

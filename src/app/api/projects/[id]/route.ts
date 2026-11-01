@@ -1,7 +1,7 @@
 import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
 import { deleteProject, getProjectById, toggleProjectLike, updateProject, getPgPool } from '@/db';
-import { publishEventQuiet } from '@/db/olaylar';
+import { publishEventQuiet } from '@/db/events';
 import type { Project } from '@/db/schema';
 import { can, requireApp, type AuthorizedUser } from '@/lib/auth/access';
 import { isProjectStatus } from '@/lib/projects';
@@ -81,7 +81,7 @@ async function handlePATCH(request: Request, { params }: Params) {
 						? false
 						: undefined,
 		});
-		await publishEventQuiet(getPgPool(), [{ k: 'proje_guncellendi' }]);
+		await publishEventQuiet(getPgPool(), [{ k: 'project_updated' }]);
 		return NextResponse.json({ success: true, proje: await getProjectById(id, auth.user.id) });
 	} catch (error) {
 		console.error('API /api/projeler PATCH error:', error);
@@ -101,7 +101,7 @@ async function handleDELETE(request: Request, { params }: Params) {
 		return forbidden('Yayındaki bir projeyi yalnızca yönetim kaldırabilir.');
 	}
 	await deleteProject(id);
-	await publishEventQuiet(getPgPool(), [{ k: 'proje_guncellendi' }]);
+	await publishEventQuiet(getPgPool(), [{ k: 'project_updated' }]);
 	return NextResponse.json({ success: true });
 }
 
@@ -118,7 +118,7 @@ async function handlePOST(request: Request, { params }: Params) {
 		return NextResponse.json({ error: 'Yalnızca yayındaki projeler yıldızlanabilir.' }, { status: 400 });
 	}
 	const result = await toggleProjectLike(id, auth.user.id);
-	await publishEventQuiet(getPgPool(), [{ k: 'proje_guncellendi' }]);
+	await publishEventQuiet(getPgPool(), [{ k: 'project_updated' }]);
 	return NextResponse.json({ success: true, ...result });
 }
 

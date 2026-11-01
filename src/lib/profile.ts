@@ -13,8 +13,10 @@ export const GRADE_MAX = 2_147_483_647;
 export const PASSWORD_MIN = 8;
 export const PASSWORD_MAX = 128;
 /** Profile photos are downscaled in the browser; the server still checks the bytes and the size. */
-export const PROFIL_FOTO_MAX_BYTES = 2 * 1024 * 1024;
-export const PROFIL_FOTO_PX = 320;
+export const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+export const AVATAR_PX = 320;
+export const PROFIL_FOTO_MAX_BYTES = AVATAR_MAX_BYTES;
+export const PROFIL_FOTO_PX = AVATAR_PX;
 
 const COMMONLY_BREACHED_PASSWORDS = new Set([
 	'password',
@@ -68,7 +70,11 @@ export function passwordProblem(yeni: unknown, opts: { mevcut?: string; email?: 
 }
 
 /** A level from XP: 0–99 → 1, 100–299 → 2, … each level costs 100 more than the last. */
-export function seviye(xp: number): { seviye: number; ilerleme: number; sonraki: number } {
+export function calculateLevel(xp: number): {
+	level: number;
+	progress: number;
+	next: number;
+} {
 	let level = 1;
 	let floor = 0;
 	let step = 100;
@@ -78,5 +84,10 @@ export function seviye(xp: number): { seviye: number; ilerleme: number; sonraki:
 		step += 100;
 		level += 1;
 	}
-	return { seviye: level, ilerleme: (total - floor) / step, sonraki: floor + step };
+	return { level, progress: (total - floor) / step, next: floor + step };
+}
+
+export function seviye(xp: number): { seviye: number; ilerleme: number; sonraki: number } {
+	const res = calculateLevel(xp);
+	return { seviye: res.level, ilerleme: res.progress, sonraki: res.next };
 }

@@ -14,8 +14,10 @@ export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
 export const PROJECT_TITLE_MAX = 120;
 export const PROJECT_SUMMARY_MAX = 280;
 export const PROJECT_DESCRIPTION_MAX = 6000;
-export const TEKNOLOJI_MAX = 24;
-export const TEKNOLOJI_SAYISI_MAX = 12;
+export const TECHNOLOGY_MAX = 24;
+export const TECHNOLOGY_COUNT_MAX = 12;
+export const TEKNOLOJI_MAX = TECHNOLOGY_MAX;
+export const TEKNOLOJI_SAYISI_MAX = TECHNOLOGY_COUNT_MAX;
 
 export function isProjectStatus(value: unknown): value is ProjectStatus {
 	return typeof value === 'string' && (PROJECT_STATUSES as readonly string[]).includes(value);
@@ -45,23 +47,24 @@ export function normalizeHttpUrl(value: unknown): string | null | undefined {
  * casing ("Next.js", "ROS2"), trims, caps length and count, drops case-insensitive
  * duplicates. `null` when the input is neither a string nor an array of strings.
  */
-export function normalizeTeknolojiler(value: unknown): string[] | null {
+export function normalizeTechnologies(value: unknown): string[] | null {
 	const items = typeof value === 'string' ? value.split(',') : value;
 	if (!Array.isArray(items)) return null;
 	const out: string[] = [];
 	const seen = new Set<string>();
 	for (const raw of items) {
 		if (typeof raw !== 'string') return null;
-		const tech = raw.trim().replace(/\s+/g, ' ').slice(0, TEKNOLOJI_MAX);
+		const tech = raw.trim().replace(/\s+/g, ' ').slice(0, TECHNOLOGY_MAX);
 		const key = tech.toLocaleLowerCase('tr-TR');
 		if (tech && !seen.has(key)) {
 			seen.add(key);
 			out.push(tech);
 		}
-		if (out.length === TEKNOLOJI_SAYISI_MAX) break;
+		if (out.length === TECHNOLOGY_COUNT_MAX) break;
 	}
 	return out;
 }
+export const normalizeTeknolojiler = normalizeTechnologies;
 
 /** "github.com/beuteknoloji/portal" — a repo URL without the noise, for display. */
 export function shortRepo(url: string | null | undefined): string {

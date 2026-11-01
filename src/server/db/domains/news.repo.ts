@@ -1,7 +1,7 @@
 import type { Pool, PoolClient } from 'pg';
 import { ensurePostgresInit, getPgPool } from '@/db/index';
 import type { NewsItem } from '@/db/schema';
-import { notificationEvents, publishEventQuiet } from '@/db/olaylar';
+import { notificationEvents, publishEventQuiet } from '@/db/events';
 import { slugify, uniqueSlug } from '@/lib/text';
 import type { NewsVisibility } from '@/types/news';
 

@@ -12,9 +12,12 @@
  */
 import { ALL_MANIFESTS, type PermissionApp } from '../../apps/index.ts';
 
-export const SEVIYELER = ['yok', 'kullan', 'yonet'] as const;
-export type Seviye = (typeof SEVIYELER)[number];
-const SIRA: Record<Seviye, number> = { yok: 0, kullan: 1, yonet: 2 };
+export const LEVELS = ['yok', 'kullan', 'yonet'] as const;
+export const SEVIYELER = LEVELS;
+export type PermissionLevel = (typeof LEVELS)[number];
+export type Seviye = PermissionLevel;
+export const ORDER: Record<PermissionLevel, number> = { yok: 0, kullan: 1, yonet: 2 };
+export const SIRA = ORDER;
 
 /**
  * Every app a role can be granted, in the order the role editor lists them —
@@ -27,7 +30,7 @@ export const PERMISSION_APPS: readonly PermissionApp[] = ALL_MANIFESTS.filter(
 export type { PermissionApp };
 
 /** App id → level. Missing apps are 'yok'. */
-export type Permissions = Partial<Record<PermissionApp, Seviye>>;
+export type Permissions = Partial<Record<PermissionApp, PermissionLevel>>;
 
 export const ADMIN_ROLE_ID = 'rol_admin';
 export const MANAGEMENT_ROLE_ID = 'rol_yonetim_kurulu';
@@ -53,26 +56,30 @@ export function isAlumniRole(
  * theme…); its "manage" level adds the system pages — roles, the e-mail account,
  * club details.
  */
-export const HER_ZAMAN_ACIK: readonly PermissionApp[] = ALL_MANIFESTS.filter((m) => m.permission.herkeseAcik).map((m) => m.id as PermissionApp);
+export const ALWAYS_OPEN: readonly PermissionApp[] = ALL_MANIFESTS.filter((m) => m.permission.herkeseAcik).map((m) => m.id as PermissionApp);
+export const HER_ZAMAN_ACIK = ALWAYS_OPEN;
 
 /** What each level means in each app — shown in the role editor next to the switch. */
 export const PERMISSION_DESCRIPTIONS = Object.fromEntries(
 	ALL_MANIFESTS.map((m) => [m.id, { ad: m.permission.ad, kullan: m.permission.kullan, yonet: m.permission.yonet, ...('uyari' in m.permission ? { uyari: m.permission.uyari } : {}) }])
 ) as Record<PermissionApp, { ad: string; kullan: string; yonet: string; uyari?: string }>;
 
-export const isSeviye = (v: unknown): v is Seviye => typeof v === 'string' && (SEVIYELER as readonly string[]).includes(v);
+export const isPermissionLevel = (v: unknown): v is PermissionLevel => typeof v === 'string' && (LEVELS as readonly string[]).includes(v);
+export const isSeviye = isPermissionLevel;
 export const isPermissionApp = (v: unknown): v is PermissionApp => typeof v === 'string' && (PERMISSION_APPS as readonly string[]).includes(v);
 
 /** The level a set of permissions grants in an app. Apps everyone has are at least 'kullan'. */
-export function seviyeOf(izinler: Permissions | null | undefined, appId: string): Seviye {
+export function levelOf(izinler: Permissions | null | undefined, appId: string): PermissionLevel {
 	const s = isPermissionApp(appId) ? (izinler?.[appId] ?? 'yok') : 'yok';
-	if (s === 'yok' && (HER_ZAMAN_ACIK as readonly string[]).includes(appId)) return 'kullan';
+	if (s === 'yok' && (ALWAYS_OPEN as readonly string[]).includes(appId)) return 'kullan';
 	return s;
 }
+export const seviyeOf = levelOf;
 
-export const yeterliMi = (sahip: Seviye, gereken: Seviye) => SIRA[sahip] >= SIRA[gereken];
-export const canUse = (izinler: Permissions | null | undefined, appId: string) => yeterliMi(seviyeOf(izinler, appId), 'kullan');
-export const canManage = (izinler: Permissions | null | undefined, appId: string) => yeterliMi(seviyeOf(izinler, appId), 'yonet');
+export const isSufficientLevel = (held: PermissionLevel, required: PermissionLevel) => ORDER[held] >= ORDER[required];
+export const yeterliMi = isSufficientLevel;
+export const canUse = (izinler: Permissions | null | undefined, appId: string) => isSufficientLevel(levelOf(izinler, appId), 'kullan');
+export const canManage = (izinler: Permissions | null | undefined, appId: string) => isSufficientLevel(levelOf(izinler, appId), 'yonet');
 
 /** The admin role's permissions: everything, managed. */
 export const ALL_PERMISSIONS: Permissions = Object.fromEntries(PERMISSION_APPS.map((a) => [a, 'yonet'])) as Permissions;
@@ -83,7 +90,7 @@ export function normalizePermissions(input: unknown): { value: Permissions; erro
 	const out: Permissions = {};
 	for (const [k, v] of Object.entries(input as Record<string, unknown>)) {
 		if (!isPermissionApp(k)) return { error: `Bilinmeyen uygulama: ${k}` };
-		if (!isSeviye(v)) return { error: `Geçersiz permission seviyesi (${k}): ${String(v)}` };
+		if (!isPermissionLevel(v)) return { error: `Geçersiz permission seviyesi (${k}): ${String(v)}` };
 		if (v !== 'yok') out[k] = v;
 	}
 	return { value: out };
@@ -94,7 +101,7 @@ export function normalizePermissions(input: unknown): { value: Permissions; erro
  * escalation: nobody may create, edit or assign a role stronger than their own.
  */
 export function extraPermissions(istenen: Permissions, sahip: Permissions): PermissionApp[] {
-	return PERMISSION_APPS.filter((a) => SIRA[seviyeOf(istenen, a)] > SIRA[seviyeOf(sahip, a)]);
+	return PERMISSION_APPS.filter((a) => ORDER[levelOf(istenen, a)] > ORDER[levelOf(sahip, a)]);
 }
 
 /**

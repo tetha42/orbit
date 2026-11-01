@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { useI18n } from '@/core/i18n';
 import { manifestOf } from '@/apps';
 import { fill } from '@/lib/text';
-import { AlertTriangle, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, ShieldCheck, Lock } from 'lucide-react';
 import { Sheet } from '@/core/ui/Sheet';
 import { sendJson } from '@/core/data/http';
 import { invalidateResource } from '@/core/data/useJsonResource';
@@ -54,8 +54,9 @@ export function RoleEditor({ role, benimIzinlerim, onClose, onSaved }: RoleEdito
 	const [renk, setRenk] = useState(role?.renk ?? ROLE_COLORS[0]);
 	const [aciklama, setAciklama] = useState(role?.aciklama ?? '');
 	const [izinler, setIzinler] = useState<Permissions>(role?.izinler ?? { news: 'kullan', settings: 'kullan' });
+	const isManagement = hasManagementPermission(izinler);
 	const [ikiAdim, setIkiAdim] = useState<boolean | null>(role ? role.ikiAdimZorunlu : null);
-	const ikiAdimEtkin = ikiAdim ?? hasManagementPermission(izinler);
+	const ikiAdimEtkin = isManagement ? true : (ikiAdim ?? false);
 	const [error, setError] = useState('');
 	const [busy, setBusy] = useState(false);
 	const excess = useMemo(() => extraPermissions(izinler, benimIzinlerim), [izinler, benimIzinlerim]);
@@ -151,10 +152,35 @@ export function RoleEditor({ role, benimIzinlerim, onClose, onSaved }: RoleEdito
 				})}
 			</div>
 
-			<label className={s.check}>
-				<input type="checkbox" checked={ikiAdimEtkin} onChange={(e) => setIkiAdim(e.target.checked)} />
+			<label className={s.check} style={isManagement ? { cursor: 'not-allowed', opacity: 0.9 } : undefined}>
+				<input
+					type="checkbox"
+					checked={ikiAdimEtkin}
+					disabled={isManagement}
+					onChange={(e) => setIkiAdim(e.target.checked)}
+				/>
 				{t('roles2faRequired')}
-				{ikiAdim === null && hasManagementPermission(izinler) && <span className={ui.muted}> {t('roles2faAdminAutoNotice')}</span>}
+				{isManagement ? (
+					<span
+						style={{
+							display: 'inline-flex',
+							alignItems: 'center',
+							gap: '4px',
+							marginLeft: '8px',
+							fontSize: '11px',
+							padding: '1px 6px',
+							borderRadius: '4px',
+							background: 'var(--fill-medium, rgba(255,255,255,0.08))',
+							color: 'var(--color-warning, #ff9f0a)',
+						}}
+						title={t('roles2faAdminAutoNotice')}
+					>
+						<Lock size={11} />
+						{t('roles2faAdminAutoNotice')}
+					</span>
+				) : (
+					ikiAdim === null && <span className={ui.muted}> {t('roles2faAdminAutoNotice')}</span>
+				)}
 			</label>
 			<div className={ui.hint} style={{ marginTop: -4 }}>{t('roles2faHint')}</div>
 			{excess.length > 0 && (

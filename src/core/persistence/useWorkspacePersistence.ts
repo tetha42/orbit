@@ -28,6 +28,15 @@ export interface PersistedSetters {
 	setDockApps: (apps: AppID[]) => void;
 }
 
+function normalizeDockApps(candidate: unknown): AppID[] {
+	if (!Array.isArray(candidate)) return DEFAULT_DOCK_APPS;
+	const valid = candidate.filter((id): id is AppID => typeof id === 'string' && Boolean(APPS_CONFIG[id]));
+	if (valid.length !== DEFAULT_DOCK_APPS.length || DEFAULT_DOCK_APPS.some((id) => !valid.includes(id))) {
+		return DEFAULT_DOCK_APPS;
+	}
+	return valid;
+}
+
 /**
  * Keeps the workspace across reloads (IndexedDB) and roams it across devices (Server Sync).
  *
@@ -77,11 +86,7 @@ export function useWorkspacePersistence(shell: PersistedShell, set: PersistedSet
 					if (typeof saved.volume === 'number') s.setVolume(saved.volume);
 					if (typeof saved.isMuted === 'boolean') s.setIsMuted(saved.isMuted);
 					if (typeof saved.isDockAutoHide === 'boolean') s.setIsDockAutoHide(saved.isDockAutoHide);
-					if (Array.isArray(saved.dockApps) && saved.dockApps.length > 0) {
-						s.setDockApps(saved.dockApps);
-					} else {
-						s.setDockApps(DEFAULT_DOCK_APPS);
-					}
+					s.setDockApps(normalizeDockApps(saved.dockApps));
 				}
 			})
 			.catch((err) => {
@@ -119,9 +124,8 @@ export function useWorkspacePersistence(shell: PersistedShell, set: PersistedSet
 					if (typeof remote.volume === 'number') s.setVolume(remote.volume);
 					if (typeof remote.isMuted === 'boolean') s.setIsMuted(remote.isMuted);
 					if (typeof remote.isDockAutoHide === 'boolean') s.setIsDockAutoHide(remote.isDockAutoHide);
-					if (Array.isArray(remote.dockApps) && remote.dockApps.length > 0) {
-						s.setDockApps(remote.dockApps);
-					}
+					const normalizedRemoteDock = normalizeDockApps(remote.dockApps);
+					s.setDockApps(normalizedRemoteDock);
 
 					// Update local IndexedDB with remote's fresh state
 					saveWorkspaceSession({
@@ -132,7 +136,7 @@ export function useWorkspacePersistence(shell: PersistedShell, set: PersistedSet
 						volume: remote.volume ?? shellRef.current.volume,
 						isMuted: remote.isMuted ?? shellRef.current.isMuted,
 						isDockAutoHide: remote.isDockAutoHide ?? shellRef.current.isDockAutoHide,
-						dockApps: remote.dockApps || shellRef.current.dockApps,
+						dockApps: normalizedRemoteDock,
 						updatedAt: remoteUpdatedAt,
 					});
 				}

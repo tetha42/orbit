@@ -4,15 +4,19 @@ import { ensurePostgresInit, getPgPool, isDatabaseConfigured, withTransaction } 
 import type { User, MemberRosterRow } from '@/db/schema';
 import { MEMBER_ROSTER_SQL } from '@/db/schema';
 import { logAuditEvent, type AuditContext } from '@/db/audit';
-import { notificationEvents, publishEvent, publishEventQuiet } from '@/db/olaylar';
+import { notificationEvents, publishEvent, publishEventQuiet } from '@/db/events';
 import { temizIp, memberTargetName, memberSummary } from '@/lib/audit';
 import { decryptSecret } from '@/lib/auth/secretBox';
 import { getUsersDiskUsage } from './files.repo';
 
-export async function normalizeUserRow(row: Record<string, unknown> | undefined | null): Promise<User | null> {
+export async function normalizeUserRow(
+	row: Record<string, unknown> | undefined | null,
+	options?: { skipTotpDecryption?: boolean } | unknown
+): Promise<User | null> {
 	if (!row) return null;
+	const skip = Boolean(options && typeof options === 'object' && 'skipTotpDecryption' in options && (options as { skipTotpDecryption?: boolean }).skipTotpDecryption);
 	const rawTotpSecret = (row.totpsecret ?? row.totpSecret ?? row.totp_secret) ? String(row.totpsecret ?? row.totpSecret ?? row.totp_secret) : null;
-	const totpSecret = rawTotpSecret ? await decryptSecret(rawTotpSecret) : null;
+	const totpSecret = skip ? null : (rawTotpSecret ? await decryptSecret(rawTotpSecret) : null);
 	return {
 		id: String(row.id),
 		ad: String(row.ad ?? row.firstName ?? row.first_name ?? ''),
@@ -315,7 +319,7 @@ export async function getUserBySessionToken(token: string): Promise<User | null>
 			'SELECT * FROM users WHERE session_token = $1 OR session_token = $2 LIMIT 1',
 			[tokenHash, token]
 		);
-		const user = await normalizeUserRow(res.rows[0]);
+		const user = await normalizeUserRow(res.rows[0], { skipTotpDecryption: true });
 		if (!user) return null;
 
 		// Transparent seamless upgrade: if stored token was plaintext, upgrade to sha256 hash immediately
@@ -373,7 +377,7 @@ export async function updateUserSession(
 			[storedToken, token ? now : null, token ? expiresAt : null, token ? authMethod : 'password', userId]
 		);
 	}
-	await publishEventQuiet(getPgPool(), { k: 'oturum', userId });
+	await publishEventQuiet(getPgPool(), { k: 'session', userId });
 }
 
 export async function createUser(
@@ -479,7 +483,7 @@ export async function updateUserStatus(
 	} else {
 		await db.query('UPDATE users SET status = $1 WHERE id = $2', [status, userId]);
 	}
-	await publishEvent(db, [{ k: 'oturum', userId }, { k: 'bildirim', userId }]);
+	await publishEvent(db, [{ k: 'session', userId }, { k: 'notification', userId }]);
 }
 
 export async function addUserXp(
@@ -500,7 +504,7 @@ export async function deleteUser(id: string, denetim: AuditContext): Promise<boo
 		const u = res.rows[0];
 		if (!u) return false;
 		await logAuditEvent(client, denetim, { islem: 'uye.sil', hedefTur: 'uye', hedefId: id, hedefAd: memberTargetName(u), onceki: memberSummary(u), sonraki: null });
-		await publishEvent(client, { k: 'oturum', userId: id });
+		await publishEvent(client, { k: 'session', userId: id });
 		return true;
 	});
 }

@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { getPgPool, ensurePostgresInit, withTransaction } from '@/db';
 import { logAuditEvent, type AuditContext } from '@/db/audit';
-import { publishEventQuiet } from '@/db/olaylar';
+import { publishEventQuiet } from '@/db/events';
 import { memberTargetName, memberSummary } from '@/lib/audit';
 import { encryptSecret, isEncrypted } from '@/lib/auth/secretBox';
 import type { User } from '@/db/schema';
@@ -17,7 +17,7 @@ export async function updateUserPassword(
 			'UPDATE users SET password_hash = $1, session_token = NULL, session_expires_at = NULL WHERE id = $2',
 			[passwordHash, userId]
 		);
-		await publishEventQuiet(getPgPool(), { k: 'oturum', userId });
+		await publishEventQuiet(getPgPool(), { k: 'session', userId });
 		return;
 	}
 	await getPgPool().query('UPDATE users SET password_hash = $1 WHERE id = $2', [

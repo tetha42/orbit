@@ -2,7 +2,7 @@ import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
 import { requireApp } from '@/lib/auth/access';
 import { getUserNotes, saveUserNote, deleteUserNote, emptyUserNotesTrash, getPgPool } from '@/db';
-import { publishEventQuiet } from '@/db/olaylar';
+import { publishEventQuiet } from '@/db/events';
 import { inspectJsonPayload } from '@/lib/waf';
 
 export async function GET(request: Request) {
@@ -50,7 +50,7 @@ async function handlePOST(request: Request) {
 			copteMi: Boolean(copteMi),
 		});
 
-		await publishEventQuiet(getPgPool(), [{ k: 'not_guncellendi', userId: auth.user.id }]);
+		await publishEventQuiet(getPgPool(), [{ k: 'note_updated', userId: auth.user.id }]);
 
 		return NextResponse.json(saved);
 	} catch (error) {
@@ -85,7 +85,7 @@ async function handleDELETE(request: Request) {
 
 		const success = await deleteUserNote(id, auth.user.id);
 		if (success) {
-			await publishEventQuiet(getPgPool(), [{ k: 'not_guncellendi', userId: auth.user.id }]);
+			await publishEventQuiet(getPgPool(), [{ k: 'note_updated', userId: auth.user.id }]);
 		}
 		return NextResponse.json({ success });
 	} catch (error) {

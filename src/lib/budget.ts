@@ -49,14 +49,15 @@ export function parseAmount(input: string): number | null {
 }
 
 /** 123456 → "1.234,56" */
-export function formatKurus(kurus: number): string {
-	const sign = kurus < 0 ? '-' : '';
-	const abs = Math.abs(Math.round(kurus));
-	const lira = Math.floor(abs / 100)
+export function formatCents(cents: number): string {
+	const sign = cents < 0 ? '-' : '';
+	const abs = Math.abs(Math.round(cents));
+	const whole = Math.floor(abs / 100)
 		.toString()
 		.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-	return `${sign}${lira},${String(abs % 100).padStart(2, '0')}`;
+	return `${sign}${whole},${String(abs % 100).padStart(2, '0')}`;
 }
+export const formatKurus = formatCents;
 
 /** Oldest first, then by entry time: the order money actually moved in. */
 function chronological<T extends VaultRow>(rows: T[]): T[] {
@@ -78,41 +79,44 @@ export function runningBalance(rows: VaultRow[]): Map<string, number> {
 }
 
 /** Spending per category, largest first, with each one's share of the total. */
-export function kategoriDagilimi(rows: VaultRow[], tur: 'gelir' | 'gider' = 'gider') {
+export function categoryBreakdown(rows: VaultRow[], type: 'gelir' | 'gider' = 'gider') {
 	const totals = new Map<string, number>();
 	for (const r of rows)
-		if (r.tur === tur) totals.set(r.kategori, (totals.get(r.kategori) ?? 0) + r.tutarKurus);
-	const toplam = [...totals.values()].reduce((a, b) => a + b, 0);
+		if (r.tur === type) totals.set(r.kategori, (totals.get(r.kategori) ?? 0) + r.tutarKurus);
+	const total = [...totals.values()].reduce((a, b) => a + b, 0);
 	return [...totals.entries()]
 		.map(([kategori, tutarKurus]) => ({
 			kategori,
 			tutarKurus,
-			oran: toplam ? tutarKurus / toplam : 0,
+			oran: total ? tutarKurus / total : 0,
 		}))
 		.sort((a, b) => b.tutarKurus - a.tutarKurus || a.kategori.localeCompare(b.kategori, 'tr'));
 }
+export const kategoriDagilimi = categoryBreakdown;
 
 /** "2026-10" for a timestamp, in local time. */
-export function ayAnahtari(ms: number): string {
+export function monthKey(ms: number): string {
 	const d = new Date(ms);
 	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
+export const ayAnahtari = monthKey;
 
 /** Income and expense of the last `count` calendar months up to `now`, oldest first. */
-export function aylikAkis(rows: VaultRow[], now: number, count = 6) {
+export function monthlyFlow(rows: VaultRow[], now: number, count = 6) {
 	const d = new Date(now);
 	const months: { ay: string; gelir: number; gider: number }[] = [];
 	for (let i = count - 1; i >= 0; i--) {
 		const m = new Date(d.getFullYear(), d.getMonth() - i, 1);
-		months.push({ ay: ayAnahtari(m.getTime()), gelir: 0, gider: 0 });
+		months.push({ ay: monthKey(m.getTime()), gelir: 0, gider: 0 });
 	}
 	const byKey = new Map(months.map((m) => [m.ay, m]));
 	for (const r of rows) {
-		const m = byKey.get(ayAnahtari(r.date));
+		const m = byKey.get(monthKey(r.date));
 		if (m) m[r.tur] += r.tutarKurus;
 	}
 	return months;
 }
+export const aylikAkis = monthlyFlow;
 
 export interface VaultFilter {
 	tur?: 'hepsi' | 'gelir' | 'gider';

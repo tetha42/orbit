@@ -1,169 +1,221 @@
+'use client';
+
 import { useEffect, useRef } from 'react';
-import { refreshAllResources } from '@/core/commands';
 
 /**
- * The live connection to `/api/olaylar` (Server-Sent Events): the server tells
- * the open workspace the moment something changed, instead of the workspace
- * asking every 15 s.
+ * The live connection to `/api/stream` (Server-Sent Events): the server tells
+ * the browser as soon as something changed on the database via PostgreSQL
+ * NOTIFY, so nothing polls while the stream is open.
  *
- *   permission-degisti       — a role (or this member's role) changed
- *   oturum-sonlandi     — the session is over (signed in elsewhere, suspended…)
- *   bildirim            — something new for the notification feed
- *   takim_guncellendi   — team roster, settings, or kanban tasks changed
- *   butce_guncellendi   — budget ledger or balance changed
- *   envanter_guncellendi — inventory item status, custody, or details changed
+ * Events:
+ *   permission-changed  — a role (or this member's role) changed
+ *   session-ended       — the session is over (signed in elsewhere, suspended…)
+ *   notification        — a notification was recorded for this member
+ *   team_updated        — team roster, settings, or kanban tasks changed
+ *   budget_updated      — budget ledger or balance changed
+ *   inventory_updated   — inventory item status, custody, or details changed
  */
 export type LiveEvent =
-	| 'permission-degisti'
-	| 'oturum-sonlandi'
-	| 'bildirim'
-	| 'takim_guncellendi'
-	| 'butce_guncellendi'
-	| 'envanter_guncellendi'
-	| 'haber_guncellendi'
-	| 'etkinlik_guncellendi'
-	| 'proje_guncellendi'
-	| 'karar_guncellendi'
-	| 'not_guncellendi';
+	| 'permission-changed'
+	| 'session-ended'
+	| 'notification'
+	| 'team_updated'
+	| 'budget_updated'
+	| 'inventory_updated'
+	| 'news_updated'
+	| 'event_updated'
+	| 'project_updated'
+	| 'decision_updated'
+	| 'note_updated';
 
 const LIVE_EVENTS: readonly LiveEvent[] = [
-	'permission-degisti',
-	'oturum-sonlandi',
-	'bildirim',
-	'takim_guncellendi',
-	'butce_guncellendi',
-	'envanter_guncellendi',
-	'haber_guncellendi',
-	'etkinlik_guncellendi',
-	'proje_guncellendi',
-	'karar_guncellendi',
-	'not_guncellendi',
+	'permission-changed',
+	'session-ended',
+	'notification',
+	'team_updated',
+	'budget_updated',
+	'inventory_updated',
+	'news_updated',
+	'event_updated',
+	'project_updated',
+	'decision_updated',
+	'note_updated',
 ];
 
+/** Hands an event to everything that listens through `useLiveEvent` (and `startLiveConnection`'s own callback). */
 const listeners = new Set<(event: LiveEvent) => void>();
 
-/** Hands an event to everything that listens through `useLiveEvent` (and `startLiveConnection`'s own callback). */
-function emitLiveEvent(event: LiveEvent): void {
-	for (const listener of listeners) listener(event);
-}
-
-/** Calls `handler` for each event the live stream delivers; nothing is called while the stream is down. */
+/**
+ * Calls `handler` whenever the server pushes a live event on the open stream.
+ */
 export function useLiveEvent(handler: (event: LiveEvent) => void): void {
 	const ref = useRef(handler);
 	useEffect(() => {
 		ref.current = handler;
 	});
 	useEffect(() => {
-		const listener = (event: LiveEvent) => ref.current(event);
-		listeners.add(listener);
+		const forward = (e: LiveEvent) => ref.current(e);
+		listeners.add(forward);
 		return () => {
-			listeners.delete(listener);
+			listeners.delete(forward);
 		};
 	}, []);
 }
 
-/** Reconnect waits: 1 s, 2 s, 4 s … up to this. */
-const MAX_BACKOFF_MS = 30_000;
+function broadcast(event: LiveEvent): void {
+	for (const fn of listeners) {
+		try {
+			fn(event);
+		} catch {
+			// A broken listener must not silence the rest.
+		}
+	}
+}
+
+export type LiveConnectionState = 'live' | 'reconnecting' | 'offline';
 
 export interface LiveConnectionHandlers {
 	/** The stream opened (`true`) or went away (`false`). `again` is true for a reconnection. */
 	onState: (connected: boolean, again: boolean) => void;
 	onEvent: (event: LiveEvent) => void;
+	onConnectionState?: (state: LiveConnectionState) => void;
 }
 
+export type LiveConnectionOptions = LiveConnectionHandlers;
+
 /**
- * Keeps one `EventSource` open until stopped: reconnects with exponential
- * backoff, and at once when the tab becomes visible again. A refused stream
- * (401/403 — the session is over) is retried with the growing wait until the
- * probe ends the session and stops this. Every tab owns its own connection. Returns the stop function.
+ * Keeps an `EventSource('/api/stream')` open while the session is alive, and
+ * reconnects with exponential backoff when it drops.
  */
-export function startLiveConnection({ onState, onEvent }: LiveConnectionHandlers): () => void {
-	if (typeof EventSource === 'undefined') return () => {};
-	let source: EventSource | null = null;
-	let timer: ReturnType<typeof setTimeout> | null = null;
-	let attempt = 0;
+export function startLiveConnection({ onState, onEvent, onConnectionState }: LiveConnectionHandlers): () => void {
+	if (typeof window === 'undefined' || typeof EventSource === 'undefined') {
+		onState(false, false);
+		onConnectionState?.('offline');
+		return () => {};
+	}
+
 	let stopped = false;
+	let es: EventSource | null = null;
+	let retryTimer: ReturnType<typeof setTimeout> | null = null;
+	let attempt = 0;
 	let everOpened = false;
 
-	const close = () => {
-		source?.close();
-		source = null;
+	const clearRetry = () => {
+		if (retryTimer !== null) {
+			clearTimeout(retryTimer);
+			retryTimer = null;
+		}
 	};
 
 	const connect = () => {
-		if (stopped || source) return;
-		if (timer) {
-			clearTimeout(timer);
-			timer = null;
+		if (stopped) return;
+		clearRetry();
+		if (attempt > 0) {
+			onConnectionState?.('reconnecting');
 		}
-		let es: EventSource;
 		try {
-			es = new EventSource('/api/olaylar');
+			es = new EventSource('/api/stream');
 		} catch {
-			schedule();
+			scheduleReconnect();
 			return;
 		}
-		source = es;
-		es.onopen = () => {
+
+		es.addEventListener('open', () => {
+			if (stopped) return;
+			attempt = 0;
 			const again = everOpened;
 			everOpened = true;
-			attempt = 0;
+			onConnectionState?.('live');
 			onState(true, again);
-		};
+		});
+
 		for (const name of LIVE_EVENTS) {
 			es.addEventListener(name, () => {
-				if (name === 'oturum-sonlandi') {
-					// The server closes the stream next; do not reconnect into a dead session.
+				if (stopped) return;
+				if (name === 'session-ended') {
 					stopped = true;
-					close();
+					try {
+						es?.close();
+					} catch {
+						/* ignore */
+					}
+					es = null;
+					onConnectionState?.('offline');
 					onState(false, true);
-				}
-				if (
-					name === 'takim_guncellendi' ||
-					name === 'butce_guncellendi' ||
-					name === 'envanter_guncellendi' ||
-					name === 'haber_guncellendi' ||
-					name === 'etkinlik_guncellendi' ||
-					name === 'proje_guncellendi' ||
-					name === 'karar_guncellendi' ||
-					name === 'not_guncellendi'
+				} else if (
+					name === 'team_updated' ||
+					name === 'budget_updated' ||
+					name === 'inventory_updated' ||
+					name === 'news_updated' ||
+					name === 'event_updated' ||
+					name === 'project_updated' ||
+					name === 'decision_updated' ||
+					name === 'note_updated'
 				) {
-					refreshAllResources();
+					window.dispatchEvent(new CustomEvent('orbit:resource-invalidate', { detail: { kind: name } }));
 				}
 				onEvent(name);
-				emitLiveEvent(name);
+				broadcast(name);
 			});
 		}
-		es.onerror = () => {
-			// Handled here rather than by the browser's own retry, so the wait grows.
-			close();
-			if (!stopped) onState(false, true);
-			schedule();
-		};
+
+		es.addEventListener('error', () => {
+			if (stopped) return;
+			try {
+				es?.close();
+			} catch {
+				/* ignore */
+			}
+			es = null;
+			onConnectionState?.('reconnecting');
+			onState(false, true);
+			scheduleReconnect();
+		});
 	};
 
-	const schedule = () => {
-		if (stopped || timer) return;
-		timer = setTimeout(() => {
-			timer = null;
-			connect();
-		}, Math.min(MAX_BACKOFF_MS, 1000 * 2 ** attempt));
+	const scheduleReconnect = () => {
+		if (stopped || retryTimer !== null) return;
+		onConnectionState?.('reconnecting');
+		const delay = Math.min(30_000, 1000 * Math.pow(2, Math.min(attempt, 5)));
 		attempt += 1;
+		retryTimer = setTimeout(() => {
+			retryTimer = null;
+			connect();
+		}, delay);
 	};
 
-	// A tab coming back to the front should not wait out a long backoff.
-	const onVisible = () => {
-		if (document.hidden || stopped || source) return;
+	// When the tab wakes or the network comes back, try right away instead of waiting out the backoff.
+	const retryNow = () => {
+		if (stopped || es !== null) return;
 		attempt = 0;
 		connect();
 	};
-	document.addEventListener('visibilitychange', onVisible);
+	const onVisibility = () => {
+		if (!document.hidden) retryNow();
+	};
+	const onOffline = () => {
+		onConnectionState?.('offline');
+	};
+	document.addEventListener('visibilitychange', onVisibility);
+	window.addEventListener('online', retryNow);
+	window.addEventListener('offline', onOffline);
+
 	connect();
 
 	return () => {
 		stopped = true;
-		document.removeEventListener('visibilitychange', onVisible);
-		if (timer) clearTimeout(timer);
-		close();
+		clearRetry();
+		document.removeEventListener('visibilitychange', onVisibility);
+		window.removeEventListener('online', retryNow);
+		window.removeEventListener('offline', onOffline);
+		onConnectionState?.('offline');
+		if (es) {
+			try {
+				es.close();
+			} catch {
+				/* ignore */
+			}
+			es = null;
+		}
 	};
 }

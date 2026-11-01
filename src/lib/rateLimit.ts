@@ -12,7 +12,8 @@ interface Bucket {
 	resetAt: number;
 }
 
-const buckets = new Map<string, Bucket>();
+const g = globalThis as typeof globalThis & { __orbitRateLimitBuckets?: Map<string, Bucket> };
+const buckets = (g.__orbitRateLimitBuckets ??= new Map<string, Bucket>());
 const MAX_BUCKETS = 10_000;
 
 function enforceMaxBuckets(): void {

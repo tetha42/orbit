@@ -11,7 +11,7 @@ export type AuthTab = 'login' | 'register';
  * two-factor step, and the shared feedback banners.
  */
 export function useAuthFlow() {
-	const { login, verify2fa, loginWithPasskey, register, sessionConflict } = useWorkspace();
+	const { login, verify2fa, loginWithPasskey, register, sessionConflict, sessionIpMismatch } = useWorkspace();
 
 	const [activeTab, setActiveTab] = useState<AuthTab>('login');
 	const [loading, setLoading] = useState(false);
@@ -160,6 +160,7 @@ export function useAuthFlow() {
 		setup,
 		setupIncomplete,
 		sessionConflict,
+		sessionIpMismatch,
 		submitLogin,
 		submitPasskey,
 		submitTwoFactor,

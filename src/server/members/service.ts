@@ -7,7 +7,7 @@ import {
 	setMemberFieldValues,
 	withTransaction,
 } from '@/db';
-import { publishEvent } from '@/db/olaylar';
+import { publishEvent } from '@/db/events';
 import { logAuditEvent, type AuditContext } from '@/db/audit';
 import { getRolePermission } from '@/db/roles';
 import { alanFarki, memberTargetName } from '@/lib/audit';
@@ -277,7 +277,7 @@ export async function updateMemberForAdmin(
 			});
 		}
 
-		await publishEvent(client, { k: 'yenile' });
+		await publishEvent(client, { k: 'refresh' });
 	});
 
 	const detail = await getMemberAdminDetail(id);
@@ -413,7 +413,7 @@ export async function updateSelfProfile(
 			});
 		}
 
-		await publishEvent(client, { k: 'yenile' });
+		await publishEvent(client, { k: 'refresh' });
 	});
 
 	return { ok: true };

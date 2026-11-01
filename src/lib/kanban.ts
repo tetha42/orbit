@@ -12,14 +12,19 @@ export const TASK_PRIORITIES = ['dusuk', 'orta', 'yuksek', 'kritik'] as const;
 export type TaskPriority = (typeof TASK_PRIORITIES)[number];
 
 /** Higher means more urgent; used for sorting. */
-export const ONCELIK_AGIRLIGI: Record<TaskPriority, number> = { dusuk: 0, orta: 1, yuksek: 2, kritik: 3 };
+export const PRIORITY_WEIGHT: Record<TaskPriority, number> = { dusuk: 0, orta: 1, yuksek: 2, kritik: 3 };
+export const ONCELIK_AGIRLIGI = PRIORITY_WEIGHT;
 
 export const TITLE_MAX = 160;
 export const DESCRIPTION_MAX = 4000;
-export const ETIKET_MAX = 24;
-export const ETIKET_SAYISI_MAX = 6;
-export const MADDE_MAX = 200;
-export const YORUM_MAX = 2000;
+export const LABEL_MAX = 24;
+export const LABEL_COUNT_MAX = 6;
+export const ITEM_MAX = 200;
+export const COMMENT_MAX = 2000;
+export const ETIKET_MAX = LABEL_MAX;
+export const ETIKET_SAYISI_MAX = LABEL_COUNT_MAX;
+export const MADDE_MAX = ITEM_MAX;
+export const YORUM_MAX = COMMENT_MAX;
 
 /**
  * Older clients sent `'bitti'` for "done" while the column stores `'tamamlandi'`.
@@ -41,18 +46,19 @@ export function normalizeStatus(value: unknown): TaskStatus | null {
 	return STATUS_ALIASES[key] ?? null;
 }
 
-export function normalizeOncelik(value: unknown): TaskPriority | null {
+export function normalizePriority(value: unknown): TaskPriority | null {
 	if (typeof value !== 'string') return null;
 	const key = value.trim().toLowerCase();
 	return (TASK_PRIORITIES as readonly string[]).includes(key) ? (key as TaskPriority) : null;
 }
+export const normalizeOncelik = normalizePriority;
 
 /**
  * Labels: trimmed, lower-cased (Turkish-aware), inner whitespace turned into `-`,
  * capped in length and count, duplicates dropped. Anything that is not an array
  * of strings yields `null` so the caller can reject it.
  */
-export function normalizeEtiketler(value: unknown): string[] | null {
+export function normalizeLabels(value: unknown): string[] | null {
 	if (!Array.isArray(value)) return null;
 	const out: string[] = [];
 	for (const raw of value) {
@@ -62,12 +68,13 @@ export function normalizeEtiketler(value: unknown): string[] | null {
 			.toLocaleLowerCase('tr-TR')
 			.replace(/^#+/, '')
 			.replace(/\s+/g, '-')
-			.slice(0, ETIKET_MAX);
+			.slice(0, LABEL_MAX);
 		if (label && !out.includes(label)) out.push(label);
-		if (out.length === ETIKET_SAYISI_MAX) break;
+		if (out.length === LABEL_COUNT_MAX) break;
 	}
 	return out;
 }
+export const normalizeEtiketler = normalizeLabels;
 
 /**
  * A due date as epoch millis, `null` for "none", or `undefined` when the input
@@ -98,29 +105,33 @@ export function toDateInput(ms: number | null | undefined): string {
 }
 
 /**
- * The `sira` for a card dropped between two neighbours (either may be missing).
+ * The order index for a card dropped between two neighbours (either may be missing).
  * Smaller sorts higher. With no neighbours the card takes `fallback`.
  */
-export function siraBetween(before: number | undefined, after: number | undefined, fallback: number): number {
+export function orderBetween(before: number | undefined, after: number | undefined, fallback: number): number {
 	if (before === undefined && after === undefined) return fallback;
 	if (before === undefined) return (after as number) - 1024;
 	if (after === undefined) return before + 1024;
 	return (before + after) / 2;
 }
+export const siraBetween = orderBetween;
 
 /**
  * Whether `mid` still sorts strictly between its neighbours. Halving a gap runs
  * out of floating-point precision after a few dozen drops into the same spot;
- * when it does, the column has to be renumbered instead (see `SIRA_ADIMI`).
+ * when it does, the column has to be renumbered instead (see `ORDER_STEP`).
  */
-export function siraFits(before: number | undefined, mid: number, after: number | undefined): boolean {
+export function orderFits(before: number | undefined, mid: number, after: number | undefined): boolean {
 	return (before === undefined || before < mid) && (after === undefined || mid < after);
 }
+export const siraFits = orderFits;
 
 /** Spacing used when a column is renumbered from scratch. */
-export const SIRA_ADIMI = 1024;
+export const ORDER_STEP = 1024;
+export const SIRA_ADIMI = ORDER_STEP;
 /** Most cards a renumbering request may list. */
-export const SIRALAMA_MAX = 500;
+export const ORDER_MAX = 500;
+export const SIRALAMA_MAX = ORDER_MAX;
 
 export type DueStatus = 'gecikti' | 'bugun' | 'yakin' | 'ileri';
 

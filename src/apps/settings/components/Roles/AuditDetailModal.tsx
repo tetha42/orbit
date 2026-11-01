@@ -9,6 +9,7 @@ import { isPermissionApp, PERMISSION_DESCRIPTIONS } from '@/core/permissions';
 import { getAppMeta } from '@/configs/apps.config';
 import type { AppID } from '@/types/workspace';
 import { diffRows, formatAuditAction, type AuditRecord } from '@/lib/audit';
+import s from './Roles.module.css';
 
 interface AuditDetailModalProps {
 	detay: AuditRecord | null;
@@ -102,70 +103,29 @@ export function AuditDetailModal({ detay, onClose }: AuditDetailModalProps) {
 					{t('auditFarkYok')}
 				</div>
 			) : (
-				<div
-					style={{
-						border: '1px solid var(--card-border, rgba(255, 255, 255, 0.1))',
-						borderRadius: '12px',
-						overflow: 'hidden',
-						marginTop: '4px',
-					}}
-				>
-					<div
-						style={{
-							display: 'grid',
-							gridTemplateColumns: 'minmax(120px, 1.2fr) 1fr 1fr',
-							gap: '12px',
-							padding: '10px 14px',
-							background: 'var(--fill-softer, rgba(255, 255, 255, 0.04))',
-							borderBottom: '1px solid var(--card-border, rgba(255, 255, 255, 0.1))',
-							fontSize: '11px',
-							fontWeight: 700,
-							textTransform: 'uppercase',
-							letterSpacing: '0.04em',
-							color: 'var(--text-secondary)',
-						}}
-					>
+				<div className={s.auditDiff}>
+					<div className={`${s.auditDiffRow} ${s.auditDiffHead}`}>
 						<div>{t('auditAlan')}</div>
 						<div>{t('auditOnceki')}</div>
 						<div>{t('auditSonraki')}</div>
 					</div>
 
 					<div style={{ display: 'flex', flexDirection: 'column' }}>
-						{diffs.map((d, i) => {
+						{diffs.map((d) => {
 							const appKey = d.alan.startsWith('izinler.') ? d.alan.slice('izinler.'.length) : d.alan;
 							const appMeta = isPermissionApp(appKey) ? getAppMeta(appKey as AppID, language) : null;
 							const label = isPermissionApp(appKey)
 								? (appMeta?.shortTitle || appMeta?.title || PERMISSION_DESCRIPTIONS[appKey]?.ad || appKey)
 								: t(`auditField_${d.alan}`, d.alan);
 							return (
-								<div
-									key={d.alan}
-									style={{
-										display: 'grid',
-										gridTemplateColumns: 'minmax(120px, 1.2fr) 1fr 1fr',
-										gap: '12px',
-										padding: '11px 14px',
-										alignItems: 'center',
-										fontSize: '12.5px',
-										borderBottom:
-											i < diffs.length - 1
-												? '1px solid var(--card-border, rgba(255, 255, 255, 0.06))'
-												: 'none',
-										background: i % 2 === 1 ? 'rgba(255, 255, 255, 0.02)' : 'transparent',
-									}}
-								>
+								<div key={d.alan} className={s.auditDiffRow}>
 									<div style={{ fontWeight: 650, color: 'var(--text-primary)' }}>
 										{label}
 									</div>
 									<div>
 										<span
+											className={s.auditOld}
 											style={{
-												display: 'inline-block',
-												padding: '3px 8px',
-												borderRadius: '6px',
-												background: 'rgba(239, 68, 68, 0.12)',
-												color: '#f87171',
-												fontSize: '11.5px',
 												textDecoration: d.onceki !== null && d.onceki !== undefined ? 'line-through' : 'none',
 											}}
 										>
@@ -173,17 +133,7 @@ export function AuditDetailModal({ detay, onClose }: AuditDetailModalProps) {
 										</span>
 									</div>
 									<div>
-										<span
-											style={{
-												display: 'inline-block',
-												padding: '3px 8px',
-												borderRadius: '6px',
-												background: 'rgba(48, 209, 88, 0.15)',
-												color: '#30d158',
-												fontWeight: 650,
-												fontSize: '11.5px',
-											}}
-										>
+										<span className={s.auditNew}>
 											{formatAuditValue(d.alan, d.sonraki)}
 										</span>
 									</div>

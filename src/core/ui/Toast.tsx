@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import ui from './ui.module.css';
 
@@ -37,6 +37,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 		window.setTimeout(() => setItems((cur) => cur.filter((t) => t.id !== id)), VISIBLE_MS);
 	}, []);
 
+	useEffect(() => {
+		const onToast = (event: Event) => {
+			const custom = event as CustomEvent<{ message?: string; text?: string; tone?: ToastTone }>;
+			const text = custom.detail?.message || custom.detail?.text;
+			if (text) {
+				notify(text, custom.detail?.tone ?? 'error');
+			}
+		};
+		window.addEventListener('orbit:toast', onToast);
+		return () => window.removeEventListener('orbit:toast', onToast);
+	}, [notify]);
+
 	const value = useMemo(() => notify, [notify]);
 	return (
 		<ToastContext.Provider value={value}>
@@ -53,3 +65,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 }
 
 export const useToast = (): Notify => useContext(ToastContext);
+
+export function showToast(message: string, tone: ToastTone = 'error') {
+	if (typeof window !== 'undefined') {
+		window.dispatchEvent(new CustomEvent('orbit:toast', { detail: { message, tone } }));
+	}
+}

@@ -3,7 +3,7 @@
  * tested in `scripts/check-pure.mjs` and the app only draws them.
  */
 
-export interface RozetGirdisi {
+export interface BadgeInput {
 	xp: number;
 	takim: number;
 	kaptan: boolean;
@@ -12,8 +12,9 @@ export interface RozetGirdisi {
 	sertifika: number;
 	proje: number;
 }
+export type RozetGirdisi = BadgeInput;
 
-export interface Rozet {
+export interface Badge {
 	id: string;
 	/** Translation keys for the name and the "how to earn it" line. */
 	ad: string;
@@ -24,8 +25,9 @@ export interface Rozet {
 	deger: number;
 	kazanildi: boolean;
 }
+export type Rozet = Badge;
 
-type Tanim = Omit<Rozet, 'deger' | 'kazanildi'> & { olc: (g: RozetGirdisi) => number };
+type Tanim = Omit<Badge, 'deger' | 'kazanildi'> & { olc: (g: BadgeInput) => number };
 
 const TANIMLAR: Tanim[] = [
 	{ id: 'ilk-adim', ad: 'bdgFirstStep', aciklama: 'bdgFirstStepHow', renk: '#0a84ff', ikon: 'rocket', hedef: 1, olc: (g) => g.katilinanEtkinlik },
@@ -39,9 +41,10 @@ const TANIMLAR: Tanim[] = [
 ];
 
 /** Every badge with progress; earned ones first, then the closest to being earned. */
-export function rozetler(g: RozetGirdisi): Rozet[] {
+export function computeBadges(g: BadgeInput): Badge[] {
 	return TANIMLAR.map(({ olc, ...t }) => {
 		const deger = Math.max(0, Math.floor(olc(g)));
 		return { ...t, deger: Math.min(deger, t.hedef), kazanildi: deger >= t.hedef };
 	}).sort((a, b) => Number(b.kazanildi) - Number(a.kazanildi) || b.deger / b.hedef - a.deger / a.hedef);
 }
+export const rozetler = computeBadges;

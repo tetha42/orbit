@@ -1,7 +1,7 @@
 import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
 import { getUserById, getPgPool } from '@/db';
-import { publishEventQuiet } from '@/db/olaylar';
+import { publishEventQuiet } from '@/db/events';
 import {
 	InventoryCodeExistsError,
 	createInventoryItem,
@@ -117,7 +117,7 @@ async function handlePOST(request: Request) {
 						status: isInventoryStatus(body.status) && body.status !== 'oduncte' ? body.status : 'saglam',
 						aktorId: auth.user.id,
 					});
-					await publishEventQuiet(getPgPool(), { k: 'envanter_guncellendi' });
+					await publishEventQuiet(getPgPool(), { k: 'inventory_updated' });
 					return NextResponse.json({ success: true, item }, { status: 201 });
 				} catch (err) {
 					if (err instanceof InventoryCodeExistsError)
@@ -128,7 +128,7 @@ async function handlePOST(request: Request) {
 			const r = await updateInventoryItem(envanterId, fields, auth.user.id);
 			if (r === 'yok') return bad('Envanter kaydı bulunamadı.', 404);
 			if (r === 'kod-var') return bad(`${fields.kod} kodu zaten kullanılıyor.`, 409);
-			await publishEventQuiet(getPgPool(), { k: 'envanter_guncellendi' });
+			await publishEventQuiet(getPgPool(), { k: 'inventory_updated' });
 			return NextResponse.json({ success: true });
 		}
 
@@ -139,7 +139,7 @@ async function handlePOST(request: Request) {
 			const r = await deleteInventoryItem(envanterId);
 			if (r === 'yok') return bad('Kayıt bulunamadı veya silinemedi.', 404);
 			if (r === 'oduncte') return bad('Ödünçteki eşya silinemez; önce iade alın.', 409);
-			await publishEventQuiet(getPgPool(), { k: 'envanter_guncellendi' });
+			await publishEventQuiet(getPgPool(), { k: 'inventory_updated' });
 			return NextResponse.json({ success: true, message: 'Envanter kaydı silindi.' });
 		}
 
@@ -170,7 +170,7 @@ async function handlePOST(request: Request) {
 			if (r === 'yok') return bad('Envanter kaydı bulunamadı.', 404);
 			if (r === 'musait-degil')
 				return bad('Bu eşya şu anda ödünç verilemez: başkasında, arızalı veya kayıp.', 409);
-			await publishEventQuiet(getPgPool(), { k: 'envanter_guncellendi' });
+			await publishEventQuiet(getPgPool(), { k: 'inventory_updated' });
 			return NextResponse.json({ success: true, message: 'Ödünç alma işlemi kaydedildi.' });
 		}
 
@@ -190,7 +190,7 @@ async function handlePOST(request: Request) {
 			if (r === 'oduncte-degil') return bad('Bu eşya ödünçte değil.', 409);
 			if (r === 'permission')
 				return bad('Bu eşyayı yalnızca ödünç alan kişi veya yönetim iade edebilir.', 403);
-			await publishEventQuiet(getPgPool(), { k: 'envanter_guncellendi' });
+			await publishEventQuiet(getPgPool(), { k: 'inventory_updated' });
 			return NextResponse.json({
 				success: true,
 				message:
@@ -220,7 +220,7 @@ async function handlePOST(request: Request) {
 				borrowerOnly: isManager ? undefined : auth.user.id,
 			});
 			if (r !== 'ok') return bad('Süre uzatılamadı; eşyanın durumu değişmiş olabilir.', 409);
-			await publishEventQuiet(getPgPool(), { k: 'envanter_guncellendi' });
+			await publishEventQuiet(getPgPool(), { k: 'inventory_updated' });
 			return NextResponse.json({ success: true, message: 'İade tarihi güncellendi.' });
 		}
 
@@ -248,7 +248,7 @@ async function handlePOST(request: Request) {
 			if (r === 'yok') return bad('Envanter kaydı bulunamadı.', 404);
 			if (r === 'oduncte')
 				return bad('Eşya ödünçte; önce iade alın (kaybolduysa "Kayıp" seçebilirsiniz).', 409);
-			await publishEventQuiet(getPgPool(), { k: 'envanter_guncellendi' });
+			await publishEventQuiet(getPgPool(), { k: 'inventory_updated' });
 			return NextResponse.json({ success: true, message: 'Envanter durumu güncellendi.', status });
 		}
 

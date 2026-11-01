@@ -1,7 +1,7 @@
 import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
 import { createProject, getProjects, getPgPool, type ProjectInput } from '@/db';
-import { publishEventQuiet } from '@/db/olaylar';
+import { publishEventQuiet } from '@/db/events';
 import { can, requireApp } from '@/lib/auth/access';
 import { parseProjectInput } from '@/lib/server/projectInput';
 
@@ -41,7 +41,7 @@ async function handlePOST(request: Request) {
 			olusturanId: auth.user.id,
 			status: manage && body.status !== 'oneri' ? 'yayinda' : 'oneri',
 		});
-		await publishEventQuiet(getPgPool(), [{ k: 'proje_guncellendi' }]);
+		await publishEventQuiet(getPgPool(), [{ k: 'project_updated' }]);
 		return NextResponse.json({ success: true, proje: project }, { status: 201 });
 	} catch (error) {
 		console.error('API /api/projeler POST error:', error);

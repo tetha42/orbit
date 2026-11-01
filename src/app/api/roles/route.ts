@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createRole, deleteRole, getRolePermission, getRoles, getDefaultRoleId, setDefaultRoleId, updateRole } from '@/db/roles';
 import { auditContext } from '@/db/audit';
 import { authenticateEnrolled, can, requireAdmin, type AuthorizedUser } from '@/lib/auth/access';
-import { ADMIN_ROLE_ID, ALUMNI_ROLE_ID, PERMISSION_DESCRIPTIONS, extraPermissions, normalizePermissions, roleProblem, canAssignRole, type Permissions } from '@/core/permissions';
+import { ADMIN_ROLE_ID, ALUMNI_ROLE_ID, PERMISSION_DESCRIPTIONS, extraPermissions, hasManagementPermission, normalizePermissions, roleProblem, canAssignRole, type Permissions } from '@/core/permissions';
 import { getCached, setCached, invalidateCache } from '@/lib/server/cache';
 
 /**
@@ -20,13 +20,14 @@ function readRole(body: Record<string, unknown>, user: AuthorizedUser) {
 	if (izin.error !== undefined) return { error: izin.error };
 	const excess = extraPermissions(izin.value, user.permission.izinler);
 	if (excess.length) return { error: `Kendinizde olmayan yetkileri veremezsiniz: ${excess.map((a) => PERMISSION_DESCRIPTIONS[a].ad).join(', ')}`, status: 403 };
+	const isManagement = hasManagementPermission(izin.value as Permissions);
 	return {
 		value: {
 			ad: String(body.ad).trim(),
 			renk: String(body.renk).toLowerCase(),
 			aciklama: typeof body.aciklama === 'string' ? body.aciklama.trim() : '',
 			izinler: izin.value as Permissions,
-			ikiAdimZorunlu: body.ikiAdimZorunlu === true,
+			ikiAdimZorunlu: isManagement ? true : body.ikiAdimZorunlu === true,
 		},
 	};
 }

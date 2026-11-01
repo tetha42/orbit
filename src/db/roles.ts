@@ -13,7 +13,8 @@ import type { PoolClient } from 'pg';
 import { randomBytes } from 'crypto';
 import { getPgPool, withTransaction, ensurePostgresInit, getSystemSetting, updateUserStatus } from './index';
 import { logAuditEvent, type AuditContext } from './audit';
-import { startListener, registerEventHandler, publishEvent } from './olaylar';
+import { startListener, registerEventHandler, publishEvent } from './events';
+import { invalidateCache } from '@/lib/server/cache';
 import { alanFarki, statusAction, roleDiff, roleSummary, memberTargetName, type RoleSummary } from '@/lib/audit';
 import {
 	ADMIN_ROLE_ID,
@@ -274,7 +275,7 @@ async function writeIzinler(client: PoolClient, roleId: string, izinler: Permiss
  * Every authenticated request needs the caller's permissions. They change only
  * when a role is edited, so they are cached per role for a few seconds and the
  * cache is dropped on every write. Other server processes hear the write over
- * PostgreSQL NOTIFY (db/olaylar) and drop theirs at once; should that connection
+ * PostgreSQL NOTIFY (db/events) and drop theirs at once; should that connection
  * be down they catch up within the TTL. Kept on globalThis so the one handler
  * below empties the same map whichever bundle of this module a route runs. */
 const CACHE_TTL_MS = 5000;
@@ -282,7 +283,10 @@ const g = globalThis as typeof globalThis & { __beuRolOnbellegi?: Map<string, { 
 const cache = (g.__beuRolOnbellegi ??= new Map());
 const dropCache = () => cache.clear();
 registerEventHandler('role-onbellegi', (olay) => {
-	if (olay.k === 'permission' || olay.k === 'yenile') dropCache();
+	if (olay.k === 'permission' || olay.k === 'yenile' || olay.k === 'refresh') {
+		dropCache();
+		invalidateCache('roller_raw');
+	}
 });
 
 export async function getRolePermission(roleId: string | null | undefined): Promise<Permission> {

@@ -611,17 +611,20 @@ export const RadarView = React.memo(function RadarView() {
 						<span>{isEn ? 'No telemetry data recorded for the last 24 hours' : 'Son 24 saat için kayıtlı telemetri verisi bulunmuyor'}</span>
 					</div>
 				) : (
-					<svg viewBox="0 0 800 130" className={s.histogramSvg} preserveAspectRatio="none">
-						<line x1="0" y1="20" x2="800" y2="20" stroke="var(--border-subtle, rgba(0,0,0,0.08))" strokeDasharray="3 3" />
-						<line x1="0" y1="60" x2="800" y2="60" stroke="var(--border-subtle, rgba(0,0,0,0.08))" strokeDasharray="3 3" />
-						<line x1="0" y1="100" x2="800" y2="100" stroke="var(--border-subtle, rgba(0,0,0,0.15))" />
+					<svg viewBox="0 0 800 240" className={s.histogramSvg} preserveAspectRatio="none">
+						<line x1="0" y1="25" x2="800" y2="25" stroke="var(--border-subtle, rgba(0,0,0,0.08))" strokeDasharray="3 3" />
+						<line x1="0" y1="68" x2="800" y2="68" stroke="var(--border-subtle, rgba(0,0,0,0.08))" strokeDasharray="3 3" />
+						<line x1="0" y1="110" x2="800" y2="110" stroke="var(--border-subtle, rgba(0,0,0,0.08))" strokeDasharray="3 3" />
+						<line x1="0" y1="152" x2="800" y2="152" stroke="var(--border-subtle, rgba(0,0,0,0.08))" strokeDasharray="3 3" />
+						<line x1="0" y1="195" x2="800" y2="195" stroke="var(--border-subtle, rgba(0,0,0,0.18))" />
 
 						{histogramData.points.map((p, idx) => {
 							const x = idx * histogramData.step + (histogramData.step - histogramData.barWidth) / 2;
-							const blockedH = (p.blockedCount / histogramData.maxVal) * 80;
-							const warnH = (p.warningCount / histogramData.maxVal) * 80;
+							const maxBarH = 170;
+							const blockedH = (p.blockedCount / histogramData.maxVal) * maxBarH;
+							const warnH = (p.warningCount / histogramData.maxVal) * maxBarH;
 							const totalH = blockedH + warnH;
-							const yBlocked = 100 - blockedH;
+							const yBlocked = 195 - blockedH;
 							const yWarn = yBlocked - warnH;
 							const isSelected = selectedHourFilter?.hourLabel === p.hourLabel;
 
@@ -649,9 +652,9 @@ export const RadarView = React.memo(function RadarView() {
 									</title>
 									<rect
 										x={idx * histogramData.step}
-										y="0"
+										y="10"
 										width={histogramData.step}
-										height="115"
+										height="205"
 										fill={isSelected ? 'color-mix(in srgb, var(--accent, #0071e3) 14%, transparent)' : 'transparent'}
 										rx="3"
 									/>
@@ -662,13 +665,13 @@ export const RadarView = React.memo(function RadarView() {
 										<rect x={x} y={yBlocked} width={histogramData.barWidth} height={blockedH} rx="2" fill="var(--danger, #d70015)" opacity={isSelected ? 1 : 0.95} />
 									)}
 									{totalH === 0 && (
-										<circle cx={x + histogramData.barWidth / 2} cy="98" r="1.5" fill="var(--text-secondary, #6e6e73)" opacity="0.3" />
+										<circle cx={x + histogramData.barWidth / 2} cy="193" r="1.5" fill="var(--text-secondary, #6e6e73)" opacity="0.3" />
 									)}
 									<text
 										x={x + histogramData.barWidth / 2}
-										y={118}
+										y={214}
 										textAnchor="middle"
-										fontSize="9"
+										fontSize="9.5"
 										fontWeight={isSelected ? 'bold' : 'normal'}
 										fill={isSelected ? 'var(--accent, #0071e3)' : 'var(--text-secondary, #6e6e73)'}
 									>

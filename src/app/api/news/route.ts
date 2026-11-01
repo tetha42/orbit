@@ -1,7 +1,7 @@
 import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
 import { getNews, getNewsById, createNews, updateNews, deleteNews, getPgPool } from '@/db';
-import { notificationEvents, publishEventQuiet } from '@/db/olaylar';
+import { notificationEvents, publishEventQuiet } from '@/db/events';
 import { can, requireApp } from '@/lib/auth/access';
 import {
 	NEWS_LIMITS,
@@ -133,7 +133,7 @@ async function handlePOST(request: Request) {
 			yazarId: auth.user.id,
 		});
 
-		await publishEventQuiet(getPgPool(), [{ k: 'haber_guncellendi' }, ...notificationEvents()]);
+		await publishEventQuiet(getPgPool(), [{ k: 'news_updated' }, ...notificationEvents()]);
 
 		return NextResponse.json({
 			...result,
@@ -170,7 +170,7 @@ async function handlePATCH(request: Request) {
 		}
 		const updated = await updateNews(id, parsed.value);
 		if (!updated) return NextResponse.json({ error: 'NewsItem bulunamadı.' }, { status: 404 });
-		await publishEventQuiet(getPgPool(), [{ k: 'haber_guncellendi' }, ...notificationEvents()]);
+		await publishEventQuiet(getPgPool(), [{ k: 'news_updated' }, ...notificationEvents()]);
 		return NextResponse.json(updated);
 	} catch (error) {
 		console.error('API /api/haberler PATCH error:', error);
@@ -193,7 +193,7 @@ async function handleDELETE(request: Request) {
 		}
 
 		const success = await deleteNews(id);
-		if (success) await publishEventQuiet(getPgPool(), [{ k: 'haber_guncellendi' }, ...notificationEvents()]);
+		if (success) await publishEventQuiet(getPgPool(), [{ k: 'news_updated' }, ...notificationEvents()]);
 		return NextResponse.json({ success });
 	} catch (error) {
 		console.error('API /api/haberler DELETE error:', error);

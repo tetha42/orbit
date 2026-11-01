@@ -24,6 +24,7 @@ import {
 import styles from './VsCodeSetup.module.css';
 import { DEFAULT_TEAM_CATEGORIES } from '@/lib/teamCategories';
 import { DEFAULT_REGISTRATION_CORE_CONFIG } from '@/lib/registrationConfig';
+import { clearWorkspaceSession } from '@/lib/client/indexedDB';
 
 interface FirstRunSetupWizardProps {
 	onComplete: () => void;
@@ -510,6 +511,7 @@ ${dom} {
 				return;
 			}
 
+			await clearWorkspaceSession().catch(() => {});
 			setCompletedSteps((prev) => new Set(prev).add(5));
 
 			// Smooth launch transition

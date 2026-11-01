@@ -13,7 +13,7 @@ import {
 	getPgPool,
 	type TeamTaskPatch,
 } from '@/db';
-import { publishEventQuiet } from '@/db/olaylar';
+import { publishEventQuiet } from '@/db/events';
 import { requireApp } from '@/lib/auth/access';
 import {
 	DESCRIPTION_MAX,
@@ -122,7 +122,7 @@ async function handlePATCH(request: Request, { params }: Params) {
 
 		const task = await updateTeamTask(id, patch, auth.user.id);
 		if (!task) return notFound();
-		await publishEventQuiet(getPgPool(), { k: 'takim_guncellendi', teamId: access.task.teamId });
+		await publishEventQuiet(getPgPool(), { k: 'team_updated', teamId: access.task.teamId });
 		return NextResponse.json({ success: true, task });
 	} catch (error) {
 		console.error('API /api/takimlar/gorevler PATCH error:', error);
@@ -152,7 +152,7 @@ async function handlePOST(request: Request, { params }: Params) {
 				if (!metin) return badRequest('Madde metni boş olamaz.');
 				if (metin.length > MADDE_MAX) return badRequest(`Madde en fazla ${MADDE_MAX} karakter olabilir.`);
 				const madde = await addTaskItem(id, metin, auth.user.id);
-				await publishEventQuiet(getPgPool(), { k: 'takim_guncellendi', teamId: access.task.teamId });
+				await publishEventQuiet(getPgPool(), { k: 'team_updated', teamId: access.task.teamId });
 				return NextResponse.json({ success: true, madde });
 			}
 
@@ -163,7 +163,7 @@ async function handlePOST(request: Request, { params }: Params) {
 
 			if (action === 'deleteItem') {
 				await deleteTaskItem(maddeId);
-				await publishEventQuiet(getPgPool(), { k: 'takim_guncellendi', teamId: access.task.teamId });
+				await publishEventQuiet(getPgPool(), { k: 'team_updated', teamId: access.task.teamId });
 				return NextResponse.json({ success: true });
 			}
 
@@ -179,7 +179,7 @@ async function handlePOST(request: Request, { params }: Params) {
 				patch.tamamMi = body.tamamMi;
 			}
 			await updateTaskItem(maddeId, patch, auth.user.id);
-			await publishEventQuiet(getPgPool(), { k: 'takim_guncellendi', teamId: access.task.teamId });
+			await publishEventQuiet(getPgPool(), { k: 'team_updated', teamId: access.task.teamId });
 			return NextResponse.json({ success: true });
 		}
 
@@ -188,7 +188,7 @@ async function handlePOST(request: Request, { params }: Params) {
 			if (!content) return badRequest('Yorum boş olamaz.');
 			if (content.length > YORUM_MAX) return badRequest(`Yorum en fazla ${YORUM_MAX} karakter olabilir.`);
 			const yorum = await addTaskComment(id, auth.user.id, content);
-			await publishEventQuiet(getPgPool(), { k: 'takim_guncellendi', teamId: access.task.teamId });
+			await publishEventQuiet(getPgPool(), { k: 'team_updated', teamId: access.task.teamId });
 			return NextResponse.json({
 				success: true,
 				yorum: { ...yorum, kullaniciAdSoyad: `${auth.user.ad} ${auth.user.soyad}` },
@@ -204,7 +204,7 @@ async function handlePOST(request: Request, { params }: Params) {
 				return forbidden('Bu yorumu yalnızca yazarı, kaptan veya yönetim silebilir.');
 			}
 			await deleteTaskComment(yorumId);
-			await publishEventQuiet(getPgPool(), { k: 'takim_guncellendi', teamId: access.task.teamId });
+			await publishEventQuiet(getPgPool(), { k: 'team_updated', teamId: access.task.teamId });
 			return NextResponse.json({ success: true });
 		}
 

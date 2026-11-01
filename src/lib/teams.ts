@@ -39,8 +39,9 @@ export const EXPERTISE_SUGGESTIONS = ['C++', 'Python', 'ROS2', 'PCB Tasarımı',
 export const EXPERTISE_MAX = 8;
 export const EXPERTISE_MAX_LENGTH = 30;
 
-export const isKategori = (v: unknown): v is TeamCategory =>
+export const isCategory = (v: unknown): v is TeamCategory =>
 	typeof v === 'string' && (TEAM_CATEGORIES as readonly string[]).includes(v);
+export const isKategori = isCategory;
 export const isParticipationType = (v: unknown): v is ParticipationType =>
 	typeof v === 'string' && (PARTICIPATION_TYPES as readonly string[]).includes(v);
 export const isTeamStatus = (v: unknown): v is TeamStatus =>

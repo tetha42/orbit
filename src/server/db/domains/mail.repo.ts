@@ -1,5 +1,4 @@
 /**
- * Domain repository for Mail / Posta operations.
- * Re-exports and facades the dedicated posta database module.
+ * Mail / internal messages domain repository
  */
-export * from '@/db/posta';
+export * from '@/db/messages';

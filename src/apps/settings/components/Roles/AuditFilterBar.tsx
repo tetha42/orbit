@@ -86,7 +86,7 @@ export function AuditFilterBar({
 				<input
 					type="date"
 					className={ui.input}
-					style={{ width: '135px' }}
+					style={{ flex: '1 1 125px', minWidth: 105, maxWidth: 140 }}
 					value={filtre.from}
 					onChange={(e) => onFromChange(e.target.value)}
 					aria-label={t('auditFiltreBaslangic')}
@@ -96,7 +96,7 @@ export function AuditFilterBar({
 				<input
 					type="date"
 					className={ui.input}
-					style={{ width: '135px' }}
+					style={{ flex: '1 1 125px', minWidth: 105, maxWidth: 140 }}
 					value={filtre.to}
 					onChange={(e) => onToChange(e.target.value)}
 					aria-label={t('auditFiltreBitis')}

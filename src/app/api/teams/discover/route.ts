@@ -1,7 +1,7 @@
 import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
 import { getUserTeamIds, getPgPool, getTeamById, getTeamShowcase, joinTeam, leaveTeam } from '@/db';
-import { notificationEvents, publishEventQuiet } from '@/db/olaylar';
+import { notificationEvents, publishEventQuiet } from '@/db/events';
 import { authenticateEnrolled } from '@/lib/auth/access';
 import { PENDING_APPLICATION_MAX, TEAM_LIMIT, buildApplicationNote } from '@/lib/teams';
 
@@ -60,7 +60,7 @@ async function handlePOST(request: Request) {
 				return NextResponse.json({ error: 'Geri çekilecek bir başvuru bulunamadı.' }, { status: 404 });
 			}
 			const r = await leaveTeam({ teamId, userId: auth.user.id });
-			if (r.success) await publishEventQuiet(getPgPool(), { k: 'takim_guncellendi', teamId });
+			if (r.success) await publishEventQuiet(getPgPool(), { k: 'team_updated', teamId });
 			return r.success
 				? NextResponse.json({ success: true, message: r.message })
 				: NextResponse.json({ error: r.message }, { status: r.status ?? 400 });
@@ -72,7 +72,7 @@ async function handlePOST(request: Request) {
 
 		// The roster screens refresh, and the captain's bell shows the new application at once.
 		const team = await getTeamById(teamId);
-		await publishEventQuiet(getPgPool(), [{ k: 'takim_guncellendi', teamId }, ...notificationEvents([team?.liderId])]);
+		await publishEventQuiet(getPgPool(), [{ k: 'team_updated', teamId }, ...notificationEvents([team?.liderId])]);
 		return NextResponse.json({ success: true, status: result.status, message: result.message });
 	} catch (error) {
 		console.error('API /api/takimlar/kesfet POST error:', error);

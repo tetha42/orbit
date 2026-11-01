@@ -19,7 +19,7 @@ import {
 	getTeamById,
 	type EventPatch,
 } from '@/db';
-import { notificationEvents, publishEventQuiet } from '@/db/olaylar';
+import { notificationEvents, publishEventQuiet } from '@/db/events';
 import type { User } from '@/db/schema';
 import { can, requireApp } from '@/lib/auth/access';
 import {
@@ -176,7 +176,7 @@ async function handlePOST(request: Request) {
 					bulunamadi: [404, 'CommunityEvent bulunamadı.'],
 				};
 				const [status, message] = messages[r];
-				if (status === 200) await publishEventQuiet(getPgPool(), [{ k: 'etkinlik_guncellendi' }]);
+				if (status === 200) await publishEventQuiet(getPgPool(), [{ k: 'event_updated' }]);
 				return status === 200 ? NextResponse.json({ success: true, message }) : bad(message, status);
 			}
 
@@ -185,7 +185,7 @@ async function handlePOST(request: Request) {
 				const r = await cancelEventRegistration(eventId, user.id);
 				if (r === 'basladi') return bad('CommunityEvent başladıktan sonra kayıt iptal edilemez.');
 				if (r === 'yok') return bad('Bu etkinlik için kaydınız bulunmuyor.', 404);
-				await publishEventQuiet(getPgPool(), [{ k: 'etkinlik_guncellendi' }]);
+				await publishEventQuiet(getPgPool(), [{ k: 'event_updated' }]);
 				return NextResponse.json({ success: true, message: 'Kaydınız iptal edildi.' });
 			}
 
@@ -220,7 +220,7 @@ async function handlePOST(request: Request) {
 			if (!Number(ev.yoklamaAcik)) return bad('Bu etkinlikte yoklama şu anda kapalı.', 409);
 			if (!isAttendanceTime(ev.baslangic, ev.endTime, Date.now())) return bad('Attendance yalnızca etkinlik sırasında alınabilir.', 409);
 			const r = await saveAttendance({ etkinlikId: ev.id, userId: user.id, yontem: 'qr' });
-			await publishEventQuiet(getPgPool(), [{ k: 'etkinlik_guncellendi' }]);
+			await publishEventQuiet(getPgPool(), [{ k: 'event_updated' }]);
 			return NextResponse.json({
 				success: true,
 				zaten: r === 'zaten',
@@ -250,7 +250,7 @@ async function handlePOST(request: Request) {
 				ownerTeamId: v.ownerTeamId ?? null,
 				ownerUserId: v.ownerUserId ?? user.id,
 			});
-			await publishEventQuiet(getPgPool(), [{ k: 'etkinlik_guncellendi' }, ...notificationEvents()]);
+			await publishEventQuiet(getPgPool(), [{ k: 'event_updated' }, ...notificationEvents()]);
 			return NextResponse.json({ success: true, ...created }, { status: 201 });
 		}
 
@@ -267,7 +267,7 @@ async function handlePOST(request: Request) {
 			// Cancelling or completing an event also closes check-in.
 			const closes = parsed.value.status && parsed.value.status !== 'yayinda';
 			await updateEvent(eventId, { ...parsed.value, ...(closes ? { yoklamaAcik: false } : {}) });
-			await publishEventQuiet(getPgPool(), [{ k: 'etkinlik_guncellendi' }, ...notificationEvents()]);
+			await publishEventQuiet(getPgPool(), [{ k: 'event_updated' }, ...notificationEvents()]);
 			return NextResponse.json({ success: true });
 		}
 
@@ -275,14 +275,14 @@ async function handlePOST(request: Request) {
 			const acik = body.acik === true;
 			if (acik && ev.status !== 'yayinda') return bad('Yalnızca yayındaki bir etkinlikte yoklama açılabilir.');
 			await updateEvent(eventId, { yoklamaAcik: acik });
-			await publishEventQuiet(getPgPool(), [{ k: 'etkinlik_guncellendi' }]);
+			await publishEventQuiet(getPgPool(), [{ k: 'event_updated' }]);
 			return NextResponse.json({ success: true, yoklamaAcik: acik });
 		}
 
 		if (action === 'deleteEvent') {
 			const r = await deleteEvent(eventId);
 			if (r === 'katilim-var') return bad('Katılım kaydı olan etkinlik silinemez; bunun yerine iptal edin.', 409);
-			await publishEventQuiet(getPgPool(), [{ k: 'etkinlik_guncellendi' }, ...notificationEvents()]);
+			await publishEventQuiet(getPgPool(), [{ k: 'event_updated' }, ...notificationEvents()]);
 			return NextResponse.json({ success: true });
 		}
 
@@ -299,7 +299,7 @@ async function handlePOST(request: Request) {
 			const member = await getUserById(code.userId);
 			if (!member) return bad('Bilet sahibi bulunamadı.', 404);
 			const r = await saveAttendance({ etkinlikId: eventId, userId: member.id, yontem: 'bilet', kaydedenId: user.id });
-			await publishEventQuiet(getPgPool(), [{ k: 'etkinlik_guncellendi' }]);
+			await publishEventQuiet(getPgPool(), [{ k: 'event_updated' }]);
 			return NextResponse.json({
 				success: true,
 				zaten: r === 'zaten',
@@ -314,7 +314,7 @@ async function handlePOST(request: Request) {
 			if (!member) return bad('Üye bulunamadı. Öğrenci numarasını kontrol edin.', 404);
 			if (member.status !== 'aktif' && member.status !== 'mezun') return bad('Bu üyenin hesabı aktif değil.', 409);
 			const r = await saveAttendance({ etkinlikId: eventId, userId: member.id, yontem: 'manuel', kaydedenId: user.id });
-			await publishEventQuiet(getPgPool(), [{ k: 'etkinlik_guncellendi' }]);
+			await publishEventQuiet(getPgPool(), [{ k: 'event_updated' }]);
 			return NextResponse.json({
 				success: true,
 				zaten: r === 'zaten',
@@ -328,7 +328,7 @@ async function handlePOST(request: Request) {
 			const member = await memberOf(body);
 			if (!member) return bad('Üye bulunamadı.', 404);
 			const removed = await deleteAttendance(eventId, member.id);
-			if (removed) await publishEventQuiet(getPgPool(), [{ k: 'etkinlik_guncellendi' }]);
+			if (removed) await publishEventQuiet(getPgPool(), [{ k: 'event_updated' }]);
 			return removed ? NextResponse.json({ success: true }) : bad('Bu üyenin yoklama kaydı yok.', 404);
 		}
 
@@ -336,7 +336,7 @@ async function handlePOST(request: Request) {
 			const member = await memberOf(body);
 			if (!member) return bad('Üye bulunamadı.', 404);
 			const removed = await deleteEventRegistration(eventId, member.id);
-			if (removed) await publishEventQuiet(getPgPool(), [{ k: 'etkinlik_guncellendi' }]);
+			if (removed) await publishEventQuiet(getPgPool(), [{ k: 'event_updated' }]);
 			return removed ? NextResponse.json({ success: true, message: 'Kayıt silindi.' }) : bad('Bu üyenin kaydı bulunamadı.', 404);
 		}
 

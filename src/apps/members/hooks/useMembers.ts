@@ -27,7 +27,7 @@ export function useMembers() {
 
 	const mailUser = canUseApp('chat');
 	const { data: reachData } = useJsonResource<{ idler: string[] }>(
-		mailUser ? '/api/posta/alicilar?ulasilabilir=1' : null
+		mailUser ? '/api/messages/recipients?reachable=1' : null
 	);
 	const reachable = useMemo(() => new Set(reachData?.idler ?? []), [reachData?.idler]);
 

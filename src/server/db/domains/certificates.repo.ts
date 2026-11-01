@@ -1,7 +1,7 @@
 import { randomInt, randomUUID } from 'crypto';
 import { ensurePostgresInit, getPgPool, getSystemSettings } from '@/db/index';
 import type { Certificate } from '@/db/schema';
-import { notificationEvents, publishEventQuiet } from '@/db/olaylar';
+import { notificationEvents, publishEventQuiet } from '@/db/events';
 
 const CODE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
 

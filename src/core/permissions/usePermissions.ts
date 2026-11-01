@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useSession } from '@/core/session';
-import { canManage, canUse, type Permissions, type Seviye } from './index';
+import { canManage, canUse, type Permissions, type PermissionLevel } from './index';
 
 /**
  * The signed-in member's permissions, for the UI.
@@ -15,15 +15,15 @@ import { canManage, canUse, type Permissions, type Seviye } from './index';
  */
 export function usePermissions() {
 	const { currentUser } = useSession();
-	const izinler: Permissions = currentUser?.izinler ?? {};
+	const permissions: Permissions = currentUser?.izinler ?? {};
 	const pending2fa = !!currentUser?.mustSetup2fa;
 	return useMemo(
 		() => ({
-			izinler,
+			izinler: permissions,
 			isAdmin: !!currentUser?.admin,
 			role: currentUser?.rolBilgi ?? null,
 			/** False for everything while a required second factor is not enrolled yet. */
-			can: (appId: string, seviye: Seviye = 'kullan') => !pending2fa && (seviye === 'yonet' ? canManage(izinler, appId) : canUse(izinler, appId)),
+			can: (appId: string, level: PermissionLevel = 'kullan') => !pending2fa && (level === 'yonet' ? canManage(permissions, appId) : canUse(permissions, appId)),
 		}),
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 		[currentUser]

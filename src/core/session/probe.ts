@@ -16,7 +16,7 @@ import { startLiveConnection } from './live';
  */
 export type SessionProbe =
 	| { kind: 'user'; user: SessionUser }
-	| { kind: 'ended'; conflict: boolean }
+	| { kind: 'ended'; conflict: boolean; ipMismatch?: boolean }
 	| { kind: 'lockdown'; message: string }
 	| { kind: 'none' }
 	| { kind: 'failed' };
@@ -30,7 +30,11 @@ export async function probeSession(): Promise<SessionProbe> {
 		}
 		if (res.status === 401 || res.status === 403) {
 			const data = await res.json().catch(() => ({}));
-			return { kind: 'ended', conflict: !!data.conflict };
+			return {
+				kind: 'ended',
+				conflict: !!data?.conflict,
+				ipMismatch: data?.code === 'SESSION_IP_MISMATCH',
+			};
 		}
 		if (res.status === 503) {
 			const data = await res.json().catch(() => ({}));
@@ -52,13 +56,16 @@ export const SESSION_LIVE_POLL_MS = 60000;
 
 /**
  * Keeps the live session current until stopped. The server pushes changes over
- * the live stream (`/api/olaylar`): each role, session or notification event
+ * the live stream (`/api/stream`): each role, session or notification event
  * runs `probe` at once. The timer behind it is the safety net — every
  * `SESSION_LIVE_POLL_MS` while the stream is up, every `SESSION_POLL_MS` (the
  * old behaviour: an edited role within 15 s) when it is down or unsupported —
  * and a stream that comes back after a gap probes once, for what it missed.
  */
-export function startSessionPolling(probe: () => void): () => void {
+export function startSessionPolling(
+	probe: () => void,
+	onConnectionState?: (state: 'live' | 'reconnecting' | 'offline') => void
+): () => void {
 	let interval: ReturnType<typeof setInterval> | undefined;
 	const every = (ms: number) => {
 		clearInterval(interval);
@@ -77,8 +84,9 @@ export function startSessionPolling(probe: () => void): () => void {
 			if (connected && again) probe();
 		},
 		onEvent: (event) => {
-			if (event !== 'bildirim') probe();
+			if (event !== 'notification') probe();
 		},
+		onConnectionState,
 	});
 	return () => {
 		clearInterval(interval);

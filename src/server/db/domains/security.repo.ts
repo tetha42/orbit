@@ -2,7 +2,7 @@ import os from 'node:os';
 import { ensurePostgresInit, getPgPool } from '@/db';
 import type { User } from '@/db/schema';
 import { temizIp } from '@/lib/audit';
-import { publishEventQuiet } from '@/db/olaylar';
+import { publishEventQuiet } from '@/db/events';
 import { closeUserTerminalSessions } from '@/lib/server/terminalManager';
 import { getActiveRateLimits, type ActiveRateLimit } from '@/lib/rateLimit';
 import { addKernelBlackhole, removeKernelBlackhole } from '@/lib/server/kernelFirewall';
@@ -1001,7 +1001,7 @@ export async function revokeUserSession(params: {
 	if ((res.rowCount ?? 0) === 0) return false;
 	const u = res.rows[0];
 	closeUserTerminalSessions(params.targetUserId);
-	await publishEventQuiet(pool, { k: 'oturum', userId: params.targetUserId });
+	await publishEventQuiet(pool, { k: 'session', userId: params.targetUserId });
 	await logSystemEvent({
 		servis: 'security',
 		seviye: 'WARN',
@@ -1029,7 +1029,7 @@ export async function revokeAllNonAdminSessions(params: {
 	for (const row of res.rows) {
 		const uid = String(row.id);
 		closeUserTerminalSessions(uid);
-		await publishEventQuiet(pool, { k: 'oturum', userId: uid });
+		await publishEventQuiet(pool, { k: 'session', userId: uid });
 	}
 	const count = res.rowCount ?? 0;
 	await logSystemEvent({
@@ -1070,7 +1070,7 @@ export async function revokeAnomalousSessions(
 	for (const row of res.rows) {
 		const uid = String(row.id);
 		closeUserTerminalSessions(uid);
-		await publishEventQuiet(pool, { k: 'oturum', userId: uid });
+		await publishEventQuiet(pool, { k: 'session', userId: uid });
 	}
 
 	const count = res.rowCount ?? 0;
@@ -1114,7 +1114,7 @@ export async function suspendUserAccount(params: {
 		[params.targetUserId]
 	);
 	closeUserTerminalSessions(params.targetUserId);
-	await publishEventQuiet(pool, { k: 'oturum', userId: params.targetUserId });
+	await publishEventQuiet(pool, { k: 'session', userId: params.targetUserId });
 
 	await logSystemEvent({
 		servis: 'security',

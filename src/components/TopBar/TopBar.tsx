@@ -8,10 +8,12 @@ import { ControlCenterApplet } from './ControlCenterApplet';
 import { ClockApplet } from './ClockApplet';
 import { NotificationBell } from '@/components/NotificationCenter/NotificationBell';
 import { useShell } from '@/core/shell';
+import { useSession } from '@/core/session';
 import { Search } from 'lucide-react';
 
 export function TopBar() {
 	const { isSpotlightOpen, setIsSpotlightOpen } = useShell();
+	const { connectionState } = useSession();
 
 	return (
 		<header
@@ -47,6 +49,46 @@ export function TopBar() {
 
 				{/* SMTP Missing Warning for Admins */}
 				<SmtpWarningBadge />
+
+				{/* Live Connection Status Dot */}
+				<div
+					data-live-status={connectionState}
+					title={
+						connectionState === 'live'
+							? 'Canlı Bağlantı (SSE Bağlı)'
+							: connectionState === 'reconnecting'
+								? 'Yeniden Bağlanıyor...'
+								: 'Çevrimdışı'
+					}
+					style={{
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						padding: '0 4px',
+						height: '100%',
+					}}
+				>
+					<span
+						style={{
+							width: '6px',
+							height: '6px',
+							borderRadius: '50%',
+							backgroundColor:
+								connectionState === 'live'
+									? 'var(--color-success, #30d158)'
+									: connectionState === 'reconnecting'
+										? 'var(--color-warning, #ff9f0a)'
+										: 'var(--color-danger, #ff453a)',
+							boxShadow:
+								connectionState === 'live'
+									? '0 0 6px rgba(48, 209, 88, 0.6)'
+									: connectionState === 'reconnecting'
+										? '0 0 6px rgba(255, 159, 10, 0.6)'
+										: 'none',
+							transition: 'background-color 0.3s ease, box-shadow 0.3s ease',
+						}}
+					/>
+				</div>
 
 				{/* The University Club Workspace Header Menu Applet */}
 				<WorkspaceApplet />

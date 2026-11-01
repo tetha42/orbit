@@ -122,7 +122,8 @@ orbit.example.com {
 	}
 
 	# Disable proxy buffering for real-time SSE streams
-	handle /api/olaylar* {
+	@sse path /api/olaylar* /api/stream* /api/chat/stream* /api/soc/stream* /api/terminal/stream*
+	handle @sse {
 		reverse_proxy 127.0.0.1:3000 {
 			flush_interval -1
 			header_up Host {host}

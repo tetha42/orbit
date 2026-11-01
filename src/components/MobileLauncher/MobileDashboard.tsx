@@ -57,8 +57,8 @@ export function MobileDashboard({ onOpenApp }: { onOpenApp: (appId: AppID) => vo
 	const { refetch: refetchTeams } = teams;
 	const { refetch: refetchEvents } = events;
 	useLiveEvent((event) => {
-		if (event === 'takim_guncellendi' && canTeams) void refetchTeams();
-		if (event === 'etkinlik_guncellendi' && canEvents) void refetchEvents();
+		if (event === 'team_updated' && canTeams) void refetchTeams();
+		if (event === 'event_updated' && canEvents) void refetchEvents();
 	});
 
 	const locale = language === 'en' ? 'en-GB' : 'tr-TR';

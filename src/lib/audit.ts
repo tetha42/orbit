@@ -65,42 +65,46 @@ export interface AuditRecord {
 /* ---------------- secrets never get in ---------------- */
 
 /** Key names that carry credentials — dropped wherever they appear. */
-const YASAK_ANAHTAR = /pass|parola|password|şifre|hash|totp|secret|token|recovery|kurtarma|credential|cookie|oturum/i;
+export const FORBIDDEN_KEY =
+	/pass|parola|password|şifre|sifre|hash|totp|secret|token|recovery|kurtarma|credential|cookie|oturum|api_?key|auth(?:orization)?|private_?key|bearer|access_?key/i;
+export const YASAK_ANAHTAR = FORBIDDEN_KEY;
 
 const MAX_DEPTH = 4;
 const MAX_TEXT = 300;
 
 /** A JSON-safe copy of `value` without credential-looking keys, with bounded depth and text length. */
-export function temizle(value: unknown, derinlik = 0): AuditValue | undefined {
+export function sanitizeValue(value: unknown, depth = 0): AuditValue | undefined {
 	if (value === null) return null;
 	if (typeof value === 'string') return value.length > MAX_TEXT ? `${value.slice(0, MAX_TEXT)}…` : value;
 	if (typeof value === 'number') return Number.isFinite(value) ? value : null;
 	if (typeof value === 'boolean') return value;
-	if (derinlik >= MAX_DEPTH) return undefined;
-	if (Array.isArray(value)) return value.map((x) => temizle(x, derinlik + 1) ?? null);
+	if (depth >= MAX_DEPTH) return undefined;
+	if (Array.isArray(value)) return value.map((x) => sanitizeValue(x, depth + 1) ?? null);
 	if (typeof value === 'object') {
 		const out: { [key: string]: AuditValue } = {};
 		for (const [k, v] of Object.entries(value)) {
-			if (YASAK_ANAHTAR.test(k)) continue;
-			const c = temizle(v, derinlik + 1);
+			if (FORBIDDEN_KEY.test(k)) continue;
+			const c = sanitizeValue(v, depth + 1);
 			if (c !== undefined) out[k] = c;
 		}
 		return out;
 	}
 	return undefined;
 }
+export const temizle = sanitizeValue;
 
-/** `temizle` for a record; an empty one is stored as nothing. */
+/** `sanitizeValue` for a record; an empty one is stored as nothing. */
 export function recordFields(value: Record<string, unknown> | null | undefined): AuditFields | null {
 	if (!value) return null;
-	const c = temizle(value);
+	const c = sanitizeValue(value);
 	return c && typeof c === 'object' && !Array.isArray(c) ? c : null;
 }
 
 /** The caller's address as stored: control characters out, bounded length. */
-export function temizIp(raw: string | null | undefined): string {
+export function sanitizeIp(raw: string | null | undefined): string {
 	return String(raw ?? '').replace(/[\u0000-\u001f\u007f\s]+/g, '').slice(0, 64) || 'unknown';
 }
+export const temizIp = sanitizeIp;
 
 /* ---------------- white-listed snapshots ---------------- */
 
@@ -131,17 +135,18 @@ export function memberSummary(u: { ad: string; soyad: string; email: string; sta
 }
 
 /** One changed field, flattened for display (permissions as `izinler.<app>`). */
-export interface FarkSatiri {
+export interface DiffRow {
 	alan: string;
 	onceki: string | number | boolean | null;
 	sonraki: string | number | boolean | null;
 }
+export type FarkSatiri = DiffRow;
 
 const duz = (v: AuditValue | undefined): string | number | boolean | null => (v === undefined || v === null ? null : typeof v === 'object' ? JSON.stringify(v) : v);
 
 /** A record's before/after as one row per changed field — what the detail view lists. */
-export function diffRows(onceki: AuditFields | null, sonraki: AuditFields | null): FarkSatiri[] {
-	const rows: FarkSatiri[] = [];
+export function diffRows(onceki: AuditFields | null, sonraki: AuditFields | null): DiffRow[] {
+	const rows: DiffRow[] = [];
 	const o = onceki ?? {};
 	const n = sonraki ?? {};
 	for (const k of new Set([...Object.keys(o), ...Object.keys(n)])) {
@@ -166,30 +171,32 @@ export function memberTargetName(u: { ad: string; soyad: string; email: string }
 
 /* ---------------- diffs ---------------- */
 
-export interface Fark {
+export interface DiffResult {
 	onceki: AuditFields;
 	sonraki: AuditFields;
 }
+export type Fark = DiffResult;
 
 const ayni = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
 /** Only the fields that differ, before and after; `null` when nothing changed. */
-export function alanFarki(onceki: Record<string, unknown>, sonraki: Record<string, unknown>): Fark | null {
+export function fieldDiff(onceki: Record<string, unknown>, sonraki: Record<string, unknown>): DiffResult | null {
 	const o: AuditFields = {};
 	const n: AuditFields = {};
 	for (const k of new Set([...Object.keys(onceki), ...Object.keys(sonraki)])) {
 		if (ayni(onceki[k], sonraki[k])) continue;
-		o[k] = temizle(onceki[k] ?? null) ?? null;
-		n[k] = temizle(sonraki[k] ?? null) ?? null;
+		o[k] = sanitizeValue(onceki[k] ?? null) ?? null;
+		n[k] = sanitizeValue(sonraki[k] ?? null) ?? null;
 	}
 	return Object.keys(n).length ? { onceki: o, sonraki: n } : null;
 }
+export const alanFarki = fieldDiff;
 
 /**
  * A role edit as a diff: changed fields, and of the permission matrix only the
  * apps whose level changed ('yok' when absent on one side).
  */
-export function roleDiff(onceki: RoleSummary, sonraki: RoleSummary): Fark | null {
+export function roleDiff(onceki: RoleSummary, sonraki: RoleSummary): DiffResult | null {
 	const o: AuditFields = {};
 	const n: AuditFields = {};
 	for (const k of ['ad', 'renk', 'aciklama', 'ikiAdimZorunlu'] as const) {
@@ -216,18 +223,20 @@ export function roleDiff(onceki: RoleSummary, sonraki: RoleSummary): Fark | null
 }
 
 /** The key that holds the (encrypted) app password, only ever reported as changed, never its value. */
-const SMTP_PAROLA_ANAHTARI = 'smtp_pass';
-const SMTP_ALANLARI = ['smtp_host', 'smtp_port', 'smtp_secure', 'smtp_user', 'smtp_from'] as const;
+export const SMTP_PASSWORD_KEY = 'smtp_pass';
+export const SMTP_FIELDS = ['smtp_host', 'smtp_port', 'smtp_secure', 'smtp_user', 'smtp_from'] as const;
+export const SMTP_PAROLA_ANAHTARI = SMTP_PASSWORD_KEY;
+export const SMTP_ALANLARI = SMTP_FIELDS;
 
 /**
  * The e-mail account settings (SMTP) as a diff. `onceki` holds the stored values (a
  * missing key reads as its default), `yeni` the keys being written. The
  * password is reported as "değişti" / "silindi" and never by value.
  */
-export function smtpFarki(onceki: Record<string, string | undefined>, yeni: Record<string, string>, varsayilan: Record<string, string>): Fark | null {
+export function smtpDiff(onceki: Record<string, string | undefined>, yeni: Record<string, string>, varsayilan: Record<string, string>): DiffResult | null {
 	const o: AuditFields = {};
 	const n: AuditFields = {};
-	for (const k of SMTP_ALANLARI) {
+	for (const k of SMTP_FIELDS) {
 		if (!(k in yeni)) continue;
 		const previous = onceki[k] ?? varsayilan[k] ?? '';
 		if (previous !== yeni[k]) {
@@ -235,9 +244,9 @@ export function smtpFarki(onceki: Record<string, string | undefined>, yeni: Reco
 			n[k] = yeni[k];
 		}
 	}
-	if (SMTP_PAROLA_ANAHTARI in yeni) {
-		const vardi = !!onceki[SMTP_PAROLA_ANAHTARI];
-		if (yeni[SMTP_PAROLA_ANAHTARI] === '') {
+	if (SMTP_PASSWORD_KEY in yeni) {
+		const vardi = !!onceki[SMTP_PASSWORD_KEY];
+		if (yeni[SMTP_PASSWORD_KEY] === '') {
 			// Clearing a password that was never set is no change.
 			if (vardi) {
 				o.uygulamaAnahtari = 'var';
@@ -250,6 +259,7 @@ export function smtpFarki(onceki: Record<string, string | undefined>, yeni: Reco
 	}
 	return Object.keys(n).length ? { onceki: o, sonraki: n } : null;
 }
+export const smtpFarki = smtpDiff;
 
 /** Which log entry a membership status change is. */
 export function statusAction(onceki: string, sonraki: string): AuditAction | null {
@@ -288,7 +298,7 @@ const sayi = (v: string | null, varsayilan: number, en: number, fazla: number) =
 };
 
 /** Reads and bounds the list query; unknown or malformed values fall back to "no filter". */
-export function suzgecOku(q: URLSearchParams): AuditFilter {
+export function parseAuditFilter(q: URLSearchParams): AuditFilter {
 	const day = (k: string) => {
 		const v = q.get(k) ?? '';
 		return DAY.test(v) && !Number.isNaN(new Date(`${v}T00:00:00`).getTime()) ? v : '';
@@ -304,6 +314,7 @@ export function suzgecOku(q: URLSearchParams): AuditFilter {
 		boyut: sayi(q.get('boyut'), AUDIT_PAGE_SIZE, 1, AUDIT_MAX_PAGE_SIZE),
 	};
 }
+export const suzgecOku = parseAuditFilter;
 
 /** `YYYY-MM-DD` (local) → the first millisecond of that day. */
 export function startOfDay(gun: string): number {

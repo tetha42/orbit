@@ -209,13 +209,17 @@ export async function verifyAuth(request: Request): Promise<AuthResult> {
 		// 5. Track active session IP & detect sudden mid-session IP changes (Pass-the-Cookie Defense)
 		const sessionCheck = recordSessionActivity(user, ip);
 		if (sessionCheck.suspiciousJump) {
-			void recordSecurityStrike({
-				ip,
-				points: 30,
-				reason: 'Oturum IP sıçraması (Pass-the-Cookie şüphesi)',
-				path: pathname,
-				userId: user.id,
-			});
+			const reqUa = request.headers.get('user-agent') || '';
+			const matchesUa = Boolean(user.sonGirisUserAgent && reqUa && user.sonGirisUserAgent === reqUa);
+			if (!matchesUa) {
+				void recordSecurityStrike({
+					ip,
+					points: 30,
+					reason: 'Oturum IP sıçraması (Pass-the-Cookie şüphesi)',
+					path: pathname,
+					userId: user.id,
+				});
+			}
 			const res = NextResponse.json(
 				{
 					error: 'Oturum açtığınız IP/ağ ile mevcut IP adresiniz uyuşmuyor. Güvenlik nedeniyle oturumunuz donduruldu (Pass-the-Cookie Koruması). Lütfen tekrar giriş yapın.',

@@ -14,7 +14,7 @@
     "check": "node --no-warnings scripts/gen-apps.mjs --check && node --no-warnings scripts/check-pure.mjs && node --no-warnings scripts/check-i18n.mjs && node --no-warnings scripts/check-tokens.mjs && node --no-warnings scripts/check-audit-coverage.mjs",
     "verify": "node --no-warnings scripts/gen-apps.mjs && tsc --noEmit && eslint . && pnpm check",
     "build:fim": "node scripts/build-fim.mjs",
-    "test": "node --test tests/contract",
+    "test": "node --test tests/contract/*.test.mjs",
     "test:e2e": "node scripts/e2e-simulation.mjs",
     "test:security": "node scripts/security-e2e-test.mjs",
     "verify:landing": "node scripts/verify-landing-sync.mjs",
