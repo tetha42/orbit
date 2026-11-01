@@ -53,21 +53,17 @@ export async function ensureMailSchema(client: PoolClient): Promise<void> {
 		-- A member's choice: also tell me by e-mail when a message arrives (off by default).
 		ALTER TABLE users ADD COLUMN IF NOT EXISTS mail_notifications_enabled INTEGER NOT NULL DEFAULT 0;
 
-		DROP VIEW IF EXISTS mesaj_konulari CASCADE; CREATE VIEW mesaj_konulari AS SELECT * FROM mail_threads;
-		DROP VIEW IF EXISTS mesajlar CASCADE; CREATE VIEW mesajlar AS SELECT * FROM mail_messages;
-		DROP VIEW IF EXISTS mesaj_alicilari CASCADE; CREATE VIEW mesaj_alicilari AS SELECT * FROM mail_recipients;
-
 		-- Heal sent-only conversations that were previously filed under 'gelen' for the sender.
-		UPDATE mesaj_alicilari ma
+		UPDATE mail_recipients ma
 		SET klasor = 'gonderilen'
-		FROM mesajlar m
+		FROM mail_messages m
 		WHERE ma.mesajId = m.id
 		  AND ma.klasor = 'gelen'
 		  AND m.gonderenId = ma.userId
 		  AND NOT EXISTS (
 			SELECT 1
-			FROM mesajlar m2
-			JOIN mesaj_alicilari ma2 ON ma2.mesajId = m2.id
+			FROM mail_messages m2
+			JOIN mail_recipients ma2 ON ma2.mesajId = m2.id
 			WHERE m2.konuId = m.konuId
 			  AND ma2.userId = ma.userId
 			  AND ma2.silindi = 0
@@ -153,9 +149,9 @@ export async function getRecentMailThreads(userId: string, limit: number): Promi
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`SELECT x.id, x.first_name AS ad, x.last_name AS soyad, x.role_id AS "roleId", MAX(m.olusturma) AS son
-		 FROM mesaj_alicilari me
-		 JOIN mesajlar m ON m.id = me.mesajId
-		 JOIN mesaj_alicilari o ON o.mesajId = m.id AND o.userId <> $1
+		 FROM mail_recipients me
+		 JOIN mail_messages m ON m.id = me.mesajId
+		 JOIN mail_recipients o ON o.mesajId = m.id AND o.userId <> $1
 		 JOIN users x ON x.id = o.userId AND x.status = 'aktif'
 		 WHERE me.userId = $1 AND me.silindi = 0
 		 GROUP BY x.id, x.first_name, x.last_name, x.role_id
@@ -229,7 +225,7 @@ export async function getMailThreads(
 	const base = `
 		WITH mine AS (
 			SELECT m.konuId, m.gonderenId, m.govde, m.olusturma, ma.okundu, ma.klasor
-			FROM mesaj_alicilari ma JOIN mesajlar m ON m.id = ma.mesajId
+			FROM mail_recipients ma JOIN mail_messages m ON m.id = ma.mesajId
 			WHERE ma.userId = $1 AND ma.silindi = 0
 		), t AS (
 			SELECT konuId,
@@ -249,7 +245,7 @@ export async function getMailThreads(
 		`${base}
 		SELECT t.konuId AS id, k.konu, ${lastExpr} AS sonMesaj, ${countExpr} AS adet, ${unreadExpr} AS okunmamis, l.govde, u.id AS gid, u.first_name AS gad, u.last_name AS gsoyad
 		FROM t
-		JOIN mesaj_konulari k ON k.id = t.konuId
+		JOIN mail_threads k ON k.id = t.konuId
 		JOIN LATERAL (SELECT govde, gonderenId FROM mine WHERE mine.konuId = t.konuId ${lateralFilter} ORDER BY olusturma DESC LIMIT 1) l ON true
 		LEFT JOIN users u ON u.id = l.gonderenId
 		WHERE ${folder}
@@ -282,7 +278,7 @@ async function getAttendees(threadIds: string[], excludeId: string): Promise<Map
 	if (threadIds.length === 0) return out;
 	const res = await getPgPool().query(
 		`SELECT DISTINCT m.konuId, x.id, x.first_name AS ad, x.last_name AS soyad
-		 FROM mesajlar m JOIN mesaj_alicilari ma ON ma.mesajId = m.id JOIN users x ON x.id = ma.userId
+		 FROM mail_messages m JOIN mail_recipients ma ON ma.mesajId = m.id JOIN users x ON x.id = ma.userId
 		 WHERE m.konuId = ANY($1::text[]) AND x.id <> $2
 		 ORDER BY x.first_name, x.last_name`,
 		[threadIds, excludeId]
@@ -300,7 +296,7 @@ export async function getUnreadMailCount(userId: string): Promise<number> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`SELECT COUNT(DISTINCT m.konuId)::int AS n
-		 FROM mesaj_alicilari ma JOIN mesajlar m ON m.id = ma.mesajId
+		 FROM mail_recipients ma JOIN mail_messages m ON m.id = ma.mesajId
 		 WHERE ma.userId = $1 AND ma.silindi = 0 AND ma.okundu = 0 AND ma.klasor = 'gelen'
 		   AND m.gonderenId IS DISTINCT FROM $1`,
 		[userId]
@@ -321,9 +317,9 @@ export async function getUnreadMailThreads(userId: string, limit: number): Promi
 	const res = await getPgPool().query(
 		`SELECT * FROM (
 			SELECT DISTINCT ON (m.konuId) m.konuId AS id, k.konu, m.olusturma AS zaman, u.id AS gid, u.first_name AS gad, u.last_name AS gsoyad
-			FROM mesaj_alicilari ma
-			JOIN mesajlar m ON m.id = ma.mesajId
-			JOIN mesaj_konulari k ON k.id = m.konuId
+			FROM mail_recipients ma
+			JOIN mail_messages m ON m.id = ma.mesajId
+			JOIN mail_threads k ON k.id = m.konuId
 			LEFT JOIN users u ON u.id = m.gonderenId
 			WHERE ma.userId = $1 AND ma.silindi = 0 AND ma.okundu = 0 AND ma.klasor = 'gelen'
 			  AND m.gonderenId IS DISTINCT FROM $1
@@ -348,9 +344,9 @@ export async function getMailThread(userId: string, threadId: string): Promise<M
 	const pool = getPgPool();
 	const res = await pool.query(
 		`SELECT m.id, m.govde, m.olusturma, m.gonderenId, ma.okundu, ma.klasor, k.konu, u.first_name AS gad, u.last_name AS gsoyad
-		 FROM mesaj_alicilari ma
-		 JOIN mesajlar m ON m.id = ma.mesajId
-		 JOIN mesaj_konulari k ON k.id = m.konuId
+		 FROM mail_recipients ma
+		 JOIN mail_messages m ON m.id = ma.mesajId
+		 JOIN mail_threads k ON k.id = m.konuId
 		 LEFT JOIN users u ON u.id = m.gonderenId
 		 WHERE ma.userId = $1 AND ma.silindi = 0 AND m.konuId = $2
 		 ORDER BY m.olusturma, m.id`,
@@ -378,7 +374,7 @@ export async function getMailThread(userId: string, threadId: string): Promise<M
 export async function getMailParticipantIds(threadId: string): Promise<string[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT DISTINCT ma.userId FROM mesajlar m JOIN mesaj_alicilari ma ON ma.mesajId = m.id WHERE m.konuId = $1`,
+		`SELECT DISTINCT ma.userId FROM mail_messages m JOIN mail_recipients ma ON ma.mesajId = m.id WHERE m.konuId = $1`,
 		[threadId]
 	);
 	return res.rows.map((r) => String(r.userId));
@@ -386,12 +382,12 @@ export async function getMailParticipantIds(threadId: string): Promise<string[]>
 
 async function insertMessage(client: PoolClient, threadId: string, senderId: string, body: string, recipientIds: string[], now: number, senderFolder: 'gelen' | 'gonderilen' = 'gonderilen'): Promise<string> {
 	const messageId = randomUUID();
-	await client.query(`INSERT INTO mesajlar (id, konuId, gonderenId, govde, olusturma) VALUES ($1, $2, $3, $4, $5)`, [messageId, threadId, senderId, body, now]);
-	await client.query(`INSERT INTO mesaj_alicilari (mesajId, userId, okundu, klasor, silindi) VALUES ($1, $2, 1, $3, 0)`, [messageId, senderId, senderFolder]);
+	await client.query(`INSERT INTO mail_messages (id, konuId, gonderenId, govde, olusturma) VALUES ($1, $2, $3, $4, $5)`, [messageId, threadId, senderId, body, now]);
+	await client.query(`INSERT INTO mail_recipients (mesajId, userId, okundu, klasor, silindi) VALUES ($1, $2, 1, $3, 0)`, [messageId, senderId, senderFolder]);
 	for (const id of recipientIds) {
-		await client.query(`INSERT INTO mesaj_alicilari (mesajId, userId, okundu, klasor, silindi) VALUES ($1, $2, 0, 'gelen', 0)`, [messageId, id]);
+		await client.query(`INSERT INTO mail_recipients (mesajId, userId, okundu, klasor, silindi) VALUES ($1, $2, 0, 'gelen', 0)`, [messageId, id]);
 	}
-	await client.query(`UPDATE mesaj_konulari SET sonMesaj = $2 WHERE id = $1`, [threadId, now]);
+	await client.query(`UPDATE mail_threads SET sonMesaj = $2 WHERE id = $1`, [threadId, now]);
 	await publishEvent(client, notificationEvents(recipientIds));
 	return messageId;
 }
@@ -401,7 +397,7 @@ export async function createMailThread(senderId: string, subject: string, body: 
 	return withTransaction(async (client) => {
 		const subjectId = randomUUID();
 		const now = Date.now();
-		await client.query(`INSERT INTO mesaj_konulari (id, konu, olusturanId, olusturma, sonMesaj) VALUES ($1, $2, $3, $4, $4)`, [subjectId, subject, senderId, now]);
+		await client.query(`INSERT INTO mail_threads (id, konu, olusturanId, olusturma, sonMesaj) VALUES ($1, $2, $3, $4, $4)`, [subjectId, subject, senderId, now]);
 		const messageId = await insertMessage(client, subjectId, senderId, body, recipientIds, now, 'gonderilen');
 		return { konuId: subjectId, mesajId: messageId };
 	});
@@ -412,19 +408,19 @@ export async function addMailReply(threadId: string, senderId: string, body: str
 	return withTransaction(async (client) => {
 		if (recipientIds.length > 0) {
 			await client.query(
-				`UPDATE mesaj_alicilari SET klasor = 'gelen'
-				 WHERE userId = ANY($2::text[]) AND silindi = 0 AND mesajId IN (SELECT id FROM mesajlar WHERE konuId = $1)`,
+				`UPDATE mail_recipients SET klasor = 'gelen'
+				 WHERE userId = ANY($2::text[]) AND silindi = 0 AND mesajId IN (SELECT id FROM mail_messages WHERE konuId = $1)`,
 				[threadId, recipientIds]
 			);
 		}
 		const incomingRes = await client.query(
-			`SELECT 1 FROM mesaj_alicilari ma JOIN mesajlar m ON m.id = ma.mesajId
+			`SELECT 1 FROM mail_recipients ma JOIN mail_messages m ON m.id = ma.mesajId
 			 WHERE ma.userId = $2 AND ma.silindi = 0 AND m.konuId = $1 AND m.gonderenId IS DISTINCT FROM $2 LIMIT 1`,
 			[threadId, senderId]
 		);
 		const senderFolder: 'gelen' | 'gonderilen' = incomingRes.rows.length > 0 ? 'gelen' : 'gonderilen';
 		await client.query(
-			`UPDATE mesaj_alicilari SET klasor = $3 WHERE userId = $2 AND silindi = 0 AND mesajId IN (SELECT id FROM mesajlar WHERE konuId = $1)`,
+			`UPDATE mail_recipients SET klasor = $3 WHERE userId = $2 AND silindi = 0 AND mesajId IN (SELECT id FROM mail_messages WHERE konuId = $1)`,
 			[threadId, senderId, senderFolder]
 		);
 		return insertMessage(client, threadId, senderId, body, recipientIds, Date.now(), senderFolder);
@@ -436,38 +432,38 @@ export type MailStatusAction = 'okundu' | 'okunmadi' | 'arsivle' | 'gelene' | 'c
 /** Applies a state change to the member's own rows of a conversation. Returns false when they have none. */
 export async function setMailThreadStatus(userId: string, threadId: string, action: MailStatusAction): Promise<boolean> {
 	await ensurePostgresInit();
-	const own = `userId = $1 AND silindi = 0 AND mesajId IN (SELECT id FROM mesajlar WHERE konuId = $2)`;
+	const own = `userId = $1 AND silindi = 0 AND mesajId IN (SELECT id FROM mail_messages WHERE konuId = $2)`;
 	const pool = getPgPool();
 	let res;
 	switch (action) {
 		case 'okundu':
-			res = await pool.query(`UPDATE mesaj_alicilari SET okundu = 1 WHERE ${own}`, [userId, threadId]);
+			res = await pool.query(`UPDATE mail_recipients SET okundu = 1 WHERE ${own}`, [userId, threadId]);
 			break;
 		case 'okunmadi':
 			// Only the newest incoming message goes back to unread: the thread is "something to look at again".
 			res = await pool.query(
-				`UPDATE mesaj_alicilari SET okundu = 0
+				`UPDATE mail_recipients SET okundu = 0
 				 WHERE ${own} AND mesajId = (
-					SELECT m.id FROM mesajlar m JOIN mesaj_alicilari x ON x.mesajId = m.id AND x.userId = $1 AND x.silindi = 0
+					SELECT m.id FROM mail_messages m JOIN mail_recipients x ON x.mesajId = m.id AND x.userId = $1 AND x.silindi = 0
 					WHERE m.konuId = $2 AND m.gonderenId IS DISTINCT FROM $1 ORDER BY m.olusturma DESC, m.id DESC LIMIT 1)`,
 				[userId, threadId]
 			);
 			break;
 		case 'arsivle':
 		case 'cope':
-			res = await pool.query(`UPDATE mesaj_alicilari SET klasor = $3 WHERE ${own}`, [userId, threadId, action === 'arsivle' ? 'arsiv' : 'cop']);
+			res = await pool.query(`UPDATE mail_recipients SET klasor = $3 WHERE ${own}`, [userId, threadId, action === 'arsivle' ? 'arsiv' : 'cop']);
 			break;
 		case 'gelene':
 			res = await pool.query(
-				`UPDATE mesaj_alicilari SET klasor = CASE WHEN EXISTS (
-					SELECT 1 FROM mesaj_alicilari ma2 JOIN mesajlar m2 ON m2.id = ma2.mesajId
+				`UPDATE mail_recipients SET klasor = CASE WHEN EXISTS (
+					SELECT 1 FROM mail_recipients ma2 JOIN mail_messages m2 ON m2.id = ma2.mesajId
 					WHERE ma2.userId = $1 AND ma2.silindi = 0 AND m2.konuId = $2 AND m2.gonderenId IS DISTINCT FROM $1
 				 ) THEN 'gelen' ELSE 'gonderilen' END WHERE ${own}`,
 				[userId, threadId]
 			);
 			break;
 		case 'sil':
-			res = await pool.query(`UPDATE mesaj_alicilari SET silindi = 1 WHERE ${own}`, [userId, threadId]);
+			res = await pool.query(`UPDATE mail_recipients SET silindi = 1 WHERE ${own}`, [userId, threadId]);
 			break;
 	}
 	return (res.rowCount ?? 0) > 0;
@@ -488,9 +484,9 @@ export async function getMailSearchThreads(userId: string, limit = 200): Promise
 		`SELECT m.konuId AS id, k.konu, MAX(m.olusturma) AS son,
 			COALESCE(string_agg(DISTINCT u.first_name || ' ' || u.last_name, ', '), '') AS kisiler,
 			string_agg(left(m.govde, 300), ' ') AS metin
-		 FROM mesaj_alicilari ma
-		 JOIN mesajlar m ON m.id = ma.mesajId
-		 JOIN mesaj_konulari k ON k.id = m.konuId
+		 FROM mail_recipients ma
+		 JOIN mail_messages m ON m.id = ma.mesajId
+		 JOIN mail_threads k ON k.id = m.konuId
 		 LEFT JOIN users u ON u.id = m.gonderenId
 		 WHERE ma.userId = $1 AND ma.silindi = 0 AND ma.klasor <> 'cop'
 		 GROUP BY m.konuId, k.konu

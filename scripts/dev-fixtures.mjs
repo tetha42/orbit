@@ -124,14 +124,23 @@ for (const [key, role] of Object.entries(ROLES)) {
 must(await admin.call('POST', '/api/roles', { action: 'varsayilan', roleId: state.roles.uye }), 'default role');
 must(await admin.call('PATCH', '/api/settings/membership-policy', { emailVerification: false }), 'membership policy');
 
-if (process.env.DATABASE_URL) {
+const dbUrl = process.env.DATABASE_URL || (() => {
+	try {
+		const rc = JSON.parse(fs.readFileSync('data/runtime-config.json', 'utf8'));
+		return rc?.database?.url;
+	} catch {
+		return null;
+	}
+})();
+
+if (dbUrl) {
 	try {
 		const { Client } = await import('pg');
-		const db = new Client({ connectionString: process.env.DATABASE_URL });
+		const db = new Client({ connectionString: dbUrl });
 		await db.connect();
 		await db.query("DELETE FROM system_settings WHERE key LIKE 'smtp%'");
-		await db.query("TRUNCATE TABLE denetim_kaydi CASCADE");
-		await db.query("DELETE FROM roller WHERE ad IN ('SilinemezRol', 'GeriAlinacak') OR ad LIKE 'Denetim Rolü%'");
+		await db.query("TRUNCATE TABLE audit_logs CASCADE");
+		await db.query("DELETE FROM roles WHERE ad IN ('SilinemezRol', 'GeriAlinacak') OR ad LIKE 'Denetim Rolü%'");
 		await db.end();
 	} catch {}
 }
@@ -178,11 +187,28 @@ const once = async (key, fn) => {
 	if (!state.content[key]) state.content[key] = await fn();
 	save();
 };
-await once('team', async () => must(await admin.call('POST', '/api/teams', { action: 'createTeam', ad: 'Core Architecture & Web Platform', kategori: 'Web & Mobile', aciklama: 'Core platform development and client suites', kontenjan: 6, liderId: state.users.ege.id }), 'team'));
+await once('team', async () => {
+	const res = await admin.call('POST', '/api/teams', { action: 'createTeam', ad: 'Core Architecture & Web Platform', kategori: 'Web & Mobile', aciklama: 'Core platform development and client suites', kontenjan: 6, liderId: state.users.ege.id });
+	if (res.status === 409) {
+		const all = await admin.call('GET', '/api/teams');
+		const found = (all.json?.teams ?? all.json ?? []).find?.((t) => t.ad === 'Core Architecture & Web Platform');
+		if (found) return { team: found };
+	}
+	return must(res, 'team');
+});
 await once('news', async () => must(await admin.call('POST', '/api/news', { baslik: 'Güz Dönemi Tanışma Toplantısı', icerik: 'Orbit topluluğu yeni dönem tanışma toplantısı ve platform tanıtımı.', kategori: 'genel', publishStatus: 'yayinda' }), 'news'));
 await once('event', async () => must(await admin.call('POST', '/api/events', { action: 'createEvent', baslik: 'Modern Web ve Git Atölyesi', aciklama: 'Sürüm kontrolü ve açık kaynak işbirliği atölye çalışması', tur: 'atolye', konum: 'Virtual Lab Stage A', baslangic: Date.now() + 3 * 86400000, endTime: Date.now() + 3 * 86400000 + 2 * 3600000, kapasite: 30, status: 'yayinda' }), 'event'));
 await once('income', async () => must(await admin.call('POST', '/api/budget', { tur: 'gelir', kategori: 'Sponsorluk', tutarKurus: 2500000, aciklama: 'Açık Kaynak Ekosistem Sponsorluk Hibesi' }), 'income'));
-await once('item', async () => must(await admin.call('POST', '/api/inventory', { action: 'create', kod: 'LAB-RPI-001', ad: 'Raspberry Pi 5 (8GB)', kategori: 'Development Board', konum: 'Hardware Lab Rack B-1' }), 'item'));
+await once('item', async () => {
+	const res = await admin.call('POST', '/api/inventory', { action: 'create', kod: 'LAB-RPI-001', ad: 'Raspberry Pi 5 (8GB)', kategori: 'Development Board', konum: 'Hardware Lab Rack B-1' });
+	if (res.status === 409) {
+		const all = await admin.call('GET', '/api/inventory');
+		const list = Array.isArray(all.json) ? all.json : (all.json?.items ?? []);
+		const found = list.find((i) => i.seriNo === 'LAB-RPI-001' || i.kod === 'LAB-RPI-001');
+		if (found) return found;
+	}
+	return must(res, 'item');
+});
 
 if (state.totpUsedAt) {
 	const elapsed = Date.now() % 30000;

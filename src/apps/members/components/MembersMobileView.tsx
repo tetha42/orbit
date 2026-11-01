@@ -213,18 +213,18 @@ export function MembersMobileView({ m }: MembersMobileViewProps) {
 									// eslint-disable-next-line @next/next/no-img-element
 									<img src={member.profilFoto} alt="" className={s.avatarImg} />
 								) : (
-									initials(`${member.ad} ${member.soyad}`)
+									initials(`${member.firstName || member.ad} ${member.lastName || member.soyad}`)
 								)}
 							</div>
 							<div style={{ flex: 1, minWidth: 0 }}>
 								<div style={{ fontSize: '14.5px', fontWeight: 700, color: '#f8fafc' }}>
-									{member.ad} {member.soyad}
+									{member.firstName || member.ad} {member.lastName || member.soyad}
 								</div>
 								<div style={{ fontSize: '12px', opacity: 0.65, marginTop: '2px' }}>
 									{member.email}
 								</div>
 								<div style={{ fontSize: '11.5px', opacity: 0.55, marginTop: '2px' }}>
-									{member.bolum} {member.sinif ? `• ${fill(t('membersClassYear'), { year: member.sinif })}` : ''} {member.ogrenciNo ? `• ${member.ogrenciNo}` : ''}
+									{member.department || member.bolum} {(member.grade || member.sinif) ? `• ${fill(t('membersClassYear'), { year: member.grade || member.sinif })}` : ''} {(member.handle || member.ogrenciNo) ? `• ${member.handle || member.ogrenciNo}` : ''}
 								</div>
 							</div>
 						</div>

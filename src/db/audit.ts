@@ -36,7 +36,7 @@ export type { AuditContext } from '@/lib/audit';
 /** Called from ensurePostgresInit with its raw (lower-case) client, inside its transaction. */
 export async function ensureAuditSchema(client: PoolClient): Promise<void> {
 	await client.query(`
-		CREATE TABLE IF NOT EXISTS denetim_kaydi (
+		CREATE TABLE IF NOT EXISTS audit_logs (
 			id BIGSERIAL PRIMARY KEY,
 			zaman BIGINT NOT NULL,
 			yapanId TEXT,
@@ -49,11 +49,9 @@ export async function ensureAuditSchema(client: PoolClient): Promise<void> {
 			sonraki JSONB,
 			ip TEXT NOT NULL DEFAULT ''
 		);
-		CREATE INDEX IF NOT EXISTS idx_denetim_kaydi_zaman ON denetim_kaydi (zaman DESC, id DESC);
-		CREATE INDEX IF NOT EXISTS idx_denetim_kaydi_yapan ON denetim_kaydi (yapanId);
-		CREATE INDEX IF NOT EXISTS idx_denetim_kaydi_hedef ON denetim_kaydi (hedefTur, hedefId);
-		DROP VIEW IF EXISTS audit_logs CASCADE;
-		CREATE OR REPLACE VIEW audit_logs AS SELECT * FROM denetim_kaydi;
+		CREATE INDEX IF NOT EXISTS idx_audit_logs_zaman ON audit_logs (zaman DESC, id DESC);
+		CREATE INDEX IF NOT EXISTS idx_audit_logs_yapan ON audit_logs (yapanId);
+		CREATE INDEX IF NOT EXISTS idx_audit_logs_hedef ON audit_logs (hedefTur, hedefId);
 	`);
 }
 
@@ -81,7 +79,7 @@ export async function logAuditEvent(client: PoolClient, ctx: AuditContext, g: Au
 		return alanlar ? JSON.stringify(alanlar) : null;
 	};
 	await client.query(
-		`INSERT INTO denetim_kaydi (zaman, yapanId, yapanAd, islem, hedefTur, hedefId, hedefAd, onceki, sonraki, ip)
+		`INSERT INTO audit_logs (zaman, yapanId, yapanAd, islem, hedefTur, hedefId, hedefAd, onceki, sonraki, ip)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10)`,
 		[Date.now(), ctx.yapanId, ctx.yapanAd.slice(0, 200), g.islem, g.hedefTur, g.hedefId, (g.hedefAd ?? '').slice(0, 200), json(g.onceki), json(g.sonraki), ctx.ip]
 	);
@@ -108,7 +106,7 @@ export async function writeAuditLog(entry: {
 		return alanlar ? JSON.stringify(alanlar) : null;
 	};
 	await getPgPool().query(
-		`INSERT INTO denetim_kaydi (zaman, yapanId, yapanAd, islem, hedefTur, hedefId, hedefAd, onceki, sonraki, ip)
+		`INSERT INTO audit_logs (zaman, yapanId, yapanAd, islem, hedefTur, hedefId, hedefAd, onceki, sonraki, ip)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10)`,
 		[
 			Date.now(),
@@ -209,10 +207,10 @@ export async function listAuditLogs(
 		const offset = Number.isFinite(opts.offset) && Number(opts.offset) >= 0 ? Math.floor(Number(opts.offset)) : (rawPage - 1) * rawBoyut;
 		const [rows, count] = await Promise.all([
 			getPgPool().query(
-				`SELECT id::text AS id, zaman, yapanId AS "yapanId", yapanAd AS "yapanAd", islem, hedefTur AS "hedefTur", hedefId AS "hedefId", hedefAd AS "hedefAd", onceki, sonraki, ip FROM denetim_kaydi ${w.sql} ORDER BY zaman DESC, denetim_kaydi.id DESC LIMIT ${limit} OFFSET ${offset}`,
+				`SELECT id::text AS id, zaman, yapanId AS "yapanId", yapanAd AS "yapanAd", islem, hedefTur AS "hedefTur", hedefId AS "hedefId", hedefAd AS "hedefAd", onceki, sonraki, ip FROM audit_logs ${w.sql} ORDER BY zaman DESC, audit_logs.id DESC LIMIT ${limit} OFFSET ${offset}`,
 				w.params
 			),
-			getPgPool().query(`SELECT COUNT(*)::int AS n FROM denetim_kaydi ${w.sql}`, w.params),
+			getPgPool().query(`SELECT COUNT(*)::int AS n FROM audit_logs ${w.sql}`, w.params),
 		]);
 		return { kayitlar: rows.rows.map(toRecord), toplam: Number(count.rows[0]?.n ?? 0) };
 	} catch (error) {
@@ -227,14 +225,14 @@ export async function listAuditLogs(
 export async function clearAuditLogs(): Promise<number> {
 	await ensurePostgresInit();
 	const sinir = Date.now() - retentionDays(process.env.AUDIT_RETENTION_DAYS) * 24 * 3600 * 1000;
-	const r = await getPgPool().query('DELETE FROM denetim_kaydi WHERE zaman < $1', [sinir]);
+	const r = await getPgPool().query('DELETE FROM audit_logs WHERE zaman < $1', [sinir]);
 	return r.rowCount ?? 0;
 }
 
 /** Purges all audit log records from the database. */
 export async function resetAuditLogs(): Promise<void> {
 	await ensurePostgresInit();
-	await getPgPool().query('TRUNCATE TABLE denetim_kaydi CASCADE');
+	await getPgPool().query('TRUNCATE TABLE audit_logs CASCADE');
 }
 
 const BAKIM_ARALIGI_MS = 24 * 3600 * 1000;

@@ -163,21 +163,21 @@ export function MemberDetailModal({
 						border: '1px solid var(--window-border)',
 					}}
 				>
-					{member.profilFoto ? (
+					{member.avatarUrl || member.profilFoto ? (
 						<Image
-							src={member.profilFoto}
-							alt={`${member.ad} ${member.soyad}`}
+							src={(member.avatarUrl || member.profilFoto)!}
+							alt={`${member.firstName || member.ad} ${member.lastName || member.soyad}`}
 							width={54}
 							height={54}
 							unoptimized
 							style={{ width: '54px', height: '54px', borderRadius: '50%', objectFit: 'cover' }}
 						/>
 					) : (
-						<AvatarFallback name={`${member.ad} ${member.soyad}`} size={54} />
+						<AvatarFallback name={`${member.firstName || member.ad} ${member.lastName || member.soyad}`} size={54} />
 					)}
 					<div style={{ flex: 1, minWidth: 0 }}>
 						<div style={{ fontSize: '16px', fontWeight: 700, letterSpacing: '-0.01em' }}>
-							{member.ad} {member.soyad}
+							{member.firstName || member.ad} {member.lastName || member.soyad}
 						</div>
 						<div style={{ fontSize: '12.5px', opacity: 0.7, wordBreak: 'break-all' }}>
 							{member.email}
@@ -265,7 +265,7 @@ export function MemberDetailModal({
 							<span>{t('membersStudentIdLabel')}</span>
 						</div>
 						<div style={{ fontSize: '13px', fontWeight: 600, marginTop: '4px' }}>
-							{member.ogrenciNo || '—'}
+							{member.handle || member.ogrenciNo || '—'}
 						</div>
 					</div>
 

@@ -101,7 +101,12 @@ export async function POST(request: Request) {
 		}
 		const email = body.email ?? body.eposta;
 		const password = body.password ?? body.sifre;
-		const { ad, soyad, ogrenciNo, memberId, bolum, sinif, verificationCode, hp_website, inviteToken, preferredLanguage } = body;
+		const ad = body.firstName ?? body.ad;
+		const soyad = body.lastName ?? body.soyad;
+		const ogrenciNo = body.handle ?? body.ogrenciNo ?? body.memberId;
+		const bolum = body.department ?? body.bolum;
+		const sinif = body.grade ?? body.sinif;
+		const { verificationCode, hp_website, inviteToken, preferredLanguage } = body;
 		const userLang: 'tr' | 'en' = preferredLanguage === 'en' ? 'en' : 'tr';
 
 		// Anti-bot Honeypot Check
@@ -147,7 +152,7 @@ export async function POST(request: Request) {
 				{ status: 400 }
 			);
 		}
-		const rawHandle = String(ogrenciNo ?? memberId ?? '').trim();
+		const rawHandle = String(ogrenciNo ?? '').trim();
 		// The handle can be optional or mandatory, as configured in Settings.
 		const coreConfig = await getRegistrationCoreConfig();
 		if (coreConfig.memberId.required && !rawHandle) {

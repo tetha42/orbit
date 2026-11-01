@@ -4,7 +4,7 @@ import path from 'path';
 import { Readable } from 'stream';
 import { getStoredFile } from '@/db';
 import { authenticate } from '@/lib/auth/access';
-import { canReadUpload } from '@/lib/kasaAccess';
+import { canReadUpload } from '@/lib/vaultAccess';
 import { UPLOAD_NAME_RE, mimeForName, uploadDir } from '@/lib/uploads';
 
 export const dynamic = 'force-dynamic';

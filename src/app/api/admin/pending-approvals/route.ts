@@ -18,13 +18,19 @@ export async function GET(request: Request) {
 
 		const users: PendingApplicant[] = pending.map((u) => ({
 			id: u.id,
-			ad: u.ad,
-			soyad: u.soyad,
+			firstName: u.firstName ?? u.ad,
+			lastName: u.lastName ?? u.soyad,
+			ad: u.firstName ?? u.ad,
+			soyad: u.lastName ?? u.soyad,
 			email: u.email,
-			ogrenciNo: u.ogrenciNo,
-			bolum: u.bolum,
-			sinif: u.sinif,
-			olusturma: u.olusturma,
+			handle: u.handle ?? u.ogrenciNo,
+			ogrenciNo: u.handle ?? u.ogrenciNo,
+			department: u.department ?? u.bolum,
+			bolum: u.department ?? u.bolum,
+			grade: u.grade ?? u.sinif,
+			sinif: u.grade ?? u.sinif,
+			createdAt: u.createdAt ?? u.olusturma ?? 0,
+			olusturma: u.createdAt ?? u.olusturma ?? 0,
 		}));
 
 		return NextResponse.json({ count: users.length, users });

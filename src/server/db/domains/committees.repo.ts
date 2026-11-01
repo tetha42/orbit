@@ -44,9 +44,9 @@ function mapMeeting(row: Record<string, unknown>): CommitteeMeeting {
 export async function listCommittees(): Promise<Team[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT t.*, k.ad || ' ' || k.soyad AS "liderAdSoyad",
+		`SELECT t.*, k.first_name || ' ' || k.last_name AS "liderAdSoyad",
 		        (SELECT COUNT(*) FROM team_members tu WHERE tu.teamId = t.id AND tu.status = 'aktif')::int AS "aktifUyeSayisi"
-		 FROM takimlar t LEFT JOIN kullanicilar k ON k.id = t.liderId
+		 FROM teams t LEFT JOIN users k ON k.id = t.liderId
 		 WHERE t.type = 'committee'
 		 ORDER BY t.olusturma DESC`
 	);
@@ -58,10 +58,10 @@ export async function getCommitteeDetail(id: string): Promise<CommitteeDetail | 
 	if (!committee || committee.type !== 'committee') return null;
 	const [members, meetings, decisions] = await Promise.all([
 		getPgPool().query(
-			`SELECT tu.*, k.ad || ' ' || k.soyad AS "kullaniciAdSoyad",
-			        k.bolum AS "kullaniciBolum", k.profilFoto AS "kullaniciProfilFoto",
+			`SELECT tu.*, k.first_name || ' ' || k.last_name AS "kullaniciAdSoyad",
+			        k.department AS "kullaniciBolum", k.avatar_url AS "kullaniciProfilFoto",
 			        tu.voting_right AS "votingRight", tu.term_start AS "termStart", tu.term_end AS "termEnd"
-			 FROM takim_uyeleri tu JOIN kullanicilar k ON tu.userId = k.id
+			 FROM team_members tu JOIN users k ON tu.userId = k.id
 			 WHERE tu.teamId = $1 AND tu.status = 'aktif'
 			 ORDER BY tu.voting_right DESC, tu.katilimTarihi ASC`,
 			[id]
@@ -72,10 +72,10 @@ export async function getCommitteeDetail(id: string): Promise<CommitteeDetail | 
 			[id]
 		),
 		getPgPool().query(
-			`SELECT d.*, b.ad AS "bodyAd", k.ad || ' ' || k.soyad AS "olusturanAdSoyad"
-			 FROM tutanaklar_kararlar d
-			 LEFT JOIN takimlar b ON b.id = d.body_id
-			 LEFT JOIN kullanicilar k ON k.id = d.olusturanId
+			`SELECT d.*, b.ad AS "bodyAd", k.first_name || ' ' || k.last_name AS "olusturanAdSoyad"
+			 FROM decisions d
+			 LEFT JOIN teams b ON b.id = d.body_id
+			 LEFT JOIN users k ON k.id = d.olusturanId
 			 WHERE d.body_id = $1 ORDER BY d.date DESC`,
 			[id]
 		),

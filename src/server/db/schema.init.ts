@@ -836,7 +836,6 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 				}
 			}
 		}
-		await client.query(`CREATE VIEW sertifikalar AS SELECT * FROM certificates`);
 	});
 
 	await runMigrationStep('2026_08_kullanicilar_durum', 'Normalize default user status', async () => {
@@ -891,9 +890,9 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 			CREATE INDEX IF NOT EXISTS idx_chat_poll_votes_poll ON chat_poll_votes (pollId);
 			CREATE INDEX IF NOT EXISTS idx_chat_poll_votes_user ON chat_poll_votes (userId);
 
-			DROP VIEW IF EXISTS sohbet_anketleri CASCADE; CREATE VIEW sohbet_anketleri AS SELECT * FROM chat_polls;
-			DROP VIEW IF EXISTS sohbet_anket_secenekleri CASCADE; CREATE VIEW sohbet_anket_secenekleri AS SELECT * FROM chat_poll_options;
-			DROP VIEW IF EXISTS sohbet_anket_oylari CASCADE; CREATE VIEW sohbet_anket_oylari AS SELECT * FROM chat_poll_votes;
+			DROP VIEW IF EXISTS sohbet_anketleri CASCADE;
+			DROP VIEW IF EXISTS sohbet_anket_secenekleri CASCADE;
+			DROP VIEW IF EXISTS sohbet_anket_oylari CASCADE;
 		`);
 	});
 
@@ -913,11 +912,6 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 
 			CREATE INDEX IF NOT EXISTS idx_security_blocks_durum ON security_blocks (status, expires_at);
 			DROP VIEW IF EXISTS guvenlik_engelleri CASCADE;
-			CREATE VIEW guvenlik_engelleri AS
-			SELECT ip, status AS status, reason AS neden, threat_score AS tehditpuani,
-			       violations AS ihlaller, creator_id AS olusturanid,
-			       expires_at AS bitistarihi, created_at AS olusturma, updated_at AS guncellenme
-			FROM security_blocks;
 		`);
 	});
 
@@ -1061,51 +1055,14 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 		await renameCol('role_permissions', 'rolId', 'roleid');
 		await renameCol('role_permissions', 'rolid', 'roleid');
 
-		// Create backwards-compatible updatable views for legacy queries
+		// Drop all legacy compatibility views
 		await client.query(`
 			DROP VIEW IF EXISTS kullanicilar CASCADE;
-			CREATE VIEW kullanicilar AS
-			SELECT
-			  id,
-			  first_name AS ad,
-			  last_name AS soyad,
-			  email AS eposta,
-			  role_id AS "rolId",
-			  role_id AS rolid,
-			  status AS durum,
-			  status,
-			  department AS bolum,
-			  grade AS sinif,
-			  bio,
-			  xp,
-			  created_at AS olusturma
-			FROM users;
-
 			DROP VIEW IF EXISTS etkinlikler CASCADE;
-			CREATE VIEW etkinlikler AS
-			SELECT *, endtime AS bitis
-			FROM events;
-
 			DROP VIEW IF EXISTS sistem_ayarlari CASCADE;
-			CREATE VIEW sistem_ayarlari AS
-			SELECT key AS anahtar, value AS deger, updated_at AS guncellenme
-			FROM system_settings;
-
 			DROP VIEW IF EXISTS guvenlik_engelleri CASCADE;
-			CREATE VIEW guvenlik_engelleri AS
-			SELECT ip, status AS status, reason AS neden, threat_score AS tehditpuani,
-			       violations AS ihlaller, creator_id AS olusturanid,
-			       expires_at AS bitistarihi, created_at AS olusturma, updated_at AS guncellenme
-			FROM security_blocks;
-
 			DROP VIEW IF EXISTS eposta_dogrulama CASCADE;
-			CREATE VIEW eposta_dogrulama AS
-			SELECT email AS email, code AS kod, type AS tur, expires_at AS songecerlilik, created_at AS olusturma
-			FROM email_verifications;
-
 			DROP VIEW IF EXISTS sistem_loglari CASCADE;
-			CREATE VIEW sistem_loglari AS
-			SELECT * FROM system_logs;
 		`);
 	});
 
@@ -1470,10 +1427,10 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 		await client.query(`ALTER TABLE decisions ADD COLUMN IF NOT EXISTS published_at BIGINT`);
 		await client.query(`CREATE INDEX IF NOT EXISTS idx_decisions_body ON decisions (body_id, date DESC)`);
 		// The legacy compatibility views were created with an explicit column list;
-		// re-create them at the end of the migration so they include the new fields.
-		await client.query(`CREATE OR REPLACE VIEW takimlar AS SELECT * FROM teams`);
-		await client.query(`CREATE OR REPLACE VIEW takim_uyeleri AS SELECT * FROM team_members`);
-		await client.query(`CREATE OR REPLACE VIEW tutanaklar_kararlar AS SELECT * FROM decisions`);
+		// Drop legacy compatibility views if any
+		await client.query(`DROP VIEW IF EXISTS takimlar CASCADE`);
+		await client.query(`DROP VIEW IF EXISTS takim_uyeleri CASCADE`);
+		await client.query(`DROP VIEW IF EXISTS tutanaklar_kararlar CASCADE`);
 	});
 
 	await runMigrationStep('2026_24_project_event_ownership', 'Separate created_by from the owning team and owner user', async () => {
@@ -1493,10 +1450,8 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 		await client.query(`CREATE INDEX IF NOT EXISTS idx_projects_owner_user ON projects (owner_user_id)`);
 		await client.query(`CREATE INDEX IF NOT EXISTS idx_events_owner_team ON events (owner_team_id)`);
 		await client.query(`CREATE INDEX IF NOT EXISTS idx_events_owner_user ON events (owner_user_id)`);
-		// The event compatibility view has a trailing `bitis` alias, so adding
-		// columns in place is not possible with CREATE OR REPLACE; recreate it.
-		await client.query(`DROP VIEW IF EXISTS projeler CASCADE; CREATE VIEW projeler AS SELECT * FROM projects`);
-		await client.query(`DROP VIEW IF EXISTS etkinlikler CASCADE; CREATE VIEW etkinlikler AS SELECT *, endtime AS bitis FROM events`);
+		await client.query(`DROP VIEW IF EXISTS projeler CASCADE`);
+		await client.query(`DROP VIEW IF EXISTS etkinlikler CASCADE`);
 	});
 
 	await runMigrationStep('2026_25_legal_document_versions', 'Archive every legal document version for an auditable history', async () => {

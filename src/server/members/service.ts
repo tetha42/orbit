@@ -23,13 +23,19 @@ import { defaultTrackValue } from '@/lib/registrationConfig';
 
 export interface MemberAdminMember {
 	id: string;
+	firstName: string;
+	lastName: string;
 	ad: string;
 	soyad: string;
 	email: string;
+	handle: string;
 	ogrenciNo: string;
+	department: string;
 	bolum: string;
+	grade: number;
 	sinif: number;
 	bio: string;
+	avatarUrl: string | null;
 	profilFoto: string | null;
 	status: User['status'];
 	roleId: string | null;
@@ -53,16 +59,28 @@ function hasUnsafeTextChars(value: string): boolean {
 }
 
 function safeMember(user: User, role: MemberAdminMember['rolBilgi']): MemberAdminMember {
+	const firstName = user.firstName ?? user.ad;
+	const lastName = user.lastName ?? user.soyad;
+	const handle = user.handle ?? user.ogrenciNo ?? '';
+	const department = user.department ?? user.bolum;
+	const grade = Number(user.grade ?? user.sinif) || 1;
+	const avatarUrl = user.avatarUrl ?? user.profilFoto ?? null;
 	return {
 		id: user.id,
-		ad: user.ad,
-		soyad: user.soyad,
+		firstName,
+		lastName,
+		ad: firstName,
+		soyad: lastName,
 		email: user.email,
-		ogrenciNo: user.ogrenciNo ?? '',
-		bolum: user.bolum,
-		sinif: Number(user.sinif) || 1,
+		handle,
+		ogrenciNo: handle,
+		department,
+		bolum: department,
+		grade,
+		sinif: grade,
 		bio: user.bio ?? '',
-		profilFoto: user.profilFoto ?? null,
+		avatarUrl,
+		profilFoto: avatarUrl,
 		status: user.status,
 		roleId: user.roleId ?? null,
 		rolBilgi: role,
@@ -117,12 +135,12 @@ export async function updateMemberForAdmin(
 		getFormFields({ includeArchived: false }),
 	]);
 
-	const ad = readString(input.ad, target.ad);
-	const soyad = readString(input.soyad, target.soyad);
+	const ad = readString(input.firstName ?? input.ad, target.firstName ?? target.ad);
+	const soyad = readString(input.lastName ?? input.soyad, target.lastName ?? target.soyad);
 	const email = readString(input.email, target.email).toLowerCase();
-	const handle = readString(input.ogrenciNo, target.ogrenciNo ?? '');
-	const bolum = readString(input.bolum, target.bolum) || defaultTrackValue(core);
-	const rawLevel = input.sinif === undefined ? target.sinif : Number(input.sinif);
+	const handle = readString(input.handle ?? input.ogrenciNo, target.handle ?? target.ogrenciNo ?? '');
+	const bolum = readString(input.department ?? input.bolum, target.department ?? target.bolum) || defaultTrackValue(core);
+	const rawLevel = input.grade !== undefined ? Number(input.grade) : (input.sinif === undefined ? (target.grade ?? target.sinif) : Number(input.sinif));
 	const bio = input.bio === undefined ? target.bio ?? '' : readString(input.bio);
 
 	if (

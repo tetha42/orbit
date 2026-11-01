@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { FirstRunSetupWizard } from '@/components/Auth/FirstRunSetupWizard';
-import type { SetupResponse } from '@/lib/kurulum';
+import type { SetupResponse } from '@/lib/setup';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import styles from '@/components/Auth/VsCodeSetup.module.css';
 

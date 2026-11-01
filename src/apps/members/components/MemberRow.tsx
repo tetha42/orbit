@@ -230,11 +230,11 @@ export const MemberRow = React.memo(function MemberRow({
 							style={{ width: '34px', height: '34px', borderRadius: '50%', objectFit: 'cover' }}
 						/>
 					) : (
-						<AvatarFallback name={`${member.ad} ${member.soyad}`} size={34} />
+						<AvatarFallback name={`${member.firstName || member.ad} ${member.lastName || member.soyad}`} size={34} />
 					)}
 					<div>
 						<div style={{ fontWeight: 600 }}>
-							{member.ad} {member.soyad}
+							{member.firstName || member.ad} {member.lastName || member.soyad}
 						</div>
 						<div style={{ fontSize: '11px', opacity: 0.6 }}>{member.email}</div>
 					</div>
@@ -243,8 +243,8 @@ export const MemberRow = React.memo(function MemberRow({
 							type="button"
 							className={ui.btn}
 							data-member-message={member.id}
-							title={fill(t('membersSendMessageTo'), { name: `${member.ad} ${member.soyad}` })}
-							aria-label={fill(t('membersSendMessageTo'), { name: `${member.ad} ${member.soyad}` })}
+							title={fill(t('membersSendMessageTo'), { name: `${member.firstName || member.ad} ${member.lastName || member.soyad}` })}
+							aria-label={fill(t('membersSendMessageTo'), { name: `${member.firstName || member.ad} ${member.lastName || member.soyad}` })}
 							onClick={() => onSendMessage(member.id)}
 							style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 9px', fontSize: 11.5 }}
 						>
@@ -262,9 +262,9 @@ export const MemberRow = React.memo(function MemberRow({
 
 			{/* Major & Year */}
 			<td style={{ padding: '10px' }}>
-				<div>{member.bolum}</div>
+				<div>{member.department || member.bolum}</div>
 				<div style={{ fontSize: '11px', opacity: 0.6 }}>
-					{fill(t('membersClassAndNo'), { year: member.sinif, no: member.ogrenciNo || '-' })}
+					{fill(t('membersClassAndNo'), { year: member.grade || member.sinif, no: member.handle || member.ogrenciNo || '-' })}
 				</div>
 			</td>
 

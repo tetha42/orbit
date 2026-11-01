@@ -10,16 +10,23 @@ import type { Permissions } from '@/core/permissions';
  */
 export interface SessionUser {
 	id: string;
+	firstName: string;
+	lastName: string;
 	ad: string;
 	soyad: string;
 	email: string;
+	handle: string;
 	ogrenciNo: string;
+	department: string;
 	bolum: string;
+	grade: number;
 	sinif: number;
+	avatarUrl?: string | null;
 	profilFoto?: string | null;
 	bio?: string | null;
 	xp: number;
 	status: User['status'];
+	lastLoginAt?: number | null;
 	sonGirisTarihi?: number | null;
 	/** Two-factor auth is switched on for this account. */
 	twoFactorEnabled: boolean;
@@ -44,11 +51,17 @@ export interface SessionUser {
  */
 export interface PendingApplicant {
 	id: string;
+	firstName: string;
+	lastName: string;
 	ad: string;
 	soyad: string;
 	email: string;
+	handle: string;
 	ogrenciNo: string;
+	department: string;
 	bolum: string;
+	grade: number;
 	sinif: number;
+	createdAt: number;
 	olusturma: number;
 }

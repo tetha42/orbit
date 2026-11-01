@@ -127,7 +127,7 @@ async function ensureSeedRole(
 /** Called from ensurePostgresInit with its raw (lower-case) client, inside its transaction. */
 export async function ensureRoleSchema(client: PoolClient): Promise<void> {
 	await client.query(`
-		CREATE TABLE IF NOT EXISTS roller (
+		CREATE TABLE IF NOT EXISTS roles (
 			id TEXT PRIMARY KEY,
 			ad TEXT NOT NULL,
 			renk TEXT NOT NULL,
@@ -136,20 +136,18 @@ export async function ensureRoleSchema(client: PoolClient): Promise<void> {
 			ikiAdimZorunlu INTEGER NOT NULL DEFAULT 0,
 			olusturma BIGINT NOT NULL
 		);
-		CREATE UNIQUE INDEX IF NOT EXISTS roller_ad_ci ON roller (lower(ad));
+		CREATE UNIQUE INDEX IF NOT EXISTS roles_ad_ci ON roles (lower(ad));
 		CREATE TABLE IF NOT EXISTS role_permissions (
-			roleId TEXT NOT NULL REFERENCES roller(id) ON DELETE CASCADE,
+			roleId TEXT NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
 			appId TEXT NOT NULL,
 			seviye TEXT NOT NULL,
 			PRIMARY KEY (roleId, appId)
 		);
-		ALTER TABLE users ADD COLUMN IF NOT EXISTS role_id TEXT REFERENCES roller(id) ON DELETE SET NULL;
-		DROP VIEW IF EXISTS roles CASCADE; CREATE OR REPLACE VIEW roles AS SELECT * FROM roller;
-		DROP VIEW IF EXISTS rol_izinleri CASCADE; CREATE OR REPLACE VIEW rol_izinleri AS SELECT * FROM role_permissions;
+		ALTER TABLE users ADD COLUMN IF NOT EXISTS role_id TEXT REFERENCES roles(id) ON DELETE SET NULL;
 	`);
 	const now = Date.now();
 	await client.query(
-		`INSERT INTO roller (id, ad, renk, aciklama, sistem, ikiAdimZorunlu, olusturma)
+		`INSERT INTO roles (id, ad, renk, aciklama, sistem, ikiAdimZorunlu, olusturma)
 		 VALUES ($1, 'Admin', '#ff453a', 'Manages all applications. Cannot be changed.', 1, 1, $2)
 		 ON CONFLICT (id) DO NOTHING`,
 		[ADMIN_ROLE_ID, now]

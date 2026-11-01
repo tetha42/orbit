@@ -134,7 +134,7 @@ export const MemberCard = React.memo(function MemberCard({
 							}}
 						>
 							<span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-								{member.ad} {member.soyad}
+								{member.firstName || member.ad} {member.lastName || member.soyad}
 							</span>
 							<ChevronRight size={13} style={{ opacity: 0.5 }} />
 						</button>
@@ -217,7 +217,7 @@ export const MemberCard = React.memo(function MemberCard({
 				<div>
 					<span style={{ opacity: 0.6, fontSize: '10.5px', display: 'block' }}>{t('membersStudentIdLabel')}</span>
 					<span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '11px' }}>
-						{member.ogrenciNo || '—'}
+						{member.handle || member.ogrenciNo || '—'}
 					</span>
 				</div>
 

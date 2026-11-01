@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useWorkspace, type RegisterPayload } from '@/state/workspaceStore';
-import type { SetupResponse } from '@/lib/kurulum';
+import type { SetupResponse } from '@/lib/setup';
 
 export type AuthTab = 'login' | 'register';
 

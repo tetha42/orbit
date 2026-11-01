@@ -79,19 +79,34 @@ export function toSessionUser(user: User, permission: Permission): SessionUser {
 	const twoFactorRequired = permission.ikiAdimZorunlu;
 	const passkeySession = (user.authMethod ?? 'password') === 'passkey';
 
+	const firstName = user.firstName ?? user.ad;
+	const lastName = user.lastName ?? user.soyad;
+	const handle = user.handle ?? user.ogrenciNo;
+	const department = user.department ?? user.bolum;
+	const grade = user.grade ?? user.sinif;
+	const avatarUrl = user.avatarUrl ?? user.profilFoto;
+	const lastLoginAt = user.lastLoginAt ?? user.sonGirisTarihi;
+
 	return {
 		id: user.id,
-		ad: user.ad,
-		soyad: user.soyad,
+		firstName,
+		lastName,
+		ad: firstName,
+		soyad: lastName,
 		email: user.email,
-		ogrenciNo: user.ogrenciNo,
-		bolum: user.bolum,
-		sinif: user.sinif,
-		profilFoto: user.profilFoto,
+		handle,
+		ogrenciNo: handle,
+		department,
+		bolum: department,
+		grade,
+		sinif: grade,
+		avatarUrl,
+		profilFoto: avatarUrl,
 		bio: user.bio,
 		xp: user.xp,
 		status: user.status,
-		sonGirisTarihi: user.sonGirisTarihi,
+		lastLoginAt,
+		sonGirisTarihi: lastLoginAt,
 		twoFactorEnabled,
 		twoFactorRequired,
 		authMethod: user.authMethod ?? 'password',

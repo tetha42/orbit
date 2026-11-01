@@ -21,7 +21,7 @@ export async function newMember(t, admin, { label, rolId, ad = 'Test', soyad: so
 	const eposta = `${label}.${tag}@e2e.test`.toLowerCase();
 	const made = await createMember(admin, t.base, { ad, soyad, eposta, rolId, bolum, ogrenciNo });
 	t.cleanup(async () => {
-		await admin.del(`/api/uyeler?id=${encodeURIComponent(made.id)}`);
+		await admin.del(`/api/members?id=${encodeURIComponent(made.id)}`);
 	});
 	let api = null;
 	const member = {

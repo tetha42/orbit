@@ -12,7 +12,7 @@ import {
 	getPgPool,
 } from '@/db';
 import { publishEventQuiet } from '@/db/events';
-import { verifyVaultAccess } from '@/lib/kasaAccess';
+import { verifyVaultAccess } from '@/lib/vaultAccess';
 import { isValidDate } from '@/lib/budget';
 import { BUDGET_CATEGORIES, MAX_AMOUNT_CENTS, normalizeBudgetCategory } from '@/types/budget';
 import { withAudit } from '@/lib/audit/withAudit';

@@ -4,7 +4,7 @@ import type { PoolClient } from 'pg';
 import bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 import { ensureRoleSchema } from './roles';
-import { ensureMailSchema } from './posta';
+import { ensureMailSchema } from './messages';
 import { ensureOAuthSchema } from './oauth';
 import { startAuditMaintenance, ensureAuditSchema } from './audit';
 
@@ -361,36 +361,11 @@ export async function ensurePostgresInit(): Promise<void> {
 			await runSchemaMigrations(client);
 
 			await client.query('BEGIN');
-			await client.query("SELECT pg_advisory_xact_lock(hashtext('roller.sema'))");
+			await client.query("SELECT pg_advisory_xact_lock(hashtext('roles.schema'))");
 			await ensureRoleSchema(client);
 			await ensureAuditSchema(client);
 			await ensureMailSchema(client);
 			await ensureOAuthSchema(client);
-			await client.query(`
-				CREATE OR REPLACE VIEW kullanicilar AS
-				SELECT
-				  id,
-				  first_name AS ad,
-				  last_name AS soyad,
-				  email AS eposta,
-				  role_id AS "rolId",
-				  role_id AS rolid,
-				  status AS durum,
-				  status,
-				  department AS bolum,
-				  grade AS sinif,
-				  bio,
-				  xp,
-				  created_at AS olusturma
-				FROM users;
-
-				CREATE OR REPLACE VIEW sistem_ayarlari AS
-				SELECT
-				  key AS anahtar,
-				  value AS deger,
-				  updated_at AS guncellenme_tarihi
-				FROM system_settings;
-			`);
 			const countRes = await client.query('SELECT count(*)::int as count FROM users');
 			if (countRes.rows[0].count === 0) await bootstrapFirstAdmin(client);
 			await client.query('COMMIT');

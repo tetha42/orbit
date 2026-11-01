@@ -36,19 +36,30 @@ export const SYSTEM_SETTINGS_DEFAULTS: Record<string, string> = {
 export const MEMBER_ROSTER_SQL = `
 	SELECT
 		k.id,
+		k.first_name AS "firstName",
 		k.first_name AS "ad",
+		k.last_name AS "lastName",
 		k.last_name AS "soyad",
 		k.email AS "email",
+		k.handle AS "handle",
 		k.handle AS "ogrenciNo",
+		k.department AS "department",
 		k.department AS "bolum",
+		k.grade AS "grade",
 		k.grade AS "sinif",
 		k.role_id AS "roleId",
+		k.role_id AS "rolId",
+		r.ad AS "roleName",
 		r.ad AS "rolAd",
+		r.renk AS "roleColor",
 		r.renk AS "rolRenk",
+		k.avatar_url AS "avatarUrl",
 		k.avatar_url AS "profilFoto",
 		k.bio,
 		k.xp,
 		k.status AS "status",
+		k.status AS "durum",
+		k.created_at AS "createdAt",
 		k.created_at AS "olusturma",
 		(
 			SELECT STRING_AGG(DISTINCT t.ad, ', ' ORDER BY t.ad)
@@ -100,7 +111,9 @@ export const MEMBER_ROSTER_SQL = `
 export interface MemberRosterRow extends User {
 	/** Community-defined extra fields, with password values masked. */
 	customFields?: Record<string, string>;
+	roleName?: string | null;
 	rolAd?: string | null;
+	roleColor?: string | null;
 	rolRenk?: string | null;
 	takimAdi?: string | null;
 	takimlar?: Array<{ id: string; ad: string; kategori?: string; liderMi?: boolean; role?: string }> | null;
@@ -111,27 +124,35 @@ export interface MemberRosterRow extends User {
 
 export interface User {
 	id: string;
+	firstName: string;
+	lastName: string;
 	ad: string;
 	soyad: string;
 	email: string;
-	eposta?: string;
 	passwordHash: string;
+	handle: string;
 	ogrenciNo: string;
+	department: string;
 	bolum: string;
+	grade: number;
 	sinif: number;
-	/** Role from the `roller` table; null = no role yet (personal settings only). */
+	/** Role from the `roles` table; null = no role yet (personal settings only). */
 	roleId?: string | null;
 	rolId?: string | null;
+	avatarUrl?: string;
 	profilFoto?: string;
 	bio?: string;
 	xp: number;
 	status: 'aktif' | 'beklemede' | 'reddedildi' | 'mezun';
 	durum?: 'aktif' | 'beklemede' | 'reddedildi' | 'mezun';
+	createdAt?: number;
+	olusturma?: number;
 	preferredLanguage?: 'tr' | 'en';
 	/** How the current session authenticated: password only, password+TOTP, or a passkey. */
 	authMethod?: 'password' | 'totp' | 'passkey';
 	aktifOturumToken?: string;
 	sonGirisTarihi?: number;
+	lastLoginAt?: number;
 	sonGirisIp?: string | null;
 	sonGirisUserAgent?: string | null;
 	sonAktifIp?: string | null;
@@ -158,7 +179,6 @@ export interface User {
 	 * what actually bounds a session's life.
 	 */
 	oturumBitis?: number | null;
-	olusturma: number;
 }
 
 export interface Team {

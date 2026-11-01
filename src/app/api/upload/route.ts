@@ -4,7 +4,7 @@ import { mkdir, writeFile } from 'fs/promises';
 import path from 'path';
 import { randomBytes } from 'crypto';
 import { addStoredFile } from '@/db';
-import { verifyUploadAccess } from '@/lib/kasaAccess';
+import { verifyUploadAccess } from '@/lib/vaultAccess';
 import { consumeRateLimit } from '@/lib/rateLimit';
 import { MAX_UPLOAD_BYTES, sniffFile, uploadDir } from '@/lib/uploads';
 import { getEmergencyKillSwitches } from '@/server/db/domains/security.repo';

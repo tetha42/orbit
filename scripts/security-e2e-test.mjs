@@ -1012,7 +1012,7 @@ async function run() {
 					body: JSON.stringify({
 						id: noteAId,
 						baslik: 'User A Confidential Note',
-						icerik: 'Top secret project plans.',
+						icerik: 'Confidential private project plans.',
 					}),
 				});
 				if (!createNoteRes.ok) {

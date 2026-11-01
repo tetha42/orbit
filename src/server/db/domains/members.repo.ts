@@ -17,37 +17,53 @@ export async function normalizeUserRow(
 	const skip = Boolean(options && typeof options === 'object' && 'skipTotpDecryption' in options && (options as { skipTotpDecryption?: boolean }).skipTotpDecryption);
 	const rawTotpSecret = (row.totpsecret ?? row.totpSecret ?? row.totp_secret) ? String(row.totpsecret ?? row.totpSecret ?? row.totp_secret) : null;
 	const totpSecret = skip ? null : (rawTotpSecret ? await decryptSecret(rawTotpSecret) : null);
+	const firstName = String(row.firstName ?? row.first_name ?? row.ad ?? '');
+	const lastName = String(row.lastName ?? row.last_name ?? row.soyad ?? '');
+	const handle = String(row.handle ?? row.ogrenciNo ?? row.ogrencino ?? '');
+	const department = String(row.department ?? row.bolum ?? '');
+	const grade = Number(row.grade ?? row.sinif ?? 1);
+	const avatarUrl = (row.avatarUrl ?? row.avatar_url ?? row.profilFoto ?? row.profilfoto) ? String(row.avatarUrl ?? row.avatar_url ?? row.profilFoto ?? row.profilfoto) : undefined;
+	const createdAt = Number(row.createdAt ?? row.created_at ?? row.olusturma ?? 0);
+	const lastLoginAt = row.lastLoginAt ? Number(row.lastLoginAt) : (row.last_login_at ? Number(row.last_login_at) : (row.sonGirisTarihi ? Number(row.sonGirisTarihi) : (row.songiristarihi ? Number(row.songiristarihi) : undefined)));
 	return {
 		id: String(row.id),
-		ad: String(row.ad ?? row.firstName ?? row.first_name ?? ''),
-		soyad: String(row.soyad ?? row.lastName ?? row.last_name ?? ''),
-		email: String(row.email ?? row.email ?? ''),
-		passwordHash: String(row.sifrehash ?? row.passwordHash ?? row.passwordHash ?? row.password_hash ?? ''),
-		ogrenciNo: String(row.ogrencino ?? row.ogrenciNo ?? row.handle ?? ''),
-		bolum: String(row.bolum ?? row.department ?? ''),
-		sinif: Number(row.sinif ?? row.grade ?? 1),
-		roleId: (row.rolid ?? row.roleId ?? row.roleId ?? row.role_id ?? null) as string | null,
-		profilFoto: (row.profilfoto ?? row.profilFoto ?? row.avatarUrl ?? row.avatar_url) ? String(row.profilfoto ?? row.profilFoto ?? row.avatarUrl ?? row.avatar_url) : undefined,
+		firstName,
+		lastName,
+		ad: firstName,
+		soyad: lastName,
+		email: String(row.email ?? ''),
+		passwordHash: String(row.passwordHash ?? row.password_hash ?? row.sifrehash ?? ''),
+		handle,
+		ogrenciNo: handle,
+		department,
+		bolum: department,
+		grade,
+		sinif: grade,
+		roleId: (row.roleId ?? row.role_id ?? row.rolId ?? row.rolid ?? null) as string | null,
+		avatarUrl,
+		profilFoto: avatarUrl,
 		bio: (row.bio ?? '') ? String(row.bio) : undefined,
 		xp: Number(row.xp ?? 0),
-		status: ((row.status ?? row.status) as User['status']) || 'aktif',
+		status: ((row.status ?? row.durum) as User['status']) || 'aktif',
 		authMethod: (['password', 'totp', 'passkey'].includes(String(row.authMethod ?? ''))
 			? String(row.authMethod)
 			: 'password') as User['authMethod'],
-		aktifOturumToken: (row.aktivoturumtoken ?? row.aktifOturumToken ?? row.sessionToken ?? row.session_token) ? String(row.aktivoturumtoken ?? row.aktifOturumToken ?? row.sessionToken ?? row.session_token) : undefined,
-		sonGirisTarihi: row.songiristarihi ? Number(row.songiristarihi) : (row.sonGirisTarihi ? Number(row.sonGirisTarihi) : (row.lastLoginAt ? Number(row.lastLoginAt) : (row.last_login_at ? Number(row.last_login_at) : undefined))),
-		sonGirisIp: (row.songirisip ?? row.sonGirisIp ?? row.lastLoginIp ?? row.last_login_ip) ? String(row.songirisip ?? row.sonGirisIp ?? row.lastLoginIp ?? row.last_login_ip) : null,
-		sonGirisUserAgent: (row.songirisuseragent ?? row.sonGirisUserAgent ?? row.lastLoginUserAgent ?? row.last_login_user_agent) ? String(row.songirisuseragent ?? row.sonGirisUserAgent ?? row.lastLoginUserAgent ?? row.last_login_user_agent) : null,
-		sonAktifIp: (row.sonaktifip ?? row.sonAktifIp ?? row.lastActiveIp ?? row.last_active_ip) ? String(row.sonaktifip ?? row.sonAktifIp ?? row.lastActiveIp ?? row.last_active_ip) : null,
-		sonAktifTarihi: row.sonaktiftarihi ? Number(row.sonaktiftarihi) : (row.sonAktifTarihi ? Number(row.sonAktifTarihi) : (row.lastActiveAt ? Number(row.lastActiveAt) : (row.last_active_at ? Number(row.last_active_at) : null))),
-		oturumBitis: row.oturumbitis ? Number(row.oturumbitis) : (row.oturumBitis ? Number(row.oturumBitis) : (row.sessionExpiresAt ? Number(row.sessionExpiresAt) : (row.session_expires_at ? Number(row.session_expires_at) : null))),
-		preferredLanguage: (row.preferredlanguage ?? row.preferred_language ?? row.preferredLanguage ?? 'tr') === 'en' ? 'en' : 'tr',
+		aktifOturumToken: (row.sessionToken ?? row.session_token ?? row.aktifOturumToken ?? row.aktivoturumtoken) ? String(row.sessionToken ?? row.session_token ?? row.aktifOturumToken ?? row.aktivoturumtoken) : undefined,
+		lastLoginAt,
+		sonGirisTarihi: lastLoginAt,
+		sonGirisIp: (row.lastLoginIp ?? row.last_login_ip ?? row.sonGirisIp ?? row.songirisip) ? String(row.lastLoginIp ?? row.last_login_ip ?? row.sonGirisIp ?? row.songirisip) : null,
+		sonGirisUserAgent: (row.lastLoginUserAgent ?? row.last_login_user_agent ?? row.sonGirisUserAgent ?? row.songirisuseragent) ? String(row.lastLoginUserAgent ?? row.last_login_user_agent ?? row.sonGirisUserAgent ?? row.songirisuseragent) : null,
+		sonAktifIp: (row.lastActiveIp ?? row.last_active_ip ?? row.sonAktifIp ?? row.sonaktifip) ? String(row.lastActiveIp ?? row.last_active_ip ?? row.sonAktifIp ?? row.sonaktifip) : null,
+		sonAktifTarihi: row.lastActiveAt ? Number(row.lastActiveAt) : (row.last_active_at ? Number(row.last_active_at) : (row.sonAktifTarihi ? Number(row.sonAktifTarihi) : (row.sonaktiftarihi ? Number(row.sonaktiftarihi) : null))),
+		oturumBitis: row.sessionExpiresAt ? Number(row.sessionExpiresAt) : (row.session_expires_at ? Number(row.session_expires_at) : (row.oturumBitis ? Number(row.oturumBitis) : (row.oturumbitis ? Number(row.oturumbitis) : null))),
+		preferredLanguage: (row.preferredLanguage ?? row.preferred_language ?? row.preferredlanguage ?? 'tr') === 'en' ? 'en' : 'tr',
 		totpSecret,
-		totpEnabled: Number(row.totpenabled ?? row.totpEnabled ?? row.totp_enabled ?? 0),
-		totpRecoveryCodes: (row.totprecoverycodes ?? row.totpRecoveryCodes ?? row.totp_recovery_codes) ? String(row.totprecoverycodes ?? row.totpRecoveryCodes ?? row.totp_recovery_codes) : null,
-		totpConfirmedAt: row.totpconfirmedat ? Number(row.totpconfirmedat) : (row.totpConfirmedAt ? Number(row.totpConfirmedAt) : (row.totp_confirmed_at ? Number(row.totp_confirmed_at) : null)),
-		totpSonAdim: row.totpsonadim ? Number(row.totpsonadim) : (row.totpSonAdim ? Number(row.totpSonAdim) : (row.totpLastStep ? Number(row.totpLastStep) : (row.totp_last_step ? Number(row.totp_last_step) : null))),
-		olusturma: Number(row.olusturma ?? row.createdAt ?? row.created_at ?? 0),
+		totpEnabled: Number(row.totpEnabled ?? row.totp_enabled ?? row.totpenabled ?? 0),
+		totpRecoveryCodes: (row.totpRecoveryCodes ?? row.totp_recovery_codes ?? row.totprecoverycodes) ? String(row.totpRecoveryCodes ?? row.totp_recovery_codes ?? row.totprecoverycodes) : null,
+		totpConfirmedAt: row.totpConfirmedAt ? Number(row.totpConfirmedAt) : (row.totp_confirmed_at ? Number(row.totp_confirmed_at) : (row.totpconfirmedat ? Number(row.totpconfirmedat) : null)),
+		totpSonAdim: row.totpLastStep ? Number(row.totpLastStep) : (row.totp_last_step ? Number(row.totp_last_step) : (row.totpSonAdim ? Number(row.totpSonAdim) : (row.totpsonadim ? Number(row.totpsonadim) : null))),
+		createdAt,
+		olusturma: createdAt,
 	};
 }
 
@@ -102,31 +118,48 @@ export interface PaginatedMemberRoster {
 
 function mapRosterRow(r: Record<string, unknown>): MemberRosterRow {
 	const email = String(r.email ?? r.eposta ?? '');
-	const roleId = (r.roleId ?? r.rolId ?? r.rolid ?? r.role_id ?? null) as string | null;
+	const roleId = (r.roleId ?? r.role_id ?? null) as string | null;
 	const status = ((r.status ?? r.durum) as User['status']) || 'aktif';
+	const firstName = String(r.firstName ?? r.first_name ?? r.ad ?? '');
+	const lastName = String(r.lastName ?? r.last_name ?? r.soyad ?? '');
+	const handle = String(r.handle ?? r.ogrenciNo ?? '');
+	const department = String(r.department ?? r.bolum ?? '');
+	const grade = Number(r.grade ?? r.sinif ?? 1);
+	const avatarUrl = (r.avatarUrl ?? r.avatar_url ?? r.profilFoto ?? undefined) as string | undefined;
+	const createdAt = Number(r.createdAt ?? r.created_at ?? r.olusturma ?? 0);
+	const roleName = (r.roleName ?? r.rolAd ?? null) as string | null;
+	const roleColor = (r.roleColor ?? r.rolRenk ?? null) as string | null;
 	return {
 		id: String(r.id ?? ''),
-		ad: String(r.ad ?? r.firstName ?? r.first_name ?? ''),
-		soyad: String(r.soyad ?? r.lastName ?? r.last_name ?? ''),
+		firstName,
+		lastName,
+		ad: firstName,
+		soyad: lastName,
 		email,
-		eposta: email,
 		passwordHash: String(r.passwordHash ?? r.password_hash ?? ''),
-		ogrenciNo: String(r.ogrenciNo ?? r.ogrencino ?? r.handle ?? ''),
-		bolum: String(r.bolum ?? r.department ?? ''),
-		sinif: Number(r.sinif ?? r.grade ?? 1),
+		handle,
+		ogrenciNo: handle,
+		department,
+		bolum: department,
+		grade,
+		sinif: grade,
 		roleId,
 		rolId: roleId,
-		rolAd: (r.rolAd ?? r.rolad ?? null) as string | null,
-		rolRenk: (r.rolRenk ?? r.rolrenk ?? null) as string | null,
-		profilFoto: (r.profilFoto ?? r.profilfoto ?? r.avatarUrl ?? r.avatar_url ?? undefined) as string | undefined,
+		roleName,
+		rolAd: roleName,
+		roleColor,
+		rolRenk: roleColor,
+		avatarUrl,
+		profilFoto: avatarUrl,
 		bio: (r.bio ?? undefined) as string | undefined,
 		xp: Number(r.xp ?? 0),
 		status,
 		durum: status,
-		olusturma: Number(r.olusturma ?? r.createdAt ?? r.created_at ?? 0),
-		takimAdi: (r.takimAdi ?? r.takimadi ?? undefined) as string | undefined,
+		createdAt,
+		olusturma: createdAt,
+		takimAdi: (r.takimAdi ?? undefined) as string | undefined,
 		takimlar: parseRosterTeams(r.takimlar),
-		yoklamaSayisi: Number(r.yoklamaSayisi ?? r.yoklamasayisi ?? 0),
+		yoklamaSayisi: Number(r.yoklamaSayisi ?? 0),
 	};
 }
 
@@ -200,7 +233,7 @@ export async function getMemberRoster(options?: MemberRosterOptions): Promise<Me
 			if (options?.search?.trim()) {
 				params.push(`%${options.search.trim()}%`);
 				conditions.push(
-					`(ad ILIKE $${params.length} OR soyad ILIKE $${params.length} OR (ad || ' ' || soyad) ILIKE $${params.length} OR email ILIKE $${params.length} OR "ogrenciNo" ILIKE $${params.length} OR bolum ILIKE $${params.length})`
+					`("firstName" ILIKE $${params.length} OR "lastName" ILIKE $${params.length} OR ("firstName" || ' ' || "lastName") ILIKE $${params.length} OR email ILIKE $${params.length} OR handle ILIKE $${params.length} OR department ILIKE $${params.length})`
 				);
 			}
 
@@ -242,7 +275,7 @@ export async function getMemberRoster(options?: MemberRosterOptions): Promise<Me
 			}
 			params.push(`%${options.search.trim()}%`);
 			conditions.push(
-				`(ad ILIKE $${params.length} OR soyad ILIKE $${params.length} OR (ad || ' ' || soyad) ILIKE $${params.length} OR email ILIKE $${params.length} OR "ogrenciNo" ILIKE $${params.length} OR bolum ILIKE $${params.length})`
+				`("firstName" ILIKE $${params.length} OR "lastName" ILIKE $${params.length} OR ("firstName" || ' ' || "lastName") ILIKE $${params.length} OR email ILIKE $${params.length} OR handle ILIKE $${params.length} OR department ILIKE $${params.length})`
 			);
 			const whereClause = conditions.join(' AND ');
 			const searchSql = `
@@ -388,13 +421,18 @@ export async function updateUserSession(
 
 export async function createUser(
 	data: {
-		ad: string;
-		soyad: string;
+		firstName?: string;
+		ad?: string;
+		lastName?: string;
+		soyad?: string;
 		email: string;
 		passwordHash: string;
-		ogrenciNo: string;
-		bolum: string;
-		sinif: number;
+		handle?: string;
+		ogrenciNo?: string;
+		department?: string;
+		bolum?: string;
+		grade?: number;
+		sinif?: number;
 		roleId?: string | null;
 		status?: 'aktif' | 'beklemede' | 'reddedildi' | 'mezun';
 		bio?: string;
@@ -404,21 +442,33 @@ export async function createUser(
 ): Promise<User> {
 	await ensurePostgresInit();
 	const id = `usr_${randomUUID().replace(/-/g, '').slice(0, 16)}`;
+	const firstName = (data.firstName ?? data.ad ?? '').trim();
+	const lastName = (data.lastName ?? data.soyad ?? '').trim();
+	const handle = (data.handle ?? data.ogrenciNo ?? '').trim();
+	const department = (data.department ?? data.bolum ?? '').trim();
+	const grade = Number(data.grade ?? data.sinif) || 1;
+	const createdAt = Date.now();
 	const newUser: User = {
 		id,
-		ad: data.ad.trim(),
-		soyad: data.soyad.trim(),
+		firstName,
+		lastName,
+		ad: firstName,
+		soyad: lastName,
 		email: data.email.trim().toLowerCase(),
 		passwordHash: data.passwordHash,
-		ogrenciNo: data.ogrenciNo.trim(),
-		bolum: data.bolum.trim(),
-		sinif: Number(data.sinif) || 1,
+		handle,
+		ogrenciNo: handle,
+		department,
+		bolum: department,
+		grade,
+		sinif: grade,
 		roleId: data.roleId ?? null,
 		bio: data.bio || '',
 		xp: 50,
 		status: data.status || 'beklemede',
 		preferredLanguage: data.preferredLanguage === 'en' ? 'en' : 'tr',
-		olusturma: Date.now(),
+		createdAt,
+		olusturma: createdAt,
 	};
 
 	await withTransaction(async (client) => {

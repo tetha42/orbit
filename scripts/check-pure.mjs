@@ -59,7 +59,7 @@ import {
 	defaultTrackValue,
 	normalizeRegistrationCoreConfig,
 } from '../src/lib/registrationConfig.ts';
-import { SETUP_GENERAL_MESSAGE, createSetupCache, setupResponse } from '../src/lib/kurulum.ts';
+import { SETUP_GENERAL_MESSAGE, createSetupCache, setupResponse } from '../src/lib/setup.ts';
 import { isSafeImageUrl } from '../src/types/news.ts';
 import {
 	normalizeStatus,
@@ -71,7 +71,7 @@ import {
 	dueStatus,
 	toDateInput,
 } from '../src/lib/kanban.ts';
-import { MAIL_ACTIONS, MAIL_FOLDERS, skippedReason, onizlemeSatiri } from '../src/lib/posta.ts';
+import { MAIL_ACTIONS, MAIL_FOLDERS, skippedReason, onizlemeSatiri } from '../src/lib/messages.ts';
 import { isProjectStatus, normalizeHttpUrl, normalizeTeknolojiler, shortRepo } from '../src/lib/projects.ts';
 import {
 	ATTENDANCE_WINDOW_MS,

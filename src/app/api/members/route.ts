@@ -106,16 +106,22 @@ export async function POST(request: Request) {
 	try {
 		const body = await request.json();
 		const email = body.email ?? body.eposta;
-		const { ad, soyad, bolum, sinif, ogrenciNo, bio, password } = body;
+		const ad = body.firstName ?? body.ad;
+		const soyad = body.lastName ?? body.soyad;
+		const bolum = body.department ?? body.bolum;
+		const sinif = body.grade ?? body.sinif;
+		const ogrenciNo = body.handle ?? body.memberId ?? body.ogrenciNo;
+		const bio = body.bio;
+		const password = body.password;
 		const coreConfig = await getRegistrationCoreConfig();
 		const allowedLevels = new Set(coreConfig.level.options.map((option) => Number(option.value)));
 		const parsedGrade = Number(sinif) || defaultLevelValue(coreConfig);
 		if (!Number.isInteger(parsedGrade) || !allowedLevels.has(parsedGrade)) {
 			return bad('Experience level must be one of the configured options.');
 		}
-		const rawHandle = String(ogrenciNo ?? '').trim();
-		if (coreConfig.memberId.required && !rawHandle) return bad('Please enter a member ID / handle.');
-		if (rawHandle && !/^[a-zA-Z0-9_-]{3,32}$/.test(rawHandle)) {
+		const handleInput = String(ogrenciNo ?? '').trim();
+		const rawHandle = handleInput || `ORB-${randomBytes(3).toString('hex').toUpperCase()}`;
+		if (!/^[a-zA-Z0-9_-]{3,32}$/.test(rawHandle)) {
 			return bad('Member ID / Handle must be 3-32 characters using letters, numbers, hyphens, or underscores.');
 		}
 		const cleanTrack = String(bolum || '').trim() || defaultTrackValue(coreConfig);
