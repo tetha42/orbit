@@ -13,7 +13,8 @@ const require = createRequire(import.meta.url);
 const { generate } = require('otplib');
 const arg = (n, d) => (process.argv.indexOf(n) > 0 ? process.argv[process.argv.indexOf(n) + 1] : d);
 const BASE = arg('--base', 'http://localhost:3000');
-const FX = JSON.parse(fs.readFileSync(arg('--fixtures', '.fixtures.json'), 'utf8'));
+const FIXTURES_FILE = arg('--fixtures', '.fixtures.json');
+const FX = JSON.parse(fs.readFileSync(FIXTURES_FILE, 'utf8'));
 
 let pass = 0;
 let fail = 0;
@@ -40,18 +41,50 @@ function client() {
 
 const usedWindows = new Map();
 async function code(secret) {
-	const w = Math.floor(Date.now() / 30000);
-	if (usedWindows.get(secret) === w) await new Promise((r) => setTimeout(r, 30500 - (Date.now() % 30000)));
-	usedWindows.set(secret, Math.floor(Date.now() / 30000));
+	let lastUsed = usedWindows.get(secret);
+	try {
+		if (fs.existsSync(FIXTURES_FILE)) {
+			const data = JSON.parse(fs.readFileSync(FIXTURES_FILE, 'utf8'));
+			if (data.totpUsedAt) {
+				const diskWindow = Math.floor(data.totpUsedAt / 30000);
+				if (lastUsed === undefined || diskWindow > lastUsed) {
+					lastUsed = diskWindow;
+				}
+			}
+		}
+	} catch {}
+
+	const currentWindow = Math.floor(Date.now() / 30000);
+	if (lastUsed === currentWindow) {
+		const waitMs = 30500 - (Date.now() % 30000);
+		await new Promise((r) => setTimeout(r, waitMs));
+	}
+	const now = Date.now();
+	const newWindow = Math.floor(now / 30000);
+	usedWindows.set(secret, newWindow);
+	try {
+		if (fs.existsSync(FIXTURES_FILE)) {
+			const data = JSON.parse(fs.readFileSync(FIXTURES_FILE, 'utf8'));
+			data.totpUsedAt = now;
+			fs.writeFileSync(FIXTURES_FILE, JSON.stringify(data, null, 2));
+		}
+	} catch {}
 	return generate({ secret });
 }
 
-async function login(eposta, sifre, totp) {
+async function login(eposta, sifre, totp, retry = 1) {
 	const c = client();
 	const r = await c.call('POST', '/api/auth/login', { eposta, sifre });
 	if (r.json?.require2fa) {
-		const v = await c.call('POST', '/api/auth/2fa/challenge', { challengeToken: r.json.challengeToken, code: await code(totp) });
-		if (v.status !== 200) throw new Error(`2FA ${eposta}: ${v.status}`);
+		const cde = await code(totp);
+		const v = await c.call('POST', '/api/auth/2fa/challenge', { challengeToken: r.json.challengeToken, code: cde });
+		if (v.status !== 200) {
+			if (retry > 0) {
+				await new Promise((r) => setTimeout(r, 30500 - (Date.now() % 30000)));
+				return login(eposta, sifre, totp, retry - 1);
+			}
+			throw new Error(`2FA ${eposta}: ${v.status}`);
+		}
 	} else if (r.status !== 200) throw new Error(`login ${eposta}: ${r.status} ${JSON.stringify(r.json)}`);
 	return c;
 }
