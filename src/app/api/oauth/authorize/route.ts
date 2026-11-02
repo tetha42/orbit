@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth/access';
 import { createAuthCode, getOAuthClientById, recordUserConsent } from '@/db/oauth';
 import { clientAddress } from '@/lib/http';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
-import { isIpBanned, recordSecurityStrike } from '@/server/db/domains/security.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
+import { isIpBanned, recordSecurityStrike } from '@/db/repositories/security.repo';
 import { inspectRequestPayload } from '@/lib/waf';
 
 function isRedirectUriRegistered(registeredUris: string[], targetUri: string): boolean {

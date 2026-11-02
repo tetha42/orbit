@@ -7,7 +7,7 @@ import { addStoredFile } from '@/db';
 import { verifyUploadAccess } from '@/lib/vaultAccess';
 import { consumeRateLimit } from '@/lib/rateLimit';
 import { MAX_UPLOAD_BYTES, sniffFile, uploadDir } from '@/lib/uploads';
-import { getEmergencyKillSwitches } from '@/server/db/domains/security.repo';
+import { getEmergencyKillSwitches } from '@/db/repositories/security.repo';
 
 /**
  * Receipt upload.

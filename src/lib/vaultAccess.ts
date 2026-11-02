@@ -8,7 +8,7 @@ import {
 } from '@/db';
 import { authenticateEnrolled, can, type AuthorizedUser } from '@/lib/auth/access';
 import type { VaultSummary } from '@/types/budget';
-import { canUserAccessChatRoom } from '@/server/db/domains/chat.repo';
+import { canUserAccessChatRoom } from '@/db/repositories/chat.repo';
 
 /**
  * Who may see and edit a vault — the single place that decides it.

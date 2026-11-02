@@ -1,4 +1,4 @@
-// Üst menü çubuğu: MENU_YETKI (src/components/TopBar/MenuBar.tsx) yetkisiz öğeyi hiç göstermez.
+// Üst menü çubuğu: MENU_YETKI (src/components/shell/TopBar/MenuBar.tsx) yetkisiz öğeyi hiç göstermez.
 import { openApp } from '../lib/browser.mjs';
 
 export const meta = { title: 'Menü çubuğu: yetkisiz öğeler görünmüyor' };

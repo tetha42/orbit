@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { jsonSuccess, jsonError } from '@/lib/server/apiResponse';
+import { jsonSuccess, jsonError } from '@/server/apiResponse';
 import {
 	InsufficientFundsError,
 	createBudgetRecord,

@@ -385,48 +385,61 @@ if (!DATABASE_URL) {
 	await db.connect();
 	const q = (sql, p) => db.query(sql, p).then((r) => r.rows);
 	const count = async () => (await everything()).total ?? (await everything()).toplam;
+	let roleTable = 'roles';
+	let auditTable = 'audit_logs';
+	let userTable = 'users';
+	let settingsTable = 'system_settings';
 	try {
+		roleTable = (await q("SELECT to_regclass('roles') AS r"))[0]?.r ? 'roles' : 'roller';
+		auditTable = (await q("SELECT to_regclass('audit_logs') AS a"))[0]?.a ? 'audit_logs' : 'denetim_kaydi';
+		userTable = (await q("SELECT to_regclass('users') AS u"))[0]?.u ? 'users' : 'kullanicilar';
+		settingsTable = (await q("SELECT to_regclass('system_settings') AS s"))[0]?.s ? 'system_settings' : 'sistem_ayarlari';
+
 		// 1. The operation fails at COMMIT (deferred constraint trigger) after the record was written:
 		//    neither the role nor its record may remain.
 		await q(`CREATE OR REPLACE FUNCTION audit_test_fail() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'audit-test: commit refused'; END $$`);
-		await q(`CREATE CONSTRAINT TRIGGER audit_test_commit AFTER INSERT ON roller DEFERRABLE INITIALLY DEFERRED FOR EACH ROW WHEN (NEW.ad = 'GeriAlinacak') EXECUTE FUNCTION audit_test_fail()`);
+		await q(`CREATE CONSTRAINT TRIGGER audit_test_commit AFTER INSERT ON ${roleTable} DEFERRABLE INITIALLY DEFERRED FOR EACH ROW WHEN (NEW.ad = 'GeriAlinacak') EXECUTE FUNCTION audit_test_fail()`);
 		const before = await count();
 		const r = await admin.call('POST', '/api/roles', rolPayload({ news: 'kullan', settings: 'kullan' }, { ad: 'GeriAlinacak' }));
 		ok(r.status === 500, 'create refused at COMMIT → 500', String(r.status));
-		ok((await q(`SELECT 1 FROM roller WHERE ad = 'GeriAlinacak'`)).length === 0, 'rollback: the role is not there');
+		ok((await q(`SELECT 1 FROM ${roleTable} WHERE ad = 'GeriAlinacak'`)).length === 0, 'rollback: the role is not there');
 		ok((await count()) === before, 'rollback: and neither is its record');
-		await q('DROP TRIGGER audit_test_commit ON roller');
+		await q(`DROP TRIGGER audit_test_commit ON ${roleTable}`);
 
 		// 2. Deleting a role fails at COMMIT: role, its members and the log stay as they were.
 		const ok1 = await admin.call('POST', '/api/roles', rolPayload({ news: 'kullan', settings: 'kullan' }, { ad: 'SilinemezRol' }));
 		await admin.call('PATCH', '/api/members', { id: U.can.id, rolId: ok1.json.id });
-		await q(`CREATE CONSTRAINT TRIGGER audit_test_commit AFTER DELETE ON roller DEFERRABLE INITIALLY DEFERRED FOR EACH ROW WHEN (OLD.ad = 'SilinemezRol') EXECUTE FUNCTION audit_test_fail()`);
+		await q(`CREATE CONSTRAINT TRIGGER audit_test_commit AFTER DELETE ON ${roleTable} DEFERRABLE INITIALLY DEFERRED FOR EACH ROW WHEN (OLD.ad = 'SilinemezRol') EXECUTE FUNCTION audit_test_fail()`);
 		const before2 = await count();
 		const d = await admin.call('DELETE', '/api/roles', { id: ok1.json.id, tasi: R.uye });
 		ok(d.status === 500, 'delete refused at COMMIT → 500', String(d.status));
-		ok((await q(`SELECT rolId FROM kullanicilar WHERE id = $1`, [U.can.id]))[0].rolid === ok1.json.id, 'rollback: the member is still in the role');
-		ok((await q(`SELECT 1 FROM roller WHERE id = $1`, [ok1.json.id])).length === 1, 'rollback: the role still exists');
+		const memberRoleCol = userTable === 'users' ? 'role_id' : 'rolId';
+		ok((await q(`SELECT ${memberRoleCol} AS rolid FROM ${userTable} WHERE id = $1`, [U.can.id]))[0].rolid === ok1.json.id, 'rollback: the member is still in the role');
+		ok((await q(`SELECT 1 FROM ${roleTable} WHERE id = $1`, [ok1.json.id])).length === 1, 'rollback: the role still exists');
 		ok((await count()) === before2, 'rollback: no "rol.sil" record was left');
-		await q('DROP TRIGGER audit_test_commit ON roller');
+		await q(`DROP TRIGGER audit_test_commit ON ${roleTable}`);
 		await admin.call('DELETE', '/api/roles', { id: ok1.json.id, tasi: R.uye });
 
 		// 3. Writing the record fails: the operation must not go through without it.
 		await q(`CREATE OR REPLACE FUNCTION audit_test_block() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'audit-test: no record, no change'; END $$`);
-		await q(`CREATE TRIGGER audit_test_block BEFORE INSERT ON denetim_kaydi FOR EACH ROW WHEN (NEW.islem = 'uye.mezun') EXECUTE FUNCTION audit_test_block()`);
+		await q(`CREATE TRIGGER audit_test_block BEFORE INSERT ON ${auditTable} FOR EACH ROW WHEN (NEW.islem = 'uye.mezun') EXECUTE FUNCTION audit_test_block()`);
 		const m = await admin.call('PATCH', '/api/members', { id: U.can.id, durum: 'mezun' });
 		ok(m.status === 500, 'no record possible → the change fails (500)', String(m.status));
-		ok((await q(`SELECT durum FROM kullanicilar WHERE id = $1`, [U.can.id]))[0].durum === 'aktif', 'and the member is still active (nothing changed without a record)');
-		await q('DROP TRIGGER audit_test_block ON denetim_kaydi');
+		const userStatusCol = userTable === 'users' ? 'status' : 'durum';
+		ok((await q(`SELECT ${userStatusCol} AS durum FROM ${userTable} WHERE id = $1`, [U.can.id]))[0].durum === 'aktif', 'and the member is still active (nothing changed without a record)');
+		await q(`DROP TRIGGER audit_test_block ON ${auditTable}`);
 
 		// 4. SMTP settings: same guarantee.
-		await q(`CREATE TRIGGER audit_test_block BEFORE INSERT ON denetim_kaydi FOR EACH ROW WHEN (NEW.islem = 'ayar.smtp') EXECUTE FUNCTION audit_test_block()`);
-		const before4 = (await q(`SELECT deger FROM sistem_ayarlari WHERE anahtar = 'smtp_host'`))[0]?.deger;
+		await q(`CREATE TRIGGER audit_test_block BEFORE INSERT ON ${auditTable} FOR EACH ROW WHEN (NEW.islem = 'ayar.smtp') EXECUTE FUNCTION audit_test_block()`);
+		const keyCol = settingsTable === 'system_settings' ? 'key' : 'anahtar';
+		const valCol = settingsTable === 'system_settings' ? 'value' : 'deger';
+		const before4 = (await q(`SELECT ${valCol} AS deger FROM ${settingsTable} WHERE ${keyCol} = 'smtp_host'`))[0]?.deger;
 		const s = await admin.call('POST', '/api/settings/smtp', { smtp_host: 'smtp.never.test', smtp_port: 465, smtp_user: 'x@kulup.test' });
-		ok(s.status === 500 && (await q(`SELECT deger FROM sistem_ayarlari WHERE anahtar = 'smtp_host'`))[0]?.deger === before4, 'SMTP: no record possible → settings unchanged');
-		await q('DROP TRIGGER audit_test_block ON denetim_kaydi');
+		ok(s.status === 500 && (await q(`SELECT ${valCol} AS deger FROM ${settingsTable} WHERE ${keyCol} = 'smtp_host'`))[0]?.deger === before4, 'SMTP: no record possible → settings unchanged');
+		await q(`DROP TRIGGER audit_test_block ON ${auditTable}`);
 	} finally {
-		await q('DROP TRIGGER IF EXISTS audit_test_commit ON roller').catch(() => {});
-		await q('DROP TRIGGER IF EXISTS audit_test_block ON denetim_kaydi').catch(() => {});
+		if (roleTable) await q(`DROP TRIGGER IF EXISTS audit_test_commit ON ${roleTable}`).catch(() => {});
+		if (auditTable) await q(`DROP TRIGGER IF EXISTS audit_test_block ON ${auditTable}`).catch(() => {});
 		await q('DROP FUNCTION IF EXISTS audit_test_fail()').catch(() => {});
 		await q('DROP FUNCTION IF EXISTS audit_test_block()').catch(() => {});
 		await db.end();

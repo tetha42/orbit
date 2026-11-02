@@ -9,7 +9,7 @@ import { SessionProvider, useSession, useSessionEvent, type SessionContextValue 
 import { DEFAULT_WALLPAPER, WALLPAPERS, ThemeSync, nextWallpaper, useTheme } from '@/core/theme';
 import { SoundProvider, useSound, type SoundContextValue } from '@/core/sound';
 import { WindowsProvider, useActiveApp, useWindowActions, useWindowCycleSetting, useWindowFocusTarget, useWindows, useWindowStore, type WindowActions } from '@/core/windows';
-import { NotificationClickBridge } from '@/components/NotificationCenter/NotificationClickBridge';
+import { NotificationClickBridge } from '@/components/shell/NotificationCenter/NotificationClickBridge';
 import { ShellActionsContext, ShellStateContext, useShell, type ShellActions, type ShellState } from '@/core/shell/shell';
 import { useContextMenus } from '@/core/contextMenu/useContextMenus';
 import { useDock } from '@/core/dock/useDock';

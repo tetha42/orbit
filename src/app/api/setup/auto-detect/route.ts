@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { testPostgresConnection } from '@/db';
-import { CONFIG } from '@/lib/server/config';
+import { CONFIG } from '@/server/config';
 
 export const dynamic = 'force-dynamic';
 

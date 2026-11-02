@@ -11,11 +11,11 @@ import {
 	softDeleteChatMessage,
 	softDeleteChatMessagesBatch,
 	editChatMessage,
-} from '@/server/db/domains/chat.repo';
+} from '@/db/repositories/chat.repo';
 import { addStoredFile, getStoredFile } from '@/db';
 import { UPLOAD_NAME_RE, mimeForName, uploadDir } from '@/lib/uploads';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
-import { recordSecurityStrike } from '@/server/db/domains/security.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
+import { recordSecurityStrike } from '@/db/repositories/security.repo';
 import { clientAddress } from '@/lib/http';
 import { consumeRateLimit } from '@/lib/rateLimit';
 

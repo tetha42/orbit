@@ -5,7 +5,7 @@ import { resetSetupCache } from '../route';
 import { clientAddress } from '@/lib/http';
 import { consumeRateLimit } from '@/lib/rateLimit';
 import { inspectRequestPayload } from '@/lib/waf';
-import { isIpBanned, recordSecurityStrike } from '@/server/db/domains/security.repo';
+import { isIpBanned, recordSecurityStrike } from '@/db/repositories/security.repo';
 
 export const dynamic = 'force-dynamic';
 

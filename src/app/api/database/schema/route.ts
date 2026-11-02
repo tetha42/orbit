@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getPgPool } from '@/db';
-import { requireDatabaseAdmin } from '@/lib/server/databaseAccess';
+import { requireDatabaseAdmin } from '@/server/databaseAccess';
 import type { SchemaGraphData, SchemaTableNode, SchemaRelationEdge } from '@/apps/database/types';
 
 export async function GET(request: Request) {

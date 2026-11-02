@@ -135,12 +135,12 @@ try {
 				fs.mkdirSync(TMP, { recursive: true });
 				const file = path.join(TMP, 'fixtures.json');
 				fs.rmSync(file, { force: true });
-				const made = spawnSync('node', ['scripts/dev-fixtures.mjs', '--base', server.base, '--out', file], {
+				const made = spawnSync('node', ['tests/fixtures/dev-fixtures.mjs', '--base', server.base, '--out', file], {
 					cwd: ROOT,
 					env: { ...process.env, BOOTSTRAP_ADMIN_EMAIL: bootstrap.eposta, BOOTSTRAP_ADMIN_PASSWORD: bootstrap.sifre },
 					stdio: 'inherit',
 				});
-				if (made.status !== 0) throw new Error('scripts/dev-fixtures.mjs failed');
+				if (made.status !== 0) throw new Error('tests/fixtures/dev-fixtures.mjs failed');
 				const fx = readFixtures(file);
 				// dev-fixtures just enrolled these secrets with a code from the current window.
 				for (const secret of [fx.adminTotp, ...Object.values(fx.users).map((u) => u.totp)]) if (secret) markTotpUsed(secret);

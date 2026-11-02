@@ -4,7 +4,7 @@ import { enableUserTotp, getUserByEmail } from '@/db';
 import { generateRecoveryCodes, verifyTotpCode } from '@/lib/auth/totp';
 import { clearRateLimit, isRateLimited, recordFailure } from '@/lib/rateLimit';
 import { clientAddress } from '@/lib/http';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
 
 const MAX_ATTEMPTS = 8;
 const WINDOW_MS = 15 * 60_000;

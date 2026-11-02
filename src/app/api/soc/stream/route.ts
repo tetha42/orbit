@@ -1,5 +1,5 @@
 import { requireApp } from '@/lib/auth/access';
-import { subscribeToLiveLogs, type SystemLog } from '@/server/db/domains/logs.repo';
+import { subscribeToLiveLogs, type SystemLog } from '@/db/repositories/logs.repo';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';

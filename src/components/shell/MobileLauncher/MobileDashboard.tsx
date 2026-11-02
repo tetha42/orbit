@@ -16,7 +16,7 @@ import { CameraQRScannerModal } from '@/apps/events/components/CameraQRScannerMo
 import type { EventsResponse } from '@/components/Events/eventsShared';
 import type { Team } from '@/apps/teams/types';
 import type { AppID } from '@/types/workspace';
-import { NoRoleNotice } from '@/components/Desktop/NoRoleNotice';
+import { NoRoleNotice } from '@/components/shell/Desktop/NoRoleNotice';
 
 const CARD = {
 	background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.03))',

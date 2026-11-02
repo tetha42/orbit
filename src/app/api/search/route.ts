@@ -9,9 +9,9 @@ import {
 	getTeams,
 	getMemberRoster,
 } from '@/db';
-import { getInventoryItems } from '@/server/db/domains/inventory.repo';
+import { getInventoryItems } from '@/db/repositories/inventory.repo';
 import { searchMailCandidates, getMailSearchThreads } from '@/db/messages';
-import { recipientList } from '@/lib/server/messages';
+import { recipientList } from '@/server/messages';
 import { authenticate, can } from '@/lib/auth/access';
 import { listAccessibleVaults } from '@/lib/vaultAccess';
 import { consumeRateLimit } from '@/lib/rateLimit';

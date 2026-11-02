@@ -11,7 +11,7 @@ import { clientAddress } from '@/lib/http';
 import { isValidEmail } from '@/lib/mail/address';
 import { notifyEmailChangeCode } from '@/lib/mail/notifications';
 import { consumeRateLimit } from '@/lib/rateLimit';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
 
 export const dynamic = 'force-dynamic';
 

@@ -4,7 +4,7 @@ import { getUserByEmail } from '@/db';
 import { verifyAuth } from '@/lib/auth/authGuard';
 import { clearRateLimit, isRateLimited, recordFailure } from '@/lib/rateLimit';
 import { clientAddress } from '@/lib/http';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
 
 /**
  * Re-checks the signed-in member's password without starting a new session.

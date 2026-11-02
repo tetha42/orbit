@@ -177,6 +177,7 @@ func checkFileSuspicious(filePath string, maxBytes int64) ([]SuspiciousMatch, er
 
 	// Never self-flag the scanner source file, test fixtures, or baseline
 	if strings.HasSuffix(filePath, "tools/fim/main.go") ||
+		strings.HasSuffix(filePath, "tests/security/security-e2e.mjs") ||
 		strings.HasSuffix(filePath, "scripts/security-e2e-test.mjs") ||
 		strings.HasSuffix(filePath, "tools/fim/baseline.json") {
 		return nil, nil

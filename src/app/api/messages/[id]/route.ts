@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { addMailReply, getMailParticipantIds, getMailThread, setMailThreadStatus } from '@/db/messages';
 import { requireApp } from '@/lib/auth/access';
 import { consumeRateLimit } from '@/lib/rateLimit';
-import { recipientDecision, notifyByEmail } from '@/lib/server/messages';
+import { recipientDecision, notifyByEmail } from '@/server/messages';
 import { skippedReason, MAIL_PER_MINUTE_LIMIT, MAIL_BODY_MAX, MAIL_ACTIONS, type MailSendResult, type MailAction } from '@/lib/messages';
 
 export const dynamic = 'force-dynamic';

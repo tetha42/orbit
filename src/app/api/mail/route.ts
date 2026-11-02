@@ -6,7 +6,7 @@ import { isValidEmail } from '@/lib/mail/address';
 import { errorMessage } from '@/lib/errors';
 import { consumeRateLimit } from '@/lib/rateLimit';
 import { clientAddress } from '@/lib/http';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
 
 export const dynamic = 'force-dynamic';
 

@@ -42,7 +42,7 @@ import {
 	normalizeOncelik,
 	normalizeDueDate,
 } from '@/lib/kanban';
-import { getBoardAccess, getTaskAccess, isAssignable } from '@/lib/server/taskAccess';
+import { getBoardAccess, getTaskAccess, isAssignable } from '@/server/taskAccess';
 
 export async function GET(request: Request) {
 	// Team composition and task lists are internal to the club.

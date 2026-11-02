@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getLegalDocuments, upsertLegalDocument } from '@/db';
 import { requireApp } from '@/lib/auth/access';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
 import {
 	LEGAL_DOCUMENT_SCOPES,
 	LEGAL_DOCUMENT_TYPES,

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { ArrowLeft, FileCheck2, Lock, PenLine, XCircle } from 'lucide-react';
 import { getDecisionByNumber } from '@/db';
-import { belgeOzeti } from '@/lib/server/documentDigest';
+import { belgeOzeti } from '@/server/documentDigest';
 import { documentCount } from '@/lib/documents';
 import styles from './verify.module.css';
 

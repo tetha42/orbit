@@ -9,9 +9,9 @@ import { ensureOAuthSchema } from './oauth';
 import { startAuditMaintenance, ensureAuditSchema } from './audit';
 
 import { ADMIN_ROLE_ID } from '@/core/permissions';
-import { runSchemaMigrations } from '@/server/db/schema.init';
-import { CONFIG } from '@/lib/server/config';
-import { updateConfigIniSync } from '@/lib/server/iniWriter';
+import { runSchemaMigrations } from './schema.init';
+import { CONFIG } from '@/server/config';
+import { updateConfigIniSync } from '@/server/iniWriter';
 
 // Parse PostgreSQL INT8 (BIGINT) as Javascript Number (safe up to 9 quadrillion)
 types.setTypeParser(types.builtins.INT8, (val: string) => parseInt(val, 10));
@@ -416,27 +416,31 @@ export * from './schema';
 export * from './oauth';
 
 // Domain Repositories Re-exports
-export * from '@/server/db/domains/auth.repo';
-export * from '@/server/db/domains/users.repo';
-export * from '@/server/db/domains/files.repo';
-export * from '@/server/db/domains/notifications.repo';
-export * from '@/server/db/domains/members.repo';
-export * from '@/server/db/domains/membership.repo';
-export * from '@/server/db/domains/teams.repo';
-export * from '@/server/db/domains/committees.repo';
-export * from '@/server/db/domains/mailGroups.repo';
-export * from '@/server/db/domains/mailOutbox.repo';
-export * from '@/server/db/domains/privacy.repo';
-export * from '@/server/db/domains/kanban.repo';
-export * from '@/server/db/domains/budget.repo';
-export * from '@/server/db/domains/certificates.repo';
-export * from '@/server/db/domains/inventory.repo';
-export * from '@/server/db/domains/decisions.repo';
-export * from '@/server/db/domains/news.repo';
-export * from '@/server/db/domains/notes.repo';
-export * from '@/server/db/domains/settings.repo';
-export * from '@/server/db/domains/projects.repo';
-export * from '@/server/db/domains/events.repo';
-export * from '@/server/db/domains/security.repo';
-export * from '@/server/db/domains/customization.repo';
+export * from './repositories/auth.repo';
+export * from './repositories/users.repo';
+export * from './repositories/files.repo';
+export * from './repositories/notifications.repo';
+export * from './repositories/members.repo';
+export * from './repositories/membership.repo';
+export * from './repositories/teams.repo';
+export * from './repositories/committees.repo';
+export * from './repositories/mailGroups.repo';
+export * from './repositories/mailOutbox.repo';
+export * from './repositories/privacy.repo';
+export * from './repositories/kanban.repo';
+export * from './repositories/budget.repo';
+export * from './repositories/certificates.repo';
+export * from './repositories/inventory.repo';
+export * from './repositories/decisions.repo';
+export * from './repositories/news.repo';
+export * from './repositories/notes.repo';
+export * from './repositories/settings.repo';
+export * from './repositories/projects.repo';
+export * from './repositories/events.repo';
+export * from './repositories/security.repo';
+export * from './repositories/customization.repo';
+export * from './repositories/logs.repo';
+export * from './repositories/inspection.repo';
+export * from './repositories/workspacePreferences.repo';
+export * from './repositories/chat.repo';
 

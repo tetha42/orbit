@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server';
 import { getUserBySessionToken, updateUserSession } from '@/db';
 import { readSessionToken } from '@/lib/auth/authGuard';
 import { SESSION_COOKIE } from '@/lib/auth/session';
-import { closeUserTerminalSessions } from '@/lib/server/terminalManager';
+import { closeUserTerminalSessions } from '@/server/terminalManager';
 import { clientAddress } from '@/lib/http';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
 
 export async function POST(request: Request) {
 	try {

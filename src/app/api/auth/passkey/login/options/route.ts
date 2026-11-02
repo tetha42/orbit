@@ -4,8 +4,8 @@ import { getUserByEmail, getWebauthnCredentials, createWebauthnChallenge } from 
 import { getWebauthnConfig, newChallengeId, parseTransports } from '@/lib/auth/webauthn';
 import { consumeRateLimit } from '@/lib/rateLimit';
 import { clientAddress } from '@/lib/http';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
-import { isIpBanned, recordSecurityStrike } from '@/server/db/domains/security.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
+import { isIpBanned, recordSecurityStrike } from '@/db/repositories/security.repo';
 import { inspectRequestPayload } from '@/lib/waf';
 
 /**

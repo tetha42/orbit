@@ -12,8 +12,8 @@ import { clearRateLimit, isRateLimited, recordFailure } from '@/lib/rateLimit';
 import { clientAddress } from '@/lib/http';
 import { inspectRequestPayload } from '@/lib/waf';
 import { ADMIN_ROLE_ID } from '@/core/permissions';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
-import { getLockdownState, isIpBanned, recordSecurityStrike } from '@/server/db/domains/security.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
+import { getLockdownState, isIpBanned, recordSecurityStrike } from '@/db/repositories/security.repo';
 
 const MAX_2FA_USER_ATTEMPTS = 8;
 const MAX_2FA_IP_ATTEMPTS = 25;

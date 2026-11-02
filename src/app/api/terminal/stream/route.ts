@@ -1,5 +1,5 @@
-import { getTerminalSession, getRecentlyClosedSession } from '@/lib/server/terminalManager';
-import { authorizeTerminal } from '@/lib/server/terminalAccess';
+import { getTerminalSession, getRecentlyClosedSession } from '@/server/terminalManager';
+import { authorizeTerminal } from '@/server/terminalAccess';
 
 export const dynamic = 'force-dynamic';
 

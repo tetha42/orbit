@@ -4,7 +4,7 @@
       "oldName": "addButceKaydi",
       "type": "function",
       "files": [
-        "src/server/db/domains/budget.repo.ts"
+        "src/db/repositories/budget.repo.ts"
       ],
       "newName": "createBudgetRecord"
     },
@@ -12,7 +12,7 @@
       "oldName": "addEnvanterItem",
       "type": "function",
       "files": [
-        "src/server/db/domains/inventory.repo.ts"
+        "src/db/repositories/inventory.repo.ts"
       ],
       "newName": "createInventoryItem"
     },
@@ -20,7 +20,7 @@
       "oldName": "addGorevMaddesi",
       "type": "function",
       "files": [
-        "src/server/db/domains/kanban.repo.ts"
+        "src/db/repositories/kanban.repo.ts"
       ],
       "newName": "addTaskItem"
     },
@@ -28,7 +28,7 @@
       "oldName": "addGorevYorumu",
       "type": "function",
       "files": [
-        "src/server/db/domains/kanban.repo.ts"
+        "src/db/repositories/kanban.repo.ts"
       ],
       "newName": "addTaskComment"
     },
@@ -36,7 +36,7 @@
       "oldName": "addHaber",
       "type": "function",
       "files": [
-        "src/server/db/domains/news.repo.ts"
+        "src/db/repositories/news.repo.ts"
       ],
       "newName": "createNews"
     },
@@ -44,7 +44,7 @@
       "oldName": "addKullaniciXp",
       "type": "function",
       "files": [
-        "src/server/db/domains/members.repo.ts"
+        "src/db/repositories/members.repo.ts"
       ],
       "newName": "addUserXp"
     },
@@ -60,7 +60,7 @@
       "oldName": "addTakimGorevi",
       "type": "function",
       "files": [
-        "src/server/db/domains/kanban.repo.ts"
+        "src/db/repositories/kanban.repo.ts"
       ],
       "newName": "createTeamTask"
     },
@@ -68,7 +68,7 @@
       "oldName": "addTutanak",
       "type": "function",
       "files": [
-        "src/server/db/domains/decisions.repo.ts"
+        "src/db/repositories/decisions.repo.ts"
       ],
       "newName": "createDecision"
     },
@@ -76,7 +76,7 @@
       "oldName": "anketEk",
       "type": "variable",
       "files": [
-        "src/server/db/domains/chat.repo.ts"
+        "src/db/repositories/chat.repo.ts"
       ],
       "newName": "addPoll"
     },
@@ -84,7 +84,7 @@
       "oldName": "anketId",
       "type": "variable",
       "files": [
-        "src/server/db/domains/chat.repo.ts"
+        "src/db/repositories/chat.repo.ts"
       ],
       "newName": "pollId"
     },
@@ -100,7 +100,7 @@
       "oldName": "baskan",
       "type": "variable",
       "files": [
-        "src/server/db/domains/certificates.repo.ts"
+        "src/db/repositories/certificates.repo.ts"
       ],
       "newName": "lead"
     },
@@ -108,7 +108,7 @@
       "oldName": "BasvuruKarari",
       "type": "type",
       "files": [
-        "src/server/db/domains/teams.repo.ts"
+        "src/db/repositories/teams.repo.ts"
       ],
       "newName": "ApplicationDecision"
     },
@@ -124,7 +124,7 @@
       "oldName": "bitis",
       "type": "variable",
       "files": [
-        "src/server/db/domains/security.repo.ts"
+        "src/db/repositories/security.repo.ts"
       ],
       "newName": "endTime"
     },
@@ -132,7 +132,7 @@
       "oldName": "bitisNum",
       "type": "variable",
       "files": [
-        "src/server/db/domains/security.repo.ts"
+        "src/db/repositories/security.repo.ts"
       ],
       "newName": "endTimestamp"
     },
@@ -140,7 +140,7 @@
       "oldName": "bitisTarihi",
       "type": "variable",
       "files": [
-        "src/server/db/domains/security.repo.ts"
+        "src/db/repositories/security.repo.ts"
       ],
       "newName": "expiresAt"
     },
@@ -148,7 +148,7 @@
       "oldName": "ButceKategorisi",
       "type": "type",
       "files": [
-        "src/server/db/domains/budget.repo.ts"
+        "src/db/repositories/budget.repo.ts"
       ],
       "newName": "BudgetCategory"
     },
@@ -180,7 +180,7 @@
       "oldName": "createEtkinlik",
       "type": "function",
       "files": [
-        "src/server/db/domains/events.repo.ts"
+        "src/db/repositories/events.repo.ts"
       ],
       "newName": "createEvent"
     },
@@ -188,7 +188,7 @@
       "oldName": "createEtkinlikSertifikalari",
       "type": "function",
       "files": [
-        "src/server/db/domains/certificates.repo.ts"
+        "src/db/repositories/certificates.repo.ts"
       ],
       "newName": "createEventCertificates"
     },
@@ -196,7 +196,7 @@
       "oldName": "createKullanici",
       "type": "function",
       "files": [
-        "src/server/db/domains/members.repo.ts"
+        "src/db/repositories/members.repo.ts"
       ],
       "newName": "createUser"
     },
@@ -212,7 +212,7 @@
       "oldName": "createProje",
       "type": "function",
       "files": [
-        "src/server/db/domains/projects.repo.ts"
+        "src/db/repositories/projects.repo.ts"
       ],
       "newName": "createProject"
     },
@@ -228,7 +228,7 @@
       "oldName": "createSertifika",
       "type": "function",
       "files": [
-        "src/server/db/domains/certificates.repo.ts"
+        "src/db/repositories/certificates.repo.ts"
       ],
       "newName": "createCertificate"
     },
@@ -236,7 +236,7 @@
       "oldName": "createTakim",
       "type": "function",
       "files": [
-        "src/server/db/domains/teams.repo.ts"
+        "src/db/repositories/teams.repo.ts"
       ],
       "newName": "createTeam"
     },
@@ -244,7 +244,7 @@
       "oldName": "decideTakimBasvurusu",
       "type": "function",
       "files": [
-        "src/server/db/domains/teams.repo.ts"
+        "src/db/repositories/teams.repo.ts"
       ],
       "newName": "decideTeamApplication"
     },
@@ -252,7 +252,7 @@
       "oldName": "deleteButceKaydi",
       "type": "function",
       "files": [
-        "src/server/db/domains/budget.repo.ts"
+        "src/db/repositories/budget.repo.ts"
       ],
       "newName": "deleteBudgetRecord"
     },
@@ -260,7 +260,7 @@
       "oldName": "deleteEnvanterItem",
       "type": "function",
       "files": [
-        "src/server/db/domains/inventory.repo.ts"
+        "src/db/repositories/inventory.repo.ts"
       ],
       "newName": "deleteInventoryItem"
     },
@@ -268,7 +268,7 @@
       "oldName": "deleteEtkinlik",
       "type": "function",
       "files": [
-        "src/server/db/domains/events.repo.ts"
+        "src/db/repositories/events.repo.ts"
       ],
       "newName": "deleteEvent"
     },
@@ -276,7 +276,7 @@
       "oldName": "deleteGorevMaddesi",
       "type": "function",
       "files": [
-        "src/server/db/domains/kanban.repo.ts"
+        "src/db/repositories/kanban.repo.ts"
       ],
       "newName": "deleteTaskItem"
     },
@@ -284,7 +284,7 @@
       "oldName": "deleteGorevYorumu",
       "type": "function",
       "files": [
-        "src/server/db/domains/kanban.repo.ts"
+        "src/db/repositories/kanban.repo.ts"
       ],
       "newName": "deleteTaskComment"
     },
@@ -292,7 +292,7 @@
       "oldName": "deleteHaber",
       "type": "function",
       "files": [
-        "src/server/db/domains/news.repo.ts"
+        "src/db/repositories/news.repo.ts"
       ],
       "newName": "deleteNews"
     },
@@ -300,7 +300,7 @@
       "oldName": "deleteKullanici",
       "type": "function",
       "files": [
-        "src/server/db/domains/members.repo.ts"
+        "src/db/repositories/members.repo.ts"
       ],
       "newName": "deleteUser"
     },
@@ -308,7 +308,7 @@
       "oldName": "deleteKullaniciNotKlasoru",
       "type": "function",
       "files": [
-        "src/server/db/domains/notes.repo.ts"
+        "src/db/repositories/notes.repo.ts"
       ],
       "newName": "deleteUserNoteFolder"
     },
@@ -316,7 +316,7 @@
       "oldName": "deleteKullaniciNotu",
       "type": "function",
       "files": [
-        "src/server/db/domains/notes.repo.ts"
+        "src/db/repositories/notes.repo.ts"
       ],
       "newName": "deleteUserNote"
     },
@@ -324,7 +324,7 @@
       "oldName": "deleteProje",
       "type": "function",
       "files": [
-        "src/server/db/domains/projects.repo.ts"
+        "src/db/repositories/projects.repo.ts"
       ],
       "newName": "deleteProject"
     },
@@ -340,7 +340,7 @@
       "oldName": "deleteSertifika",
       "type": "function",
       "files": [
-        "src/server/db/domains/certificates.repo.ts"
+        "src/db/repositories/certificates.repo.ts"
       ],
       "newName": "deleteCertificate"
     },
@@ -348,7 +348,7 @@
       "oldName": "deleteTakim",
       "type": "function",
       "files": [
-        "src/server/db/domains/teams.repo.ts"
+        "src/db/repositories/teams.repo.ts"
       ],
       "newName": "deleteTeam"
     },
@@ -356,7 +356,7 @@
       "oldName": "deleteTakimGorevi",
       "type": "function",
       "files": [
-        "src/server/db/domains/kanban.repo.ts"
+        "src/db/repositories/kanban.repo.ts"
       ],
       "newName": "deleteTeamTask"
     },
@@ -364,7 +364,7 @@
       "oldName": "deleteTutanak",
       "type": "function",
       "files": [
-        "src/server/db/domains/decisions.repo.ts"
+        "src/db/repositories/decisions.repo.ts"
       ],
       "newName": "deleteDecision"
     },
@@ -390,9 +390,9 @@
       "files": [
         "src/db/audit.ts",
         "src/db/roles.ts",
-        "src/server/db/domains/auth.repo.ts",
-        "src/server/db/domains/members.repo.ts",
-        "src/server/db/domains/settings.repo.ts"
+        "src/db/repositories/auth.repo.ts",
+        "src/db/repositories/members.repo.ts",
+        "src/db/repositories/settings.repo.ts"
       ],
       "newName": "AuditContext"
     },
@@ -409,7 +409,7 @@
       "type": "type",
       "files": [
         "src/db/audit.ts",
-        "src/server/db/domains/settings.repo.ts"
+        "src/db/repositories/settings.repo.ts"
       ],
       "newName": "AuditEntry"
     },
@@ -481,7 +481,7 @@
       "oldName": "disableKullaniciTotp",
       "type": "function",
       "files": [
-        "src/server/db/domains/auth.repo.ts"
+        "src/db/repositories/auth.repo.ts"
       ],
       "newName": "disableUserTotp"
     },
@@ -489,7 +489,7 @@
       "oldName": "dogrulamaKodu",
       "type": "variable",
       "files": [
-        "src/server/db/domains/certificates.repo.ts"
+        "src/db/repositories/certificates.repo.ts"
       ],
       "newName": "verificationCode"
     },
@@ -497,9 +497,9 @@
       "oldName": "durum",
       "type": "variable",
       "files": [
-        "src/server/db/domains/kanban.repo.ts",
-        "src/server/db/domains/security.repo.ts",
-        "src/server/db/domains/teams.repo.ts"
+        "src/db/repositories/kanban.repo.ts",
+        "src/db/repositories/security.repo.ts",
+        "src/db/repositories/teams.repo.ts"
       ],
       "newName": "status"
     },
@@ -507,7 +507,7 @@
       "oldName": "emptyKullaniciNotlariCop",
       "type": "function",
       "files": [
-        "src/server/db/domains/notes.repo.ts"
+        "src/db/repositories/notes.repo.ts"
       ],
       "newName": "emptyUserNotesTrash"
     },
@@ -515,7 +515,7 @@
       "oldName": "enableKullaniciTotp",
       "type": "function",
       "files": [
-        "src/server/db/domains/auth.repo.ts"
+        "src/db/repositories/auth.repo.ts"
       ],
       "newName": "enableUserTotp"
     },
@@ -523,7 +523,7 @@
       "oldName": "engel",
       "type": "variable",
       "files": [
-        "src/server/db/domains/security.repo.ts"
+        "src/db/repositories/security.repo.ts"
       ],
       "newName": "block"
     },
@@ -531,7 +531,7 @@
       "oldName": "engelMap",
       "type": "variable",
       "files": [
-        "src/server/db/domains/security.repo.ts"
+        "src/db/repositories/security.repo.ts"
       ],
       "newName": "blockMap"
     },
@@ -563,7 +563,7 @@
       "oldName": "EnvanterHareketi",
       "type": "type",
       "files": [
-        "src/server/db/domains/inventory.repo.ts"
+        "src/db/repositories/inventory.repo.ts"
       ],
       "newName": "InventoryActivity"
     },
@@ -571,7 +571,7 @@
       "oldName": "EnvanterHareketTuru",
       "type": "type",
       "files": [
-        "src/server/db/domains/inventory.repo.ts"
+        "src/db/repositories/inventory.repo.ts"
       ],
       "newName": "InventoryActivityType"
     },
@@ -611,7 +611,7 @@
       "oldName": "EtkinlikDurumu",
       "type": "type",
       "files": [
-        "src/server/db/domains/events.repo.ts"
+        "src/db/repositories/events.repo.ts"
       ],
       "newName": "EventStatus"
     },
@@ -619,7 +619,7 @@
       "oldName": "EtkinlikGorunumu",
       "type": "type",
       "files": [
-        "src/server/db/domains/events.repo.ts"
+        "src/db/repositories/events.repo.ts"
       ],
       "newName": "EventView"
     },
@@ -627,7 +627,7 @@
       "oldName": "etkinlikKaydiniIptalEt",
       "type": "function",
       "files": [
-        "src/server/db/domains/events.repo.ts"
+        "src/db/repositories/events.repo.ts"
       ],
       "newName": "cancelEventRegistration"
     },
@@ -635,7 +635,7 @@
       "oldName": "etkinlikKaydiniSil",
       "type": "function",
       "files": [
-        "src/server/db/domains/events.repo.ts"
+        "src/db/repositories/events.repo.ts"
       ],
       "newName": "cancelEventRegistration"
     },
@@ -643,7 +643,7 @@
       "oldName": "EtkinlikPatch",
       "type": "type",
       "files": [
-        "src/server/db/domains/events.repo.ts"
+        "src/db/repositories/events.repo.ts"
       ],
       "newName": "EventPatch"
     },
@@ -651,7 +651,7 @@
       "oldName": "EtkinlikTuru",
       "type": "type",
       "files": [
-        "src/server/db/domains/events.repo.ts"
+        "src/db/repositories/events.repo.ts"
       ],
       "newName": "EventType"
     },
@@ -659,7 +659,7 @@
       "oldName": "getAcikYoklamaEtkinlikleri",
       "type": "function",
       "files": [
-        "src/server/db/domains/events.repo.ts"
+        "src/db/repositories/events.repo.ts"
       ],
       "newName": "getOpenAttendanceEvents"
     },
@@ -667,7 +667,7 @@
       "oldName": "getBekleyenProjeOnerileri",
       "type": "function",
       "files": [
-        "src/server/db/domains/notifications.repo.ts"
+        "src/db/repositories/notifications.repo.ts"
       ],
       "newName": "getPendingProjectProposals"
     },
@@ -675,7 +675,7 @@
       "oldName": "getBekleyenTakimBasvurulari",
       "type": "function",
       "files": [
-        "src/server/db/domains/teams.repo.ts"
+        "src/db/repositories/teams.repo.ts"
       ],
       "newName": "getPendingTeamApplications"
     },
@@ -683,7 +683,7 @@
       "oldName": "getButceKaydiById",
       "type": "function",
       "files": [
-        "src/server/db/domains/budget.repo.ts"
+        "src/db/repositories/budget.repo.ts"
       ],
       "newName": "getBudgetRecordById"
     },
@@ -691,7 +691,7 @@
       "oldName": "getButceKayitlari",
       "type": "function",
       "files": [
-        "src/server/db/domains/budget.repo.ts"
+        "src/db/repositories/budget.repo.ts"
       ],
       "newName": "getBudgetRecords"
     },
@@ -699,7 +699,7 @@
       "oldName": "getButceTakimIdsByReceipt",
       "type": "function",
       "files": [
-        "src/server/db/domains/budget.repo.ts"
+        "src/db/repositories/budget.repo.ts"
       ],
       "newName": "getBudgetTeamIdsByReceipt"
     },
@@ -707,7 +707,7 @@
       "oldName": "getEnvanter",
       "type": "function",
       "files": [
-        "src/server/db/domains/inventory.repo.ts"
+        "src/db/repositories/inventory.repo.ts"
       ],
       "newName": "getInventoryItems"
     },
@@ -715,7 +715,7 @@
       "oldName": "getEnvanterById",
       "type": "function",
       "files": [
-        "src/server/db/domains/inventory.repo.ts"
+        "src/db/repositories/inventory.repo.ts"
       ],
       "newName": "getInventoryItemById"
     },
@@ -723,7 +723,7 @@
       "oldName": "getEnvanterHareketleri",
       "type": "function",
       "files": [
-        "src/server/db/domains/inventory.repo.ts"
+        "src/db/repositories/inventory.repo.ts"
       ],
       "newName": "getInventoryActivities"
     },
@@ -731,7 +731,7 @@
       "oldName": "getEtkinlikById",
       "type": "function",
       "files": [
-        "src/server/db/domains/events.repo.ts"
+        "src/db/repositories/events.repo.ts"
       ],
       "newName": "getEventById"
     },
@@ -739,7 +739,7 @@
       "oldName": "getEtkinlikGorunumleri",
       "type": "function",
       "files": [
-        "src/server/db/domains/events.repo.ts"
+        "src/db/repositories/events.repo.ts"
       ],
       "newName": "getEventViews"
     },
@@ -747,7 +747,7 @@
       "oldName": "getEtkinlikKatilimListesi",
       "type": "function",
       "files": [
-        "src/server/db/domains/events.repo.ts"
+        "src/db/repositories/events.repo.ts"
       ],
       "newName": "getEventAttendeeList"
     },
@@ -755,7 +755,7 @@
       "oldName": "getEtkinlikler",
       "type": "function",
       "files": [
-        "src/server/db/domains/events.repo.ts"
+        "src/db/repositories/events.repo.ts"
       ],
       "newName": "getEvents"
     },
@@ -763,7 +763,7 @@
       "oldName": "getGorevMaddesi",
       "type": "function",
       "files": [
-        "src/server/db/domains/kanban.repo.ts"
+        "src/db/repositories/kanban.repo.ts"
       ],
       "newName": "getTaskItem"
     },
@@ -771,7 +771,7 @@
       "oldName": "getGorevYorumu",
       "type": "function",
       "files": [
-        "src/server/db/domains/kanban.repo.ts"
+        "src/db/repositories/kanban.repo.ts"
       ],
       "newName": "getTaskComment"
     },
@@ -779,7 +779,7 @@
       "oldName": "getGuvenlikEngelleri",
       "type": "function",
       "files": [
-        "src/server/db/domains/security.repo.ts"
+        "src/db/repositories/security.repo.ts"
       ],
       "newName": "getSecurityBlocks"
     },
@@ -787,7 +787,7 @@
       "oldName": "getHaberById",
       "type": "function",
       "files": [
-        "src/server/db/domains/news.repo.ts"
+        "src/db/repositories/news.repo.ts"
       ],
       "newName": "getNewsById"
     },
@@ -795,7 +795,7 @@
       "oldName": "getHaberler",
       "type": "function",
       "files": [
-        "src/server/db/domains/news.repo.ts"
+        "src/db/repositories/news.repo.ts"
       ],
       "newName": "getNews"
     },
@@ -803,7 +803,7 @@
       "oldName": "getKasaTotals",
       "type": "function",
       "files": [
-        "src/server/db/domains/budget.repo.ts"
+        "src/db/repositories/budget.repo.ts"
       ],
       "newName": "getCashTotals"
     },
@@ -819,7 +819,7 @@
       "oldName": "getKullaniciBasvuruKararlari",
       "type": "function",
       "files": [
-        "src/server/db/domains/teams.repo.ts"
+        "src/db/repositories/teams.repo.ts"
       ],
       "newName": "getUserApplicationDecisions"
     },
@@ -827,7 +827,7 @@
       "oldName": "getKullaniciByEposta",
       "type": "function",
       "files": [
-        "src/server/db/domains/members.repo.ts"
+        "src/db/repositories/members.repo.ts"
       ],
       "newName": "getUserByEmail"
     },
@@ -835,7 +835,7 @@
       "oldName": "getKullaniciById",
       "type": "function",
       "files": [
-        "src/server/db/domains/members.repo.ts"
+        "src/db/repositories/members.repo.ts"
       ],
       "newName": "getUserById"
     },
@@ -843,7 +843,7 @@
       "oldName": "getKullaniciByOgrenciNo",
       "type": "function",
       "files": [
-        "src/server/db/domains/members.repo.ts"
+        "src/db/repositories/members.repo.ts"
       ],
       "newName": "getUserByHandle"
     },
@@ -851,7 +851,7 @@
       "oldName": "getKullaniciBySessionToken",
       "type": "function",
       "files": [
-        "src/server/db/domains/members.repo.ts"
+        "src/db/repositories/members.repo.ts"
       ],
       "newName": "getUserBySessionToken"
     },
@@ -859,7 +859,7 @@
       "oldName": "getKullaniciEtkinlikKayitIds",
       "type": "function",
       "files": [
-        "src/server/db/domains/events.repo.ts"
+        "src/db/repositories/events.repo.ts"
       ],
       "newName": "getUserEventRegistrationIds"
     },
@@ -867,7 +867,7 @@
       "oldName": "getKullanicilar",
       "type": "function",
       "files": [
-        "src/server/db/domains/members.repo.ts"
+        "src/db/repositories/members.repo.ts"
       ],
       "newName": "getUsers"
     },
@@ -875,7 +875,7 @@
       "oldName": "getKullaniciNotKlasorleri",
       "type": "function",
       "files": [
-        "src/server/db/domains/notes.repo.ts"
+        "src/db/repositories/notes.repo.ts"
       ],
       "newName": "getUserNoteFolders"
     },
@@ -883,7 +883,7 @@
       "oldName": "getKullaniciNotlari",
       "type": "function",
       "files": [
-        "src/server/db/domains/notes.repo.ts"
+        "src/db/repositories/notes.repo.ts"
       ],
       "newName": "getUserNotes"
     },
@@ -891,7 +891,7 @@
       "oldName": "getKullaniciOzeti",
       "type": "function",
       "files": [
-        "src/server/db/domains/users.repo.ts"
+        "src/db/repositories/users.repo.ts"
       ],
       "newName": "getUserSummary"
     },
@@ -899,7 +899,7 @@
       "oldName": "getKullaniciTakimIds",
       "type": "function",
       "files": [
-        "src/server/db/domains/teams.repo.ts"
+        "src/db/repositories/teams.repo.ts"
       ],
       "newName": "getUserTeamIds"
     },
@@ -907,7 +907,7 @@
       "oldName": "getKullaniciYaklasanGorevler",
       "type": "function",
       "files": [
-        "src/server/db/domains/kanban.repo.ts"
+        "src/db/repositories/kanban.repo.ts"
       ],
       "newName": "getUserUpcomingTasks"
     },
@@ -915,7 +915,7 @@
       "oldName": "getKullaniciYaklasanIadeler",
       "type": "function",
       "files": [
-        "src/server/db/domains/users.repo.ts"
+        "src/db/repositories/users.repo.ts"
       ],
       "newName": "getUserUpcomingReturns"
     },
@@ -923,7 +923,7 @@
       "oldName": "getKullaniciYeniAtamalar",
       "type": "function",
       "files": [
-        "src/server/db/domains/kanban.repo.ts"
+        "src/db/repositories/kanban.repo.ts"
       ],
       "newName": "getUserNewAssignments"
     },
@@ -939,7 +939,7 @@
       "oldName": "getLedTakimlar",
       "type": "function",
       "files": [
-        "src/server/db/domains/teams.repo.ts"
+        "src/db/repositories/teams.repo.ts"
       ],
       "newName": "getLedTeams"
     },
@@ -947,7 +947,7 @@
       "oldName": "getOnayBekleyenKullanicilar",
       "type": "function",
       "files": [
-        "src/server/db/domains/members.repo.ts"
+        "src/db/repositories/members.repo.ts"
       ],
       "newName": "getPendingUsers"
     },
@@ -1043,7 +1043,7 @@
       "oldName": "getProjeById",
       "type": "function",
       "files": [
-        "src/server/db/domains/projects.repo.ts"
+        "src/db/repositories/projects.repo.ts"
       ],
       "newName": "getProjectById"
     },
@@ -1051,7 +1051,7 @@
       "oldName": "getProjeler",
       "type": "function",
       "files": [
-        "src/server/db/domains/projects.repo.ts"
+        "src/db/repositories/projects.repo.ts"
       ],
       "newName": "getProjects"
     },
@@ -1059,7 +1059,7 @@
       "oldName": "getPublicEtkinlikler",
       "type": "function",
       "files": [
-        "src/server/db/domains/events.repo.ts"
+        "src/db/repositories/events.repo.ts"
       ],
       "newName": "getPublicEvents"
     },
@@ -1067,7 +1067,7 @@
       "oldName": "getPublicHaberBySlug",
       "type": "function",
       "files": [
-        "src/server/db/domains/news.repo.ts"
+        "src/db/repositories/news.repo.ts"
       ],
       "newName": "getPublicNewsBySlug"
     },
@@ -1075,7 +1075,7 @@
       "oldName": "getPublicHaberKategoriSayilari",
       "type": "function",
       "files": [
-        "src/server/db/domains/news.repo.ts"
+        "src/db/repositories/news.repo.ts"
       ],
       "newName": "getPublicNewsCategoryCounts"
     },
@@ -1083,7 +1083,7 @@
       "oldName": "getPublicHaberler",
       "type": "function",
       "files": [
-        "src/server/db/domains/news.repo.ts"
+        "src/db/repositories/news.repo.ts"
       ],
       "newName": "getPublicNews"
     },
@@ -1115,7 +1115,7 @@
       "oldName": "getSertifikaByKod",
       "type": "function",
       "files": [
-        "src/server/db/domains/certificates.repo.ts"
+        "src/db/repositories/certificates.repo.ts"
       ],
       "newName": "getCertificateByCode"
     },
@@ -1123,7 +1123,7 @@
       "oldName": "getSertifikalar",
       "type": "function",
       "files": [
-        "src/server/db/domains/certificates.repo.ts"
+        "src/db/repositories/certificates.repo.ts"
       ],
       "newName": "getCertificates"
     },
@@ -1131,7 +1131,7 @@
       "oldName": "getSistemAyari",
       "type": "function",
       "files": [
-        "src/server/db/domains/settings.repo.ts"
+        "src/db/repositories/settings.repo.ts"
       ],
       "newName": "getSystemSetting"
     },
@@ -1139,7 +1139,7 @@
       "oldName": "getSistemAyarlari",
       "type": "function",
       "files": [
-        "src/server/db/domains/settings.repo.ts"
+        "src/db/repositories/settings.repo.ts"
       ],
       "newName": "getSystemSettings"
     },
@@ -1147,7 +1147,7 @@
       "oldName": "getSistemLoglari",
       "type": "function",
       "files": [
-        "src/server/db/domains/logs.repo.ts"
+        "src/db/repositories/logs.repo.ts"
       ],
       "newName": "getSystemLogs"
     },
@@ -1155,7 +1155,7 @@
       "oldName": "getSistemLoglariPaginated",
       "type": "function",
       "files": [
-        "src/server/db/domains/logs.repo.ts"
+        "src/db/repositories/logs.repo.ts"
       ],
       "newName": "getSystemLogsPaginated"
     },
@@ -1163,7 +1163,7 @@
       "oldName": "getTakimById",
       "type": "function",
       "files": [
-        "src/server/db/domains/teams.repo.ts"
+        "src/db/repositories/teams.repo.ts"
       ],
       "newName": "getTeamById"
     },
@@ -1171,7 +1171,7 @@
       "oldName": "getTakimGorevById",
       "type": "function",
       "files": [
-        "src/server/db/domains/kanban.repo.ts"
+        "src/db/repositories/kanban.repo.ts"
       ],
       "newName": "getTeamTaskById"
     },
@@ -1179,7 +1179,7 @@
       "oldName": "getTakimGorevDetay",
       "type": "function",
       "files": [
-        "src/server/db/domains/kanban.repo.ts"
+        "src/db/repositories/kanban.repo.ts"
       ],
       "newName": "getTeamTaskDetail"
     },
@@ -1187,7 +1187,7 @@
       "oldName": "getTakimGorevleri",
       "type": "function",
       "files": [
-        "src/server/db/domains/kanban.repo.ts"
+        "src/db/repositories/kanban.repo.ts"
       ],
       "newName": "getTeamTasks"
     },
@@ -1195,7 +1195,7 @@
       "oldName": "getTakimlar",
       "type": "function",
       "files": [
-        "src/server/db/domains/teams.repo.ts"
+        "src/db/repositories/teams.repo.ts"
       ],
       "newName": "getTeams"
     },
@@ -1203,7 +1203,7 @@
       "oldName": "getTakimUyeleri",
       "type": "function",
       "files": [
-        "src/server/db/domains/teams.repo.ts"
+        "src/db/repositories/teams.repo.ts"
       ],
       "newName": "getTeamMembers"
     },
@@ -1211,7 +1211,7 @@
       "oldName": "getTakimVitrini",
       "type": "function",
       "files": [
-        "src/server/db/domains/teams.repo.ts"
+        "src/db/repositories/teams.repo.ts"
       ],
       "newName": "getTeamShowcase"
     },
@@ -1219,7 +1219,7 @@
       "oldName": "getTutanakById",
       "type": "function",
       "files": [
-        "src/server/db/domains/decisions.repo.ts"
+        "src/db/repositories/decisions.repo.ts"
       ],
       "newName": "getDecisionById"
     },
@@ -1227,7 +1227,7 @@
       "oldName": "getTutanakByNo",
       "type": "function",
       "files": [
-        "src/server/db/domains/decisions.repo.ts"
+        "src/db/repositories/decisions.repo.ts"
       ],
       "newName": "getDecisionByNumber"
     },
@@ -1235,7 +1235,7 @@
       "oldName": "getTutanaklar",
       "type": "function",
       "files": [
-        "src/server/db/domains/decisions.repo.ts"
+        "src/db/repositories/decisions.repo.ts"
       ],
       "newName": "getDecisions"
     },
@@ -1243,7 +1243,7 @@
       "oldName": "getUyeRoster",
       "type": "function",
       "files": [
-        "src/server/db/domains/members.repo.ts"
+        "src/db/repositories/members.repo.ts"
       ],
       "newName": "getMemberRoster"
     },
@@ -1259,7 +1259,7 @@
       "oldName": "getYoklamaBekleyenEtkinlikler",
       "type": "function",
       "files": [
-        "src/server/db/domains/notifications.repo.ts"
+        "src/db/repositories/notifications.repo.ts"
       ],
       "newName": "getPendingAttendanceEvents"
     },
@@ -1267,7 +1267,7 @@
       "oldName": "getYoklamalarByEtkinlik",
       "type": "function",
       "files": [
-        "src/server/db/domains/events.repo.ts"
+        "src/db/repositories/events.repo.ts"
       ],
       "newName": "getAttendancesByEvent"
     },
@@ -1275,7 +1275,7 @@
       "oldName": "gorev",
       "type": "variable",
       "files": [
-        "src/server/db/domains/kanban.repo.ts"
+        "src/db/repositories/kanban.repo.ts"
       ],
       "newName": "task"
     },
@@ -1283,7 +1283,7 @@
       "oldName": "GOREV_SELECT",
       "type": "variable",
       "files": [
-        "src/server/db/domains/kanban.repo.ts"
+        "src/db/repositories/kanban.repo.ts"
       ],
       "newName": "TASK_SELECT"
     },
@@ -1299,7 +1299,7 @@
       "oldName": "GorevYazici",
       "type": "type",
       "files": [
-        "src/server/db/domains/kanban.repo.ts"
+        "src/db/repositories/kanban.repo.ts"
       ],
       "newName": "TaskWriter"
     },
@@ -1307,7 +1307,7 @@
       "oldName": "GuvenlikEngeli",
       "type": "type",
       "files": [
-        "src/server/db/domains/security.repo.ts"
+        "src/db/repositories/security.repo.ts"
       ],
       "newName": "SecurityBlock"
     },
@@ -1323,7 +1323,7 @@
       "oldName": "haberSlug",
       "type": "function",
       "files": [
-        "src/server/db/domains/news.repo.ts"
+        "src/db/repositories/news.repo.ts"
       ],
       "newName": "newsSlug"
     },
@@ -1347,7 +1347,7 @@
       "oldName": "joinTakim",
       "type": "function",
       "files": [
-        "src/server/db/domains/teams.repo.ts"
+        "src/db/repositories/teams.repo.ts"
       ],
       "newName": "joinTeam"
     },
@@ -1355,7 +1355,7 @@
       "oldName": "kararKaydet",
       "type": "function",
       "files": [
-        "src/server/db/domains/teams.repo.ts"
+        "src/db/repositories/teams.repo.ts"
       ],
       "newName": "saveDecision"
     },
@@ -1363,7 +1363,7 @@
       "oldName": "karsiKullaniciId",
       "type": "variable",
       "files": [
-        "src/server/db/domains/chat.repo.ts"
+        "src/db/repositories/chat.repo.ts"
       ],
       "newName": "peerUserId"
     },
@@ -1371,7 +1371,7 @@
       "oldName": "kasaFilter",
       "type": "function",
       "files": [
-        "src/server/db/domains/budget.repo.ts"
+        "src/db/repositories/budget.repo.ts"
       ],
       "newName": "cashFilter"
     },
@@ -1379,7 +1379,7 @@
       "oldName": "kasaNetKurus",
       "type": "function",
       "files": [
-        "src/server/db/domains/budget.repo.ts"
+        "src/db/repositories/budget.repo.ts"
       ],
       "newName": "cashNetCents"
     },
@@ -1387,7 +1387,7 @@
       "oldName": "KasaTotals",
       "type": "type",
       "files": [
-        "src/server/db/domains/budget.repo.ts"
+        "src/db/repositories/budget.repo.ts"
       ],
       "newName": "CashTotals"
     },
@@ -1403,7 +1403,7 @@
       "oldName": "KatilimSatiri",
       "type": "type",
       "files": [
-        "src/server/db/domains/events.repo.ts"
+        "src/db/repositories/events.repo.ts"
       ],
       "newName": "AttendeeRow"
     },
@@ -1411,7 +1411,7 @@
       "oldName": "KatilimSonucu",
       "type": "type",
       "files": [
-        "src/server/db/domains/teams.repo.ts"
+        "src/db/repositories/teams.repo.ts"
       ],
       "newName": "AttendanceResult"
     },
@@ -1419,7 +1419,7 @@
       "oldName": "kayit",
       "type": "variable",
       "files": [
-        "src/server/db/domains/budget.repo.ts"
+        "src/db/repositories/budget.repo.ts"
       ],
       "newName": "registration"
     },
@@ -1427,7 +1427,7 @@
       "oldName": "KayitSonucu",
       "type": "type",
       "files": [
-        "src/server/db/domains/events.repo.ts"
+        "src/db/repositories/events.repo.ts"
       ],
       "newName": "RegistrationResult"
     },
@@ -1451,7 +1451,7 @@
       "oldName": "kullaniciAd",
       "type": "variable",
       "files": [
-        "src/server/db/domains/chat.repo.ts"
+        "src/db/repositories/chat.repo.ts"
       ],
       "newName": "userFirstName"
     },
@@ -1459,7 +1459,7 @@
       "oldName": "kullaniciFoto",
       "type": "variable",
       "files": [
-        "src/server/db/domains/chat.repo.ts"
+        "src/db/repositories/chat.repo.ts"
       ],
       "newName": "userAvatar"
     },
@@ -1468,7 +1468,7 @@
       "type": "variable",
       "files": [
         "src/db/oauth.ts",
-        "src/server/db/domains/logs.repo.ts"
+        "src/db/repositories/logs.repo.ts"
       ],
       "newName": "userId"
     },
@@ -1500,7 +1500,7 @@
       "oldName": "KullaniciOzeti",
       "type": "type",
       "files": [
-        "src/server/db/domains/users.repo.ts"
+        "src/db/repositories/users.repo.ts"
       ],
       "newName": "UserSummary"
     },
@@ -1508,7 +1508,7 @@
       "oldName": "leaveTakim",
       "type": "function",
       "files": [
-        "src/server/db/domains/teams.repo.ts"
+        "src/db/repositories/teams.repo.ts"
       ],
       "newName": "leaveTeam"
     },
@@ -1516,7 +1516,7 @@
       "oldName": "lockKasa",
       "type": "function",
       "files": [
-        "src/server/db/domains/budget.repo.ts"
+        "src/db/repositories/budget.repo.ts"
       ],
       "newName": "lockCashRegister"
     },
@@ -1524,7 +1524,7 @@
       "oldName": "lockKasalar",
       "type": "function",
       "files": [
-        "src/server/db/domains/budget.repo.ts"
+        "src/db/repositories/budget.repo.ts"
       ],
       "newName": "lockCashRegisters"
     },
@@ -1532,7 +1532,7 @@
       "oldName": "logGorevAktivite",
       "type": "function",
       "files": [
-        "src/server/db/domains/kanban.repo.ts"
+        "src/db/repositories/kanban.repo.ts"
       ],
       "newName": "logTaskActivity"
     },
@@ -1540,7 +1540,7 @@
       "oldName": "mapHaber",
       "type": "function",
       "files": [
-        "src/server/db/domains/news.repo.ts"
+        "src/db/repositories/news.repo.ts"
       ],
       "newName": "mapNews"
     },
@@ -1548,7 +1548,7 @@
       "oldName": "MAX_SISTEM_LOG_COUNT",
       "type": "variable",
       "files": [
-        "src/server/db/domains/logs.repo.ts"
+        "src/db/repositories/logs.repo.ts"
       ],
       "newName": "MAX_SYSTEM_LOG_COUNT"
     },
@@ -1588,7 +1588,7 @@
       "oldName": "normalizeKullaniciRow",
       "type": "function",
       "files": [
-        "src/server/db/domains/members.repo.ts"
+        "src/db/repositories/members.repo.ts"
       ],
       "newName": "normalizeUserRow"
     },
@@ -1596,7 +1596,7 @@
       "oldName": "oduncUzat",
       "type": "function",
       "files": [
-        "src/server/db/domains/inventory.repo.ts"
+        "src/db/repositories/inventory.repo.ts"
       ],
       "newName": "extendLoan"
     },
@@ -1604,7 +1604,7 @@
       "oldName": "oduncVer",
       "type": "function",
       "files": [
-        "src/server/db/domains/inventory.repo.ts"
+        "src/db/repositories/inventory.repo.ts"
       ],
       "newName": "lendInventoryItem"
     },
@@ -1652,7 +1652,7 @@
       "oldName": "olaySayisi",
       "type": "variable",
       "files": [
-        "src/server/db/domains/security.repo.ts"
+        "src/db/repositories/security.repo.ts"
       ],
       "newName": "eventCount"
     },
@@ -1780,7 +1780,7 @@
       "oldName": "PROJE_SELECT",
       "type": "variable",
       "files": [
-        "src/server/db/domains/projects.repo.ts"
+        "src/db/repositories/projects.repo.ts"
       ],
       "newName": "PROJECT_SELECT"
     },
@@ -1788,7 +1788,7 @@
       "oldName": "ProjeInput",
       "type": "type",
       "files": [
-        "src/server/db/domains/projects.repo.ts"
+        "src/db/repositories/projects.repo.ts"
       ],
       "newName": "ProjectInput"
     },
@@ -1796,7 +1796,7 @@
       "oldName": "PublicEtkinlikRow",
       "type": "type",
       "files": [
-        "src/server/db/domains/events.repo.ts"
+        "src/db/repositories/events.repo.ts"
       ],
       "newName": "PublicEventRow"
     },
@@ -1804,7 +1804,7 @@
       "oldName": "PublicHaberQuery",
       "type": "type",
       "files": [
-        "src/server/db/domains/news.repo.ts"
+        "src/db/repositories/news.repo.ts"
       ],
       "newName": "PublicNewsQuery"
     },
@@ -1812,7 +1812,7 @@
       "oldName": "rol",
       "type": "variable",
       "files": [
-        "src/server/db/domains/members.repo.ts"
+        "src/db/repositories/members.repo.ts"
       ],
       "newName": "role"
     },
@@ -1837,7 +1837,7 @@
       "type": "variable",
       "files": [
         "src/db/roles.ts",
-        "src/server/db/domains/security.repo.ts"
+        "src/db/repositories/security.repo.ts"
       ],
       "newName": "roleId"
     },
@@ -1869,7 +1869,7 @@
       "oldName": "saveKullaniciNotKlasoru",
       "type": "function",
       "files": [
-        "src/server/db/domains/notes.repo.ts"
+        "src/db/repositories/notes.repo.ts"
       ],
       "newName": "saveUserNoteFolder"
     },
@@ -1877,7 +1877,7 @@
       "oldName": "saveKullaniciNotu",
       "type": "function",
       "files": [
-        "src/server/db/domains/notes.repo.ts"
+        "src/db/repositories/notes.repo.ts"
       ],
       "newName": "saveUserNote"
     },
@@ -1893,7 +1893,7 @@
       "oldName": "setEnvanterDurum",
       "type": "function",
       "files": [
-        "src/server/db/domains/inventory.repo.ts"
+        "src/db/repositories/inventory.repo.ts"
       ],
       "newName": "setInventoryStatus"
     },
@@ -1901,7 +1901,7 @@
       "oldName": "setKullaniciRecoveryCodes",
       "type": "function",
       "files": [
-        "src/server/db/domains/auth.repo.ts"
+        "src/db/repositories/auth.repo.ts"
       ],
       "newName": "setUserRecoveryCodes"
     },
@@ -1917,7 +1917,7 @@
       "oldName": "setKullaniciTotpSecret",
       "type": "function",
       "files": [
-        "src/server/db/domains/auth.repo.ts"
+        "src/db/repositories/auth.repo.ts"
       ],
       "newName": "setUserTotpSecret"
     },
@@ -1925,7 +1925,7 @@
       "oldName": "setKullaniciTotpStep",
       "type": "function",
       "files": [
-        "src/server/db/domains/auth.repo.ts"
+        "src/db/repositories/auth.repo.ts"
       ],
       "newName": "setUserTotpStep"
     },
@@ -1949,7 +1949,7 @@
       "oldName": "setSistemAyari",
       "type": "function",
       "files": [
-        "src/server/db/domains/settings.repo.ts"
+        "src/db/repositories/settings.repo.ts"
       ],
       "newName": "setSystemSetting"
     },
@@ -1957,7 +1957,7 @@
       "oldName": "setSistemAyarlari",
       "type": "function",
       "files": [
-        "src/server/db/domains/settings.repo.ts"
+        "src/db/repositories/settings.repo.ts"
       ],
       "newName": "setSystemSettings"
     },
@@ -1965,7 +1965,7 @@
       "oldName": "setTakimUyeRolu",
       "type": "function",
       "files": [
-        "src/server/db/domains/teams.repo.ts"
+        "src/db/repositories/teams.repo.ts"
       ],
       "newName": "setTeamMemberRole"
     },
@@ -1973,7 +1973,7 @@
       "oldName": "setTutanakKilit",
       "type": "function",
       "files": [
-        "src/server/db/domains/decisions.repo.ts"
+        "src/db/repositories/decisions.repo.ts"
       ],
       "newName": "setDecisionLock"
     },
@@ -2029,7 +2029,7 @@
       "oldName": "SistemLog",
       "type": "type",
       "files": [
-        "src/server/db/domains/logs.repo.ts"
+        "src/db/repositories/logs.repo.ts"
       ],
       "newName": "SystemLog"
     },
@@ -2037,7 +2037,7 @@
       "oldName": "sistemLogBakiminiBaslat",
       "type": "function",
       "files": [
-        "src/server/db/domains/logs.repo.ts"
+        "src/db/repositories/logs.repo.ts"
       ],
       "newName": "startSystemLogMaintenance"
     },
@@ -2045,7 +2045,7 @@
       "oldName": "SistemLogFiltresi",
       "type": "type",
       "files": [
-        "src/server/db/domains/logs.repo.ts"
+        "src/db/repositories/logs.repo.ts"
       ],
       "newName": "SystemLogFilter"
     },
@@ -2053,7 +2053,7 @@
       "oldName": "sistemLogSaklamaGunu",
       "type": "function",
       "files": [
-        "src/server/db/domains/logs.repo.ts"
+        "src/db/repositories/logs.repo.ts"
       ],
       "newName": "systemLogRetentionDays"
     },
@@ -2061,7 +2061,7 @@
       "oldName": "sistemLogYaz",
       "type": "function",
       "files": [
-        "src/server/db/domains/logs.repo.ts"
+        "src/db/repositories/logs.repo.ts"
       ],
       "newName": "logSystemEvent"
     },
@@ -2069,7 +2069,7 @@
       "oldName": "sonlanmaTarihi",
       "type": "variable",
       "files": [
-        "src/server/db/domains/chat.repo.ts"
+        "src/db/repositories/chat.repo.ts"
       ],
       "newName": "endsAt"
     },
@@ -2109,7 +2109,7 @@
       "oldName": "TakimGoreviPatch",
       "type": "type",
       "files": [
-        "src/server/db/domains/kanban.repo.ts"
+        "src/db/repositories/kanban.repo.ts"
       ],
       "newName": "TeamTaskPatch"
     },
@@ -2133,7 +2133,7 @@
       "oldName": "takimId",
       "type": "variable",
       "files": [
-        "src/server/db/domains/budget.repo.ts"
+        "src/db/repositories/budget.repo.ts"
       ],
       "newName": "teamId"
     },
@@ -2141,7 +2141,7 @@
       "oldName": "TakimPatch",
       "type": "type",
       "files": [
-        "src/server/db/domains/teams.repo.ts"
+        "src/db/repositories/teams.repo.ts"
       ],
       "newName": "TeamPatch"
     },
@@ -2157,7 +2157,7 @@
       "oldName": "TakimVitrinKaydi",
       "type": "type",
       "files": [
-        "src/server/db/domains/teams.repo.ts"
+        "src/db/repositories/teams.repo.ts"
       ],
       "newName": "TeamShowcaseRecord"
     },
@@ -2173,9 +2173,9 @@
       "oldName": "tarih",
       "type": "variable",
       "files": [
-        "src/server/db/domains/budget.repo.ts",
-        "src/server/db/domains/chat.repo.ts",
-        "src/server/db/domains/decisions.repo.ts"
+        "src/db/repositories/budget.repo.ts",
+        "src/db/repositories/chat.repo.ts",
+        "src/db/repositories/decisions.repo.ts"
       ],
       "newName": "date"
     },
@@ -2183,7 +2183,7 @@
       "oldName": "toggleProjeBegeni",
       "type": "function",
       "files": [
-        "src/server/db/domains/projects.repo.ts"
+        "src/db/repositories/projects.repo.ts"
       ],
       "newName": "toggleProjectLike"
     },
@@ -2191,7 +2191,7 @@
       "oldName": "toGorev",
       "type": "function",
       "files": [
-        "src/server/db/domains/kanban.repo.ts"
+        "src/db/repositories/kanban.repo.ts"
       ],
       "newName": "toTask"
     },
@@ -2207,7 +2207,7 @@
       "oldName": "toProje",
       "type": "function",
       "files": [
-        "src/server/db/domains/projects.repo.ts"
+        "src/db/repositories/projects.repo.ts"
       ],
       "newName": "toProject"
     },
@@ -2215,7 +2215,7 @@
       "oldName": "touchGorev",
       "type": "function",
       "files": [
-        "src/server/db/domains/kanban.repo.ts"
+        "src/db/repositories/kanban.repo.ts"
       ],
       "newName": "touchTask"
     },
@@ -2223,7 +2223,7 @@
       "oldName": "tutanak",
       "type": "variable",
       "files": [
-        "src/server/db/domains/decisions.repo.ts"
+        "src/db/repositories/decisions.repo.ts"
       ],
       "newName": "decision"
     },
@@ -2239,7 +2239,7 @@
       "oldName": "unassignTakimUyesiGorevleri",
       "type": "function",
       "files": [
-        "src/server/db/domains/kanban.repo.ts"
+        "src/db/repositories/kanban.repo.ts"
       ],
       "newName": "unassignTeamMemberTasks"
     },
@@ -2247,7 +2247,7 @@
       "oldName": "updateButceKaydi",
       "type": "function",
       "files": [
-        "src/server/db/domains/budget.repo.ts"
+        "src/db/repositories/budget.repo.ts"
       ],
       "newName": "updateBudgetRecord"
     },
@@ -2255,7 +2255,7 @@
       "oldName": "updateEnvanterItem",
       "type": "function",
       "files": [
-        "src/server/db/domains/inventory.repo.ts"
+        "src/db/repositories/inventory.repo.ts"
       ],
       "newName": "updateInventoryItem"
     },
@@ -2263,7 +2263,7 @@
       "oldName": "updateEtkinlik",
       "type": "function",
       "files": [
-        "src/server/db/domains/events.repo.ts"
+        "src/db/repositories/events.repo.ts"
       ],
       "newName": "updateEvent"
     },
@@ -2271,7 +2271,7 @@
       "oldName": "updateGorevMaddesi",
       "type": "function",
       "files": [
-        "src/server/db/domains/kanban.repo.ts"
+        "src/db/repositories/kanban.repo.ts"
       ],
       "newName": "updateTaskItem"
     },
@@ -2279,7 +2279,7 @@
       "oldName": "updateHaber",
       "type": "function",
       "files": [
-        "src/server/db/domains/news.repo.ts"
+        "src/db/repositories/news.repo.ts"
       ],
       "newName": "updateNews"
     },
@@ -2287,7 +2287,7 @@
       "oldName": "updateKullaniciDurum",
       "type": "function",
       "files": [
-        "src/server/db/domains/members.repo.ts"
+        "src/db/repositories/members.repo.ts"
       ],
       "newName": "updateUserStatus"
     },
@@ -2295,7 +2295,7 @@
       "oldName": "updateKullaniciProfil",
       "type": "function",
       "files": [
-        "src/server/db/domains/users.repo.ts"
+        "src/db/repositories/users.repo.ts"
       ],
       "newName": "updateUserProfile"
     },
@@ -2303,7 +2303,7 @@
       "oldName": "updateKullaniciSession",
       "type": "function",
       "files": [
-        "src/server/db/domains/members.repo.ts"
+        "src/db/repositories/members.repo.ts"
       ],
       "newName": "updateUserSession"
     },
@@ -2311,7 +2311,7 @@
       "oldName": "updateKullaniciSifre",
       "type": "function",
       "files": [
-        "src/server/db/domains/auth.repo.ts"
+        "src/db/repositories/auth.repo.ts"
       ],
       "newName": "updateUserPassword"
     },
@@ -2319,7 +2319,7 @@
       "oldName": "updateProje",
       "type": "function",
       "files": [
-        "src/server/db/domains/projects.repo.ts"
+        "src/db/repositories/projects.repo.ts"
       ],
       "newName": "updateProject"
     },
@@ -2335,7 +2335,7 @@
       "oldName": "updateTakim",
       "type": "function",
       "files": [
-        "src/server/db/domains/teams.repo.ts"
+        "src/db/repositories/teams.repo.ts"
       ],
       "newName": "updateTeam"
     },
@@ -2343,7 +2343,7 @@
       "oldName": "updateTakimGorevi",
       "type": "function",
       "files": [
-        "src/server/db/domains/kanban.repo.ts"
+        "src/db/repositories/kanban.repo.ts"
       ],
       "newName": "updateTeamTask"
     },
@@ -2351,7 +2351,7 @@
       "oldName": "updateTakimGoreviDurum",
       "type": "function",
       "files": [
-        "src/server/db/domains/kanban.repo.ts"
+        "src/db/repositories/kanban.repo.ts"
       ],
       "newName": "updateTeamTaskStatus"
     },
@@ -2359,7 +2359,7 @@
       "oldName": "updateTutanak",
       "type": "function",
       "files": [
-        "src/server/db/domains/decisions.repo.ts"
+        "src/db/repositories/decisions.repo.ts"
       ],
       "newName": "updateDecision"
     },
@@ -2391,7 +2391,7 @@
       "oldName": "uyeSayisi",
       "type": "variable",
       "files": [
-        "src/server/db/domains/chat.repo.ts"
+        "src/db/repositories/chat.repo.ts"
       ],
       "newName": "memberCount"
     },
@@ -2439,7 +2439,7 @@
       "oldName": "yayinDurumu",
       "type": "variable",
       "files": [
-        "src/server/db/domains/news.repo.ts"
+        "src/db/repositories/news.repo.ts"
       ],
       "newName": "publishStatus"
     },
@@ -2447,7 +2447,7 @@
       "oldName": "yeniDogrulamaKodu",
       "type": "function",
       "files": [
-        "src/server/db/domains/certificates.repo.ts"
+        "src/db/repositories/certificates.repo.ts"
       ],
       "newName": "newVerificationCode"
     },
@@ -2487,7 +2487,7 @@
       "oldName": "yoklamaKapatBitenler",
       "type": "function",
       "files": [
-        "src/server/db/domains/events.repo.ts"
+        "src/db/repositories/events.repo.ts"
       ],
       "newName": "closeFinishedAttendances"
     },
@@ -2495,7 +2495,7 @@
       "oldName": "yoklamaKaydet",
       "type": "function",
       "files": [
-        "src/server/db/domains/events.repo.ts"
+        "src/db/repositories/events.repo.ts"
       ],
       "newName": "saveAttendance"
     },
@@ -2503,7 +2503,7 @@
       "oldName": "yoklamaSil",
       "type": "function",
       "files": [
-        "src/server/db/domains/events.repo.ts"
+        "src/db/repositories/events.repo.ts"
       ],
       "newName": "deleteAttendance"
     },
@@ -2511,7 +2511,7 @@
       "oldName": "YoklamaYontemi",
       "type": "type",
       "files": [
-        "src/server/db/domains/events.repo.ts"
+        "src/db/repositories/events.repo.ts"
       ],
       "newName": "AttendanceMethod"
     }

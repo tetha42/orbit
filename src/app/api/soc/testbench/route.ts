@@ -41,7 +41,7 @@ export async function GET(request: Request) {
 			const res = await pool.query(`
 				SELECT 
 					(SELECT count(*) FROM users) as users,
-					(SELECT count(*) FROM roller) as roles,
+					(SELECT count(*) FROM roles) as roles,
 					(SELECT count(*) FROM oauth_clients) as clients
 			`);
 			dbLatency = Math.round((performance.now() - start) * 10) / 10;

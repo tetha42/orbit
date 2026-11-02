@@ -6,8 +6,8 @@ import { attachSessionCookie, establishSession } from '@/lib/auth/session';
 import { clientAddress } from '@/lib/http';
 import { clearRateLimit, isRateLimited, recordFailure } from '@/lib/rateLimit';
 import { passwordProblem, PASSWORD_MAX } from '@/lib/profile';
-import { closeUserTerminalSessions } from '@/lib/server/terminalManager';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
+import { closeUserTerminalSessions } from '@/server/terminalManager';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
 
 export const dynamic = 'force-dynamic';
 

@@ -9,7 +9,7 @@ import { verifyAuth } from '@/lib/auth/authGuard';
 import { sessionUserOf } from '@/lib/auth/session';
 import { seviye } from '@/lib/profile';
 import { updateSelfProfile } from '@/server/members/service';
-import { getUserDiskUsage } from '@/server/db/domains/files.repo';
+import { getUserDiskUsage } from '@/db/repositories/files.repo';
 
 export const dynamic = 'force-dynamic';
 

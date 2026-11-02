@@ -5,8 +5,8 @@ import { clientAddress } from '@/lib/http';
 import { consumeRateLimit } from '@/lib/rateLimit';
 import { inspectRequestPayload } from '@/lib/waf';
 import { ADMIN_ROLE_ID } from '@/core/permissions';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
-import { getLockdownState, isIpBanned, recordSecurityStrike, recordSessionActivity } from '@/server/db/domains/security.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
+import { getLockdownState, isIpBanned, recordSecurityStrike, recordSessionActivity } from '@/db/repositories/security.repo';
 import { SESSION_COOKIE } from './session';
 
 export interface AuthResultSuccess {

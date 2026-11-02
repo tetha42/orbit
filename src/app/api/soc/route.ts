@@ -20,17 +20,17 @@ import {
 	updateSocIncident,
 	createSocIncident,
 	type EmergencyKillSwitches,
-} from '@/server/db/domains/security.repo';
+} from '@/db/repositories/security.repo';
 import {
 	getSystemLogsPaginated,
 	logSystemEvent,
 	type FilterOperator,
 	type FilterColumn,
 	type TimeRangePreset,
-} from '@/server/db/domains/logs.repo';
+} from '@/db/repositories/logs.repo';
 import { getActiveRateLimits, resetRateLimit } from '@/lib/rateLimit';
-import { getProxyAndIngressDiagnostics } from '@/lib/server/proxyDiagnostics';
-import { saveWebhookConfig, sendSecurityAlert, type WebhookConfig } from '@/lib/server/securityWebhook';
+import { getProxyAndIngressDiagnostics } from '@/server/security/proxyDiagnostics';
+import { saveWebhookConfig, sendSecurityAlert, type WebhookConfig } from '@/server/security/securityWebhook';
 
 function parseIpOrCidr(raw: string | null | undefined): string | null {
 	if (!raw) return null;
@@ -286,7 +286,7 @@ export async function POST(request: Request) {
 			if (!userId) {
 				return NextResponse.json({ error: 'Kullanıcı ID gereklidir.' }, { status: 400 });
 			}
-			const { closeUserTerminalSessions } = await import('@/lib/server/terminalManager');
+			const { closeUserTerminalSessions } = await import('@/server/terminalManager');
 			const closedCount = closeUserTerminalSessions(userId);
 			await logSystemEvent({
 				servis: 'terminal',

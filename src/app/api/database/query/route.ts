@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getPgPool } from '@/db';
-import { requireDatabaseAdmin } from '@/lib/server/databaseAccess';
+import { requireDatabaseAdmin } from '@/server/databaseAccess';
 import { clientAddress } from '@/lib/http';
 import { inspectDatabaseSql, maskDatabaseRow, DB_SENSITIVE_COLUMNS } from '@/lib/waf';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
-import { recordSecurityStrike } from '@/server/db/domains/security.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
+import { recordSecurityStrike } from '@/db/repositories/security.repo';
 
 function detectDangerousQuery(query: string): { dangerous: boolean; reason?: string; command?: string; table?: string } {
 	const cleaned = query.replace(/\/\*[\s\S]*?\*\/|--.*$/gm, '').trim();

@@ -9,7 +9,7 @@ import { AppID } from '@/types/workspace';
 import { ModernAppIcon } from '@/components/Common/ModernAppIcon';
 import { ActiveMobileAppView } from './ActiveMobileAppView';
 import { RoleBadge, roleGradient } from '@/core/ui/RoleBadge';
-import { OnboardingTeamExplorer } from '@/components/Desktop/OnboardingTeamExplorer';
+import { OnboardingTeamExplorer } from '@/components/shell/Desktop/OnboardingTeamExplorer';
 import { MobileBottomNav, MOBILE_NAV_HEIGHT, type MobileTab } from './MobileBottomNav';
 import { MobileDashboard } from './MobileDashboard';
 import { MobileProfile } from './MobileProfile';

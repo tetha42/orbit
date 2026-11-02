@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { requireApp } from '@/lib/auth/access';
 import { getSystemSettings, setSystemSettings } from '@/db';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
-import { invalidateCache } from '@/lib/server/cache';
-import { updateConfigIniSync } from '@/lib/server/iniWriter';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
+import { invalidateCache } from '@/server/cache';
+import { updateConfigIniSync } from '@/server/iniWriter';
 
 export const dynamic = 'force-dynamic';
 

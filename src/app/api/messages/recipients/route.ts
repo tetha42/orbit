@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { searchMailCandidates, getMailCandidate, getMailCandidateRoles, getRecentMailThreads } from '@/db/messages';
-import { recipientList, reachableIds } from '@/lib/server/messages';
+import { recipientList, reachableIds } from '@/server/messages';
 import { requireApp } from '@/lib/auth/access';
 import { consumeRateLimit } from '@/lib/rateLimit';
 import { MAIL_SEARCH_LIMIT, MAIL_SEARCH_MAX } from '@/lib/messages';

@@ -8,7 +8,7 @@ import { useJsonResource } from '@/core/data/useJsonResource';
 import { errorMessage } from '@/lib/errors';
 import { fill } from '@/lib/text';
 import { APPLICATION_NOTE_MAX, EXPERTISE_SUGGESTIONS } from '@/lib/teams';
-import type { TeamShowcaseRecord } from '@/server/db/domains/teams.repo';
+import type { TeamShowcaseRecord } from '@/db/repositories/teams.repo';
 import ui from '@/core/ui/ui.module.css';
 
 interface ShowcaseResponse {

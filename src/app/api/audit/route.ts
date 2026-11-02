@@ -54,7 +54,7 @@ export async function DELETE(request: Request) {
 	try {
 		const { resetAuditLogs } = await import('@/db/audit');
 		const { clientAddress } = await import('@/lib/http');
-		const { logSystemEvent } = await import('@/server/db/domains/logs.repo');
+		const { logSystemEvent } = await import('@/db/repositories/logs.repo');
 		const ip = clientAddress(request);
 
 		await resetAuditLogs();

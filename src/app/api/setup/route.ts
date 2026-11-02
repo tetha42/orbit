@@ -12,12 +12,12 @@ import { createSetupCache, setupResponse } from '@/lib/setup';
 import { clientAddress } from '@/lib/http';
 import { consumeRateLimit } from '@/lib/rateLimit';
 import { inspectRequestPayload } from '@/lib/waf';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
-import { isIpBanned, recordSecurityStrike } from '@/server/db/domains/security.repo';
-import { CONFIG } from '@/lib/server/config';
-import { updateConfigIniSync } from '@/lib/server/iniWriter';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
+import { isIpBanned, recordSecurityStrike } from '@/db/repositories/security.repo';
+import { CONFIG } from '@/server/config';
+import { updateConfigIniSync } from '@/server/iniWriter';
 import { attachSessionCookie, establishSession, sessionUserOf } from '@/lib/auth/session';
-import { setSystemSettings } from '@/server/db/domains/settings.repo';
+import { setSystemSettings } from '@/db/repositories/settings.repo';
 import { buildSmtpUpdates } from '@/lib/mail/smtpSettings';
 
 export const dynamic = 'force-dynamic';

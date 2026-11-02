@@ -3,8 +3,8 @@ import { NextResponse } from 'next/server';
 import { clientAddress } from '@/lib/http';
 import { consumeRateLimit } from '@/lib/rateLimit';
 import { inspectRequestPayload } from '@/lib/waf';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
-import { isIpBanned, recordSecurityStrike } from '@/server/db/domains/security.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
+import { isIpBanned, recordSecurityStrike } from '@/db/repositories/security.repo';
 
 /**
  * Plumbing shared by the public, read-only API (`/api/public/v1/*`) that the static

@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
-import { createTerminalSession, closeTerminalSession, getTerminalSession } from '@/lib/server/terminalManager';
-import { authorizeTerminal } from '@/lib/server/terminalAccess';
+import { createTerminalSession, closeTerminalSession, getTerminalSession } from '@/server/terminalManager';
+import { authorizeTerminal } from '@/server/terminalAccess';
 
 import { getUserById, setUserTotpStep } from '@/db';
 import { verifyTotpCodeDetailed } from '@/lib/auth/totp';
 import { clearRateLimit, isRateLimited, recordFailure } from '@/lib/rateLimit';
 import { clientAddress } from '@/lib/http';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
-import { recordSecurityStrike } from '@/server/db/domains/security.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
+import { recordSecurityStrike } from '@/db/repositories/security.repo';
 
 const MAX_ATTEMPTS = 8;
 const WINDOW_MS = 15 * 60_000;

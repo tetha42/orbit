@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { writeToTerminal, getTerminalSession } from '@/lib/server/terminalManager';
-import { authorizeTerminal } from '@/lib/server/terminalAccess';
+import { writeToTerminal, getTerminalSession } from '@/server/terminalManager';
+import { authorizeTerminal } from '@/server/terminalAccess';
 import { clientAddress } from '@/lib/http';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
 
 /** A paste can be large, but nothing legitimate sends megabytes in one keystroke batch. */
 const MAX_INPUT_LENGTH = 64 * 1024;

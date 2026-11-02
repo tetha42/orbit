@@ -8,7 +8,7 @@ import {
 } from '@/db';
 import { requireApp } from '@/lib/auth/access';
 import { normalizeFormFieldInput } from '@/lib/formFields';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
 
 export const dynamic = 'force-dynamic';
 

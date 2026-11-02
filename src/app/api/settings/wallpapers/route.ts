@@ -11,9 +11,9 @@ import {
 } from '@/db';
 import { WALLPAPERS } from '@/core/theme/wallpapers';
 import { requireApp } from '@/lib/auth/access';
-import { customAssetUrl, removeCustomImage, writeCustomImage } from '@/lib/server/customData';
+import { customAssetUrl, removeCustomImage, writeCustomImage } from '@/server/customData';
 import { sniffImage } from '@/lib/uploads';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
 
 export const dynamic = 'force-dynamic';
 

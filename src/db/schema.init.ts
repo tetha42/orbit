@@ -756,9 +756,13 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 	}
 
 	await runMigrationStep('2026_01_fis_foto_url', 'Fix fisFotoUrl pathing', async () => {
-		await client.query(
-			`UPDATE butce_kayitlari SET fisFotoUrl = regexp_replace(fisFotoUrl, '^/uploads/', '/api/uploads/') WHERE fisFotoUrl LIKE '/uploads/%'`
-		);
+		const check = await client.query(`SELECT to_regclass('budget_records') AS b, to_regclass('butce_kayitlari') AS leg`);
+		const tbl = check.rows[0]?.b ? 'budget_records' : (check.rows[0]?.leg ? 'butce_kayitlari' : null);
+		if (tbl) {
+			await client.query(
+				`UPDATE "${tbl}" SET fisFotoUrl = regexp_replace(fisFotoUrl, '^/uploads/', '/api/uploads/') WHERE fisFotoUrl LIKE '/uploads/%'`
+			);
+		}
 	});
 
 	await runMigrationStep('2026_02_profil_foto_cleanup', 'Clean legacy mock profile photos', async () => {

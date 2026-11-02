@@ -8,7 +8,7 @@ import {
 	probeSingleRoute,
 	generateExecutiveAuditReport,
 	getFimFileDiff,
-} from '@/server/db/domains/inspection.repo';
+} from '@/db/repositories/inspection.repo';
 
 export async function GET(request: Request) {
 	const auth = await requireApp(request, 'soc', 'kullan');

@@ -29,8 +29,8 @@ import { clearRateLimit, consumeRateLimit, isRateLimited, recordFailure } from '
 import { clientAddress } from '@/lib/http';
 import { passwordProblem } from '@/lib/profile';
 import { inspectRequestPayload } from '@/lib/waf';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
-import { getEmergencyKillSwitches, getLockdownState, isIpBanned, recordSecurityStrike } from '@/server/db/domains/security.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
+import { getEmergencyKillSwitches, getLockdownState, isIpBanned, recordSecurityStrike } from '@/db/repositories/security.repo';
 import { hashOtpCode, verifyOtpCode } from '@/lib/auth/otp';
 
 const MAX_OTP_ATTEMPTS = 5;

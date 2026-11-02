@@ -6,7 +6,7 @@ import { SmtpWarningBadge } from './SmtpWarningBadge';
 import { DefconStatusBadge } from './DefconStatusBadge';
 import { ControlCenterApplet } from './ControlCenterApplet';
 import { ClockApplet } from './ClockApplet';
-import { NotificationBell } from '@/components/NotificationCenter/NotificationBell';
+import { NotificationBell } from '@/components/shell/NotificationCenter/NotificationBell';
 import { useShell } from '@/core/shell';
 import { useSession } from '@/core/session';
 import { Search } from 'lucide-react';

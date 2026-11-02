@@ -1011,7 +1011,7 @@ export async function getRoomMembers(odaId: string): Promise<ChatRoomMemberItem[
 		`SELECT k.id, k.first_name AS ad, k.last_name AS soyad, k.avatar_url as "profilFoto", k.department as bolum, r.ad as "rolAd"
 		 FROM chat_members su
 		 JOIN users k ON k.id = su.userId
-		 LEFT JOIN roller r ON r.id = k.role_id
+		 LEFT JOIN roles r ON r.id = k.role_id
 		 WHERE su.odaId = $1
 		 ORDER BY k.first_name ASC, k.last_name ASC`,
 		[odaId]
@@ -1036,7 +1036,7 @@ export async function getChatContacts(excludeUserId: string): Promise<ChatContac
 	const res = await p.query(
 		`SELECT k.id, k.first_name AS ad, k.last_name AS soyad, k.avatar_url as "profilFoto", k.department as bolum, r.ad as "rolAd"
 		 FROM users k
-		 LEFT JOIN roller r ON r.id = k.role_id
+		 LEFT JOIN roles r ON r.id = k.role_id
 		 WHERE k.status = 'aktif' AND k.id <> $1
 		 ORDER BY k.first_name ASC, k.last_name ASC`,
 		[excludeUserId]

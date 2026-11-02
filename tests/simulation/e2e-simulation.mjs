@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import pg from 'pg';
 import crypto from 'crypto';
-import { loadConfigIni } from './ini-loader.mjs';
+import { loadConfigIni } from '../../scripts/ini-loader.mjs';
 
 // ANSI styling (100% zero-unicode emoji)
 const c = {

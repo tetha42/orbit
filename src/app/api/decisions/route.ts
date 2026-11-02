@@ -1,9 +1,9 @@
 import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
-import { jsonSuccess, jsonError } from '@/lib/server/apiResponse';
+import { jsonSuccess, jsonError } from '@/server/apiResponse';
 import { createDecision, deleteDecision, getPgPool, getDecisionById, getDecisions, getCommitteeDetail, setDecisionLock, updateDecision } from '@/db';
 import { can, requireApp } from '@/lib/auth/access';
-import { belgeOzeti } from '@/lib/server/documentDigest';
+import { belgeOzeti } from '@/server/documentDigest';
 import { notificationEvents, publishEventQuiet } from '@/db/events';
 
 const DOCUMENT_TYPES = ['karar', 'salon_tahsisi', 'etkinlik_izni', 'malzeme_talep', 'ust_yazi'];

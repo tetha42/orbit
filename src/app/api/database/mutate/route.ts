@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { withTransaction } from '@/db';
-import { requireDatabaseAdmin } from '@/lib/server/databaseAccess';
+import { requireDatabaseAdmin } from '@/server/databaseAccess';
 import { clientAddress } from '@/lib/http';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
 
 const SENSITIVE_COLUMNS = new Set([
 	'sifrehash',
@@ -111,10 +111,11 @@ export async function POST(request: Request) {
 					const sql = `UPDATE "${table}" SET ${setClauses.join(', ')} WHERE "${pkCol}" = $${setParams.length}`;
 					await client.query(sql, setParams);
 
-					// Record audit diff in denetim_kaydi if table exists
+					// Record audit diff in audit_logs if table exists
 					try {
+						const auditTable = (await client.query("SELECT to_regclass('audit_logs') AS a")).rows[0]?.a ? 'audit_logs' : 'denetim_kaydi';
 						await client.query(
-							`INSERT INTO denetim_kaydi (zaman, yapanId, yapanAd, islem, hedefTur, hedefId, hedefAd, onceki, sonraki, ip)
+							`INSERT INTO ${auditTable} (zaman, yapanId, yapanAd, islem, hedefTur, hedefId, hedefAd, onceki, sonraki, ip)
 							 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
 							[
 								now,

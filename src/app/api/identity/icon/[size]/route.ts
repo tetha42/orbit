@@ -7,7 +7,7 @@ import {
 	customAssetDir,
 	customImageNameFromUrl,
 	isSafeCustomImageName,
-} from '@/lib/server/customData';
+} from '@/server/customData';
 import { defaultIconForSize } from '@/lib/identityIcon';
 
 export const runtime = 'nodejs';

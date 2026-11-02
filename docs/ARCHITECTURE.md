@@ -226,7 +226,7 @@ All client-side data fetching uses `useJsonResource<T>(url, options)` (`src/core
 
 ## 7. 60/120fps Hardware-Accelerated Window Compositor
 
-The Orbit desktop shell (`src/components/WindowManager/` and `src/core/windows/`) is engineered to sustain locked 60fps/120fps frame rates even with multiple complex applications open simultaneously:
+The Orbit desktop shell (`src/components/shell/WindowManager/` and `src/core/windows/`) is engineered to sustain locked 60fps/120fps frame rates even with multiple complex applications open simultaneously:
 
 - **W3C Pointer Events Architecture:** Window dragging and 8-directional edge/corner resizing use unified W3C Pointer Events (`onPointerDown`, `onPointerMove`, `onPointerUp` with `setPointerCapture`), providing sub-pixel precision across both desktop mice/trackpads and touchscreens (12px edge hitboxes and 18px corner hitboxes).
 - **Offscreen Rendering Culling (`content-visibility: hidden`):** When a window is minimized to the Dock, the compositor applies `content-visibility: hidden` to its subtree. The browser completely skips layout (reflow) and painting for minimized windows while preserving their live React state in memory.

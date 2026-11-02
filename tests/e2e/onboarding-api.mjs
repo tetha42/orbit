@@ -25,6 +25,13 @@ if (!DATABASE_URL) {
 }
 const db = new pg.Pool({ connectionString: DATABASE_URL, max: 2 });
 
+const userTable = (await db.query("SELECT to_regclass('users') AS u")).rows[0]?.u ? 'users' : 'kullanicilar';
+const roleCol = userTable === 'users' ? 'role_id' : 'rolId';
+const statusCol = userTable === 'users' ? 'status' : 'durum';
+const teamsTable = (await db.query("SELECT to_regclass('teams') AS t")).rows[0]?.t ? 'teams' : 'takimlar';
+const teamMembersTable = (await db.query("SELECT to_regclass('team_members') AS t")).rows[0]?.t ? 'team_members' : 'takim_uyeleri';
+const teamDecisionsTable = (await db.query("SELECT to_regclass('team_application_decisions') AS t")).rows[0]?.t ? 'team_application_decisions' : 'takim_basvuru_kararlari';
+
 let pass = 0;
 let fail = 0;
 const ok = (cond, name, extra = '') => {
@@ -107,7 +114,7 @@ const newId = created.member.id;
 const newUser = client();
 await newUser.call('POST', '/api/auth/login', { eposta: `ob-${suffix}@kulup.test`, sifre: created.geciciSifre });
 await newUser.call('POST', '/api/profil/sifre', { mevcut: created.geciciSifre, yeni: 'Kulup-Test-2026!' });
-await db.query('UPDATE kullanicilar SET rolId = NULL WHERE id = $1', [newId]);
+await db.query(`UPDATE ${userTable} SET ${roleCol} = NULL WHERE id = $1`, [newId]);
 const me = (await newUser.call('GET', '/api/auth/me')).json?.user;
 ok(me && me.rolBilgi === null, 'fixture: the new member has no role');
 
@@ -196,25 +203,25 @@ try {
 	let last;
 	for (const id of many) last = await can.call('POST', '/api/takimlar/kesfet', { action: 'apply', takimId: id });
 	ok(last.status === 429, 'apply: 6th pending application → 429', `status ${last.status}`);
-	const pending = (await db.query("SELECT COUNT(*)::int AS n FROM takim_uyeleri WHERE kullaniciId = $1 AND durum = 'basvurdu'", [U.can.id])).rows[0].n;
+	const pending = (await db.query(`SELECT COUNT(*)::int AS n FROM ${teamMembersTable} WHERE userId = $1 AND status = 'basvurdu'`, [U.can.id])).rows[0].n;
 	ok(pending === 5, 'pending applications stay at the cap of 5', `${pending}`);
 
 	// ---- a paused team takes no applications ------------------------------------------------------------
 	const paused = many[0];
-	await db.query("UPDATE takimlar SET durum = 'askida' WHERE id = $1", [paused]);
+	await db.query(`UPDATE ${teamsTable} SET status = 'askida' WHERE id = $1`, [paused]);
 	ok(!(await newUser.call('GET', '/api/takimlar/kesfet')).json.takimlar.some((t) => t.id === paused), 'showcase: paused teams are not listed');
 	ok((await newUser.call('POST', '/api/takimlar/kesfet', { action: 'apply', takimId: paused })).status === 409, 'apply: paused team → 409');
 
 	// ---- graduates are read-only ----------------------------------------------------------------------------
-	await db.query("UPDATE kullanicilar SET durum = 'mezun' WHERE id = $1", [newId]);
+	await db.query(`UPDATE ${userTable} SET ${statusCol} = 'mezun' WHERE id = $1`, [newId]);
 	const grad = await newUser.call('GET', '/api/takimlar/kesfet');
 	ok(grad.status === 200 && grad.json.saltOkunur === true, 'graduate: may look (read-only flag set)');
 	ok((await newUser.call('POST', '/api/takimlar/kesfet', { action: 'apply', takimId: many[1] })).status === 403, 'graduate: apply → 403');
 } finally {
 	for (const id of teamsToDelete) await admin.call('POST', '/api/takimlar', { action: 'deleteTeam', takimId: id });
-	await db.query('DELETE FROM takim_uyeleri WHERE kullaniciId = $1 AND takimId = $2', [U.can.id, teamId]);
-	await db.query('DELETE FROM takim_basvuru_kararlari WHERE kullaniciId IN ($1, $2)', [U.can.id, newId]);
-	await db.query('DELETE FROM takim_uyeleri WHERE kullaniciId = $1', [newId]);
+	await db.query(`DELETE FROM ${teamMembersTable} WHERE userId = $1 AND teamId = $2`, [U.can.id, teamId]);
+	await db.query(`DELETE FROM ${teamDecisionsTable} WHERE userId IN ($1, $2)`, [U.can.id, newId]);
+	await db.query(`DELETE FROM ${teamMembersTable} WHERE userId = $1`, [newId]);
 	await db.end();
 }
 

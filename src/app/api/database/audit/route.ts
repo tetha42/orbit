@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getPgPool } from '@/db';
-import { requireDatabaseAdmin } from '@/lib/server/databaseAccess';
+import { requireDatabaseAdmin } from '@/server/databaseAccess';
 import { clientAddress } from '@/lib/http';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
 import type { AuditRecord } from '@/apps/database/types';
 
 const SENSITIVE_COLUMNS = new Set(['sifrehash', 'totpsecret', 'aktifoturumtoken', 'totprecoverycodes']);

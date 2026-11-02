@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { getCommunityProfile, setSystemSettings } from '@/db';
 import { verifyAuth } from '@/lib/auth/authGuard';
 import { authenticateEnrolled, can } from '@/lib/auth/access';
-import { getCached, setCached, invalidateCache } from '@/lib/server/cache';
+import { getCached, setCached, invalidateCache } from '@/server/cache';
 
 export const dynamic = 'force-dynamic';
 

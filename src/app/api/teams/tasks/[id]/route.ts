@@ -24,7 +24,7 @@ import {
 	normalizeOncelik,
 	normalizeDueDate,
 } from '@/lib/kanban';
-import { badRequest, forbidden, getTaskAccess, isAssignable, notFound } from '@/lib/server/taskAccess';
+import { badRequest, forbidden, getTaskAccess, isAssignable, notFound } from '@/server/taskAccess';
 
 export const dynamic = 'force-dynamic';
 

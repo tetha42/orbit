@@ -4,8 +4,8 @@ import { getRolePermission, type Permission } from '@/db/roles';
 import { canManage, canUse, seviyeOf, type Seviye, PERMISSION_DESCRIPTIONS, isPermissionApp } from '@/core/permissions';
 import { clientAddress } from '@/lib/http';
 import { consumeRateLimit } from '@/lib/rateLimit';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
-import { recordSecurityStrike } from '@/server/db/domains/security.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
+import { recordSecurityStrike } from '@/db/repositories/security.repo';
 import { verifyAuth } from './authGuard';
 
 /**

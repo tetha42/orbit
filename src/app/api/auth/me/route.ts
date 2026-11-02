@@ -4,7 +4,7 @@ import { readSessionToken } from '@/lib/auth/authGuard';
 import { SESSION_COOKIE, sessionUserOf } from '@/lib/auth/session';
 import { ADMIN_ROLE_ID } from '@/core/permissions';
 import { clientAddress } from '@/lib/http';
-import { getLockdownState, isIpBanned, recordSessionActivity } from '@/server/db/domains/security.repo';
+import { getLockdownState, isIpBanned, recordSessionActivity } from '@/db/repositories/security.repo';
 
 /**
  * The signed-in member, with their role and per-app permissions. The client

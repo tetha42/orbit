@@ -6,9 +6,9 @@ import { createLoginChallenge } from '@/lib/auth/authToken';
 import { clearRateLimit, consumeRateLimit, isRateLimited, recordFailure } from '@/lib/rateLimit';
 import { clientAddress } from '@/lib/http';
 import { inspectRequestPayload } from '@/lib/waf';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
 import { ADMIN_ROLE_ID } from '@/core/permissions';
-import { getEmergencyKillSwitches, getLockdownState, isIpBanned, recordSecurityStrike } from '@/server/db/domains/security.repo';
+import { getEmergencyKillSwitches, getLockdownState, isIpBanned, recordSecurityStrike } from '@/db/repositories/security.repo';
 
 const MAX_ACCOUNT_ATTEMPTS = 5;
 const MAX_IP_ATTEMPTS = 50;

@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { createMailThread, getMailThreads, getUnreadMailCount } from '@/db/messages';
 import { requireApp } from '@/lib/auth/access';
 import { consumeRateLimit } from '@/lib/rateLimit';
-import { recipientDecision, notifyByEmail } from '@/lib/server/messages';
+import { recipientDecision, notifyByEmail } from '@/server/messages';
 import {
 	skippedReason,
 	MAIL_RECIPIENT_MAX,

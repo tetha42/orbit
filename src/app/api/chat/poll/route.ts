@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireApp } from '@/lib/auth/access';
-import { canUserAccessChatRoom, createPollInRoom, castPollVote, closePoll } from '@/server/db/domains/chat.repo';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
+import { canUserAccessChatRoom, createPollInRoom, castPollVote, closePoll } from '@/db/repositories/chat.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
 import { clientAddress } from '@/lib/http';
 
 export const dynamic = 'force-dynamic';

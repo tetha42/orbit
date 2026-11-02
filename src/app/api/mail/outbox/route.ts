@@ -11,7 +11,7 @@ import { requireAdmin } from '@/lib/auth/access';
 import { wasDelivered } from '@/lib/mail/mailer';
 import { notifyEmailVerificationCode, notifyPasswordResetCode } from '@/lib/mail/notifications';
 import { clientAddress } from '@/lib/http';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
 
 export const dynamic = 'force-dynamic';
 

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { clientAddress } from '@/lib/http';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
-import { recordSecurityStrike } from '@/server/db/domains/security.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
+import { recordSecurityStrike } from '@/db/repositories/security.repo';
 
 export const dynamic = 'force-dynamic';
 

@@ -2,14 +2,14 @@ import { NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getSystemSettings, setSystemSettings } from '@/db';
 import { requireApp } from '@/lib/auth/access';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
 import {
 	customAssetUrl,
 	isSafeCustomImageName,
 	customImageNameFromUrl,
 	removeCustomImage,
 	writeCustomImage,
-} from '@/lib/server/customData';
+} from '@/server/customData';
 import { sniffImage } from '@/lib/uploads';
 
 export const dynamic = 'force-dynamic';

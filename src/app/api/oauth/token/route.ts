@@ -5,8 +5,8 @@ import { consumeAuthCode, verifyClientCredentials } from '@/db/oauth';
 import { signOAuthJwt, type JwtPayload } from '@/lib/auth/jwt';
 import { clearRateLimit, isRateLimited, recordFailure } from '@/lib/rateLimit';
 import { clientAddress } from '@/lib/http';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
-import { isIpBanned, recordSecurityStrike } from '@/server/db/domains/security.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
+import { isIpBanned, recordSecurityStrike } from '@/db/repositories/security.repo';
 import { inspectRequestPayload } from '@/lib/waf';
 
 const MAX_CLIENT_FAILURES = 10;

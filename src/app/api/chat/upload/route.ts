@@ -5,11 +5,11 @@ import path from 'path';
 import { randomBytes } from 'crypto';
 import { addStoredFile } from '@/db';
 import { requireApp } from '@/lib/auth/access';
-import { canUserAccessChatRoom } from '@/server/db/domains/chat.repo';
+import { canUserAccessChatRoom } from '@/db/repositories/chat.repo';
 import { consumeRateLimit } from '@/lib/rateLimit';
 import { MAX_ATTACHMENT_BYTES, sniffMedia } from '@/lib/media';
 import { uploadDir } from '@/lib/uploads';
-import { getEmergencyKillSwitches } from '@/server/db/domains/security.repo';
+import { getEmergencyKillSwitches } from '@/db/repositories/security.repo';
 
 export const dynamic = 'force-dynamic';
 

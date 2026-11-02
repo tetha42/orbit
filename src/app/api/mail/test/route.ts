@@ -3,7 +3,7 @@ import { requireAdmin } from '@/lib/auth/access';
 import { getFolderMessages, getMessageDetail } from '@/lib/mail/imap';
 import { errorMessage } from '@/lib/errors';
 import { clientAddress } from '@/lib/http';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
 
 export const dynamic = 'force-dynamic';
 

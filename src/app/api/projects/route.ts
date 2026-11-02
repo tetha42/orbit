@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { createProject, getProjects, getPgPool, type ProjectInput } from '@/db';
 import { publishEventQuiet } from '@/db/events';
 import { can, requireApp } from '@/lib/auth/access';
-import { parseProjectInput } from '@/lib/server/projectInput';
+import { parseProjectInput } from '@/server/projectInput';
 
 export const dynamic = 'force-dynamic';
 

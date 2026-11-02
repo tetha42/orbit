@@ -1,5 +1,5 @@
 import { ensurePostgresInit, getPgPool } from '@/db';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
 import { sendMail } from '@/lib/mail/mailer';
 
 export type WebhookProvider = 'discord' | 'telegram' | 'generic' | 'email';

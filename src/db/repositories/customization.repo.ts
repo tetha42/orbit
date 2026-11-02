@@ -32,7 +32,7 @@ import {
 	customAssetDir,
 	customImageNameFromUrl,
 	isSafeCustomImageName,
-} from '@/lib/server/customData';
+} from '@/server/customData';
 
 /* ==================== public identity ==================== */
 

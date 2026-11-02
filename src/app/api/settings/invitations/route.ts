@@ -10,7 +10,7 @@ import { getRolePermission, getRoles } from '@/db/roles';
 import { requireApp } from '@/lib/auth/access';
 import { isValidEmail } from '@/lib/mail/address';
 import { ADMIN_ROLE_ID } from '@/core/permissions';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
 
 export const dynamic = 'force-dynamic';
 

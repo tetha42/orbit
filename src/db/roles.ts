@@ -14,7 +14,7 @@ import { randomBytes } from 'crypto';
 import { getPgPool, withTransaction, ensurePostgresInit, getSystemSetting, updateUserStatus } from './index';
 import { logAuditEvent, type AuditContext } from './audit';
 import { startListener, registerEventHandler, publishEvent } from './events';
-import { invalidateCache } from '@/lib/server/cache';
+import { invalidateCache } from '@/server/cache';
 import { alanFarki, statusAction, roleDiff, roleSummary, memberTargetName, type RoleSummary } from '@/lib/audit';
 import {
 	ADMIN_ROLE_ID,

@@ -100,7 +100,7 @@ test-security:
 	pnpm test:security
 
 test-e2e:
-	@node scripts/e2e-simulation.mjs
+	@node tests/simulation/e2e-simulation.mjs
 
 ci:
 	@printf "\n  $(BOLD)$(CYAN)Orbit Community OS — Local Full CI Pipeline Check$(RESET)\n"

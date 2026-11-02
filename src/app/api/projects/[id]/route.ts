@@ -5,7 +5,7 @@ import { publishEventQuiet } from '@/db/events';
 import type { Project } from '@/db/schema';
 import { can, requireApp, type AuthorizedUser } from '@/lib/auth/access';
 import { isProjectStatus } from '@/lib/projects';
-import { parseProjectInput } from '@/lib/server/projectInput';
+import { parseProjectInput } from '@/server/projectInput';
 
 export const dynamic = 'force-dynamic';
 

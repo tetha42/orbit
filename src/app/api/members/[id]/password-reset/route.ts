@@ -8,7 +8,7 @@ import { clientAddress } from '@/lib/http';
 import { consumeRateLimit } from '@/lib/rateLimit';
 import { notifyPasswordResetCode } from '@/lib/mail/notifications';
 import { wasDelivered } from '@/lib/mail/mailer';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
 import { ADMIN_ROLE_ID } from '@/core/permissions';
 
 export const dynamic = 'force-dynamic';

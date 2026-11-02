@@ -3,7 +3,7 @@ import { createRole, deleteRole, getRolePermission, getRoles, getDefaultRoleId, 
 import { auditContext } from '@/db/audit';
 import { authenticateEnrolled, can, requireAdmin, type AuthorizedUser } from '@/lib/auth/access';
 import { ADMIN_ROLE_ID, ALUMNI_ROLE_ID, PERMISSION_DESCRIPTIONS, extraPermissions, normalizePermissions, roleProblem, canAssignRole, type Permissions } from '@/core/permissions';
-import { getCached, setCached, invalidateCache } from '@/lib/server/cache';
+import { getCached, setCached, invalidateCache } from '@/server/cache';
 
 /**
  * Roles — Settings → Roller. Managing roles is strictly restricted to system admins.

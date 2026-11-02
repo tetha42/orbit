@@ -8,7 +8,7 @@ import {
 	updateOAuthClient,
 } from '@/db/oauth';
 import { clientAddress } from '@/lib/http';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
 
 export async function GET(request: Request) {
 	const auth = await requireAdmin(request);

@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const ROOT_DIR = process.cwd();
-const DEFAULT_TARGETS = ['src/db', 'src/server/db/domains', 'src/types'];
+const DEFAULT_TARGETS = ['src/db', 'src/db/repositories', 'src/types'];
 const OUTPUT_FILE = path.join(ROOT_DIR, 'tools', 'rename-map.json');
 
 const EXCLUDED_DIRS = new Set(['node_modules', '.next', '.git', 'dist', 'build', 'tools/bin']);

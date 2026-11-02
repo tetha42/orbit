@@ -1,7 +1,7 @@
 import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
-import { resizeTerminalSession, getTerminalSession } from '@/lib/server/terminalManager';
-import { authorizeTerminal } from '@/lib/server/terminalAccess';
+import { resizeTerminalSession, getTerminalSession } from '@/server/terminalManager';
+import { authorizeTerminal } from '@/server/terminalAccess';
 
 interface ResizeSessionBody {
 	sessionId?: unknown;

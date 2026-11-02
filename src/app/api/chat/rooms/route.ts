@@ -11,7 +11,7 @@ import {
 	getOrCreateDmRoom,
 	createGroupDm,
 	addMembersToRoom,
-} from '@/server/db/domains/chat.repo';
+} from '@/db/repositories/chat.repo';
 
 export const dynamic = 'force-dynamic';
 

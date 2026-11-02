@@ -1,11 +1,11 @@
 import { verifyAuth } from '@/lib/auth/authGuard';
 import { withAudit } from '@/lib/audit/withAudit';
-import { jsonSuccess, jsonError } from '@/lib/server/apiResponse';
+import { jsonSuccess, jsonError } from '@/server/apiResponse';
 import {
 	getUserWorkspacePreferences,
 	setUserWorkspacePreferences,
 	type UserWorkspaceState,
-} from '@/server/db/domains/workspacePreferences.repo';
+} from '@/db/repositories/workspacePreferences.repo';
 
 export const dynamic = 'force-dynamic';
 

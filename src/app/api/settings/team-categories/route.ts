@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getTeamCategories, setTeamCategories } from '@/db';
 import { requireApp } from '@/lib/auth/access';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
 
 export const dynamic = 'force-dynamic';
 

@@ -12,7 +12,7 @@ import { verifyAuth } from '@/lib/auth/authGuard';
 import { verifyOtpCode } from '@/lib/auth/otp';
 import { clientAddress } from '@/lib/http';
 import { notifyEmailChanged } from '@/lib/mail/notifications';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
 
 export const dynamic = 'force-dynamic';
 

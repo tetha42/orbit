@@ -6,7 +6,7 @@ import {
 	customAssetDir,
 	isCustomAssetKind,
 	isSafeCustomImageName,
-} from '@/lib/server/customData';
+} from '@/server/customData';
 
 export const dynamic = 'force-dynamic';
 

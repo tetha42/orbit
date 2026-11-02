@@ -1,6 +1,6 @@
 import { sendMail, wasDelivered, type MailerResult } from './mailer';
 import { safeName, safeRecipient } from './address';
-import { CONFIG } from '@/lib/server/config';
+import { CONFIG } from '@/server/config';
 
 /**
  * Transactional emails triggered by account lifecycle events.

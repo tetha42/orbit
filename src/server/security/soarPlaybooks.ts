@@ -1,8 +1,8 @@
 import crypto from 'crypto';
-import { banIp, setEmergencyKillSwitch, createSocIncident, revokeUserSession } from '@/server/db/domains/security.repo';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
-import { closeUserTerminalSessions } from '@/lib/server/terminalManager';
-import { freezeUserDatabaseAccess } from '@/lib/server/databaseAccess';
+import { banIp, setEmergencyKillSwitch, createSocIncident, revokeUserSession } from '@/db/repositories/security.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
+import { closeUserTerminalSessions } from '@/server/terminalManager';
+import { freezeUserDatabaseAccess } from '@/server/databaseAccess';
 import { sendMail } from '@/lib/mail/mailer';
 import { getPgPool } from '@/db';
 import type { SoarPlaybookId, SoarPlaybookExecutionResult } from '@/apps/soc/types';

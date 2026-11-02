@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getPgPool } from '@/db';
-import { requireDatabaseAdmin } from '@/lib/server/databaseAccess';
+import { requireDatabaseAdmin } from '@/server/databaseAccess';
 import { DB_SENSITIVE_COLUMNS, maskDatabaseRow } from '@/lib/waf';
 
 export async function GET(request: Request) {

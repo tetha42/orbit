@@ -8,5 +8,5 @@ paths = [
     '''examples/''',
     '''tests/''',
     '''\.fixtures\.json''',
-    '''scripts/dev-fixtures\.mjs''',
+    '''tests/fixtures/dev-fixtures\.mjs''',
 ]

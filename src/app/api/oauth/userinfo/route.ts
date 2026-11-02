@@ -3,9 +3,9 @@ import { getUserById } from '@/db';
 import { getRolePermission } from '@/db/roles';
 import { verifyOAuthJwt } from '@/lib/auth/jwt';
 import { clientAddress } from '@/lib/http';
-import { isIpBanned, recordSecurityStrike } from '@/server/db/domains/security.repo';
+import { isIpBanned, recordSecurityStrike } from '@/db/repositories/security.repo';
 import { inspectRequestPayload } from '@/lib/waf';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
 
 export async function GET(request: Request) {
 	const ip = clientAddress(request);

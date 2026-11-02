@@ -1,7 +1,7 @@
 import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
 import { requireApp } from '@/lib/auth/access';
-import { executeSoarPlaybook } from '@/lib/server/soarPlaybooks';
+import { executeSoarPlaybook } from '@/server/security/soarPlaybooks';
 import type { SoarPlaybookId } from '@/apps/soc/types';
 
 export const runtime = 'nodejs';

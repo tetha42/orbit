@@ -16,7 +16,7 @@ import {
 } from '@/lib/auth/totp';
 import { clearRateLimit, consumeRateLimit, isRateLimited, recordFailure } from '@/lib/rateLimit';
 import { clientAddress } from '@/lib/http';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
 
 const MAX_REAUTH_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000;

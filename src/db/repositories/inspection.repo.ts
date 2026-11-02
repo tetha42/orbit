@@ -307,6 +307,7 @@ function scanBufferForSuspicious(filePath: string, buffer: Buffer): FimSuspiciou
 
 	if (
 		filePath.endsWith('tools/fim/main.go') ||
+		filePath.endsWith('tests/security/security-e2e.mjs') ||
 		filePath.endsWith('scripts/security-e2e-test.mjs') ||
 		filePath.endsWith('tools/fim/baseline.json')
 	) {

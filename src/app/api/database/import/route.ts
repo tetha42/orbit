@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { withTransaction, getPgPool } from '@/db';
-import { requireDatabaseAdmin } from '@/lib/server/databaseAccess';
+import { requireDatabaseAdmin } from '@/server/databaseAccess';
 import { clientAddress } from '@/lib/http';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
 
 const SENSITIVE_COLUMNS = new Set([
 	'sifrehash',

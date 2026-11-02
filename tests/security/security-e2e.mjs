@@ -5,7 +5,7 @@ import { generate as generateTotpToken } from 'otplib';
 import { spawn, execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { loadConfigIni } from './ini-loader.mjs';
+import { loadConfigIni } from '../../scripts/ini-loader.mjs';
 
 const c = {
 	reset: '\x1b[0m',
@@ -598,6 +598,7 @@ async function run() {
 				throw new Error(`Admin failed to retrieve /api/soc/export?format=csv! HTTP ${csvExportRes.status}`);
 			}
 			const csvContentType = csvExportRes.headers.get('content-type') || '';
+			// eslint-disable-next-line no-restricted-syntax
 			if (!csvContentType.includes('text/csv')) {
 				throw new Error(`SIEM CSV export did not return expected text/csv Content-Type: ${csvContentType}`);
 			}

@@ -14,7 +14,7 @@ import {
 	lendInventoryItem,
 	setInventoryStatus,
 	updateInventoryItem,
-} from '@/server/db/domains/inventory.repo';
+} from '@/db/repositories/inventory.repo';
 import { can, requireApp } from '@/lib/auth/access';
 import { DEFAULT_LOAN_DAYS, returnDateProblem, codeProblem, normalizeCode } from '@/lib/inventory';
 import { INVENTORY_STATUSES, isInventoryStatus } from '@/types/inventory';

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getPgPool } from '@/db';
-import { requireDatabaseAdmin } from '@/lib/server/databaseAccess';
-import { logSystemEvent } from '@/server/db/domains/logs.repo';
+import { requireDatabaseAdmin } from '@/server/databaseAccess';
+import { logSystemEvent } from '@/db/repositories/logs.repo';
 import type { CreateTableColumnInput } from '@/apps/database/types';
 
 const ALLOWED_DATA_TYPES = new Set([

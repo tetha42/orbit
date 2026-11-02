@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireApp } from '@/lib/auth/access';
-import { getSystemLogs, type FilterOperator, type FilterColumn, type TimeRangePreset } from '@/server/db/domains/logs.repo';
+import { getSystemLogs, type FilterOperator, type FilterColumn, type TimeRangePreset } from '@/db/repositories/logs.repo';
 
 function escapeCsvField(val: unknown): string {
 	if (val === null || val === undefined) return '';

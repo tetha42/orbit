@@ -24,9 +24,9 @@
 The authenticated workspace (`/`) presents a spatial desktop environment composed of:
 
 ### Shell Chrome Components
-- **TopBar (`src/components/TopBar/`):** System menu bar displaying the Orbit brand menu, active mini-app menu categories (dynamically loaded from `manifest.ts`), live SoC posture indicators, Control Center toggles, Spotlight trigger, and the 4-tier Notification Center bell.
-- **Window Manager (`src/components/WindowManager/`):** Floating, draggable, 8-directionally resizable application frames (`WindowFrame`) with keyboard focus cycling, minimize-to-Dock, and full-viewport maximize.
-- **Application Dock (`src/components/Dock/`):** Magnification-ready application bar with unread badge counters (`useDockBadge`), automatic hiding when any non-minimized window is maximized (`anyMaximized`), a 14px bottom-edge hover reveal hotspot, and `onMouseEnter` chunk prefetching (`prefetchApp`).
+- **TopBar (`src/components/shell/TopBar/`):** System menu bar displaying the Orbit brand menu, active mini-app menu categories (dynamically loaded from `manifest.ts`), live SoC posture indicators, Control Center toggles, Spotlight trigger, and the 4-tier Notification Center bell.
+- **Window Manager (`src/components/shell/WindowManager/`):** Floating, draggable, 8-directionally resizable application frames (`WindowFrame`) with keyboard focus cycling, minimize-to-Dock, and full-viewport maximize.
+- **Application Dock (`src/components/shell/Dock/`):** Magnification-ready application bar with unread badge counters (`useDockBadge`), automatic hiding when any non-minimized window is maximized (`anyMaximized`), a 14px bottom-edge hover reveal hotspot, and `onMouseEnter` chunk prefetching (`prefetchApp`).
 - **Spotlight Search (`src/components/Common/`):** Instant keyboard-driven launcher and cross-domain search palette (`⌘K` / `Ctrl+K`).
 
 ### Mini-App Studio Layout Pattern
@@ -104,7 +104,7 @@ Orbit Community OS adapts seamlessly across desktop monitors, touch-enabled lapt
 
 1. **W3C Pointer Events Window Manipulation:**
    - Desktop and tablet touchscreens can drag windows and resize edges/corners smoothly via enlarged invisible hit targets (`12px` edge handles and `18px` corner handles).
-2. **Mobile Launcher & Home Screen (`src/components/MobileLauncher/`):**
+2. **Mobile Launcher & Home Screen (`src/components/shell/MobileLauncher/`):**
    - On compact viewports, Orbit transitions from floating windows to a responsive mobile OS shell with a touch app grid, status bar, bottom navigation bar, and native-feeling slide-up **Action Sheets** (`@/core/ui/Sheet`).
 3. **iOS & Notch Safe-Area Compliance:**
    - All top bars, bottom docks, and sheets respect `env(safe-area-inset-top)` and `env(safe-area-inset-bottom)` for iPhone Dynamic Island and home indicator ergonomics.

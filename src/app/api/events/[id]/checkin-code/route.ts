@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getEventById, getEventAttendeeList } from '@/db';
 import { requireApp } from '@/lib/auth/access';
 import { windowRemainingMs, isAttendanceTime } from '@/lib/events';
-import { createAttendanceCode } from '@/lib/server/attendanceToken';
+import { createAttendanceCode } from '@/server/attendanceToken';
 
 export const dynamic = 'force-dynamic';
 

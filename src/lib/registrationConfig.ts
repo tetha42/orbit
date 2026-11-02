@@ -1,4 +1,4 @@
-import { DEPARTMENTS, EXPERIENCE_LEVELS } from '../data/departments.ts';
+import { DEPARTMENTS, EXPERIENCE_LEVELS } from '../configs/departments.ts';
 import type { FormFieldOption } from './formFields';
 import { GRADE_MAX, GRADE_MIN } from './profile.ts';
 

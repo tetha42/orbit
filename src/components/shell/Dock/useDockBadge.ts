@@ -1,6 +1,6 @@
 'use client';
 
-import { useNotifications } from '@/components/NotificationCenter/NotificationsProvider';
+import { useNotifications } from '@/components/shell/NotificationCenter/NotificationsProvider';
 import type { AppID } from '@/types/workspace';
 import type { NotificationsResponse } from '@/types/notifications';
 

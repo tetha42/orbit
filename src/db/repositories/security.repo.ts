@@ -3,12 +3,12 @@ import { ensurePostgresInit, getPgPool } from '@/db';
 import type { User } from '@/db/schema';
 import { temizIp } from '@/lib/audit';
 import { publishEventQuiet } from '@/db/events';
-import { closeUserTerminalSessions } from '@/lib/server/terminalManager';
+import { closeUserTerminalSessions } from '@/server/terminalManager';
 import { getActiveRateLimits, type ActiveRateLimit } from '@/lib/rateLimit';
-import { addKernelBlackhole, removeKernelBlackhole } from '@/lib/server/kernelFirewall';
-import { isInfrastructureIp } from '@/lib/server/proxyDiagnostics';
-import { classifyThreatIntel, type ThreatIntelligence } from '@/lib/server/threatIntelligence';
-import { getWebhookConfig, sendSecurityAlert, type WebhookConfig } from '@/lib/server/securityWebhook';
+import { addKernelBlackhole, removeKernelBlackhole } from '@/server/security/kernelFirewall';
+import { isInfrastructureIp } from '@/server/security/proxyDiagnostics';
+import { classifyThreatIntel, type ThreatIntelligence } from '@/server/security/threatIntelligence';
+import { getWebhookConfig, sendSecurityAlert, type WebhookConfig } from '@/server/security/securityWebhook';
 import { logSystemEvent } from './logs.repo';
 
 export interface HostAndPoolTelemetry {

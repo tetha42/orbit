@@ -32,7 +32,7 @@ import {
 	normalizeEventType,
 	normalizeEventStatus,
 } from '@/lib/events';
-import { verifyTicketCode, createTicketCode, verifyShortCode } from '@/lib/server/attendanceToken';
+import { verifyTicketCode, createTicketCode, verifyShortCode } from '@/server/attendanceToken';
 
 export const dynamic = 'force-dynamic';
 
