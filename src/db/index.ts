@@ -225,18 +225,20 @@ export async function withTransaction<T>(fn: (client: PoolClient) => Promise<T>)
 }
 
 export function bootstrapAdminEnv():
-	| { email: string; password: string; ad: string; soyad: string; error?: undefined }
-	| { error: string; email?: undefined; password?: undefined; ad?: undefined; soyad?: undefined } {
+	| { email: string; password: string; firstName: string; lastName: string; error?: undefined }
+	| { error: string; email?: undefined; password?: undefined; firstName?: undefined; lastName?: undefined } {
 	const email = (process.env.BOOTSTRAP_ADMIN_EMAIL?.trim() || CONFIG.bootstrapAdmin.email || '').trim().toLowerCase();
 	const password = process.env.BOOTSTRAP_ADMIN_PASSWORD ?? CONFIG.bootstrapAdmin.password ?? '';
 	if (!email || !password) return { error: 'Bootstrap admin credentials not defined.' };
 	if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'Bootstrap admin email is not a valid email address.' };
 	if (password.length < 12) return { error: 'Bootstrap admin password must be at least 12 characters.' };
+	const firstName = process.env.BOOTSTRAP_ADMIN_FIRST_NAME?.trim() || CONFIG.bootstrapAdmin.firstName || 'Orbit';
+	const lastName = process.env.BOOTSTRAP_ADMIN_LAST_NAME?.trim() || CONFIG.bootstrapAdmin.lastName || 'Admin';
 	return {
 		email,
 		password,
-		ad: process.env.BOOTSTRAP_ADMIN_AD?.trim() || CONFIG.bootstrapAdmin.firstName || 'Orbit',
-		soyad: process.env.BOOTSTRAP_ADMIN_SOYAD?.trim() || CONFIG.bootstrapAdmin.lastName || 'Admin',
+		firstName,
+		lastName,
 	};
 }
 
@@ -246,12 +248,12 @@ async function bootstrapFirstAdmin(client: PoolClient): Promise<void> {
 		console.warn(`[PostgreSQL] Database empty; initial admin generation skipped: ${env.error}`);
 		return;
 	}
-	const { email, password, ad, soyad } = env;
+	const { email, password, firstName, lastName } = env;
 	await client.query(
 		`INSERT INTO users (id, first_name, last_name, email, password_hash, handle, department, grade, role_id, avatar_url, bio, xp, status, created_at)
 		 VALUES ($1, $2, $3, $4, $5, NULL, 'Management', 1, $6, NULL, '', 0, 'aktif', $7)
 		 ON CONFLICT (email) DO NOTHING`,
-		[randomUUID(), ad, soyad, email, await bcrypt.hash(password, 12), ADMIN_ROLE_ID, Date.now()]
+		[randomUUID(), firstName, lastName, email, await bcrypt.hash(password, 12), ADMIN_ROLE_ID, Date.now()]
 	);
 	console.log(`[PostgreSQL] Initial bootstrap administrator created: ${email}`);
 }

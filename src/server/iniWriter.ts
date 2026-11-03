@@ -184,11 +184,11 @@ function applyToMemory(updates: Record<string, Record<string, string>>): void {
 		CONFIG.bootstrapAdmin.email = updates.bootstrap_admin.email;
 	}
 	if (updates.bootstrap_admin?.first_name !== undefined) {
-		process.env.BOOTSTRAP_ADMIN_AD = updates.bootstrap_admin.first_name;
+		process.env.BOOTSTRAP_ADMIN_FIRST_NAME = updates.bootstrap_admin.first_name;
 		CONFIG.bootstrapAdmin.firstName = updates.bootstrap_admin.first_name;
 	}
 	if (updates.bootstrap_admin?.last_name !== undefined) {
-		process.env.BOOTSTRAP_ADMIN_SOYAD = updates.bootstrap_admin.last_name;
+		process.env.BOOTSTRAP_ADMIN_LAST_NAME = updates.bootstrap_admin.last_name;
 		CONFIG.bootstrapAdmin.lastName = updates.bootstrap_admin.last_name;
 	}
 	if (updates.club_preset?.name !== undefined) {

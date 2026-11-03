@@ -109,7 +109,7 @@ When visiting a fresh instance at `/` or `/setup` (`/kurulum`), Orbit presents a
 
 ## 5. Reverse Proxy Configuration (Caddy & Nginx)
 
-Orbit Community OS uses three long-lived **Server-Sent Events (SSE)** streams (`/api/olaylar`, `/api/chat/stream`, and `/api/soc/stream`). Your reverse proxy **must disable response buffering** on SSE routes and forward accurate client IP headers (`X-Real-IP` / `X-Forwarded-For`) so the **Pass-the-Cookie IP Shield** and **SoC Threat Radar** see real client addresses.
+Orbit Community OS uses three long-lived **Server-Sent Events (SSE)** streams (`/api/stream`, `/api/chat/stream`, and `/api/soc/stream`). Your reverse proxy **must disable response buffering** on SSE routes and forward accurate client IP headers (`X-Real-IP` / `X-Forwarded-For`) so the **Pass-the-Cookie IP Shield** and **SoC Threat Radar** see real client addresses.
 
 ### Option 1: Caddy (`infra/docker/Caddyfile` — Automatic Let's Encrypt HTTPS)
 
@@ -122,7 +122,7 @@ orbit.example.com {
 	}
 
 	# Disable proxy buffering for real-time SSE streams
-	@sse path /api/olaylar* /api/stream* /api/chat/stream* /api/soc/stream* /api/terminal/stream*
+	@sse path /api/stream* /api/events* /api/chat/stream* /api/soc/stream* /api/terminal/stream*
 	handle @sse {
 		reverse_proxy 127.0.0.1:3000 {
 			flush_interval -1
@@ -165,7 +165,7 @@ server {
     client_max_body_size 10M;
 
     # Real-Time SSE Endpoints (No Buffering)
-    location ~ ^/api/(olaylar|chat/stream|soc/stream) {
+    location ~ ^/api/(stream|events|chat/stream|soc/stream|terminal/stream) {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
         proxy_set_header Connection "";

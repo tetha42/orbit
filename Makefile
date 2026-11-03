@@ -25,7 +25,7 @@ BACKUP_DIR   := backups
 COMPOSE_PROD  := docker compose -f infra/docker/docker-compose.yml
 
 # Local testing compose (Builds from local Dockerfile)
-COMPOSE_LOCAL := docker compose -f infra/docker/docker-compose.yml
+COMPOSE_LOCAL := docker compose -f infra/docker/docker-compose.yml -f infra/docker/docker-compose.build.yml
 # ==============================================================================
 # Help Menu
 # ==============================================================================

@@ -118,6 +118,8 @@ jobs:
       BASE_URL: http://127.0.0.1:3000
       BOOTSTRAP_ADMIN_EMAIL: admin@orbit.local
       BOOTSTRAP_ADMIN_PASSWORD: ci_ephemeral_admin_pw
+      BOOTSTRAP_ADMIN_FIRST_NAME: Orbit
+      BOOTSTRAP_ADMIN_LAST_NAME: Admin
       ORBIT_DATA_DIR: ${{ github.workspace }}/data
       ORBIT_CUSTOM_DIR: ${{ github.workspace }}/data/custom
       UPLOAD_DIR: ${{ github.workspace }}/data/uploads

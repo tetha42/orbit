@@ -13,8 +13,8 @@ export interface ServerEnv {
 	AUTH_SECRET?: string;
 	BOOTSTRAP_ADMIN_EMAIL: string;
 	BOOTSTRAP_ADMIN_PASSWORD?: string;
-	BOOTSTRAP_ADMIN_AD: string;
-	BOOTSTRAP_ADMIN_SOYAD: string;
+	BOOTSTRAP_ADMIN_FIRST_NAME: string;
+	BOOTSTRAP_ADMIN_LAST_NAME: string;
 	PUBLIC_API_ALLOWED_ORIGINS: string;
 	PUBLIC_BASE_URL: string;
 	UPLOAD_DIR: string;
@@ -48,14 +48,17 @@ function parseServerEnv(): ServerEnv {
 	const smtpPortRaw = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : undefined;
 	const smtpPort = smtpPortRaw && !isNaN(smtpPortRaw) ? smtpPortRaw : undefined;
 
+	const firstName = process.env.BOOTSTRAP_ADMIN_FIRST_NAME?.trim() || CONFIG.bootstrapAdmin.firstName || 'Orbit';
+	const lastName = process.env.BOOTSTRAP_ADMIN_LAST_NAME?.trim() || CONFIG.bootstrapAdmin.lastName || 'Admin';
+
 	return {
 		NODE_ENV: nodeEnv,
 		DATABASE_URL: dbUrl,
 		AUTH_SECRET: process.env.AUTH_SECRET?.trim() || CONFIG.security.authSecret,
 		BOOTSTRAP_ADMIN_EMAIL: (process.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase() || CONFIG.bootstrapAdmin.email || 'admin@orbit.local').toLowerCase(),
 		BOOTSTRAP_ADMIN_PASSWORD: bootstrapPassword || undefined,
-		BOOTSTRAP_ADMIN_AD: process.env.BOOTSTRAP_ADMIN_AD?.trim() || CONFIG.bootstrapAdmin.firstName || 'Orbit',
-		BOOTSTRAP_ADMIN_SOYAD: process.env.BOOTSTRAP_ADMIN_SOYAD?.trim() || CONFIG.bootstrapAdmin.lastName || 'Admin',
+		BOOTSTRAP_ADMIN_FIRST_NAME: firstName,
+		BOOTSTRAP_ADMIN_LAST_NAME: lastName,
 		PUBLIC_API_ALLOWED_ORIGINS: process.env.PUBLIC_API_ALLOWED_ORIGINS?.trim() || '',
 		PUBLIC_BASE_URL: (process.env.PUBLIC_BASE_URL?.trim() || 'http://localhost:3000').replace(/\/+$/, ''),
 		UPLOAD_DIR: process.env.UPLOAD_DIR?.trim() || './data/uploads',

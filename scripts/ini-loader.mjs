@@ -74,8 +74,8 @@ export function loadConfigIni(rootDir = process.cwd()) {
 			// [bootstrap_admin]
 			'bootstrap_admin.email': 'BOOTSTRAP_ADMIN_EMAIL',
 			'bootstrap_admin.password': 'BOOTSTRAP_ADMIN_PASSWORD',
-			'bootstrap_admin.first_name': 'BOOTSTRAP_ADMIN_AD',
-			'bootstrap_admin.last_name': 'BOOTSTRAP_ADMIN_SOYAD',
+			'bootstrap_admin.first_name': 'BOOTSTRAP_ADMIN_FIRST_NAME',
+			'bootstrap_admin.last_name': 'BOOTSTRAP_ADMIN_LAST_NAME',
 			// [club_preset]
 			'club_preset.name': 'CLUB_NAME',
 			'club_preset.university': 'CLUB_UNIVERSITY',
