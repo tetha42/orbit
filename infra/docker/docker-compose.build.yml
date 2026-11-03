@@ -9,3 +9,5 @@ services:
     build:
       context: ../..
       dockerfile: ./infra/docker/Dockerfile
+    ports:
+      - '${PORT:-3000}:3000'

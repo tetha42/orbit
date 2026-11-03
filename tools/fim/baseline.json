@@ -1,7 +1,7 @@
 {
   ".dockerignore": "f6ee9059b043934f55cc58705f6d3a2c72e2ce8298330a1f69f9474597a7f649",
   ".env.example": "d0697ae6e85c1c60e9f1565fced24baa833c62dc78396417980fafb6152a80c6",
-  ".fixtures.json": "710dc550978c50d4097a5ab08d8196a21417e8f7117ebf7fe659e28899c20b50",
+  ".fixtures.json": "0942888430d64a1b06e879c69321b5ccdaf67e14d4fc8ad497b515b6cb30c763",
   ".github/workflows/ci-cd.yml": "8c73e158c7d269ce862204353204b3b1caa9e84f0c4803e98bfeff1bdbd2e91e",
   ".gitignore": "a9933abc1fb36941fc8cd828c1a923e407d2a60c8b3dce1a3f75f417900f3132",
   ".gitleaks.toml": "760b2cf62611e442e30c245209722a7bf3c5dcccbeb82746bd04ac1457cdf232",
@@ -53,8 +53,8 @@
   "infra/docker/.dockerignore": "91534030ea7e2faef962c50db6a0b52b58ee58e6336b333990b3c694c67486f7",
   "infra/docker/Caddyfile": "4fa246b81f5b1d25bde795b66315cc936e8c5cff4dacb6013ff5c8f1fbb677c9",
   "infra/docker/Dockerfile": "0ae27b935015884ae273dd54114d4ffec3afb901e1106967e4058dfd278663f6",
-  "infra/docker/docker-compose.build.yml": "986c12e2f7e94f7b6caa71c6169902a6639c2db976d99a0d86c8f28a28ffe42c",
-  "infra/docker/docker-compose.yml": "8eca0c68971b2fb1a665cac1b5fd08315b2e383740ae91d74e13a1206fefbf45",
+  "infra/docker/docker-compose.build.yml": "cabb92ab6eae4b08abec9f8e218c8ed93db3b7b4870b4176cb37245fd093ac04",
+  "infra/docker/docker-compose.yml": "b657c18e00d7588e40be8e63dc4aa5baa795baf8d0e9010984c6bc8a607afc85",
   "infra/docker/entrypoint.sh": "2871be24852639b2c7250d65e06a2ee5c7da4d4c5065e81790c489a1f37f001e",
   "infra/scripts/db-backup.sh": "f4a850d476d423a40a47cc001962c0c721714b7fe9a4749fad1ebb3e8950d71d",
   "next-env.d.ts": "1862ac4bbbc5192d4bf562161df66ea547ed3e67173100656ab606ae9797db2b",
@@ -1111,7 +1111,7 @@
   "tests/fixtures/dev-fixtures.mjs": "19235e4c0773ebb26c094276ddfd563c7d2d2edcc950881270241471cdcb25d5",
   "tests/security/security-e2e.mjs": "6616f1943acd9cf39ba61358b78287b1b93f96d86987707d17b1d7fd23b7046c",
   "tests/simulation/e2e-simulation.mjs": "de2106eab0618c8c197d4d98f2059ce07567639f73a540f655bcc9c8ff98cb7e",
-  "tools/fim/baseline.json": "601e389ff5ab306fcaabc5355cc4f401d718addecb967d6ec9fa4c8b4e97078a",
+  "tools/fim/baseline.json": "62c6bd522be955063f2d28d3d5efbbe1872f21117d4114c2499d63a83443085f",
   "tools/fim/main.go": "5513c4ed8be9bc1d6d4b54c5514fd5026138acf91f9e684b027fa4db121dad5e",
   "tools/rename-map.json": "8560454d423b85dc25d4cb6dced306d76bbc13c658f0a5ca736e59b47ae9ecc1",
   "tsconfig.json": "2202b3bce07757677f0ea7aeadf00cb028d79d22c5f854c6cddfffb4b93829aa"

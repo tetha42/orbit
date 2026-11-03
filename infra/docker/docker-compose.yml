@@ -58,8 +58,11 @@ services:
       ORBIT_CUSTOM_DIR: /app/data/custom
       PUBLIC_API_ALLOWED_ORIGINS: ${PUBLIC_API_ALLOWED_ORIGINS:-http://localhost:3000,http://orbit.local}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:3000}
-    ports:
-      - '${PORT:-3000}:3000'
+    # Host port mapping is disabled by default for Coolify and reverse proxies
+    # to prevent port allocation conflicts (Bind for :::3000 failed) during rolling deploys.
+    # Coolify routes directly to the internal container port via 'expose'.
+    # ports:
+    #   - '${PORT:-3000}:3000'
     expose:
       - '3000'
     volumes:
