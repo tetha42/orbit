@@ -532,7 +532,9 @@
   "kullanim": "usage",
   "tarama": "scan",
   "indeks": "index",
-  "olu": "dead"
+  "olu": "dead",
+  "yapan": "actor",
+  "yapanid": "actorId"
  },
  "wholeTokens": {
   "yeni": "fresh",

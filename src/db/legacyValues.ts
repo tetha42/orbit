@@ -63,8 +63,8 @@ const NEWS_CATEGORY = m({ genel: 'general', atolye: 'workshop', isbirligi: 'coll
 const PUBLISH = m({ yayinda: 'published', taslak: 'draft', iptal: 'cancelled', tamamlandi: 'done' });
 const PROJECT_STATUS = m({ oneri: 'proposed', yayinda: 'published', arsiv: 'archived' });
 const BUDGET_CATEGORY = m({
-	'catering': 'catering', 'printing': 'printing', Sponsorluk: 'sponsorship', 'hardware': 'hardware',
-	'transport': 'transport', 'other': 'other', 'Ödenek Aktarımı': 'allowance_transfer',
+	'İkram': 'catering', 'Afiş/Baskı': 'printing', Sponsorluk: 'sponsorship', 'Donanım': 'hardware',
+	'Ulaşım': 'transport', 'Diğer': 'other', 'Ödenek Aktarımı': 'allowance_transfer',
 });
 
 /** table, column, old value → new value. */

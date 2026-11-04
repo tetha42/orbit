@@ -137,7 +137,7 @@ try {
 	// ---- validation ----------------------------------------------------------------
 	ok((await newUser.call('POST', '/api/teams/discover', { action: 'apply' })).status === 400, 'apply: missing team → 400');
 	ok((await newUser.call('POST', '/api/teams/discover', { action: 'join', teamId: teamId })).status === 400, 'apply: unknown action → 400');
-	ok((await newUser.call('POST', '/api/teams/discover', { action: 'apply', teamId: 'tkm_yok' })).status === 404, 'apply: unknown team → 404');
+	ok((await newUser.call('POST', '/api/teams/discover', { action: 'apply', teamId: 'team_missing' })).status === 404, 'apply: unknown team → 404');
 	ok((await newUser.call('POST', '/api/teams/discover', { action: 'withdraw', teamId: teamId })).status === 404, 'withdraw: nothing to withdraw → 404');
 
 	// ---- apply: always an application, even to an open team ---------------------------------

@@ -76,7 +76,7 @@ export async function createNews(params: {
 }): Promise<NewsItem> {
 	await ensurePostgresInit();
 	const p = getPgPool();
-	const id = `hbr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+	const id = `news_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
 	const now = Date.now();
 	const publishStatus: NewsVisibility = params.publishStatus ?? 'published';
 

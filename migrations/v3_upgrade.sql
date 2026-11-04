@@ -1,4 +1,8 @@
 -- ============================================================================
+-- NOTE: this file renames tables, columns and audit values. Stored vocabulary
+-- (status/type values, role ids, settings keys, JSON document keys, budget
+-- categories) is upgraded to English automatically the first time the new
+-- application starts: see src/db/legacyValues.ts. Both steps are idempotent.
 -- Orbit Community OS: v2 to v3 Production Upgrade Migration
 -- Zero-Backward-Compatibility Canonical SQL Migration Script
 -- Safe, atomic, and idempotent upgrade from legacy Orbit schema to Pure v3

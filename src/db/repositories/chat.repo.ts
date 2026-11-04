@@ -1158,7 +1158,7 @@ export async function createPollInRoom(
 	}
 
 	const messageId = randomUUID();
-	const pollId = `anket_${randomUUID()}`;
+	const pollId = `poll_${randomUUID()}`;
 	const now = Date.now();
 	const endsAt = typeof data.endsAt === 'number'
 		? data.endsAt

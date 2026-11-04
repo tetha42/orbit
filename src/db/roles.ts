@@ -384,7 +384,7 @@ async function roleName(client: PoolClient, id: string | null): Promise<string |
 // transaction client: the record exists exactly when the change was committed.
 
 export async function createRole(r: { name?: string;color?: string;description?: string;permissions?: Permissions;require2fa?: boolean; twoStepRequired?: boolean }, ctx: AuditContext): Promise<RoleResult> {
-	const id = `rol_${randomBytes(6).toString('hex')}`;
+	const id = `role_${randomBytes(6).toString('hex')}`;
 	const name = (r.name ?? '').trim();
 	const color = r.color ?? '#0a84ff';
 	const description = r.description ?? '';

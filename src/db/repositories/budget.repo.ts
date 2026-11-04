@@ -137,7 +137,7 @@ export async function addAllowanceTransfer(params: {
 	date?: number;
 }): Promise<{ transferId: string }> {
 	const now = Date.now();
-	const transferId = `akt_${now}_${randomBytes(4).toString('hex')}`;
+	const transferId = `xfer_${now}_${randomBytes(4).toString('hex')}`;
 	const date = params.date || now;
 	await withTransaction(async (client) => {
 		await lockCashRegisters(client, [params.sourceTeamId, params.targetTeamId]);
@@ -147,7 +147,7 @@ export async function addAllowanceTransfer(params: {
 			client.query(
 				`INSERT INTO budget_records (id, date, entry_type, category, amount_minor, description, receipt_url, recorded_by, team_id, created_at, transfer_pair_id)
 				 VALUES ($1, $2, $3, $4, $5, $6, NULL, $7, $8, $9, $10)`,
-				[`btc_${now}_${suffix}_${randomBytes(3).toString('hex')}`, date, typeValue, TRANSFER_CATEGORY, params.amountMinor, params.description.trim(), params.recorderId, teamId, now, transferId]
+				[`bud_${now}_${suffix}_${randomBytes(3).toString('hex')}`, date, typeValue, TRANSFER_CATEGORY, params.amountMinor, params.description.trim(), params.recorderId, teamId, now, transferId]
 			);
 		await insert('expense', params.sourceTeamId, 'out');
 		await insert('income', params.targetTeamId, 'in');
@@ -205,7 +205,7 @@ export async function createBudgetRecord(params: {
 	receiptPhotoUrl?: string;
 }): Promise<BudgetRecord> {
 	const teamId = params.teamId ?? null;
-	const id = `btc_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+	const id = `bud_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
 	const now = Date.now();
 	const registration: BudgetRecord = {
 		id,

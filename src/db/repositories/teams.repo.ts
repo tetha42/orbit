@@ -297,7 +297,7 @@ export async function createTeam(params: {
 	quorum?: number;
 }): Promise<Team> {
 	await ensurePostgresInit();
-	const id = `tkm_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+	const id = `team_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
 	const slug = await uniqueSlug(slugify(params.name), async (c) => ((await getPgPool().query('SELECT 1 FROM teams WHERE slug = $1', [c])).rowCount ?? 0) > 0, 'team');
 	const now = Date.now();
 	const capacity = Number(params.capacity) || 6;

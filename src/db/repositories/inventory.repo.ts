@@ -201,7 +201,7 @@ export async function createInventoryItem(params: {
 	actorId?: string;
 }): Promise<InventoryItem> {
 	await ensurePostgresInit();
-	const id = `env_${Date.now()}_${randomBytes(3).toString('hex')}`;
+	const id = `inv_${Date.now()}_${randomBytes(3).toString('hex')}`;
 	const item: InventoryItem = {
 		id,
 		code: params.code.trim().toUpperCase(),

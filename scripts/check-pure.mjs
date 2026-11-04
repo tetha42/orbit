@@ -754,16 +754,16 @@ check('permissions: who may hand out which role', () => {
 	const admin = { admin: true, permissions: ALL_PERMISSIONS,};
 	const board = { admin: false, permissions: { ...ALL_PERMISSIONS },};
 	const secretary = { admin: false, permissions: { members: 'manage', news: 'use' },};
-	const haberci = { id: 'rol_h', permissions: { news: 'use' },};
+	const haberci = { id: 'role_h', permissions: { news: 'use' },};
 	// The admin role: only an admin, even for someone holding every permission.
 	assert.equal(canAssignRole({ id: ADMIN_ROLE_ID, permissions: ALL_PERMISSIONS }, admin), true);
 	assert.equal(canAssignRole({ id: ADMIN_ROLE_ID, permissions: ALL_PERMISSIONS }, board), false);
 	// Equal or weaker: yes. Stronger in any app: no.
 	assert.equal(canAssignRole(haberci, secretary), true);
-	assert.equal(canAssignRole({ id: 'rol_k', permissions: ALL_PERMISSIONS }, board), true);
-	assert.equal(canAssignRole({ id: 'rol_x', permissions: { news: 'manage' } }, secretary), false);
-	assert.equal(canAssignRole({ id: 'rol_y', permissions: { budget: 'use' } }, secretary), false);
-	assert.equal(canAssignRole({ id: 'rol_bos', permissions: {} }, secretary), true);
+	assert.equal(canAssignRole({ id: 'role_k', permissions: ALL_PERMISSIONS }, board), true);
+	assert.equal(canAssignRole({ id: 'role_x', permissions: { news: 'manage' } }, secretary), false);
+	assert.equal(canAssignRole({ id: 'role_y', permissions: { budget: 'use' } }, secretary), false);
+	assert.equal(canAssignRole({ id: 'role_bos', permissions: {} }, secretary), true);
 });
 
 check('apps: manifests are consistent', () => {
@@ -917,9 +917,9 @@ check('audit: statusAction names the status change', () => {
 });
 
 check('audit: parseAuditFilter bounds the query, temizIp the address, retentionDays the retention', () => {
-	const f = parseAuditFilter(new URLSearchParams('user=%20ali%20&role=rol_x&action=role.delete&from=2026-01-05&to=2026-02-31x&page=-3&pageSize=99999'));
+	const f = parseAuditFilter(new URLSearchParams('user=%20ali%20&role=role_x&action=role.delete&from=2026-01-05&to=2026-02-31x&page=-3&pageSize=99999'));
 	assert.equal(f.user, 'ali');
-	assert.equal(f.role, 'rol_x');
+	assert.equal(f.role, 'role_x');
 	assert.equal(f.action, 'role.delete');
 	assert.equal(f.from, '2026-01-05');
 	assert.equal(f.to, '');
