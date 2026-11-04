@@ -93,10 +93,10 @@ const ROLES = {
 };
 
 const MEMBERS = [
-	{ key: 'zeynep', alias: 'alex', name: 'Zeynep', surname: 'Kaya', email: 'zeynep@kulup.test', role: 'yonetim', department: 'Bilgisayar Mühendisliği', grade: 3 },
-	{ key: 'ege', alias: 'jordan', name: 'Ege', surname: 'Kılıç', email: 'ege@kulup.test', role: 'uye', department: 'Yazılım Mühendisliği', grade: 3 },
-	{ key: 'can', alias: 'taylor', name: 'Can', surname: 'Demir', email: 'can@kulup.test', role: 'uye', department: 'Bilgisayar Mühendisliği', grade: 2 },
-	{ key: 'okur', alias: 'sam', name: 'Okur', surname: 'Haber', email: 'okur@kulup.test', role: 'haber', department: 'Endüstri Mühendisliği', grade: 1 },
+	{ key: 'zeynep', alias: 'alex', name: 'Zeynep', surname: 'Kaya', email: 'zeynep@kulup.test', role: 'management', department: 'Bilgisayar Mühendisliği', grade: 3 },
+	{ key: 'ege', alias: 'jordan', name: 'Ege', surname: 'Kılıç', email: 'ege@kulup.test', role: 'member', department: 'Yazılım Mühendisliği', grade: 3 },
+	{ key: 'can', alias: 'taylor', name: 'Can', surname: 'Demir', email: 'can@kulup.test', role: 'member', department: 'Bilgisayar Mühendisliği', grade: 2 },
+	{ key: 'reader', alias: 'sam', name: 'Okur', surname: 'Haber', email: 'okur@kulup.test', role: 'news', department: 'Endüstri Mühendisliği', grade: 1 },
 ];
 const PASSWORD = 'Orbit-Test-2026!';
 
