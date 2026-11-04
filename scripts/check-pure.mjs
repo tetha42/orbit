@@ -655,15 +655,15 @@ check('amounts typed in Turkish or English style', () => {
 check('ledger: running balance, categories, months, filters', () => {
 	const t = (s) => new Date(s).getTime();
 	const rows = [
-		{ id: 'c', date: t('2026-09-06T10:00'), typeValue: 'expense', category: 'Donanım', amountMinor: 890000, description: 'Raspberry Pi', recorderNameSurname: 'Mehmet Demir' },
-		{ id: 'a', date: t('2026-08-22T10:00'), typeValue: 'income', category: 'Sponsorluk', amountMinor: 3500000, description: 'Sponsor' },
-		{ id: 'd', date: t('2026-10-01T10:00'), typeValue: 'expense', category: 'İkram', amountMinor: 115000, description: 'Çay, kahve' },
-		{ id: 'e', date: t('2026-10-04T10:00'), typeValue: 'expense', category: 'Donanım', amountMinor: 165000, description: 'Filament' },
+		{ id: 'c', date: t('2026-09-06T10:00'), typeValue: 'expense', category: 'hardware', amountMinor: 890000, description: 'Raspberry Pi', recorderNameSurname: 'Mehmet Demir' },
+		{ id: 'a', date: t('2026-08-22T10:00'), typeValue: 'income', category: 'sponsorship', amountMinor: 3500000, description: 'Sponsor' },
+		{ id: 'd', date: t('2026-10-01T10:00'), typeValue: 'expense', category: 'catering', amountMinor: 115000, description: 'Çay, kahve' },
+		{ id: 'e', date: t('2026-10-04T10:00'), typeValue: 'expense', category: 'hardware', amountMinor: 165000, description: 'Filament' },
 	];
 	const b = runningBalance(rows);
 	assert.deepEqual([b.get('a'), b.get('c'), b.get('d'), b.get('e')], [3500000, 2610000, 2495000, 2330000]);
 	const dag = categoryDistribution(rows);
-	assert.deepEqual(dag.map((d) => d.category), ['Donanım', 'İkram']);
+	assert.deepEqual(dag.map((d) => d.category), ['hardware', 'catering']);
 	assert.equal(dag[0].amountMinor, 1055000);
 	assert.ok(Math.abs(dag[0].ratio + dag[1].ratio - 1) < 1e-9);
 	const month = monthlyFeed(rows, t('2026-10-06T00:30'), 3);
@@ -674,7 +674,7 @@ check('ledger: running balance, categories, months, filters', () => {
 	assert.deepEqual(filterRecords(rows, { typeValue: 'expense', month: '2026-10' }).map((r) => r.id), ['d', 'e']);
 	assert.deepEqual(filterRecords(rows, { search: 'CAY', fold }).map((r) => r.id), ['d']);
 	assert.deepEqual(filterRecords(rows, { search: 'mehmet', fold }).map((r) => r.id), ['c']);
-	assert.deepEqual(filterRecords(rows, { category: 'Donanım' }).map((r) => r.id), ['c', 'e']);
+	assert.deepEqual(filterRecords(rows, { category: 'hardware' }).map((r) => r.id), ['c', 'e']);
 	const now = t('2026-10-06T00:30');
 	assert.ok(isValidDate(now, now) && isValidDate(t('2025-01-01'), now));
 	assert.ok(!isValidDate(now + 3 * 86_400_000, now) && !isValidDate(t('2020-01-01'), now) && !isValidDate(NaN, now));

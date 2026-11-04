@@ -8,7 +8,7 @@ export interface CertificatePDFData {
 	title: string;
 	verificationCode: string;
 	issuanceDate: number;
-	/** University line, club name and the two signatories, from `/api/kulup`. */
+	/** University line, club name and the two signatories, from `/api/community`. */
 	university: string;
 	clubName: string;
 	signatures: { name: string; rank: string }[];

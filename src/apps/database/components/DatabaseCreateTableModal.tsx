@@ -210,7 +210,7 @@ export function DatabaseCreateTableModal({ dbToken, onClose, onSuccess }: Databa
 						<label style={{ fontSize: '12px', fontWeight: 600 }}>Tablo Adı:</label>
 						<input
 							type="text"
-							placeholder="orn: kulup_odulleri"
+							placeholder="e.g. club_awards"
 							value={tableName}
 							onChange={(e) => setTableName(e.target.value)}
 							style={{

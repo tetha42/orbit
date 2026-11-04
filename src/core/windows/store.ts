@@ -186,7 +186,7 @@ export function createWindowStore() {
 		if (typeof window !== 'undefined') {
 			try {
 				// Clear any session/local storage keys prefixed for this app
-				const prefix = `kulup_${id}`;
+				const prefix = `club_${id}`;
 				Object.keys(localStorage).forEach((key) => {
 					if (key.startsWith(prefix) || key.startsWith(`app:${id}:`)) {
 						localStorage.removeItem(key);

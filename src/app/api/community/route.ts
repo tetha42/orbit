@@ -58,7 +58,7 @@ async function handlePATCH(request: Request) {
 	} catch (error) {
 		const message = error instanceof Error ? error.message : '';
 		if (message && !message.includes('\n')) return NextResponse.json({ error: message }, { status: 400 });
-		console.error('API /api/kulup PATCH error:', error);
+		console.error('API /api/community PATCH error:', error);
 		return NextResponse.json({ error: 'Kaydedilemedi.' }, { status: 500 });
 	}
 }

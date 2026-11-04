@@ -117,7 +117,7 @@ export default async function suite(t) {
 		await view.waitFor();
 		t.check(await view.getByText(star.nameSurname).count() === 1, 'sertifikada üyenin adı');
 		t.check(await view.getByText(title).count() >= 1, 'sertifikada başlık');
-		const club = (await starApi.get('/api/kulup')).json;
+		const club = (await starApi.get('/api/community')).json;
 		t.check(await view.getByText(club.university.toLocaleUpperCase('tr-TR')).count() === 1, 'sertifikada Belge Ayarları\'ndaki üniversite (PDF ile aynı)');
 		await view.locator('img').first().waitFor();
 		const [download] = await Promise.all([page.waitForEvent('download'), view.getByRole('button', { name: 'Vektör PDF İndir' }).click()]);

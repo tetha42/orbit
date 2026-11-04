@@ -501,7 +501,7 @@ async function run() {
 		try {
 			// GET /api/soc/inspection
 			const authInspectionRes = await fetch(`${BASE_URL}/api/soc/inspection?target=tmp`, {
-				headers: { Cookie: `kulup_session_token=${adminSessionToken}` },
+				headers: { Cookie: `club_session_token=${adminSessionToken}` },
 			});
 			if (!authInspectionRes.ok) {
 				throw new Error(`Admin failed to retrieve /api/soc/inspection telemetry! HTTP ${authInspectionRes.status}`);
@@ -514,7 +514,7 @@ async function run() {
 
 			// Path traversal check (/etc)
 			const traversalRes = await fetch(`${BASE_URL}/api/soc/inspection?target=/etc`, {
-				headers: { Cookie: `kulup_session_token=${adminSessionToken}` },
+				headers: { Cookie: `club_session_token=${adminSessionToken}` },
 			});
 			if (traversalRes.status === 400) {
 				log.ok(`Path traversal attempt (/etc) safely blocked with 400 Bad Request.`);
@@ -525,7 +525,7 @@ async function run() {
 			// POST /api/soc/inspection (action: scan_fim)
 			const postFimRes = await fetch(`${BASE_URL}/api/soc/inspection`, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json', Cookie: `kulup_session_token=${adminSessionToken}` },
+				headers: { 'Content-Type': 'application/json', Cookie: `club_session_token=${adminSessionToken}` },
 				body: JSON.stringify({ action: 'scan_fim', target: 'tmp' }),
 			});
 			if (!postFimRes.ok) {
@@ -540,7 +540,7 @@ async function run() {
 			// POST /api/soc/inspection (action: scan_api)
 			const postApiRes = await fetch(`${BASE_URL}/api/soc/inspection`, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json', Cookie: `kulup_session_token=${adminSessionToken}` },
+				headers: { 'Content-Type': 'application/json', Cookie: `club_session_token=${adminSessionToken}` },
 				body: JSON.stringify({ action: 'scan_api' }),
 			});
 			if (!postApiRes.ok) {
@@ -555,7 +555,7 @@ async function run() {
 			// 6.5.1 Individual Route Probe (action: probe_route)
 			const postProbeRes = await fetch(`${BASE_URL}/api/soc/inspection`, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json', Cookie: `kulup_session_token=${adminSessionToken}` },
+				headers: { 'Content-Type': 'application/json', Cookie: `club_session_token=${adminSessionToken}` },
 				body: JSON.stringify({ action: 'probe_route', endpoint: '/api/auth/me' }),
 			});
 			if (!postProbeRes.ok) {
@@ -570,7 +570,7 @@ async function run() {
 			// 6.5.2 Official AppSec Executive Audit Report Generation (action: generate_report)
 			const postReportRes = await fetch(`${BASE_URL}/api/soc/inspection`, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json', Cookie: `kulup_session_token=${adminSessionToken}` },
+				headers: { 'Content-Type': 'application/json', Cookie: `club_session_token=${adminSessionToken}` },
 				body: JSON.stringify({ action: 'generate_report' }),
 			});
 			if (!postReportRes.ok) {
@@ -592,7 +592,7 @@ async function run() {
 			}
 
 			const csvExportRes = await fetch(`${BASE_URL}/api/soc/export?format=csv`, {
-				headers: { Cookie: `kulup_session_token=${adminSessionToken}` },
+				headers: { Cookie: `club_session_token=${adminSessionToken}` },
 			});
 			if (!csvExportRes.ok) {
 				throw new Error(`Admin failed to retrieve /api/soc/export?format=csv! HTTP ${csvExportRes.status}`);
@@ -615,7 +615,7 @@ async function run() {
 				[Date.now(), adminUserId]
 			);
 			const csvFormulaRes = await fetch(`${BASE_URL}/api/soc/export?format=csv&limit=5`, {
-				headers: { Cookie: `kulup_session_token=${adminSessionToken}` },
+				headers: { Cookie: `club_session_token=${adminSessionToken}` },
 			});
 			const formulaCsvText = await csvFormulaRes.text();
 			if (!formulaCsvText.includes("''=cmd|' /C calc'!A0") && !formulaCsvText.includes("'=cmd")) {
@@ -624,7 +624,7 @@ async function run() {
 			log.ok('SIEM CSV export OWASP Formula Injection (CSV Injection) shield verified.');
 
 			const jsonExportRes = await fetch(`${BASE_URL}/api/soc/export?format=json`, {
-				headers: { Cookie: `kulup_session_token=${adminSessionToken}` },
+				headers: { Cookie: `club_session_token=${adminSessionToken}` },
 			});
 			if (!jsonExportRes.ok) {
 				throw new Error(`Admin failed to retrieve /api/soc/export?format=json! HTTP ${jsonExportRes.status}`);
@@ -648,7 +648,7 @@ async function run() {
 
 			// Test 1: Level is Not (level=INFO&levelOp=neq)
 			const siemNeqRes = await fetch(`${BASE_URL}/api/soc?action=siem&seviye=INFO&seviyeOp=neq&limit=50`, {
-				headers: { Cookie: `kulup_session_token=${adminSessionToken}` },
+				headers: { Cookie: `club_session_token=${adminSessionToken}` },
 			});
 			const siemNeqData = await siemNeqRes.json();
 			const hasInfoLog = (siemNeqData.siem || []).some((l) => l.level === 'INFO');
@@ -659,7 +659,7 @@ async function run() {
 
 			// Test 2: IP is Not (ip=127.0.0.1&ipOp=neq)
 			const siemIpNeqRes = await fetch(`${BASE_URL}/api/soc?action=siem&ip=127.0.0.1&ipOp=neq&limit=50`, {
-				headers: { Cookie: `kulup_session_token=${adminSessionToken}` },
+				headers: { Cookie: `club_session_token=${adminSessionToken}` },
 			});
 			const siemIpNeqData = await siemIpNeqRes.json();
 			const hasLocalhost = (siemIpNeqData.siem || []).some((l) => l.ip === '127.0.0.1');
@@ -671,7 +671,7 @@ async function run() {
 			// Test 3: Column-based "Does Not Contain" (searchField=message&searchOp=not_contains&search=HEARTBEAT)
 			const siemNotContainsRes = await fetch(
 				`${BASE_URL}/api/soc?action=siem&aramaAlani=mesaj&aramaOp=not_contains&arama=HEARTBEAT&limit=50`,
-				{ headers: { Cookie: `kulup_session_token=${adminSessionToken}` } }
+				{ headers: { Cookie: `club_session_token=${adminSessionToken}` } }
 			);
 			const siemNotContainsData = await siemNotContainsRes.json();
 			const hasHeartbeat = (siemNotContainsData.siem || []).some((l) => l.message.includes('HEARTBEAT'));
@@ -682,7 +682,7 @@ async function run() {
 
 			// Test 4: Search Keyword Negation Support (-127.0.0.1)
 			const siemTokenNegRes = await fetch(`${BASE_URL}/api/soc?action=siem&arama=-127.0.0.1&limit=50`, {
-				headers: { Cookie: `kulup_session_token=${adminSessionToken}` },
+				headers: { Cookie: `club_session_token=${adminSessionToken}` },
 			});
 			const siemTokenNegData = await siemTokenNegRes.json();
 			const hasLocalToken = (siemTokenNegData.siem || []).some((l) => l.ip === '127.0.0.1');
@@ -695,7 +695,7 @@ async function run() {
 			const badCidrRes = await fetch(`${BASE_URL}/api/soc`, {
 				method: 'POST',
 				headers: {
-					Cookie: `kulup_session_token=${adminSessionToken}`,
+					Cookie: `club_session_token=${adminSessionToken}`,
 					'Content-Type': 'application/json',
 				},
 				body: JSON.stringify({ action: 'ban_ip', ip: '198.51.100.0/' }),
@@ -709,7 +709,7 @@ async function run() {
 			const broadCidrRes = await fetch(`${BASE_URL}/api/soc`, {
 				method: 'POST',
 				headers: {
-					Cookie: `kulup_session_token=${adminSessionToken}`,
+					Cookie: `club_session_token=${adminSessionToken}`,
 					'Content-Type': 'application/json',
 				},
 				body: JSON.stringify({ action: 'ban_ip', ip: '0.0.0.0/0' }),
@@ -757,7 +757,7 @@ async function run() {
 			const setup2faRes = await fetch(`${BASE_URL}/api/auth/2fa/setup`, {
 				method: 'POST',
 				headers: {
-					Cookie: `kulup_session_token=${initialSessionToken}`,
+					Cookie: `club_session_token=${initialSessionToken}`,
 					'Content-Type': 'application/json',
 				},
 				body: JSON.stringify({}),
@@ -787,7 +787,7 @@ async function run() {
 			const enable2faRes = await fetch(`${BASE_URL}/api/auth/2fa/enable`, {
 				method: 'POST',
 				headers: {
-					Cookie: `kulup_session_token=${initialSessionToken}`,
+					Cookie: `club_session_token=${initialSessionToken}`,
 					'Content-Type': 'application/json',
 				},
 				body: JSON.stringify({ code: totpCode }),
@@ -809,7 +809,7 @@ async function run() {
 			const legacyVerifyRes = await fetch(`${BASE_URL}/api/auth/2fa/enable`, {
 				method: 'POST',
 				headers: {
-					Cookie: `kulup_session_token=${initialSessionToken}`,
+					Cookie: `club_session_token=${initialSessionToken}`,
 					'Content-Type': 'application/json',
 				},
 				body: JSON.stringify({ code: legacyTotpCode }),
@@ -825,7 +825,7 @@ async function run() {
 			const changePassRes = await fetch(`${BASE_URL}/api/profile/password`, {
 				method: 'POST',
 				headers: {
-					Cookie: `kulup_session_token=${initialSessionToken}`,
+					Cookie: `club_session_token=${initialSessionToken}`,
 					'Content-Type': 'application/json',
 				},
 				body: JSON.stringify({ current: initialPassword, fresh: newPassword }),
@@ -835,9 +835,9 @@ async function run() {
 				throw new Error(`Password change failed! HTTP: ${changePassRes.status}, Body: ${errBody}`);
 			}
 			const setCookieHeader = changePassRes.headers.get('set-cookie') || '';
-			const matchCookie = setCookieHeader.match(/kulup_session_token=([^;]+)/);
+			const matchCookie = setCookieHeader.match(/club_session_token=([^;]+)/);
 			if (!matchCookie) {
-				throw new Error('Password change did not set fresh session cookie (kulup_session_token)!');
+				throw new Error('Password change did not set fresh session cookie (club_session_token)!');
 			}
 			const freshSessionToken = matchCookie[1];
 			if (freshSessionToken === initialSessionToken) {
@@ -846,7 +846,7 @@ async function run() {
 
 			// Old session token must be invalidated (must return 401)
 			const oldSessionCheck = await fetch(`${BASE_URL}/api/profile`, {
-				headers: { Cookie: `kulup_session_token=${initialSessionToken}` },
+				headers: { Cookie: `club_session_token=${initialSessionToken}` },
 			});
 			if (oldSessionCheck.status !== 401) {
 				throw new Error(`Old session token still valid after password change! HTTP Status: ${oldSessionCheck.status}`);
@@ -855,7 +855,7 @@ async function run() {
 
 			// New session token must work seamlessly (must return 200)
 			const newSessionCheck = await fetch(`${BASE_URL}/api/profile`, {
-				headers: { Cookie: `kulup_session_token=${freshSessionToken}` },
+				headers: { Cookie: `club_session_token=${freshSessionToken}` },
 			});
 			if (!newSessionCheck.ok) {
 				throw new Error(`Failed to read profile with fresh session token! HTTP Status: ${newSessionCheck.status}`);
@@ -867,7 +867,7 @@ async function run() {
 				await fetch(`${BASE_URL}/api/profile/password`, {
 					method: 'POST',
 					headers: {
-						Cookie: `kulup_session_token=${freshSessionToken}`,
+						Cookie: `club_session_token=${freshSessionToken}`,
 						'Content-Type': 'application/json',
 					},
 					body: JSON.stringify({ current: 'YanlisSifre!', fresh: newPassword }),
@@ -875,7 +875,7 @@ async function run() {
 			}
 
 			const socOverviewRes = await fetch(`${BASE_URL}/api/soc?action=overview`, {
-				headers: { Cookie: `kulup_session_token=${freshSessionToken}` },
+				headers: { Cookie: `club_session_token=${freshSessionToken}` },
 			});
 			if (!socOverviewRes.ok) {
 				throw new Error(`Failed to get SoC overview! HTTP: ${socOverviewRes.status}`);
@@ -891,7 +891,7 @@ async function run() {
 			const unthrottleRes = await fetch(`${BASE_URL}/api/soc`, {
 				method: 'POST',
 				headers: {
-					Cookie: `kulup_session_token=${freshSessionToken}`,
+					Cookie: `club_session_token=${freshSessionToken}`,
 					'Content-Type': 'application/json',
 				},
 				body: JSON.stringify({ action: 'clear_rate_limit', key: rateLimitKey }),
@@ -909,7 +909,7 @@ async function run() {
 			const postUnthrottleTest = await fetch(`${BASE_URL}/api/profile/password`, {
 				method: 'POST',
 				headers: {
-					Cookie: `kulup_session_token=${freshSessionToken}`,
+					Cookie: `club_session_token=${freshSessionToken}`,
 					'Content-Type': 'application/json',
 				},
 				body: JSON.stringify({ current: 'YanlisSifre!', fresh: 'BaskaSifre123!' }),
@@ -946,7 +946,7 @@ async function run() {
 			const addIpv6BanRes = await fetch(`${BASE_URL}/api/soc`, {
 				method: 'POST',
 				headers: {
-					Cookie: `kulup_session_token=${testAdminSessionToken}`,
+					Cookie: `club_session_token=${testAdminSessionToken}`,
 					'Content-Type': 'application/json',
 				},
 				body: JSON.stringify({ action: 'ban', ip: testIpv6Cidr, reason: 'E2E IPv6 CIDR Karantina Testi' }),
@@ -979,7 +979,7 @@ async function run() {
 			await fetch(`${BASE_URL}/api/soc`, {
 				method: 'POST',
 				headers: {
-					Cookie: `kulup_session_token=${testAdminSessionToken}`,
+					Cookie: `club_session_token=${testAdminSessionToken}`,
 					'Content-Type': 'application/json',
 				},
 				body: JSON.stringify({ action: 'unban', ip: testIpv6Cidr }),
@@ -1007,7 +1007,7 @@ async function run() {
 				const createNoteRes = await fetch(`${BASE_URL}/api/notes`, {
 					method: 'POST',
 					headers: {
-						Cookie: `kulup_session_token=${userASession}`,
+						Cookie: `club_session_token=${userASession}`,
 						'Content-Type': 'application/json',
 					},
 					body: JSON.stringify({
@@ -1025,7 +1025,7 @@ async function run() {
 				const idorNoteRes = await fetch(`${BASE_URL}/api/notes`, {
 					method: 'POST',
 					headers: {
-						Cookie: `kulup_session_token=${userBSession}`,
+						Cookie: `club_session_token=${userBSession}`,
 						'Content-Type': 'application/json',
 					},
 					body: JSON.stringify({
@@ -1049,7 +1049,7 @@ async function run() {
 				// 8.3 Secure Logout and Terminal PTY Cleanup Test
 				const logoutRes = await fetch(`${BASE_URL}/api/auth/logout`, {
 					method: 'POST',
-					headers: { Cookie: `kulup_session_token=${userASession}` },
+					headers: { Cookie: `club_session_token=${userASession}` },
 				});
 				if (!logoutRes.ok) {
 					throw new Error(`Logout request failed! HTTP: ${logoutRes.status}`);
@@ -1058,7 +1058,7 @@ async function run() {
 
 				// Verify session deleted from database (profile should no longer be readable)
 				const postLogoutProfileRes = await fetch(`${BASE_URL}/api/profile`, {
-					headers: { Cookie: `kulup_session_token=${userASession}` },
+					headers: { Cookie: `club_session_token=${userASession}` },
 				});
 				if (postLogoutProfileRes.status !== 401) {
 					throw new Error('Old session still valid despite logout!');
@@ -1070,7 +1070,7 @@ async function run() {
 				const banRes = await fetch(`${BASE_URL}/api/soc`, {
 					method: 'POST',
 					headers: {
-						Cookie: `kulup_session_token=${testAdminSessionToken}`,
+						Cookie: `club_session_token=${testAdminSessionToken}`,
 						'Content-Type': 'application/json',
 					},
 					body: JSON.stringify({ action: 'ban', ip: bannedIpForPasskey, reason: 'Passkey Test Ban' }),
@@ -1111,7 +1111,7 @@ async function run() {
 				const evilRedirectRes = await fetch(`${BASE_URL}/api/oauth/clients`, {
 					method: 'POST',
 					headers: {
-						Cookie: `kulup_session_token=${testAdminSessionToken}`,
+						Cookie: `club_session_token=${testAdminSessionToken}`,
 						'Content-Type': 'application/json',
 					},
 					body: JSON.stringify({
@@ -1127,7 +1127,7 @@ async function run() {
 				const insecureHttpRedirectRes = await fetch(`${BASE_URL}/api/oauth/clients`, {
 					method: 'POST',
 					headers: {
-						Cookie: `kulup_session_token=${testAdminSessionToken}`,
+						Cookie: `club_session_token=${testAdminSessionToken}`,
 						'Content-Type': 'application/json',
 					},
 					body: JSON.stringify({
@@ -1143,7 +1143,7 @@ async function run() {
 				const validOAuthRes = await fetch(`${BASE_URL}/api/oauth/clients`, {
 					method: 'POST',
 					headers: {
-						Cookie: `kulup_session_token=${testAdminSessionToken}`,
+						Cookie: `club_session_token=${testAdminSessionToken}`,
 						'Content-Type': 'application/json',
 					},
 					body: JSON.stringify({
@@ -1392,7 +1392,7 @@ async function run() {
 
 			const uploadPhpRes = await fetch(`${BASE_URL}/api/upload`, {
 				method: 'POST',
-				headers: { Cookie: `kulup_session_token=${uploadAdminToken}` },
+				headers: { Cookie: `club_session_token=${uploadAdminToken}` },
 				body: fakePhpPayload,
 			});
 			if (uploadPhpRes.status !== 415) {
@@ -1407,7 +1407,7 @@ async function run() {
 
 			const uploadSvgRes = await fetch(`${BASE_URL}/api/upload`, {
 				method: 'POST',
-				headers: { Cookie: `kulup_session_token=${uploadAdminToken}` },
+				headers: { Cookie: `club_session_token=${uploadAdminToken}` },
 				body: svgPayload,
 			});
 			if (uploadSvgRes.status !== 415) {
@@ -1447,7 +1447,7 @@ async function run() {
 				// Member A attempts to read a foreign mail thread
 				const fakeTopicId = 'konu_foreign_999999';
 				const idorReadRes = await fetch(`${BASE_URL}/api/messages/${fakeTopicId}`, {
-					headers: { Cookie: `kulup_session_token=${memberASession}` },
+					headers: { Cookie: `club_session_token=${memberASession}` },
 				});
 				if (idorReadRes.status !== 404) {
 					throw new Error(`Accessing unauthorized mail thread did not return 404! HTTP: ${idorReadRes.status}`);
@@ -1458,7 +1458,7 @@ async function run() {
 				const idorReplyRes = await fetch(`${BASE_URL}/api/messages/${fakeTopicId}`, {
 					method: 'POST',
 					headers: {
-						Cookie: `kulup_session_token=${memberASession}`,
+						Cookie: `club_session_token=${memberASession}`,
 						'Content-Type': 'application/json',
 					},
 					body: JSON.stringify({ body: 'Unauthorized reply injection attempt' }),
@@ -1472,7 +1472,7 @@ async function run() {
 				const idorPatchRes = await fetch(`${BASE_URL}/api/messages/${fakeTopicId}`, {
 					method: 'PATCH',
 					headers: {
-						Cookie: `kulup_session_token=${memberASession}`,
+						Cookie: `club_session_token=${memberASession}`,
 						'Content-Type': 'application/json',
 					},
 					body: JSON.stringify({ action: 'trash' }),
@@ -1489,7 +1489,7 @@ async function run() {
 
 				// 12.1 Standard member must not access DB Studio and Terminal routes
 				const dbMemberRes = await fetch(`${BASE_URL}/api/database/tables`, {
-					headers: { Cookie: `kulup_session_token=${memberASession}` },
+					headers: { Cookie: `club_session_token=${memberASession}` },
 				});
 				if (dbMemberRes.status !== 401 && dbMemberRes.status !== 403) {
 					throw new Error(`Standard member was able to access /api/database/tables! HTTP: ${dbMemberRes.status}`);
@@ -1499,7 +1499,7 @@ async function run() {
 				const termMemberRes = await fetch(`${BASE_URL}/api/terminal/session`, {
 					method: 'POST',
 					headers: {
-						Cookie: `kulup_session_token=${memberASession}`,
+						Cookie: `club_session_token=${memberASession}`,
 						'Content-Type': 'application/json',
 					},
 					body: JSON.stringify({}),
@@ -1513,7 +1513,7 @@ async function run() {
 				const noDbTokenRes = await fetch(`${BASE_URL}/api/database/query`, {
 					method: 'POST',
 					headers: {
-						Cookie: `kulup_session_token=${uploadAdminToken}`,
+						Cookie: `club_session_token=${uploadAdminToken}`,
 						'Content-Type': 'application/json',
 					},
 					body: JSON.stringify({ query: 'SELECT 1' }),
@@ -1540,7 +1540,7 @@ async function run() {
 				const osPrimitiveRes = await fetch(`${BASE_URL}/api/database/query`, {
 					method: 'POST',
 					headers: {
-						Cookie: `kulup_session_token=${uploadAdminToken}`,
+						Cookie: `club_session_token=${uploadAdminToken}`,
 						'x-db-token': validDbToken,
 						'Content-Type': 'application/json',
 					},
@@ -1555,7 +1555,7 @@ async function run() {
 				const protectedTableRes = await fetch(`${BASE_URL}/api/database/query`, {
 					method: 'POST',
 					headers: {
-						Cookie: `kulup_session_token=${uploadAdminToken}`,
+						Cookie: `club_session_token=${uploadAdminToken}`,
 						'x-db-token': validDbToken,
 						'Content-Type': 'application/json',
 					},
@@ -1680,7 +1680,7 @@ async function run() {
 			// 14.2 Authentication test from legitimate IP
 			const legitRes = await fetch(`${BASE_URL}/api/auth/me`, {
 				headers: {
-					Cookie: `kulup_session_token=${test14SessionToken}`,
+					Cookie: `club_session_token=${test14SessionToken}`,
 					'CF-Connecting-IP': initialIp,
 				},
 			});
@@ -1694,7 +1694,7 @@ async function run() {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					Cookie: `kulup_session_token=${test14SessionToken}`,
+					Cookie: `club_session_token=${test14SessionToken}`,
 					'CF-Connecting-IP': initialIp,
 				},
 				body: JSON.stringify({
@@ -1711,7 +1711,7 @@ async function run() {
 			const stolenCookieIp = '203.0.113.88';
 			const hijackAttemptRes = await fetch(`${BASE_URL}/api/auth/me`, {
 				headers: {
-					Cookie: `kulup_session_token=${test14SessionToken}`,
+					Cookie: `club_session_token=${test14SessionToken}`,
 					'CF-Connecting-IP': stolenCookieIp,
 				},
 			});
@@ -1744,7 +1744,7 @@ async function run() {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					Cookie: `kulup_session_token=${s15AdminToken}`,
+					Cookie: `club_session_token=${s15AdminToken}`,
 				},
 				body: JSON.stringify({
 					action: 'toggle_kill_switch',
@@ -1777,7 +1777,7 @@ async function run() {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					Cookie: `kulup_session_token=${s15AdminToken}`,
+					Cookie: `club_session_token=${s15AdminToken}`,
 				},
 				body: JSON.stringify({
 					action: 'toggle_kill_switch',
@@ -1804,7 +1804,7 @@ async function run() {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					Cookie: `kulup_session_token=${s15AdminToken}`,
+					Cookie: `club_session_token=${s15AdminToken}`,
 				},
 				body: JSON.stringify({
 					action: 'toggle_kill_switch',
@@ -1839,7 +1839,7 @@ async function run() {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					Cookie: `kulup_session_token=${s15AdminToken}`,
+					Cookie: `club_session_token=${s15AdminToken}`,
 				},
 				body: JSON.stringify({
 					action: 'test_webhook',
@@ -1862,7 +1862,7 @@ async function run() {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					Cookie: `kulup_session_token=${s15AdminToken}`,
+					Cookie: `club_session_token=${s15AdminToken}`,
 				},
 				body: JSON.stringify({ action: 'toggle_kill_switch', key: 'disableRegistrations', value: false }),
 			}).catch(() => {});
@@ -1870,7 +1870,7 @@ async function run() {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					Cookie: `kulup_session_token=${s15AdminToken}`,
+					Cookie: `club_session_token=${s15AdminToken}`,
 				},
 				body: JSON.stringify({ action: 'toggle_kill_switch', key: 'disableUploads', value: false }),
 			}).catch(() => {});
@@ -1878,7 +1878,7 @@ async function run() {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					Cookie: `kulup_session_token=${s15AdminToken}`,
+					Cookie: `club_session_token=${s15AdminToken}`,
 				},
 				body: JSON.stringify({ action: 'toggle_kill_switch', key: 'passkeyOnly', value: false }),
 			}).catch(() => {});
@@ -1906,7 +1906,7 @@ async function run() {
 		try {
 			// 16.1 Paginated SIEM Query & Histogram Verification
 			const siemPageRes = await fetch(`${BASE_URL}/api/soc?action=siem&timeRange=24h&page=1&limit=25`, {
-				headers: { Cookie: `kulup_session_token=${s16AdminToken}` },
+				headers: { Cookie: `club_session_token=${s16AdminToken}` },
 			});
 			if (!siemPageRes.ok) {
 				throw new Error(`Paginated SIEM query failed! HTTP: ${siemPageRes.status}`);
@@ -1929,7 +1929,7 @@ async function run() {
 
 			// 16.2 Time Window Filter (Last 15 Minutes)
 			const siem15mRes = await fetch(`${BASE_URL}/api/soc?action=siem&timeRange=15m&page=1&limit=50`, {
-				headers: { Cookie: `kulup_session_token=${s16AdminToken}` },
+				headers: { Cookie: `club_session_token=${s16AdminToken}` },
 			});
 			const siem15mJson = await siem15mRes.json();
 			if (siem15mRes.ok && Array.isArray(siem15mJson.siem)) {
@@ -1948,7 +1948,7 @@ async function run() {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					Cookie: `kulup_session_token=${s16AdminToken}`,
+					Cookie: `club_session_token=${s16AdminToken}`,
 				},
 				body: JSON.stringify({ action: 'reset_defcon' }),
 			});
@@ -1963,7 +1963,7 @@ async function run() {
 
 			// 16.4 Overview DEFCON Verification
 			const overviewRes = await fetch(`${BASE_URL}/api/soc?action=all`, {
-				headers: { Cookie: `kulup_session_token=${s16AdminToken}` },
+				headers: { Cookie: `club_session_token=${s16AdminToken}` },
 			});
 			const overviewJson = await overviewRes.json();
 			const activeDefcon = overviewJson.overview?.defcon;

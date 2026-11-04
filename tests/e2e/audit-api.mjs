@@ -37,7 +37,7 @@ function client() {
 			body: body ? JSON.stringify(body) : undefined,
 		});
 		const set = res.headers.get('set-cookie');
-		if (set && set.includes('kulup_session_token=')) cookie = set.split(';')[0];
+		if (set && set.includes('club_session_token=')) cookie = set.split(';')[0];
 		return { status: res.status, json: await res.json().catch(() => null) };
 	};
 	return { call, cookie: () => cookie };
@@ -211,7 +211,7 @@ let roleId;
 }
 {
 	const apply = async (name) => {
-		const reg = await client().call('POST', '/api/auth/register', { name, surname: 'Aday', email: `${name.toLowerCase()}${Date.now()}@kulup.test`, password: 'Aday-Sifre-2026!', department: 'İşletme', grade: 1 });
+		const reg = await client().call('POST', '/api/auth/register', { name, surname: 'Aday', email: `${name.toLowerCase()}${Date.now()}@club.test`, password: 'Aday-Sifre-2026!', department: 'İşletme', grade: 1 });
 		if (reg.status >= 300) throw new Error(`register: ${JSON.stringify(reg.json)}`);
 		return (await admin.call('GET', '/api/members')).json.members.find((m) => m.name === name && m.status === 'pending');
 	};
@@ -241,7 +241,7 @@ let roleId;
 
 // ---- deleting a member keeps only name and e-mail of the target ----------------
 {
-	const email = `silinecek${Date.now()}@kulup.test`;
+	const email = `silinecek${Date.now()}@club.test`;
 	const add = await recorded(() => admin.call('POST', '/api/members', { name: 'Silinecek', surname: 'Üye', email, department: 'Mimarlık', grade: 3, studentNo: '2401099', roleId: R.member, bio: 'özel bilgi' }));
 	const m = add.res.json?.member;
 	const addAfter = add.fresh[0]?.after;
@@ -261,13 +261,13 @@ let roleId;
 // ---- SMTP settings: the password is never recorded -----------------------------
 const SMTP_SECRET = 'GizliUygulamaSifresi-9f8e7d6c';
 {
-	const body = { smtp_host: 'smtp.audit.test', smtp_port: 587, smtp_secure: false, smtp_user: 'audit@kulup.test', smtp_from: 'Denetim <audit@kulup.test>' };
+	const body = { smtp_host: 'smtp.audit.test', smtp_port: 587, smtp_secure: false, smtp_user: 'audit@club.test', smtp_from: 'Denetim <audit@club.test>' };
 	const a = await recorded(() => admin.call('POST', '/api/settings/smtp', { ...body, smtp_pass: SMTP_SECRET }));
 	const k = a.fresh[0];
 	ok(a.res.status === 200 && a.fresh.length === 1 && k.action === 'setting.smtp', 'SMTP change → exactly one record', JSON.stringify(a.res));
 	const kAfter = k.after;
 	const kBefore = k.before;
-	ok(kAfter?.smtp_host === 'smtp.audit.test' && kAfter?.smtp_port === '587' && kAfter?.smtp_user === 'audit@kulup.test' && kAfter?.appKey === 'changed' && kBefore?.appKey === 'none', 'SMTP: changed fields, password only as "degisti"', JSON.stringify(k));
+	ok(kAfter?.smtp_host === 'smtp.audit.test' && kAfter?.smtp_port === '587' && kAfter?.smtp_user === 'audit@club.test' && kAfter?.appKey === 'changed' && kBefore?.appKey === 'none', 'SMTP: changed fields, password only as "degisti"', JSON.stringify(k));
 	ok(!JSON.stringify(a.fresh).includes(SMTP_SECRET), 'SMTP: the password is not in the record');
 	const same = await recorded(() => admin.call('POST', '/api/settings/smtp', body));
 	ok(same.res.status === 200 && same.fresh.length === 0, 'saving the same SMTP settings again → no record');
@@ -288,7 +288,7 @@ const SMTP_SECRET = 'GizliUygulamaSifresi-9f8e7d6c';
 // ---- 2FA off ---------------------------------------------------------------------
 let twoFaSecret;
 {
-	const email = `iki${Date.now()}@kulup.test`;
+	const email = `iki${Date.now()}@club.test`;
 	const created = (await admin.call('POST', '/api/members', { name: 'İki', surname: 'Adım', email, department: 'Fizik', grade: 1, roleId: R.member })).json;
 	const u = await login(created.member.email, created.temporaryPassword);
 	const setup = (await u.call('POST', '/api/auth/2fa/setup', {})).json;
@@ -428,7 +428,7 @@ if (!DATABASE_URL) {
 		const keyCol = 'key';
 		const valCol = 'value';
 		const before4 = (await q(`SELECT ${valCol} AS deger FROM ${settingsTable} WHERE ${keyCol} = 'smtp_host'`))[0]?.value;
-		const s = await admin.call('POST', '/api/settings/smtp', { smtp_host: 'smtp.never.test', smtp_port: 465, smtp_user: 'x@kulup.test' });
+		const s = await admin.call('POST', '/api/settings/smtp', { smtp_host: 'smtp.never.test', smtp_port: 465, smtp_user: 'x@club.test' });
 		ok(s.status === 500 && (await q(`SELECT ${valCol} AS deger FROM ${settingsTable} WHERE ${keyCol} = 'smtp_host'`))[0]?.value === before4, 'SMTP: no record possible → settings unchanged');
 		await q(`DROP TRIGGER audit_test_block ON ${auditTable}`);
 	} finally {

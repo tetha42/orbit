@@ -48,7 +48,7 @@ function client() {
 			body: body ? JSON.stringify(body) : undefined,
 		});
 		const set = res.headers.get('set-cookie');
-		if (set && set.includes('kulup_session_token=')) cookie = set.split(';')[0];
+		if (set && set.includes('club_session_token=')) cookie = set.split(';')[0];
 		const json = await res.json().catch(() => null);
 		return { status: res.status, json };
 	};
@@ -93,10 +93,10 @@ const ROLES = {
 };
 
 const MEMBERS = [
-	{ key: 'zeynep', alias: 'alex', name: 'Zeynep', surname: 'Kaya', email: 'zeynep@kulup.test', role: 'management', department: 'Bilgisayar Mühendisliği', grade: 3 },
-	{ key: 'ege', alias: 'jordan', name: 'Ege', surname: 'Kılıç', email: 'ege@kulup.test', role: 'member', department: 'Yazılım Mühendisliği', grade: 3 },
-	{ key: 'can', alias: 'taylor', name: 'Can', surname: 'Demir', email: 'can@kulup.test', role: 'member', department: 'Bilgisayar Mühendisliği', grade: 2 },
-	{ key: 'reader', alias: 'sam', name: 'Okur', surname: 'Haber', email: 'okur@kulup.test', role: 'news', department: 'Endüstri Mühendisliği', grade: 1 },
+	{ key: 'zeynep', alias: 'alex', name: 'Zeynep', surname: 'Kaya', email: 'zeynep@club.test', role: 'management', department: 'Bilgisayar Mühendisliği', grade: 3 },
+	{ key: 'ege', alias: 'jordan', name: 'Ege', surname: 'Kılıç', email: 'ege@club.test', role: 'member', department: 'Yazılım Mühendisliği', grade: 3 },
+	{ key: 'can', alias: 'taylor', name: 'Can', surname: 'Demir', email: 'can@club.test', role: 'member', department: 'Bilgisayar Mühendisliği', grade: 2 },
+	{ key: 'reader', alias: 'sam', name: 'Okur', surname: 'Haber', email: 'okur@club.test', role: 'news', department: 'Endüstri Mühendisliği', grade: 1 },
 ];
 const PASSWORD = 'Orbit-Test-2026!';
 
@@ -193,7 +193,7 @@ await once('team', async () => {
 });
 await once('news', async () => must(await admin.call('POST', '/api/news', { title: 'Güz Dönemi Tanışma Toplantısı', content: 'Orbit topluluğu yeni dönem tanışma toplantısı ve platform tanıtımı.', category: 'general', publishStatus: 'published' }), 'news'));
 await once('event', async () => must(await admin.call('POST', '/api/events', { action: 'createEvent', title: 'Modern Web ve Git Atölyesi', description: 'Sürüm kontrolü ve açık kaynak işbirliği atölye çalışması', typeValue: 'workshop', location: 'Virtual Lab Stage A', start: Date.now() + 3 * 86400000, endTime: Date.now() + 3 * 86400000 + 2 * 3600000, capacity: 30, status: 'published' }), 'event'));
-await once('income', async () => must(await admin.call('POST', '/api/budget', { typeValue: 'income', category: 'Sponsorluk', amountMinor: 2500000, description: 'Açık Kaynak Ekosistem Sponsorluk Hibesi' }), 'income'));
+await once('income', async () => must(await admin.call('POST', '/api/budget', { typeValue: 'income', category: 'sponsorship', amountMinor: 2500000, description: 'Açık Kaynak Ekosistem Sponsorluk Hibesi' }), 'income'));
 await once('item', async () => {
 	const res = await admin.call('POST', '/api/inventory', { action: 'create', code: 'LAB-RPI-001', name: 'Raspberry Pi 5 (8GB)', category: 'Development Board', location: 'Hardware Lab Rack B-1' });
 	if (res.status === 409) {

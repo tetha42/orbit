@@ -68,7 +68,7 @@ export default async function suite(t) {
 		method: 'POST',
 		// Kayıt ucu IP başına dakikada 5 istek kabul eder; diğer paketlerin denemeleriyle çakışmasın.
 		headers: { 'Content-Type': 'application/json', 'x-forwarded-for': `10.77.${crypto.randomInt(255)}.${crypto.randomInt(255)}` },
-		body: JSON.stringify({ name: 'Başvuru', surname: `Test ${stamp}`, email: `basvuru-${stamp}@kulup.test`, password: crypto.randomBytes(12).toString('hex'), department: 'Fizik', grade: 1, kvkkAccept: true }),
+		body: JSON.stringify({ name: 'Başvuru', surname: `Test ${stamp}`, email: `basvuru-${stamp}@club.test`, password: crypto.randomBytes(12).toString('hex'), department: 'Fizik', grade: 1, kvkkAccept: true }),
 	}).then(async (r) => ({ status: r.status, json: await r.json().catch(() => null) }));
 	const applicant = must(reg, 'başvuru').user;
 	t.cleanup(() => admin.del(`/api/uyeler?id=${applicant.id}`));

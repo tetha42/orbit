@@ -49,7 +49,7 @@ function client() {
 			body: body ? JSON.stringify(body) : undefined,
 		});
 		const set = res.headers.get('set-cookie');
-		if (set && set.includes('kulup_session_token=')) cookie = set.split(';')[0];
+		if (set && set.includes('club_session_token=')) cookie = set.split(';')[0];
 		return { status: res.status, json: await res.json().catch(() => null) };
 	};
 	/** The live stream: resolves with the event names heard until `stop()`. */
@@ -109,10 +109,10 @@ const anon = client();
 
 // A fresh member nobody has given a role.
 const suffix = Date.now().toString(36);
-const created = (await admin.call('POST', '/api/uyeler', { name: 'Yeni', surname: 'Öğrenci', email: `ob-${suffix}@kulup.test`, department: 'Bilgisayar Mühendisliği', grade: 1, roleId: FX.roles.member })).json;
+const created = (await admin.call('POST', '/api/uyeler', { name: 'Yeni', surname: 'Öğrenci', email: `ob-${suffix}@club.test`, department: 'Bilgisayar Mühendisliği', grade: 1, roleId: FX.roles.member })).json;
 const newId = created.member.id;
 const newUser = client();
-await newUser.call('POST', '/api/auth/login', { email: `ob-${suffix}@kulup.test`, password: created.temporaryPassword });
+await newUser.call('POST', '/api/auth/login', { email: `ob-${suffix}@club.test`, password: created.temporaryPassword });
 await newUser.call('POST', '/api/profil/sifre', { current: created.temporaryPassword, fresh: 'Kulup-Test-2026!' });
 await db.query(`UPDATE ${userTable} SET ${roleCol} = NULL WHERE id = $1`, [newId]);
 const me = (await newUser.call('GET', '/api/auth/me')).json?.user;

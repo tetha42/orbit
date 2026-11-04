@@ -1,6 +1,6 @@
 // Tema sistemi (#8): Açık/Koyu/Sistem, vurgu rengi, saydamlık, hareketi azalt; yenileyince korunma;
 // açılışta flaş yok; saydamlık kapalıyken hiçbir yerde backdrop-filter yok; "cam" tek yerden açılıp kapanır.
-// Tercihler tarayıcıda (localStorage `kulup_theme`) durur; sunucuya hiçbir şey yazılmaz, geri alınacak veri yok.
+// Tercihler tarayıcıda (localStorage `club_theme`) durur; sunucuya hiçbir şey yazılmaz, geri alınacak veri yok.
 import { newContext, openApp, openSettingsTab, openWindows } from '../lib/browser.mjs';
 import { dialogReply } from '../lib/diyalog.mjs';
 import { frameBox, movingState, pointerDrag, reloadDesktop, rightClickDesktop, settle, titlePoint } from '../lib/desktop.mjs';
@@ -302,7 +302,7 @@ export default async function suite(t) {
 		await page.locator('input[type=email]').waitFor({ timeout: 30_000 }).catch(() => {});
 		const got = await attrs(page);
 		t.check(JSON.stringify(got) === JSON.stringify({ theme: 'dark', accent: 'blue', transparency: 'off', motion: 'full' }), 'okuma hatasında varsayılanlar (Sistem = koyu işletim sistemi) yazıldı', `${JSON.stringify(got)} ${JSON.stringify(errors)} ${page.url()}`);
-		t.eq(errors.filter((m) => /kulup_theme|SecurityError|denied/.test(m) && /theme|boot/i.test(m)), [], 'tema kodu hata fırlatmadı');
+		t.eq(errors.filter((m) => /club_theme|SecurityError|denied/.test(m) && /theme|boot/i.test(m)), [], 'tema kodu hata fırlatmadı');
 	});
 
 	await t.step('rol boyutu: "Sadece Haberler" rolü de Görünüm ayarlarını değiştirebilir ve kalıcıdır', async () => {

@@ -30,7 +30,7 @@ export async function temporaryMember(t, { permissions, roleId, name = 'Geçici'
 		});
 	}
 	const surname = `Test${tag}`;
-	const email = `e2e-${tag}@kulup.test`;
+	const email = `e2e-${tag}@club.test`;
 	const m = await createMember(admin, t.base, { name, surname, email, roleId: role });
 	t.cleanup(async () => {
 		await admin.del(`/api/uyeler?id=${encodeURIComponent(m.id)}`);

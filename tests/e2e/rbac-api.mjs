@@ -33,7 +33,7 @@ function client() {
 			body: body ? JSON.stringify(body) : undefined,
 		});
 		const set = res.headers.get('set-cookie');
-		if (set && set.includes('kulup_session_token=')) cookie = set.split(';')[0];
+		if (set && set.includes('club_session_token=')) cookie = set.split(';')[0];
 		return { status: res.status, json: await res.json().catch(() => null) };
 	};
 	return { call };
@@ -137,8 +137,8 @@ ok((await st(zeynep, 'POST', '/api/terminal/session', {})) === 403, 'kurul (term
 	ok((await st(ege, 'GET', '/api/budget')) === 403, 'captain → general kasa 403');
 	const own = (await ege.call('GET', `/api/budget?teamId=${teamId}`)).json;
 	ok(own?.permission?.write === true && own.permission.manage === false, 'captain may write own kasa, not transfer');
-	ok((await st(ege, 'POST', '/api/budget', { teamId: teamId, typeValue: 'income', category: 'Diğer', amountMinor: 1000, description: 'Kaptan geliri' })) < 300, 'captain adds income to own kasa');
-	ok((await st(ege, 'POST', '/api/budget', { typeValue: 'income', category: 'Diğer', amountMinor: 1000, description: 'Genel kasaya' })) === 403, 'captain → general kasa write 403');
+	ok((await st(ege, 'POST', '/api/budget', { teamId: teamId, typeValue: 'income', category: 'other', amountMinor: 1000, description: 'Kaptan geliri' })) < 300, 'captain adds income to own kasa');
+	ok((await st(ege, 'POST', '/api/budget', { typeValue: 'income', category: 'other', amountMinor: 1000, description: 'Genel kasaya' })) === 403, 'captain → general kasa write 403');
 	ok((await st(ege, 'POST', '/api/budget', { action: 'transfer', source: null, target: teamId, amountMinor: 100, description: 'aktarım' })) === 403, 'captain → transfer 403');
 	const z = (await zeynep.call('GET', '/api/budget')).json;
 	ok(z?.permission?.write === true && z.permission.manage === true, 'kurul manages general kasa');
@@ -147,7 +147,7 @@ ok((await st(zeynep, 'POST', '/api/terminal/session', {})) === 403, 'kurul (term
 // ---- members: what a reader sees ---------------------------------------------
 {
 	const pend = client();
-	const reg = await pend.call('POST', '/api/auth/register', { name: 'Bekleyen', surname: 'Aday', email: `aday${Date.now()}@kulup.test`, password: 'Aday-Sifre-2026!', department: 'İşletme', grade: 1 });
+	const reg = await pend.call('POST', '/api/auth/register', { name: 'Bekleyen', surname: 'Aday', email: `aday${Date.now()}@club.test`, password: 'Aday-Sifre-2026!', department: 'İşletme', grade: 1 });
 	ok(reg.status < 300, 'registration accepted', JSON.stringify(reg.json));
 	const asMember = (await can.call('GET', '/api/members')).json.members;
 	ok(asMember.every((m) => m.status === 'active' || m.status === 'alumni'), 'üye does not see applications');
@@ -196,7 +196,7 @@ ok((await st(zeynep, 'POST', '/api/terminal/session', {})) === 403, 'kurul (term
 	ok((await hits(can, 'Raspberry')).includes('item'), 'üye finds the inventory item');
 	ok((await hits(reader, 'tanışma')).includes('news'), 'okur finds the news');
 	ok((await hits(reader, 'Atölyesi')).length === 0, 'okur: events not searchable');
-	ok((await hits(can, 'Sponsorluk')).length === 0 && (await hits(zeynep, 'sponsorluk')).includes('ledger'), 'kasa entries only for kasa readers');
+	ok((await hits(can, 'sponsorship')).length === 0 && (await hits(zeynep, 'sponsorluk')).includes('ledger'), 'kasa entries only for kasa readers');
 }
 
 // ---- Posta: portal mail follows mail:kullan ---------------------------------------
@@ -270,7 +270,7 @@ ok((await st(zeynep, 'POST', '/api/terminal/session', {})) === 403, 'kurul (term
 
 // ---- the role's second-factor rule ---------------------------------------------
 {
-	const created = (await admin.call('POST', '/api/members', { name: 'Yeni', surname: 'Kurul', email: `kurul${Date.now()}@kulup.test`, department: 'İşletme', grade: 2, roleId: R.management })).json;
+	const created = (await admin.call('POST', '/api/members', { name: 'Yeni', surname: 'Kurul', email: `kurul${Date.now()}@club.test`, department: 'İşletme', grade: 2, roleId: R.management })).json;
 	const k = client();
 	await k.call('POST', '/api/auth/login', { email: created.member.email, password: created.temporaryPassword });
 	const me = (await k.call('GET', '/api/auth/me')).json.user;

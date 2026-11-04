@@ -55,7 +55,7 @@ export default async function suite(t) {
 
 	await t.step('profil API: kimlik alanları ve geçersiz değerler reddedilir', async () => {
 		const before = (await profile()).user;
-		const r = await me.api.patch('/api/profil', { name: 'Başkası', email: 'baska@kulup.test', roleId: t.fx.roles.management, grade: 3 });
+		const r = await me.api.patch('/api/profil', { name: 'Başkası', email: 'baska@club.test', roleId: t.fx.roles.management, grade: 3 });
 		t.eq(r.status, 200, 'bilinen alan kaydedildi');
 		const after = (await profile()).user;
 		t.eq([after.name, after.email, after.roleInfo?.name], [before.name, before.email, before.roleInfo?.name], 'ad, e-posta ve rol bu uçtan değişmiyor');

@@ -37,7 +37,7 @@ export async function launchBrowser({ headed = false } = {}) {
  * download page; development builds let a tab past it with a per-tab flag, which
  * is set before any page script runs.
  *
- * `prefs` seeds the appearance preferences (localStorage `kulup_theme`, e.g. `{ theme: 'dark' }`)
+ * `prefs` seeds the appearance preferences (localStorage `club_theme`, e.g. `{ theme: 'dark' }`)
  * once, before the page's own scripts — a reload keeps what the page itself saved since;
  * `colorScheme` emulates the OS colour scheme.
  */

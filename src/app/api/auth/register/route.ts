@@ -300,7 +300,7 @@ export async function POST(request: Request) {
 
 		const verifyKey = `register:verify:${normalizedEmail}`;
 
-		if (membershipPolicy.emailVerification && !normalizedEmail.endsWith('@kulup.test')) {
+		if (membershipPolicy.emailVerification && !normalizedEmail.endsWith('@club.test')) {
 		// STEP 1: Generate and send verification code if not provided yet
 		if (!verificationCode) {
 			const sendLimit = consumeRateLimit(`register:send:${normalizedEmail}`, 3, OTP_WINDOW_MS);

@@ -63,8 +63,8 @@ const NEWS_CATEGORY = m({ genel: 'general', atolye: 'workshop', isbirligi: 'coll
 const PUBLISH = m({ yayinda: 'published', taslak: 'draft', iptal: 'cancelled', tamamlandi: 'done' });
 const PROJECT_STATUS = m({ oneri: 'proposed', yayinda: 'published', arsiv: 'archived' });
 const BUDGET_CATEGORY = m({
-	'İkram': 'catering', 'Afiş/Baskı': 'printing', Sponsorluk: 'sponsorship', 'Donanım': 'hardware',
-	'Ulaşım': 'transport', 'Diğer': 'other', 'Ödenek Aktarımı': 'allowance_transfer',
+	'catering': 'catering', 'printing': 'printing', Sponsorluk: 'sponsorship', 'hardware': 'hardware',
+	'transport': 'transport', 'other': 'other', 'Ödenek Aktarımı': 'allowance_transfer',
 });
 
 /** table, column, old value → new value. */
@@ -188,8 +188,7 @@ async function renamePermissionLevels(client: PoolClient): Promise<void> {
 
 async function convertJsonColumn(client: PoolClient, table: string, column: string, jsonb: boolean): Promise<void> {
 	if (!(await columnExists(client, table, column))) return;
-	const cast = jsonb ? '' : '::text';
-	const rows = await client.query(`SELECT id, ${column}${cast} AS doc FROM ${table} WHERE ${column}${cast} ~ '"[a-z]+(Mi)?"\\s*:' `);
+	const rows = await client.query(`SELECT id, ${column} AS doc FROM ${table} WHERE ${column}::text ~ '"[a-z]+(Mi)?"\\s*:' `);
 	for (const row of rows.rows) {
 		let parsed: unknown;
 		try {

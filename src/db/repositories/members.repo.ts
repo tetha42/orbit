@@ -161,22 +161,24 @@ async function enrichRosterRows(rows: MemberRosterRow[], isManager?: boolean): P
 		const visibilityFilter = isManager
 			? "f.directory_visibility IN ('members', 'managers', 'hidden')"
 			: "f.directory_visibility = 'members'";
-		const values = await getPgPool().query(
-			`SELECT v.user_id AS "userId", f.field_key AS "fieldKey", f.type, v.value
-			 FROM member_field_values v
-			 JOIN form_fields f ON f.id = v.field_id
-			 WHERE v.user_id = ANY($1)
-			   AND f.enabled = 1
+		const fields = await getPgPool().query(
+			`SELECT f.field_key AS "fieldKey", f.type
+			 FROM form_fields f
+			 WHERE f.enabled = 1
 			   AND f.archived_at IS NULL
-			   AND ${visibilityFilter}`,
-			[ids]
+			   AND ${visibilityFilter}`
 		);
+		const users = await getPgPool().query(`SELECT id, custom_fields AS "customFields" FROM users WHERE id = ANY($1)`, [ids]);
 		const byUser = new Map<string, Record<string, string>>();
-		for (const row of values.rows) {
-			const map = byUser.get(String(row.userId)) ?? {};
-			map[String(row.fieldKey)] =
-				String(row.type) === 'password' ? '••••••••' : String(row.value ?? '');
-			byUser.set(String(row.userId), map);
+		for (const user of users.rows) {
+			const stored = (user.customFields ?? {}) as Record<string, unknown>;
+			const map: Record<string, string> = {};
+			for (const field of fields.rows) {
+				const key = String(field.fieldKey);
+				if (stored[key] === undefined || stored[key] === null) continue;
+				map[key] = String(field.type) === 'password' ? '••••••••' : String(stored[key]);
+			}
+			byUser.set(String(user.id), map);
 		}
 		for (const row of rows) row.customFields = byUser.get(row.id) ?? {};
 
