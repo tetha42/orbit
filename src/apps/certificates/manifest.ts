@@ -37,8 +37,8 @@ const manifest = {
 	permission: {
 		order: 4,
 		name: 'Sertifikalar',
-		kullan: 'Kendi sertifikalarını ve rozetlerini görür, PDF indirir.',
-		yonet: 'Sertifika verir/siler, imzacıları düzenler.',
+		use: 'Kendi sertifikalarını ve rozetlerini görür, PDF indirir.',
+		manage: 'Sertifika verir/siler, imzacıları düzenler.',
 	},
 	menu: {
 		title: { tr: 'Sertifikalar', en: 'Credentials' },

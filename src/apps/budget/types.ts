@@ -29,7 +29,7 @@ export interface VaultResponse {
 	records: VaultRecord[];
 	summary: CashTotals;
 	/** What the caller may do here (lib/kasaAccess): write entries; manage (transfers). */
-	permission: { yaz: boolean; yonet: boolean };
+	permission: { write: boolean; manage: boolean };
 }
 
 export type { VaultSummary };

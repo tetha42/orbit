@@ -143,12 +143,12 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 
 	const members = useMemo(
 		() =>
-			(activeBoardTeam?.uyeler ?? []).map((u) => ({
+			(activeBoardTeam?.members ?? []).map((u) => ({
 				id: u.userId,
 				name: u.userNameSurname,
 				role: u.teamRole,
 			})),
-		[activeBoardTeam?.uyeler]
+		[activeBoardTeam?.members]
 	);
 
 	const allLabels = useMemo(() => {

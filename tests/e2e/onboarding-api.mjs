@@ -151,7 +151,7 @@ try {
 	ok(after.myMyStatus === 'basvurdu', 'showcase: shows the application as waiting');
 
 	const board = (await ege.call('GET', `/api/takimlar?teamId=${teamId}`)).json;
-	ok(!board.uyeler.some((u) => u.userId === newId), 'captain: applicant is not on the roster yet');
+	ok(!board.members.some((u) => u.userId === newId), 'captain: applicant is not on the roster yet');
 	const app = board.applications.find((b) => b.userId === newId);
 	ok(!!app, 'captain: sees the application');
 	ok(app?.applicationNote?.startsWith('Uzmanlık: C++, ROS2\nGömülü sistemlerde') && app.applicationNote.length <= 500, 'captain: note = skills line + text, de-duplicated and capped', app?.applicationNote?.slice(0, 60));

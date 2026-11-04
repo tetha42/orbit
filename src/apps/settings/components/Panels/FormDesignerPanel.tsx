@@ -150,7 +150,7 @@ export function FormDesignerPanel() {
 					{ value: 'graduate', labelTr: 'Yüksek Lisans / Doktora', labelEn: 'Graduate / PhD' },
 				],
 			},
-			yesno: {
+			yesNo: {
 				label: t('formPresetYesNo'),
 				options: [
 					{ value: 'yes', labelTr: 'Evet', labelEn: 'Yes' },

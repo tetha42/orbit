@@ -54,12 +54,12 @@ export interface Team {
 	fullCapacity: number;
 	remainingCapacity: number;
 	occupancyRatio: number;
-	uyeler: (TeamMember & { participationDate?: number })[];
+	members: (TeamMember & { participationDate?: number })[];
 	applications: TeamApplication[];
 	myMyStatus: 'aktif' | 'basvurdu' | null;
 	permissions: { manage: boolean; editAll: boolean };
 	tasks: TeamTask[];
-	yonetebilir?: boolean;
+	canManage?: boolean;
 }
 
 export const COLUMNS: { id: TaskStatus; color: string; key: string }[] = [

@@ -33,8 +33,8 @@ const manifest = {
 	permission: {
 		order: 16,
 		name: 'Kararlar & Komiteler',
-		kullan: 'Komiteleri, toplantıları ve kamuya açık kararları görür.',
-		yonet: 'Komite kurar, üye/oy hakkı atar, toplantı ve karar kaydı oluşturur.',
+		use: 'Komiteleri, toplantıları ve kamuya açık kararları görür.',
+		manage: 'Komite kurar, üye/oy hakkı atar, toplantı ve karar kaydı oluşturur.',
 	},
 	menu: {
 		title: { tr: 'Yönetişim', en: 'Governance' },

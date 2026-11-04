@@ -34,8 +34,8 @@ const manifest = {
 	permission: {
 		order: 15,
 		name: 'Posta',
-		kullan: 'Topluluk gelen/giden e-postalarını görüntüler.',
-		yonet: 'E-posta gönderir, siler ve kutuları yönetir.',
+		use: 'Topluluk gelen/giden e-postalarını görüntüler.',
+		manage: 'E-posta gönderir, siler ve kutuları yönetir.',
 		warning: 'E-posta kutusuna doğrudan tam erişim verir; yalnızca sistem yöneticilerine açılmalıdır.',
 	},
 	menu: {

@@ -60,8 +60,8 @@ export interface AppMenu {
 /** What the role editor shows for the app: its name and what each level allows. */
 export interface AppPermission {
 	name: string;
-	kullan: string;
-	yonet: string;
+	use: string;
+	manage: string;
 	warning?: string;
 	/** Everyone gets at least `kullan` (Settings: password, 2FA, theme…). */
 	everyoneOpen?: true;

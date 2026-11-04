@@ -147,9 +147,9 @@ export function SessionInspectorTab({ sessionInfo, isLoading }: SessionInspector
 										? t('tbSessionDescUse')
 										: t('tbSessionDescNone')
 									: level === 'yonet'
-									? meta?.yonet ?? t('tbSessionDescManage')
+									? meta?.manage ?? t('tbSessionDescManage')
 									: level === 'kullan'
-									? meta?.kullan ?? t('tbSessionDescUse')
+									? meta?.use ?? t('tbSessionDescUse')
 									: t('tbSessionDescNone');
 
 							return (

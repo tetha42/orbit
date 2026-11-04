@@ -35,8 +35,8 @@ const manifest = {
 	permission: {
 		order: 3,
 		name: 'Projeler',
-		kullan: 'Proje vitrinini görür, yıldızlar, proje önerir.',
-		yonet: 'Önerileri onaylar, yayınlar, arşivler, öne çıkarır.',
+		use: 'Proje vitrinini görür, yıldızlar, proje önerir.',
+		manage: 'Önerileri onaylar, yayınlar, arşivler, öne çıkarır.',
 	},
 } as const satisfies AppManifest;
 

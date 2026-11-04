@@ -735,7 +735,7 @@ check('permissions: levels, defaults, escalation, validation', () => {
 	assert.equal(levelOf(member, 'nonexistent'), 'none');
 	for (const a of PERMISSION_APPS) {
 		assert.equal(canManage(ALL_PERMISSIONS, a), true, a);
-		assert.ok(PERMISSION_DESCRIPTIONS[a]?.kullan && PERMISSION_DESCRIPTIONS[a]?.yonet, `description for ${a}`);
+		assert.ok(PERMISSION_DESCRIPTIONS[a]?.use && PERMISSION_DESCRIPTIONS[a]?.manage, `description for ${a}`);
 	}
 	assert.deepEqual(extraPermissions({ news: 'manage', events: 'use' }, member), ['news']);
 	assert.deepEqual(extraPermissions(member, ALL_PERMISSIONS), []);

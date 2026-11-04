@@ -102,7 +102,7 @@ export async function GET(request: Request) {
 		return NextResponse.json({
 			vault: { teamId, name, kind: teamId ? 'proje' : 'genel' },
 			// What the caller may do here — the panel hides what the server would refuse.
-			permission: { yaz: access.access === 'yaz' && access.user.status !== 'mezun', yonet: access.isManagement },
+			permission: { write: access.access === 'yaz' && access.user.status !== 'mezun', manage: access.isManagement },
 			records: records,
 			// Amounts travel as integer kuruş only; each client formats them for its language.
 			summary: {

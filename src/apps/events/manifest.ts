@@ -38,8 +38,8 @@ const manifest = {
 	permission: {
 		order: 1,
 		name: 'Etkinlikler',
-		kullan: 'Etkinliklere kaydolur, bilet ve QR yoklama kullanır.',
-		yonet: 'Etkinlik oluşturur, yoklama alır, katılımcı listesini görür ve indirir.',
+		use: 'Etkinliklere kaydolur, bilet ve QR yoklama kullanır.',
+		manage: 'Etkinlik oluşturur, yoklama alır, katılımcı listesini görür ve indirir.',
 	},
 	menu: {
 		title: { tr: 'Etkinlikler', en: 'Events' },

@@ -37,8 +37,8 @@ const manifest = {
 	permission: {
 		order: 5,
 		name: 'Envanter',
-		kullan: 'Envanteri görür, ödünç alır, iade eder, süre uzatır.',
-		yonet: 'Eşya ekler/düzenler, üye adına ödünç verir, arızalı/kayıp işaretler.',
+		use: 'Envanteri görür, ödünç alır, iade eder, süre uzatır.',
+		manage: 'Eşya ekler/düzenler, üye adına ödünç verir, arızalı/kayıp işaretler.',
 	},
 	menu: {
 		title: { tr: 'Envanter', en: 'Assets' },

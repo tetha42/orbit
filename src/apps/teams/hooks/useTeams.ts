@@ -94,7 +94,7 @@ export function useTeams() {
 		return teams.filter(
 			(tm) =>
 				(!category || tm.category === category) &&
-				(!q || foldTr([tm.name, tm.description, tm.category, tm.leaderNameSurname, ...tm.uyeler.map((u) => u.userNameSurname)].join(' ')).includes(q))
+				(!q || foldTr([tm.name, tm.description, tm.category, tm.leaderNameSurname, ...tm.members.map((u) => u.userNameSurname)].join(' ')).includes(q))
 		);
 	}, [teams, query, category]);
 

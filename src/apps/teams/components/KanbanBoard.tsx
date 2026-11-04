@@ -20,7 +20,7 @@ export interface KanbanTeam {
 	id: string;
 	leadId: string;
 	leaderNameSurname: string;
-	uyeler: TeamMember[];
+	members: TeamMember[];
 	tasks: TeamTask[];
 }
 
@@ -61,13 +61,13 @@ export function KanbanBoard({ team, currentUserId, isManager, mutateTasks, refet
 	});
 
 	const members = useMemo(() => {
-		const active = (team.uyeler ?? []).filter((u) => u.status === 'aktif');
+		const active = (team.members ?? []).filter((u) => u.status === 'aktif');
 		const list = active.map((u) => ({ id: u.userId, name: u.userNameSurname, role: u.teamRole }));
 		if (team.leadId && !list.some((m) => m.id === team.leadId)) {
 			list.unshift({ id: team.leadId, name: team.leaderNameSurname, role: '' });
 		}
 		return list;
-	}, [team.uyeler, team.leadId, team.leaderNameSurname]);
+	}, [team.members, team.leadId, team.leaderNameSurname]);
 
 	const allLabels = useMemo(
 		() => [...new Set(tasks.flatMap((g) => g.tags ?? []))].sort((a, b) => a.localeCompare(b, 'tr')),

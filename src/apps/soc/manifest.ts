@@ -36,8 +36,8 @@ const manifest = {
 	permission: {
 		order: 15,
 		name: 'SOC Savunma',
-		kullan: 'Canlı tehdit radarını, aktif oturumları, SIEM kayıtlarını ve test laboratuvarı ekranlarını izler.',
-		yonet: 'IP karantinası uygular, şüpheli oturumları düşürür, Kalkan Modunu (Lockdown) yönetir ve API test paketini çalıştırır.',
+		use: 'Canlı tehdit radarını, aktif oturumları, SIEM kayıtlarını ve test laboratuvarı ekranlarını izler.',
+		manage: 'IP karantinası uygular, şüpheli oturumları düşürür, Kalkan Modunu (Lockdown) yönetir ve API test paketini çalıştırır.',
 		warning: 'Kullanıcı oturumlarını sonlandırma ve IP engelleme yetkisi verir; yalnızca güvenlik yöneticilerine açılmalıdır.',
 	},
 	menu: {

@@ -37,8 +37,8 @@ const manifest = {
 	permission: {
 		order: 9,
 		name: 'Notlar',
-		kullan: 'Kişisel notlarını tutar.',
-		yonet: 'Kişisel notlarını tutar (yönetilecek ortak veri yok).',
+		use: 'Kişisel notlarını tutar.',
+		manage: 'Kişisel notlarını tutar (yönetilecek ortak veri yok).',
 	},
 	menu: {
 		title: { tr: 'Notlar', en: 'Notes' },

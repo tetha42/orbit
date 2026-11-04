@@ -36,8 +36,8 @@ const manifest = {
 	permission: {
 		order: 0,
 		name: 'Haberler',
-		kullan: 'Duyuruları ve haberleri okur.',
-		yonet: 'Haber yazar, yayınlar, düzenler, siler.',
+		use: 'Duyuruları ve haberleri okur.',
+		manage: 'Haber yazar, yayınlar, düzenler, siler.',
 	},
 } as const satisfies AppManifest;
 

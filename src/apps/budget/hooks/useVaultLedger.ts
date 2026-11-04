@@ -44,8 +44,8 @@ export function useVaultLedger({ teamId, onChanged, embedded = false, vaults }: 
 	const url = teamId ? `/api/budget?teamId=${encodeURIComponent(teamId)}` : '/api/budget';
 	const { data, refetch, isLoading, httpStatus } = useJsonResource<VaultResponse>(url);
 
-	const canWrite = !!data?.permission?.yaz;
-	const isManagement = !!data?.permission?.yonet;
+	const canWrite = !!data?.permission?.write;
+	const isManagement = !!data?.permission?.manage;
 	const records = useMemo(() => data?.records ?? [], [data]);
 	const summary = data?.summary ?? null;
 

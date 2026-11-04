@@ -110,7 +110,7 @@ export default async function suite(t) {
 		const app = board.applications.find((b) => b.userId === fx.users.reader.id);
 		t.check(!!app, 'açık takıma bile başvuru olarak düştü (üye olmadı)');
 		t.eq(app?.applicationNote, 'Uzmanlık: C++, ROS2\nRoket aviyoniği ile ilgileniyorum.', 'kaptan not ve uzmanlıkları görüyor');
-		t.check(!board.uyeler.some((u) => u.userId === fx.users.reader.id), 'başvuran henüz üye değil');
+		t.check(!board.members.some((u) => u.userId === fx.users.reader.id), 'başvuran henüz üye değil');
 
 		// Başvuruyu geri çek, sonra yeniden başvur → kaptan onaylar → kart canlı güncellenir.
 		await card.getByRole('button', { name: 'Başvuruyu geri çek' }).click();

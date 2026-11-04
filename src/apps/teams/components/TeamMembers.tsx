@@ -49,7 +49,7 @@ export function TeamMembers({ team, currentUserId, roster, notify, onChanged }: 
 		await post({ action: 'setMemberRole', userId, teamRole: draft });
 	};
 
-	const memberIds = new Set(team.uyeler.map((u) => u.userId));
+	const memberIds = new Set(team.members.map((u) => u.userId));
 	const addable = roster.filter((m) => !memberIds.has(m.id));
 	const date = (ms?: number) => (ms ? new Date(ms).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' }) : '');
 
@@ -126,7 +126,7 @@ export function TeamMembers({ team, currentUserId, roster, notify, onChanged }: 
 					)}
 				</h4>
 				<div className={styles.roster}>
-					{team.uyeler.map((u) => {
+					{team.members.map((u) => {
 						const isCaptain = u.userId === team.leadId;
 						const isMe = u.userId === currentUserId;
 						return (

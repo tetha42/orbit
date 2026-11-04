@@ -36,8 +36,8 @@ const manifest = {
 	permission: {
 		order: 11,
 		name: 'Terminal',
-		kullan: 'Sunucuda kabuk (shell) açar.',
-		yonet: 'Sunucuda kabuk (shell) açar.',
+		use: 'Sunucuda kabuk (shell) açar.',
+		manage: 'Sunucuda kabuk (shell) açar.',
 		warning: 'Terminal sunucuya tam erişim verir; yalnızca güvendiğiniz kişilere açın.',
 	},
 	menu: {

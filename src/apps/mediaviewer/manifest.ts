@@ -35,8 +35,8 @@ const manifest = {
 	permission: {
 		order: 999,
 		name: 'Media Preview',
-		kullan: 'Preview media attachments in a managed window.',
-		yonet: 'Internal window-only app; no management actions.',
+		use: 'Preview media attachments in a managed window.',
+		manage: 'Internal window-only app; no management actions.',
 		everyoneOpen: true,
 	},
 } as const satisfies AppManifest;

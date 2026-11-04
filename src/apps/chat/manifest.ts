@@ -35,8 +35,8 @@ const manifest = {
 	permission: {
 		order: 10,
 		name: 'Mesajlar',
-		kullan: 'Sohbet odalarını görüntüler ve mesaj yazar (herkese açık).',
-		yonet: 'Sohbet odalarını ve mesajları yönetir.',
+		use: 'Sohbet odalarını görüntüler ve mesaj yazar (herkese açık).',
+		manage: 'Sohbet odalarını ve mesajları yönetir.',
 		everyoneOpen: true,
 	},
 	menu: {

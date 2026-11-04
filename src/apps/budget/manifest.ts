@@ -35,8 +35,8 @@ const manifest = {
 	permission: {
 		order: 8,
 		name: 'Finans',
-		kullan: 'Kasaları ve hareketleri salt okunur görür.',
-		yonet: 'Gelir/gider girer, düzeltir, siler, kasalar arası ödenek aktarır.',
+		use: 'Kasaları ve hareketleri salt okunur görür.',
+		manage: 'Gelir/gider girer, düzeltir, siler, kasalar arası ödenek aktarır.',
 	},
 	menu: {
 		title: { tr: 'Finans', en: 'Finance' },

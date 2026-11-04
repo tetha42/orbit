@@ -17,7 +17,7 @@ export default async function suite(t) {
 	const ece = await newMember(t, admin, { label: 'ece', roleId: member });
 	const [capApi, denizApi, eceApi] = await Promise.all([captain.api(), deniz.api(), ece.api()]);
 	const card = (win, id) => win.locator(`[data-team-id="${id}"]`);
-	const statusOf = async (teamId, userId) => (await readTeam(admin, teamId)).uyeler.find((u) => u.userId === userId);
+	const statusOf = async (teamId, userId) => (await readTeam(admin, teamId)).members.find((u) => u.userId === userId);
 
 	const { page: ap } = await t.open('admin');
 	const astep = stepper(t, ap);
@@ -42,7 +42,7 @@ export default async function suite(t) {
 		t.eq(appTeam?.capacity, 3, 'kontenjan 3');
 		t.eq(appTeam?.category, 'Robotik & Gömülü', 'kategori');
 		t.eq(appTeam?.leadId, captain.id, 'kaptan');
-		const cap = appTeam.uyeler.find((u) => u.userId === captain.id);
+		const cap = appTeam.members.find((u) => u.userId === captain.id);
 		t.eq(cap?.teamRole, 'Takım Kaptanı', 'kaptan "Takım Kaptanı" unvanıyla üye');
 		await card(win, appTeam.id).getByText('Başvuru ile', { exact: true }).waitFor();
 		t.eq((await admin.post('/api/takimlar', { action: 'createTeam', name: 'E2E kötü', category: 'Uydurma', description: 'Geçersiz kategori denemesi' })).status, 400, 'geçersiz kategori 400');
@@ -148,9 +148,9 @@ export default async function suite(t) {
 		await toast(ap, 'Takım güncellendi.');
 		const tm = await readTeam(admin, appTeam.id);
 		t.eq(tm.leadId, deniz.id, 'yeni kaptan');
-		t.eq(tm.uyeler.find((u) => u.userId === deniz.id)?.teamRole, 'Takım Kaptanı', 'yeni kaptanın unvanı');
-		t.eq(tm.uyeler.find((u) => u.userId === captain.id)?.status, 'aktif', 'eski kaptan takımda');
-		t.check(tm.uyeler.find((u) => u.userId === captain.id)?.teamRole !== 'Takım Kaptanı', 'eski kaptanın unvanı değişti');
+		t.eq(tm.members.find((u) => u.userId === deniz.id)?.teamRole, 'Takım Kaptanı', 'yeni kaptanın unvanı');
+		t.eq(tm.members.find((u) => u.userId === captain.id)?.status, 'aktif', 'eski kaptan takımda');
+		t.check(tm.members.find((u) => u.userId === captain.id)?.teamRole !== 'Takım Kaptanı', 'eski kaptanın unvanı değişti');
 		t.eq((await readTeam(capApi, appTeam.id)).permissions.manage, false, 'eski kaptanın yönetim yetkisi kalktı');
 		t.eq((await readTeam(denizApi, appTeam.id)).permissions.manage, true, 'yeni kaptan yönetiyor');
 		await backToTeams(win);

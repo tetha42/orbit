@@ -69,7 +69,7 @@ export async function GET(request: Request) {
 					...team,
 					participationType: team.participationType ?? 'acik',
 					// The roster is active members only; applications are for whoever decides on them.
-					uyeler: aktif,
+					members: aktif,
 					applications: manage ? all.filter((u) => u.status === 'basvurdu') : [],
 					myMyStatus: my?.status ?? null,
 					permissions: { manage, editAll: can(auth.user, 'teams', 'yonet') },
@@ -208,7 +208,7 @@ async function handlePOST(request: Request) {
 				patch.category = body.category;
 			}
 			if (body.capacity !== undefined) {
-				const err = capacityProblem(body.capacity, board.uyeler.filter((u) => u.status === 'aktif').length);
+				const err = capacityProblem(body.capacity, board.members.filter((u) => u.status === 'aktif').length);
 				if (err) return NextResponse.json({ error: err }, { status: 400 });
 				patch.capacity = Number(body.capacity);
 			}

@@ -37,8 +37,8 @@ const manifest = {
 	permission: {
 		order: 2,
 		name: 'Takımlar',
-		kullan: 'Takımlara katılır/başvurur, üyesi olduğu takımın görev panosunu kullanır.',
-		yonet: 'Takım kurar, kaptan atar, tüm takımların üyelerini ve görevlerini yönetir.',
+		use: 'Takımlara katılır/başvurur, üyesi olduğu takımın görev panosunu kullanır.',
+		manage: 'Takım kurar, kaptan atar, tüm takımların üyelerini ve görevlerini yönetir.',
 	},
 	menu: {
 		title: { tr: 'Takımlar', en: 'Teams' },

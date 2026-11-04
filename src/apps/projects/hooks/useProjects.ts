@@ -52,7 +52,7 @@ export function useProjects() {
 					(tm) =>
 						manage ||
 						tm.leadId === currentUserId ||
-						(tm.uyeler ?? []).some((u) => u.userId === currentUserId && u.status === 'aktif')
+						(tm.members ?? []).some((u) => u.userId === currentUserId && u.status === 'aktif')
 				)
 				.map((tm) => ({ id: tm.id, name: tm.name })),
 		[teamsData, manage, currentUserId]

@@ -522,7 +522,9 @@
   "atayan": "assigner",
   "kasas": "vaults",
   "olc": "measure",
-  "yetkililer": "authorized"
+  "yetkililer": "authorized",
+  "yonetebilir": "canManage",
+  "yesno": "yesNo"
  },
  "wholeTokens": {
   "yeni": "fresh",
@@ -594,6 +596,7 @@
   "gecerli",
   "gecersiz",
   "manuel",
-  "gelen"
+  "gelen",
+  "yok"
  ]
 }

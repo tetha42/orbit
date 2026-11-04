@@ -35,8 +35,8 @@ const manifest = {
 	permission: {
 		order: 12,
 		name: 'Ayarlar',
-		kullan: 'Kendi hesabını, güvenliğini ve görünümü ayarlar (herkese açık).',
-		yonet: 'Rolleri, e-posta hesabını ve topluluk bilgilerini yönetir.',
+		use: 'Kendi hesabını, güvenliğini ve görünümü ayarlar (herkese açık).',
+		manage: 'Rolleri, e-posta hesabını ve topluluk bilgilerini yönetir.',
 		everyoneOpen: true,
 	},
 	menu: {

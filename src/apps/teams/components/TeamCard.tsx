@@ -61,7 +61,7 @@ export function TeamCard({ team: tm, joinButton, onOpen, onEdit, onRemove }: Tea
 					<strong>{tm.leaderNameSurname || t('tmNoCaptain')}</strong>
 				</span>
 				<span className={styles.avatars} aria-hidden>
-					{tm.uyeler
+					{tm.members
 						.filter((u) => u.userId !== tm.leadId)
 						.slice(0, 4)
 						.map((u) => (

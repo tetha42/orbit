@@ -9,7 +9,7 @@ export interface TeamOption {
 	id: string;
 	name: string;
 	leadId: string;
-	uyeler?: { userId: string; status: string }[];
+	members?: { userId: string; status: string }[];
 }
 
 export type SortMode = 'featured' | 'newest' | 'stars';

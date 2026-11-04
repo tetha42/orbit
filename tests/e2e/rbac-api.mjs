@@ -136,12 +136,12 @@ ok((await st(zeynep, 'POST', '/api/terminal/session', {})) === 403, 'kurul (term
 	ok(list?.vaults?.length === 1 && list.vaults[0].teamId === teamId, 'captain sees only own project kasa', JSON.stringify(list));
 	ok((await st(ege, 'GET', '/api/budget')) === 403, 'captain → general kasa 403');
 	const own = (await ege.call('GET', `/api/budget?teamId=${teamId}`)).json;
-	ok(own?.permission?.yaz === true && own.permission.yonet === false, 'captain may write own kasa, not transfer');
+	ok(own?.permission?.write === true && own.permission.manage === false, 'captain may write own kasa, not transfer');
 	ok((await st(ege, 'POST', '/api/budget', { teamId: teamId, typeValue: 'gelir', category: 'Diğer', amountMinor: 1000, description: 'Kaptan geliri' })) < 300, 'captain adds income to own kasa');
 	ok((await st(ege, 'POST', '/api/budget', { typeValue: 'gelir', category: 'Diğer', amountMinor: 1000, description: 'Genel kasaya' })) === 403, 'captain → general kasa write 403');
 	ok((await st(ege, 'POST', '/api/budget', { action: 'aktar', source: null, target: teamId, amountMinor: 100, description: 'aktarım' })) === 403, 'captain → transfer 403');
 	const z = (await zeynep.call('GET', '/api/budget')).json;
-	ok(z?.permission?.yaz === true && z.permission.yonet === true, 'kurul manages general kasa');
+	ok(z?.permission?.write === true && z.permission.manage === true, 'kurul manages general kasa');
 }
 
 // ---- members: what a reader sees ---------------------------------------------

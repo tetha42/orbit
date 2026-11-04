@@ -60,8 +60,8 @@ export const EVERY_TIME_OPEN = ALWAYS_OPEN;
 
 /** What each level means in each app — shown in the role editor next to the switch. */
 export const PERMISSION_DESCRIPTIONS = Object.fromEntries(
-	ALL_MANIFESTS.map((m) => [m.id, { name: m.permission.name, kullan: m.permission.kullan, yonet: m.permission.yonet, ...('uyari' in m.permission ? { warning: m.permission.warning } : {}) }])
-) as Record<PermissionApp, { name: string; kullan: string; yonet: string; warning?: string }>;
+	ALL_MANIFESTS.map((m) => [m.id, { name: m.permission.name, use: m.permission.use, manage: m.permission.manage, ...('uyari' in m.permission ? { warning: m.permission.warning } : {}) }])
+) as Record<PermissionApp, { name: string; use: string; manage: string; warning?: string }>;
 
 export const isPermissionLevel = (v: unknown): v is PermissionLevel => typeof v === 'string' && (LEVELS as readonly string[]).includes(v);
 export const isLevel = isPermissionLevel;

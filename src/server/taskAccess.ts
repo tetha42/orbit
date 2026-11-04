@@ -12,7 +12,7 @@ import { can, type AuthorizedUser } from '@/lib/auth/access';
  */
 export interface TeamBoardAccess {
 	team: Team;
-	uyeler: TeamMember[];
+	members: TeamMember[];
 	view: boolean;
 	manage: boolean;
 }
@@ -23,7 +23,7 @@ export async function getBoardAccess(user: AuthorizedUser, teamId: string): Prom
 	const members = await getTeamMembers(teamId);
 	const manage = can(user, 'teams', 'yonet') || team.leadId === user.id;
 	const member = members.some((u) => u.userId === user.id && u.status === 'aktif');
-	return { team, uyeler: members, view: manage || member, manage };
+	return { team, members: members, view: manage || member, manage };
 }
 
 /** `work`: whoever may move the card and tick its checklist — `manage`, or the assignee. */
@@ -44,7 +44,7 @@ export async function getTaskAccess(user: AuthorizedUser, taskId: string): Promi
 export function isAssignable(board: TeamBoardAccess, userId: string): boolean {
 	return (
 		board.team.leadId === userId ||
-		board.uyeler.some((u) => u.userId === userId && u.status === 'aktif')
+		board.members.some((u) => u.userId === userId && u.status === 'aktif')
 	);
 }
 

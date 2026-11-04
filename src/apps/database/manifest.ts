@@ -36,8 +36,8 @@ const manifest = {
 	permission: {
 		order: 14,
 		name: 'Veritabanı',
-		kullan: 'Veritabanı tablolarını görüntüler.',
-		yonet: 'Veritabanı tablolarını ve kayıtlarını doğrudan düzenler.',
+		use: 'Veritabanı tablolarını görüntüler.',
+		manage: 'Veritabanı tablolarını ve kayıtlarını doğrudan düzenler.',
 		warning: 'Veritabanına doğrudan tam erişim verir; yalnızca sistem yöneticilerine açılmalıdır.',
 	},
 	menu: {
