@@ -3,9 +3,9 @@
 import React from 'react';
 import { TrendingDown, TrendingUp, Wallet } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
-import { formatKurus } from '@/lib/budget';
+import { formatMinor } from '@/lib/budget';
 import type { CashTotals } from '../types';
-import k from './Kasa.module.css';
+import k from './Vault.module.css';
 
 interface VaultCardSummaryProps {
 	teamId: string | null;
@@ -14,7 +14,7 @@ interface VaultCardSummaryProps {
 	dagilimFirstCategory?: { kategori: string; oran: number };
 }
 
-const tl = (kurus: number) => `₺${formatKurus(kurus)}`;
+const tl = (kurus: number) => `₺${formatMinor(kurus)}`;
 
 export function VaultCardSummary({
 	teamId,
@@ -32,11 +32,11 @@ export function VaultCardSummary({
 					<Wallet size={17} color="#30d158" />
 				</div>
 				<div
-					className={`${k.cardValue} ${(summary?.netBakiyeKurus ?? 0) > 0 ? k.pos : ''}`}
+					className={`${k.cardValue} ${(summary?.netBalanceMinor ?? 0) > 0 ? k.pos : ''}`}
 					data-testid="kasa-balance"
 					data-loaded={summary ? '' : undefined}
 				>
-					{summary ? tl(summary.netBakiyeKurus) : '—'}
+					{summary ? tl(summary.netBalanceMinor) : '—'}
 				</div>
 				<div className={k.cardNote}>
 					{summary ? t('kasaEntryCount').replace('{n}', String(summary.kayitSayisi)) : isLoading ? t('loading') : ''}
@@ -46,14 +46,14 @@ export function VaultCardSummary({
 				<div className={k.cardHead}>
 					{t('budgetTotalIncome')} <TrendingUp size={17} color="#0a84ff" />
 				</div>
-				<div className={`${k.cardValue} ${k.blue}`}>{tl(summary?.toplamGelirKurus ?? 0)}</div>
+				<div className={`${k.cardValue} ${k.blue}`}>{tl(summary?.totalIncomeMinor ?? 0)}</div>
 				<div className={k.cardNote}>{t('kasaIncomeNote')}</div>
 			</div>
 			<div className={k.card}>
 				<div className={k.cardHead}>
 					{t('budgetTotalExpense')} <TrendingDown size={17} color="#ff453a" />
 				</div>
-				<div className={`${k.cardValue} ${k.neg}`}>{tl(summary?.toplamGiderKurus ?? 0)}</div>
+				<div className={`${k.cardValue} ${k.neg}`}>{tl(summary?.totalExpenseMinor ?? 0)}</div>
 				<div className={k.cardNote}>
 					{dagilimFirstCategory
 						? t('kasaMostSpent')

@@ -28,7 +28,7 @@ export function TeamJoinButton({
 	const { t } = useI18n();
 
 	if (tm.benimDurumum === 'aktif') {
-		return tm.liderId === currentUserId ? null : (
+		return tm.leadId === currentUserId ? null : (
 			<button type="button" className={`${ui.btn} ${ui.btnDanger}`} disabled={busy} onClick={() => onLeave(tm)}>
 				{t('tmLeave')}
 			</button>

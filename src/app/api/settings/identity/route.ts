@@ -63,7 +63,7 @@ export async function PATCH(request: Request) {
 	void logSystemEvent({
 		servis: 'settings',
 		seviye: 'INFO',
-		mesaj: `Site identity updated (${auth.user.ad} ${auth.user.soyad})`,
+		mesaj: `Site identity updated (${auth.user.firstName || auth.user.ad || ""} ${auth.user.lastName || auth.user.soyad || ""})`,
 		detay: updates,
 		userId: auth.user.id,
 	});

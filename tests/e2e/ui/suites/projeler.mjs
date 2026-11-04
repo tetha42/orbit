@@ -22,8 +22,8 @@ export default async function suite(t) {
 	const author = await newMember(t, admin, { label: 'yazar', rolId: fx.roles.uye });
 	const fan = await newMember(t, admin, { label: 'hayran', rolId: fx.roles.uye });
 	const [authorApi, fanApi] = await Promise.all([author.api(), fan.api()]);
-	const team = await makeTeam(t, admin, { label: 'Proje', liderId: author.id });
-	const other = await makeTeam(t, admin, { label: 'Baska', liderId: fan.id });
+	const team = await makeTeam(t, admin, { label: 'Proje', leadId: author.id });
+	const other = await makeTeam(t, admin, { label: 'Baska', leadId: fan.id });
 
 	const title = `E2E Proje ${runTag()}`;
 	let id = null;
@@ -40,7 +40,7 @@ export default async function suite(t) {
 	await step('üye: bağlantısız öneri reddedilir, başkasının takımına bağlanamaz', async () => {
 		t.eq((await authorApi.post('/api/projeler', { baslik: 'E2E bağlantısız', ozet: 'Bağlantısı olmayan öneri metni', teknolojiler: 'Go' })).status, 400, 'bağlantı yoksa 400');
 		t.eq((await authorApi.post('/api/projeler', { baslik: 'E2E kötü', ozet: 'Zararlı bağlantılı öneri', repoUrl: 'javascript:alert(1)', teknolojiler: 'Go' })).status, 400, 'javascript: bağlantısı 400');
-		const r = await authorApi.post('/api/projeler', { baslik: 'E2E yabancı takım', ozet: 'Başka takıma bağlı öneri', repoUrl: 'https://example.com/x', teknolojiler: 'Go', takimId: other.id });
+		const r = await authorApi.post('/api/projeler', { baslik: 'E2E yabancı takım', ozet: 'Başka takıma bağlı öneri', repoUrl: 'https://example.com/x', teknolojiler: 'Go', teamId: other.id });
 		t.eq(r.status, 400, 'üyesi olmadığı takıma bağlayamaz');
 	});
 
@@ -59,7 +59,7 @@ export default async function suite(t) {
 		id = mine?.id;
 		t.eq(mine?.durum, 'oneri', 'durum: öneri');
 		t.eq(mine?.teknolojiler, ['Next.js', 'PostgreSQL'], 'teknolojiler tekilleştirildi');
-		t.eq(mine?.takimId, team.id, 'kendi takımına bağlandı');
+		t.eq(mine?.teamId, team.id, 'kendi takımına bağlandı');
 		const sheet = page.getByRole('dialog', { name: title });
 		await sheet.waitFor();
 		t.check(await sheet.getByText('Onay bekliyor').count() >= 1, 'sayfada "Onay bekliyor"');

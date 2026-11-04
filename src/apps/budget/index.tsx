@@ -6,7 +6,7 @@ import { useI18n } from '@/core/i18n';
 import { useIsMobile } from '@/lib/client/useClientValue';
 import { useBudget } from './hooks/useBudget';
 import { BudgetSidebar } from './components/BudgetSidebar';
-import { VaultPanel } from './components/KasaPanel';
+import { VaultPanel } from './components/VaultPanel';
 import { BudgetMobileView } from './components/BudgetMobileView';
 
 const shellStyle: React.CSSProperties = {

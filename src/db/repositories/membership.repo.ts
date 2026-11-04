@@ -63,28 +63,53 @@ export interface MembershipApplication {
 	createdAt: number;
 }
 
-function mapApplication(row: Record<string, unknown>): MembershipApplication {
+function mapApplication(row: Record<string, unknown>, fallbackUserId = ''): MembershipApplication {
+	const rawSnapshot = row.snapshot;
+	const snapshot =
+		typeof rawSnapshot === 'string'
+			? rawSnapshot
+			: rawSnapshot && typeof rawSnapshot === 'object'
+				? JSON.stringify(rawSnapshot)
+				: '{}';
 	return {
-		id: String(row.id),
-		userId: String(row.userId),
-		source: String(row.source) as ApplicationSource,
-		status: String(row.status) as ApplicationStatus,
-		snapshot: String(row.snapshot ?? '{}'),
-		invitationId: row.invitationId ? String(row.invitationId) : null,
-		reapplyOf: row.reapplyOf ? String(row.reapplyOf) : null,
-		submittedAt: Number(row.submittedAt) || 0,
-		emailVerifiedAt: row.emailVerifiedAt ? Number(row.emailVerifiedAt) : null,
-		reviewedBy: row.reviewedBy ? String(row.reviewedBy) : null,
-		reviewedAt: row.reviewedAt ? Number(row.reviewedAt) : null,
-		rejectionReason: row.rejectionReason ? String(row.rejectionReason) : null,
-		createdAt: Number(row.createdAt) || 0,
+		id: String(row.id ?? ''),
+		userId: String(row.userId ?? row.user_id ?? fallbackUserId),
+		source: String(row.source ?? 'self') as ApplicationSource,
+		status: String(row.status ?? 'pending_review') as ApplicationStatus,
+		snapshot,
+		invitationId: row.invitationId ? String(row.invitationId) : (row.invitation_id ? String(row.invitation_id) : null),
+		reapplyOf: row.reapplyOf ? String(row.reapplyOf) : (row.reapply_of ? String(row.reapply_of) : null),
+		submittedAt: Number(row.submittedAt ?? row.submitted_at) || 0,
+		emailVerifiedAt: row.emailVerifiedAt
+			? Number(row.emailVerifiedAt)
+			: row.email_verified_at
+				? Number(row.email_verified_at)
+				: null,
+		reviewedBy: row.reviewedBy ? String(row.reviewedBy) : (row.reviewed_by ? String(row.reviewed_by) : null),
+		reviewedAt: row.reviewedAt ? Number(row.reviewedAt) : (row.reviewed_at ? Number(row.reviewed_at) : null),
+		rejectionReason: row.rejectionReason
+			? String(row.rejectionReason)
+			: row.rejection_reason
+				? String(row.rejection_reason)
+				: null,
+		createdAt: Number(row.createdAt ?? row.created_at) || 0,
 	};
 }
 
-const APPLICATION_COLUMNS = `id, user_id AS "userId", source, status, snapshot,
-	invitation_id AS "invitationId", reapply_of AS "reapplyOf", submitted_at AS "submittedAt",
-	email_verified_at AS "emailVerifiedAt", reviewed_by AS "reviewedBy",
-	reviewed_at AS "reviewedAt", rejection_reason AS "rejectionReason", created_at AS "createdAt"`;
+function parseApplicationHistory(raw: unknown, userId: string): MembershipApplication[] {
+	let arr: unknown = raw;
+	if (typeof raw === 'string') {
+		try {
+			arr = JSON.parse(raw);
+		} catch {
+			return [];
+		}
+	}
+	if (!Array.isArray(arr)) return [];
+	return arr
+		.filter((item): item is Record<string, unknown> => Boolean(item && typeof item === 'object'))
+		.map((item) => mapApplication(item, userId));
+}
 
 export async function createMembershipApplication(input: {
 	userId: string;
@@ -102,52 +127,58 @@ export async function createMembershipApplication(input: {
 	const now = Date.now();
 	const status = input.status ?? 'pending_review';
 	const id = `app_${randomUUID().replace(/-/g, '').slice(0, 16)}`;
+	const created: MembershipApplication = {
+		id,
+		userId: input.userId,
+		source: input.source,
+		status,
+		snapshot: JSON.stringify(input.snapshot ?? {}),
+		invitationId: input.invitationId ?? null,
+		reapplyOf: input.reapplyOf ?? null,
+		submittedAt: now,
+		emailVerifiedAt: input.emailVerifiedAt ?? null,
+		reviewedBy: input.reviewedBy ?? null,
+		reviewedAt: input.reviewedAt ?? null,
+		rejectionReason: input.rejectionReason ?? null,
+		createdAt: now,
+	};
+
 	await withTransaction(async (client) => {
-		// One open application per member; a re-application replaces the open draft
-		// instead of fighting the partial unique index.
-		if (['submitted', 'email_verified', 'pending_review'].includes(status)) {
-			await client.query(
-				"DELETE FROM membership_applications WHERE user_id = $1 AND status IN ('submitted','email_verified','pending_review')",
-				[input.userId]
-			);
-		}
+		const res = await client.query(
+			'SELECT application_history AS "applicationHistory" FROM users WHERE id = $1 FOR UPDATE',
+			[input.userId]
+		);
+		const history = parseApplicationHistory(
+			res.rows[0]?.applicationHistory ?? res.rows[0]?.application_history,
+			input.userId
+		);
+		// One open application per member; a re-application replaces the open draft.
+		const filtered = ['submitted', 'email_verified', 'pending_review'].includes(status)
+			? history.filter((a) => !['submitted', 'email_verified', 'pending_review'].includes(a.status))
+			: history;
+		filtered.push(created);
 		await client.query(
-			`INSERT INTO membership_applications
-				(id, user_id, source, status, snapshot, invitation_id, reapply_of, submitted_at,
-				 email_verified_at, reviewed_by, reviewed_at, rejection_reason, created_at)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
-			[
-				id,
-				input.userId,
-				input.source,
-				status,
-				JSON.stringify(input.snapshot ?? {}),
-				input.invitationId ?? null,
-				input.reapplyOf ?? null,
-				now,
-				input.emailVerifiedAt ?? null,
-				input.reviewedBy ?? null,
-				input.reviewedAt ?? null,
-				input.rejectionReason ?? null,
-				now,
-			]
+			'UPDATE users SET application_history = $2::jsonb WHERE id = $1',
+			[input.userId, JSON.stringify(filtered)]
 		);
 	});
-	const res = await getPgPool().query(
-		`SELECT ${APPLICATION_COLUMNS} FROM membership_applications WHERE id = $1`,
-		[id]
-	);
-	return mapApplication(res.rows[0]);
+	return created;
 }
 
 export async function getLatestApplication(userId: string): Promise<MembershipApplication | null> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT ${APPLICATION_COLUMNS} FROM membership_applications
-		 WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`,
+		'SELECT application_history AS "applicationHistory" FROM users WHERE id = $1',
 		[userId]
 	);
-	return res.rows[0] ? mapApplication(res.rows[0]) : null;
+	if (!res.rows[0]) return null;
+	const history = parseApplicationHistory(
+		res.rows[0].applicationHistory ?? res.rows[0].application_history,
+		userId
+	);
+	if (history.length === 0) return null;
+	history.sort((a, b) => b.createdAt - a.createdAt);
+	return history[0] ?? null;
 }
 
 export async function recordApplicationDecision(
@@ -157,16 +188,41 @@ export async function recordApplicationDecision(
 	rejectionReason?: string | null
 ): Promise<void> {
 	await ensurePostgresInit();
-	await getPgPool().query(
-		`UPDATE membership_applications SET
-			status = $2, reviewed_by = $3, reviewed_at = $4, rejection_reason = $5
-		 WHERE id = (
-			SELECT id FROM membership_applications
-			WHERE user_id = $1 AND status IN ('submitted','email_verified','pending_review')
-			ORDER BY created_at DESC LIMIT 1
-		 )`,
-		[userId, status, reviewedBy, Date.now(), status === 'rejected' ? rejectionReason ?? null : null]
-	);
+	await withTransaction(async (client) => {
+		const res = await client.query(
+			'SELECT application_history AS "applicationHistory" FROM users WHERE id = $1 FOR UPDATE',
+			[userId]
+		);
+		if (!res.rows[0]) return;
+		const history = parseApplicationHistory(
+			res.rows[0].applicationHistory ?? res.rows[0].application_history,
+			userId
+		);
+		let targetIdx = -1;
+		let latestCreated = -1;
+		for (let i = 0; i < history.length; i++) {
+			const item = history[i];
+			if (
+				['submitted', 'email_verified', 'pending_review'].includes(item.status) &&
+				item.createdAt >= latestCreated
+			) {
+				latestCreated = item.createdAt;
+				targetIdx = i;
+			}
+		}
+		if (targetIdx === -1) return;
+		history[targetIdx] = {
+			...history[targetIdx],
+			status,
+			reviewedBy,
+			reviewedAt: Date.now(),
+			rejectionReason: status === 'rejected' ? rejectionReason ?? null : null,
+		};
+		await client.query(
+			'UPDATE users SET application_history = $2::jsonb WHERE id = $1',
+			[userId, JSON.stringify(history)]
+		);
+	});
 }
 
 /* ==================== invitations ==================== */
@@ -213,16 +269,15 @@ export async function createInvitation(input: {
 	expiresAt: number;
 }): Promise<Invitation> {
 	await ensurePostgresInit();
-	const id = `inv_${randomUUID().replace(/-/g, '').slice(0, 16)}`;
+	const id = input.tokenHash || `inv_${randomUUID().replace(/-/g, '').slice(0, 16)}`;
 	const now = Date.now();
 	const res = await getPgPool().query(
 		`INSERT INTO invitations
-			(id, token_hash, email, role_id, team_id, note, created_by, expires_at, created_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			(id, email, role_id, team_id, note, created_by, expires_at, created_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		 RETURNING ${INVITATION_COLUMNS}`,
 		[
 			id,
-			input.tokenHash,
 			input.email?.trim().toLowerCase() || null,
 			input.roleId || null,
 			input.teamId || null,
@@ -248,7 +303,7 @@ export async function findInvitationByTokenHash(tokenHash: string): Promise<Invi
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`SELECT ${INVITATION_COLUMNS} FROM invitations
-		 WHERE token_hash = $1 AND used_at IS NULL LIMIT 1`,
+		 WHERE id = $1 AND used_at IS NULL LIMIT 1`,
 		[tokenHash]
 	);
 	return res.rows[0] ? mapInvitation(res.rows[0]) : null;

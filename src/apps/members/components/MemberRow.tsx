@@ -148,7 +148,7 @@ export const MemberRow = React.memo(function MemberRow({
 				id: `reset-pwd-${member.id}`,
 				label: t('membersCtxResetPassword'),
 				icon: <KeyRound size={14} />,
-				action: () => onResetPassword(member.id, `${member.ad} ${member.soyad}`),
+				action: () => onResetPassword(member.id, `${member.firstName} ${member.lastName}`),
 			});
 
 			if (member.status === 'beklemede') {
@@ -179,7 +179,7 @@ export const MemberRow = React.memo(function MemberRow({
 					id: `delete-${member.id}`,
 					label: t('membersCtxDelete'),
 					icon: <Trash2 size={14} />,
-					action: () => onDelete(member.id, `${member.ad} ${member.soyad}`),
+					action: () => onDelete(member.id, `${member.firstName} ${member.lastName}`),
 				});
 			}
 		}
@@ -220,21 +220,21 @@ export const MemberRow = React.memo(function MemberRow({
 			{/* Name & Avatar */}
 			<td style={{ padding: '10px' }}>
 				<div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-					{member.profilFoto ? (
+					{member.avatarUrl || member.profilFoto ? (
 						<Image
-							src={member.profilFoto}
-							alt={`${member.ad} ${member.soyad}`}
+							src={(member.avatarUrl || member.profilFoto)!}
+							alt={`${member.firstName} ${member.lastName}`}
 							width={34}
 							height={34}
 							unoptimized
 							style={{ width: '34px', height: '34px', borderRadius: '50%', objectFit: 'cover' }}
 						/>
 					) : (
-						<AvatarFallback name={`${member.firstName || member.ad} ${member.lastName || member.soyad}`} size={34} />
+						<AvatarFallback name={`${member.firstName} ${member.lastName}`} size={34} />
 					)}
 					<div>
 						<div style={{ fontWeight: 600 }}>
-							{member.firstName || member.ad} {member.lastName || member.soyad}
+							{member.firstName} {member.lastName}
 						</div>
 						<div style={{ fontSize: '11px', opacity: 0.6 }}>{member.email}</div>
 					</div>
@@ -243,8 +243,8 @@ export const MemberRow = React.memo(function MemberRow({
 							type="button"
 							className={ui.btn}
 							data-member-message={member.id}
-							title={fill(t('membersSendMessageTo'), { name: `${member.firstName || member.ad} ${member.lastName || member.soyad}` })}
-							aria-label={fill(t('membersSendMessageTo'), { name: `${member.firstName || member.ad} ${member.lastName || member.soyad}` })}
+							title={fill(t('membersSendMessageTo'), { name: `${member.firstName} ${member.lastName}` })}
+							aria-label={fill(t('membersSendMessageTo'), { name: `${member.firstName} ${member.lastName}` })}
 							onClick={() => onSendMessage(member.id)}
 							style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 9px', fontSize: 11.5 }}
 						>

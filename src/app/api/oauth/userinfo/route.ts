@@ -90,10 +90,12 @@ export async function GET(request: Request) {
 		};
 
 		if (scopes.includes('profile')) {
-			claims.name = `${user.ad} ${user.soyad}`.trim();
-			claims.given_name = user.ad;
-			claims.family_name = user.soyad;
-			claims.picture = user.profilFoto || null;
+			const first = user.firstName || user.ad || '';
+			const last = user.lastName || user.soyad || '';
+			claims.name = `${first} ${last}`.trim();
+			claims.given_name = first;
+			claims.family_name = last;
+			claims.picture = user.avatarUrl || user.profilFoto || null;
 			claims.bio = user.bio || '';
 		}
 

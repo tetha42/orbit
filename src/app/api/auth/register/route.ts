@@ -295,7 +295,8 @@ export async function POST(request: Request) {
 
 		const pool = getPgPool();
 		// Purge expired OTP records immediately
-		await pool.query('DELETE FROM email_verifications WHERE expires_at < $1', [Date.now()]);
+		await pool.query('DELETE FROM verification_tokens WHERE expires_at < $1', [Date.now()]);
+		await pool.query('DELETE FROM email_verifications WHERE expires_at < $1', [Date.now()]).catch(() => {});
 
 		const verifyKey = `register:verify:${normalizedEmail}`;
 
@@ -315,10 +316,13 @@ export async function POST(request: Request) {
 			const hashedCode = hashOtpCode(code);
 
 			await pool.query(
-				`INSERT INTO email_verifications (email, code, type, expires_at, created_at)
-				 VALUES ($1, $2, 'registration', $3, $4)
-				 ON CONFLICT (email) DO UPDATE SET code = $2, type = 'registration', expires_at = $3, created_at = $4`,
-				[normalizedEmail, hashedCode, sonGecerlilik, Date.now()]
+				'DELETE FROM verification_tokens WHERE lower(target) = lower($1) AND token_type = $2',
+				[normalizedEmail, 'registration']
+			);
+			await pool.query(
+				`INSERT INTO verification_tokens (id, token_type, target, token_hash, expires_at, created_at)
+				 VALUES ($1, 'registration', $2, $3, $4, $5)`,
+				[`otp_${crypto.randomUUID()}`, normalizedEmail, hashedCode, sonGecerlilik, Date.now()]
 			);
 
 			clearRateLimit(verifyKey);
@@ -335,7 +339,7 @@ export async function POST(request: Request) {
 				try {
 					const queuedExpiry = Date.now() + 24 * 60 * 60_000;
 					await pool.query(
-						'UPDATE email_verifications SET expires_at = $1 WHERE email = $2 AND type = $3',
+						'UPDATE verification_tokens SET expires_at = $1 WHERE lower(target) = lower($2) AND token_type = $3',
 						[queuedExpiry, normalizedEmail, 'registration']
 					);
 					await enqueueMail({
@@ -380,7 +384,7 @@ export async function POST(request: Request) {
 		// STEP 2: Verify the submitted OTP code
 		const gate = isRateLimited(verifyKey, MAX_OTP_ATTEMPTS);
 		if (!gate.allowed) {
-			await pool.query('DELETE FROM email_verifications WHERE email = $1 AND type = $2', [
+			await pool.query('DELETE FROM verification_tokens WHERE lower(target) = lower($1) AND token_type = $2', [
 				normalizedEmail,
 				'registration',
 			]);
@@ -391,17 +395,17 @@ export async function POST(request: Request) {
 		}
 
 		const codeRes = await pool.query(
-			'SELECT code AS kod, expires_at AS songecerlilik FROM email_verifications WHERE email = $1 AND type = $2',
+			'SELECT token_hash AS kod, expires_at AS songecerlilik FROM verification_tokens WHERE lower(target) = lower($1) AND token_type = $2 ORDER BY created_at DESC LIMIT 1',
 			[normalizedEmail, 'registration']
 		);
 
 		const record = codeRes.rows[0];
-		const expectedCode = record ? String(record.kod ?? record.code ?? '').trim() : '';
+		const expectedCode = record ? String(record.kod ?? record.tokenHash ?? record.token_hash ?? '').trim() : '';
 		const submittedCode = String(verificationCode).trim();
 		if (!record || !verifyOtpCode(expectedCode, submittedCode)) {
 			const attempts = recordFailure(verifyKey, OTP_WINDOW_MS);
 			if (attempts >= MAX_OTP_ATTEMPTS) {
-				await pool.query('DELETE FROM email_verifications WHERE email = $1 AND type = $2', [
+				await pool.query('DELETE FROM verification_tokens WHERE lower(target) = lower($1) AND token_type = $2', [
 					normalizedEmail,
 					'registration',
 				]);
@@ -422,7 +426,10 @@ export async function POST(request: Request) {
 		}
 
 		// Valid code — delete OTP record
-		await pool.query('DELETE FROM email_verifications WHERE email = $1', [normalizedEmail]);
+		await pool.query('DELETE FROM verification_tokens WHERE lower(target) = lower($1) AND token_type = $2', [
+			normalizedEmail,
+			'registration',
+		]);
 		clearRateLimit(verifyKey);
 		}
 

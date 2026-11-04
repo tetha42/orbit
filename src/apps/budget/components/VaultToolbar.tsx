@@ -5,7 +5,7 @@ import { ArrowRightLeft, Download, Plus } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
 import { BUDGET_CATEGORIES, TRANSFER_CATEGORY } from '@/types/budget';
 import ui from '@/core/ui/ui.module.css';
-import k from './Kasa.module.css';
+import k from './Vault.module.css';
 
 interface VaultToolbarProps {
 	arama: string;

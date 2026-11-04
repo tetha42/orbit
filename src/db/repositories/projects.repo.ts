@@ -5,16 +5,20 @@ import type { Project } from '@/db/schema';
 import type { ProjectStatus } from '@/lib/projects';
 
 const PROJECT_SELECT = `
-	SELECT p.*,
-	       t.ad AS "takimAdi",
+	SELECT p.id, p.slug, p.title AS baslik, p.summary AS ozet, p.description AS aciklama,
+	       p.repo_url AS "repoUrl", p.live_url AS "canliUrl", p.tech_stack AS teknolojiler,
+	       p.team_id AS "teamId", p.created_by AS "olusturanId", p.status,
+	       p.is_featured AS "oneCikan", p.created_at AS olusturma, p.updated_at AS guncellenme,
+	       p.owner_team_id, p.owner_user_id, p.created_by,
+	       t.name AS "takimAdi",
 	       k.first_name || ' ' || k.last_name AS "olusturanAdSoyad",
-	       ot.ad AS "ownerTeamAd",
+	       ot.name AS "ownerTeamAd",
 	       ou.first_name || ' ' || ou.last_name AS "ownerUserAdSoyad",
-	       (SELECT COUNT(*) FROM project_likes b WHERE b.projeId = p.id)::int AS "begeniSayisi",
-	       EXISTS (SELECT 1 FROM project_likes b WHERE b.projeId = p.id AND b.userId = $1) AS "begendimMi"
+	       jsonb_array_length(COALESCE(p.starred_by, '[]'::jsonb)) AS "begeniSayisi",
+	       (COALESCE(p.starred_by, '[]'::jsonb) ? $1::text) AS "begendimMi"
 	FROM projects p
-	LEFT JOIN teams t ON t.id = p.teamId
-	LEFT JOIN users k ON k.id = p.olusturanId
+	LEFT JOIN teams t ON t.id = p.team_id
+	LEFT JOIN users k ON k.id = p.created_by
 	LEFT JOIN teams ot ON ot.id = p.owner_team_id
 	LEFT JOIN users ou ON ou.id = p.owner_user_id
 `;
@@ -22,7 +26,8 @@ const PROJECT_SELECT = `
 function toProject(row: Record<string, unknown>): Project {
 	let teknolojiler: string[] = [];
 	try {
-		const parsed = JSON.parse(String(row.teknolojiler ?? '[]'));
+		const raw = row.teknolojiler;
+		const parsed = Array.isArray(raw) ? raw : JSON.parse(String(raw ?? '[]'));
 		if (Array.isArray(parsed)) teknolojiler = parsed.filter((x): x is string => typeof x === 'string');
 	} catch {
 		teknolojiler = [];
@@ -38,8 +43,8 @@ export async function getProjects(viewerId: string, includeAll: boolean): Promis
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`${PROJECT_SELECT}
-		 WHERE $2::boolean OR p.status = 'yayinda' OR p.olusturanId = $1
-		 ORDER BY p.oneCikan DESC, p.olusturma DESC`,
+		 WHERE $2::boolean OR p.status = 'yayinda' OR p.created_by = $1
+		 ORDER BY p.is_featured DESC, p.created_at DESC`,
 		[viewerId, includeAll]
 	);
 	return res.rows.map(toProject);
@@ -75,9 +80,9 @@ export async function createProject(input: ProjectInput & { olusturanId: string;
 	);
 	await db.query(
 		`INSERT INTO projects
-			(id, slug, baslik, ozet, aciklama, repoUrl, canliUrl, teknolojiler, teamId, olusturanId,
-			 status, oneCikan, olusturma, guncellenme, owner_team_id, owner_user_id, created_by)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 0, $12, $12, $13, $14, $10)`,
+			(id, slug, title, summary, description, repo_url, live_url, tech_stack, team_id,
+			 status, is_featured, created_at, updated_at, owner_team_id, owner_user_id, created_by, starred_by)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 0, $11, $11, $12, $13, $14, '[]'::jsonb)`,
 		[
 			id,
 			slug,
@@ -88,11 +93,11 @@ export async function createProject(input: ProjectInput & { olusturanId: string;
 			input.canliUrl,
 			JSON.stringify(input.teknolojiler),
 			input.teamId,
-			input.olusturanId,
 			input.status,
 			now,
 			input.ownerTeamId ?? input.teamId,
 			input.ownerUserId ?? input.olusturanId,
+			input.olusturanId,
 		]
 	);
 	return (await getProjectById(id, input.olusturanId)) as Project;
@@ -110,18 +115,18 @@ export async function updateProject(
 		values.push(value);
 		sets.push(`${column} = $${values.length}`);
 	};
-	if (patch.baslik !== undefined) set('baslik', patch.baslik);
-	if (patch.ozet !== undefined) set('ozet', patch.ozet);
-	if (patch.aciklama !== undefined) set('aciklama', patch.aciklama);
-	if (patch.repoUrl !== undefined) set('repoUrl', patch.repoUrl);
-	if (patch.canliUrl !== undefined) set('canliUrl', patch.canliUrl);
-	if (patch.teknolojiler !== undefined) set('teknolojiler', JSON.stringify(patch.teknolojiler));
-	if (patch.teamId !== undefined) set('teamId', patch.teamId);
+	if (patch.baslik !== undefined) set('title', patch.baslik);
+	if (patch.ozet !== undefined) set('summary', patch.ozet);
+	if (patch.aciklama !== undefined) set('description', patch.aciklama);
+	if (patch.repoUrl !== undefined) set('repo_url', patch.repoUrl);
+	if (patch.canliUrl !== undefined) set('live_url', patch.canliUrl);
+	if (patch.teknolojiler !== undefined) set('tech_stack', JSON.stringify(patch.teknolojiler));
+	if (patch.teamId !== undefined) set('team_id', patch.teamId);
 	if (patch.ownerTeamId !== undefined) set('owner_team_id', patch.ownerTeamId);
 	if (patch.ownerUserId !== undefined) set('owner_user_id', patch.ownerUserId);
 	if (patch.status !== undefined) set('status', patch.status);
-	if (patch.oneCikan !== undefined) set('oneCikan', patch.oneCikan ? 1 : 0);
-	set('guncellenme', Date.now());
+	if (patch.oneCikan !== undefined) set('is_featured', patch.oneCikan ? 1 : 0);
+	set('updated_at', Date.now());
 	values.push(id);
 	const res = await getPgPool().query(`UPDATE projects SET ${sets.join(', ')} WHERE id = $${values.length}`, values);
 	return (res.rowCount ?? 0) > 0;
@@ -139,18 +144,20 @@ export async function toggleProjectLike(
 	userId: string
 ): Promise<{ begendimMi: boolean; begeniSayisi: number }> {
 	return withTransaction(async (client) => {
-		const removed = await client.query('DELETE FROM project_likes WHERE projeId = $1 AND userId = $2', [
-			projeId,
-			userId,
-		]);
-		const begendimMi = (removed.rowCount ?? 0) === 0;
-		if (begendimMi) {
-			await client.query(
-				'INSERT INTO project_likes (projeId, userId, olusturma) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
-				[projeId, userId, Date.now()]
-			);
-		}
-		const count = await client.query('SELECT COUNT(*)::int AS n FROM project_likes WHERE projeId = $1', [projeId]);
-		return { begendimMi, begeniSayisi: Number(count.rows[0]?.n ?? 0) };
+		const cur = await client.query(
+			`SELECT COALESCE(starred_by, '[]'::jsonb) AS starred_by FROM projects WHERE id = $1 FOR UPDATE`,
+			[projeId]
+		);
+		const rawList = cur.rows[0]?.starredBy ?? cur.rows[0]?.starred_by;
+		const currentList: string[] = Array.isArray(rawList) ? rawList.map(String) : [];
+		const alreadyStarred = currentList.includes(userId);
+		const nextList = alreadyStarred
+			? currentList.filter((id) => id !== userId)
+			: [...currentList, userId];
+		await client.query(
+			`UPDATE projects SET starred_by = $2::jsonb WHERE id = $1`,
+			[projeId, JSON.stringify(nextList)]
+		);
+		return { begendimMi: !alreadyStarred, begeniSayisi: nextList.length };
 	});
 }

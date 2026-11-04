@@ -18,27 +18,27 @@ export type AppEvent =
 	/** Role permissions changed, or a member's role was reassigned. */
 	| { k: 'permission'; roleId?: string; userId?: string }
 	/** Session revoked / replaced / account suspended: re-verify immediately. */
-	| { k: 'session' | 'oturum'; userId: string }
+	| { k: 'session'; userId: string }
 	/** New notification; if `userId` is omitted, broadcast to all connected members. */
-	| { k: 'notification' | 'bildirim'; userId?: string }
+	| { k: 'notification'; userId?: string }
 	/** Team roster, settings, or kanban tasks changed; if `userId` is omitted, broadcast to all. */
-	| { k: 'team_updated' | 'takim_guncellendi'; teamId?: string; userId?: string }
+	| { k: 'team_updated'; teamId?: string; userId?: string }
 	/** Budget ledger or balance changed. */
-	| { k: 'budget_updated' | 'butce_guncellendi'; userId?: string }
+	| { k: 'budget_updated'; userId?: string }
 	/** Inventory item status, custody, or details changed. */
-	| { k: 'inventory_updated' | 'envanter_guncellendi'; userId?: string }
+	| { k: 'inventory_updated'; userId?: string }
 	/** News / announcement created, updated, or deleted. */
-	| { k: 'news_updated' | 'haber_guncellendi'; userId?: string }
+	| { k: 'news_updated'; userId?: string }
 	/** Event created, updated, deleted, or RSVP changed. */
-	| { k: 'event_updated' | 'etkinlik_guncellendi'; userId?: string }
+	| { k: 'event_updated'; userId?: string }
 	/** Project created, updated, or deleted. */
-	| { k: 'project_updated' | 'proje_guncellendi'; userId?: string }
+	| { k: 'project_updated'; userId?: string }
 	/** Decision / poll created, voted, or closed. */
-	| { k: 'decision_updated' | 'karar_guncellendi'; userId?: string }
+	| { k: 'decision_updated'; userId?: string }
 	/** Personal note created, updated, or deleted. */
-	| { k: 'note_updated' | 'not_guncellendi'; userId?: string }
+	| { k: 'note_updated'; userId?: string }
 	/** General system/member refresh (member list, stats, settings). */
-	| { k: 'refresh' | 'yenile'; userId?: string };
+	| { k: 'refresh'; userId?: string };
 
 type Queryable = Pick<PoolClient, 'query'>;
 
@@ -46,8 +46,6 @@ export type EventSubscriber = {
 	userId: string;
 	send?: (event: AppEvent) => void;
 	close?: () => void;
-	ilet?: (event: AppEvent) => void;
-	kapat?: () => void;
 };
 
 /** Maximum concurrent SSE tabs per user; opening a 9th tab closes the oldest. */
@@ -121,7 +119,6 @@ function dispatch(event: AppEvent): void {
 	const deliver = (sub: EventSubscriber) => {
 		try {
 			if (sub.send) sub.send(event);
-			else if (sub.ilet) sub.ilet(event);
 		} catch (err) {
 			console.error('[events] Subscriber error:', err);
 		}
@@ -241,7 +238,6 @@ export function subscribe(subscriber: EventSubscriber): () => void {
 		group.delete(oldest);
 		try {
 			if (oldest.close) oldest.close();
-			else if (oldest.kapat) oldest.kapat();
 		} catch {
 			/* ignore */
 		}
@@ -254,13 +250,12 @@ export function subscribe(subscriber: EventSubscriber): () => void {
 		if (g.size === 0) s.subscribers.delete(subscriber.userId);
 	};
 }
-export const aboneOl = subscribe;
 
 /** Diagnostic helper for health checks / tests: active subscriber count & LISTEN state. */
-export function eventStatus(): { subscriberCount: number; listening: boolean; aboneSayisi: number; dinliyor: boolean } {
+export function eventStatus(): { subscriberCount: number; listening: boolean } {
 	const s = getState();
 	let subscriberCount = 0;
 	for (const g of s.subscribers.values()) subscriberCount += g.size;
 	const listening = s.client !== null;
-	return { subscriberCount, listening, aboneSayisi: subscriberCount, dinliyor: listening };
+	return { subscriberCount, listening };
 }

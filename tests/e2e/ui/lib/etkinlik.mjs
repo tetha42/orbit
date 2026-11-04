@@ -31,7 +31,7 @@ export async function makeEvent(t, admin, { label, startMin = 3 * 24 * 60, lengt
 /** Deletes an event after taking back its check-ins. */
 export async function removeEvent(admin, id) {
 	const list = (await admin.get(`/api/etkinlikler/${encodeURIComponent(id)}/katilim`)).json?.liste ?? [];
-	for (const r of list) if (r.katilimZamani) await admin.post('/api/etkinlikler', { action: 'yoklamaSil', etkinlikId: id, kullaniciId: r.kullaniciId });
+	for (const r of list) if (r.katilimZamani) await admin.post('/api/etkinlikler', { action: 'yoklamaSil', etkinlikId: id, userId: r.userId });
 	await admin.post('/api/etkinlikler', { action: 'deleteEvent', etkinlikId: id });
 }
 

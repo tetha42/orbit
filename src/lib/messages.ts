@@ -80,17 +80,14 @@ export interface MailConversation {
 export interface MailSkipped {
 	id: string;
 	ad: string;
-	/** `role` / `rol`: the member's role does not open Mail. `pasif`: no longer an active member. */
-	neden: 'role' | 'rol' | 'pasif';
+	/** `role`: the member's role does not open Mail. `pasif`: no longer an active member. */
+	neden: 'role' | 'pasif';
 }
 
 export interface MailSendResult {
-	threadId?: string;
-	messageId?: string;
-	skipped?: MailSkipped[];
-	konuId: string;
-	mesajId: string;
-	atlananlar: MailSkipped[];
+	threadId: string;
+	messageId: string;
+	skipped: MailSkipped[];
 }
 
 /** What the recipient picker gets: a name and an id, nothing else about the member (no e-mail address, department or student number). */
@@ -99,17 +96,17 @@ export interface MailRecipient extends MailPerson {
 	ulasilabilir: boolean;
 }
 
-/** The recipient lookup's answer. `oneri`: no search text was given, these are the people written with most recently. */
+/** The recipient lookup's answer. `suggestion`: no search text was given, these are the people written with most recently. */
 export interface MailRecipientList {
 	/** The search text this answers, so a slow answer to an earlier text is not mistaken for the current one. */
 	q: string;
-	alicilar: MailRecipient[];
-	oneri: boolean;
+	recipients: MailRecipient[];
+	suggestion: boolean;
 }
 
 /** What the sender is told about a recipient the message did not reach. */
 export function skippedReason(a: MailSkipped): string {
-	return a.neden === 'role' || a.neden === 'rol' ? `${a.ad} kişisinin roleü Posta'yı açmıyor.` : `${a.ad} artık aktif üye değil.`;
+	return a.neden === 'role' ? `${a.ad} kişisinin roleü Posta'yı açmıyor.` : `${a.ad} artık aktif üye değil.`;
 }
 
 /** The first line of a message body, for lists and notifications. */

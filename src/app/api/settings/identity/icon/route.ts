@@ -54,7 +54,7 @@ export async function POST(request: Request) {
 	void logSystemEvent({
 		servis: 'settings',
 		seviye: 'INFO',
-		mesaj: `Site icon updated (${auth.user.ad} ${auth.user.soyad})`,
+		mesaj: `Site icon updated (${auth.user.firstName || auth.user.ad || ""} ${auth.user.lastName || auth.user.soyad || ""})`,
 		userId: auth.user.id,
 	});
 	return NextResponse.json({ ok: true, iconUrl });

@@ -101,17 +101,17 @@ export const MemberCard = React.memo(function MemberCard({
 						style={{ position: 'relative', width: '36px', height: '36px', flexShrink: 0, cursor: 'pointer' }}
 						onClick={() => onOpenProfile(member)}
 					>
-						{member.profilFoto ? (
+						{member.avatarUrl || member.profilFoto ? (
 							<Image
-								src={member.profilFoto}
-								alt={`${member.ad} ${member.soyad}`}
+								src={(member.avatarUrl || member.profilFoto)!}
+								alt={`${member.firstName} ${member.lastName}`}
 								width={36}
 								height={36}
 								style={{ borderRadius: '50%', objectFit: 'cover' }}
 								unoptimized
 							/>
 						) : (
-							<AvatarFallback name={`${member.ad} ${member.soyad}`} size={36} />
+							<AvatarFallback name={`${member.firstName} ${member.lastName}`} size={36} />
 						)}
 					</div>
 
@@ -134,7 +134,7 @@ export const MemberCard = React.memo(function MemberCard({
 							}}
 						>
 							<span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-								{member.firstName || member.ad} {member.lastName || member.soyad}
+								{member.firstName} {member.lastName}
 							</span>
 							<ChevronRight size={13} style={{ opacity: 0.5 }} />
 						</button>
@@ -318,7 +318,7 @@ export const MemberCard = React.memo(function MemberCard({
 
 						<button
 							type="button"
-							onClick={() => onResetPassword(member.id, `${member.ad} ${member.soyad}`)}
+							onClick={() => onResetPassword(member.id, `${member.firstName} ${member.lastName}`)}
 							style={{
 								display: 'inline-flex',
 								alignItems: 'center',
@@ -371,7 +371,7 @@ export const MemberCard = React.memo(function MemberCard({
 						{!isSelf && (
 							<button
 								type="button"
-								onClick={() => onDelete(member.id, `${member.ad} ${member.soyad}`)}
+								onClick={() => onDelete(member.id, `${member.firstName} ${member.lastName}`)}
 								style={{
 									display: 'inline-flex',
 									alignItems: 'center',

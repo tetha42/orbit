@@ -51,10 +51,11 @@ export async function POST(request: Request) {
 		const cols = typeof body.cols === 'number' && body.cols > 10 ? body.cols : 80;
 		const rows = typeof body.rows === 'number' && body.rows > 5 ? body.rows : 24;
 		const sessionId = createTerminalSession(auth.user.id, cols, rows);
+		const userName = `${user.firstName || user.ad || ''} ${user.lastName || user.soyad || ''}`.trim();
 		await logSystemEvent({
 			servis: 'terminal',
 			seviye: 'INFO',
-			mesaj: `${user.ad} ${user.soyad} (${user.email}) terminal oturumu başlattı (passkey oturumu).`,
+			mesaj: `${userName} (${user.email}) terminal oturumu başlattı (passkey oturumu).`,
 			userId: user.id,
 			ip,
 		});
@@ -94,12 +95,13 @@ export async function POST(request: Request) {
 				reason: 'Terminal oturumu hatalı 2FA doğrulama denemesi',
 				userId: user.id,
 			});
+			const userName = `${user.firstName || user.ad || ''} ${user.lastName || user.soyad || ''}`.trim();
 			await logSystemEvent({
 				servis: 'terminal',
 				seviye: 'WARN',
 				mesaj: alreadyUsed
-					? `${user.ad} ${user.soyad} (${user.email}) daha önce kullanılmış bir 2FA kodu ile terminal oturumu başlatmayı denedi.`
-					: `${user.ad} ${user.soyad} (${user.email}) geçersiz 2FA kodu ile terminal oturumu başlatmayı denedi.`,
+					? `${userName} (${user.email}) daha önce kullanılmış bir 2FA kodu ile terminal oturumu başlatmayı denedi.`
+					: `${userName} (${user.email}) geçersiz 2FA kodu ile terminal oturumu başlatmayı denedi.`,
 				userId: user.id,
 				ip,
 			});
@@ -121,10 +123,11 @@ export async function POST(request: Request) {
 		}
 
 		// Security audit log
+		const userName = `${user.firstName || user.ad || ''} ${user.lastName || user.soyad || ''}`.trim();
 		await logSystemEvent({
 			servis: 'terminal',
 			seviye: 'INFO',
-			mesaj: `${user.ad} ${user.soyad} (${user.email}) terminal oturumu başlattı (2FA doğrulandı).`,
+			mesaj: `${userName} (${user.email}) terminal oturumu başlattı (2FA doğrulandı).`,
 			userId: user.id,
 			ip,
 		});

@@ -61,7 +61,7 @@ export function UrgentHeadlineBanner({
 					</span>
 					<span style={{ fontSize: '11px', opacity: 0.7 }}>
 						{new Date(article.olusturma).toLocaleDateString(
-							language === 'tr' ? 'tr-TR' : 'en-US',
+							language,
 							{ day: 'numeric', month: 'long', year: 'numeric' }
 						)}
 					</span>

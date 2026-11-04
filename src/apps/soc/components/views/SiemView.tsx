@@ -285,7 +285,7 @@ export const SiemView = React.memo(function SiemView() {
 											</div>
 											{idx % Math.max(1, Math.floor(siemHistogram.length / 6)) === 0 && (
 												<span className={s.siemHistogramColLabel}>
-													{new Date(b.start).toLocaleTimeString(language === 'tr' ? 'tr-TR' : 'en-US', {
+													{new Date(b.start).toLocaleTimeString(language, {
 														hour: '2-digit',
 														minute: '2-digit',
 													})}

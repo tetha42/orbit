@@ -352,7 +352,7 @@ export const MailMobileView: React.FC<MailMobileViewProps> = ({
 	onEmptyTrash,
 }) => {
 	const { t, language } = useI18n();
-	const locale = language === 'tr' ? 'tr-TR' : 'en-US';
+	const locale = language;
 
 	// Navigation stack: 'mailboxes' <-> 'list' <-> 'detail'
 	const [screen, setScreen] = useState<'mailboxes' | 'list' | 'detail'>('list');

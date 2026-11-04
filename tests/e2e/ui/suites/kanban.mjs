@@ -17,8 +17,8 @@ export default async function suite(t) {
 	// Kendi takımı: bir kaptan ve görev sahibi bir üye.
 	const captain = await newMember(t, admin, { label: 'kaptan', rolId: fx.roles.uye });
 	const worker = await newMember(t, admin, { label: 'uye', rolId: fx.roles.uye });
-	const team = await makeTeam(t, admin, { label: 'Kanban', liderId: captain.id });
-	await (await worker.api()).post('/api/takimlar', { action: 'join', takimId: team.id });
+	const team = await makeTeam(t, admin, { label: 'Kanban', leadId: captain.id });
+	await (await worker.api()).post('/api/takimlar', { action: 'join', teamId: team.id });
 
 	const { page } = await t.open('admin');
 	const win = await openTeam(page, team.id);
@@ -299,7 +299,7 @@ export default async function suite(t) {
 		const task = (await tasksOf())[0];
 		const detail = await readTask(okur, task.id);
 		t.eq(detail.status, 403, 'görev ayrıntısı 403');
-		const add = await okur.post('/api/takimlar', { action: 'addTask', takimId: team.id, baslik: 'sızma' });
+		const add = await okur.post('/api/takimlar', { action: 'addTask', teamId: team.id, baslik: 'sızma' });
 		t.eq(add.status, 403, 'görev ekleme 403');
 		const { page: okurPage } = await t.open('okur');
 		t.eq(await okurPage.locator('[data-dock-app=teams]').count(), 0, 'Dock\'ta Takımlar yok');

@@ -51,7 +51,7 @@ export function useProjects() {
 				.filter(
 					(tm) =>
 						manage ||
-						tm.liderId === currentUserId ||
+						tm.leadId === currentUserId ||
 						(tm.uyeler ?? []).some((u) => u.userId === currentUserId && u.status === 'aktif')
 				)
 				.map((tm) => ({ id: tm.id, ad: tm.ad })),

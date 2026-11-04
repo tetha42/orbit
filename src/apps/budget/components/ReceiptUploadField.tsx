@@ -4,7 +4,7 @@ import React from 'react';
 import { Check, Paperclip } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
 import ui from '@/core/ui/ui.module.css';
-import k from './Kasa.module.css';
+import k from './Vault.module.css';
 
 interface ReceiptUploadFieldProps {
 	fisFotoUrl: string | null;

@@ -40,8 +40,8 @@ export async function setSystemSettings(
 	ayarlar: Record<string, string>,
 	denetim?: {
 		ctx: AuditContext;
-		registration: Omit<AuditEntry, 'onceki' | 'sonraki'>;
-		fark: (onceki: Record<string, string | undefined>, yeni: Record<string, string>) => Fark | null;
+		registration: Omit<AuditEntry, 'before' | 'after'>;
+		fark: (before: Record<string, string | undefined>, yeni: Record<string, string>) => Fark | null;
 	}
 ): Promise<void> {
 	const now = Date.now();
@@ -62,7 +62,7 @@ export async function setSystemSettings(
 			);
 		}
 		const fark = denetim?.fark(previous, ayarlar);
-		if (denetim && fark) await logAuditEvent(client, denetim.ctx, { ...denetim.registration, onceki: fark.onceki, sonraki: fark.sonraki });
+		if (denetim && fark) await logAuditEvent(client, denetim.ctx, { ...denetim.registration, before: fark.before, after: fark.after });
 	});
 }
 
@@ -96,17 +96,30 @@ export async function consumeWebauthnChallenge(
 ): Promise<{ challenge: string; userId: string | null } | null> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		'DELETE FROM webauthn_challenges WHERE id = $1 AND tur = $2 AND olusturma >= $3 RETURNING challenge, userId',
+		'DELETE FROM webauthn_challenges WHERE id = $1 AND tur = $2 AND olusturma >= $3 RETURNING challenge, userId AS "userId"',
 		[id, tur, Date.now() - CHALLENGE_TTL_MS]
 	);
 	const row = res.rows[0];
 	return row ? { challenge: row.challenge, userId: row.userId ?? null } : null;
 }
 
+const WEBAUTHN_CREDENTIAL_COLUMNS = `
+	id,
+	userId AS "userId",
+	publicKey AS "publicKey",
+	counter,
+	transports,
+	deviceType AS "deviceType",
+	backedUp AS "backedUp",
+	nickname,
+	sonKullanma AS "sonKullanma",
+	olusturma
+`;
+
 export async function getWebauthnCredentials(userId: string): Promise<WebauthnCredential[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		'SELECT * FROM webauthn_credentials WHERE userId = $1 ORDER BY olusturma ASC',
+		`SELECT ${WEBAUTHN_CREDENTIAL_COLUMNS} FROM webauthn_credentials WHERE userId = $1 ORDER BY olusturma ASC`,
 		[userId]
 	);
 	return res.rows;
@@ -114,7 +127,10 @@ export async function getWebauthnCredentials(userId: string): Promise<WebauthnCr
 
 export async function getWebauthnCredentialById(id: string): Promise<WebauthnCredential | null> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query('SELECT * FROM webauthn_credentials WHERE id = $1', [id]);
+	const res = await getPgPool().query(
+		`SELECT ${WEBAUTHN_CREDENTIAL_COLUMNS} FROM webauthn_credentials WHERE id = $1`,
+		[id]
+	);
 	return res.rows[0] ?? null;
 }
 

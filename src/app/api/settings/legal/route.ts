@@ -67,7 +67,7 @@ export async function PATCH(request: Request) {
 	void logSystemEvent({
 		servis: 'settings',
 		seviye: 'INFO',
-		mesaj: `Legal document updated: ${saved.docType} (${auth.user.ad} ${auth.user.soyad})`,
+		mesaj: `Legal document updated: ${saved.docType} (${auth.user.firstName || auth.user.ad || ""} ${auth.user.lastName || auth.user.soyad || ""})`,
 		detay: {
 			documentId: saved.id,
 			scope: saved.scope,

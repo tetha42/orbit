@@ -59,7 +59,7 @@ export async function GET(request: Request) {
 			teams.map(async (team) => {
 				const tumu = await getTeamMembers(team.id);
 				const aktif = tumu.filter((u) => u.status === 'aktif');
-				const manage = can(auth.user, 'teams', 'yonet') || team.liderId === auth.user.id;
+				const manage = can(auth.user, 'teams', 'yonet') || team.leadId === auth.user.id;
 				// A team's task board belongs to the team: management, its leader and its
 				// active members. Everyone else sees the team card, not the work items.
 				const canSeeTasks = manage || aktif.some((u) => u.userId === auth.user.id);
@@ -148,7 +148,7 @@ async function handlePOST(request: Request) {
 			if (action === 'setMemberRole') {
 				const role = normalizeRole(body.takimRolu);
 				if (!role) return NextResponse.json({ error: 'Role boş olamaz.' }, { status: 400 });
-				if (userId === board.team.liderId && role !== CAPTAIN_ROLE) {
+				if (userId === board.team.leadId && role !== CAPTAIN_ROLE) {
 					return NextResponse.json({ error: 'Kaptanın unvanı kaptanlık devredilerek değişir.' }, { status: 409 });
 				}
 				const ok = await setTeamMemberRole(teamId, userId, role);
@@ -184,7 +184,7 @@ async function handlePOST(request: Request) {
 			// re-filing, pausing it or handing it to someone else is management's call.
 			const editAll = can(auth.user, 'teams', 'yonet');
 			const patch: TeamPatch = {};
-			const restricted = ['ad', 'kategori', 'status', 'liderId'].filter((k) => body[k] !== undefined);
+			const restricted = ['ad', 'kategori', 'status', 'leadId'].filter((k) => body[k] !== undefined);
 			if (restricted.length && !editAll) {
 				return NextResponse.json({ error: 'Ad, kategori, status ve kaptan yalnızca yönetim tarafından değiştirilebilir.' }, { status: 403 });
 			}
@@ -225,10 +225,10 @@ async function handlePOST(request: Request) {
 				if (!isParticipationType(body.katilimTuru)) return NextResponse.json({ error: 'Geçersiz katılım türü.' }, { status: 400 });
 				patch.katilimTuru = body.katilimTuru;
 			}
-			if (body.liderId !== undefined) {
-				const leader = typeof body.liderId === 'string' ? await getUserById(body.liderId) : null;
+			if (body.leadId !== undefined) {
+				const leader = typeof body.leadId === 'string' ? await getUserById(body.leadId) : null;
 				if (!leader || leader.status !== 'aktif') return NextResponse.json({ error: 'Kaptan olarak seçilen üye bulunamadı.' }, { status: 400 });
-				patch.liderId = leader.id;
+				patch.leadId = leader.id;
 			}
 			await updateTeam(teamId, patch);
 			await publishEventQuiet(getPgPool(), { k: 'team_updated', teamId });
@@ -354,7 +354,7 @@ async function handlePOST(request: Request) {
 					{ status: 403 }
 				);
 			}
-			const { ad, kategori, aciklama, kontenjan, repoUrl, liderId, katilimTuru } = body;
+			const { ad, kategori, aciklama, kontenjan, repoUrl, leadId, katilimTuru } = body;
 			if (!ad || !kategori || !aciklama) {
 				return NextResponse.json(
 					{ error: 'Takım adı, kategori ve açıklama zorunludur.' },
@@ -375,7 +375,7 @@ async function handlePOST(request: Request) {
 				aciklama,
 				kontenjan: Number(kontenjan ?? 6),
 				repoUrl: repo ?? undefined,
-				liderId,
+				leadId,
 				katilimTuru: isParticipationType(katilimTuru) ? katilimTuru : 'acik',
 			});
 			await publishEventQuiet(getPgPool(), { k: 'team_updated', teamId: newTeam.id });

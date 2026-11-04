@@ -16,7 +16,7 @@ import {
 	Loader2,
 	RotateCcw,
 } from 'lucide-react';
-import { useI18n } from '@/core/i18n';
+import { resolveLocalizedText, useI18n } from '@/core/i18n';
 import { useShell } from '@/core/shell';
 import { useSession } from '@/core/session';
 import { useDialog } from '@/components/Common/DialogProvider';
@@ -85,6 +85,9 @@ export function WallpaperPanel() {
 		void loadCustomWallpapers();
 	}, [loadCustomWallpapers]);
 
+	const localizedTitle = (item?: { titleTr?: string; titleEn?: string } | null) =>
+		item ? resolveLocalizedText({ en: item.titleEn, tr: item.titleTr }, language) : '';
+
 	const displayWallpapers = useMemo<DisplayWallpaper[]>(
 		() => [
 			...WALLPAPERS.filter((wallpaper) => !overrides[wallpaper.id]?.hidden).map(
@@ -93,7 +96,10 @@ export function WallpaperPanel() {
 					return {
 						id: wallpaper.id,
 						title:
-							(language === 'tr' ? override?.titleTr : override?.titleEn) ||
+							resolveLocalizedText(
+								{ en: override?.titleEn, tr: override?.titleTr },
+								language
+							) ||
 							t(
 								wallpaper.titleKey || `wp_${wallpaper.id.replace(/-/g, '_')}`,
 								wallpaper.title
@@ -109,7 +115,11 @@ export function WallpaperPanel() {
 			),
 			...customWallpapers.map((wallpaper) => ({
 				id: wallpaper.id,
-				title: language === 'tr' ? wallpaper.titleTr : wallpaper.titleEn,
+				title: resolveLocalizedText(
+					{ en: wallpaper.titleEn, tr: wallpaper.titleTr },
+					language,
+					wallpaper.titleEn || wallpaper.titleTr
+				),
 				type: wallpaper.type || t('settingsWallpaperCustomType'),
 				src: wallpaper.url,
 				custom: true,
@@ -429,14 +439,11 @@ export function WallpaperPanel() {
 									(item) => item.url === activeWallpaper
 								);
 								if (currentCustom) {
-									return language === 'tr' ? currentCustom.titleTr : currentCustom.titleEn;
+									return localizedTitle(currentCustom);
 								}
 								const currentOverride = overrides[currentWallpaperObj.id];
 								if (currentOverride) {
-									return (
-										(language === 'tr' ? currentOverride.titleTr : currentOverride.titleEn) ||
-										currentWallpaperObj.title
-									);
+									return localizedTitle(currentOverride) || currentWallpaperObj.title;
 								}
 								return t(
 											currentWallpaperObj.titleKey ||

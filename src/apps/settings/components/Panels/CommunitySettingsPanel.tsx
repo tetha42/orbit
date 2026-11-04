@@ -18,6 +18,13 @@ import { useI18n } from '@/core/i18n';
 import { useIdentity } from '@/core/identity';
 import { useSound } from '@/core/sound';
 import { errorMessage } from '@/lib/errors';
+import {
+	ARCHETYPE_PRESETS,
+	DEFAULT_ARCHETYPE,
+	ORGANIZATION_ARCHETYPES,
+	isOrganizationArchetype,
+	type OrganizationArchetype,
+} from '@/lib/archetypes';
 
 const inputStyle: React.CSSProperties = {
 	width: '100%',
@@ -67,6 +74,7 @@ export function CommunitySettingsPanel() {
 	const [descriptionTr, setDescriptionTr] = useState('');
 	const [descriptionEn, setDescriptionEn] = useState('');
 	const [domain, setDomain] = useState('');
+	const [archetype, setArchetype] = useState<OrganizationArchetype>(DEFAULT_ARCHETYPE);
 	const [imza1Ad, setImza1Ad] = useState('');
 	const [imza1Unvan, setImza1Unvan] = useState('');
 	const [imza2Ad, setImza2Ad] = useState('');
@@ -106,6 +114,9 @@ export function CommunitySettingsPanel() {
 				}
 				if (communityData) {
 					setDomain(communityData.kulupDomain || '');
+					if (isOrganizationArchetype(communityData.archetype)) {
+						setArchetype(communityData.archetype);
+					}
 					setImza1Ad(communityData.imza1Ad || '');
 					setImza1Unvan(communityData.imza1Unvan || '');
 					setImza2Ad(communityData.imza2Ad || '');
@@ -179,6 +190,7 @@ export function CommunitySettingsPanel() {
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					kulupDomain: domain,
+					archetype,
 					imza1Ad,
 					imza1Unvan,
 					imza2Ad,
@@ -472,6 +484,98 @@ export function CommunitySettingsPanel() {
 
 					<div style={cardStyle}>
 						<div style={sectionTitleStyle}>
+							<Building2 size={16} style={{ opacity: 0.7 }} />
+							<span>{t('organizationArchetypeTitle', 'Organization Archetype')}</span>
+						</div>
+						<div style={{ fontSize: '12px', opacity: 0.7, lineHeight: 1.5 }}>
+							{t(
+								'organizationArchetypeDesc',
+								'Defines the structural vocabulary of your workspace across member tracks, seniority tiers, working-group categories, and governance records.'
+							)}
+						</div>
+						<div
+							style={{
+								display: 'grid',
+								gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+								gap: '10px',
+							}}
+						>
+							{ORGANIZATION_ARCHETYPES.map((archId) => {
+								const preset = ARCHETYPE_PRESETS[archId];
+								const isSelected = archetype === archId;
+								const localizedName = preset.name[language] ?? preset.name.en;
+								const localizedDesc = preset.description[language] ?? preset.description.en;
+								const localizedUnit = preset.unitLabel[language] ?? preset.unitLabel.en;
+								const localizedTrack = preset.trackLabel[language] ?? preset.trackLabel.en;
+
+								return (
+									<button
+										key={archId}
+										type="button"
+										disabled={isSaving}
+										onClick={() => setArchetype(archId)}
+										style={{
+											textAlign: 'left',
+											padding: '12px 14px',
+											borderRadius: '10px',
+											border: isSelected
+												? '1px solid var(--accent, #6366f1)'
+												: '1px solid var(--window-border)',
+											background: isSelected
+												? 'rgba(99, 102, 241, 0.14)'
+												: 'rgba(0, 0, 0, 0.18)',
+											color: 'inherit',
+											cursor: isSaving ? 'not-allowed' : 'pointer',
+											display: 'flex',
+											flexDirection: 'column',
+											gap: '6px',
+											transition: 'border-color 0.15s ease, background 0.15s ease',
+										}}
+									>
+										<div
+											style={{
+												display: 'flex',
+												alignItems: 'center',
+												justifyContent: 'space-between',
+												gap: '8px',
+											}}
+										>
+											<span style={{ fontSize: '12.5px', fontWeight: 600 }}>
+												{localizedName}
+											</span>
+											{isSelected && (
+												<CheckCircle2
+													size={15}
+													style={{ color: '#818cf8', flexShrink: 0 }}
+												/>
+											)}
+										</div>
+										<span style={{ fontSize: '11.5px', opacity: 0.72, lineHeight: 1.45 }}>
+											{localizedDesc}
+										</span>
+										<div
+											style={{
+												display: 'flex',
+												flexWrap: 'wrap',
+												gap: '4px',
+												marginTop: '2px',
+												fontSize: '10.5px',
+												opacity: 0.85,
+												color: '#a5b4fc',
+											}}
+										>
+											<span>{localizedUnit}</span>
+											<span>·</span>
+											<span>{localizedTrack}</span>
+										</div>
+									</button>
+								);
+							})}
+						</div>
+					</div>
+
+					<div style={cardStyle}>
+						<div style={sectionTitleStyle}>
 							<Globe size={16} style={{ opacity: 0.7 }} />
 							<span>{t('identityDomainSection')}</span>
 						</div>
@@ -595,9 +699,7 @@ export function CommunitySettingsPanel() {
 						}}
 					>
 						<span style={{ fontSize: '11px', opacity: 0.5, marginRight: 'auto' }}>
-							{language === 'tr'
-								? 'Değişiklikler tüm sayfalara anında yansır.'
-								: 'Changes apply across all pages immediately.'}
+							{t('identityChangesImmediateHint', 'Changes apply across all pages immediately.')}
 						</span>
 						<button
 							type="submit"

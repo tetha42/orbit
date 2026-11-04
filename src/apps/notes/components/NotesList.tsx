@@ -52,7 +52,7 @@ export function NotesList({
 	const formatNoteDate = (timestamp: number) => {
 		const date = new Date(timestamp);
 		const now = new Date();
-		const locale = language === 'tr' ? 'tr-TR' : 'en-US';
+		const locale = language;
 		const isToday = date.toDateString() === now.toDateString();
 		if (isToday) {
 			return date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });

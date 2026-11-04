@@ -30,7 +30,7 @@ export async function PATCH(request: Request) {
 	void logSystemEvent({
 		servis: 'settings',
 		seviye: 'INFO',
-		mesaj: `Registration core fields updated (${auth.user.ad} ${auth.user.soyad})`,
+		mesaj: `Registration core fields updated (${auth.user.firstName || auth.user.ad || ""} ${auth.user.lastName || auth.user.soyad || ""})`,
 		detay: {
 			trackVisible: config.track.visible,
 			levelVisible: config.level.visible,

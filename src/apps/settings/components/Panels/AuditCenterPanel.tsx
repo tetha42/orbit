@@ -14,7 +14,7 @@ export function AuditCenterPanel() {
 		fetch('/api/roles', { cache: 'no-store' })
 			.then((res) => (res.ok ? res.json() : null))
 			.then((payload) => {
-				if (!cancelled && Array.isArray(payload?.roller)) setRoles(payload.roller);
+				if (!cancelled && Array.isArray(payload?.roles)) setRoles(payload.roles);
 			})
 			.catch(() => {});
 		return () => {
@@ -31,7 +31,7 @@ export function AuditCenterPanel() {
 				</h2>
 				<p style={{ margin: '3px 0 0', fontSize: '12.5px', opacity: 0.65 }}>{t('auditCenterDesc')}</p>
 			</div>
-			<AuditHistory roller={roles} />
+			<AuditHistory roles={roles} />
 		</div>
 	);
 }

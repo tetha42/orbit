@@ -3,12 +3,12 @@
 import React from 'react';
 import { BarChart3, PieChart } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
-import { formatKurus } from '@/lib/budget';
+import { formatMinor } from '@/lib/budget';
 import ui from '@/core/ui/ui.module.css';
-import k from './Kasa.module.css';
+import k from './Vault.module.css';
 
 interface VaultInsightsProps {
-	dagilim: { kategori: string; tutarKurus: number; oran: number }[];
+	dagilim: { kategori: string; amountMinor: number; oran: number }[];
 	kategori: string;
 	onSelectKategori: (cat: string) => void;
 	aylar: { ay: string; gelir: number; gider: number }[];
@@ -17,7 +17,7 @@ interface VaultInsightsProps {
 	maxMonth: number;
 }
 
-const tl = (kurus: number) => `₺${formatKurus(kurus)}`;
+const tl = (kurus: number) => `₺${formatMinor(kurus)}`;
 const monthName = (key: string, style: 'short' | 'long' = 'short', lang = 'tr') => {
 	const [y, m] = key.split('-').map(Number);
 	return new Date(y, m - 1, 1).toLocaleDateString(
@@ -57,7 +57,7 @@ export function VaultInsights({
 							<span style={{ width: `${Math.max(2, d.oran * 100)}%` }} />
 						</span>
 						<span className={k.catAmount}>
-							{tl(d.tutarKurus)} · %{Math.round(d.oran * 100)}
+							{tl(d.amountMinor)} · %{Math.round(d.oran * 100)}
 						</span>
 					</button>
 				))}

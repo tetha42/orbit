@@ -68,7 +68,7 @@ export function SessionInspectorTab({ sessionInfo, isLoading }: SessionInspector
 					<div>
 						<span style={{ fontSize: '11px', opacity: 0.6, display: 'block' }}>{t('tbSessionFullName')}</span>
 						<strong style={{ fontSize: '13px' }}>
-							{user.ad} {user.soyad}
+							{user.firstName || user.ad} {user.lastName || user.soyad}
 						</strong>
 					</div>
 					<div>
@@ -78,7 +78,7 @@ export function SessionInspectorTab({ sessionInfo, isLoading }: SessionInspector
 					<div>
 						<span style={{ fontSize: '11px', opacity: 0.6, display: 'block' }}>{t('tbSessionStudentId')}</span>
 						<strong style={{ fontSize: '13px', fontFamily: 'ui-monospace, monospace' }}>
-							{user.ogrenciNo || '—'}
+							{user.handle || user.ogrenciNo || '—'}
 						</strong>
 					</div>
 					<div>

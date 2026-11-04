@@ -77,13 +77,13 @@ async function run() {
 		// -----------------------------------------------------------------------
 		log.step(1, 'Administrator Account & Role Verification');
 		let adminRes = await client.query(
-			`SELECT id, first_name, last_name, email, role_id, xp, status FROM users WHERE role_id = 'rol_admin' LIMIT 1`
+			`SELECT id, first_name, last_name, email, role_id, xp, status FROM users WHERE role_id = 'role_admin' OR email = 'admin@orbit.local' LIMIT 1`
 		);
 		if (adminRes.rowCount === 0) {
 			const adminId = crypto.randomUUID();
 			await client.query(
 				`INSERT INTO users (id, first_name, last_name, email, password_hash, handle, department, grade, role_id, status, xp, created_at)
-				 VALUES ($1, 'Orbit', 'Administrator', 'admin@orbit.local', '$2b$12$e2eSimulationDummyHash2026', 'admin', 'Architecture', 4, 'rol_admin', 'aktif', 100, $2)`,
+				 VALUES ($1, 'Orbit', 'Administrator', 'admin@orbit.local', '$2b$12$e2eSimulationDummyHash2026', 'admin', 'Architecture', 4, 'role_admin', 'aktif', 100, $2)`,
 				[adminId, Date.now()]
 			);
 			adminRes = await client.query(
@@ -102,15 +102,15 @@ async function run() {
 		log.step(2, 'Team Creation & Task Workflow (Kanban)');
 		let teamId;
 		let isTestTeamCreated = false;
-		const teamRes = await client.query(`SELECT id, ad FROM teams LIMIT 1`);
+		const teamRes = await client.query(`SELECT id, name FROM teams LIMIT 1`);
 		if (teamRes.rowCount > 0) {
 			teamId = teamRes.rows[0].id;
-			log.ok(`Using existing R&D team: ${teamRes.rows[0].ad} (ID: ${teamId})`);
+			log.ok(`Using existing R&D team: ${teamRes.rows[0].name} (ID: ${teamId})`);
 		} else {
 			teamId = crypto.randomUUID();
 			isTestTeamCreated = true;
 			await client.query(
-				`INSERT INTO teams (id, ad, slug, aciklama, kategori, liderid, kontenjan, repourl, status, olusturma)
+				`INSERT INTO teams (id, name, slug, description, category, lead_id, capacity, repo_url, status, created_at)
 				 VALUES ($1, $2, $3, $4, $5, $6, 10, 'https://github.com/tetha42/orbit', 'aktif', $7)`,
 				[
 					teamId,
@@ -127,7 +127,7 @@ async function run() {
 
 		const taskId = `test-task-${Date.now()}`;
 		await client.query(
-			`INSERT INTO team_tasks (id, takimid, baslik, aciklama, status, oncelik, atananuyeid, teslimtarihi, olusturma, sira, guncellenme, xpverildi)
+			`INSERT INTO team_tasks (id, team_id, title, description, status, priority, assignee_id, due_at, created_at, position, updated_at, xp_awarded)
 			 VALUES ($1, $2, $3, $4, 'yapilacak', 'yuksek', $5, $6, $7, 1, $7, 0)`,
 			[
 				taskId,
@@ -149,7 +149,7 @@ async function run() {
 
 		// Mark task completed and xp_awarded = 1
 		await client.query(
-			`UPDATE team_tasks SET status = 'tamamlandi', tamamlanma = $1, xpverildi = 1, guncellenme = $1 WHERE id = $2`,
+			`UPDATE team_tasks SET status = 'tamamlandi', completed_at = $1, xp_awarded = 1, updated_at = $1 WHERE id = $2`,
 			[Date.now(), taskId]
 		);
 		await client.query(`UPDATE users SET xp = xp + 40 WHERE id = $1`, [admin.id]);
@@ -168,7 +168,7 @@ async function run() {
 		const docId = `e2e-edr-${Date.now()}`;
 		const decisionNo = Math.floor(Math.random() * 90000) + 10000;
 		await client.query(
-			`INSERT INTO decisions (id, kararno, baslik, gundem, icerik, date, belgeturu, kamuyaacikmi, kilitlimi, olusturanid, olusturma)
+			`INSERT INTO decisions (id, reference_no, title, agenda, content, date, decision_type, is_public, is_locked, created_by, created_at)
 			 VALUES ($1, $2, $3, $4, $5, $6, 'karar', 1, 0, $7, $6)`,
 			[
 				docId,
@@ -183,9 +183,9 @@ async function run() {
 		log.ok(`EDR decision record created (No: ${decisionNo}, ID: ${docId}).`);
 
 		// Freeze / lock document
-		await client.query(`UPDATE decisions SET kilitlimi = 1 WHERE id = $1`, [docId]);
-		const docCheck = await client.query(`SELECT kilitlimi FROM decisions WHERE id = $1`, [docId]);
-		if (Number(docCheck.rows[0]?.kilitlimi) !== 1) {
+		await client.query(`UPDATE decisions SET is_locked = 1 WHERE id = $1`, [docId]);
+		const docCheck = await client.query(`SELECT is_locked FROM decisions WHERE id = $1`, [docId]);
+		if (Number(docCheck.rows[0]?.is_locked) !== 1) {
 			throw new Error('Document freezing failed!');
 		}
 		log.ok(`EDR decision frozen and cryptographically signed (is_locked: 1).`);

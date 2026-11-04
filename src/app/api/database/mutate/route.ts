@@ -5,23 +5,29 @@ import { clientAddress } from '@/lib/http';
 import { logSystemEvent } from '@/db/repositories/logs.repo';
 
 const SENSITIVE_COLUMNS = new Set([
+	'password_hash',
+	'passwordhash',
 	'sifrehash',
+	'totp_secret',
 	'totpsecret',
+	'session_token',
+	'sessiontoken',
 	'aktifoturumtoken',
+	'totp_recovery_codes',
 	'totprecoverycodes',
+	'secret_hash',
 	'secrethash',
 	'smtp_pass',
 ]);
 
 const PROTECTED_TABLES = new Set([
-	'sistem_loglari',
 	'system_logs',
-	'denetim_kaydi',
 	'audit_logs',
-	'guvenlik_engelleri',
 	'security_blocks',
-	'sistem_ayarlari',
 	'system_settings',
+	'webauthn_credentials',
+	'verification_tokens',
+	'oauth_clients',
 ]);
 const PROTECTED_SETTINGS_KEYS = new Set(['smtp_pass', 'soc_lockdown_mode', 'soc_lockdown_reason']);
 
@@ -89,7 +95,7 @@ export async function POST(request: Request) {
 			for (const u of updates) {
 				const pkCol = String(u.pk.col || '').trim();
 				if (!/^[a-zA-Z0-9_]+$/.test(pkCol)) throw new Error('Geçersiz birincil anahtar kolonu.');
-				if (lowerTable === 'sistem_ayarlari' && PROTECTED_SETTINGS_KEYS.has(String(u.pk.val ?? '').toLowerCase())) {
+				if (lowerTable === 'system_settings' && PROTECTED_SETTINGS_KEYS.has(String(u.pk.val ?? '').toLowerCase())) {
 					continue;
 				}
 
@@ -99,7 +105,7 @@ export async function POST(request: Request) {
 				for (const [key, val] of Object.entries(u.changes)) {
 					if (!/^[a-zA-Z0-9_]+$/.test(key)) continue;
 					if (SENSITIVE_COLUMNS.has(key.toLowerCase())) continue; // Skip sensitive fields
-					if (lowerTable === 'sistem_ayarlari' && key.toLowerCase() === 'anahtar' && PROTECTED_SETTINGS_KEYS.has(String(val ?? '').toLowerCase())) {
+					if (lowerTable === 'system_settings' && key.toLowerCase() === 'key' && PROTECTED_SETTINGS_KEYS.has(String(val ?? '').toLowerCase())) {
 						continue;
 					}
 					setParams.push(val);
@@ -113,11 +119,12 @@ export async function POST(request: Request) {
 
 					// Record audit diff in audit_logs if table exists
 					try {
-						const auditTable = (await client.query("SELECT to_regclass('audit_logs') AS a")).rows[0]?.a ? 'audit_logs' : 'denetim_kaydi';
+						const auditId = `db_${now}_${Math.random().toString(36).slice(2, 8)}`;
 						await client.query(
-							`INSERT INTO ${auditTable} (zaman, yapanId, yapanAd, islem, hedefTur, hedefId, hedefAd, onceki, sonraki, ip)
-							 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+							`INSERT INTO audit_logs (id, timestamp, actor_id, actor_name, action, target_type, target_id, target_name, before_state, after_state, ip)
+							 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
 							[
+								auditId,
 								now,
 								auth.user.id,
 								actorName,
@@ -138,7 +145,7 @@ export async function POST(request: Request) {
 
 			// 2. Process Inserts
 			for (const row of inserts) {
-				if (lowerTable === 'sistem_ayarlari' && PROTECTED_SETTINGS_KEYS.has(String(row.anahtar ?? '').toLowerCase())) {
+				if (lowerTable === 'system_settings' && PROTECTED_SETTINGS_KEYS.has(String(row.key ?? '').toLowerCase())) {
 					continue;
 				}
 				const cols: string[] = [];

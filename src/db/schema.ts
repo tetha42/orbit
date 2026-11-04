@@ -18,14 +18,21 @@ export const SYSTEM_SETTINGS_DEFAULTS: Record<string, string> = {
 	smtp_user: process.env.SMTP_USER || '',
 	smtp_pass: process.env.SMTP_PASS || '',
 	smtp_from: process.env.SMTP_FROM || '',
-	kulup_adi: process.env.CLUB_NAME || 'Orbit Community',
-	kulup_domain: process.env.CLUB_DOMAIN || 'orbit.local',
-	// Printed on certificates; editable by the board in the Certificates/Settings app.
-	universite: process.env.CLUB_UNIVERSITY || 'tetha42',
+	organization_name: process.env.CLUB_NAME || process.env.COMMUNITY_NAME || 'Orbit Community',
+	organization_domain: process.env.CLUB_DOMAIN || process.env.COMMUNITY_DOMAIN || 'orbit.local',
+	parent_entity: process.env.CLUB_UNIVERSITY || process.env.COMMUNITY_PARENT || 'tetha42',
+	signatory_1_name: process.env.CLUB_PRESIDENT_NAME || '',
+	signatory_1_title: process.env.CLUB_PRESIDENT_TITLE || 'Community Leader',
+	signatory_2_name: process.env.CLUB_ADVISOR_NAME || '',
+	signatory_2_title: process.env.CLUB_ADVISOR_TITLE || 'Studio Coordinator',
+	// Fallback mappings for legacy callers
+	kulup_adi: process.env.CLUB_NAME || process.env.COMMUNITY_NAME || 'Orbit Community',
+	kulup_domain: process.env.CLUB_DOMAIN || process.env.COMMUNITY_DOMAIN || 'orbit.local',
+	universite: process.env.CLUB_UNIVERSITY || process.env.COMMUNITY_PARENT || 'tetha42',
 	imza1_ad: process.env.CLUB_PRESIDENT_NAME || '',
-	imza1_unvan: process.env.CLUB_PRESIDENT_TITLE || 'Topluluk Lideri',
+	imza1_unvan: process.env.CLUB_PRESIDENT_TITLE || 'Community Leader',
 	imza2_ad: process.env.CLUB_ADVISOR_NAME || '',
-	imza2_unvan: process.env.CLUB_ADVISOR_TITLE || 'Stüdyo Koordinatörü',
+	imza2_unvan: process.env.CLUB_ADVISOR_TITLE || 'Studio Coordinator',
 };
 
 /**
@@ -49,24 +56,31 @@ export const MEMBER_ROSTER_SQL = `
 		k.grade AS "sinif",
 		k.role_id AS "roleId",
 		k.role_id AS "rolId",
-		r.ad AS "roleName",
-		r.ad AS "rolAd",
-		r.renk AS "roleColor",
-		r.renk AS "rolRenk",
+		r.name AS "roleName",
+		r.name AS "rolAd",
+		r.color AS "roleColor",
+		r.color AS "rolRenk",
 		k.avatar_url AS "avatarUrl",
 		k.avatar_url AS "profilFoto",
 		k.bio,
 		k.xp,
 		k.status AS "status",
 		k.status AS "durum",
+		k.custom_fields AS "customFields",
 		k.created_at AS "createdAt",
 		k.created_at AS "olusturma",
 		(
-			SELECT STRING_AGG(DISTINCT t.ad, ', ' ORDER BY t.ad)
+			SELECT STRING_AGG(DISTINCT t.name, ', ' ORDER BY t.name)
 			FROM teams t
-			LEFT JOIN team_members tu ON tu.teamId = t.id AND (tu.status = 'aktif' OR tu.status = 'active' OR tu.status IS NULL)
-			WHERE tu.userId = k.id OR t.liderId = k.id
+			LEFT JOIN team_members tu ON tu.team_id = t.id AND (tu.status = 'aktif' OR tu.status = 'active' OR tu.status IS NULL)
+			WHERE tu.user_id = k.id OR t.lead_id = k.id
 		) AS "takimAdi",
+		(
+			SELECT STRING_AGG(DISTINCT t.name, ', ' ORDER BY t.name)
+			FROM teams t
+			LEFT JOIN team_members tu ON tu.team_id = t.id AND (tu.status = 'aktif' OR tu.status = 'active' OR tu.status IS NULL)
+			WHERE tu.user_id = k.id OR t.lead_id = k.id
+		) AS "teamName",
 		(
 			-- One row per team. A leader can also have a team_members row; without
 			-- DISTINCT ON that produced two JSON objects with the same id.
@@ -74,9 +88,12 @@ export const MEMBER_ROSTER_SQL = `
 				JSON_AGG(
 					JSONB_BUILD_OBJECT(
 						'id', x.id,
-						'ad', x.ad,
-						'kategori', x.kategori,
-						'liderMi', (x.liderId = k.id),
+						'ad', x.name,
+						'name', x.name,
+						'kategori', x.category,
+						'category', x.category,
+						'liderMi', (x.lead_id = k.id),
+						'isLeader', (x.lead_id = k.id),
 						'role', x.role
 					)
 				),
@@ -84,26 +101,56 @@ export const MEMBER_ROSTER_SQL = `
 			)
 			FROM (
 				SELECT DISTINCT ON (t.id)
-					t.id, t.ad, t.kategori, t.liderId,
-					CASE WHEN t.liderId = k.id THEN NULL ELSE tu.takimRolu END AS role
+					t.id, t.name, t.category, t.lead_id,
+					CASE WHEN t.lead_id = k.id THEN NULL ELSE tu.role_title END AS role
 				FROM teams t
-				LEFT JOIN team_members tu ON tu.teamId = t.id
-					AND tu.userId = k.id
+				LEFT JOIN team_members tu ON tu.team_id = t.id
+					AND tu.user_id = k.id
 					AND (tu.status = 'aktif' OR tu.status = 'active' OR tu.status IS NULL)
-				WHERE tu.userId = k.id OR t.liderId = k.id
-				ORDER BY t.id, (t.liderId = k.id) DESC, tu.katilimTarihi ASC NULLS LAST
+				WHERE tu.user_id = k.id OR t.lead_id = k.id
+				ORDER BY t.id, (t.lead_id = k.id) DESC, tu.joined_at ASC NULLS LAST
 			) x
 		) AS "takimlar",
 		(
+			SELECT COALESCE(
+				JSON_AGG(
+					JSONB_BUILD_OBJECT(
+						'id', x.id,
+						'name', x.name,
+						'category', x.category,
+						'isLeader', (x.lead_id = k.id),
+						'role', x.role
+					)
+				),
+				'[]'::json
+			)
+			FROM (
+				SELECT DISTINCT ON (t.id)
+					t.id, t.name, t.category, t.lead_id,
+					CASE WHEN t.lead_id = k.id THEN NULL ELSE tu.role_title END AS role
+				FROM teams t
+				LEFT JOIN team_members tu ON tu.team_id = t.id
+					AND tu.user_id = k.id
+					AND (tu.status = 'aktif' OR tu.status = 'active' OR tu.status IS NULL)
+				WHERE tu.user_id = k.id OR t.lead_id = k.id
+				ORDER BY t.id, (t.lead_id = k.id) DESC, tu.joined_at ASC NULLS LAST
+			) x
+		) AS "teams",
+		(
 			SELECT COUNT(*)::int
-			FROM attendances y
-			WHERE y.userId = k.id
-		) AS "yoklamaSayisi"
+			FROM event_participants ep
+			WHERE ep.user_id = k.id AND (ep.status = 'attended' OR ep.status = 'katildi')
+		) AS "yoklamaSayisi",
+		(
+			SELECT COUNT(*)::int
+			FROM event_participants ep
+			WHERE ep.user_id = k.id AND (ep.status = 'attended' OR ep.status = 'katildi')
+		) AS "attendanceCount"
 	FROM users k
 	LEFT JOIN roles r ON r.id = k.role_id
 	ORDER BY
-		r.sistem DESC NULLS LAST,
-		r.olusturma ASC NULLS LAST,
+		r.is_system DESC NULLS LAST,
+		r.created_at ASC NULLS LAST,
 		k.created_at ASC
 `;
 
@@ -115,8 +162,11 @@ export interface MemberRosterRow extends User {
 	rolAd?: string | null;
 	roleColor?: string | null;
 	rolRenk?: string | null;
+	teamName?: string | null;
 	takimAdi?: string | null;
+	teams?: Array<{ id: string; name: string; category?: string; isLeader?: boolean; role?: string }> | null;
 	takimlar?: Array<{ id: string; ad: string; kategori?: string; liderMi?: boolean; role?: string }> | null;
+	attendanceCount?: number;
 	yoklamaSayisi?: number;
 	diskUsageBytes?: number;
 	fileCount?: number;
@@ -126,16 +176,16 @@ export interface User {
 	id: string;
 	firstName: string;
 	lastName: string;
-	ad: string;
-	soyad: string;
+	ad?: string;
+	soyad?: string;
 	email: string;
 	passwordHash: string;
 	handle: string;
-	ogrenciNo: string;
+	ogrenciNo?: string;
 	department: string;
-	bolum: string;
+	bolum?: string;
 	grade: number;
-	sinif: number;
+	sinif?: number;
 	/** Role from the `roles` table; null = no role yet (personal settings only). */
 	roleId?: string | null;
 	rolId?: string | null;
@@ -143,19 +193,25 @@ export interface User {
 	profilFoto?: string;
 	bio?: string;
 	xp: number;
-	status: 'aktif' | 'beklemede' | 'reddedildi' | 'mezun';
-	durum?: 'aktif' | 'beklemede' | 'reddedildi' | 'mezun';
+	status: 'active' | 'pending' | 'suspended' | 'alumni' | 'rejected' | 'aktif' | 'beklemede' | 'reddedildi' | 'mezun';
+	durum?: 'active' | 'pending' | 'suspended' | 'alumni' | 'rejected' | 'aktif' | 'beklemede' | 'reddedildi' | 'mezun';
 	createdAt?: number;
 	olusturma?: number;
 	preferredLanguage?: 'tr' | 'en';
+	archetype?: string;
 	/** How the current session authenticated: password only, password+TOTP, or a passkey. */
 	authMethod?: 'password' | 'totp' | 'passkey';
+	sessionToken?: string;
 	aktifOturumToken?: string;
-	sonGirisTarihi?: number;
 	lastLoginAt?: number;
+	sonGirisTarihi?: number;
+	lastLoginIp?: string | null;
 	sonGirisIp?: string | null;
+	lastLoginUserAgent?: string | null;
 	sonGirisUserAgent?: string | null;
+	lastActiveIp?: string | null;
 	sonAktifIp?: string | null;
+	lastActiveAt?: number | null;
 	sonAktifTarihi?: number | null;
 	/** Base32 TOTP secret. Only trusted once `totpEnabled` is 1 — before that it is a pending setup. */
 	totpSecret?: string | null;
@@ -164,20 +220,9 @@ export interface User {
 	/** JSON array of bcrypt hashes for one-time recovery codes. */
 	totpRecoveryCodes?: string | null;
 	totpConfirmedAt?: number | null;
-	/**
-	 * The last TOTP time-step accepted for this account.
-	 *
-	 * Rejecting any code whose step is not greater than this makes each code
-	 * single-use — without it, a captured code stays valid for its whole window
-	 * and can satisfy two separate sign-ins.
-	 */
+	totpLastStep?: number | null;
 	totpSonAdim?: number | null;
-	/**
-	 * Session expiry, epoch millis.
-	 *
-	 * The cookie's max-age is a client-side hint that a caller can ignore; this is
-	 * what actually bounds a session's life.
-	 */
+	sessionExpiresAt?: number | null;
 	oturumBitis?: number | null;
 }
 
@@ -188,7 +233,7 @@ export interface Team {
 	aciklama: string;
 	/** One of TAKIM_KATEGORILERI; older rows may hold a free-form value. */
 	kategori: string;
-	liderId: string;
+	leadId: string;
 	liderAdSoyad?: string;
 	kontenjan: number;
 	aktifUyeSayisi?: number;
@@ -352,7 +397,7 @@ export interface BudgetRecord {
 	date: number;
 	tur: 'gelir' | 'gider';
 	kategori: BudgetRecordCategory;
-	tutarKurus: number; // Kuruş cinsinden (150000 = 1.500,00 TL)
+	amountMinor: number; // Kuruş cinsinden (150000 = 1.500,00 TL)
 	aciklama: string;
 	fisFotoUrl?: string;
 	kaydedenId: string;
@@ -379,7 +424,7 @@ export interface StoredFile {
 	/** 1 for files every signed-in member may read (profile photos). */
 	herkeseAcik?: number;
 	/** Set for chat attachments; read access follows the room. */
-	sohbetOdaId?: string | null;
+	chatRoomId?: string | null;
 	olusturma: number;
 }
 
@@ -547,3 +592,131 @@ export interface Project {
 	olusturma: number;
 	guncellenme: number;
 }
+
+export type {
+	OrganizationArchetype,
+	ArchetypePreset,
+	ArchetypeUnitCategory,
+} from '@/lib/archetypes';
+export {
+	ARCHETYPE_PRESETS,
+	DEFAULT_ARCHETYPE,
+	ORGANIZATION_ARCHETYPES,
+	getArchetypePreset,
+	isOrganizationArchetype,
+} from '@/lib/archetypes';
+
+/** Consolidated v3 organization setting with optional JSONB translations & metadata. */
+export interface OrganizationSetting {
+	key: string;
+	value: string;
+	category: string;
+	translations: Record<string, Record<string, string>>;
+	metadata: Record<string, unknown>;
+	updatedAt: number;
+}
+
+/** Unified v3 verification token (replaces separate email_verifications, email_change_requests, webauthn_challenges). */
+export interface VerificationToken {
+	id: string;
+	userId?: string | null;
+	tokenType: 'email_verification' | 'email_change' | 'webauthn_challenge' | 'password_reset';
+	target?: string | null;
+	tokenHash: string;
+	payload: Record<string, unknown>;
+	attempts: number;
+	expiresAt: number;
+	usedAt?: number | null;
+	createdAt: number;
+}
+
+/** Unified v3 event participant record (consolidates event_registrations and attendances). */
+export interface EventParticipant {
+	id: string;
+	eventId: string;
+	userId: string;
+	status: 'registered' | 'waitlisted' | 'attended' | 'cancelled';
+	checkinMethod?: 'qr' | 'manual' | 'none' | null;
+	registeredAt: number;
+	attendedAt?: number | null;
+	recordedBy?: string | null;
+}
+
+/** Unified v3 governance record (consolidates decisions and committee_meetings). */
+export interface GovernanceRecord {
+	id: string;
+	recordType: 'resolution' | 'minutes' | 'proposal' | 'meeting';
+	referenceNumber?: number | null;
+	documentKind: string;
+	unitId?: string | null;
+	title: string;
+	date: number;
+	agenda: string;
+	content: string;
+	status: string;
+	isPublic: boolean;
+	isLocked: boolean;
+	quorumMet: boolean;
+	votesFor: number;
+	votesAgainst: number;
+	votesAbstain: number;
+	createdBy?: string | null;
+	publishedAt?: number | null;
+	createdAt: number;
+	updatedAt: number;
+}
+
+/** Modern v3 multi-currency / DAO treasury entry (consolidates and upgrades budget_records). */
+export interface TreasuryEntry {
+	id: string;
+	date: number;
+	entryType: 'income' | 'expense' | 'transfer';
+	category: BudgetRecordCategory | string;
+	amountMinor: number;
+	currency: string;
+	description: string;
+	receiptUrl?: string | null;
+	unitId?: string | null;
+	transferGroupId?: string | null;
+	recordedBy?: string | null;
+	updatedBy?: string | null;
+	metadata: Record<string, unknown>;
+	createdAt: number;
+	updatedAt?: number | null;
+}
+
+/** Universal v3 organizational unit (consolidates teams, committees, labs, pods, commissions). */
+export interface OrganizationUnit {
+	id: string;
+	name: string;
+	slug: string;
+	description: string;
+	category: string;
+	unitType: 'working_group' | 'committee' | 'pod' | 'lab_group' | 'commission';
+	leadId?: string | null;
+	capacity: number;
+	quorum: number;
+	joinPolicy: 'open' | 'approval' | 'invite_only';
+	repoUrl?: string | null;
+	status: 'active' | 'completed' | 'archived';
+	metadata: Record<string, unknown>;
+	createdAt: number;
+}
+
+/** Universal v3 organizational unit membership (consolidates team_members and team_application_decisions). */
+export interface OrganizationUnitMember {
+	id: string;
+	unitId: string;
+	userId: string;
+	roleTitle: string;
+	status: 'active' | 'pending' | 'rejected' | 'alumni';
+	applicationNote?: string | null;
+	decisionReason?: string | null;
+	decidedBy?: string | null;
+	decidedAt?: number | null;
+	votingRight: boolean;
+	termStart?: number | null;
+	termEnd?: number | null;
+	joinedAt: number;
+}
+

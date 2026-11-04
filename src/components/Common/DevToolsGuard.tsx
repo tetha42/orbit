@@ -7,7 +7,7 @@ import { isEditableElement } from '@/lib/client/dom';
 import { ShieldAlert, AlertTriangle } from 'lucide-react';
 
 export function DevToolsGuard() {
-	const { language } = useI18n();
+	const { t } = useI18n();
 	const { playSystemSound } = useSound();
 	const [alertOpen, setAlertOpen] = useState(false);
 	const [blockedShortcut, setBlockedShortcut] = useState<string>('');
@@ -186,7 +186,7 @@ export function DevToolsGuard() {
 						color: '#ffffff',
 					}}
 				>
-					{language === 'tr' ? '“Geliştirici Araçları” Kısıtlandı' : '“Developer Tools” Restricted'}
+					{t('devToolsRestrictedTitle', '“Developer Tools” Restricted')}
 				</h3>
 
 				{/* Message */}
@@ -198,9 +198,10 @@ export function DevToolsGuard() {
 						margin: '0 0 12px 0',
 					}}
 				>
-					{language === 'tr'
-						? 'Orbit Community OS korumalı bir PWA çalışma ortamında çalışmaktadır. Güvenlik politikaları gereğince geliştirici konsoluna, sayfa kaynağına ve web eklentilerine erişim sınırlandırılmıştır.'
-						: 'Orbit Community OS runs in an isolated, secure PWA environment. Security policy bars access to the developer console, page source inspection, and web extensions.'}
+					{t(
+						'devToolsRestrictedBody',
+						'Orbit Community OS runs in an isolated, secure PWA environment. Security policy bars access to the developer console, page source inspection, and web extensions.'
+					)}
 				</p>
 
 				{/* Shortcut badge */}
@@ -245,7 +246,7 @@ export function DevToolsGuard() {
 					onMouseOver={(e) => (e.currentTarget.style.background = '#0071e3')}
 					onMouseOut={(e) => (e.currentTarget.style.background = '#0a84ff')}
 				>
-					{language === 'tr' ? 'Tamam' : 'OK'}
+					{t('ok', 'OK')}
 				</button>
 			</div>
 		</div>

@@ -10,7 +10,7 @@ import {
 	aylikAkis,
 	ayAnahtari,
 	filterRecords,
-	formatKurus,
+	formatMinor,
 	kategoriDagilimi,
 	runningBalance,
 } from '@/lib/budget';
@@ -24,7 +24,7 @@ import { formatDate, formatDateTime } from '@/core/data/format';
 import { useToast } from '@/core/ui/Toast';
 import { useNow } from '@/lib/client/useSheet';
 
-const tl = (kurus: number) => `₺${formatKurus(kurus)}`;
+const tl = (kurus: number) => `₺${formatMinor(kurus)}`;
 const dateFmt = (ms: number) => formatDate(ms);
 
 interface UseVaultLedgerOptions {
@@ -82,10 +82,10 @@ export function useVaultLedger({ teamId, onChanged, embedded = false, vaults }: 
 	);
 	const filteredIn = filtered
 		.filter((r) => r.tur === 'gelir')
-		.reduce((a, r) => a + r.tutarKurus, 0);
+		.reduce((a, r) => a + r.amountMinor, 0);
 	const filteredOut = filtered
 		.filter((r) => r.tur === 'gider')
-		.reduce((a, r) => a + r.tutarKurus, 0);
+		.reduce((a, r) => a + r.amountMinor, 0);
 	const anyFilter = tur !== 'hepsi' || !!kategori || !!ay || !!arama.trim();
 	const maxMonth = Math.max(1, ...aylar.map((m) => Math.max(m.gelir, m.gider)));
 	const canTransfer = isManagement && !!vaults && vaults.length > 1;
@@ -93,7 +93,7 @@ export function useVaultLedger({ teamId, onChanged, embedded = false, vaults }: 
 	const remove = async (r: VaultRecord) => {
 		const message = r.aktarimId
 			? fill(t('kasaRevertTransferConfirm'), { target: r.karsiKasaAd ?? t('kasaOtherLedger') })
-			: fill(t('kasaDeleteRecordConfirm'), { desc: r.aciklama, amount: tl(r.tutarKurus) });
+			: fill(t('kasaDeleteRecordConfirm'), { desc: r.aciklama, amount: tl(r.amountMinor) });
 		if (!(await dialog.confirm({ message, tone: 'danger' }))) return;
 		const res = await fetch(`/api/budget?id=${encodeURIComponent(r.id)}`, { method: 'DELETE' });
 		if (res.ok) await changed(r.aktarimId ? t('kasaTransferReverted') : t('kasaRecordDeleted'));
@@ -113,7 +113,7 @@ export function useVaultLedger({ teamId, onChanged, embedded = false, vaults }: 
 				r.aciklama,
 				r.aktarimId ? (r.karsiKasaAd ?? '') : '',
 				r.kaydedenAdSoyad ?? '',
-				(r.tur === 'gelir' ? r.tutarKurus : -r.tutarKurus) / 100,
+				(r.tur === 'gelir' ? r.amountMinor : -r.amountMinor) / 100,
 				(balances.get(r.id) ?? 0) / 100,
 				r.fisFotoUrl ? t('yes') : '',
 			]);
@@ -140,11 +140,11 @@ export function useVaultLedger({ teamId, onChanged, embedded = false, vaults }: 
 			.reverse()
 			.map(
 				(r) =>
-					`<tr><td>${dateFmt(r.date)}</td><td>${r.tur === 'gelir' ? t('kasaIncome') : t('kasaExpense')}</td><td>${esc(r.kategori)}</td><td>${esc(r.aciklama)}${r.aktarimId && r.karsiKasaAd ? ` <i>(${r.tur === 'gelir' ? t('kasaSource') : t('kasaTarget')}: ${esc(r.karsiKasaAd)})</i>` : ''}</td><td>${esc(r.kaydedenAdSoyad ?? '')}</td><td class="n">${r.tur === 'gelir' ? '' : '−'}${formatKurus(r.tutarKurus)}</td><td class="n">${formatKurus(balances.get(r.id) ?? 0)}</td></tr>`
+					`<tr><td>${dateFmt(r.date)}</td><td>${r.tur === 'gelir' ? t('kasaIncome') : t('kasaExpense')}</td><td>${esc(r.kategori)}</td><td>${esc(r.aciklama)}${r.aktarimId && r.karsiKasaAd ? ` <i>(${r.tur === 'gelir' ? t('kasaSource') : t('kasaTarget')}: ${esc(r.karsiKasaAd)})</i>` : ''}</td><td>${esc(r.kaydedenAdSoyad ?? '')}</td><td class="n">${r.tur === 'gelir' ? '' : '−'}${formatMinor(r.amountMinor)}</td><td class="n">${formatMinor(balances.get(r.id) ?? 0)}</td></tr>`
 			)
 			.join('');
 		const cats = dagilim
-			.map((d) => `<tr><td>${esc(d.kategori)}</td><td class="n">${formatKurus(d.tutarKurus)}</td><td class="n">%${Math.round(d.oran * 100)}</td></tr>`)
+			.map((d) => `<tr><td>${esc(d.kategori)}</td><td class="n">${formatMinor(d.amountMinor)}</td><td class="n">%${Math.round(d.oran * 100)}</td></tr>`)
 			.join('');
 		const scope = anyFilter
 			? fill(t('kasaPrintFilteredScope'), { filtered: filtered.length, total: records.length })
@@ -155,7 +155,7 @@ export function useVaultLedger({ teamId, onChanged, embedded = false, vaults }: 
 			css: '.sum{display:flex;gap:24px;margin-top:10px}.sum div{border:1px solid #ccc;border-radius:6px;padding:6px 10px}.sign{display:flex;justify-content:space-between;margin-top:48px}.sign div{width:40%;border-top:1px solid #333;padding-top:4px;text-align:center}',
 			body: `<h1>${esc(title)}</h1>
 <div>${t('kasaReportDateLabel')}: ${formatDateTime(Date.now())} · ${scope}</div>
-<div class="sum"><div>${t('kasaTotalIncome')}<br><b>${formatKurus(summary?.toplamGelirKurus ?? 0)} ₺</b></div><div>${t('kasaTotalExpense')}<br><b>${formatKurus(summary?.toplamGiderKurus ?? 0)} ₺</b></div><div>${t('kasaNetBalance')}<br><b>${formatKurus(summary?.netBakiyeKurus ?? 0)} ₺</b></div></div>
+<div class="sum"><div>${t('kasaTotalIncome')}<br><b>${formatMinor(summary?.totalIncomeMinor ?? 0)} ₺</b></div><div>${t('kasaTotalExpense')}<br><b>${formatMinor(summary?.totalExpenseMinor ?? 0)} ₺</b></div><div>${t('kasaNetBalance')}<br><b>${formatMinor(summary?.netBalanceMinor ?? 0)} ₺</b></div></div>
 <h2>${t('kasaPrintDistribution')}</h2><table><tr><th>${t('kasaPrintCategory')}</th><th class="n">${t('kasaPrintAmount')}</th><th class="n">${t('kasaPrintShare')}</th></tr>${cats || `<tr><td colspan="3">${t('kasaNoExpenses')}</td></tr>`}</table>
 <h2>${t('kasaTransactionsTitle')}</h2><table><tr><th>${t('kasaColDate')}</th><th>${t('kasaColType')}</th><th>${t('budgetColCategory')}</th><th>${t('kasaColDesc')}</th><th>${t('budgetColUser')}</th><th class="n">${t('budgetColAmount')} (₺)</th><th class="n">${t('kasaBalance')} (₺)</th></tr>${rows || `<tr><td colspan="7">${t('kasaNoRecords')}</td></tr>`}</table>
 <div class="sign"><div>${t('kasaPrintPreparedBy')}</div><div>${t('kasaPrintAuditedBy')}</div></div>`,

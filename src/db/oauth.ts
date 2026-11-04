@@ -23,47 +23,17 @@ export const DEFAULT_ALLOWED_SCOPES = ['openid', 'profile', 'email', 'academic',
 export async function ensureOAuthSchema(client: PoolClient): Promise<void> {
 	await client.query(`
 		CREATE TABLE IF NOT EXISTS oauth_clients (
-			id TEXT PRIMARY KEY,
-			secretHash TEXT NOT NULL,
-			ad TEXT NOT NULL,
-			aciklama TEXT DEFAULT '',
-			logoUrl TEXT,
-			redirectUris TEXT NOT NULL DEFAULT '[]',
-			allowedScopes TEXT NOT NULL DEFAULT '["openid","profile","email","academic","roles"]',
-			guvenilir INTEGER NOT NULL DEFAULT 0,
-			aktif INTEGER NOT NULL DEFAULT 1,
-			olusturanId TEXT REFERENCES users(id) ON DELETE SET NULL,
-			olusturma BIGINT NOT NULL,
-			guncellenme BIGINT NOT NULL
+			client_id TEXT PRIMARY KEY,
+			secret_hash TEXT NOT NULL,
+			name TEXT NOT NULL,
+			description TEXT,
+			logo_url TEXT,
+			redirect_uris TEXT NOT NULL,
+			allowed_scopes TEXT NOT NULL DEFAULT 'openid profile email',
+			created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+			created_at BIGINT NOT NULL
 		);
-		CREATE INDEX IF NOT EXISTS idx_oauth_clients_olusturanid ON oauth_clients (olusturanId);
-
-		ALTER TABLE oauth_clients ADD COLUMN IF NOT EXISTS allowedScopes TEXT NOT NULL DEFAULT '["openid","profile","email","academic","roles"]';
-
-		CREATE TABLE IF NOT EXISTS oauth_auth_codes (
-			code TEXT PRIMARY KEY,
-			clientId TEXT NOT NULL REFERENCES oauth_clients(id) ON DELETE CASCADE,
-			userId TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-			redirectUri TEXT NOT NULL,
-			scope TEXT NOT NULL DEFAULT 'openid profile email roles',
-			codeChallenge TEXT,
-			codeChallengeMethod TEXT,
-			sonGecerlilik BIGINT NOT NULL,
-			kullanildi INTEGER NOT NULL DEFAULT 0
-		);
-
-		CREATE INDEX IF NOT EXISTS idx_oauth_auth_codes_lookup 
-			ON oauth_auth_codes (clientId, kullanildi, sonGecerlilik);
-		CREATE INDEX IF NOT EXISTS idx_oauth_auth_codes_userid ON oauth_auth_codes (userId);
-
-		CREATE TABLE IF NOT EXISTS oauth_consents (
-			userId TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-			clientId TEXT NOT NULL REFERENCES oauth_clients(id) ON DELETE CASCADE,
-			scopes TEXT NOT NULL,
-			onayTarihi BIGINT NOT NULL,
-			PRIMARY KEY (userId, clientId)
-		);
-		CREATE INDEX IF NOT EXISTS idx_oauth_consents_clientid ON oauth_consents (clientId);
+		CREATE INDEX IF NOT EXISTS idx_oauth_clients_created_by ON oauth_clients (created_by);
 	`);
 }
 
@@ -132,40 +102,40 @@ export function validateRedirectUri(uri: string): { valid: boolean; error?: stri
 }
 
 interface RawClientRow {
-	id: string;
+	clientId?: string;
+	client_id?: string;
 	secretHash?: string;
-	secrethash?: string;
-	ad: string;
-	aciklama: string;
+	secret_hash?: string;
+	name?: string;
+	description?: string | null;
 	logoUrl?: string | null;
-	logourl?: string | null;
+	logo_url?: string | null;
 	redirectUris?: string;
-	redirecturis?: string;
+	redirect_uris?: string;
 	allowedScopes?: string;
-	allowedscopes?: string;
-	guvenilir: number;
-	aktif: number;
-	olusturanId?: string | null;
-	olusturanid?: string | null;
+	allowed_scopes?: string;
+	createdBy?: string | null;
+	created_by?: string | null;
 	olusturanad?: string | null;
-	olusturma: number;
-	guncellenme: number;
+	createdAt?: number;
+	created_at?: number;
 }
 
 function mapClientRow(row: RawClientRow): OAuthClient {
+	const createdAt = Number(row.createdAt ?? row.created_at ?? 0);
 	return {
-		id: row.id,
-		ad: row.ad,
-		aciklama: row.aciklama || '',
-		logoUrl: row.logoUrl ?? row.logourl ?? null,
-		redirectUris: parseRedirectUris(row.redirectUris ?? row.redirecturis),
-		allowedScopes: parseAllowedScopes(row.allowedScopes ?? row.allowedscopes),
-		guvenilir: Number(row.guvenilir) === 1,
-		aktif: Number(row.aktif) === 1,
-		olusturanId: row.olusturanId ?? row.olusturanid ?? null,
+		id: String(row.clientId ?? row.client_id ?? ''),
+		ad: String(row.name ?? ''),
+		aciklama: String(row.description ?? ''),
+		logoUrl: row.logoUrl ?? row.logo_url ?? null,
+		redirectUris: parseRedirectUris(row.redirectUris ?? row.redirect_uris),
+		allowedScopes: parseAllowedScopes(row.allowedScopes ?? row.allowed_scopes),
+		guvenilir: false,
+		aktif: true,
+		olusturanId: row.createdBy ?? row.created_by ?? null,
 		olusturanAdSoyad: row.olusturanad ? row.olusturanad.trim() : null,
-		olusturma: Number(row.olusturma),
-		guncellenme: Number(row.guncellenme),
+		olusturma: createdAt,
+		guncellenme: createdAt,
 	};
 }
 
@@ -174,21 +144,18 @@ export async function getOAuthClients(): Promise<OAuthClient[]> {
 	const pool = getPgPool();
 	const res = await pool.query<RawClientRow>(
 		`SELECT 
-			c.id,
-			c.ad,
-			c.aciklama,
-			c.logoUrl,
-			c.redirectUris,
-			c.allowedScopes,
-			c.guvenilir,
-			c.aktif,
-			c.olusturanId,
+			c.client_id AS "clientId",
+			c.name,
+			c.description,
+			c.logo_url AS "logoUrl",
+			c.redirect_uris AS "redirectUris",
+			c.allowed_scopes AS "allowedScopes",
+			c.created_by AS "createdBy",
 			CONCAT(k.first_name, ' ', k.last_name) AS "olusturanad",
-			c.olusturma,
-			c.guncellenme
+			c.created_at AS "createdAt"
 		 FROM oauth_clients c
-		 LEFT JOIN users k ON k.id = c.olusturanId
-		 ORDER BY c.olusturma DESC`
+		 LEFT JOIN users k ON k.id = c.created_by
+		 ORDER BY c.created_at DESC`
 	);
 
 	return res.rows.map(mapClientRow);
@@ -199,21 +166,18 @@ export async function getOAuthClientById(id: string): Promise<OAuthClient | null
 	const pool = getPgPool();
 	const res = await pool.query<RawClientRow>(
 		`SELECT 
-			c.id,
-			c.ad,
-			c.aciklama,
-			c.logoUrl,
-			c.redirectUris,
-			c.allowedScopes,
-			c.guvenilir,
-			c.aktif,
-			c.olusturanId,
+			c.client_id AS "clientId",
+			c.name,
+			c.description,
+			c.logo_url AS "logoUrl",
+			c.redirect_uris AS "redirectUris",
+			c.allowed_scopes AS "allowedScopes",
+			c.created_by AS "createdBy",
 			CONCAT(k.first_name, ' ', k.last_name) AS "olusturanad",
-			c.olusturma,
-			c.guncellenme
+			c.created_at AS "createdAt"
 		 FROM oauth_clients c
-		 LEFT JOIN users k ON k.id = c.olusturanId
-		 WHERE c.id = $1`,
+		 LEFT JOIN users k ON k.id = c.created_by
+		 WHERE c.client_id = $1`,
 		[id]
 	);
 
@@ -254,8 +218,8 @@ export async function createOAuthClient(
 	);
 
 	await pool.query(
-		`INSERT INTO oauth_clients (id, secretHash, ad, aciklama, logoUrl, redirectUris, allowedScopes, guvenilir, aktif, olusturanId, olusturma, guncellenme)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1, $9, $10, $10)`,
+		`INSERT INTO oauth_clients (id, client_id, secret_hash, name, description, logo_url, redirect_uris, allowed_scopes, created_by, created_at)
+		 VALUES ($1, $1, $2, $3, $4, $5, $6, $7, $8, $9)`,
 		[
 			id,
 			secretHash,
@@ -264,7 +228,6 @@ export async function createOAuthClient(
 			data.logoUrl?.trim() || null,
 			redirectUrisJson,
 			allowedScopesJson,
-			data.guvenilir ? 1 : 0,
 			olusturanId,
 			now,
 		]
@@ -291,7 +254,6 @@ export async function updateOAuthClient(
 	if (!existing) return false;
 
 	const pool = getPgPool();
-	const now = Date.now();
 
 	const newName = data.ad !== undefined ? data.ad.trim() : existing.ad;
 	const newDescription = data.aciklama !== undefined ? data.aciklama.trim() : existing.aciklama;
@@ -310,14 +272,12 @@ export async function updateOAuthClient(
 	const newAllowedScopes = data.allowedScopes !== undefined
 		? JSON.stringify(data.allowedScopes)
 		: JSON.stringify(existing.allowedScopes);
-	const newGuvenilir = data.guvenilir !== undefined ? (data.guvenilir ? 1 : 0) : (existing.guvenilir ? 1 : 0);
-	const newActive = data.aktif !== undefined ? (data.aktif ? 1 : 0) : (existing.aktif ? 1 : 0);
 
 	await pool.query(
 		`UPDATE oauth_clients
-		 SET ad = $1, aciklama = $2, logoUrl = $3, redirectUris = $4, allowedScopes = $5, guvenilir = $6, aktif = $7, guncellenme = $8
-		 WHERE id = $9`,
-		[newName, newDescription, newLogo, newRedirect, newAllowedScopes, newGuvenilir, newActive, now, id]
+		 SET name = $1, description = $2, logo_url = $3, redirect_uris = $4, allowed_scopes = $5
+		 WHERE client_id = $6`,
+		[newName, newDescription, newLogo, newRedirect, newAllowedScopes, id]
 	);
 
 	return true;
@@ -331,11 +291,10 @@ export async function regenerateOAuthClientSecret(id: string): Promise<{ plainSe
 	const pool = getPgPool();
 	const plainSecret = `sec_${crypto.randomBytes(24).toString('hex')}`;
 	const secretHash = await bcrypt.hash(plainSecret, 10);
-	const now = Date.now();
 
 	await pool.query(
-		`UPDATE oauth_clients SET secretHash = $1, guncellenme = $2 WHERE id = $3`,
-		[secretHash, now, id]
+		`UPDATE oauth_clients SET secret_hash = $1 WHERE client_id = $2`,
+		[secretHash, id]
 	);
 
 	return { plainSecret };
@@ -344,7 +303,7 @@ export async function regenerateOAuthClientSecret(id: string): Promise<{ plainSe
 export async function deleteOAuthClient(id: string): Promise<boolean> {
 	await ensurePostgresInit();
 	const pool = getPgPool();
-	const res = await pool.query(`DELETE FROM oauth_clients WHERE id = $1`, [id]);
+	const res = await pool.query(`DELETE FROM oauth_clients WHERE client_id = $1`, [id]);
 	return (res.rowCount ?? 0) > 0;
 }
 
@@ -353,13 +312,13 @@ export async function verifyClientCredentials(clientId: string, clientSecret: st
 	const pool = getPgPool();
 
 	const res = await pool.query<RawClientRow>(
-		`SELECT * FROM oauth_clients WHERE id = $1 AND aktif = 1`,
+		`SELECT * FROM oauth_clients WHERE client_id = $1`,
 		[clientId]
 	);
 	if (res.rows.length === 0) return null;
 
 	const row = res.rows[0];
-	const hash = row.secretHash ?? row.secrethash;
+	const hash = row.secretHash ?? row.secret_hash;
 	if (!hash) return null;
 
 	const isMatch = await bcrypt.compare(clientSecret, hash);
@@ -375,48 +334,54 @@ export async function createAuthCode(params: {
 	scope?: string;
 	codeChallenge?: string;
 	codeChallengeMethod?: string;
+	nonce?: string;
+	authTime?: number;
 }): Promise<string> {
 	await ensurePostgresInit();
 	const pool = getPgPool();
 
 	const code = `code_${crypto.randomBytes(24).toString('hex')}`;
-	const sonGecerlilik = Date.now() + 5 * 60 * 1000; // 5 minutes validity
-	const scope = params.scope?.trim() || 'openid profile email roles';
+	const now = Date.now();
+	const expiresAt = now + 5 * 60 * 1000; // 5 minutes validity
+	const scopes = params.scope?.trim() || 'openid profile email roles';
+	const payload = JSON.stringify({
+		redirectUri: params.redirectUri,
+		scopes,
+		codeChallenge: params.codeChallenge || null,
+		codeChallengeMethod: params.codeChallengeMethod || null,
+		nonce: params.nonce || null,
+		authTime: params.authTime ?? now,
+	});
 
 	await pool.query(
-		`INSERT INTO oauth_auth_codes (code, clientId, userId, redirectUri, scope, codeChallenge, codeChallengeMethod, sonGecerlilik, kullanildi)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0)`,
-		[
-			code,
-			params.clientId,
-			params.userId,
-			params.redirectUri,
-			scope,
-			params.codeChallenge || null,
-			params.codeChallengeMethod || null,
-			sonGecerlilik,
-		]
+		`INSERT INTO verification_tokens (id, user_id, token_type, target, token_hash, payload, attempts, expires_at, used_at, created_at)
+		 VALUES ($1, $2, 'oauth_auth_code', $3, $4, $5::jsonb, 0, $6, NULL, $7)`,
+		[code, params.userId, params.clientId, code, payload, expiresAt, now]
 	);
 
 	return code;
 }
 
-interface RawCodeRow {
-	code: string;
-	clientId?: string;
-	clientid?: string;
-	userId?: string;
-	kullaniciid?: string;
+interface AuthCodePayload {
 	redirectUri?: string;
-	redirecturi?: string;
-	scope: string;
-	codeChallenge?: string;
-	codechallenge?: string;
-	codeChallengeMethod?: string;
-	codechallengemethod?: string;
-	sonGecerlilik?: number;
-	songecerlilik?: number;
-	kullanildi: number;
+	scopes?: string;
+	codeChallenge?: string | null;
+	codeChallengeMethod?: string | null;
+	nonce?: string | null;
+	authTime?: number;
+}
+
+function parsePayload(raw: unknown): AuthCodePayload {
+	if (!raw) return {};
+	if (typeof raw === 'string') {
+		try {
+			return JSON.parse(raw) as AuthCodePayload;
+		} catch {
+			return {};
+		}
+	}
+	if (typeof raw === 'object') return raw as AuthCodePayload;
+	return {};
 }
 
 export async function consumeAuthCode(
@@ -428,9 +393,18 @@ export async function consumeAuthCode(
 	await ensurePostgresInit();
 
 	return withTransaction(async (client) => {
-		const res = await client.query<RawCodeRow>(
-			`SELECT * FROM oauth_auth_codes 
-			 WHERE code = $1 AND clientId = $2 AND kullanildi = 0
+		const res = await client.query<{
+			id: string;
+			userId?: string;
+			user_id?: string;
+			target?: string;
+			payload?: unknown;
+			expiresAt?: number;
+			expires_at?: number;
+		}>(
+			`SELECT id, user_id AS "userId", target, payload, expires_at AS "expiresAt"
+			 FROM verification_tokens
+			 WHERE id = $1 AND token_type = 'oauth_auth_code' AND target = $2 AND used_at IS NULL
 			 FOR UPDATE`,
 			[code, clientId]
 		);
@@ -441,21 +415,20 @@ export async function consumeAuthCode(
 
 		const row = res.rows[0];
 		const now = Date.now();
-		const sonGecerlilik = Number(row.sonGecerlilik ?? row.songecerlilik);
+		const expiresAt = Number(row.expiresAt ?? row.expires_at ?? 0);
 
-		if (sonGecerlilik < now) {
+		if (expiresAt < now) {
 			return { ok: false, error: 'Yetkilendirme kodunun süresi dolmuş.' };
 		}
 
-		const storedRedirect = row.redirectUri ?? row.redirecturi;
-		if (storedRedirect !== redirectUri) {
+		const payload = parsePayload(row.payload);
+		if (payload.redirectUri !== redirectUri) {
 			return { ok: false, error: 'Yönlendirme URL (redirect_uri) eşleşmiyor.' };
 		}
 
 		// PKCE verification if challenge was set
-		const challenge = row.codeChallenge ?? row.codechallenge;
-		const rawMethod = row.codeChallengeMethod ?? row.codechallengemethod;
-		const challengeMethod = (rawMethod || 'plain').toUpperCase();
+		const challenge = payload.codeChallenge;
+		const challengeMethod = (payload.codeChallengeMethod || 'plain').toUpperCase();
 
 		if (challenge) {
 			if (!codeVerifier) {
@@ -475,10 +448,10 @@ export async function consumeAuthCode(
 		}
 
 		// Mark as consumed
-		await client.query(`UPDATE oauth_auth_codes SET kullanildi = 1 WHERE code = $1`, [code]);
+		await client.query(`UPDATE verification_tokens SET used_at = $2 WHERE id = $1`, [code, now]);
 
-		const userId = (row.userId ?? row.kullaniciid) as string;
-		return { ok: true, userId, scope: row.scope };
+		const userId = String(row.userId ?? row.user_id ?? '');
+		return { ok: true, userId, scope: payload.scopes || 'openid profile email roles' };
 	});
 }
 
@@ -486,12 +459,27 @@ export async function hasUserConsent(userId: string, clientId: string, scope: st
 	await ensurePostgresInit();
 	const pool = getPgPool();
 	const res = await pool.query(
-		`SELECT scopes FROM oauth_consents WHERE userId = $1 AND clientId = $2`,
-		[userId, clientId]
+		`SELECT oauth_consents AS "oauthConsents" FROM users WHERE id = $1`,
+		[userId]
 	);
 	if (res.rows.length === 0) return false;
 
-	const approvedScopes = String(res.rows[0].scopes).split(' ');
+	const raw = res.rows[0].oauthConsents ?? res.rows[0].oauth_consents;
+	let consents: Record<string, { scopes?: string; grantedAt?: number }> = {};
+	if (typeof raw === 'string') {
+		try {
+			consents = JSON.parse(raw);
+		} catch {
+			return false;
+		}
+	} else if (raw && typeof raw === 'object') {
+		consents = raw as Record<string, { scopes?: string; grantedAt?: number }>;
+	}
+
+	const entry = consents[clientId];
+	if (!entry || !entry.scopes) return false;
+
+	const approvedScopes = String(entry.scopes).split(' ');
 	const requestedScopes = scope.split(' ');
 
 	// Check if all requested scopes were previously approved
@@ -504,10 +492,9 @@ export async function recordUserConsent(userId: string, clientId: string, scope:
 	const now = Date.now();
 
 	await pool.query(
-		`INSERT INTO oauth_consents (userId, clientId, scopes, onayTarihi)
-		 VALUES ($1, $2, $3, $4)
-		 ON CONFLICT (userId, clientId)
-		 DO UPDATE SET scopes = EXCLUDED.scopes, onayTarihi = EXCLUDED.onayTarihi`,
+		`UPDATE users
+		 SET oauth_consents = COALESCE(oauth_consents, '{}'::jsonb) || jsonb_build_object($2::text, jsonb_build_object('scopes', $3::text, 'grantedAt', $4::bigint))
+		 WHERE id = $1`,
 		[userId, clientId, scope, now]
 	);
 }

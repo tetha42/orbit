@@ -15,7 +15,7 @@ import { canUserAccessChatRoom } from '@/db/repositories/chat.repo';
  *
  *  - Budget app, manage level: every vault, read and write, and transfers between them.
  *  - Budget app, use level: every vault, read only.
- *  - A project's captain (`takimlar.liderId`) keeps their own project's vault in
+ *  - A project's captain (`takimlar.leadId`) keeps their own project's vault in
  *    the Teams app: read and write, whatever their Budget level.
  *  - Everyone else: no access.
  *
@@ -33,7 +33,7 @@ const forbidden = (message = 'Bu kasaya erişim yetkiniz yok.') =>
 async function isTeamCaptain(user: AuthorizedUser, teamId: string | null): Promise<boolean> {
 	if (teamId === null || !can(user, 'teams', 'kullan')) return false;
 	const team = await getTeamById(teamId);
-	return !!team && team.liderId === user.id;
+	return !!team && team.leadId === user.id;
 }
 
 /** What this member may do with one vault. */
@@ -110,10 +110,10 @@ export async function canReadUpload(user: AuthorizedUser, name: string): Promise
 	// Profile photos are part of the member directory every member can see.
 	if (file && Number(file.herkeseAcik) === 1) return true;
 	// Chat attachments are exactly as private as the room they were posted in.
-	if (file?.sohbetOdaId) {
+	if (file?.chatRoomId) {
 		if (!can(user, 'chat', 'kullan') && !user.permission?.admin) return false;
 		return canUserAccessChatRoom(
-			file.sohbetOdaId,
+			file.chatRoomId,
 			user.id,
 			Boolean(user.permission?.admin)
 		);

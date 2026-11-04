@@ -148,7 +148,7 @@ export default async function suite(t) {
 
 	await astep('organizatör: katılımı olmayan etkinliği siler; katılımı olanı silemez', async () => {
 		const live = await makeEvent(t, admin, { label: 'Silinemez', startMin: -10, lengthMin: 60 });
-		await admin.post('/api/etkinlikler', { action: 'manuelYoklama', etkinlikId: live.id, kullaniciId: ayse.id });
+		await admin.post('/api/etkinlikler', { action: 'manuelYoklama', etkinlikId: live.id, userId: ayse.id });
 		t.eq((await admin.post('/api/etkinlikler', { action: 'deleteEvent', etkinlikId: live.id })).status, 409, 'katılımı olan etkinlik silinemez (409)');
 		const { detail } = await openEvent(ap, draftId);
 		await detail.getByRole('button', { name: 'Sil' }).click();
@@ -164,7 +164,7 @@ export default async function suite(t) {
 			['updateEvent', { etkinlikId: eventId, konum: 'ele geçirildi' }],
 			['setYoklama', { etkinlikId: eventId, acik: true }],
 			['deleteEvent', { etkinlikId: eventId }],
-			['manuelYoklama', { etkinlikId: eventId, kullaniciId: ayse.id }],
+			['manuelYoklama', { etkinlikId: eventId, userId: ayse.id }],
 		];
 		for (const [action, body] of bad) t.eq((await ayseApi.post('/api/etkinlikler', { action, ...body })).status, 403, `üye: ${action} 403`);
 		t.eq((await ayseApi.get(`/api/etkinlikler/${eventId}/katilim`)).status, 403, 'üye katılım listesini okuyamaz');
@@ -186,6 +186,6 @@ export default async function suite(t) {
 	// The list of who registered stays in step with what members did.
 	await t.step('katılım listesi kayıtları doğru gösteriyor', async () => {
 		const list = await attendance(admin, eventId);
-		t.sameSet(list.map((r) => r.kullaniciId), [burak.id], 'listede yalnız kayıtlı üye');
+		t.sameSet(list.map((r) => r.userId), [burak.id], 'listede yalnız kayıtlı üye');
 	});
 }

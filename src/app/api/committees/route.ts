@@ -53,7 +53,7 @@ export async function POST(request: Request) {
 				aciklama,
 				kategori: 'Governance',
 				quorum: Math.max(0, Math.min(100, Number(body.quorum) || 0)),
-				liderId: typeof body.liderId === 'string' ? body.liderId : undefined,
+				leadId: typeof body.leadId === 'string' ? body.leadId : undefined,
 				kontenjan: Math.max(1, Math.min(100, Number(body.kontenjan) || 12)),
 			});
 			void logSystemEvent({

@@ -477,31 +477,32 @@ export async function createUser(
 			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
 			[
 				newUser.id,
-				newUser.ad,
-				newUser.soyad,
+				newUser.firstName,
+				newUser.lastName,
 				newUser.email,
 				newUser.passwordHash,
-				newUser.ogrenciNo,
-				newUser.bolum,
-				newUser.sinif,
+				newUser.handle,
+				newUser.department,
+				newUser.grade,
 				newUser.bio,
 				newUser.xp,
 				newUser.status,
-				newUser.olusturma,
+				newUser.createdAt,
 				newUser.roleId ?? null,
 				newUser.preferredLanguage ?? 'tr',
 			]
 		);
 		if (newUser.status === 'beklemede') await publishEvent(client, notificationEvents());
 		if (denetim && newUser.roleId) {
-			const role = await client.query('SELECT ad FROM roles WHERE id = $1', [newUser.roleId]);
+			const role = await client.query('SELECT name FROM roles WHERE id = $1', [newUser.roleId]);
+			const roleNameVal = role.rows[0]?.name ?? null;
 			await logAuditEvent(client, denetim, {
-				islem: 'uye.rol_ata',
-				hedefTur: 'uye',
-				hedefId: id,
-				hedefAd: memberTargetName(newUser),
-				onceki: { roleId: null, rolId: null, rolAd: null },
-				sonraki: { roleId: newUser.roleId, rolId: newUser.roleId, rolAd: role.rows[0]?.ad ?? null, uyeEklendi: true },
+				action: 'member.role_grant',
+				targetType: 'member',
+				targetId: id,
+				targetName: memberTargetName(newUser),
+				before: { roleId: null, roleName: null },
+				after: { roleId: newUser.roleId, roleName: roleNameVal, memberAdded: true },
 			});
 		}
 	});
@@ -554,24 +555,24 @@ export async function deleteUser(id: string, denetim: AuditContext): Promise<boo
 	return withTransaction(async (client) => {
 		const res = await client.query(
 			`DELETE FROM users u WHERE u.id = $1
-			 RETURNING u.first_name AS ad, u.last_name AS soyad, u.email AS email, u.status AS status, u.role_id AS "roleId", (SELECT r.ad FROM roles r WHERE r.id = u.role_id) AS "rolAd"`,
+			 RETURNING u.first_name AS "firstName", u.first_name AS ad, u.last_name AS "lastName", u.last_name AS soyad, u.email AS email, u.status AS status, u.role_id AS "roleId", (SELECT r.name FROM roles r WHERE r.id = u.role_id) AS "roleName", (SELECT r.name FROM roles r WHERE r.id = u.role_id) AS "rolAd"`,
 			[id]
 		);
 		const u = res.rows[0];
 		if (!u) return false;
 		await logAuditEvent(client, denetim, {
-			islem: 'uye.sil',
-			hedefTur: 'uye',
-			hedefId: id,
-			hedefAd: memberTargetName(u),
-			onceki: {
+			action: 'member.delete',
+			targetType: 'member',
+			targetId: id,
+			targetName: memberTargetName(u),
+			before: {
 				ad: `${u.ad} ${u.soyad}`.trim(),
-				eposta: u.email,
-				durum: u.status,
-				rolId: u.roleId ?? null,
-				rolAd: u.rolAd ?? null,
+				email: u.email,
+				status: u.status,
+				roleId: u.roleId ?? null,
+				roleName: u.rolAd ?? null,
 			},
-			sonraki: null,
+			after: null,
 		});
 		await publishEvent(client, { k: 'session', userId: id });
 		return true;

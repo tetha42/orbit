@@ -38,33 +38,28 @@ export async function GET(request: Request) {
 	const settings = user.permission.admin;
 	if (!settings && !can(user, 'members', 'yonet')) return bad('Bu işlem Yönetici yetkisi veya Üye Rehberi yönetim yetkisi gerektirir.', 403);
 
-	let raw = getCached<{ roller: Awaited<ReturnType<typeof getRoles>>; varsayilanRolId: string | null }>('roller_raw');
+	let raw = getCached<{ roles: Awaited<ReturnType<typeof getRoles>>; defaultRoleId: string | null }>('roller_raw');
 	if (!raw) {
-		const [roller, varsayilanRolId] = await Promise.all([getRoles(), getDefaultRoleId()]);
-		raw = { roller, varsayilanRolId };
+		const [roles, defaultRoleId] = await Promise.all([getRoles(), getDefaultRoleId()]);
+		raw = { roles, defaultRoleId };
 		setCached('roller_raw', raw, 60_000);
 	}
 
-	const isaretli = raw.roller.map((r) => {
+	const isaretli = raw.roles.map((r) => {
 		const assignable = canAssignRole(r, user.permission);
-		return { ...r, assignableRoles: assignable, atanabilir: assignable };
+		return { ...r, assignable };
 	});
 	if (!settings) {
-		const rolesOnly = isaretli.map(({ id, ad, renk, sistem, assignableRoles, atanabilir }) => ({ id, ad, renk, sistem, assignableRoles, atanabilir }));
+		const rolesOnly = isaretli.map(({ id, ad, renk, sistem, assignable }) => ({ id, ad, renk, sistem, assignable }));
 		return NextResponse.json({
 			roles: rolesOnly,
-			roller: rolesOnly,
-			defaultRoleId: raw.varsayilanRolId,
-			varsayilanRolId: raw.varsayilanRolId,
+			defaultRoleId: raw.defaultRoleId,
 		});
 	}
 	return NextResponse.json({
 		roles: isaretli,
-		roller: isaretli,
-		defaultRoleId: raw.varsayilanRolId,
-		varsayilanRolId: raw.varsayilanRolId,
+		defaultRoleId: raw.defaultRoleId,
 		myPermissions: user.permission.izinler,
-		benimIzinlerim: user.permission.izinler,
 	});
 }
 
@@ -80,7 +75,7 @@ export async function POST(request: Request) {
 	try {
 		const body = (await request.json()) as Record<string, unknown>;
 		if (body.action === 'varsayilan') {
-			const rawRoleId = body.roleId ?? body.rolId;
+			const rawRoleId = body.roleId;
 			const roleId = typeof rawRoleId === 'string' && rawRoleId ? rawRoleId : null;
 			if (roleId && extraPermissions((await getRolePermission(roleId)).izinler, auth.user.permission.izinler).length) {
 				return bad('Varsayılan role sizden daha yetkili olamaz.', 403);
@@ -98,7 +93,7 @@ export async function POST(request: Request) {
 		invalidateCache('roller_raw');
 		return NextResponse.json({ success: true, id: r.id }, { status: 201 });
 	} catch (error) {
-		console.error('API /api/roller POST error:', error);
+		console.error('API /api/roles POST error:', error);
 		return bad('İşlem tamamlanamadı.', 500);
 	}
 }
@@ -123,7 +118,7 @@ export async function PATCH(request: Request) {
 		invalidateCache('roller_raw');
 		return NextResponse.json({ success: true });
 	} catch (error) {
-		console.error('API /api/roller PATCH error:', error);
+		console.error('API /api/roles PATCH error:', error);
 		return bad('İşlem tamamlanamadı.', 500);
 	}
 }
@@ -147,7 +142,7 @@ export async function DELETE(request: Request) {
 		invalidateCache('roller_raw');
 		return NextResponse.json({ success: true });
 	} catch (error) {
-		console.error('API /api/roller DELETE error:', error);
+		console.error('API /api/roles DELETE error:', error);
 		return bad('İşlem tamamlanamadı.', 500);
 	}
 }

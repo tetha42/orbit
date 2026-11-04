@@ -31,15 +31,15 @@ export async function GET(request: Request) {
 		}
 
 		if (action === 'members') {
-			const odaId = searchParams.get('odaId');
-			if (!odaId) {
+			const roomId = searchParams.get('roomId');
+			if (!roomId) {
 				return NextResponse.json({ error: 'Oda ID belirtilmedi.' }, { status: 400, headers: NO_CACHE });
 			}
-			const hasAccess = await canUserAccessChatRoom(odaId, auth.user.id, auth.user.permission.admin);
+			const hasAccess = await canUserAccessChatRoom(roomId, auth.user.id, auth.user.permission.admin);
 			if (!hasAccess) {
 				return NextResponse.json({ error: 'Bu odaya erişim yetkiniz yok.' }, { status: 403, headers: NO_CACHE });
 			}
-			const members = await getRoomMembers(odaId);
+			const members = await getRoomMembers(roomId);
 			return NextResponse.json({ ok: true, members }, { headers: NO_CACHE });
 		}
 
@@ -57,14 +57,14 @@ async function handlePOST(request: Request) {
 
 	try {
 		const body = await request.json();
-		const { action, odaId, teamId, takimAd, targetUserId, memberIds, title } = body;
+		const { action, roomId, teamId, takimAd, targetUserId, memberIds, title } = body;
 
-		if (action === 'read' && odaId) {
-			const hasAccess = await canUserAccessChatRoom(String(odaId), auth.user.id, auth.user.permission.admin);
+		if (action === 'read' && roomId) {
+			const hasAccess = await canUserAccessChatRoom(String(roomId), auth.user.id, auth.user.permission.admin);
 			if (!hasAccess) {
 				return NextResponse.json({ error: 'Bu odaya erişim yetkiniz yok.' }, { status: 403, headers: NO_CACHE });
 			}
-			await markRoomAsRead(String(odaId), auth.user.id);
+			await markRoomAsRead(String(roomId), auth.user.id);
 			return NextResponse.json({ ok: true }, { headers: NO_CACHE });
 		}
 
@@ -87,13 +87,13 @@ async function handlePOST(request: Request) {
 			return NextResponse.json({ ok: true, ...result }, { headers: NO_CACHE });
 		}
 
-		if (action === 'add_members' && odaId && Array.isArray(memberIds)) {
-			const hasAccess = await canUserAccessChatRoom(String(odaId), auth.user.id, auth.user.permission.admin);
+		if (action === 'add_members' && roomId && Array.isArray(memberIds)) {
+			const hasAccess = await canUserAccessChatRoom(String(roomId), auth.user.id, auth.user.permission.admin);
 			if (!hasAccess) {
 				return NextResponse.json({ error: 'Bu odaya üye ekleme yetkiniz yok.' }, { status: 403, headers: NO_CACHE });
 			}
 			const result = await addMembersToRoom(
-				String(odaId),
+				String(roomId),
 				{ id: auth.user.id, ad: auth.user.ad, soyad: auth.user.soyad },
 				memberIds
 			);

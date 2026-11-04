@@ -11,7 +11,7 @@ interface AddMemberModalProps {
 	onClose: () => void;
 	room: ChatOdaItem;
 	currentUserId: string;
-	onAddMembers: (odaId: string, memberIds: string[]) => Promise<void>;
+	onAddMembers: (roomId: string, memberIds: string[]) => Promise<void>;
 	onCreateGroupWithCounterpart: (memberIds: string[], title?: string) => Promise<void>;
 }
 
@@ -48,7 +48,7 @@ export function AddMemberModal({
 		// Fetch all contacts and current room members concurrently
 		Promise.all([
 			fetch('/api/chat/rooms?action=contacts').then((r) => r.json()),
-			fetch(`/api/chat/rooms?action=members&odaId=${encodeURIComponent(room.id)}`).then((r) => r.json()),
+			fetch(`/api/chat/rooms?action=members&roomId=${encodeURIComponent(room.id)}`).then((r) => r.json()),
 		])
 			.then(([contactsData, membersData]) => {
 				if (!isSubscribed) return;

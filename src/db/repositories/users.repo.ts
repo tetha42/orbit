@@ -34,13 +34,13 @@ export async function getUserUpcomingReturns(
 		await ensurePostgresInit();
 		const res = await getPgPool().query(
 			`
-			SELECT id, kod, ad, iadeTarihi
+			SELECT id, code AS kod, name AS ad, due_at AS "iadeTarihi"
 			FROM inventory
-			WHERE oduncAlanId = $1
-			  AND status = 'oduncte'
-			  AND iadeTarihi IS NOT NULL
-			  AND iadeTarihi <= $2
-			ORDER BY iadeTarihi ASC
+			WHERE holder_user_id = $1
+			  AND status IN ('oduncte', 'borrowed')
+			  AND due_at IS NOT NULL
+			  AND due_at <= $2
+			ORDER BY due_at ASC
 			LIMIT 20
 		`,
 			[userId, until]
@@ -93,12 +93,12 @@ export async function updateUserProfile(
 		await client.query(`UPDATE users SET ${sets.join(', ')} WHERE id = $${values.length}`, values);
 
 		const before = {
-			ad: `${row.first_name} ${row.last_name}`.trim(),
+			ad: `${row.first_name ?? row.firstName ?? ''} ${row.last_name ?? row.lastName ?? ''}`.trim(),
 			email: String(row.email),
 			bio: row.bio ?? null,
 			bolum: row.department ?? null,
 			sinif: Number(row.grade) || 0,
-			profilFoto: row.avatar_url ?? null,
+			profilFoto: row.avatar_url ?? row.avatarUrl ?? null,
 		};
 		const after = {
 			...before,
@@ -110,16 +110,16 @@ export async function updateUserProfile(
 		const fark = alanFarki(before, after);
 		if (!fark) return;
 		await logAuditEvent(client, denetim, {
-			islem: 'uye.profil',
-			hedefTur: 'uye',
-			hedefId: id,
-			hedefAd: memberTargetName({
-				ad: String(row.first_name),
-				soyad: String(row.last_name),
+			action: 'member.profile',
+			targetType: 'member',
+			targetId: id,
+			targetName: memberTargetName({
+				ad: String(row.first_name ?? row.firstName ?? ''),
+				soyad: String(row.last_name ?? row.lastName ?? ''),
 				email: String(row.email),
 			}),
-			onceki: fark.onceki,
-			sonraki: fark.sonraki,
+			before: fark.before,
+			after: fark.after,
 		});
 	});
 }
@@ -131,20 +131,20 @@ export async function getUserSummary(id: string): Promise<UserSummary> {
 		const db = getPgPool();
 		const [teams, counts] = await Promise.all([
 			db.query(
-				`SELECT t.id, t.ad, tu.takimRolu AS role, (t.liderId = $1) AS "kaptanMi"
-				 FROM team_members tu JOIN teams t ON t.id = tu.teamId
-				 WHERE tu.userId = $1 AND tu.status = 'aktif'
-				 ORDER BY tu.katilimTarihi ASC`,
+				`SELECT t.id, t.name AS ad, tu.role_title AS role, (t.lead_id = $1) AS "kaptanMi"
+				 FROM team_members tu JOIN teams t ON t.id = tu.team_id
+				 WHERE tu.user_id = $1 AND tu.status IN ('aktif', 'active')
+				 ORDER BY tu.joined_at ASC`,
 				[id]
 			),
 			db.query(
 				`SELECT
-				   (SELECT COUNT(*) FROM attendances WHERE userId = $1)::int AS "katilinanEtkinlik",
-				   (SELECT COUNT(*) FROM event_registrations WHERE userId = $1)::int AS "kayitliEtkinlik",
-				   (SELECT COUNT(*) FROM team_tasks WHERE atananUyeId = $1 AND status = 'tamamlandi')::int AS "tamamlananGorev",
-				   (SELECT COUNT(*) FROM team_tasks WHERE atananUyeId = $1 AND status <> 'tamamlandi')::int AS "acikGorev",
-				   (SELECT COUNT(*) FROM certificates WHERE userId = $1)::int AS "sertifika",
-				   (SELECT COUNT(*) FROM projects WHERE olusturanId = $1 AND status = 'yayinda')::int AS "proje"`,
+				   (SELECT COUNT(*) FROM event_participants WHERE user_id = $1 AND status = 'attended')::int AS "katilinanEtkinlik",
+				   (SELECT COUNT(*) FROM event_participants WHERE user_id = $1 AND status IN ('registered', 'attended'))::int AS "kayitliEtkinlik",
+				   (SELECT COUNT(*) FROM team_tasks WHERE assignee_id = $1 AND status IN ('tamamlandi', 'done'))::int AS "tamamlananGorev",
+				   (SELECT COUNT(*) FROM team_tasks WHERE assignee_id = $1 AND status NOT IN ('tamamlandi', 'done'))::int AS "acikGorev",
+				   (SELECT COUNT(*) FROM certificates WHERE user_id = $1)::int AS "sertifika",
+				   (SELECT COUNT(*) FROM projects WHERE created_by = $1 AND status IN ('yayinda', 'published'))::int AS "proje"`,
 				[id]
 			),
 		]);

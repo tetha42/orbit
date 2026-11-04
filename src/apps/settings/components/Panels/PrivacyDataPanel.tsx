@@ -9,6 +9,8 @@ import ui from '@/core/ui/ui.module.css';
 
 interface MemberOption {
 	id: string;
+	firstName?: string;
+	lastName?: string;
 	ad: string;
 	soyad: string;
 	email: string;
@@ -137,7 +139,7 @@ export function PrivacyDataPanel() {
 					<option value="">{t('privacySelectMember')}</option>
 					{members.map((member) => (
 						<option key={member.id} value={member.id}>
-							{member.ad} {member.soyad} · {member.email}
+							{member.firstName || member.ad} {member.lastName || member.soyad} · {member.email}
 						</option>
 					))}
 				</select>

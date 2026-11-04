@@ -14,7 +14,7 @@ interface Committee {
 	slug: string;
 	aciklama: string;
 	kategori: string;
-	liderId?: string | null;
+	leadId?: string | null;
 	liderAdSoyad?: string | null;
 	aktifUyeSayisi?: number;
 	quorum?: number;
@@ -128,7 +128,7 @@ export function DecisionsApp() {
 	const [quorumMet, setQuorumMet] = useState(true);
 
 	const formatDate = (value: number) =>
-		new Intl.DateTimeFormat(language === 'tr' ? 'tr-TR' : 'en-US', { dateStyle: 'medium' }).format(new Date(value));
+		new Intl.DateTimeFormat(language, { dateStyle: 'medium' }).format(new Date(value));
 
 	const load = useCallback(async () => {
 		setLoading(true);
@@ -199,7 +199,7 @@ export function DecisionsApp() {
 			ad: name,
 			aciklama: description,
 			quorum: Number(quorum) || 0,
-			liderId: leaderId || undefined,
+			leadId: leaderId || undefined,
 		});
 		if (ok) {
 			setName('');

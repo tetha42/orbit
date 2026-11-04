@@ -63,7 +63,7 @@ export async function parseProjectInput(
 			const team = await getTeamById(teamId);
 			if (!team) return { ok: false, error: 'Takım bulunamadı.' };
 			// A member can credit a team they belong to or lead, not any team.
-			if (!can(user, 'projects', 'yonet') && team.liderId !== user.id) {
+			if (!can(user, 'projects', 'yonet') && team.leadId !== user.id) {
 				const mine = await getUserTeamIds(user.id);
 				if (!mine.includes(teamId)) return { ok: false, error: 'Projeyi yalnızca üyesi olduğunuz bir takıma bağlayabilirsiniz.' };
 			}
@@ -75,7 +75,7 @@ export async function parseProjectInput(
 		if (ownerTeamId) {
 			const team = await getTeamById(ownerTeamId);
 			if (!team) return { ok: false, error: 'Sahip takım bulunamadı.' };
-			if (!can(user, 'projects', 'yonet') && team.liderId !== user.id) {
+			if (!can(user, 'projects', 'yonet') && team.leadId !== user.id) {
 				const mine = await getUserTeamIds(user.id);
 				if (!mine.includes(ownerTeamId)) return { ok: false, error: 'Projenin sahibi yalnızca üyesi olduğunuz bir takım olabilir.' };
 			}

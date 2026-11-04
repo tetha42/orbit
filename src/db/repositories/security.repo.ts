@@ -64,6 +64,15 @@ export interface SocIncident {
 
 export interface ActiveSessionInfo {
 	id: string;
+	firstName?: string;
+	lastName?: string;
+	roleName?: string;
+	lastLoginAt?: number | null;
+	sessionExpiresAt?: number | null;
+	lastLoginIp?: string | null;
+	lastActiveIp?: string | null;
+	lastActiveAt?: number | null;
+	lastLoginUserAgent?: string | null;
 	ad: string;
 	soyad: string;
 	email: string;
@@ -917,7 +926,7 @@ export async function getActiveSessions(): Promise<ActiveSessionInfo[]> {
 	const res = await getPgPool().query(
 		`SELECT u.id, u.first_name AS ad, u.last_name AS soyad, u.email AS email, u.role_id AS "roleId", u.status AS status, u.totp_enabled AS "totpEnabled",
 		        u.last_login_at AS "sonGirisTarihi", u.session_expires_at AS "oturumBitis", u.last_login_ip AS "sonGirisIp", u.last_active_ip AS "sonAktifIp", u.last_active_at AS "sonAktifTarihi", u.last_login_user_agent AS "sonGirisUserAgent",
-		        r.ad AS "rolAd", r.sistem AS "rolSistem"
+		        r.name AS "rolAd", r.name AS "roleName", r.is_system AS "rolSistem", r.is_system AS "isSystem"
 		 FROM users u
 		 LEFT JOIN roles r ON r.id = u.role_id
 		 WHERE u.session_token IS NOT NULL
@@ -962,24 +971,41 @@ export async function getActiveSessions(): Promise<ActiveSessionInfo[]> {
 			}
 		}
 
+		const firstName = String(r.firstName ?? r.ad ?? '');
+		const lastName = String(r.lastName ?? r.soyad ?? '');
+		const roleName = r.roleName ? String(r.roleName) : (r.rolAd ? String(r.rolAd) : 'Member');
+		const lastLoginAt = r.lastLoginAt || r.songiristarihi || r.sonGirisTarihi ? Number(r.lastLoginAt ?? r.songiristarihi ?? r.sonGirisTarihi) : null;
+		const sessionExpiresAt = r.sessionExpiresAt || r.oturumbitis || r.oturumBitis ? Number(r.sessionExpiresAt ?? r.oturumbitis ?? r.oturumBitis) : null;
+		const lastActiveAt = r.lastActiveAt || r.sonaktiftarihi || r.sonAktifTarihi ? Number(r.lastActiveAt ?? r.sonaktiftarihi ?? r.sonAktifTarihi) : null;
+		const lastLoginUserAgent = (r.lastLoginUserAgent ?? r.songirisuseragent ?? r.sonGirisUserAgent)
+			? String(r.lastLoginUserAgent ?? r.songirisuseragent ?? r.sonGirisUserAgent)
+			: null;
+
 		return {
 			id: String(r.id),
-			ad: String(r.ad),
-			soyad: String(r.soyad),
+			firstName,
+			lastName,
+			roleName,
+			lastLoginAt,
+			sessionExpiresAt,
+			lastLoginIp: girisIp,
+			lastActiveIp: aktifIp,
+			lastActiveAt,
+			lastLoginUserAgent,
+			ad: firstName,
+			soyad: lastName,
 			email: String(r.email),
 			roleId,
-			rolAd: r.rolAd ? String(r.rolAd) : 'Member',
-			admin: roleId === 'rol_admin',
+			rolAd: roleName,
+			admin: roleId === 'role_admin' || roleId === 'rol_admin',
 			status: String(r.status || 'aktif'),
 			totpEnabled: Number(r.totpenabled ?? r.totpEnabled ?? 0) === 1,
-			sonGirisTarihi: r.songiristarihi || r.sonGirisTarihi ? Number(r.songiristarihi ?? r.sonGirisTarihi) : null,
-			oturumBitis: r.oturumbitis || r.oturumBitis ? Number(r.oturumbitis ?? r.oturumBitis) : null,
+			sonGirisTarihi: lastLoginAt,
+			oturumBitis: sessionExpiresAt,
 			sonGirisIp: girisIp,
 			sonAktifIp: aktifIp,
-			sonAktifTarihi: r.sonaktiftarihi || r.sonAktifTarihi ? Number(r.sonaktiftarihi ?? r.sonAktifTarihi) : null,
-			sonGirisUserAgent: (r.songirisuseragent ?? r.sonGirisUserAgent)
-				? String(r.songirisuseragent ?? r.sonGirisUserAgent)
-				: null,
+			sonAktifTarihi: lastActiveAt,
+			sonGirisUserAgent: lastLoginUserAgent,
 			ipDegisti,
 			impossibleTravel,
 		};
@@ -1009,7 +1035,7 @@ export async function revokeUserSession(params: {
 		servis: 'security',
 		seviye: 'WARN',
 		mesaj: `SoC tarafından kullanıcı oturumu zorla sonlandırıldı: ${u.email}`,
-		detay: { hedefKullaniciId: params.targetUserId, email: u.email },
+		detay: { targetUserId: params.targetUserId, email: u.email },
 		userId: params.actorId,
 		ip: params.ip,
 	});
@@ -1123,7 +1149,7 @@ export async function suspendUserAccount(params: {
 		servis: 'security',
 		seviye: 'ERROR',
 		mesaj: `SoC tarafından şüpheli kullanıcı hesabı askıya alındı ve oturumu kapatıldı: ${target.email}`,
-		detay: { hedefKullaniciId: params.targetUserId, email: target.email },
+		detay: { targetUserId: params.targetUserId, email: target.email },
 		userId: params.actorId,
 		ip: params.ip,
 	});
@@ -1179,12 +1205,12 @@ export async function getHourlyStrikeDistribution(): Promise<HourlyAttackPoint[]
 	try {
 		const res = await pool.query(
 			`SELECT
-				(zaman / 3600000) * 3600000 AS "hourBucket",
-				COUNT(*) FILTER (WHERE seviye IN ('ERROR', 'CRITICAL'))::int AS "blockedCount",
-				COUNT(*) FILTER (WHERE seviye = 'WARN')::int AS "warningCount",
+				(timestamp / 3600000) * 3600000 AS "hourBucket",
+				COUNT(*) FILTER (WHERE level IN ('ERROR', 'CRITICAL'))::int AS "blockedCount",
+				COUNT(*) FILTER (WHERE level = 'WARN')::int AS "warningCount",
 				COUNT(*)::int AS "totalCount"
 			 FROM system_logs
-			 WHERE zaman >= $1 AND servis IN ('security', 'auth') AND seviye IN ('WARN', 'ERROR', 'CRITICAL')
+			 WHERE timestamp >= $1 AND service IN ('security', 'auth') AND level IN ('WARN', 'ERROR', 'CRITICAL')
 			 GROUP BY 1
 			 ORDER BY 1 ASC`,
 			[since24h]
@@ -1280,13 +1306,13 @@ export async function getSocOverview(): Promise<SocOverviewData> {
 		getSecurityBlocks(),
 		pool.query(
 			`SELECT
-				COUNT(*) FILTER (WHERE servis = 'security' AND seviye IN ('WARN', 'ERROR', 'CRITICAL'))::int AS "secEvents",
-				COUNT(*) FILTER (WHERE servis = 'auth' AND seviye IN ('WARN', 'ERROR', 'CRITICAL'))::int AS "authFailures",
-				COUNT(*) FILTER (WHERE servis = 'security' AND (mesaj ILIKE '%CSRF%' OR mesaj ILIKE '%IDOR%' OR mesaj ILIKE '%Yetkisiz%' OR mesaj ILIKE '%Unauthorized%' OR mesaj ILIKE '%WAF%' OR mesaj ILIKE '%Honeypot%' OR mesaj ILIKE '%FIM%'))::int AS "csrfIdor",
-				COUNT(*) FILTER (WHERE servis = 'security' AND (mesaj ILIKE '%Oturum IP%' OR mesaj ILIKE '%Session IP%'))::int AS "sessionAnomalies",
-				COUNT(*) FILTER (WHERE seviye = 'CRITICAL')::int AS "criticalEvents"
+				COUNT(*) FILTER (WHERE service = 'security' AND level IN ('WARN', 'ERROR', 'CRITICAL'))::int AS "secEvents",
+				COUNT(*) FILTER (WHERE service = 'auth' AND level IN ('WARN', 'ERROR', 'CRITICAL'))::int AS "authFailures",
+				COUNT(*) FILTER (WHERE service = 'security' AND (message ILIKE '%CSRF%' OR message ILIKE '%IDOR%' OR message ILIKE '%Yetkisiz%' OR message ILIKE '%Unauthorized%' OR message ILIKE '%WAF%' OR message ILIKE '%Honeypot%' OR message ILIKE '%FIM%'))::int AS "csrfIdor",
+				COUNT(*) FILTER (WHERE service = 'security' AND (message ILIKE '%Oturum IP%' OR message ILIKE '%Session IP%'))::int AS "sessionAnomalies",
+				COUNT(*) FILTER (WHERE level = 'CRITICAL')::int AS "criticalEvents"
 			 FROM system_logs
-			 WHERE zaman >= $1
+			 WHERE timestamp >= $1
 			   AND ip NOT IN ('127.0.0.1', '::1', 'localhost', 'unknown')`,
 			[effectiveSince]
 		),
@@ -1294,26 +1320,26 @@ export async function getSocOverview(): Promise<SocOverviewData> {
 			`SELECT
 				ip,
 				COUNT(*)::int AS "eventCount",
-				MAX(zaman) AS "sonGorulme",
-				(ARRAY_AGG(mesaj ORDER BY zaman DESC))[1] AS "sonMesaj"
+				MAX(timestamp) AS "sonGorulme",
+				(ARRAY_AGG(message ORDER BY timestamp DESC))[1] AS "sonMesaj"
 			 FROM system_logs
-			 WHERE zaman >= $1
-			   AND seviye IN ('WARN', 'ERROR', 'CRITICAL')
+			 WHERE timestamp >= $1
+			   AND level IN ('WARN', 'ERROR', 'CRITICAL')
 			   AND ip IS NOT NULL
 			   AND ip <> ''
 			   AND ip <> 'unknown'
 			 GROUP BY ip
-			 ORDER BY COUNT(*) DESC, MAX(zaman) DESC
+			 ORDER BY COUNT(*) DESC, MAX(timestamp) DESC
 			 LIMIT 12`,
 			[since24h]
 		),
 		pool.query(
 			`SELECT
-				(zaman / 3600000) * 3600000 AS "hourBucket",
-				COUNT(*) FILTER (WHERE seviye = 'WARN')::int AS "warnCount",
-				COUNT(*) FILTER (WHERE seviye IN ('ERROR', 'CRITICAL'))::int AS "errorCount"
+				(timestamp / 3600000) * 3600000 AS "hourBucket",
+				COUNT(*) FILTER (WHERE level = 'WARN')::int AS "warnCount",
+				COUNT(*) FILTER (WHERE level IN ('ERROR', 'CRITICAL'))::int AS "errorCount"
 			 FROM system_logs
-			 WHERE zaman >= $1 AND seviye IN ('WARN', 'ERROR', 'CRITICAL')
+			 WHERE timestamp >= $1 AND level IN ('WARN', 'ERROR', 'CRITICAL')
 			 GROUP BY 1
 			 ORDER BY 1 ASC`,
 			[since12h]

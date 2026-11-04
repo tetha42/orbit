@@ -47,7 +47,7 @@ async function handlePOST(request: Request) {
 		return NextResponse.json({ error: 'Invalid upload request.' }, { status: 400 });
 	}
 
-	const roomId = String(formData.get('odaId') ?? '').trim();
+	const roomId = String(formData.get('roomId') ?? '').trim();
 	if (!roomId) return NextResponse.json({ error: 'Room id is required.' }, { status: 400 });
 
 	const isAdmin = Boolean(auth.user.permission?.admin || auth.user.roleId === 'admin');
@@ -87,7 +87,7 @@ async function handlePOST(request: Request) {
 		yukleyenId: auth.user.id,
 		mime: media.mime,
 		boyut: buffer.length,
-		sohbetOdaId: roomId,
+		chatRoomId: roomId,
 	});
 
 	// Display-only: never used to decide the stored type or path.

@@ -23,8 +23,8 @@ Traditional self-hosted platforms force operators to manually copy `.env.example
 
 Orbit Community OS eliminates this friction:
 - **Boot Without Pre-Existing Config Files:** If no database is configured or reachable on first boot, Orbit starts cleanly and serves the interactive **Setup Wizard (`/setup`)**.
-- **Runtime Pool Binding (`reconfigurePgPool`):** The PostgreSQL connection string entered in the Setup Wizard is tested live (`SELECT 1`), bound to the running Node.js pool, and immediately used to initialize all 45 database tables.
-- **Database-Persisted System Configuration (`sistem_ayarlari`):** Studio name (`tetha42`), Community name (`Orbit Community`), primary domain, leadership titles, default member role, and AES-256-GCM encrypted SMTP credentials live directly inside PostgreSQL and can be updated anytime from **System Settings**.
+- **Runtime Pool Binding (`reconfigurePgPool`):** The PostgreSQL connection string entered in the Setup Wizard is tested live (`SELECT 1`), bound to the running Node.js pool, and immediately used to initialize the optimized database tables.
+- **Database-Persisted System Configuration:** Studio name (`tetha42`), Community name (`Orbit Community`), primary domain, leadership titles, default member role, and AES-256-GCM encrypted SMTP credentials live directly inside PostgreSQL (`organization_settings`) and can be updated anytime from **System Settings**.
 
 ---
 
@@ -85,7 +85,7 @@ pm2 startup
 
 ## 4. First-Run Web Onboarding (`/setup`)
 
-When visiting a fresh instance at `/` or `/setup` (`/kurulum`), Orbit presents a high-contrast, standalone **5-Step Setup Wizard**:
+When visiting a fresh instance at `/` or `/setup`, Orbit presents a high-contrast, standalone **5-Step Setup Wizard**:
 
 1. **Step 1 — PostgreSQL Database Connection & Auto-Detection:**
    - **Auto Database Detection:** Orbit automatically probes whether PostgreSQL is running locally on the host, inside Docker Compose, or over internal container networks (`orbit-db`). If detected, click **"Use This DB"** to connect instantly.
@@ -94,16 +94,16 @@ When visiting a fresh instance at `/` or `/setup` (`/kurulum`), Orbit presents a
      docker run --name orbit-postgres -e POSTGRES_DB=orbit -e POSTGRES_USER=orbit -e POSTGRES_PASSWORD=<your-password> -p 127.0.0.1:5432:5432 -d postgres:16-alpine
      ```
    - **Custom Connection URI:** Alternatively, enter any custom PostgreSQL connection URI and click **Test Database Connection** (`POST /api/setup/test-db`) to verify connectivity.
-2. **Step 2 — Studio & Community Identity + Reverse Proxy Assistant:**
-   - Configure **Studio Name** (default: `tetha42`), **Community Name** (default: `Orbit Community`), and **Primary Domain (FQDN)** (e.g., `orbit.example.com`).
+2. **Step 2 — Organization Archetype, Identity & Reverse Proxy Assistant:**
+   - Select your **Organization Archetype** (`academic_club`, `dao_collective`, `research_lab`, or `professional_guild`), and configure **Parent Entity / Studio Name** (default: `tetha42`), **Organization Name** (default: `Orbit Community`), and **Primary Domain (FQDN)** (e.g., `orbit.example.com`).
    - **Interactive Reverse Proxy Assistant:** Click **"Domain & Reverse Proxy Assistant"** in the wizard to view, copy, or download pre-tuned **Nginx** and **Caddy** configurations. These configurations include mandatory SSE streaming rules (`proxy_buffering off; chunked_transfer_encoding off;`) and WebSocket upgrade headers.
 3. **Step 3 — Initial Super-Administrator:**
    - Enter the administrator's First Name, Last Name, Email Address, and a strong password (minimum 12 characters).
 4. **Step 4 — Outbound SMTP Relay (Optional):**
-   - Provide your SMTP host, port (`465` or `587`), username, password, and sender address (credentials are AES-256-GCM encrypted in `system_settings`), or skip to configure later in **System Settings → Mail & SMTP**.
+   - Provide your SMTP host, port (`465` or `587`), username, password, and sender address (credentials are AES-256-GCM encrypted in `organization_settings.smtp_config`), or skip to configure later in **System Settings → Mail & SMTP**.
 5. **Step 5 — Complete & Launch Desktop:**
-   - Clicking **Complete Setup** initializes all 45 tables, creates the `Admin` account under a transactional advisory lock, seeds the default `Orbit General` chat room, sets an `HttpOnly` session cookie, and transitions straight into the Orbit Web-Desktop.
-   - **Enroll 2FA Immediately:** Because the built-in `Admin` role enforces mandatory 2FA (`ikiAdimZorunlu = 1`), open **System Settings → Security** upon first login to enroll a TOTP authenticator app or FIDO2 Passkey.
+   - Clicking **Complete Setup** initializes all 32 tables, creates the `'role_admin'` account under a transactional advisory lock, seeds the default `Orbit General` chat room, sets an `HttpOnly` `orbit_session` cookie, and transitions straight into the Orbit Web-Desktop.
+   - **Enroll 2FA Immediately:** Because the built-in `'role_admin'` role enforces mandatory 2FA (`require_2fa = true`), open **System Settings → Security** upon first login to enroll a TOTP authenticator app or FIDO2 Passkey.
 
 ---
 
@@ -198,7 +198,7 @@ server {
 ## 6. TLS, HTTPS & WebAuthn Passkey Requirements
 
 1. **HTTPS Is Mandatory in Production:** Browser security specifications require a secure context (`https://` or `http://localhost`) for **WebAuthn Passkeys**, **Camera QR Scanning** (`/checkin`), and **`Secure` Session Cookies**.
-2. **Relying Party Automatic Resolution:** Orbit automatically derives the WebAuthn Relying Party ID (`rpID`) and Expected Origin from the incoming `Host` / `X-Forwarded-Proto` headers or the primary domain configured in `/setup` (`sistem_ayarlari.kulup_domain`).
+2. **Relying Party Automatic Resolution:** Orbit automatically derives the WebAuthn Relying Party ID (`rpID`) and Expected Origin from the incoming `Host` / `X-Forwarded-Proto` headers or the primary domain configured in `/setup` (`organization_settings.domain`).
 
 ---
 
@@ -208,8 +208,8 @@ server {
 | :--- | :--- | :--- |
 | **PostgreSQL 16 Database** | `/var/lib/postgresql/data` (`orbit-pgdata` volume) | `make db-backup` (`pg_dump` SQL snapshots in `./backups/`) |
 | **Uploaded Receipts & Avatars** | `/app/data/uploads` (`orbit-uploads` volume / `./data/uploads`) | Incremental filesystem or volume snapshot |
-| **Custom Branding & Wallpapers** | `/app/data/custom` (`orbit-custom` volume / `./data/custom`) | Volume snapshot; metadata lives in `system_settings`, `custom_wallpapers`, `legal_documents`, `form_fields` and `member_field_values` |
-| **Client Window Layout & Theme** | Browser `IndexedDB` (`macos_workspace_db`) & `localStorage` | Ephemeral client UI state (zero sensitive domain data) |
+| **Custom Branding & Wallpapers** | `/app/data/custom` (`orbit-custom` volume / `./data/custom`) | Volume snapshot; metadata lives in `organization_settings`, `legal_documents`, `form_schemas`, and `users.custom_fields` |
+| **Client Window Layout & Theme** | Browser `IndexedDB` (`macos_workspace_db`) & `localStorage` | Ephemeral client UI state synced to `users.workspace_state` |
 
 ---
 

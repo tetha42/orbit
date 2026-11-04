@@ -14,7 +14,7 @@ import { appIconColor } from '@/core/apps/icons';
 
 export function GlobalContextMenu() {
 	const { canUseApp, canManageApp } = useSession();
-	const { t, language, getAppMeta } = useI18n();
+	const { t, getAppMeta } = useI18n();
 	const { openApp, closeApp, minimizeApp, tileWindows, minimizeAll, closeAll } = useWindowActions();
 	const windows = useWindows();
 	const { contextMenu, closeContextMenu, cycleWallpaper, setIsAboutModalOpen, appCustomMenus } = useShell();
@@ -83,13 +83,13 @@ export function GlobalContextMenu() {
 				? [
 						{
 							id: 'app-close',
-							label: language === 'tr' ? `${getAppMeta(contextMenu.appId).title} Kapat` : `Close ${getAppMeta(contextMenu.appId).title}`,
+							label: t('ctxCloseApp', 'Close {title}').replace('{title}', getAppMeta(contextMenu.appId).title),
 							shortcut: '⌘W',
 							action: () => closeApp(contextMenu.appId!),
 						},
 						{
 							id: 'app-minimize',
-							label: language === 'tr' ? 'Simge Durumuna Küçült' : 'Minimize',
+							label: t('menuMinimize', 'Minimize'),
 							shortcut: '⌘M',
 							action: () => minimizeApp(contextMenu.appId!),
 						},

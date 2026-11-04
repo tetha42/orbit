@@ -43,7 +43,7 @@ export function DatabaseAuditView({ dbToken, onRevertSuccess }: DatabaseAuditVie
 	const handleRevert = async (rec: AuditRecord) => {
 		const confirmed = await dialog.confirm({
 			title: 'Değişikliği Geri Al (Rollback)',
-			message: `'${rec.hedefId}' tablosundaki (#${rec.id}) numaralı işlemi eski haline döndürmek istediğinize emin misiniz?`,
+			message: `'${rec.targetId}' tablosundaki (#${rec.id}) numaralı işlemi eski haline döndürmek istediğinize emin misiniz?`,
 			tone: 'warning',
 		});
 
@@ -158,12 +158,12 @@ export function DatabaseAuditView({ dbToken, onRevertSuccess }: DatabaseAuditVie
 				) : (
 					<div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
 						{records.map((rec) => {
-							const previous = rec.onceki || {};
-							const sonraki = rec.sonraki || {};
-							const pkVal = previous.pkVal ?? sonraki.pkVal;
+							const previous = rec.before || {};
+							const after = rec.after || {};
+							const pkVal = previous.pkVal ?? after.pkVal;
 
 							// Extract changed keys excluding pkCol and pkVal
-							const changedKeys = Object.keys(sonraki).filter((k) => k !== 'pkCol' && k !== 'pkVal');
+							const changedKeys = Object.keys(after).filter((k) => k !== 'pkCol' && k !== 'pkVal');
 
 							return (
 								<div
@@ -192,17 +192,17 @@ export function DatabaseAuditView({ dbToken, onRevertSuccess }: DatabaseAuditVie
 													color: 'var(--accent-contrast)',
 												}}
 											>
-												{rec.hedefId} #{String(pkVal)}
+												{rec.targetId} #{String(pkVal)}
 											</span>
 
 											<span style={{ fontSize: '11.5px', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '4px' }}>
 												<User size={11} />
-												<strong>{rec.yapanAd || 'Yönetici'}</strong>
+												<strong>{rec.actorName || 'Yönetici'}</strong>
 											</span>
 
 											<span style={{ fontSize: '11px', opacity: 0.5, display: 'flex', alignItems: 'center', gap: '4px' }}>
 												<Clock size={11} />
-												{new Date(Number(rec.zaman)).toLocaleString()}
+												{new Date(Number(rec.timestamp)).toLocaleString()}
 											</span>
 										</div>
 
@@ -210,7 +210,7 @@ export function DatabaseAuditView({ dbToken, onRevertSuccess }: DatabaseAuditVie
 										<div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
 											{changedKeys.map((key) => {
 												const oldVal = previous[key];
-												const newVal = sonraki[key];
+												const newVal = after[key];
 												return (
 													<div
 														key={key}

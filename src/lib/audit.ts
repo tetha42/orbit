@@ -13,38 +13,34 @@
 export const AUDIT_RETENTION_DAYS = 730;
 
 export const AUDIT_ACTIONS = [
-	'rol.olustur',
-	'rol.duzenle',
-	'rol.sil',
-	'rol.varsayilan',
-	'role.olustur',
-	'role.duzenle',
-	'role.sil',
-	'role.varsayilan',
-	'uye.rol_ata',
-	'uye.rol_kaldir',
-	'uye.sil',
-	'uye.mezun',
-	'uye.aktif',
-	'uye.status',
-	'uye.profil',
-	'uye.email',
-	'uye.anonimlestir',
-	'uye.sifre_sifirlama',
-	'basvuru.onayla',
-	'basvuru.reddet',
-	'ayar.smtp',
-	'guvenlik.2fa_kapat',
+	'role.create',
+	'role.edit',
+	'role.delete',
+	'role.default',
+	'member.role_grant',
+	'member.role_revoke',
+	'member.delete',
+	'member.graduate',
+	'member.activate',
+	'member.status',
+	'member.profile',
+	'member.email',
+	'member.anonymize',
+	'member.password_reset',
+	'application.approve',
+	'application.reject',
+	'setting.smtp',
+	'security.2fa_disable',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
-export const AUDIT_TARGET_TYPES = ['rol', 'role', 'uye', 'ayar'] as const;
+export const AUDIT_TARGET_TYPES = ['role', 'member', 'setting'] as const;
 export type AuditTargetType = (typeof AUDIT_TARGET_TYPES)[number];
 
 /** Who is acting and from where; built once per request. */
 export interface AuditContext {
-	yapanId: string | null;
-	yapanAd: string;
+	actorId: string | null;
+	actorName: string;
 	ip: string;
 }
 
@@ -55,23 +51,14 @@ export type AuditFields = { [key: string]: AuditValue };
 export interface AuditRecord {
 	id: string;
 	timestamp?: number;
-	zaman: number;
 	actorId?: string | null;
-	yapanId: string | null;
 	actorName?: string;
-	yapanAd: string;
 	action?: string;
-	islem: string;
 	targetType?: string;
-	hedefTur: string;
 	targetId?: string | null;
-	hedefId: string | null;
 	targetName?: string;
-	hedefAd: string;
 	before?: AuditFields | null;
-	onceki: AuditFields | null;
 	after?: AuditFields | null;
-	sonraki: AuditFields | null;
 	ip: string;
 }
 
@@ -143,25 +130,25 @@ export function memberSummary(u: { ad: string; soyad: string; email: string; sta
 	const out: AuditFields = { ad: `${u.ad} ${u.soyad}`.trim(), email: u.email };
 	if (u.status !== undefined) out.status = u.status ?? null;
 	if (u.roleId !== undefined) out.roleId = u.roleId ?? null;
-	if (u.rolAd !== undefined) out.rolAd = u.rolAd ?? null;
+	if (u.rolAd !== undefined) out.roleName = u.rolAd ?? null;
 	return out;
 }
 
 /** One changed field, flattened for display (permissions as `izinler.<app>`). */
 export interface DiffRow {
 	alan: string;
-	onceki: string | number | boolean | null;
-	sonraki: string | number | boolean | null;
+	before: string | number | boolean | null;
+	after: string | number | boolean | null;
 }
 export type FarkSatiri = DiffRow;
 
 const duz = (v: AuditValue | undefined): string | number | boolean | null => (v === undefined || v === null ? null : typeof v === 'object' ? JSON.stringify(v) : v);
 
 /** A record's before/after as one row per changed field — what the detail view lists. */
-export function diffRows(onceki: AuditFields | null, sonraki: AuditFields | null): DiffRow[] {
+export function diffRows(before: AuditFields | null, after: AuditFields | null): DiffRow[] {
 	const rows: DiffRow[] = [];
-	const o = onceki ?? {};
-	const n = sonraki ?? {};
+	const o = before ?? {};
+	const n = after ?? {};
 	for (const k of new Set([...Object.keys(o), ...Object.keys(n)])) {
 		const a = o[k];
 		const b = n[k];
@@ -169,39 +156,41 @@ export function diffRows(onceki: AuditFields | null, sonraki: AuditFields | null
 		if (nested(a) || nested(b)) {
 			const oa = nested(a) ? a : {};
 			const nb = nested(b) ? b : {};
-			for (const kk of new Set([...Object.keys(oa), ...Object.keys(nb)])) rows.push({ alan: `${k}.${kk}`, onceki: duz(oa[kk]), sonraki: duz(nb[kk]) });
+			for (const kk of new Set([...Object.keys(oa), ...Object.keys(nb)])) rows.push({ alan: `${k}.${kk}`, before: duz(oa[kk]), after: duz(nb[kk]) });
 		} else {
-			rows.push({ alan: k, onceki: duz(a), sonraki: duz(b) });
+			rows.push({ alan: k, before: duz(a), after: duz(b) });
 		}
 	}
 	return rows;
 }
 
 /** How a member is named in a record's target column: name and e-mail (the minimum that identifies them). */
-export function memberTargetName(u: { ad: string; soyad: string; email: string }): string {
-	return `${u.ad} ${u.soyad}`.trim() + ` (${u.email})`;
+export function memberTargetName(u: { ad?: string; soyad?: string; firstName?: string; lastName?: string; email: string }): string {
+	const first = u.firstName || u.ad || '';
+	const last = u.lastName || u.soyad || '';
+	return `${first} ${last}`.trim() + ` (${u.email})`;
 }
 
 /* ---------------- diffs ---------------- */
 
 export interface DiffResult {
-	onceki: AuditFields;
-	sonraki: AuditFields;
+	before: AuditFields;
+	after: AuditFields;
 }
 export type Fark = DiffResult;
 
 const ayni = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
 /** Only the fields that differ, before and after; `null` when nothing changed. */
-export function fieldDiff(onceki: Record<string, unknown>, sonraki: Record<string, unknown>): DiffResult | null {
+export function fieldDiff(before: Record<string, unknown>, after: Record<string, unknown>): DiffResult | null {
 	const o: AuditFields = {};
 	const n: AuditFields = {};
-	for (const k of new Set([...Object.keys(onceki), ...Object.keys(sonraki)])) {
-		if (ayni(onceki[k], sonraki[k])) continue;
-		o[k] = sanitizeValue(onceki[k] ?? null) ?? null;
-		n[k] = sanitizeValue(sonraki[k] ?? null) ?? null;
+	for (const k of new Set([...Object.keys(before), ...Object.keys(after)])) {
+		if (ayni(before[k], after[k])) continue;
+		o[k] = sanitizeValue(before[k] ?? null) ?? null;
+		n[k] = sanitizeValue(after[k] ?? null) ?? null;
 	}
-	return Object.keys(n).length ? { onceki: o, sonraki: n } : null;
+	return Object.keys(n).length ? { before: o, after: n } : null;
 }
 export const alanFarki = fieldDiff;
 
@@ -209,20 +198,20 @@ export const alanFarki = fieldDiff;
  * A role edit as a diff: changed fields, and of the permission matrix only the
  * apps whose level changed ('yok' when absent on one side).
  */
-export function roleDiff(onceki: RoleSummary, sonraki: RoleSummary): DiffResult | null {
+export function roleDiff(before: RoleSummary, after: RoleSummary): DiffResult | null {
 	const o: AuditFields = {};
 	const n: AuditFields = {};
 	for (const k of ['ad', 'renk', 'aciklama', 'ikiAdimZorunlu'] as const) {
-		if (onceki[k] !== sonraki[k]) {
-			o[k] = onceki[k];
-			n[k] = sonraki[k];
+		if (before[k] !== after[k]) {
+			o[k] = before[k];
+			n[k] = after[k];
 		}
 	}
 	const oi: Record<string, string> = {};
 	const ni: Record<string, string> = {};
-	for (const app of new Set([...Object.keys(onceki.izinler), ...Object.keys(sonraki.izinler)])) {
-		const a = onceki.izinler[app] ?? 'yok';
-		const b = sonraki.izinler[app] ?? 'yok';
+	for (const app of new Set([...Object.keys(before.izinler), ...Object.keys(after.izinler)])) {
+		const a = before.izinler[app] ?? 'yok';
+		const b = after.izinler[app] ?? 'yok';
 		if (a !== b) {
 			oi[app] = a;
 			ni[app] = b;
@@ -232,7 +221,7 @@ export function roleDiff(onceki: RoleSummary, sonraki: RoleSummary): DiffResult 
 		o.izinler = oi;
 		n.izinler = ni;
 	}
-	return Object.keys(n).length ? { onceki: o, sonraki: n } : null;
+	return Object.keys(n).length ? { before: o, after: n } : null;
 }
 
 /** The key that holds the (encrypted) app password, only ever reported as changed, never its value. */
@@ -242,23 +231,23 @@ export const SMTP_PAROLA_ANAHTARI = SMTP_PASSWORD_KEY;
 export const SMTP_ALANLARI = SMTP_FIELDS;
 
 /**
- * The e-mail account settings (SMTP) as a diff. `onceki` holds the stored values (a
+ * The e-mail account settings (SMTP) as a diff. `before` holds the stored values (a
  * missing key reads as its default), `yeni` the keys being written. The
  * password is reported as "değişti" / "silindi" and never by value.
  */
-export function smtpDiff(onceki: Record<string, string | undefined>, yeni: Record<string, string>, varsayilan: Record<string, string>): DiffResult | null {
+export function smtpDiff(before: Record<string, string | undefined>, yeni: Record<string, string>, varsayilan: Record<string, string>): DiffResult | null {
 	const o: AuditFields = {};
 	const n: AuditFields = {};
 	for (const k of SMTP_FIELDS) {
 		if (!(k in yeni)) continue;
-		const previous = onceki[k] ?? varsayilan[k] ?? '';
+		const previous = before[k] ?? varsayilan[k] ?? '';
 		if (previous !== yeni[k]) {
 			o[k] = previous;
 			n[k] = yeni[k];
 		}
 	}
 	if (SMTP_PASSWORD_KEY in yeni) {
-		const vardi = !!onceki[SMTP_PASSWORD_KEY];
+		const vardi = !!before[SMTP_PASSWORD_KEY];
 		if (yeni[SMTP_PASSWORD_KEY] === '') {
 			// Clearing a password that was never set is no change.
 			if (vardi) {
@@ -270,38 +259,38 @@ export function smtpDiff(onceki: Record<string, string | undefined>, yeni: Recor
 			n.uygulamaAnahtari = 'degisti';
 		}
 	}
-	return Object.keys(n).length ? { onceki: o, sonraki: n } : null;
+	return Object.keys(n).length ? { before: o, after: n } : null;
 }
 export const smtpFarki = smtpDiff;
 
 /** Which log entry a membership status change is. */
-export function statusAction(onceki: string, sonraki: string): AuditAction | null {
-	if (onceki === sonraki) return null;
-	if (onceki === 'beklemede' && sonraki === 'aktif') return 'basvuru.onayla';
-	if (onceki === 'beklemede' && sonraki === 'reddedildi') return 'basvuru.reddet';
-	if (sonraki === 'mezun') return 'uye.mezun';
-	if (sonraki === 'aktif') return 'uye.aktif';
-	return 'uye.status';
+export function statusAction(before: string, after: string): AuditAction | null {
+	if (before === after) return null;
+	if (before === 'beklemede' && after === 'aktif') return 'application.approve';
+	if (before === 'beklemede' && after === 'reddedildi') return 'application.reject';
+	if (after === 'mezun') return 'member.graduate';
+	if (after === 'aktif') return 'member.activate';
+	return 'member.status';
 }
 
 /* ---------------- listing ---------------- */
 
 export const AUDIT_PAGE_SIZE = 50;
 export const AUDIT_MAX_PAGE_SIZE = 200;
-/** One CSV download holds at most this many rows (the `tum=1` list). */
+/** One CSV download holds at most this many rows (the `all=1` list). */
 export const AUDIT_CSV_LIMIT = 10000;
 
 export interface AuditFilter {
 	/** Part of a name or e-mail, or an exact member id — the actor or the person acted on. */
-	kisi: string;
+	user: string;
 	/** A role id — role changes and role assignments involving it. */
 	role: string;
-	islem: string;
+	action: string;
 	/** Inclusive day bounds, `YYYY-MM-DD`, in the server's local time. */
 	from: string;
 	to: string;
-	sayfa: number;
-	boyut: number;
+	page: number;
+	pageSize: number;
 }
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -316,18 +305,17 @@ export function parseAuditFilter(q: URLSearchParams): AuditFilter {
 		const v = q.get(k) ?? '';
 		return DAY.test(v) && !Number.isNaN(new Date(`${v}T00:00:00`).getTime()) ? v : '';
 	};
-	const rawAction = q.get('action') ?? q.get('islem') ?? '';
+	const rawAction = q.get('action') ?? '';
 	return {
-		kisi: (q.get('person') ?? q.get('user') ?? q.get('kisi') ?? '').trim().slice(0, 80),
-		role: (q.get('role') ?? q.get('rol') ?? '').trim().slice(0, 80),
-		islem: (AUDIT_ACTIONS as readonly string[]).includes(rawAction) ? rawAction : '',
+		user: (q.get('user') ?? '').trim().slice(0, 80),
+		role: (q.get('role') ?? '').trim().slice(0, 80),
+		action: (AUDIT_ACTIONS as readonly string[]).includes(rawAction) ? rawAction : '',
 		from: day('from'),
 		to: day('to'),
-		sayfa: sayi(q.get('page') ?? q.get('sayfa'), 1, 1, 1_000_000),
-		boyut: sayi(q.get('limit') ?? q.get('pageSize') ?? q.get('boyut'), AUDIT_PAGE_SIZE, 1, AUDIT_MAX_PAGE_SIZE),
+		page: sayi(q.get('page'), 1, 1, 1_000_000),
+		pageSize: sayi(q.get('limit') ?? q.get('pageSize'), AUDIT_PAGE_SIZE, 1, AUDIT_MAX_PAGE_SIZE),
 	};
 }
-export const suzgecOku = parseAuditFilter;
 
 /** `YYYY-MM-DD` (local) → the first millisecond of that day. */
 export function startOfDay(gun: string): number {
@@ -339,15 +327,15 @@ export const AUDIT_CSV_HEADERS = ['Zaman', 'Yapan', 'Yapan No', 'İşlem', 'Hede
 /** The log as CSV rows (header in DENETIM_CSV_BASLIKLARI); before/after as compact JSON. */
 export function auditCsvRows(kayitlar: AuditRecord[]): string[][] {
 	return kayitlar.map((k) => [
-		new Date(k.zaman).toISOString(),
-		k.yapanAd,
-		k.yapanId ?? '',
-		k.islem,
-		k.hedefTur,
-		k.hedefId ?? '',
-		k.hedefAd,
-		k.onceki ? JSON.stringify(k.onceki) : '',
-		k.sonraki ? JSON.stringify(k.sonraki) : '',
+		new Date(k.timestamp).toISOString(),
+		k.actorName,
+		k.actorId ?? '',
+		k.action,
+		k.targetType,
+		k.targetId ?? '',
+		k.targetName,
+		k.before ? JSON.stringify(k.before) : '',
+		k.after ? JSON.stringify(k.after) : '',
 		k.ip,
 	]);
 }
@@ -359,22 +347,16 @@ export function retentionDays(env: string | undefined): number {
 }
 
 /** Humanizes and translates audit action operation keys. */
-export function formatAuditAction(islem: string, t?: (key: string, fallback?: string) => string): string {
-	if (!islem) return '—';
-	const normalized = islem.startsWith('rol.') ? `role.${islem.slice(4)}` : islem;
-	const opKey = `auditOp_${islem.replace(/[.-]/g, '_')}`;
-	const altOpKey = `auditOp_${normalized.replace(/[.-]/g, '_')}`;
+export function formatAuditAction(action: string, t?: (key: string, fallback?: string) => string): string {
+	if (!action) return '—';
+	const opKey = `auditOp_${action.replace(/[.-]/g, '_')}`;
 	if (t) {
 		const translated = t(opKey, '');
 		if (translated && !translated.startsWith('auditOp_')) {
 			return translated;
 		}
-		const altTranslated = t(altOpKey, '');
-		if (altTranslated && !altTranslated.startsWith('auditOp_')) {
-			return altTranslated;
-		}
 	}
-	return islem
+	return action
 		.split(/[._-]/)
 		.filter(Boolean)
 		.map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())

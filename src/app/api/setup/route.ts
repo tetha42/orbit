@@ -19,6 +19,20 @@ import { updateConfigIniSync } from '@/server/iniWriter';
 import { attachSessionCookie, establishSession, sessionUserOf } from '@/lib/auth/session';
 import { setSystemSettings } from '@/db/repositories/settings.repo';
 import { buildSmtpUpdates } from '@/lib/mail/smtpSettings';
+import {
+	DEFAULT_ARCHETYPE,
+	getArchetypePreset,
+	isOrganizationArchetype,
+} from '@/lib/archetypes';
+import {
+	DEFAULT_REGISTRATION_CORE_CONFIG,
+	REGISTRATION_CORE_SETTINGS_KEY,
+	normalizeRegistrationCoreConfig,
+} from '@/lib/registrationConfig';
+import {
+	TEAM_CATEGORIES_SETTINGS_KEY,
+	normalizeTeamCategories,
+} from '@/lib/teamCategories';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +46,7 @@ const BRAND_DEFAULTS = {
 	studioName: 'tetha42',
 	communityName: 'Orbit Community',
 	domain: 'orbit.local',
+	archetype: DEFAULT_ARCHETYPE,
 };
 
 /**
@@ -55,6 +70,7 @@ export async function GET(request: Request) {
 			studioName: 'tetha42',
 			communityName: CONFIG.clubPreset.name || BRAND_DEFAULTS.communityName,
 			domain: CONFIG.clubPreset.domain || BRAND_DEFAULTS.domain,
+			archetype: BRAND_DEFAULTS.archetype,
 		};
 
 		return NextResponse.json(
@@ -67,6 +83,7 @@ export async function GET(request: Request) {
 			studioName: 'tetha42',
 			communityName: CONFIG.clubPreset.name || BRAND_DEFAULTS.communityName,
 			domain: CONFIG.clubPreset.domain || BRAND_DEFAULTS.domain,
+			archetype: BRAND_DEFAULTS.archetype,
 		};
 		return NextResponse.json(
 			setupResponse(
@@ -152,6 +169,9 @@ export async function handleSetupSubmission(request: Request) {
 		// not even during first-run setup.
 		const studioName = 'tetha42';
 		const domain = (body.domain || body.identity?.domain || 'orbit.local').trim();
+		const rawArchetype = body.archetype ?? body.identity?.archetype ?? body.organizationArchetype;
+		const archetype = isOrganizationArchetype(rawArchetype) ? rawArchetype : DEFAULT_ARCHETYPE;
+		const archetypePreset = getArchetypePreset(archetype);
 
 		const smtp = body.smtp || {};
 		const smtpHost = (smtp.host || body.smtpHost || '').trim();
@@ -200,15 +220,55 @@ export async function handleSetupSubmission(request: Request) {
 			console.warn('[Orbit Setup] Runtime configuration update warning:', iniErr);
 		}
 
-		// 3. Persist the community identity and the newly editable defaults before
-		// creating the administrator. If this fails the setup marker is not written,
-		// so the wizard can safely be run again instead of reporting a half-seeded
-		// installation as complete.
+		// 3. Persist the community identity, organization archetype, and archetype-specific
+		// registration/team defaults before creating the administrator. If this fails the
+		// setup marker is not written, so the wizard can safely be run again instead of
+		// reporting a half-seeded installation as complete.
 		try {
+			const archetypeRegistrationConfig = normalizeRegistrationCoreConfig({
+				track: {
+					visible: true,
+					labelTr: archetypePreset.trackLabel.tr,
+					labelEn: archetypePreset.trackLabel.en,
+					placeholderTr: `${archetypePreset.trackLabel.tr} seçin`,
+					placeholderEn: `Select ${archetypePreset.trackLabel.en.toLowerCase()}`,
+					options: archetypePreset.defaultTracks.map((trackName) => ({
+						value: trackName,
+						labelTr: trackName,
+						labelEn: trackName,
+					})),
+				},
+				level: {
+					visible: true,
+					labelTr: archetypePreset.levelLabel.tr,
+					labelEn: archetypePreset.levelLabel.en,
+					placeholderTr: `${archetypePreset.levelLabel.tr} seçin`,
+					placeholderEn: `Select ${archetypePreset.levelLabel.en.toLowerCase()}`,
+					options: archetypePreset.defaultLevels.map((levelName, idx) => ({
+						value: String(idx + 1),
+						labelTr: levelName,
+						labelEn: levelName,
+					})),
+				},
+				memberId: {
+					required: false,
+					labelTr: archetypePreset.handleLabel.tr,
+					labelEn: archetypePreset.handleLabel.en,
+					placeholderTr: DEFAULT_REGISTRATION_CORE_CONFIG.memberId.placeholderTr,
+					placeholderEn: DEFAULT_REGISTRATION_CORE_CONFIG.memberId.placeholderEn,
+				},
+			});
+			const archetypeTeamCategories = normalizeTeamCategories(
+				archetypePreset.defaultUnitCategories.map((unit) => unit.labelEn)
+			);
+
 			const dbSettings: Record<string, string> = {
 				kulup_adi: communityName,
 				kulup_domain: domain,
 				universite: studioName,
+				organization_archetype: archetype,
+				[REGISTRATION_CORE_SETTINGS_KEY]: JSON.stringify(archetypeRegistrationConfig),
+				[TEAM_CATEGORIES_SETTINGS_KEY]: JSON.stringify(archetypeTeamCategories),
 			};
 			if (smtpHost) {
 				const smtpUpdates = await buildSmtpUpdates({
@@ -221,7 +281,7 @@ export async function handleSetupSubmission(request: Request) {
 				Object.assign(dbSettings, smtpUpdates);
 			}
 			await setSystemSettings(dbSettings);
-			// Materialise the factory defaults for the editable settings so the
+			// Materialise the factory defaults for the remaining editable settings so the
 			// database describes the same state the UI reads through its fallbacks.
 			await seedSetupDefaults(communityName);
 			// Seed the three bundled legal documents once; later calls are no-ops.
@@ -235,7 +295,7 @@ export async function handleSetupSubmission(request: Request) {
 		}
 
 		// 4. Create the initial administrator
-		const result = await setupFirstAdmin({ ad: firstName, soyad: lastName, email, password });
+		const result = await setupFirstAdmin({ firstName, lastName, email, password });
 		if (!result.ok) {
 			void logSystemEvent({
 				servis: 'security',

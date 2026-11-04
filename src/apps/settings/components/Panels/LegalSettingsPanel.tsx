@@ -10,7 +10,7 @@ import {
 	Save,
 	ShieldCheck,
 } from 'lucide-react';
-import { useI18n } from '@/core/i18n';
+import { resolveLocalizedText, useI18n } from '@/core/i18n';
 import { errorMessage } from '@/lib/errors';
 import { LEGAL_DOCUMENT_SCOPES, LEGAL_DOCUMENT_TYPES, type LegalDocumentScope, type LegalDocumentType } from '@/lib/legalDefaults';
 
@@ -189,7 +189,10 @@ export function LegalSettingsPanel() {
 		}
 	};
 
-	const title = (document: LegalDocument) => (language === 'tr' ? document.titleTr : document.titleEn);
+	const title = (document: { titleTr: string; titleEn: string }) =>
+		resolveLocalizedText({ en: document.titleEn, tr: document.titleTr }, language, document.titleEn || document.titleTr);
+	const body = (document: { bodyTr: string; bodyEn: string }) =>
+		resolveLocalizedText({ en: document.bodyEn, tr: document.bodyTr }, language, document.bodyEn || document.bodyTr);
 
 	if (isLoading) {
 		return <div style={{ padding: 30, textAlign: 'center', opacity: 0.55 }}>{t('loading')}</div>;
@@ -387,8 +390,8 @@ export function LegalSettingsPanel() {
 								versions.map((version) => (
 									<details key={version.id} style={{ fontSize: '11.5px' }}>
 										<summary style={{ cursor: 'pointer', opacity: 0.8 }}>
-											v{version.version} · {language === 'tr' ? version.titleTr : version.titleEn} ·{' '}
-											{new Date(version.archivedAt).toLocaleDateString(language === 'tr' ? 'tr-TR' : 'en-US')}
+											v{version.version} · {title(version)} ·{' '}
+											{new Date(version.archivedAt).toLocaleDateString(language)}
 										</summary>
 										<pre
 											style={{
@@ -404,7 +407,7 @@ export function LegalSettingsPanel() {
 												marginTop: '5px',
 											}}
 										>
-											{language === 'tr' ? version.bodyTr : version.bodyEn}
+											{body(version)}
 										</pre>
 									</details>
 								))

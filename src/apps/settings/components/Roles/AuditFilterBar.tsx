@@ -7,19 +7,19 @@ import { AUDIT_ACTIONS } from '@/lib/audit';
 import ui from '@/core/ui/ui.module.css';
 import s from './Roles.module.css';
 
-export interface Suzgec {
-	kisi: string;
+export interface AuditQuery {
+	user: string;
 	role: string;
-	islem: string;
+	action: string;
 	from: string;
 	to: string;
-	sayfa: number;
+	page: number;
 }
 
 interface AuditFilterBarProps {
-	filtre: Suzgec;
-	kisiYazilan: string;
-	roller: { id: string; ad: string }[];
+	filtre: AuditQuery;
+	userDraft: string;
+	roles: { id: string; ad: string }[];
 	onKisiChange: (val: string) => void;
 	onRolChange: (val: string) => void;
 	onIslemChange: (val: string) => void;
@@ -28,12 +28,12 @@ interface AuditFilterBarProps {
 	onResetFilters: () => void;
 }
 
-const opKey = (islem: string) => `auditOp_${islem.replace(/\./g, '_')}`;
+const opKey = (action: string) => `auditOp_${action.replace(/\./g, '_')}`;
 
 export function AuditFilterBar({
 	filtre,
-	kisiYazilan,
-	roller,
+	userDraft,
+	roles,
 	onKisiChange,
 	onRolChange,
 	onIslemChange,
@@ -42,7 +42,7 @@ export function AuditFilterBar({
 	onResetFilters,
 }: AuditFilterBarProps) {
 	const { t } = useI18n();
-	const hasFilter = Boolean(filtre.kisi || filtre.role || filtre.islem || filtre.from || filtre.to);
+	const hasFilter = Boolean(filtre.user || filtre.role || filtre.action || filtre.from || filtre.to);
 
 	return (
 		<div className={s.auditFilters}>
@@ -50,7 +50,7 @@ export function AuditFilterBar({
 				className={ui.input}
 				style={{ flex: '1 1 170px', minWidth: 140 }}
 				placeholder={t('auditFiltreKisi')}
-				value={kisiYazilan}
+				value={userDraft}
 				onChange={(e) => onKisiChange(e.target.value)}
 				aria-label={t('auditFiltreKisi')}
 			/>
@@ -62,7 +62,7 @@ export function AuditFilterBar({
 				aria-label={t('auditFiltreRol')}
 			>
 				<option value="">{t('auditFiltreRolHepsi')}</option>
-				{roller.map((r) => (
+				{roles.map((r) => (
 					<option key={r.id} value={r.id}>
 						{r.ad}
 					</option>
@@ -71,7 +71,7 @@ export function AuditFilterBar({
 			<select
 				className={ui.select}
 				style={{ flex: '0 1 170px', minWidth: 135 }}
-				value={filtre.islem}
+				value={filtre.action}
 				onChange={(e) => onIslemChange(e.target.value)}
 				aria-label={t('auditFiltreIslem')}
 			>

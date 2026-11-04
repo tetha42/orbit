@@ -2,7 +2,7 @@
 
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { useSound } from '@/core/sound';
-import { useI18n } from '@/core/i18n';
+import { getNextLocale, useI18n } from '@/core/i18n';
 import { useWindowActions } from '@/core/windows';
 import { useSession } from '@/core/session';
 import { useShell } from '@/core/shell';
@@ -171,7 +171,7 @@ export function SpotlightModal() {
 	/* ---------- rows ---------- */
 
 	const q = query.trim();
-	const otherLanguage = language === 'tr' ? 'en' : 'tr';
+	const otherLanguage = getNextLocale(language);
 	const scored = (fields: SearchField[]) => (q ? scoreMatch(q, fields) : 1);
 	const rows: Row[] = [];
 

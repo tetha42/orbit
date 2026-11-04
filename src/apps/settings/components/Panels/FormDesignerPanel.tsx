@@ -37,6 +37,7 @@ import {
 	FORM_FIELD_DIRECTORY_VISIBILITY,
 	FORM_FIELD_REQUIRED_AT,
 	FORM_FIELD_TYPES,
+	fieldLabel as getFieldLabel,
 	normalizeFieldKey,
 	type FormField,
 	type FormFieldCollectAt,
@@ -176,8 +177,7 @@ export function FormDesignerPanel() {
 		void load();
 	}, [load]);
 
-	const fieldLabel = (field: FormField) =>
-		language === 'tr' ? field.labelTr || field.labelEn : field.labelEn || field.labelTr;
+	const fieldLabel = (field: FormField) => getFieldLabel(field, language);
 
 	const collectLabel = (value: FormFieldCollectAt) => t(`formCollectAt_${value}`);
 	const requiredLabel = (value: FormFieldRequiredAt) => t(`formRequiredAt_${value}`);

@@ -3,7 +3,7 @@
 import { useRef, useEffect } from 'react';
 import { useSession } from '@/core/session';
 import { useSound } from '@/core/sound';
-import { useI18n } from '@/core/i18n';
+import { getLocaleDefinition, getNextLocale, useI18n } from '@/core/i18n';
 import { useShell } from '@/core/shell';
 import { useTheme } from '@/core/theme';
 import { RoleBadge, roleGradient } from '@/core/ui/RoleBadge';
@@ -205,7 +205,7 @@ export function ControlCenterApplet() {
 
 						{/* Language Toggle Tile */}
 						<button
-							onClick={() => setLanguage(language === 'tr' ? 'en' : 'tr')}
+							onClick={() => setLanguage(getNextLocale(language))}
 							style={{
 								display: 'flex',
 								alignItems: 'center',
@@ -235,7 +235,7 @@ export function ControlCenterApplet() {
 							<div style={{ textAlign: 'left', minWidth: 0 }}>
 								<div style={{ fontWeight: 600, fontSize: '11.5px', lineHeight: 1.2 }}>{t('language')}</div>
 								<div style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--accent-blue)' }}>
-									{language === 'tr' ? 'TR (Türkçe)' : 'EN (English)'}
+									{`${getLocaleDefinition(language).code.toUpperCase()} (${getLocaleDefinition(language).nativeName})`}
 								</div>
 							</div>
 						</button>

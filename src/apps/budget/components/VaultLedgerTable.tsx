@@ -3,13 +3,13 @@
 import React from 'react';
 import { ArrowDownRight, ArrowRightLeft, ArrowUpRight, Copy, ExternalLink, Pencil, Receipt, Trash2 } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
-import { formatKurus } from '@/lib/budget';
+import { formatMinor } from '@/lib/budget';
 import { formatDate } from '@/core/data/format';
 import { useContextMenu } from '@/core/shell/useContextMenu';
 import { copyToClipboard } from '@/lib/clipboard';
 import type { MenuItem } from '@/types/workspace';
 import type { VaultRecord } from '../types';
-import k from './Kasa.module.css';
+import k from './Vault.module.css';
 
 interface VaultLedgerTableProps {
 	records: VaultRecord[];
@@ -25,7 +25,7 @@ interface VaultLedgerTableProps {
 	onDelete: (r: VaultRecord) => void;
 }
 
-const tl = (kurus: number) => `₺${formatKurus(kurus)}`;
+const tl = (kurus: number) => `₺${formatMinor(kurus)}`;
 const dateFmt = (ms: number) => formatDate(ms);
 
 interface VaultRowProps {
@@ -54,7 +54,7 @@ function VaultTableRow({ r, balance, lockedForMe, language, onEdit, onDelete }: 
 			id: 'copy-amount',
 			label: t('ctxBudgetCopyAmount'),
 			icon: <Copy size={13} />,
-			action: () => copyToClipboard(tl(r.tutarKurus)),
+			action: () => copyToClipboard(tl(r.amountMinor)),
 		},
 	];
 
@@ -126,7 +126,7 @@ function VaultTableRow({ r, balance, lockedForMe, language, onEdit, onDelete }: 
 							</a>
 						)}
 						{r.guncellenme && (
-							<span title={new Date(r.guncellenme).toLocaleString(language === 'tr' ? 'tr-TR' : 'en-US')}>
+							<span title={new Date(r.guncellenme).toLocaleString(language)}>
 								{t('kasaEdited')}{r.guncelleyenAdSoyad ? ` · ${r.guncelleyenAdSoyad}` : ''}
 							</span>
 						)}
@@ -138,7 +138,7 @@ function VaultTableRow({ r, balance, lockedForMe, language, onEdit, onDelete }: 
 			</td>
 			<td className={`${k.num} ${r.tur === 'gelir' ? k.pos : k.neg}`} style={{ fontWeight: 750 }}>
 				{r.tur === 'gelir' ? '+' : '−'}
-				{tl(r.tutarKurus)}
+				{tl(r.amountMinor)}
 			</td>
 			<td className={`${k.num} ${k.colBalance}`} style={{ color: 'var(--text-secondary)' }}>
 				{tl(balance)}
@@ -186,7 +186,7 @@ function VaultMobileCard({ r, lockedForMe, onEdit, onDelete }: Omit<VaultRowProp
 			id: 'copy-amount',
 			label: t('ctxBudgetCopyAmount'),
 			icon: <Copy size={13} />,
-			action: () => copyToClipboard(tl(r.tutarKurus)),
+			action: () => copyToClipboard(tl(r.amountMinor)),
 		},
 	];
 
@@ -256,7 +256,7 @@ function VaultMobileCard({ r, lockedForMe, onEdit, onDelete }: Omit<VaultRowProp
 			<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-secondary)' }}>
 				<span>{r.kategori} · {r.kaydedenAdSoyad ?? '—'}</span>
 				<span className={`${r.tur === 'gelir' ? k.pos : k.neg}`} style={{ fontWeight: 800, fontSize: '15px' }}>
-					{r.tur === 'gelir' ? '+' : '−'}{tl(r.tutarKurus)}
+					{r.tur === 'gelir' ? '+' : '−'}{tl(r.amountMinor)}
 				</span>
 			</div>
 

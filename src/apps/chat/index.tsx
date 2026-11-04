@@ -75,8 +75,8 @@ function ChatDesktopView() {
 		setForwardingMessage(null);
 	}, [activeRoomId]);
 
-	const handleSelectRoom = (odaId: string) => {
-		selectRoom(odaId);
+	const handleSelectRoom = (roomId: string) => {
+		selectRoom(roomId);
 		setMobileView('chat');
 	};
 
@@ -336,8 +336,8 @@ function ChatDesktopView() {
 					onClose={() => setIsAddMemberOpen(false)}
 					room={activeRoom}
 					currentUserId={currentUser.id}
-					onAddMembers={async (odaId, memberIds) => {
-						await addMembers(odaId, memberIds);
+					onAddMembers={async (roomId, memberIds) => {
+						await addMembers(roomId, memberIds);
 					}}
 					onCreateGroupWithCounterpart={async (memberIds, title) => {
 						const rId = await createGroupDm(memberIds, title);

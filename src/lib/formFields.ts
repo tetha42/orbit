@@ -8,6 +8,8 @@
  * and the member detail view, so a field is never defined twice.
  */
 
+import { resolveLocalizedText } from '../locales/registry.ts';
+
 export type FormFieldType =
 	| 'text'
 	| 'password'
@@ -147,18 +149,28 @@ export function fieldInDirectory(field: Pick<FormField, 'enabled' | 'directoryVi
 	return field.enabled && field.directoryVisibility === 'members';
 }
 
-export function fieldLabel(field: FormField, language: 'tr' | 'en'): string {
-	return language === 'tr' ? field.labelTr || field.labelEn : field.labelEn || field.labelTr;
+export function fieldLabel(field: FormField, language: string): string {
+	return resolveLocalizedText(
+		{ en: field.labelEn, tr: field.labelTr },
+		language,
+		field.labelEn || field.labelTr
+	);
 }
 
-export function fieldPlaceholder(field: FormField, language: 'tr' | 'en'): string {
-	return language === 'tr'
-		? field.placeholderTr || field.placeholderEn
-		: field.placeholderEn || field.placeholderTr;
+export function fieldPlaceholder(field: FormField, language: string): string {
+	return resolveLocalizedText(
+		{ en: field.placeholderEn, tr: field.placeholderTr },
+		language,
+		field.placeholderEn || field.placeholderTr
+	);
 }
 
-export function optionLabel(option: FormFieldOption, language: 'tr' | 'en'): string {
-	return language === 'tr' ? option.labelTr || option.labelEn : option.labelEn || option.labelTr;
+export function optionLabel(option: FormFieldOption, language: string): string {
+	return resolveLocalizedText(
+		{ en: option.labelEn, tr: option.labelTr },
+		language,
+		option.labelEn || option.labelTr
+	);
 }
 
 function normalizeOptions(raw: unknown): FormFieldOption[] {

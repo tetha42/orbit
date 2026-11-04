@@ -9,7 +9,7 @@ export interface VaultRow {
 	olusturma?: number;
 	tur: 'gelir' | 'gider';
 	kategori: string;
-	tutarKurus: number;
+	amountMinor: number;
 	aciklama: string;
 	kaydedenAdSoyad?: string | null;
 	aktarimId?: string | null;
@@ -57,7 +57,7 @@ export function formatCents(cents: number): string {
 		.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 	return `${sign}${whole},${String(abs % 100).padStart(2, '0')}`;
 }
-export const formatKurus = formatCents;
+export const formatMinor = formatCents;
 
 /** Oldest first, then by entry time: the order money actually moved in. */
 function chronological<T extends VaultRow>(rows: T[]): T[] {
@@ -72,7 +72,7 @@ export function runningBalance(rows: VaultRow[]): Map<string, number> {
 	const out = new Map<string, number>();
 	let balance = 0;
 	for (const r of chronological(rows)) {
-		balance += r.tur === 'gelir' ? r.tutarKurus : -r.tutarKurus;
+		balance += r.tur === 'gelir' ? r.amountMinor : -r.amountMinor;
 		out.set(r.id, balance);
 	}
 	return out;
@@ -82,15 +82,15 @@ export function runningBalance(rows: VaultRow[]): Map<string, number> {
 export function categoryBreakdown(rows: VaultRow[], type: 'gelir' | 'gider' = 'gider') {
 	const totals = new Map<string, number>();
 	for (const r of rows)
-		if (r.tur === type) totals.set(r.kategori, (totals.get(r.kategori) ?? 0) + r.tutarKurus);
+		if (r.tur === type) totals.set(r.kategori, (totals.get(r.kategori) ?? 0) + r.amountMinor);
 	const total = [...totals.values()].reduce((a, b) => a + b, 0);
 	return [...totals.entries()]
-		.map(([kategori, tutarKurus]) => ({
+		.map(([kategori, amountMinor]) => ({
 			kategori,
-			tutarKurus,
-			oran: total ? tutarKurus / total : 0,
+			amountMinor,
+			oran: total ? amountMinor / total : 0,
 		}))
-		.sort((a, b) => b.tutarKurus - a.tutarKurus || a.kategori.localeCompare(b.kategori, 'tr'));
+		.sort((a, b) => b.amountMinor - a.amountMinor || a.kategori.localeCompare(b.kategori, 'tr'));
 }
 export const kategoriDagilimi = categoryBreakdown;
 
@@ -112,7 +112,7 @@ export function monthlyFlow(rows: VaultRow[], now: number, count = 6) {
 	const byKey = new Map(months.map((m) => [m.ay, m]));
 	for (const r of rows) {
 		const m = byKey.get(monthKey(r.date));
-		if (m) m[r.tur] += r.tutarKurus;
+		if (m) m[r.tur] += r.amountMinor;
 	}
 	return months;
 }

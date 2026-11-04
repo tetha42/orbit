@@ -69,8 +69,6 @@ export async function getPublicIdentity(): Promise<PublicIdentity> {
 	);
 	const map = Object.fromEntries(res.rows.map((row) => [String(row.key), String(row.value)]));
 	const siteName = map.kulup_adi?.trim() || 'Orbit Community';
-	// If the custom icon row exists but its file is gone (volume not mounted,
-	// manual deletion), fall back to the bundled icon instead of a broken image.
 	const storedIcon = map.site_icon?.trim() || null;
 	const iconName = customImageNameFromUrl(storedIcon);
 	const iconUrl =
@@ -115,37 +113,67 @@ export interface LegalDocument {
 	updatedBy: string | null;
 }
 
-interface LegalDocumentRow {
-	id: string;
-	docType: string;
-	scope: string;
+interface LegalDocumentTranslations {
+	tr?: { title?: string; body?: string };
+	en?: { title?: string; body?: string };
+	titleTr?: string;
+	titleEn?: string;
+	bodyTr?: string;
+	bodyEn?: string;
+}
+
+function parseLegalTranslations(raw: unknown): {
 	titleTr: string;
 	titleEn: string;
 	bodyTr: string;
 	bodyEn: string;
-	required: number;
-	enabled: number;
-	sortOrder: number;
-	version: number;
-	updatedAt: number;
-	updatedBy: string | null;
+} {
+	let obj: LegalDocumentTranslations = {};
+	if (typeof raw === 'string') {
+		try {
+			obj = JSON.parse(raw) as LegalDocumentTranslations;
+		} catch {
+			obj = {};
+		}
+	} else if (raw && typeof raw === 'object') {
+		obj = raw as LegalDocumentTranslations;
+	}
+	return {
+		titleTr: String(obj.tr?.title ?? obj.titleTr ?? ''),
+		titleEn: String(obj.en?.title ?? obj.titleEn ?? ''),
+		bodyTr: String(obj.tr?.body ?? obj.bodyTr ?? ''),
+		bodyEn: String(obj.en?.body ?? obj.bodyEn ?? ''),
+	};
 }
 
-function toLegalDocument(row: LegalDocumentRow): LegalDocument {
+function serializeLegalTranslations(input: {
+	titleTr: string;
+	titleEn: string;
+	bodyTr: string;
+	bodyEn: string;
+}): string {
+	return JSON.stringify({
+		tr: { title: input.titleTr, body: input.bodyTr },
+		en: { title: input.titleEn, body: input.bodyEn },
+	});
+}
+
+function toLegalDocument(row: Record<string, unknown>): LegalDocument {
+	const t = parseLegalTranslations(row.translations);
 	return {
-		id: row.id,
-		docType: row.docType as LegalDocumentType,
-		scope: row.scope as LegalDocumentScope,
-		titleTr: row.titleTr,
-		titleEn: row.titleEn,
-		bodyTr: row.bodyTr,
-		bodyEn: row.bodyEn,
+		id: String(row.id),
+		docType: String(row.docType ?? row.doc_type) as LegalDocumentType,
+		scope: String(row.scope) as LegalDocumentScope,
+		titleTr: t.titleTr,
+		titleEn: t.titleEn,
+		bodyTr: t.bodyTr,
+		bodyEn: t.bodyEn,
 		required: Number(row.required) === 1,
 		enabled: Number(row.enabled) === 1,
-		sortOrder: Number(row.sortOrder) || 0,
+		sortOrder: Number(row.sortOrder ?? row.sort_order) || 0,
 		version: Number(row.version) || 1,
-		updatedAt: Number(row.updatedAt) || 0,
-		updatedBy: row.updatedBy ?? null,
+		updatedAt: Number(row.updatedAt ?? row.updated_at) || 0,
+		updatedBy: row.updatedBy ? String(row.updatedBy) : (row.updated_by ? String(row.updated_by) : null),
 	};
 }
 
@@ -154,17 +182,14 @@ async function seedLegalDocuments(): Promise<void> {
 	for (const [index, doc] of DEFAULT_LEGAL_DOCUMENTS.entries()) {
 		await getPgPool().query(
 			`INSERT INTO legal_documents
-				(id, doc_type, scope, title_tr, title_en, body_tr, body_en, required, enabled, sort_order, updated_at)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1, $9, $10)
+				(id, doc_type, scope, translations, versions, required, enabled, sort_order, version, updated_at)
+			 VALUES ($1, $2, $3, $4::jsonb, '[]'::jsonb, $5, 1, $6, 1, $7)
 			 ON CONFLICT (doc_type) DO NOTHING`,
 			[
 				`legal_${doc.docType}`,
 				doc.docType,
 				doc.scope,
-				doc.titleTr,
-				doc.titleEn,
-				doc.bodyTr,
-				doc.bodyEn,
+				serializeLegalTranslations(doc),
 				doc.required ? 1 : 0,
 				index,
 				now,
@@ -189,14 +214,13 @@ export async function getLegalDocuments(options?: {
 		where += "scope IN ('registration', 'all')";
 	}
 	const res = await getPgPool().query(
-		`SELECT id, doc_type AS "docType", scope, title_tr AS "titleTr", title_en AS "titleEn",
-		        body_tr AS "bodyTr", body_en AS "bodyEn", required, enabled,
+		`SELECT id, doc_type AS "docType", scope, translations, versions, required, enabled,
 		        sort_order AS "sortOrder", version, updated_at AS "updatedAt", updated_by AS "updatedBy"
 		 FROM legal_documents${where}
 		 ORDER BY sort_order ASC, updated_at ASC`,
 		params
 	);
-	return res.rows.map((row) => toLegalDocument(row as LegalDocumentRow));
+	return res.rows.map((row) => toLegalDocument(row));
 }
 
 export interface LegalDocumentVersion {
@@ -215,25 +239,46 @@ export interface LegalDocumentVersion {
 	archivedBy: string | null;
 }
 
+function parseVersionsJson(raw: unknown): LegalDocumentVersion[] {
+	let arr: unknown = raw;
+	if (typeof raw === 'string') {
+		try {
+			arr = JSON.parse(raw);
+		} catch {
+			return [];
+		}
+	}
+	if (!Array.isArray(arr)) return [];
+	return arr
+		.filter((item): item is Record<string, unknown> => Boolean(item && typeof item === 'object'))
+		.map((row) => ({
+			id: String(row.id ?? ''),
+			documentId: String(row.documentId ?? ''),
+			docType: String(row.docType ?? ''),
+			version: Number(row.version) || 1,
+			scope: String(row.scope ?? 'registration'),
+			titleTr: String(row.titleTr ?? ''),
+			titleEn: String(row.titleEn ?? ''),
+			bodyTr: String(row.bodyTr ?? ''),
+			bodyEn: String(row.bodyEn ?? ''),
+			required: Boolean(row.required),
+			contentHash: String(row.contentHash ?? ''),
+			archivedAt: Number(row.archivedAt) || 0,
+			archivedBy: row.archivedBy ? String(row.archivedBy) : null,
+		}));
+}
+
 /** Archived versions of one document, newest first. The current row is separate. */
 export async function getLegalDocumentVersions(docType: string): Promise<LegalDocumentVersion[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT id, document_id AS "documentId", doc_type AS "docType", version, scope,
-		        title_tr AS "titleTr", title_en AS "titleEn", body_tr AS "bodyTr", body_en AS "bodyEn",
-		        required, content_hash AS "contentHash", archived_at AS "archivedAt",
-		        archived_by AS "archivedBy"
-		 FROM legal_document_versions
-		 WHERE doc_type = $1
-		 ORDER BY version DESC`,
+		`SELECT versions FROM legal_documents WHERE doc_type = $1 LIMIT 1`,
 		[docType]
 	);
-	return res.rows.map((row) => ({
-		...row,
-		version: Number(row.version) || 1,
-		required: Number(row.required) === 1,
-		archivedAt: Number(row.archivedAt) || 0,
-	})) as LegalDocumentVersion[];
+	if (!res.rows[0]) return [];
+	const versions = parseVersionsJson(res.rows[0].versions);
+	versions.sort((a, b) => b.version - a.version);
+	return versions;
 }
 
 export interface LegalDocumentInput {
@@ -261,27 +306,24 @@ export async function upsertLegalDocument(input: LegalDocumentInput): Promise<Le
 			id: string;
 			version: number;
 			scope: string;
-			title_tr: string;
-			title_en: string;
-			body_tr: string;
-			body_en: string;
+			translations: unknown;
+			versions: unknown;
 			required: number;
 		}>(
-			`SELECT id, version, scope, title_tr, title_en, body_tr, body_en, required
+			`SELECT id, version, scope, translations, versions, required
 			 FROM legal_documents WHERE doc_type = $1 FOR UPDATE`,
 			[input.docType]
 		);
 		const previous = existing.rows[0];
 		const id = previous?.id ?? input.id?.trim() ?? `legal_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
-		// Only a content change creates a new version. Toggling enabled/sort order is
-		// metadata, not a new agreement the member must re-accept.
+		const prevText = previous ? parseLegalTranslations(previous.translations) : null;
 		const contentChanged =
-			Boolean(previous) &&
+			Boolean(previous && prevText) &&
 			(previous.scope !== input.scope ||
-				previous.title_tr !== input.titleTr ||
-				previous.title_en !== input.titleEn ||
-				previous.body_tr !== input.bodyTr ||
-				previous.body_en !== input.bodyEn ||
+				prevText!.titleTr !== input.titleTr ||
+				prevText!.titleEn !== input.titleEn ||
+				prevText!.bodyTr !== input.bodyTr ||
+				prevText!.bodyEn !== input.bodyEn ||
 				Number(previous.required) !== (input.required ? 1 : 0));
 		const version = previous
 			? contentChanged
@@ -289,52 +331,45 @@ export async function upsertLegalDocument(input: LegalDocumentInput): Promise<Le
 				: Number(previous.version || 1)
 			: 1;
 
-		// Keep the old text before overwriting it: acceptances refer to version and
-		// content hash, so the evidence must remain reconstructable.
-		if (previous && contentChanged) {
-			await client.query(
-				`INSERT INTO legal_document_versions
-					(id, document_id, doc_type, version, scope, title_tr, title_en, body_tr, body_en,
-					 required, content_hash, archived_at, archived_by)
-				 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-				 ON CONFLICT (document_id, version) DO NOTHING`,
-				[
-					`lv_${randomUUID().replace(/-/g, '').slice(0, 16)}`,
-					previous.id,
-					input.docType,
-					previous.version,
-					previous.scope,
-					previous.title_tr,
-					previous.title_en,
-					previous.body_tr,
-					previous.body_en,
-					previous.required,
-					legalDocumentContentHash({
+		const versions = previous ? parseVersionsJson(previous.versions) : [];
+		if (previous && prevText && contentChanged) {
+			const prevVersion = Number(previous.version) || 1;
+			if (!versions.some((v) => v.version === prevVersion)) {
+				versions.unshift({
+					id: `lv_${randomUUID().replace(/-/g, '').slice(0, 16)}`,
+					documentId: previous.id,
+					docType: input.docType,
+					version: prevVersion,
+					scope: previous.scope,
+					titleTr: prevText.titleTr,
+					titleEn: prevText.titleEn,
+					bodyTr: prevText.bodyTr,
+					bodyEn: prevText.bodyEn,
+					required: Number(previous.required) === 1,
+					contentHash: legalDocumentContentHash({
 						docType: input.docType,
 						scope: previous.scope as LegalDocumentScope,
-						titleTr: previous.title_tr,
-						titleEn: previous.title_en,
-						bodyTr: previous.body_tr,
-						bodyEn: previous.body_en,
+						titleTr: prevText.titleTr,
+						titleEn: prevText.titleEn,
+						bodyTr: prevText.bodyTr,
+						bodyEn: prevText.bodyEn,
 						required: Number(previous.required) === 1,
-						version: Number(previous.version) || 1,
+						version: prevVersion,
 					}),
-					now,
-					input.updatedBy ?? null,
-				]
-			);
+					archivedAt: now,
+					archivedBy: input.updatedBy ?? null,
+				});
+			}
 		}
 
 		await client.query(
 			`INSERT INTO legal_documents
-				(id, doc_type, scope, title_tr, title_en, body_tr, body_en, required, enabled, sort_order, version, updated_at, updated_by)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+				(id, doc_type, scope, translations, versions, required, enabled, sort_order, version, updated_at, updated_by)
+			 VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, $7, $8, $9, $10, $11)
 			 ON CONFLICT (doc_type) DO UPDATE SET
 				scope = EXCLUDED.scope,
-				title_tr = EXCLUDED.title_tr,
-				title_en = EXCLUDED.title_en,
-				body_tr = EXCLUDED.body_tr,
-				body_en = EXCLUDED.body_en,
+				translations = EXCLUDED.translations,
+				versions = EXCLUDED.versions,
 				required = EXCLUDED.required,
 				enabled = EXCLUDED.enabled,
 				sort_order = EXCLUDED.sort_order,
@@ -345,10 +380,8 @@ export async function upsertLegalDocument(input: LegalDocumentInput): Promise<Le
 				id,
 				input.docType,
 				input.scope,
-				input.titleTr,
-				input.titleEn,
-				input.bodyTr,
-				input.bodyEn,
+				serializeLegalTranslations(input),
+				JSON.stringify(versions),
 				input.required ? 1 : 0,
 				input.enabled ? 1 : 0,
 				input.sortOrder,
@@ -397,50 +430,6 @@ export interface LegalAcceptanceMeta {
 	source?: 'registration' | 'account' | 'reconsent' | 'legacy';
 }
 
-/**
- * Records what a member accepted, against the current document version and text
- * hash. Acceptance rows are append-only: a later document version creates a new
- * row instead of rewriting the old evidence.
- */
-export async function acceptLegalDocuments(
-	userId: string,
-	documents: readonly LegalDocument[],
-	meta: LegalAcceptanceMeta = {}
-): Promise<void> {
-	if (!userId || documents.length === 0) return;
-	await ensurePostgresInit();
-	const now = Date.now();
-	const client = await getPgPool().connect();
-	try {
-		await client.query('BEGIN');
-		for (const doc of documents) {
-			await client.query(
-				`INSERT INTO legal_acceptances
-					(id, user_id, document_id, document_version, content_hash, accepted_at, ip, user_agent, source)
-				 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-				 ON CONFLICT (user_id, document_id, document_version) DO NOTHING`,
-				[
-					`la_${randomUUID().replace(/-/g, '').slice(0, 16)}`,
-					userId,
-					doc.id,
-					doc.version,
-					legalDocumentContentHash(doc),
-					now,
-					meta.ip ?? null,
-					meta.userAgent ?? null,
-					meta.source ?? 'registration',
-				]
-			);
-		}
-		await client.query('COMMIT');
-	} catch (error) {
-		await client.query('ROLLBACK').catch(() => {});
-		throw error;
-	} finally {
-		client.release();
-	}
-}
-
 export interface LegalAcceptance {
 	id: string;
 	documentId: string;
@@ -453,29 +442,92 @@ export interface LegalAcceptance {
 	source: string;
 }
 
+function parseLegalConsents(raw: unknown): LegalAcceptance[] {
+	let arr: unknown = raw;
+	if (typeof raw === 'string') {
+		try {
+			arr = JSON.parse(raw);
+		} catch {
+			return [];
+		}
+	}
+	if (!Array.isArray(arr)) return [];
+	return arr
+		.filter((item): item is Record<string, unknown> => Boolean(item && typeof item === 'object'))
+		.map((row) => ({
+			id: String(row.id ?? ''),
+			documentId: String(row.documentId ?? ''),
+			docType: String(row.docType ?? 'terms') as LegalDocumentType,
+			documentVersion: Number(row.documentVersion) || 1,
+			contentHash: String(row.contentHash ?? ''),
+			acceptedAt: Number(row.acceptedAt) || 0,
+			ip: row.ip ? String(row.ip) : null,
+			userAgent: row.userAgent ? String(row.userAgent) : null,
+			source: String(row.source ?? 'registration'),
+		}));
+}
+
+/**
+ * Records what a member accepted, against the current document version and text
+ * hash, in users.legal_consents JSONB.
+ */
+export async function acceptLegalDocuments(
+	userId: string,
+	documents: readonly LegalDocument[],
+	meta: LegalAcceptanceMeta = {}
+): Promise<void> {
+	if (!userId || documents.length === 0) return;
+	await ensurePostgresInit();
+	const now = Date.now();
+	const client = await getPgPool().connect();
+	try {
+		await client.query('BEGIN');
+		const res = await client.query(
+			'SELECT legal_consents AS "legalConsents" FROM users WHERE id = $1 FOR UPDATE',
+			[userId]
+		);
+		const consents = parseLegalConsents(res.rows[0]?.legalConsents ?? res.rows[0]?.legal_consents);
+		for (const doc of documents) {
+			const exists = consents.some(
+				(c) => c.documentId === doc.id && c.documentVersion === doc.version
+			);
+			if (!exists) {
+				consents.push({
+					id: `la_${randomUUID().replace(/-/g, '').slice(0, 16)}`,
+					documentId: doc.id,
+					docType: doc.docType,
+					documentVersion: doc.version,
+					contentHash: legalDocumentContentHash(doc),
+					acceptedAt: now,
+					ip: meta.ip ?? null,
+					userAgent: meta.userAgent ?? null,
+					source: meta.source ?? 'registration',
+				});
+			}
+		}
+		await client.query(
+			'UPDATE users SET legal_consents = $2::jsonb WHERE id = $1',
+			[userId, JSON.stringify(consents)]
+		);
+		await client.query('COMMIT');
+	} catch (error) {
+		await client.query('ROLLBACK').catch(() => {});
+		throw error;
+	} finally {
+		client.release();
+	}
+}
+
 export async function getLegalAcceptances(userId: string): Promise<LegalAcceptance[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT a.id, a.document_id AS "documentId", d.doc_type AS "docType",
-		        a.document_version AS "documentVersion", a.content_hash AS "contentHash",
-		        a.accepted_at AS "acceptedAt", a.ip, a.user_agent AS "userAgent", a.source
-		 FROM legal_acceptances a
-		 JOIN legal_documents d ON d.id = a.document_id
-		 WHERE a.user_id = $1
-		 ORDER BY a.accepted_at DESC`,
+		'SELECT legal_consents AS "legalConsents" FROM users WHERE id = $1',
 		[userId]
 	);
-	return res.rows.map((row) => ({
-		id: String(row.id),
-		documentId: String(row.documentId),
-		docType: String(row.docType) as LegalDocumentType,
-		documentVersion: Number(row.documentVersion) || 1,
-		contentHash: String(row.contentHash),
-		acceptedAt: Number(row.acceptedAt) || 0,
-		ip: row.ip ? String(row.ip) : null,
-		userAgent: row.userAgent ? String(row.userAgent) : null,
-		source: String(row.source ?? 'registration'),
-	}));
+	if (!res.rows[0]) return [];
+	const consents = parseLegalConsents(res.rows[0].legalConsents ?? res.rows[0].legal_consents);
+	consents.sort((a, b) => b.acceptedAt - a.acceptedAt);
+	return consents;
 }
 
 /**
@@ -508,16 +560,62 @@ export interface FormFieldRow {
 	adminEditable: number;
 	fieldKey: string;
 	type: string;
-	section: string;
-	labelTr: string;
-	labelEn: string;
-	placeholderTr: string;
-	placeholderEn: string;
+	translations?: unknown;
 	options: string;
 	required: number;
 	enabled: number;
 	sortOrder: number;
 	archivedAt: number | null;
+}
+
+interface FormFieldTranslations {
+	tr?: { label?: string; placeholder?: string };
+	en?: { label?: string; placeholder?: string };
+	section?: string;
+	labelTr?: string;
+	labelEn?: string;
+	placeholderTr?: string;
+	placeholderEn?: string;
+}
+
+function parseFieldTranslations(raw: unknown): {
+	section: string;
+	labelTr: string;
+	labelEn: string;
+	placeholderTr: string;
+	placeholderEn: string;
+} {
+	let obj: FormFieldTranslations = {};
+	if (typeof raw === 'string') {
+		try {
+			obj = JSON.parse(raw) as FormFieldTranslations;
+		} catch {
+			obj = {};
+		}
+	} else if (raw && typeof raw === 'object') {
+		obj = raw as FormFieldTranslations;
+	}
+	return {
+		section: String(obj.section ?? 'custom'),
+		labelTr: String(obj.tr?.label ?? obj.labelTr ?? ''),
+		labelEn: String(obj.en?.label ?? obj.labelEn ?? ''),
+		placeholderTr: String(obj.tr?.placeholder ?? obj.placeholderTr ?? ''),
+		placeholderEn: String(obj.en?.placeholder ?? obj.placeholderEn ?? ''),
+	};
+}
+
+function serializeFieldTranslations(input: {
+	section: string;
+	labelTr: string;
+	labelEn: string;
+	placeholderTr: string;
+	placeholderEn: string;
+}): string {
+	return JSON.stringify({
+		section: input.section || 'custom',
+		tr: { label: input.labelTr, placeholder: input.placeholderTr },
+		en: { label: input.labelEn, placeholder: input.placeholderEn },
+	});
 }
 
 function parseOptions(raw: string): FormFieldOption[] {
@@ -530,6 +628,7 @@ function parseOptions(raw: string): FormFieldOption[] {
 }
 
 function toFormField(row: FormFieldRow): FormField {
+	const t = parseFieldTranslations(row.translations);
 	return {
 		id: row.id,
 		scope: row.scope as FormFieldScope,
@@ -540,11 +639,11 @@ function toFormField(row: FormFieldRow): FormField {
 		adminEditable: Number(row.adminEditable) === 1,
 		fieldKey: row.fieldKey,
 		type: row.type as FormFieldType,
-		section: row.section,
-		labelTr: row.labelTr,
-		labelEn: row.labelEn,
-		placeholderTr: row.placeholderTr ?? '',
-		placeholderEn: row.placeholderEn ?? '',
+		section: t.section,
+		labelTr: t.labelTr,
+		labelEn: t.labelEn,
+		placeholderTr: t.placeholderTr,
+		placeholderEn: t.placeholderEn,
 		options: parseOptions(row.options),
 		required: Number(row.required) === 1,
 		enabled: Number(row.enabled) === 1,
@@ -555,9 +654,7 @@ function toFormField(row: FormFieldRow): FormField {
 
 const FORM_FIELD_COLUMNS = `id, scope, collect_at AS "collectAt", required_at AS "requiredAt",
 	directory_visibility AS "directoryVisibility", self_editable AS "selfEditable",
-	admin_editable AS "adminEditable", field_key AS "fieldKey", type, section,
-	label_tr AS "labelTr", label_en AS "labelEn",
-	placeholder_tr AS "placeholderTr", placeholder_en AS "placeholderEn",
+	admin_editable AS "adminEditable", field_key AS "fieldKey", type, translations,
 	options, required, enabled, sort_order AS "sortOrder", archived_at AS "archivedAt"`;
 
 export async function getFormFields(options?: {
@@ -630,9 +727,8 @@ export async function createFormField(input: FormFieldInput): Promise<FormField>
 	const res = await getPgPool().query(
 		`INSERT INTO form_fields
 			(id, scope, collect_at, required_at, directory_visibility, self_editable, admin_editable,
-			 field_key, type, section, label_tr, label_en, placeholder_tr, placeholder_en,
-			 options, required, enabled, sort_order, created_at, updated_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $19)
+			 field_key, type, translations, options, required, enabled, sort_order, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11, $12, $13, $14, $15, $15)
 		 RETURNING ${FORM_FIELD_COLUMNS}`,
 		[
 			id,
@@ -644,11 +740,7 @@ export async function createFormField(input: FormFieldInput): Promise<FormField>
 			input.adminEditable ? 1 : 0,
 			input.fieldKey,
 			input.type,
-			input.section,
-			input.labelTr,
-			input.labelEn,
-			input.placeholderTr,
-			input.placeholderEn,
+			serializeFieldTranslations(input),
 			JSON.stringify(input.options),
 			input.required ? 1 : 0,
 			input.enabled ? 1 : 0,
@@ -664,9 +756,9 @@ export async function updateFormField(input: FormFieldInput & { id: string }): P
 	const res = await getPgPool().query(
 		`UPDATE form_fields SET
 			scope = $2, collect_at = $3, required_at = $4, directory_visibility = $5,
-			self_editable = $6, admin_editable = $7, field_key = $8, type = $9, section = $10,
-			label_tr = $11, label_en = $12, placeholder_tr = $13, placeholder_en = $14,
-			options = $15, required = $16, enabled = $17, sort_order = $18, updated_at = $19
+			self_editable = $6, admin_editable = $7, field_key = $8, type = $9,
+			translations = $10::jsonb, options = $11, required = $12, enabled = $13,
+			sort_order = $14, updated_at = $15
 		 WHERE id = $1
 		 RETURNING ${FORM_FIELD_COLUMNS}`,
 		[
@@ -679,11 +771,7 @@ export async function updateFormField(input: FormFieldInput & { id: string }): P
 			input.adminEditable ? 1 : 0,
 			input.fieldKey,
 			input.type,
-			input.section,
-			input.labelTr,
-			input.labelEn,
-			input.placeholderTr,
-			input.placeholderEn,
+			serializeFieldTranslations(input),
 			JSON.stringify(input.options),
 			input.required ? 1 : 0,
 			input.enabled ? 1 : 0,
@@ -737,36 +825,58 @@ export interface MemberFieldValue {
 	value: string;
 }
 
+function parseCustomFieldsJson(raw: unknown): Record<string, string> {
+	if (!raw) return {};
+	let obj: unknown = raw;
+	if (typeof raw === 'string') {
+		try {
+			obj = JSON.parse(raw);
+		} catch {
+			return {};
+		}
+	}
+	if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return {};
+	const out: Record<string, string> = {};
+	for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+		if (v !== undefined && v !== null) out[k] = String(v);
+	}
+	return out;
+}
+
 export async function getMemberFieldValues(
 	userId: string,
 	options?: { includeSecrets?: boolean }
 ): Promise<Record<string, string>> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query(
-		`SELECT v.field_id AS "fieldId", f.field_key AS "fieldKey", f.type AS "type", v.value
-		 FROM member_field_values v
-		 JOIN form_fields f ON f.id = v.field_id
-		 WHERE v.user_id = $1`,
-		[userId]
+	const [userRes, fieldsRes] = await Promise.all([
+		getPgPool().query('SELECT custom_fields AS "customFields" FROM users WHERE id = $1', [userId]),
+		getPgPool().query('SELECT field_key AS "fieldKey", type FROM form_fields'),
+	]);
+	if (!userRes.rows[0]) return {};
+	const customFields = parseCustomFieldsJson(
+		userRes.rows[0].customFields ?? userRes.rows[0].custom_fields
 	);
+	const typeByKey = new Map<string, string>(
+		fieldsRes.rows.map((r) => [String(r.fieldKey ?? r.field_key), String(r.type)])
+	);
+
 	const out: Record<string, string> = {};
-	for (const row of res.rows) {
-		const type = String(row.type);
-		const raw = String(row.value);
+	for (const [fieldKey, raw] of Object.entries(customFields)) {
+		const type = typeByKey.get(fieldKey) ?? 'text';
 		if (type === 'password' && !options?.includeSecrets) {
-			out[String(row.fieldKey)] = '••••••••';
+			out[fieldKey] = '••••••••';
 			continue;
 		}
 		if (type === 'password') {
-			out[String(row.fieldKey)] = (await decryptSecret(raw)) ?? '';
+			out[fieldKey] = (await decryptSecret(raw)) ?? '';
 			continue;
 		}
-		out[String(row.fieldKey)] = raw;
+		out[fieldKey] = raw;
 	}
 	return out;
 }
 
-/** Stores custom values for a member, encrypting password-type fields at rest. */
+/** Stores custom values for a member in users.custom_fields JSONB, encrypting password-type fields at rest. */
 export async function setMemberFieldValues(
 	userId: string,
 	values: FormFieldValueMap,
@@ -775,20 +885,21 @@ export async function setMemberFieldValues(
 ): Promise<void> {
 	await ensurePostgresInit();
 	const byKey = new Map(fields.map((field) => [field.fieldKey, field]));
-	const now = Date.now();
+	const patch: Record<string, string> = {};
+	for (const [key, value] of Object.entries(values)) {
+		const field = byKey.get(key);
+		if (!field) continue;
+		patch[key] = field.type === 'password' ? await encryptSecret(value) : value;
+	}
+	if (Object.keys(patch).length === 0) return;
 
 	const write = async (client: Pick<PoolClient, 'query'>) => {
-		for (const [key, value] of Object.entries(values)) {
-			const field = byKey.get(key);
-			if (!field) continue;
-			const stored = field.type === 'password' ? await encryptSecret(value) : value;
-			await client.query(
-				`INSERT INTO member_field_values (user_id, field_id, value, updated_at)
-				 VALUES ($1, $2, $3, $4)
-				 ON CONFLICT (user_id, field_id) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at`,
-				[userId, field.id, stored, now]
-			);
-		}
+		await client.query(
+			`UPDATE users
+			 SET custom_fields = COALESCE(custom_fields, '{}'::jsonb) || $2::jsonb
+			 WHERE id = $1`,
+			[userId, JSON.stringify(patch)]
+		);
 	};
 
 	if (existingClient) {
@@ -824,30 +935,54 @@ export interface CustomWallpaper {
 	sortOrder: number;
 }
 
-const WALLPAPER_COLUMNS = `id, title_tr AS "titleTr", title_en AS "titleEn", type, filename, mime,
-	size, created_by AS "createdBy", created_at AS "createdAt", sort_order AS "sortOrder"`;
+const CUSTOM_WALLPAPERS_KEY = 'custom_wallpapers';
 
-export async function getCustomWallpapers(): Promise<CustomWallpaper[]> {
+async function readStoredCustomWallpapers(): Promise<CustomWallpaper[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT ${WALLPAPER_COLUMNS} FROM custom_wallpapers ORDER BY sort_order ASC, created_at ASC`
+		`SELECT value FROM system_settings WHERE key = $1`,
+		[CUSTOM_WALLPAPERS_KEY]
 	);
-	return res.rows
+	const raw = res.rows[0]?.value;
+	if (typeof raw !== 'string' || !raw.trim()) return [];
+	try {
+		const parsed = JSON.parse(raw);
+		if (!Array.isArray(parsed)) return [];
+		return parsed
+			.filter((row): row is Record<string, unknown> => Boolean(row && typeof row === 'object'))
+			.map((row) => ({
+				id: String(row.id ?? ''),
+				titleTr: String(row.titleTr ?? ''),
+				titleEn: String(row.titleEn ?? ''),
+				type: String(row.type ?? 'custom'),
+				filename: String(row.filename ?? ''),
+				mime: String(row.mime ?? 'image/jpeg'),
+				size: Number(row.size) || 0,
+				createdBy: row.createdBy ? String(row.createdBy) : null,
+				createdAt: Number(row.createdAt) || 0,
+				sortOrder: Number(row.sortOrder) || 0,
+			}));
+	} catch {
+		return [];
+	}
+}
+
+async function writeStoredCustomWallpapers(list: CustomWallpaper[]): Promise<void> {
+	await getPgPool().query(
+		`INSERT INTO system_settings (key, value, updated_at)
+		 VALUES ($1, $2, $3)
+		 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at`,
+		[CUSTOM_WALLPAPERS_KEY, JSON.stringify(list), Date.now()]
+	);
+}
+
+export async function getCustomWallpapers(): Promise<CustomWallpaper[]> {
+	const list = await readStoredCustomWallpapers();
+	return list
 		.filter((row) =>
 			existsSync(path.join(customAssetDir('wallpapers'), String(row.filename ?? '')))
 		)
-		.map((row) => ({
-		id: String(row.id),
-		titleTr: String(row.titleTr),
-		titleEn: String(row.titleEn),
-		type: String(row.type ?? 'custom'),
-		filename: String(row.filename),
-		mime: String(row.mime),
-		size: Number(row.size) || 0,
-		createdBy: row.createdBy ? String(row.createdBy) : null,
-		createdAt: Number(row.createdAt) || 0,
-		sortOrder: Number(row.sortOrder) || 0,
-	}));
+		.sort((a, b) => a.sortOrder - b.sortOrder || a.createdAt - b.createdAt);
 }
 
 export async function createCustomWallpaper(input: {
@@ -859,43 +994,25 @@ export async function createCustomWallpaper(input: {
 	size: number;
 	createdBy: string;
 }): Promise<CustomWallpaper> {
-	await ensurePostgresInit();
+	const list = await readStoredCustomWallpapers();
 	const now = Date.now();
 	const id = `wp_${randomUUID().replace(/-/g, '').slice(0, 14)}`;
-	const order = await getPgPool().query(
-		'SELECT COALESCE(MAX(sort_order), 0)::int AS max FROM custom_wallpapers'
-	);
-	const res = await getPgPool().query(
-		`INSERT INTO custom_wallpapers
-			(id, title_tr, title_en, type, filename, mime, size, created_by, created_at, sort_order)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-		 RETURNING ${WALLPAPER_COLUMNS}`,
-		[
-			id,
-			input.titleTr,
-			input.titleEn,
-			input.type,
-			input.filename,
-			input.mime,
-			input.size,
-			input.createdBy,
-			now,
-			Number(order.rows[0]?.max ?? 0) + 1,
-		]
-	);
-	const row = res.rows[0];
-	return {
-		id: String(row.id),
-		titleTr: String(row.titleTr),
-		titleEn: String(row.titleEn),
-		type: String(row.type),
-		filename: String(row.filename),
-		mime: String(row.mime),
-		size: Number(row.size) || 0,
-		createdBy: row.createdBy ? String(row.createdBy) : null,
-		createdAt: Number(row.createdAt) || 0,
-		sortOrder: Number(row.sortOrder) || 0,
+	const maxOrder = list.reduce((max, item) => Math.max(max, item.sortOrder), 0);
+	const created: CustomWallpaper = {
+		id,
+		titleTr: input.titleTr,
+		titleEn: input.titleEn,
+		type: input.type,
+		filename: input.filename,
+		mime: input.mime,
+		size: input.size,
+		createdBy: input.createdBy,
+		createdAt: now,
+		sortOrder: maxOrder + 1,
 	};
+	list.push(created);
+	await writeStoredCustomWallpapers(list);
+	return created;
 }
 
 export async function getCustomWallpaperById(id: string): Promise<CustomWallpaper | null> {
@@ -908,35 +1025,21 @@ export async function renameCustomWallpaper(
 	titleTr: string,
 	titleEn: string
 ): Promise<CustomWallpaper | null> {
-	await ensurePostgresInit();
-	await getPgPool().query('UPDATE custom_wallpapers SET title_tr = $2, title_en = $3 WHERE id = $1', [
-		id,
-		titleTr,
-		titleEn,
-	]);
+	const list = await readStoredCustomWallpapers();
+	const idx = list.findIndex((w) => w.id === id);
+	if (idx === -1) return null;
+	list[idx] = { ...list[idx], titleTr, titleEn };
+	await writeStoredCustomWallpapers(list);
 	return getCustomWallpaperById(id);
 }
 
 export async function deleteCustomWallpaper(id: string): Promise<CustomWallpaper | null> {
-	await ensurePostgresInit();
-	const res = await getPgPool().query(
-		`DELETE FROM custom_wallpapers WHERE id = $1 RETURNING ${WALLPAPER_COLUMNS}`,
-		[id]
-	);
-	const row = res.rows[0];
-	if (!row) return null;
-	return {
-		id: String(row.id),
-		titleTr: String(row.titleTr),
-		titleEn: String(row.titleEn),
-		type: String(row.type),
-		filename: String(row.filename),
-		mime: String(row.mime),
-		size: Number(row.size) || 0,
-		createdBy: row.createdBy ? String(row.createdBy) : null,
-		createdAt: Number(row.createdAt) || 0,
-		sortOrder: Number(row.sortOrder) || 0,
-	};
+	const list = await readStoredCustomWallpapers();
+	const idx = list.findIndex((w) => w.id === id);
+	if (idx === -1) return null;
+	const [removed] = list.splice(idx, 1);
+	await writeStoredCustomWallpapers(list);
+	return removed ?? null;
 }
 
 /* ==================== built-in wallpaper overrides ==================== */

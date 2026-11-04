@@ -1,20 +1,17 @@
 /**
  * The audit log: who changed which role, permission or member, when, from
- * where. Table `denetim_kaydi` — one row per operation:
+ * where. Table `audit_logs` — one row per operation:
  *
- *   zaman     — epoch ms
- *   yapanId   — the acting member (no foreign key: the log outlives the account);
- *               yapanAd keeps their name at that time
- *   islem     — see DENETIM_ISLEMLERI in src/lib/audit.ts
- *   hedefTur / hedefId / hedefAd — what was changed (a role, a member, a setting)
- *   onceki / sonraki — JSONB before and after, built from white-lists (never a raw row)
- *   ip        — the caller's address (clientAddress; a soft signal behind the proxy)
- *
- * `logAuditEvent` runs on the caller's transaction client, so a record exists
- * exactly when the operation it describes was committed. Records older than the
- * retention period (730 days, `AUDIT_RETENTION_DAYS` overrides) are deleted once
- * a day by `startAuditMaintenance`.
+ *   id           — unique audit log identifier
+ *   timestamp    — epoch ms
+ *   actor_id     — the acting member (no foreign key: the log outlives the account)
+ *   actor_name   — keeps their name at that time
+ *   action       — see DENETIM_ISLEMLERI in src/lib/audit.ts
+ *   target_type / target_id / target_name — what was changed (a role, a member, a setting)
+ *   before_state / after_state — JSON text before and after, built from white-lists
+ *   ip           — the caller's address
  */
+import { randomUUID } from 'crypto';
 import type { PoolClient } from 'pg';
 import { ensurePostgresInit, getPgPool } from './index';
 import { clientAddress } from '@/lib/http';
@@ -37,51 +34,66 @@ export type { AuditContext } from '@/lib/audit';
 export async function ensureAuditSchema(client: PoolClient): Promise<void> {
 	await client.query(`
 		CREATE TABLE IF NOT EXISTS audit_logs (
-			id BIGSERIAL PRIMARY KEY,
-			zaman BIGINT NOT NULL,
-			yapanId TEXT,
-			yapanAd TEXT NOT NULL DEFAULT '',
-			islem TEXT NOT NULL,
-			hedefTur TEXT NOT NULL,
-			hedefId TEXT,
-			hedefAd TEXT NOT NULL DEFAULT '',
-			onceki JSONB,
-			sonraki JSONB,
-			ip TEXT NOT NULL DEFAULT ''
+			id TEXT PRIMARY KEY,
+			timestamp BIGINT NOT NULL,
+			actor_id TEXT,
+			actor_name TEXT,
+			action TEXT NOT NULL,
+			target_type TEXT NOT NULL,
+			target_id TEXT,
+			target_name TEXT,
+			before_state TEXT,
+			after_state TEXT,
+			ip TEXT
 		);
-		CREATE INDEX IF NOT EXISTS idx_audit_logs_zaman ON audit_logs (zaman DESC, id DESC);
-		CREATE INDEX IF NOT EXISTS idx_audit_logs_yapan ON audit_logs (yapanId);
-		CREATE INDEX IF NOT EXISTS idx_audit_logs_hedef ON audit_logs (hedefTur, hedefId);
+		CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs (timestamp DESC, id DESC);
+		CREATE INDEX IF NOT EXISTS idx_audit_logs_actor ON audit_logs (actor_id);
+		CREATE INDEX IF NOT EXISTS idx_audit_logs_target ON audit_logs (target_type, target_id);
 	`);
 }
 
 /** Who is acting, for the record: the signed-in member and the request's address. */
-export function auditContext(request: Request, user: { id: string; ad: string; soyad: string }): AuditContext {
-	return { yapanId: user.id, yapanAd: `${user.ad} ${user.soyad}`.trim(), ip: temizIp(clientAddress(request)) };
+export function auditContext(request: Request, user: { id: string; ad?: string; soyad?: string; firstName?: string; lastName?: string }): AuditContext {
+	const first = user.firstName || user.ad || '';
+	const last = user.lastName || user.soyad || '';
+	return { actorId: user.id, actorName: `${first} ${last}`.trim(), ip: temizIp(clientAddress(request)) };
 }
 
 export interface AuditEntry {
-	islem: AuditAction;
-	hedefTur: AuditTargetType;
-	hedefId: string | null;
-	hedefAd?: string;
-	onceki: Record<string, unknown> | null;
-	sonraki: Record<string, unknown> | null;
+	action: AuditAction;
+	targetType: AuditTargetType;
+	targetId: string | null;
+	targetName?: string;
+	before: Record<string, unknown> | null;
+	after: Record<string, unknown> | null;
 }
 
 /**
  * Writes one record on the operation's own transaction client. Callers pass
- * white-listed snapshots; `kayitAlanlari` drops credential-looking keys again.
+ * white-listed snapshots; `recordFields` drops credential-looking keys again.
  */
 export async function logAuditEvent(client: PoolClient, ctx: AuditContext, g: AuditEntry): Promise<void> {
 	const json = (v: Record<string, unknown> | null) => {
 		const alanlar = recordFields(v);
 		return alanlar ? JSON.stringify(alanlar) : null;
 	};
+	const id = `aud_${randomUUID().replace(/-/g, '').slice(0, 16)}`;
 	await client.query(
-		`INSERT INTO audit_logs (zaman, yapanId, yapanAd, islem, hedefTur, hedefId, hedefAd, onceki, sonraki, ip)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10)`,
-		[Date.now(), ctx.yapanId, ctx.yapanAd.slice(0, 200), g.islem, g.hedefTur, g.hedefId, (g.hedefAd ?? '').slice(0, 200), json(g.onceki), json(g.sonraki), ctx.ip]
+		`INSERT INTO audit_logs (id, timestamp, actor_id, actor_name, action, target_type, target_id, target_name, before_state, after_state, ip)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+		[
+			id,
+			Date.now(),
+			ctx.actorId,
+			ctx.actorName.slice(0, 200),
+			g.action,
+			g.targetType,
+			g.targetId,
+			(g.targetName ?? '').slice(0, 200),
+			json(g.before),
+			json(g.after),
+			ctx.ip,
+		]
 	);
 }
 
@@ -90,14 +102,14 @@ export async function logAuditEvent(client: PoolClient, ctx: AuditContext, g: Au
  * Used by withAudit middleware to ensure all mutations are recorded.
  */
 export async function writeAuditLog(entry: {
-	yapanId: string | null;
-	yapanAd: string;
-	islem: string;
-	hedefTur: string;
-	hedefId: string | null;
-	hedefAd?: string;
-	onceki?: Record<string, unknown> | null;
-	sonraki?: Record<string, unknown> | null;
+	actorId: string | null;
+	actorName: string;
+	action: string;
+	targetType: string;
+	targetId: string | null;
+	targetName?: string;
+	before?: Record<string, unknown> | null;
+	after?: Record<string, unknown> | null;
 	ip: string;
 }): Promise<void> {
 	await ensurePostgresInit();
@@ -105,19 +117,21 @@ export async function writeAuditLog(entry: {
 		const alanlar = recordFields(v);
 		return alanlar ? JSON.stringify(alanlar) : null;
 	};
+	const id = `aud_${randomUUID().replace(/-/g, '').slice(0, 16)}`;
 	await getPgPool().query(
-		`INSERT INTO audit_logs (zaman, yapanId, yapanAd, islem, hedefTur, hedefId, hedefAd, onceki, sonraki, ip)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10)`,
+		`INSERT INTO audit_logs (id, timestamp, actor_id, actor_name, action, target_type, target_id, target_name, before_state, after_state, ip)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
 		[
+			id,
 			Date.now(),
-			entry.yapanId,
-			entry.yapanAd.slice(0, 200),
-			entry.islem,
-			entry.hedefTur,
-			entry.hedefId,
-			(entry.hedefAd ?? '').slice(0, 200),
-			json(entry.onceki),
-			json(entry.sonraki),
+			entry.actorId,
+			entry.actorName.slice(0, 200),
+			entry.action,
+			entry.targetType,
+			entry.targetId,
+			(entry.targetName ?? '').slice(0, 200),
+			json(entry.before),
+			json(entry.after),
 			entry.ip,
 		]
 	);
@@ -134,61 +148,68 @@ function where(f: AuditFilter): { sql: string; params: unknown[] } {
 		params.push(v);
 		return `$${params.length}`;
 	};
-	if (f.kisi) {
-		const exact = add(f.kisi);
-		const like = add(`%${likeKacis(f.kisi)}%`);
+	if (f.user) {
+		const exact = add(f.user);
+		const like = add(`%${likeKacis(f.user)}%`);
 		parts.push(
-			`(yapanId = ${exact} OR (hedefTur = 'uye' AND hedefId = ${exact}) OR yapanAd ILIKE ${like} OR hedefAd ILIKE ${like} OR onceki->>'email' ILIKE ${like} OR sonraki->>'email' ILIKE ${like} OR onceki->>'eposta' ILIKE ${like} OR sonraki->>'eposta' ILIKE ${like})`
+			`(actor_id = ${exact} OR (target_type = 'member' AND target_id = ${exact}) OR actor_name ILIKE ${like} OR target_name ILIKE ${like} OR before_state ILIKE ${like} OR after_state ILIKE ${like})`
 		);
 	}
 	if (f.role) {
 		const r = add(f.role);
+		const rLike = add(`%"${likeKacis(f.role)}"%`);
 		parts.push(
-			`(((hedefTur = 'role' OR hedefTur = 'rol') AND hedefId = ${r}) OR onceki->>'roleId' = ${r} OR onceki->>'rolId' = ${r} OR sonraki->>'roleId' = ${r} OR sonraki->>'rolId' = ${r} OR sonraki->>'tasinanRolId' = ${r})`
+			`((target_type = 'role' AND target_id = ${r}) OR before_state LIKE ${rLike} OR after_state LIKE ${rLike})`
 		);
 	}
-	if (f.islem) {
-		parts.push(`islem = ${add(f.islem)}`);
+	if (f.action) {
+		parts.push(`action = ${add(f.action)}`);
 	}
-	if (f.from) parts.push(`zaman >= ${add(startOfDay(f.from))}`);
+	if (f.from) parts.push(`timestamp >= ${add(startOfDay(f.from))}`);
 	// The end day is inclusive: everything before the next day starts.
-	if (f.to) parts.push(`zaman < ${add(startOfDay(f.to) + 24 * 3600 * 1000)}`);
+	if (f.to) parts.push(`timestamp < ${add(startOfDay(f.to) + 24 * 3600 * 1000)}`);
 	return { sql: parts.length ? `WHERE ${parts.join(' AND ')}` : '', params };
+}
+
+function parseState(raw: unknown): AuditFields | null {
+	if (raw === undefined || raw === null) return null;
+	if (typeof raw === 'string') {
+		if (!raw.trim()) return null;
+		try {
+			const parsed = JSON.parse(raw);
+			return parsed && typeof parsed === 'object' ? (parsed as AuditFields) : null;
+		} catch {
+			return null;
+		}
+	}
+	if (typeof raw === 'object') return raw as AuditFields;
+	return null;
 }
 
 function toRecord(r: Record<string, unknown>): AuditRecord {
 	const id = String(r.id);
-	const timestamp = Number(r.zaman ?? r.timestamp ?? 0);
-	const actorId = ((r.yapanId ?? r.actorId ?? r.yapanid) as string | null) ?? null;
-	const actorName = String(r.yapanAd ?? r.actorName ?? r.yapanad ?? '');
-	const action = String(r.islem ?? r.action ?? '');
-	const targetType = String(r.hedefTur ?? r.targetType ?? r.hedeftur ?? '');
-	const targetId = ((r.hedefId ?? r.targetId ?? r.hedefid) as string | null) ?? null;
-	const targetName = String(r.hedefAd ?? r.targetName ?? r.hedefad ?? '');
-	const before = (r.onceki !== undefined && r.onceki !== null ? r.onceki : (r.before !== undefined && r.before !== null ? r.before : null)) as AuditFields | null;
-	const after = (r.sonraki !== undefined && r.sonraki !== null ? r.sonraki : (r.after !== undefined && r.after !== null ? r.after : null)) as AuditFields | null;
+	const timestamp = Number(r.timestamp ?? 0);
+	const actorId = (r.actorId as string | null) ?? null;
+	const actorName = String(r.actorName ?? '');
+	const action = String(r.action ?? '');
+	const targetType = String(r.targetType ?? '');
+	const targetId = (r.targetId as string | null) ?? null;
+	const targetName = String(r.targetName ?? '');
+	const before = parseState(r.beforeState);
+	const after = parseState(r.afterState);
 	const ip = String(r.ip ?? '');
 
 	return {
 		id,
 		timestamp,
-		zaman: timestamp,
 		actorId,
-		yapanId: actorId,
 		actorName,
-		yapanAd: actorName,
 		action,
-		islem: action,
 		targetType,
-		hedefTur: targetType,
 		targetId,
-		hedefId: targetId,
 		targetName,
-		hedefAd: targetName,
-		before: before ?? null,
-		onceki: before ?? null,
-		after: after ?? null,
-		sonraki: after ?? null,
+		before,
+		after,
 		ip,
 	};
 }
@@ -197,25 +218,25 @@ function toRecord(r: Record<string, unknown>): AuditRecord {
 export async function listAuditLogs(
 	f: Partial<AuditFilter> = {},
 	opts: { limit?: number; offset?: number } = {}
-): Promise<{ kayitlar: AuditRecord[]; toplam: number }> {
+): Promise<{ records: AuditRecord[]; total: number }> {
 	try {
 		await ensurePostgresInit();
 		const w = where(f as AuditFilter);
-		const rawBoyut = Number.isFinite(f.boyut) && Number(f.boyut) > 0 ? Number(f.boyut) : 50;
-		const rawPage = Number.isFinite(f.sayfa) && Number(f.sayfa) > 0 ? Number(f.sayfa) : 1;
-		const limit = Number.isFinite(opts.limit) && Number(opts.limit) > 0 ? Math.floor(Number(opts.limit)) : rawBoyut;
-		const offset = Number.isFinite(opts.offset) && Number(opts.offset) >= 0 ? Math.floor(Number(opts.offset)) : (rawPage - 1) * rawBoyut;
+		const rawPageSize = Number.isFinite(f.pageSize) && Number(f.pageSize) > 0 ? Number(f.pageSize) : 50;
+		const rawPage = Number.isFinite(f.page) && Number(f.page) > 0 ? Number(f.page) : 1;
+		const limit = Number.isFinite(opts.limit) && Number(opts.limit) > 0 ? Math.floor(Number(opts.limit)) : rawPageSize;
+		const offset = Number.isFinite(opts.offset) && Number(opts.offset) >= 0 ? Math.floor(Number(opts.offset)) : (rawPage - 1) * rawPageSize;
 		const [rows, count] = await Promise.all([
 			getPgPool().query(
-				`SELECT id::text AS id, zaman, yapanId AS "yapanId", yapanAd AS "yapanAd", islem, hedefTur AS "hedefTur", hedefId AS "hedefId", hedefAd AS "hedefAd", onceki, sonraki, ip FROM audit_logs ${w.sql} ORDER BY zaman DESC, audit_logs.id DESC LIMIT ${limit} OFFSET ${offset}`,
+				`SELECT id, timestamp, actor_id AS "actorId", actor_name AS "actorName", action, target_type AS "targetType", target_id AS "targetId", target_name AS "targetName", before_state AS "beforeState", after_state AS "afterState", ip FROM audit_logs ${w.sql} ORDER BY timestamp DESC, audit_logs.id DESC LIMIT ${limit} OFFSET ${offset}`,
 				w.params
 			),
 			getPgPool().query(`SELECT COUNT(*)::int AS n FROM audit_logs ${w.sql}`, w.params),
 		]);
-		return { kayitlar: rows.rows.map(toRecord), toplam: Number(count.rows[0]?.n ?? 0) };
+		return { records: rows.rows.map(toRecord), total: Number(count.rows[0]?.n ?? 0) };
 	} catch (error) {
 		console.error('listAuditLogs error:', error);
-		return { kayitlar: [], toplam: 0 };
+		return { records: [], total: 0 };
 	}
 }
 
@@ -225,7 +246,7 @@ export async function listAuditLogs(
 export async function clearAuditLogs(): Promise<number> {
 	await ensurePostgresInit();
 	const sinir = Date.now() - retentionDays(process.env.AUDIT_RETENTION_DAYS) * 24 * 3600 * 1000;
-	const r = await getPgPool().query('DELETE FROM audit_logs WHERE zaman < $1', [sinir]);
+	const r = await getPgPool().query('DELETE FROM audit_logs WHERE timestamp < $1', [sinir]);
 	return r.rowCount ?? 0;
 }
 

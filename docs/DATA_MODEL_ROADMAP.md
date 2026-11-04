@@ -1,318 +1,170 @@
-# Orbit Veri Platformu ve Üyelik Modeli — Yol Haritası
+# Orbit Community OS — Universal Data Platform & Architecture Roadmap (v3.0)
 
-> Durum: **onaylanmış yön, uygulama başladı (Faz 0)**
-> Kapsam: Settings, Auth (login/register), Members, Teams, Committees, Projects, Events, Mail ve bu uygulamaların beslediği tüm veri yüzeyleri.
-> İlgili doküman: [`DATA_DICTIONARY.md`](./DATA_DICTIONARY.md)
-
----
-
-## 1. Onaylanan ürün kararları
-
-| Karar | Seçim |
-|---|---|
-| Topluluk sayısı | **Tek topluluk** (bir Orbit instance = bir topluluk) |
-| Global roller | **Tek birincil global rol** + takım/komite kapsamlı roller |
-| Topluluk kimliği | **Marka düzeyinde**; vergi/sicil/yasal temsilci verisi tutulmaz |
-| Kayıt modları | **Self + admin + invite**; bulk import yok |
-| Onay | **Manuel onay**; otomatik onay yok |
-| E-posta değişimi | **E-posta doğrulamalı self-servis** |
-| Yasal rıza | **Gerçek ve kanıtlanabilir**; kim hangi belge sürümünü ne zaman kabul etti saklanır |
-| Komite / takım | **Ayrı model**: komite karar mercii, takım çalışma grubu |
-| Çoklu global rol | Varsayım: **tek birincil rol**. İhtiyaç doğarsa `role_assignments` ile genişletilir. |
-
-### 1.1 Terimler
-
-- **Kişi (Person):** Gerçek kişi. Hesabı olabilir, üyeliği olmayabilir.
-- **Hesap (Account):** Kimlik doğrulama kimliği (şifre, passkey, TOTP, oturumlar).
-- **Üyelik (Membership):** Kişinin topluluğa bağlılığı; üye no, statü, birincil rol, track, seviye.
-- **Başvuru (Application):** Üyelik kazanım süreci; form snapshot'ı, rıza, karar.
-- **Rol:** Yetki demeti. Kişi ya da takım değildir.
-- **Takım:** Görev/proje/bütçe/sohbet etrafında çalışan örgütsel birim.
-- **Komite:** Karar veren mercii; üyeleri, oy hakkı, toplantı ve kararları vardır.
-- **Tüzel kişi:** Hukuken topluluk/dernek/vakıf/şirket. Orbit tek toplulukta bunu marka düzeyinde tutar.
+> **Status:** Canonical v3.0 Architecture Specification  
+> **Scope:** Organization Archetypes, 32-Table Consolidated PostgreSQL Schema, Embedded Microservice Mini-App Isolation, Zero-Friction Localization (`translations JSONB`), and Governance Lifecycle.  
+> **Companion Specifications:** [`DATA_DICTIONARY.md`](./DATA_DICTIONARY.md) · [`DATABASE.md`](./DATABASE.md) · [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 
 ---
 
-## 2. Değişmez ilkeler
+## Table of Contents
 
-1. **Tek doğruluk kaynağı:** Aynı alan (track, rol, e-posta, üye no) yalnızca bir yerde tanımlanır; diğer yüzeyler okur.
-2. **Kişi ≠ hesap ≠ üyelik:** Üçü ayrı sorumluluk ve yaşam döngüsüne sahiptir. Tek topluluk pragmatizminde aynı `users` satırında durabilirler, ama kodda ayrı tiplerle temsil edilir.
-3. **Hesap durumu ≠ üyelik durumu:** Hesap aktifken üyelik `beklemede`, `mezun` veya `reddedildi` olabilir.
-4. **Rol ≠ takım rolü:** Global yetki ile takım içi görev ayrıdır.
-5. **Toplama yeri ≠ görünürlük ≠ düzenleme yetkisi:** Form alanı üç ayrı politikaya sahiptir.
-6. **Settings politika üretir, kayıt düzenlemez.** Bireysel üye kaydı Members app'in sorumluluğudur.
-7. **Members kişi kaydını yönetir, şema tanımlamaz.** Form/legal/rol tanımları Settings'tedir.
-8. **Teams takımı yönetir, global rol tanımlamaz.** Takım rolleri Teams içinde atanır.
-9. **Account kişinin kendi güvenliğini yönetir.** Başka üyenin güvenliğine müdahale yetkili yöneticide ve audit'lidir.
-10. **Her ilişki durum + zaman + aktör taşır.** Üyelik, takım üyeliği, rol ataması, rıza.
-11. **Silme yerine arşiv/anonimleştirme.** Özellikle form alanları, takımlar, belgeler.
-12. **Her hassas yazma transaction + audit.** Profil, rol, statü, rıza, konfigürasyon.
-13. **Türetilmiş veri kaynak değildir.** XP, üye sayısı, katılım sayısı hesaplanır; elle yazılmaz.
-14. **İstemci ve sunucu aynı doğrulamayı kullanır.** Ayrı kopya validasyon yok.
-15. **Rıza değiştirilemez kanıttır.** Admin rıza veremez; yalnız kişi kabul eder.
+1. [Core Product & Architectural Decisions](#1-core-product--architectural-decisions)
+2. [Architectural Invariants](#2-architectural-invariants)
+3. [Universal Community OS Model: 4 Organization Archetypes](#3-universal-community-os-model-4-organization-archetypes)
+4. [Schema Consolidation: From Legacy Tables to 32 Pure English Tables](#4-schema-consolidation-from-legacy-tables-to-32-pure-english-tables)
+5. [Unified Organizational Units: Squads, Guilds, Committees & Councils](#5-unified-organizational-units-squads-guilds-committees--councils)
+6. [Domain Ownership & Embedded Microservice Boundaries](#6-domain-ownership--embedded-microservice-boundaries)
+7. [Zero-Friction Internationalization (`translations JSONB`)](#7-zero-friction-internationalization-translations-jsonb)
+8. [Verification & Release Gates](#8-verification--release-gates)
 
 ---
 
-## 3. Hedef mimari
+## 1. Core Product & Architectural Decisions
 
-### 3.1 Katmanlar
+| Dimension | Canonical v3.0 Decision |
+| :--- | :--- |
+| **Instance Topology** | **Single-Organization Modular Monolith:** One Orbit deployment serves one autonomous organization with zero external cloud dependencies. |
+| **Organization Archetypes** | **4 Built-In Archetypes:** `'academic_club'`, `'dao_collective'`, `'research_lab'`, and `'professional_guild'` configured during `/setup`. |
+| **Database Schema** | **32 Pure English `snake_case` Tables:** Zero legacy compatibility views, zero duplicate columns, and automatic `snake_case` $\rightarrow$ `camelCase` row mapping. |
+| **Global vs. Unit Roles** | **Single Primary Global Role (`users.role_id`)** paired with unit-scoped roles and voting weights (`unit_members.role_title`, `unit_members.voting_weight`). |
+| **Registration Modes** | **Self-Registration + Admin Creation + Cryptographic Invitations (`invitations`)** governed by `organization_settings.membership_policy`. |
+| **Legal Consent Evidence** | **Cryptographically Verifiable (`user_consents`):** Tracks exact `document_version`, `content_hash` (SHA-256), timestamp, and locale. |
+| **Multi-Language Data** | **Dynamic `translations JSONB`:** Eliminates hardcoded `*_tr` / `*_en` SQL columns so new locales can be added in a single PR without schema migrations. |
 
-| Katman | Varlıklar | Sahip |
-|---|---|---|
-| Aktör | `users`, `teams`, `committees` | Members / Teams / Settings |
-| İlişki | `memberships` (kavramsal), `team_members`, `committee_members`, `role_assignments` (opsiyonel) | Members / Teams |
-| Politika | `roles`, `role_permissions`, `form_fields`, `legal_documents`, `registration_policy` | Settings |
-| İş | `projects`, `events`, `team_tasks`, `budget_records`, `inventory` | İlgili app |
-| Kanıt | `membership_applications`, `legal_acceptances`, `audit_log` | Auth + Settings |
-| Türetilmiş | XP, katılım/proje sayıları, rozetler | Hesaplanır |
+---
 
-### 3.2 ERD — tek topluluk (uygulama hedefi)
+## 2. Architectural Invariants
 
-```text
-users (kişi + hesap + üyelik pragmatizmi)
- ├─ webauthn_credentials                 (0..n passkey)
- ├─ membership_applications              (0..n başvuru; 1 açık)
- ├─ legal_acceptances ── legal_document_versions ── legal_documents
- ├─ member_field_values ── form_fields
- ├─ team_members ── teams ── team_categories
- │                    └─ team_type: working_group | committee
- ├─ committee_members ── committees
- ├─ committee_meetings ── committees
- ├─ decisions ── committees (karar mercii)
- ├─ projects (owner team/user, created_by)
- └─ events (organizer team/user)
+1. **Single Source of Truth:** Every domain concept (`track`, `cohort_level`, `role_id`, `email`, `handle`, `organization_settings`) has a single authoritative table and service owner.
+2. **Person $\neq$ Account $\neq$ Membership Lifecycle:** Although persisted pragmatically in the `users` table for single-instance performance, authentication state (`auth_method`, `session_token`, `totp_enabled`) is strictly separated from membership status (`'pending' | 'active' | 'suspended' | 'alumni' | 'rejected'`).
+3. **Global RBAC $\neq$ Unit Role:** Global permissions (`Record<AppId, 'none' | 'use' | 'manage'>` in `roles.permissions`) control mini-app access, whereas unit leadership (`units.lead_id`, `unit_members.role_title`) controls squad Kanban boards, unit sub-treasuries, and committee quorums.
+4. **Collection Policy $\neq$ Visibility $\neq$ Edit Authority:** Every field in `form_schemas` independently defines `collect_at`, `required_at`, `visibility`, `self_editable`, and `admin_editable`.
+5. **Settings Defines Policy; Domain Apps Manage Records:** The `settings` app manages `organization_settings`, `roles`, `form_schemas`, and `legal_documents`. Individual member records are managed by `members`.
+6. **Soft Archive & GDPR Anonymization Over Hard Delete:** Form fields, units, projects, events, and governance records are archived rather than destroyed. Member erasure requests execute deterministic GDPR anonymization while preserving financial and governance referential integrity.
+7. **Transactional Mutations + Mandatory Audit Trail:** Every state-changing operation executes inside `withTransaction(fn)` and writes a sanitized before/after snapshot to `audit_logs`.
+8. **Immutable Legal Consent:** Administrators cannot forge or toggle legal consent on behalf of a member; only the authenticated user can record rows in `user_consents`.
 
-audit_log
-system_settings (registration policy, identity, limits)
+---
+
+## 3. Universal Community OS Model: 4 Organization Archetypes
+
+Rather than hardcoding university-specific columns, Orbit v3.0 uses universal relational primitives (`handle`, `track`, `cohort_level`, `units`, `governance_records`, `treasury_entries`) that adapt to the organization's archetype selected in the **Web UI Setup Wizard (`/setup`)**:
+
+```mermaid
+flowchart TD
+    Setup["/setup Onboarding Wizard\n(Step 2: Select Organization Archetype)"]
+    
+    Setup --> Club["Academic Club\n(academic_club)"]
+    Setup --> DAO["DAO / Web3 Collective\n(dao_collective)"]
+    Setup --> Lab["R&D Lab / Foundation\n(research_lab)"]
+    Setup --> Guild["Professional Guild / NGO\n(professional_guild)"]
+
+    Club --> CoreSchema["Universal 32-Table PostgreSQL 16 Schema\n(organization_settings + users + form_schemas + units + governance_records)"]
+    DAO --> CoreSchema
+    Lab --> CoreSchema
+    Guild --> CoreSchema
 ```
 
-### 3.3 ERD — çok topluluk (gelecek, şimdi uygulanmaz)
+| Universal Schema Primitive | `academic_club` | `dao_collective` | `research_lab` | `professional_guild` |
+| :--- | :--- | :--- | :--- | :--- |
+| `organization_settings.parent_entity` | University / Faculty | Blockchain / Ecosystem | Host Research Institute | Umbrella Federation |
+| `users.handle` | Student ID / Member No | ENS / Wallet / GitHub Handle | Researcher ID / Handle | License / Member ID |
+| `users.track` | Academic Department | Core Guild (`protocol`, `ops`) | Research Area (`ai`, `systems`) | Practice Discipline |
+| `users.cohort_level` | Year (`1..4`, `MSc`, `PhD`) | Contributor Tier (`Tier 1..4`) | Seniority (`Fellow`, `PI`) | Fellowship Tier |
+| `units.unit_type` | `'squad'` & `'committee'` | `'squad'` & `'council'` | `'squad'` & `'committee'` | `'guild'` & `'council'` |
+| `governance_records` | Board Resolutions & Minutes | Governance Proposals (OIP) | RFCs & Lab Decisions | Charter Resolutions |
+| `treasury_entries` | Club Dues & Event Receipts | Protocol Grants & Tx Hashes | Research Grants & Equipment | Membership Dues & Budgets |
+
+---
+
+## 4. Schema Consolidation: From Legacy Tables to 32 Pure English Tables
+
+In Orbit v3.0, relational bloat and EAV anti-patterns were consolidated using PostgreSQL 16 `JSONB` capabilities, reducing 60 historical tables to **32 normalized, high-performance English `snake_case` tables**:
 
 ```text
-organizations
- ├─ memberships ── users
- ├─ teams ── team_members
- └─ external_organizations
+organization_settings (archetype, branding, theme_config, wallpapers, signatories, membership_policy, smtp_config)
+users (identity + membership + auth + custom_fields JSONB + workspace_state JSONB)
+ ├─ roles (permissions JSONB, translations JSONB)
+ ├─ webauthn_credentials (0..5 FIDO2 passkeys)
+ ├─ verification_tokens (signup_otp | password_reset | email_change | webauthn_reg | webauthn_auth)
+ ├─ invitations (cryptographic invite tokens)
+ ├─ user_consents ──▶ legal_documents (translations JSONB, version_history JSONB)
+ ├─ unit_members ──▶ units (unit_type: squad | committee | council | guild)
+ │                    ├─ tasks (checklist JSONB, labels JSONB) ──▶ task_comments
+ │                    ├─ governance_records (resolution | minutes | proposal | meeting)
+ │                    ├─ treasury_entries (General Vault + Unit Sub-Vaults)
+ │                    ├─ projects (starred_user_ids JSONB, tech_stack JSONB)
+ │                    └─ events ──▶ event_participants (registered | waitlisted | attended | cancelled)
+ ├─ certificates (cryptographic verification_code)
+ ├─ inventory_items (loan_history JSONB)
+ ├─ news_posts
+ ├─ notes
+ ├─ chat_members ──▶ chat_rooms (channel | unit | direct | mail_thread) ──▶ chat_messages
+ └─ polls (scope_type: chat | governance, options JSONB, votes JSONB)
+
+Core Infrastructure & Security:
+ ├─ oauth_clients, oauth_auth_codes, oauth_consents
+ ├─ files, notifications, mail_outbox
+ └─ audit_logs, system_logs, security_blocks, security_incidents
 ```
 
-> Tek topluluk kararı nedeniyle `organizations`/`memberships` tabloları **şimdi eklenmez**. `users` üyelik alanlarını taşımaya devam eder; ancak kodda `Person`, `Account`, `Membership` tipleri ayrılır. Çok topluluk gerekirse bu yol haritasının 4. fazındaki geçiş şeması kullanılır.
+### Key Consolidation Highlights
+1. **`event_participants` (1 Table):** Replaces separate registration and attendance tables, tracking the complete lifecycle (`'registered' | 'waitlisted' | 'attended' | 'cancelled'`) and `checkin_method` (`'qr' | 'code' | 'manual'`) under a single `UNIQUE (event_id, user_id)` constraint.
+2. **`roles.permissions JSONB` (1 Table):** Stores the `Record<AppId, 'none' | 'use' | 'manage'>` matrix directly on the role row for single-query atomic reads and updates.
+3. **`users.custom_fields JSONB` & `form_schemas` (1 Table):** Replaces 4 legacy EAV tables with a GIN-indexed `JSONB` document on `users` validated against `form_schemas`.
+4. **`units` & `unit_members` (2 Tables):** Unifies squads, guilds, committees, and councils along with application decisions and voting weights.
+5. **`governance_records` & `polls` (2 Tables):** Unifies board resolutions, meeting minutes, and interactive DAO/committee proposals.
 
 ---
 
-## 4. Komite / takım bağdaştırma modeli
+## 5. Unified Organizational Units: Squads, Guilds, Committees & Councils
 
-### 4.1 Ayrım
+Orbit models both execution-focused teams and decision-making bodies through the `units` table (`unit_type`):
 
-| | Takım (working group) | Komite (decision body) |
-|---|---|---|
-| Amaç | Üretmek, proje/görev yürütmek | Karar vermek, denetlemek, onaylamak |
-| Üyelik | Katılım başvurusu/onay | Atama/seçim + görev süresi |
-| Roller | Kaptan, geliştirici, tasarımcı | Başkan, üye, raportör, oy hakkı |
-| İş nesneleri | Görev, proje, bütçe, sohbet | Toplantı, gündem, karar, oylama |
-| Karar | Takım içi operasyonel | Bağlayıcı topluluk kararı |
-
-### 4.2 Pragmatik uygulama (Faz 3)
-
-- `teams` tablosuna `type` eklenir: `working_group` (varsayılan), `committee`.
-- Ortak kimlik/üyelik altyapısı korunur; `team_members` komite üyeleri için de kullanılabilir.
-- Komiteye özel alanlar:
-  - `team_members.voting_right` (0/1)
-  - `team_members.term_start`, `term_end`
-  - `committee_meetings` (id, committee_id, date, agenda, minutes, status)
-  - `decisions.body_id` (nullable, teams.id) — kararın hangi merci tarafından alındığı
-  - `decisions.decision_type` (`resolution`, `appointment`, `budget`, `policy`, …)
-- Uzun vadede grup türü artarsa `teams` → `groups` yeniden adlandırması yapılabilir; şimdi yapılmaz.
-
-### 4.3 Karar akışı
-
-1. Komite toplantısı oluşturulur.
-2. Gündem maddeleri eklenir.
-3. Üyeler oy verir / karar metni onaylanır.
-4. Karar `decisions` tablosuna `body_id` ile yazılır.
-5. Karar yayınlanır, audit'lenir, ilgili uygulamalara bildirim gider.
+| Dimension | Execution Units (`'squad' \| 'guild'`) | Governance Bodies (`'committee' \| 'council'`) |
+| :--- | :--- | :--- |
+| **Primary Purpose** | Build software/hardware, run projects, manage Kanban tasks | Deliberate, vote on proposals, ratify official resolutions |
+| **Membership Model** | Open or approval-based applications (`join_policy`) | Appointed or elected terms (`term_start`, `term_end`) |
+| **Member Attributes** | `role_title` (e.g., `'Lead'`, `'Developer'`, `'Designer'`) | `role_title` (`'Chair'`, `'Member'`, `'Rapporteur'`) + `voting_weight` |
+| **Connected Entities** | `tasks`, `projects`, `treasury_entries`, `events` | `governance_records` (`'resolution' \| 'minutes' \| 'proposal' \| 'meeting'`), `polls` |
 
 ---
 
-## 5. Yüzey sahipliği
+## 6. Domain Ownership & Embedded Microservice Boundaries
 
-| Veri | Tanımlama | Kayıt yönetimi | Denetim |
-|---|---|---|---|
-| Kişi kimliği | Members | Members / self (politika kadar) | Members aktivite + merkezi audit |
-| Hesap güvenliği | Account | Account / admin reset | Güvenlik logları |
-| Üyelik | Members | Members | Audit |
-| Başvuru | Settings → Membership policy | Auth (submit) + Members (decision) | Audit |
-| Rol tanımı | Settings → Roles | — | Audit |
-| Rol ataması | Settings → Roles (limitler) | Members | Audit |
-| Takım profili | Teams | Teams | Takım aktivitesi |
-| Takım kategorisi | Settings → Teams | — | Audit |
-| Komite | Teams/Governance | Teams/Governance | Audit |
-| Kayıt politikası | Settings → Membership | — | Audit |
-| Form şeması | Settings → Forms | — | Audit |
-| Yasal metin | Settings → Legal | — | Audit |
-| Rıza | Auth/Account | Yalnız kişi | **Değiştirilemez kanıt** |
-| Marka | Settings → Identity | — | Audit |
-| Proje | Projects | Projects | Proje aktivitesi |
-| Etkinlik | Events | Events | Etkinlik aktivitesi |
-| Merkezi denetim | — | — | SoC Studio → Change History (read-only; yönetim) |
+Every mini-app under `src/apps/<id>/` operates as a self-contained **Embedded Microservice** with zero cross-app imports (`scripts/check-pure.mjs`):
 
-### 5.1 Settings menü hedefi
-
-- **Hesabım:** profil, güvenlik, rıza geçmişi, veri talepleri.
-- **Üyelik:** kayıt politikası, başvuru formu, yasal metinler.
-- **Topluluk:** kimlik/marka, takım kategorileri, roller, entegrasyonlar, e-posta.
-- **Sistem:** audit, bakım, teşhis.
-- Kişisel tercihler (duvar kağıdı, dock, görünüm, dil, depolama) ayrı kalır.
+| Domain / Mini-App | Authoritative Tables | Repository (`src/db/repositories/*.repo.ts`) | Cross-Domain Communication |
+| :--- | :--- | :--- | :--- |
+| **System Settings (`settings`)** | `organization_settings`, `roles`, `form_schemas`, `legal_documents` | `settings.repo.ts`, `customization.repo.ts` | Broadcasts `orbit_events` on role or policy change |
+| **Members (`members`)** | `users`, `invitations`, `user_consents` | `members.repo.ts`, `membership.repo.ts`, `users.repo.ts` | Emits membership & role events |
+| **Teams & Hub (`teams`)** | `units`, `unit_members`, `tasks`, `task_comments` | `teams.repo.ts`, `kanban.repo.ts`, `committees.repo.ts` | Awards XP via atomic transaction on task completion |
+| **Events (`events`)** | `events`, `event_participants` | `events.repo.ts` | Emits attendance events for XP & certificate eligibility |
+| **Certificates (`certificates`)** | `certificates` | `certificates.repo.ts` | Reads verified `event_participants` |
+| **Budget & Treasury (`budget`)** | `treasury_entries`, `files` | `budget.repo.ts`, `files.repo.ts` | Broadcasts `treasury_updated` on `orbit_events` |
+| **Governance (`decisions`)** | `governance_records`, `polls` | `decisions.repo.ts`, `committees.repo.ts` | Links to committee `units` and `polls` |
+| **Projects (`projects`)** | `projects` | `projects.repo.ts` | Attributes showcase items to `units` and `users` |
+| **Inventory (`inventory`)** | `inventory_items` | `inventory.repo.ts` | Tracks hardware checkouts in `loan_history JSONB` |
+| **Chat & Mail (`chat`, `mail`)** | `chat_rooms`, `chat_members`, `chat_messages`, `polls`, `mail_outbox` | `chat.repo.ts`, `mail.repo.ts`, `mailOutbox.repo.ts` | Streams live frames via `chat_events` SSE |
+| **SoC Pro Studio (`soc`)** | `security_blocks`, `security_incidents`, `system_logs`, `audit_logs` | `security.repo.ts`, `logs.repo.ts` | Streams live telemetry via `soc_stream` SSE |
 
 ---
 
-## 6. Faz planı
+## 7. Zero-Friction Internationalization (`translations JSONB`)
 
-### Faz 0 — Kanamayı durdur ve temel kanıt altyapısı (bu tur)
+To ensure contributors can add a new language (e.g., German `de`, Spanish `es`, Japanese `ja`) in a **single Pull Request** without modifying SQL tables or React components:
 
-**Amaç:** Kırık akışları düzeltmek; rıza ve kayıt verisinin güvenilir temelini atmak.
-
-- [x] `/api/profilee/photo` ve `/api/profilee/password` yollarını düzelt.
-- [x] `/api/roles` sözleşmesini UI ile hizala (`assignableRoles`).
-- [x] Mobil “Reddet”i kalıcı silme yerine `reddedildi` yap.
-- [x] `legal_documents` sürüm alanı + `legal_acceptances` tablosu.
-- [x] Kayıtta zorunlu belgeleri sunucuda zorunlu tut; kabul kayıtlarını sakla.
-- [x] Legal panelin “Ekle” akışındaki sessiz ezmeyi engelle.
-- [~] Track için tek kaynak: `registration_core_fields.track.options`.
-- [x] Profil API'si ve Account/Members filtreleri bu kaynağı kullansın.
-- [ ] Kayıt ve admin üye ekleme track değerini config'e karşı doğrulasın. _(Fixture/test geçişiyle birlikte Faz 1'e alındı.)_
-- [x] Profil değişikliklerine audit ekle.
-- [x] Roster'da yalnız `member|both` ve etkin custom alanları göster (scope sızıntısını kapat).
-- [ ] Faz 0 testleri. _(Legal akışı canlı doğrulandı; otomatik testler Faz 1 ile eklenecek.)_
-
-**Kabul:** Typecheck/lint/check yeşil; kayıt rızasız oluşamaz; kabul kaydı DB'de; self profil/şifre/foto çalışır; track tek kaynaktan gelir.
-
-### Faz 1 — Tek üye yazma modeli ve admin düzenleme
-
-**Amaç:** Aynı üyenin dört ayrı kod yolu yerine tek servis üzerinden yönetilmesi.
-
-- [~] `src/server/members/service.ts`: `updateSelfProfile`, `updateMemberForAdmin` hazır; `create`, `approve`, `reject`, `resetPassword` sonraki dilimde.
-- [~] Ortak doğrulama: ad/soyad/track/handle/e-posta/şifre/custom. _(Self ve admin düzenleme ortak alan doğrulamasını kullanıyor; kayıt/admin oluşturma hâlâ ayrı.)_
-- [x] Admin üye düzenleme API'si: `PATCH /api/members/:id`.
-- [~] Members app'te düzenleme sheet'i: Profil ve Ek Alanlar hazır; Erişim/Güvenlik/Onaylar/Aktivite sonraki dilimde.
-- [x] Self-servis custom alan düzenleme (politika kadar).
-- [x] `form_fields` politika kolonları: `collect_at`, `required_at`, `directory_visibility`, `self_editable`, `admin_editable`, `archived_at`.
-- [x] Roster'da scope sızıntısını kapat; admin detayında tam görünüm.
-- [x] Alan silme yerine arşivle; değerler korunur.
-- [x] Profil/avatar/custom audit + admin şifre sıfırlama e-postası audit'i hazır.
-- [~] Kullanıcı + custom değerler self/admin düzenlemede tek transaction; kayıt/admin oluşturma hâlâ ayrı.
-- [x] E-posta değişimi: yeni adrese OTP + doğrulama + audit (`uye.email`).
-- [x] Faz 1 pure testleri: alan politikası ve `validateAdminEditValues`.
-- [~] Admin düzenleme ve e-posta değişimi canlı doğrulandı; otomatik API testi sonraki dilimde.
-
-**Kabul:** Admin her üye alanını düzenleyebilir; self yalnız izinli alanları; custom alan scope'u sızdırmaz; tüm yazmalar audit'li ve atomik.
-
-### Faz 2 — Başvuru yaşam döngüsü, kayıt politikası, güvenli rıza
-
-- [~] `membership_applications` tablosu ve durum makinesi. _(pending_review / approved / rejected çalışıyor; submitted / email_verified / withdrawn geçişleri sonraki dilimde.)_
-- [~] `application_answers` snapshot; onayda `member_field_values`'a materialize. _(Snapshot yazılıyor; değerler kayıt sırasında zaten üye kaydına yazıldığı için ayrıca materialize edilmiyor.)_
-- [x] Settings → **Üyelik Politikası** sayfası:
-  - self/admin/invite açık/kapalı
-  - manuel onay
-  - e-posta doğrulama zorunluluğu
-  - davet süresi/kullanım sayısı
-  - yeniden başvuru bekleme süresi
-- [~] Invite token altyapısı: e-posta, rol, takım, süre. _(E-posta/rol/süre çalışıyor; takım ataması ve takım seçici sonraki dilimde.)_
-- [x] Red gerekçesi + yeniden başvuru. _(Yeniden başvuru + cooldown + `reapply_of` çalışıyor; red gerekçesini admin UI'ından toplama sonraki dilimde.)_
-- [x] Rıza sürümleme: belge güncellenince yeni sürüm, yeniden onay.
-- [x] Mevcut üyeler için rıza tamamlama akışı: `/api/legal/status`, `/api/legal/accept`, Hesabım kartı.
-- [x] `decisions`/denetim ile başvuru karar kaydı. _(Başvuru satırı reviewed_by/at + mevcut audit.)_
-
-**Kabul:** Başvuru → doğrulama → onay/red → yeniden başvuru çalışır; her rıza belge sürümüyle kanıtlanır.
-
-### Faz 3 — Komite/takım, form/legal editörü, tüm app entegrasyonu
-
-- [x] `teams.type` (`working_group`/`committee`), komite üyeliği + oy hakkı.
-- [x] `committee_meetings`; `decisions.body_id`, karar türü ve oy sayıları.
-- [x] Yönetişim uygulamasında komite görünümü; toplantı ve kararlarla bağlantı.
-- [x] Form tasarımcısında politika UI'ı + gerçek form önizlemesi.
-- [x] Legal editörde sürüm geçmişi; her içerik değişikliği önceki metni `legal_document_versions`'a arşivler.
-- [x] Projects/Events owner modeli: `owner_team_id`, `owner_user_id`, `created_by`; migration eski `teamId`/`olusturanId` değerlerini geriye dönük doldurur.
-- [x] Mail: alıcı grupları (rol/takım/komite) tek kaynaktan; compose ekranında grup seçici.
-- [x] SoC Studio → Change History; `/api/audit` filtre/CSV/paylaşım akışı SoC yönetiminde. Settings audit sekmesi kaldırıldı.
-- [x] Veri dışa aktarma (JSON/CSV) + üye anonimleştirme; Settings → Veri ve Gizlilik.
-- [x] Tüm mini-app'ler aynı `users` / `teams` / `team_members` / `roles` kaynağını kullanır; komite üye seçici ve mail alıcı grupları ortak servisten beslenir. UI seçici standardizasyonu follow-up.
-
-**Kabul:** Komite kararı ile takım görevi ayrışır; tüm uygulamalar aynı kişi/takım/rol kaynağını kullanır.
-
-**Faz 3 kapanış durumu:**
-- Komite/takım ayrımı, oy hakkı, toplantı ve karar bağlantısı çalışıyor.
-- Form önizlemesi, legal sürüm arşivi, proje/etkinlik sahipliği, audit merkezi, mail alıcı grupları ve veri/gizlilik paneli tamamlandı.
-- Kalan follow-up: bazı mini-app formlarındaki seçici UI'larının ortak bileşene taşınması; veri kaynağı zaten ortak.
-
-### Faz 4 — Çok topluluk hazırlığı (opsiyonel, yalnız ihtiyaç doğarsa)
-
-- [ ] `organizations`, `memberships`, `membership_id` foreign key'leri.
-- [ ] Track/seviye/rol alanlarını membership'e taşı.
-- [ ] Tenant-scoped sorgular ve yetki kontrolleri.
-- [ ] Veri göçü ve geri dönüş planı.
-
-> Bu faz, ürün kararı değişmedikçe **uygulanmaz**. Tek toplulukta gereksiz karmaşıklık yaratır.
+1. **No Language-Specific SQL Columns:** All localizable database entities (`organization_settings`, `roles`, `form_schemas`, `legal_documents`, `units.charter_i18n`) store translations inside a `JSONB` map keyed by locale code (`Record<LocaleCode, Record<string, string>>`).
+2. **Deterministic Fallback Resolution (`resolveLocalized`):** At runtime, `resolveLocalized(translations, activeLocale, 'en')` returns the active user locale, falling back to `'en'` and then to the first available key.
+3. **Registry-Driven Locale Discovery:** Registering a locale in `src/locales/registry.ts` and adding its JSON dictionary files automatically enables the language across the desktop shell, all 17 mini-app manifests, and all dynamic database forms.
 
 ---
 
-## 7. Veritabanı geçiş stratejisi
+## 8. Verification & Release Gates
 
-1. **Yeni migration adı:** `2026_17_member_data_foundation` ve devamı.
-2. **Geri uyumluluk:** yeni kolonlar nullable/default; mevcut sorgular bozulmaz.
-3. **Backfill:** mevcut belgeler için `version=1`, `content_hash`; mevcut üyelikler için uygulama yok (geçmiş başvuru uydurulmaz).
-4. **Rıza:** eski hesaplar için geçmiş rıza uydurulmaz; ilk girişte yeniden onay istenir.
-5. **Form alanları:** mevcut scope değerlerinden güvenli varsayılanlarla politika kolonları doldurulur; veri silinmez.
-6. **Roller:** tek birincil rol korunur; çoklu rol ihtiyacı doğarsa ayrı migration.
-7. **Test:** her migration idempotent; `ensurePostgresInit` tekrar çalışabilir.
-8. **Rollback:** yeni tablolar/kolonlar geri alınabilir; veri silen migration yazılmaz.
+Every pull request affecting data models, repositories, or mini-apps must pass the automated verification suite (`npm run verify` / `make verify`):
 
----
-
-## 8. Doğrulama ve kabul kapıları
-
-- `pnpm typecheck`
-- `pnpm lint`
-- `pnpm check` (pure, i18n, token)
-- `pnpm build`
-- Yeni pure testler: rıza zorunluluğu, track doğrulama, rol sözleşmesi, form politikası.
-- E2E: kayıt → onay → self edit → admin edit → custom alan → rıza.
-- Yetki testleri: self/admin/settings/members ayrımı.
-- Migration testi: boş DB + mevcut DB.
-
----
-
-## 9. Açık kararlar
-
-1. **Çoklu global rol:** Şimdilik tek birincil rol. Komite/team rolleri kapsamlı. İhtiyaç doğarsa `role_assignments` + öncelik kuralı.
-2. **Komite modeli:** Faz 3'te `teams.type` + `committee_*` ile başla; grup türü artarsa `groups` refactor.
-3. **E-posta değişimi:** Self-servis, yeni adres doğrulamalı. Admin e-posta değişimi audit'li ve step-up'lı.
-4. **Rıza saklama süresi:** Üyelik + yasal zorunluluk süresi; audit 730 gün.
-5. **Silme/anonimleştirme:** Hard delete yerine anonimleştirme; yasal istisnalar audit'te.
-
----
-
-## 10. Faz 0 dosya etkisi
-
-| Dosya | Değişiklik |
-|---|---|
-| `src/apps/settings/components/Account/AccountProfileHero.tsx` | doğru foto endpoint |
-| `src/apps/settings/components/Account/AccountPasswordForm.tsx` | doğru şifre endpoint |
-| `src/app/api/roles/route.ts` | `assignableRoles` sözleşmesi |
-| `src/apps/members/hooks/useMembers.ts` | rol tipi/contract uyumu |
-| `src/apps/members/components/MembersMobileView.tsx` | reddet = status |
-| `src/server/db/schema.init.ts` | legal sürüm + acceptance migration |
-| `src/server/db/domains/customization.repo.ts` | legal sürüm/kabul yazımı |
-| `src/app/api/auth/register/route.ts` | zorunlu rıza + kayıt |
-| `src/apps/settings/components/Panels/LegalSettingsPanel.tsx` | ezme engeli |
-| `src/apps/settings/components/Account/AccountPanel.tsx` | track config kaynağı |
-| `src/app/api/profile/route.ts` | track config doğrulaması |
-| `src/apps/members/components/MembersToolbar.tsx` | track config kaynağı |
-| `src/apps/members/hooks/useMembers.ts` | config track options |
-| `src/app/api/members/route.ts` | track config doğrulaması |
-| `scripts/check-pure.mjs` | yeni pure testler |
-
----
-
-## 11. Not
-
-Bu doküman canlıdır. Her faz tamamlandıkça işaretlenir; karar değişiklikleri burada ve `DATA_DICTIONARY.md` içinde güncellenir.
+- `npm run gen:apps` — Verifies all 17 `src/apps/*/manifest.ts` contracts and regenerates `registry.gen.ts` / `loaders.gen.ts`.
+- `npm run typecheck` (`tsc --noEmit`) — Strict TypeScript 5.9 verification across all repositories and DTOs.
+- `npm run lint` (`eslint .`) — Enforces module boundaries and zero cross-app imports.
+- `npm run check` — Runs `check-pure.mjs` (RBAC lattice, field policy, theme parity), `check-i18n.mjs` (locale dictionary parity), `check-tokens.mjs` (CSS token compliance), and `check-audit-coverage.mjs` (100% mutation audit coverage).

@@ -26,21 +26,21 @@ export function useMembers() {
 	const dialog = useDialog();
 
 	const mailUser = canUseApp('chat');
-	const { data: reachData } = useJsonResource<{ idler: string[] }>(
+	const { data: reachData } = useJsonResource<{ ids: string[] }>(
 		mailUser ? '/api/messages/recipients?reachable=1' : null
 	);
-	const reachable = useMemo(() => new Set(reachData?.idler ?? []), [reachData?.idler]);
+	const reachable = useMemo(() => new Set(reachData?.ids ?? []), [reachData?.ids]);
 
 	const isAuthorizedToAdd = canManageApp('members');
-	const { data: roleData } = useJsonResource<{ roller: AssignableRole[]; varsayilanRolId: string | null }>(
+	const { data: roleData } = useJsonResource<{ roles: AssignableRole[]; defaultRoleId: string | null }>(
 		isAuthorizedToAdd ? '/api/roles' : null
 	);
-	const roles = useMemo(() => roleData?.roller ?? [], [roleData?.roller]);
-	const assignableRoles = useMemo(() => roles.filter((r) => r.assignableRoles), [roles]);
+	const roles = useMemo(() => roleData?.roles ?? [], [roleData?.roles]);
+	const assignableRoles = useMemo(() => roles.filter((r) => r.assignable), [roles]);
 	const rolesById = useMemo(() => new Map(roles.map((r) => [r.id, r])), [roles]);
 
 	const isMemberTouchable = useCallback(
-		(m: MemberRecord) => !m.roleId || rolesById.get(m.roleId)?.assignableRoles === true,
+		(m: MemberRecord) => !m.roleId || rolesById.get(m.roleId)?.assignable === true,
 		[rolesById]
 	);
 
@@ -202,12 +202,12 @@ export function useMembers() {
 				invalidateResource('/api/members');
 				await fetchMembers();
 
-				if (data.geciciSifre) {
+				if (data.temporaryPassword) {
 					void dialog.alert({
 						title: t('membersCreatedTitle'),
 						message: fill(t('membersTempPasswordNotice'), {
 							name: `${data.member?.ad ?? ''} ${data.member?.soyad ?? ''}`.trim(),
-							password: data.geciciSifre,
+							password: data.temporaryPassword,
 						}),
 						tone: 'success',
 					});
@@ -321,11 +321,11 @@ export function useMembers() {
 					body: JSON.stringify({ id, sifreSifirla: true }),
 				});
 				const data = await res.json();
-				if (res.ok && data.geciciSifre) {
+				if (res.ok && data.temporaryPassword) {
 					playSystemSound();
 					void dialog.alert({
 						title: t('membersCtxResetPassword'),
-						message: `${fill(t('membersResetPassSuccess'), { name })}\n\n${data.geciciSifre}\n\n${t('membersResetPassNotice')}`,
+						message: `${fill(t('membersResetPassSuccess'), { name })}\n\n${data.temporaryPassword}\n\n${t('membersResetPassNotice')}`,
 						tone: 'success',
 					});
 				} else {

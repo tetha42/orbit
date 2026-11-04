@@ -27,7 +27,7 @@ export function ProjectFormModal({ proje, teams, manage, onClose, onSaved }: Pro
 	const [repoUrl, setRepoUrl] = useState(proje?.repoUrl ?? '');
 	const [canliUrl, setCanliUrl] = useState(proje?.canliUrl ?? '');
 	const [tech, setTech] = useState((proje?.teknolojiler ?? []).join(', '));
-	const [teamId, setTakimId] = useState(proje?.teamId ?? '');
+	const [teamId, setTeamId] = useState(proje?.teamId ?? '');
 	const [ownerTeamId, setOwnerTeamId] = useState(proje?.ownerTeamId ?? proje?.teamId ?? '');
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
@@ -179,7 +179,7 @@ export function ProjectFormModal({ proje, teams, manage, onClose, onSaved }: Pro
 					className={ui.select}
 					style={{ maxWidth: 'none' }}
 					value={teamId}
-					onChange={(e) => setTakimId(e.target.value)}
+					onChange={(e) => setTeamId(e.target.value)}
 				>
 					<option value="">{t('pjNoTeam')}</option>
 					{teams.map((tm) => (

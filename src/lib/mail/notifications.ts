@@ -13,8 +13,10 @@ import { CONFIG } from '@/server/config';
  */
 
 export interface Recipient {
-	ad: string;
-	soyad: string;
+	firstName?: string;
+	lastName?: string;
+	ad?: string;
+	soyad?: string;
 	email: string;
 	preferredLanguage?: 'tr' | 'en';
 }
@@ -61,10 +63,12 @@ async function sendNotification(
 	}
 
 	const lang = getLang(user, langOverride);
+	const first = user.firstName || user.ad || '';
+	const last = user.lastName || user.soyad || '';
 	const greeting =
 		lang === 'en'
-			? `Hello ${safeName(user.ad)} ${safeName(user.soyad)},`
-			: `Merhaba ${safeName(user.ad)} ${safeName(user.soyad)},`;
+			? `Hello ${safeName(first)} ${safeName(last)},`
+			: `Merhaba ${safeName(first)} ${safeName(last)},`;
 
 	try {
 		const result = await sendMail({ to, subject, html: shell(bodyFor(greeting, lang)) });

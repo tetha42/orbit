@@ -45,57 +45,57 @@ const globalStore = globalThis as typeof globalThis & {
 const cache = (globalStore.__chatAudienceCache ??= new Map<string, ChatAudience>());
 
 /** Drop a cached audience (or the whole cache) after a membership change. */
-export function invalidateChatAudience(odaId?: string): void {
-	if (odaId) cache.delete(odaId);
+export function invalidateChatAudience(roomId?: string): void {
+	if (roomId) cache.delete(roomId);
 	else cache.clear();
 }
 
 /** Synchronous lookup for a warm cache; lets the SSE path stay ordered and cheap. */
-export function peekChatAudience(odaId: string): ChatAudience | null {
-	if (odaId === GENERAL_ROOM_ID) return GENERAL_AUDIENCE;
-	const hit = cache.get(odaId);
+export function peekChatAudience(roomId: string): ChatAudience | null {
+	if (roomId === GENERAL_ROOM_ID) return GENERAL_AUDIENCE;
+	const hit = cache.get(roomId);
 	if (hit && hit.expiresAt > Date.now()) return hit;
 	return null;
 }
 
-export async function getChatAudience(odaId: string): Promise<ChatAudience | null> {
-	const cached = peekChatAudience(odaId);
+export async function getChatAudience(roomId: string): Promise<ChatAudience | null> {
+	const cached = peekChatAudience(roomId);
 	if (cached) return cached;
 
 	try {
 		const p = getPgPool();
 		const roomRes = await p.query(
-			`SELECT tur, teamId AS "teamId" FROM chat_rooms WHERE id = $1 LIMIT 1`,
-			[odaId]
+			`SELECT room_type AS "roomType", team_id AS "teamId" FROM chat_rooms WHERE id = $1 LIMIT 1`,
+			[roomId]
 		);
 		const room = roomRes.rows[0];
 		if (!room) return null;
 
-		const tur = String(room.tur || '');
-		if (tur === 'genel') {
-			cache.set(odaId, GENERAL_AUDIENCE);
+		const roomType = String(room.roomType || '');
+		if (roomType === 'genel' || roomType === 'general') {
+			cache.set(roomId, GENERAL_AUDIENCE);
 			return GENERAL_AUDIENCE;
 		}
 
 		const teamId = room.teamId ? String(room.teamId) : null;
 		const membersRes =
-			tur === 'takim' && teamId
+			(roomType === 'takim' || roomType === 'team') && teamId
 				? await p.query(
-						`SELECT DISTINCT userId AS "userId" FROM (
-							SELECT userId FROM team_members WHERE teamId = $1 AND status = 'aktif'
+						`SELECT DISTINCT user_id AS "userId" FROM (
+							SELECT user_id FROM team_members WHERE team_id = $1 AND (status = 'aktif' OR status = 'active')
 							UNION
-							SELECT userId FROM chat_members WHERE odaId = $2
+							SELECT user_id FROM chat_members WHERE room_id = $2
 						 ) t`,
-						[teamId, odaId]
+						[teamId, roomId]
 					)
 				: await p.query(
-						`SELECT userId AS "userId" FROM chat_members WHERE odaId = $1`,
-						[odaId]
+						`SELECT user_id AS "userId" FROM chat_members WHERE room_id = $1`,
+						[roomId]
 					);
 
 		const audience: ChatAudience = {
 			all: false,
-			takim: tur === 'takim',
+			takim: roomType === 'takim' || roomType === 'team',
 			memberIds: new Set(
 				membersRes.rows.map((r) => String(r.userId ?? '')).filter(Boolean)
 			),
@@ -104,7 +104,7 @@ export async function getChatAudience(odaId: string): Promise<ChatAudience | nul
 		};
 
 		if (cache.size >= MAX_CACHE_ENTRIES) cache.clear();
-		cache.set(odaId, audience);
+		cache.set(roomId, audience);
 		return audience;
 	} catch (err) {
 		// Fail closed: a live event must not leak into a room we could not verify.

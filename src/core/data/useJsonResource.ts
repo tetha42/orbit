@@ -511,21 +511,13 @@ export function useJsonResource<T>(
 
 const LIVE_EVENT_RESOURCE_MAP: Record<string, string> = {
 	team_updated: '/api/teams',
-	takim_guncellendi: '/api/teams',
 	budget_updated: '/api/budget',
-	butce_guncellendi: '/api/budget',
 	inventory_updated: '/api/inventory',
-	envanter_guncellendi: '/api/inventory',
 	news_updated: '/api/news',
-	haber_guncellendi: '/api/news',
 	event_updated: '/api/events',
-	etkinlik_guncellendi: '/api/events',
 	project_updated: '/api/projects',
-	proje_guncellendi: '/api/projects',
 	decision_updated: '/api/decisions',
-	karar_guncellendi: '/api/decisions',
 	note_updated: '/api/notes',
-	not_guncellendi: '/api/notes',
 };
 
 if (typeof window !== 'undefined') {

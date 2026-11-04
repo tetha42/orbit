@@ -97,7 +97,7 @@ export function useChat(initialRoomId?: string | null) {
 	}, [fetchRooms]);
 
 	// 2. Fetch Messages for active room with AbortController and race condition guard
-	const fetchMessages = useCallback(async (odaId: string) => {
+	const fetchMessages = useCallback(async (roomId: string) => {
 		fetchMessagesAbortRef.current?.abort();
 		loadOlderAbortRef.current?.abort();
 		loadingOlderRef.current = false;
@@ -112,7 +112,7 @@ export function useChat(initialRoomId?: string | null) {
 		setHasMoreMessages(false);
 
 		try {
-			const res = await fetch(`/api/chat/messages?odaId=${encodeURIComponent(odaId)}`, {
+			const res = await fetch(`/api/chat/messages?roomId=${encodeURIComponent(roomId)}`, {
 				cache: 'no-store',
 				signal: controller.signal,
 			});
@@ -134,11 +134,11 @@ export function useChat(initialRoomId?: string | null) {
 				void fetch('/api/chat/rooms', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ action: 'read', odaId }),
+					body: JSON.stringify({ action: 'read', roomId }),
 				});
 				// Clear unread count locally
 				setRooms((prev) =>
-					prev.map((r) => (r.id === odaId ? { ...r, okunmamisSayisi: 0 } : r))
+					prev.map((r) => (r.id === roomId ? { ...r, okunmamisSayisi: 0 } : r))
 				);
 			}
 		} catch (err: unknown) {
@@ -158,9 +158,9 @@ export function useChat(initialRoomId?: string | null) {
 	 * its scroll position while these rows are prepended.
 	 */
 	const loadOlderMessages = useCallback(async () => {
-		const odaId = activeRoomRef.current;
+		const roomId = activeRoomRef.current;
 		const oldest = messagesRef.current[0];
-		if (!odaId || !oldest || loadingOlderRef.current || !hasMoreMessagesRef.current) return;
+		if (!roomId || !oldest || loadingOlderRef.current || !hasMoreMessagesRef.current) return;
 
 		loadingOlderRef.current = true;
 		setLoadingOlderMessages(true);
@@ -170,7 +170,7 @@ export function useChat(initialRoomId?: string | null) {
 
 		try {
 			const params = new URLSearchParams({
-				odaId,
+				roomId,
 				before: String(oldest.date),
 				beforeId: oldest.id,
 			});
@@ -260,7 +260,7 @@ export function useChat(initialRoomId?: string | null) {
 						};
 						const myId = currentUserIdRef.current;
 						const isFromOther = Boolean(myId && newMsg.gonderenId !== myId);
-						const isActiveRoom = activeRoomRef.current === newMsg.odaId;
+						const isActiveRoom = activeRoomRef.current === newMsg.roomId;
 
 						// If active room, append message and mark read on server
 						if (isActiveRoom) {
@@ -272,20 +272,20 @@ export function useChat(initialRoomId?: string | null) {
 								void fetch('/api/chat/rooms', {
 									method: 'POST',
 									headers: { 'Content-Type': 'application/json' },
-									body: JSON.stringify({ action: 'read', odaId: newMsg.odaId }),
+									body: JSON.stringify({ action: 'read', roomId: newMsg.roomId }),
 								});
 							}
 						}
 
 						// Update room's latest message and unread count, or fetch rooms if this is a brand-new DM/Group
 						setRooms((prev) => {
-							const exists = prev.some((r) => r.id === newMsg.odaId);
+							const exists = prev.some((r) => r.id === newMsg.roomId);
 							if (!exists) {
 								void fetchRoomsRef.current();
 								return prev;
 							}
 							const updated = prev.map((r) => {
-								if (r.id === newMsg.odaId) {
+								if (r.id === newMsg.roomId) {
 									return {
 										...r,
 										sonMesaj: newMsg,
@@ -310,13 +310,13 @@ export function useChat(initialRoomId?: string | null) {
 								playSystemSoundRef.current();
 								void showAppNotification(`${newMsg.gonderenAd}`, {
 									body: newMsg.icerik,
-									tag: `chat-${newMsg.odaId}`,
+									tag: `chat-${newMsg.roomId}`,
 								});
 							}
 						}
 					} else if (data.type === 'message_deleted') {
-						const { odaId, messageId, silinmeTarihi } = data;
-						if (activeRoomRef.current === odaId) {
+						const { roomId, messageId, silinmeTarihi } = data;
+						if (activeRoomRef.current === roomId) {
 							setMessages((prev) => {
 								if (isAdminRef.current) {
 									return prev.map((m) =>
@@ -327,9 +327,9 @@ export function useChat(initialRoomId?: string | null) {
 							});
 						}
 					} else if (data.type === 'messages_cleared') {
-						const { odaId, deletedIds, silinmeTarihi } = data;
+						const { roomId, deletedIds, silinmeTarihi } = data;
 						const idSet = new Set(Array.isArray(deletedIds) ? deletedIds : []);
-						if (activeRoomRef.current === odaId) {
+						if (activeRoomRef.current === roomId) {
 							setMessages((prev) => {
 								if (isAdminRef.current) {
 									return prev.map((m) =>
@@ -341,21 +341,21 @@ export function useChat(initialRoomId?: string | null) {
 						}
 					} else if (data.type === 'message_edited' && data.message) {
 						const updated = data.message as ChatMessageItem;
-						if (activeRoomRef.current === updated.odaId) {
+						if (activeRoomRef.current === updated.roomId) {
 							setMessages((prev) =>
 								prev.map((m) => (m.id === updated.id ? { ...m, ...updated } : m))
 							);
 						}
 						setRooms((prev) =>
 							prev.map((r) =>
-								r.id === updated.odaId && r.sonMesaj?.id === updated.id
+								r.id === updated.roomId && r.sonMesaj?.id === updated.id
 									? { ...r, sonMesaj: { ...r.sonMesaj, ...updated } }
 									: r
 							)
 						);
 					} else if (data.type === 'poll_updated' && data.poll) {
 						const updatedPoll = data.poll as ChatPollItem;
-						if (activeRoomRef.current === data.odaId) {
+						if (activeRoomRef.current === data.roomId) {
 							setMessages((prev) =>
 								prev.map((m) =>
 									m.anket?.id === updatedPoll.id ? { ...m, anket: updatedPoll } : m
@@ -405,7 +405,7 @@ export function useChat(initialRoomId?: string | null) {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
-						odaId: activeRoomId,
+						roomId: activeRoomId,
 						icerik: icerik.trim(),
 						ekler,
 						yanitlananMesajId,
@@ -436,8 +436,8 @@ export function useChat(initialRoomId?: string | null) {
 	}, []);
 
 	const forwardMessage = useCallback(
-		async (mesajId: string, targetOdaIds: string[]): Promise<{ ok: boolean; count?: number }> => {
-			if (!mesajId || !Array.isArray(targetOdaIds) || targetOdaIds.length === 0) {
+		async (mesajId: string, targetRoomIds: string[]): Promise<{ ok: boolean; count?: number }> => {
+			if (!mesajId || !Array.isArray(targetRoomIds) || targetRoomIds.length === 0) {
 				return { ok: false };
 			}
 			try {
@@ -447,12 +447,12 @@ export function useChat(initialRoomId?: string | null) {
 					body: JSON.stringify({
 						action: 'forward',
 						mesajId,
-						targetOdaIds,
+						targetRoomIds,
 					}),
 				});
 				const data = await res.json();
 				if (data.ok) {
-					if (activeRoomRef.current && targetOdaIds.includes(activeRoomRef.current)) {
+					if (activeRoomRef.current && targetRoomIds.includes(activeRoomRef.current)) {
 						void fetchMessages(activeRoomRef.current);
 					}
 					void fetchRooms();
@@ -466,9 +466,9 @@ export function useChat(initialRoomId?: string | null) {
 		[fetchMessages, fetchRooms]
 	);
 
-	const selectRoom = useCallback((odaId: string) => {
+	const selectRoom = useCallback((roomId: string) => {
 		setFocusedMessageId(null);
-		setActiveRoomId(odaId);
+		setActiveRoomId(roomId);
 	}, []);
 
 	const createDm = useCallback(async (targetUserId: string): Promise<string | null> => {
@@ -486,10 +486,10 @@ export function useChat(initialRoomId?: string | null) {
 				body: JSON.stringify({ action: 'create_dm', targetUserId }),
 			});
 			const data = await res.json();
-			if (data.ok && data.odaId) {
+			if (data.ok && data.roomId) {
 				await fetchRooms();
-				setActiveRoomId(data.odaId);
-				return data.odaId;
+				setActiveRoomId(data.roomId);
+				return data.roomId;
 			}
 			return null;
 		} catch {
@@ -505,10 +505,10 @@ export function useChat(initialRoomId?: string | null) {
 				body: JSON.stringify({ action: 'create_group_dm', memberIds, title }),
 			});
 			const data = await res.json();
-			if (data.ok && data.odaId) {
+			if (data.ok && data.roomId) {
 				await fetchRooms();
-				setActiveRoomId(data.odaId);
-				return data.odaId;
+				setActiveRoomId(data.roomId);
+				return data.roomId;
 			}
 			return null;
 		} catch {
@@ -516,17 +516,17 @@ export function useChat(initialRoomId?: string | null) {
 		}
 	}, [fetchRooms]);
 
-	const addMembers = useCallback(async (odaId: string, memberIds: string[]): Promise<boolean> => {
+	const addMembers = useCallback(async (roomId: string, memberIds: string[]): Promise<boolean> => {
 		try {
 			const res = await fetch('/api/chat/rooms', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ action: 'add_members', odaId, memberIds }),
+				body: JSON.stringify({ action: 'add_members', roomId, memberIds }),
 			});
 			const data = await res.json();
 			if (data.ok) {
 				await fetchRooms();
-				await fetchMessages(odaId);
+				await fetchMessages(roomId);
 				return true;
 			}
 			return false;
@@ -615,7 +615,7 @@ export function useChat(initialRoomId?: string | null) {
 				const res = await fetch('/api/chat/poll', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ action: 'create', odaId: activeRoomId, ...pollData }),
+					body: JSON.stringify({ action: 'create', roomId: activeRoomId, ...pollData }),
 				});
 				const data = await res.json();
 				if (data.ok && data.message) {

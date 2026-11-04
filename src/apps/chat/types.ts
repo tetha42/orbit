@@ -24,7 +24,7 @@ export interface ChatPollOptionItem {
 export interface ChatPollItem {
 	id: string;
 	mesajId: string;
-	odaId: string;
+	roomId: string;
 	olusturanId: string;
 	olusturanAd?: string;
 	soru: string;
@@ -53,7 +53,7 @@ export interface ChatAttachmentItem {
 
 export interface ChatMessageItem {
 	id: string;
-	odaId: string;
+	roomId: string;
 	gonderenId: string;
 	gonderenAd: string;
 	gonderenFoto: string | null;
@@ -79,6 +79,11 @@ export interface ChatContactItem {
 
 export interface ChatRoomMemberItem {
 	id: string;
+	firstName?: string;
+	lastName?: string;
+	avatarUrl?: string | null;
+	roleName?: string | null;
+	department?: string;
 	ad: string;
 	soyad: string;
 	profilFoto: string | null;

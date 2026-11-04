@@ -25,19 +25,19 @@ export async function getMailRecipientGroups(): Promise<MailRecipientGroup[]> {
 			 ORDER BY email`
 		),
 		db.query(
-			`SELECT r.id, r.ad, u.email
+			`SELECT r.id, r.name AS ad, u.email
 			 FROM roles r JOIN users u ON u.role_id = r.id
 			 WHERE u.status = 'aktif' AND u.email IS NOT NULL AND u.email <> ''
-			 ORDER BY r.ad, u.email`
+			 ORDER BY r.name, u.email`
 		),
 		db.query(
-			`SELECT t.id, t.ad, t.type, u.email
+			`SELECT t.id, t.name AS ad, t.type, u.email
 			 FROM teams t
-			 JOIN team_members tm ON tm.teamId = t.id AND tm.status = 'aktif'
-			 JOIN users u ON u.id = tm.userId
+			 JOIN team_members tm ON tm.team_id = t.id AND tm.status = 'aktif'
+			 JOIN users u ON u.id = tm.user_id
 			 WHERE t.status = 'aktif' AND u.status = 'aktif'
 			   AND u.email IS NOT NULL AND u.email <> ''
-			 ORDER BY t.ad, u.email`
+			 ORDER BY t.name, u.email`
 		),
 	]);
 

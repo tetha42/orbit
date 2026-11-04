@@ -85,7 +85,7 @@ export function ChatMessageInput({
 	const uploadOne = async (file: File): Promise<ChatAttachmentItem | null> => {
 		if (!roomId) return null;
 		const formData = new FormData();
-		formData.set('odaId', roomId);
+		formData.set('roomId', roomId);
 		formData.set('file', file);
 		const res = await fetch('/api/chat/upload', { method: 'POST', body: formData });
 		const data = await res.json();

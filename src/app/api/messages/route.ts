@@ -53,9 +53,9 @@ async function handlePOST(request: Request) {
 	const user = auth.user;
 	try {
 		const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
-		const subject = typeof body?.subject === 'string' ? body.subject.trim() : typeof body?.konu === 'string' ? body.konu.trim() : '';
-		const messageBody = typeof body?.body === 'string' ? body.body.trim() : typeof body?.govde === 'string' ? body.govde.trim() : '';
-		const rawRecipients = body?.recipients ?? body?.alicilar;
+		const subject = typeof body?.subject === 'string' ? body.subject.trim() : '';
+		const messageBody = typeof body?.body === 'string' ? body.body.trim() : '';
+		const rawRecipients = body?.recipients;
 		const recipients = Array.isArray(rawRecipients) ? rawRecipients.filter((x): x is string => typeof x === 'string') : [];
 		if (!subject || subject.length > MAIL_SUBJECT_MAX) {
 			return NextResponse.json({ error: `Konu 1 ile ${MAIL_SUBJECT_MAX} karakter arasında olmalıdır.` }, { status: 400 });
@@ -76,7 +76,7 @@ async function handlePOST(request: Request) {
 		if (decision.hata) return NextResponse.json({ error: decision.hata }, { status: 400 });
 		const { gidecek, atlananlar } = decision;
 		if (gidecek.length === 0) {
-			return NextResponse.json({ error: atlananlar.map(skippedReason).join(' '), atlananlar }, { status: 422 });
+			return NextResponse.json({ error: atlananlar.map(skippedReason).join(' '), skipped: atlananlar }, { status: 422 });
 		}
 
 		const { konuId, mesajId } = await createMailThread(user.id, subject, messageBody, gidecek.map((u) => u.id));
@@ -85,9 +85,6 @@ async function handlePOST(request: Request) {
 			threadId: konuId,
 			messageId: mesajId,
 			skipped: atlananlar,
-			konuId,
-			mesajId,
-			atlananlar,
 		};
 		return NextResponse.json(result, { status: 201 });
 	} catch (error) {

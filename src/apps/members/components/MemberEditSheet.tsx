@@ -3,15 +3,20 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pencil } from 'lucide-react';
 import { Sheet } from '@/core/ui/Sheet';
-import { useI18n } from '@/core/i18n';
+import { resolveLocalizedText, useI18n } from '@/core/i18n';
 import { errorMessage } from '@/lib/errors';
-import { optionLabel, type FormField } from '@/lib/formFields';
+import { fieldLabel as getFieldLabel, fieldPlaceholder, optionLabel, type FormField } from '@/lib/formFields';
 import type { RegistrationCoreConfig } from '@/lib/registrationConfig';
 import ui from '@/core/ui/ui.module.css';
 
 interface MemberAdminDetail {
 	member: {
 		id: string;
+		firstName?: string;
+		lastName?: string;
+		handle?: string;
+		department?: string;
+		grade?: number;
 		ad: string;
 		soyad: string;
 		email: string;
@@ -77,12 +82,12 @@ export function MemberEditSheet({ memberId, onClose, onSaved }: MemberEditSheetP
 				const next = data as MemberAdminDetail;
 				setDetail(next);
 				setValues({
-					ad: next.member.ad,
-					soyad: next.member.soyad,
+					ad: next.member.firstName || next.member.ad,
+					soyad: next.member.lastName || next.member.soyad,
 					email: next.member.email,
-					ogrenciNo: next.member.ogrenciNo,
-					bolum: next.member.bolum,
-					sinif: next.member.sinif,
+					ogrenciNo: next.member.handle || next.member.ogrenciNo,
+					bolum: next.member.department || next.member.bolum,
+					sinif: next.member.grade || next.member.sinif,
 					bio: next.member.bio,
 				});
 				setCustomValues(next.customFields ?? {});
@@ -140,7 +145,15 @@ export function MemberEditSheet({ memberId, onClose, onSaved }: MemberEditSheetP
 			const res = await fetch(`/api/members/${encodeURIComponent(memberId)}`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ ...values, customFields: customValues }),
+				body: JSON.stringify({
+					...values,
+					firstName: values.ad,
+					lastName: values.soyad,
+					handle: values.ogrenciNo,
+					department: values.bolum,
+					grade: values.sinif,
+					customFields: customValues,
+				}),
 			});
 			const data = await res.json().catch(() => null);
 			if (!res.ok) {
@@ -156,8 +169,9 @@ export function MemberEditSheet({ memberId, onClose, onSaved }: MemberEditSheetP
 		}
 	};
 
-	const fieldLabel = (field: FormField) =>
-		language === 'tr' ? field.labelTr || field.labelEn : field.labelEn || field.labelTr;
+	const fieldLabel = (field: FormField) => getFieldLabel(field, language);
+	const coreLabel = (item: { labelTr: string; labelEn: string }) =>
+		resolveLocalizedText({ en: item.labelEn, tr: item.labelTr }, language, item.labelEn || item.labelTr);
 
 	return (
 		<Sheet
@@ -218,9 +232,7 @@ export function MemberEditSheet({ memberId, onClose, onSaved }: MemberEditSheetP
 
 					<label className={ui.field}>
 						<span className={ui.fieldLabel}>
-							{language === 'tr'
-								? detail.core.memberId.labelTr
-								: detail.core.memberId.labelEn}
+							{coreLabel(detail.core.memberId)}
 						</span>
 						<input
 							className={ui.input}
@@ -234,7 +246,7 @@ export function MemberEditSheet({ memberId, onClose, onSaved }: MemberEditSheetP
 					<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
 						<label className={ui.field}>
 							<span className={ui.fieldLabel}>
-								{language === 'tr' ? detail.core.track.labelTr : detail.core.track.labelEn}
+								{coreLabel(detail.core.track)}
 							</span>
 							<select
 								className={ui.select}
@@ -251,7 +263,7 @@ export function MemberEditSheet({ memberId, onClose, onSaved }: MemberEditSheetP
 						</label>
 						<label className={ui.field}>
 							<span className={ui.fieldLabel}>
-								{language === 'tr' ? detail.core.level.labelTr : detail.core.level.labelEn}
+								{coreLabel(detail.core.level)}
 							</span>
 							<select
 								className={ui.select}
@@ -314,11 +326,7 @@ export function MemberEditSheet({ memberId, onClose, onSaved }: MemberEditSheetP
 												className={ui.textarea}
 												rows={3}
 												value={value}
-												placeholder={
-													language === 'tr'
-														? field.placeholderTr || field.placeholderEn
-														: field.placeholderEn || field.placeholderTr
-												}
+												placeholder={fieldPlaceholder(field, language)}
 												onChange={(event) => setValue(event.target.value)}
 												aria-invalid={Boolean(errorText)}
 											/>
@@ -337,11 +345,7 @@ export function MemberEditSheet({ memberId, onClose, onSaved }: MemberEditSheetP
 																	: 'text'
 												}
 												value={value}
-												placeholder={
-													language === 'tr'
-														? field.placeholderTr || field.placeholderEn
-														: field.placeholderEn || field.placeholderTr
-												}
+												placeholder={fieldPlaceholder(field, language)}
 												onChange={(event) => setValue(event.target.value)}
 												aria-invalid={Boolean(errorText)}
 											/>

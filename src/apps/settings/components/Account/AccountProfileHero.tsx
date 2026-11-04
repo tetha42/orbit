@@ -14,6 +14,10 @@ import styles from './Account.module.css';
 interface AccountProfileHeroProps {
 	user: {
 		id: string;
+		firstName?: string;
+		lastName?: string;
+		avatarUrl?: string | null;
+		createdAt?: number;
 		ad: string;
 		soyad: string;
 		email: string;
@@ -82,10 +86,10 @@ export function AccountProfileHero({
 	return (
 		<section className={styles.hero}>
 			<div className={styles.avatarWrap}>
-				{user.profilFoto ? (
-					<Image src={user.profilFoto} alt="" width={96} height={96} unoptimized className={styles.avatar} />
+				{user.avatarUrl || user.profilFoto ? (
+					<Image src={(user.avatarUrl || user.profilFoto)!} alt="" width={96} height={96} unoptimized className={styles.avatar} />
 				) : (
-					<span className={`${styles.avatar} ${styles.avatarInitials}`}>{initials(`${user.ad} ${user.soyad}`)}</span>
+					<span className={`${styles.avatar} ${styles.avatarInitials}`}>{initials(`${user.firstName || user.ad || ''} ${user.lastName || user.soyad || ''}`)}</span>
 				)}
 				<button
 					type="button"
@@ -101,11 +105,11 @@ export function AccountProfileHero({
 			</div>
 			<div className={styles.heroBody}>
 				<h3 className={styles.name}>
-					{user.ad} {user.soyad}
+					{user.firstName || user.ad} {user.lastName || user.soyad}
 				</h3>
 				<div className={styles.meta}>
 					<RoleBadge role={user.rolBilgi} bosMetin={t('roleNone')} />{' '}
-					{user.email} · {fill(t('acMemberSince'), { date: new Date(user.olusturma).toLocaleDateString(locale, { month: 'long', year: 'numeric' }) })}
+					{user.email} · {fill(t('acMemberSince'), { date: new Date(user.createdAt || user.olusturma || 0).toLocaleDateString(locale, { month: 'long', year: 'numeric' }) })}
 				</div>
 				<div className={styles.level}>
 					<strong>{fill(t('acLevel'), { n: seviye.seviye })}</strong>

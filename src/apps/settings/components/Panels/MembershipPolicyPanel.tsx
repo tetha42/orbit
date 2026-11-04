@@ -445,7 +445,7 @@ export function MembershipPolicyPanel() {
 									</div>
 									<div style={{ opacity: 0.55 }}>
 										{roleName(invitation.roleId)} ·{' '}
-										{new Intl.DateTimeFormat(language === 'tr' ? 'tr-TR' : 'en-US', {
+										{new Intl.DateTimeFormat(language, {
 											dateStyle: 'medium',
 										}).format(new Date(invitation.expiresAt))}
 									</div>

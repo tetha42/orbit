@@ -18,20 +18,45 @@ export interface WorkspacePreferencesRecord {
 	updatedAt: number;
 }
 
-export async function getUserWorkspacePreferences(userId: string): Promise<WorkspacePreferencesRecord | null> {
+function parseWorkspaceState(raw: unknown): UserWorkspaceState {
+	if (!raw) return {};
+	if (typeof raw === 'string') {
+		try {
+			const parsed = JSON.parse(raw);
+			return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+				? (parsed as UserWorkspaceState)
+				: {};
+		} catch {
+			return {};
+		}
+	}
+	if (typeof raw === 'object' && !Array.isArray(raw)) {
+		return raw as UserWorkspaceState;
+	}
+	return {};
+}
+
+export async function getUserWorkspacePreferences(
+	userId: string
+): Promise<WorkspacePreferencesRecord | null> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query<{ user_id: string; state: unknown; updated_at: string | number }>(
-		`SELECT user_id, state, updated_at
-		 FROM user_workspace_preferences
-		 WHERE user_id = $1`,
+	const res = await getPgPool().query<{
+		id: string;
+		workspaceState?: unknown;
+		workspace_state?: unknown;
+	}>(
+		`SELECT id, workspace_state AS "workspaceState"
+		 FROM users
+		 WHERE id = $1`,
 		[userId]
 	);
 	if (res.rows.length === 0) return null;
 	const row = res.rows[0];
+	const state = parseWorkspaceState(row.workspaceState ?? row.workspace_state);
 	return {
-		userId: row.user_id,
-		state: (typeof row.state === 'object' && row.state !== null ? row.state : {}) as UserWorkspaceState,
-		updatedAt: Number(row.updated_at) || 0,
+		userId: String(row.id),
+		state,
+		updatedAt: Number(state.updatedAt) || 0,
 	};
 }
 
@@ -41,18 +66,15 @@ export async function setUserWorkspacePreferences(
 ): Promise<WorkspacePreferencesRecord> {
 	await ensurePostgresInit();
 	const now = Date.now();
-	const stateJson = JSON.stringify(state);
+	const nextState: UserWorkspaceState = { ...state, updatedAt: now };
+	const stateJson = JSON.stringify(nextState);
 	await getPgPool().query(
-		`INSERT INTO user_workspace_preferences (user_id, state, updated_at)
-		 VALUES ($1, $2::jsonb, $3)
-		 ON CONFLICT (user_id) DO UPDATE SET
-		   state = EXCLUDED.state,
-		   updated_at = EXCLUDED.updated_at`,
-		[userId, stateJson, now]
+		`UPDATE users SET workspace_state = $2::jsonb WHERE id = $1`,
+		[userId, stateJson]
 	);
 	return {
 		userId,
-		state,
+		state: nextState,
 		updatedAt: now,
 	};
 }

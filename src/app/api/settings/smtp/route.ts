@@ -95,8 +95,8 @@ export async function POST(request: Request) {
 		};
 		await setSystemSettings(updates, {
 			ctx: auditContext(request, auth.user),
-			registration: { islem: 'ayar.smtp', hedefTur: 'ayar', hedefId: 'smtp', hedefAd: 'E-posta hesabı (SMTP)' },
-			fark: (onceki, yeni) => smtpFarki(onceki, yeni, varsayilan),
+			registration: { action: 'setting.smtp', targetType: 'setting', targetId: 'smtp', targetName: 'E-posta hesabı (SMTP)' },
+			fark: (before, yeni) => smtpFarki(before, yeni, varsayilan),
 		});
 
 		// Report the effective state so the panel can warn that mail will not send

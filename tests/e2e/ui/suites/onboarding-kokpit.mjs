@@ -15,7 +15,7 @@ export default async function suite(t) {
 	const okur = await t.api('okur');
 
 	// A team of our own, open to everyone: the showcase must still turn a join into an application.
-	const team = await makeTeam(t, admin, { label: 'Kokpit', liderId: fx.users.ege.id, katilimTuru: 'acik' });
+	const team = await makeTeam(t, admin, { label: 'Kokpit', leadId: fx.users.ege.id, katilimTuru: 'acik' });
 	const event = await makeEvent(t, admin, { label: 'Kokpit', startMin: -10, lengthMin: 90 });
 
 	await t.step('kokpit: alt gezinme ve dört sekme (can, 390×844)', async () => {
@@ -56,8 +56,8 @@ export default async function suite(t) {
 	});
 
 	await t.step('kokpit: görevlerim ve yaklaşan etkinlik gerçek veriden geliyor', async () => {
-		t.eq((await can.post('/api/takimlar', { action: 'join', takimId: team.id })).status, 200, 'can açık takıma katıldı');
-		const task = await ege.post('/api/takimlar', { action: 'addTask', takimId: team.id, baslik: 'Kokpit test görevi', atananUyeId: fx.users.can.id });
+		t.eq((await can.post('/api/takimlar', { action: 'join', teamId: team.id })).status, 200, 'can açık takıma katıldı');
+		const task = await ege.post('/api/takimlar', { action: 'addTask', teamId: team.id, baslik: 'Kokpit test görevi', atananUyeId: fx.users.can.id });
 		t.eq(task.status, 200, 'kaptan görevi can’a atadı', JSON.stringify(task.json));
 
 		const { page } = await t.open('can', { mobile: true });
@@ -70,7 +70,7 @@ export default async function suite(t) {
 		await t.shot(page, 'kokpit-veri');
 
 		// Canlı: kaptan görevi tamamlandı yapınca kart sayfa yenilenmeden güncellenir.
-		const gorev = (await can.get(`/api/takimlar?takimId=${team.id}`)).json.gorevler.find((g) => g.baslik === 'Kokpit test görevi');
+		const gorev = (await can.get(`/api/takimlar?teamId=${team.id}`)).json.gorevler.find((g) => g.baslik === 'Kokpit test görevi');
 		t.eq((await ege.post('/api/takimlar', { action: 'updateTask', gorevId: gorev.id, durum: 'tamamlandi' })).status, 200, 'görev tamamlandı');
 		const ms = await t.waitFor(async () => (await card.getByText('Kokpit test görevi').count()) === 0, { timeout: 15_000 });
 		t.check(ms >= 0, `tamamlanan görev kartan canlı düştü (${ms} ms)`);
@@ -106,19 +106,19 @@ export default async function suite(t) {
 		await card.getByText('Başvurun kaptanda').waitFor();
 		t.check(true, 'başvuru gitti, kart "kaptanda" diyor');
 
-		const board = (await ege.get(`/api/takimlar?takimId=${team.id}`)).json;
-		const app = board.basvurular.find((b) => b.kullaniciId === fx.users.okur.id);
+		const board = (await ege.get(`/api/takimlar?teamId=${team.id}`)).json;
+		const app = board.basvurular.find((b) => b.userId === fx.users.okur.id);
 		t.check(!!app, 'açık takıma bile başvuru olarak düştü (üye olmadı)');
 		t.eq(app?.basvuruNotu, 'Uzmanlık: C++, ROS2\nRoket aviyoniği ile ilgileniyorum.', 'kaptan not ve uzmanlıkları görüyor');
-		t.check(!board.uyeler.some((u) => u.kullaniciId === fx.users.okur.id), 'başvuran henüz üye değil');
+		t.check(!board.uyeler.some((u) => u.userId === fx.users.okur.id), 'başvuran henüz üye değil');
 
 		// Başvuruyu geri çek, sonra yeniden başvur → kaptan onaylar → kart canlı güncellenir.
 		await card.getByRole('button', { name: 'Başvuruyu geri çek' }).click();
 		await card.getByRole('button', { name: 'Başvur' }).waitFor();
 		t.check(true, 'geri çekince "Başvur" düğmesi döndü');
-		t.eq((await okur.post('/api/takimlar/kesfet', { action: 'apply', takimId: team.id })).status, 200, 'yeniden başvuru');
+		t.eq((await okur.post('/api/takimlar/kesfet', { action: 'apply', teamId: team.id })).status, 200, 'yeniden başvuru');
 		await card.getByText('Başvurun kaptanda').waitFor();
-		t.eq((await ege.post('/api/takimlar', { action: 'approve', takimId: team.id, kullaniciId: fx.users.okur.id })).status, 200, 'kaptan onayladı');
+		t.eq((await ege.post('/api/takimlar', { action: 'approve', teamId: team.id, userId: fx.users.okur.id })).status, 200, 'kaptan onayladı');
 		const ms = await t.waitFor(async () => (await card.getByText('Başvurun kabul edildi').count()) === 1, { timeout: 15_000 });
 		t.check(ms >= 0, `onay sayfa yenilenmeden kartta göründü (${ms} ms)`);
 		await t.shot(page, 'rolsuz-kabul');

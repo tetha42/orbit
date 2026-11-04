@@ -30,7 +30,7 @@ export function GroupInfoModal({
 		let isSubscribed = true;
 		setLoading(true);
 
-		void fetch(`/api/chat/rooms?action=members&odaId=${encodeURIComponent(room.id)}`)
+		void fetch(`/api/chat/rooms?action=members&roomId=${encodeURIComponent(room.id)}`)
 			.then((res) => res.json())
 			.then((data) => {
 				if (isSubscribed && data.ok && Array.isArray(data.members)) {
@@ -163,25 +163,25 @@ export function GroupInfoModal({
 								members.map((member) => (
 									<div key={member.id} className={s.contactItem} style={{ cursor: 'default' }}>
 										<div className={s.contactAvatar}>
-											{member.profilFoto ? (
+											{member.avatarUrl || member.profilFoto ? (
 												// eslint-disable-next-line @next/next/no-img-element
 												<img
-													src={member.profilFoto}
-													alt={member.ad}
+													src={member.avatarUrl || member.profilFoto}
+													alt={member.firstName || member.ad}
 													style={{ width: '100%', height: '100%', objectFit: 'cover' }}
 												/>
 											) : (
-												member.ad.slice(0, 1).toUpperCase()
+												(member.firstName || member.ad || '').slice(0, 1).toUpperCase()
 											)}
 										</div>
 
 										<div className={s.contactInfo}>
 											<div className={s.contactName}>
-												{member.ad} {member.soyad}
+												{member.firstName || member.ad} {member.lastName || member.soyad}
 											</div>
 											<div className={s.contactMeta}>
-												{member.rolAd && (
-													<span className={s.contactRoleBadge}>{member.rolAd}</span>
+												{(member.roleName || member.rolAd) && (
+													<span className={s.contactRoleBadge}>{member.roleName || member.rolAd}</span>
 												)}
 												{member.bolum && <span>{member.bolum}</span>}
 											</div>

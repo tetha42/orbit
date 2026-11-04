@@ -45,7 +45,7 @@ export function NoteEditor({
 
 	const formatHeaderDate = (timestamp: number) => {
 		const date = new Date(timestamp);
-		const locale = language === 'tr' ? 'tr-TR' : 'en-US';
+		const locale = language;
 		return date.toLocaleDateString(locale, {
 			day: 'numeric',
 			month: 'long',

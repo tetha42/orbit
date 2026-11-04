@@ -73,7 +73,7 @@ export function NotesMobileView({
 	const isEditing = Boolean(selectedNoteId && activeNote);
 	useMobileSubView(isEditing);
 
-	const locale = language === 'tr' ? 'tr-TR' : 'en-US';
+	const locale = language;
 
 	const formatNoteDate = (timestamp: number) => {
 		const date = new Date(timestamp);

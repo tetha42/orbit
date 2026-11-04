@@ -76,7 +76,7 @@ export async function POST(request: Request) {
 	});
 
 	void notifyEmailChangeCode(
-		{ ad: auth.user.ad, soyad: auth.user.soyad, email: newEmail },
+		{ firstName: auth.user.firstName || auth.user.ad, lastName: auth.user.lastName || auth.user.soyad, email: newEmail },
 		code
 	);
 	await logSystemEvent({

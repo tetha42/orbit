@@ -122,11 +122,15 @@ export async function GET(request: Request) {
 			{
 				user: {
 					id: user.id,
-					ad: user.ad,
-					soyad: user.soyad,
+					firstName: user.firstName || user.ad,
+					lastName: user.lastName || user.soyad,
+					ad: user.firstName || user.ad,
+					soyad: user.lastName || user.soyad,
 					email: user.email,
-					ogrenciNo: user.ogrenciNo,
-					rolAd: user.permission.role?.ad ?? 'Role Yok',
+					handle: user.handle || user.ogrenciNo,
+					ogrenciNo: user.handle || user.ogrenciNo,
+					roleName: user.permission.role?.name ?? user.permission.role?.ad ?? 'No Role',
+					rolAd: user.permission.role?.name ?? user.permission.role?.ad ?? 'Role Yok',
 					admin: user.permission.admin,
 					totpEnabled: Number(user.totpEnabled) === 1,
 					status: user.status,
@@ -230,22 +234,24 @@ async function handlePOST(request: Request) {
 		};
 
 		if (scopesList.includes('profile')) {
-			idTokenPayload.name = `${user.ad} ${user.soyad}`.trim();
-			idTokenPayload.given_name = user.ad;
-			idTokenPayload.family_name = user.soyad;
+			const first = user.firstName || user.ad || '';
+			const last = user.lastName || user.soyad || '';
+			idTokenPayload.name = `${first} ${last}`.trim();
+			idTokenPayload.given_name = first;
+			idTokenPayload.family_name = last;
 		}
 		if (scopesList.includes('email')) {
 			idTokenPayload.email = user.email;
 			idTokenPayload.email_verified = true;
 		}
 		if (scopesList.includes('roles')) {
-			idTokenPayload.roles = permission.role ? [permission.role.ad] : [];
+			idTokenPayload.roles = permission.role ? [permission.role.name || permission.role.ad] : [];
 			idTokenPayload.admin = Boolean(permission.admin);
 		}
 		if (scopesList.includes('academic')) {
-			idTokenPayload.student_no = user.ogrenciNo;
-			idTokenPayload.department = user.bolum;
-			idTokenPayload.class_year = user.sinif;
+			idTokenPayload.student_no = user.handle || user.ogrenciNo;
+			idTokenPayload.department = user.department || user.bolum;
+			idTokenPayload.class_year = user.grade || user.sinif;
 		}
 
 		const idToken = await signOAuthJwt(idTokenPayload as unknown as JwtPayload);
@@ -255,10 +261,12 @@ async function handlePOST(request: Request) {
 			sub: user.id,
 		};
 		if (scopesList.includes('profile')) {
-			userInfoPayload.name = `${user.ad} ${user.soyad}`.trim();
-			userInfoPayload.given_name = user.ad;
-			userInfoPayload.family_name = user.soyad;
-			userInfoPayload.picture = user.profilFoto || null;
+			const first = user.firstName || user.ad || '';
+			const last = user.lastName || user.soyad || '';
+			userInfoPayload.name = `${first} ${last}`.trim();
+			userInfoPayload.given_name = first;
+			userInfoPayload.family_name = last;
+			userInfoPayload.picture = user.avatarUrl || user.profilFoto || null;
 			userInfoPayload.bio = user.bio || '';
 		}
 		if (scopesList.includes('email')) {

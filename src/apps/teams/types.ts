@@ -45,7 +45,7 @@ export interface Team {
 	slug: string;
 	aciklama: string;
 	kategori: string;
-	liderId: string;
+	leadId: string;
 	liderAdSoyad: string;
 	kontenjan: number;
 	repoUrl: string | null;

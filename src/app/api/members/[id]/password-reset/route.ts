@@ -52,22 +52,23 @@ export async function POST(request: Request, { params }: Params) {
 	const ip = clientAddress(request);
 
 	await withTransaction(async (client) => {
-		await client.query('DELETE FROM email_verifications WHERE expires_at < $1', [Date.now()]);
+		await client.query('DELETE FROM verification_tokens WHERE expires_at < $1', [Date.now()]);
 		await client.query(
-			`INSERT INTO email_verifications (email, code, type, expires_at, created_at)
-			 VALUES ($1, $2, 'sifre_sifirlama', $3, $4)
-			 ON CONFLICT (email) DO UPDATE
-			 SET code = EXCLUDED.code, type = 'sifre_sifirlama',
-			     expires_at = EXCLUDED.expires_at, created_at = EXCLUDED.created_at`,
-			[target.email, hashOtpCode(code), expiresAt, Date.now()]
+			`DELETE FROM verification_tokens WHERE token_type = 'sifre_sifirlama' AND lower(target) = lower($1)`,
+			[target.email]
+		);
+		await client.query(
+			`INSERT INTO verification_tokens (id, user_id, token_type, target, token_hash, expires_at, created_at)
+			 VALUES ($1, $2, 'sifre_sifirlama', $3, $4, $5, $6)`,
+			[`otp_${crypto.randomUUID()}`, target.id, target.email, hashOtpCode(code), expiresAt, Date.now()]
 		);
 		await logAuditEvent(client, auditContext(request, auth.user), {
-			islem: 'uye.sifre_sifirlama',
-			hedefTur: 'uye',
-			hedefId: target.id,
-			hedefAd: `${target.ad} ${target.soyad}`.trim(),
-			onceki: null,
-			sonraki: { email: target.email, expiresAt },
+			action: 'member.password_reset',
+			targetType: 'member',
+			targetId: target.id,
+			targetName: `${target.ad} ${target.soyad}`.trim(),
+			before: null,
+			after: { email: target.email, expiresAt },
 		});
 	});
 
@@ -78,7 +79,7 @@ export async function POST(request: Request, { params }: Params) {
 	let mailQueued = false;
 	if (!wasDelivered(delivery)) {
 		await getPgPool().query(
-			"UPDATE email_verifications SET expires_at = $1 WHERE email = $2 AND type = 'sifre_sifirlama'",
+			"UPDATE verification_tokens SET expires_at = $1 WHERE lower(target) = lower($2) AND token_type = 'sifre_sifirlama'",
 			[Date.now() + 24 * 60 * 60_000, target.email]
 		);
 		await enqueueMail({
@@ -95,7 +96,7 @@ export async function POST(request: Request, { params }: Params) {
 		servis: 'auth',
 		seviye: 'INFO',
 		mesaj: `Yönetici şifre sıfırlama e-postası gönderdi: ${target.email}`,
-		detay: { yapanId: auth.user.id, hedefId: target.id },
+		detay: { actorId: auth.user.id, targetId: target.id },
 		userId: auth.user.id,
 		ip,
 	});

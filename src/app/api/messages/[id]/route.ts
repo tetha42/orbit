@@ -38,7 +38,7 @@ async function handlePOST(request: Request, { params }: { params: Promise<{ id: 
 		if (!subject) return notFound();
 
 		const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
-		const rawBody = typeof body?.govde === 'string' ? body.govde : (typeof body?.body === 'string' ? body.body : '');
+		const rawBody = typeof body?.body === 'string' ? body.body : '';
 		const messageBody = rawBody.trim();
 		if (!messageBody || messageBody.length > MAIL_BODY_MAX) {
 			return NextResponse.json({ error: `Mesaj 1 ile ${MAIL_BODY_MAX} karakter arasında olmalıdır.` }, { status: 400 });
@@ -53,12 +53,12 @@ async function handlePOST(request: Request, { params }: { params: Promise<{ id: 
 		const { gidecek, atlananlar } = decision;
 		// Everyone else has left or lost Mail: the reply would reach nobody.
 		if (gidecek.length === 0) {
-			return NextResponse.json({ error: atlananlar.map(skippedReason).join(' ') || 'Yanıtın gideceği kimse kalmadı.', atlananlar }, { status: 422 });
+			return NextResponse.json({ error: atlananlar.map(skippedReason).join(' ') || 'Yanıtın gideceği kimse kalmadı.', skipped: atlananlar }, { status: 422 });
 		}
 
 		const messageId = await addMailReply(id, user.id, messageBody, gidecek.map((u) => u.id));
 		notifyByEmail(gidecek, user, subject.konu);
-		const result: MailSendResult = { konuId: id, mesajId: messageId, atlananlar };
+		const result: MailSendResult = { threadId: id, messageId, skipped: atlananlar };
 		return NextResponse.json(result, { status: 201 });
 	} catch (error) {
 		console.error('API /api/messages/[id] POST error:', error);
@@ -87,8 +87,8 @@ async function handlePATCH(request: Request, { params }: { params: Promise<{ id:
 	if (!auth.authorized) return auth.response;
 	try {
 		const { id } = await params;
-		const body = (await request.json().catch(() => null)) as { action?: unknown; islem?: unknown } | null;
-		const rawAction = typeof body?.action === 'string' ? body.action : (typeof body?.islem === 'string' ? body.islem : '');
+		const body = (await request.json().catch(() => null)) as { action?: unknown } | null;
+		const rawAction = typeof body?.action === 'string' ? body.action : '';
 		const action = ACTION_MAP[rawAction];
 		if (!action || !MAIL_ACTIONS.includes(action)) return NextResponse.json({ error: 'Geçersiz işlem.' }, { status: 400 });
 		const subject = await getMailThread(auth.user.id, id);

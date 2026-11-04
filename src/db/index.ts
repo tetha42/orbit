@@ -20,36 +20,9 @@ const globalForPg = globalThis as unknown as { __pgPool?: Pool };
 let isInitialized = false;
 let initPromise: Promise<void> | null = null;
 
-const CAMEL_CASE_COLUMNS = [
-	'aktarimId', 'appId', 'backedUp', 'ikiAdimZorunlu', 'roleId',
-	'aktifOturumToken', 'aktorId', 'basvuruNotu', 'atananUyeId', 'belgeTuru',
-	'copteMi', 'deviceType', 'verificationCode', 'envanterId', 'etkinlikId',
-	'fisFotoUrl', 'gorevId', 'guncelleyenId', 'herkeseAcik', 'iadeTarihi',
-	'kamuyaAcikMi', 'kararNo', 'katilimTarihi', 'katilimTuru', 'katilimZamani',
-	'kaydedenId', 'kilitliMi', 'klasorId', 'userId', 'liderId',
-	'oduncAlanId', 'oduncTarihi', 'oneCikan', 'ogrenciNo', 'olusturanId',
-	'onemliMi', 'oturumBitis', 'pdfUrl', 'projeId', 'profilFoto',
-	'publicKey', 'repoUrl', 'resimUrl', 'sabitliMi', 'seriNo',
-	'passwordHash', 'sonGirisTarihi', 'sonKullanma', 'teamId', 'takimRolu',
-	'tamamMi', 'tamamlanma', 'teslimTarihi', 'totpConfirmedAt', 'totpEnabled',
-	'totpRecoveryCodes', 'totpSecret', 'totpSonAdim', 'tutarKurus', 'verilisTarihi',
-	'xpVerildi', 'canliUrl', 'publishStatus', 'yayinTarihi', 'yazarAdSoyad',
-	'yazarId', 'yoklamaAcik', 'yukleyenId', 'yapanId', 'yapanAd',
-	'hedefTur', 'hedefId', 'hedefAd', 'konuId', 'mesajId',
-	'gonderenId', 'gonderenAd', 'gonderenFoto', 'odaId', 'sonOkuma', 'sohbetOdaId',
-	'peerUserId', 'memberCount', 'okunmamisSayisi', 'sonMesaj', 'postaEposta',
-	'silinmeTarihi', 'duzenlenmeTarihi',
-	'pollId', 'secenekId', 'olusturanId', 'cokluSecim', 'endsAt', 'userAvatar',
-	'clientId', 'secretHash', 'redirectUris', 'allowedScopes', 'codeChallenge', 'codeChallengeMethod', 'onayTarihi',
-	'sonGirisIp', 'sonGirisUserAgent', 'sonAktifIp', 'sonAktifTarihi', 'tehditPuani', 'expiresAt',
-];
-
-const LOWER_TO_CAMEL = new Map(CAMEL_CASE_COLUMNS.map((name) => [name.toLowerCase(), name]));
 const KEY_MAP_CACHE = new Map<string, string>();
 
 function normalizeColumnKey(key: string): string {
-	const legacy = LOWER_TO_CAMEL.get(key.toLowerCase());
-	if (legacy) return legacy;
 	const cached = KEY_MAP_CACHE.get(key);
 	if (cached) return cached;
 	if (key.includes('_')) {
@@ -300,8 +273,10 @@ export async function getSetupStatus(): Promise<{
 }
 
 export async function setupFirstAdmin(params: {
-	ad: string;
-	soyad: string;
+	ad?: string;
+	soyad?: string;
+	firstName?: string;
+	lastName?: string;
 	email: string;
 	password: string;
 }): Promise<{ ok: boolean; error?: string; user?: Record<string, unknown> }> {
@@ -330,10 +305,12 @@ export async function setupFirstAdmin(params: {
 		const passwordHash = await bcrypt.hash(params.password, 12);
 		const id = randomUUID();
 		const now = Date.now();
+		const fName = (params.firstName ?? params.ad ?? '').trim();
+		const lName = (params.lastName ?? params.soyad ?? '').trim();
 		await client.query(
 			`INSERT INTO users (id, first_name, last_name, email, password_hash, handle, department, grade, role_id, avatar_url, bio, xp, status, created_at)
 			 VALUES ($1, $2, $3, $4, $5, NULL, 'Management', 1, $6, NULL, '', 0, 'aktif', $7)`,
-			[id, params.ad.trim(), params.soyad.trim(), email, passwordHash, ADMIN_ROLE_ID, now]
+			[id, fName, lName, email, passwordHash, ADMIN_ROLE_ID, now]
 		);
 		const userRes = await client.query('SELECT * FROM users WHERE id = $1', [id]);
 		await client.query('COMMIT');

@@ -29,7 +29,7 @@ export const MailApp: React.FC = () => {
 	const { isAdmin } = useSession();
 	const isMobile = useIsMobile();
 	const { t, language } = useI18n();
-	const locale = language === 'tr' ? 'tr-TR' : 'en-US';
+	const locale = language;
 
 	const [folders, setFolders] = useState<MailFolderInfo[]>([]);
 	const [activeFolder, setActiveFolder] = useState<string>('INBOX');

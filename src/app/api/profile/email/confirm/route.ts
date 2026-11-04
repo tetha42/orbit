@@ -76,27 +76,27 @@ export async function POST(request: Request) {
 				pending.newEmail,
 				Date.now(),
 			]);
-			await client.query('UPDATE email_change_requests SET used_at = $2 WHERE id = $1', [
+			await client.query('UPDATE verification_tokens SET used_at = $2 WHERE id = $1', [
 				pending.id,
 				Date.now(),
 			]);
 			await logAuditEvent(client, auditContext(request, auth.user), {
-				islem: 'uye.email',
-				hedefTur: 'uye',
-				hedefId: auth.user.id,
-				hedefAd: memberTargetName({
+				action: 'member.email',
+				targetType: 'member',
+				targetId: auth.user.id,
+				targetName: memberTargetName({
 					ad: String(current.firstName),
 					soyad: String(current.lastName),
 					email: String(current.email),
 				}),
-				onceki: { email: String(current.email) },
-				sonraki: { email: pending.newEmail },
+				before: { email: String(current.email) },
+				after: { email: pending.newEmail },
 			});
 			return String(current.email);
 		});
 
 		void notifyEmailChanged(
-			{ ad: auth.user.ad, soyad: auth.user.soyad, email: oldEmail },
+			{ firstName: auth.user.firstName || auth.user.ad, lastName: auth.user.lastName || auth.user.soyad, email: oldEmail },
 			pending.newEmail
 		);
 		await logSystemEvent({

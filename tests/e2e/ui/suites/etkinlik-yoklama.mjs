@@ -116,7 +116,7 @@ export default async function suite(t) {
 		await detail.getByRole('button', { name: 'Ekle', exact: true }).click();
 		await toast(ap, 'eklendi');
 		const list = await attendance(admin, live.id);
-		const row = (id) => list.find((r) => r.kullaniciId === id);
+		const row = (id) => list.find((r) => r.userId === id);
 		t.eq(row(ticket.id)?.yontem, 'bilet', 'bilet okutulan: yöntem bilet');
 		t.eq(row(walkIn.id)?.yontem, 'manuel', 'elle eklenen: yöntem manuel');
 		t.eq(row(walkIn.id)?.kayitZamani ?? null, null, 'elle eklenen kayıtsız gelmiş');
@@ -148,7 +148,7 @@ export default async function suite(t) {
 		const { detail } = await openEvent(ap, live.id);
 		await detail.locator(`tr[data-member-id="${qr.id}"]`).getByRole('button', { name: 'Yoklamayı geri al' }).click();
 		await answerDialog(ap);
-		await t.waitFor(async () => !(await attendance(admin, live.id)).find((r) => r.kullaniciId === qr.id)?.katilimZamani);
+		await t.waitFor(async () => !(await attendance(admin, live.id)).find((r) => r.userId === qr.id)?.katilimZamani);
 		t.eq(await xpOf(qrApi), before - 150, '150 XP geri alındı');
 	});
 

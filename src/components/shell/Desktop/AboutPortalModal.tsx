@@ -1,6 +1,6 @@
 'use client';
 
-import { useI18n } from '@/core/i18n';
+import { resolveLocalizedText, useI18n } from '@/core/i18n';
 import { useIdentity } from '@/core/identity';
 import { useShell } from '@/core/shell';
 import { X, ShieldCheck } from 'lucide-react';
@@ -99,7 +99,7 @@ export function AboutPortalModal() {
 					{identity.appName} · {identity.studio}
 				</span>
 				<span style={{ fontSize: '11.5px', opacity: 0.55, marginBottom: '16px', textAlign: 'center', maxWidth: '330px' }}>
-					{language === 'tr' ? identity.descriptionTr : identity.descriptionEn}
+					{resolveLocalizedText({ en: identity.descriptionEn, tr: identity.descriptionTr }, language)}
 				</span>
 
 				{/* Specs list */}

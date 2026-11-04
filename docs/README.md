@@ -9,14 +9,14 @@ Welcome to the official engineering, operational, and user documentation for **O
 Whenever documentation and source code diverge, **the code is authoritative** and the documentation must be updated in the same pull request. Before documenting file paths, application counts, or database schemas, verify them directly against the repository:
 
 ```bash
-# Count registered mini-applications (15)
+# Count registered mini-application manifests (17: 16 user-facing + 1 internal mediaviewer)
 find src/apps -maxdepth 2 -name manifest.ts | wc -l
 
 # List all mini-application manifests
 ls src/apps/*/manifest.ts
 
-# Count PostgreSQL tables initialized at runtime (45)
-grep -rhoE 'CREATE TABLE IF NOT EXISTS [a-zA-Z0-9_]+' src | awk '{print $NF}' | sort -u | wc -l
+# List all modular domain repositories
+ls src/db/repositories/*.repo.ts
 
 # Inspect top-level source directories
 find src -maxdepth 2 -type d | sort
@@ -32,26 +32,26 @@ find src -maxdepth 2 -type d | sort
 
 ## 2. Canonical Documentation Inventory
 
-The `docs/` directory is organized into **10 canonical reference documents**:
+The `docs/` directory is organized into canonical reference documents:
 
 | Document | Scope & Purpose | Target Audience |
 | :--- | :--- | :--- |
-| **[`README.md`](../README.md)** | Flagship project overview, 16 mini-apps summary, Zero-Config quick start, RBAC model, and CLI reference | Everyone |
+| **[`README.md`](../README.md)** | Flagship project overview, 17 app manifests (16 user-facing + 1 internal `mediaviewer`), Zero-Config quick start, RBAC model, and CLI reference | Everyone |
 | **[`docs/README.md`](README.md)** | Documentation index, reading paths, architectural snapshot, and governance policy | Contributors & Maintainers |
-| **[`docs/ARCHITECTURE.md`](ARCHITECTURE.md)** | Full-stack architecture, App Router & modular mini-app registry, in-memory SWR (`useJsonResource`), 60/120fps window compositor, Zero-Config runtime configuration (`sistem_ayarlari` + in-memory state), and directory structure | Software Engineers & Architects |
-| **[`docs/API.md`](API.md)** | REST & SSE API contracts, `/api/setup` onboarding endpoints, OAuth 2.0 Identity Provider endpoints, SoC telemetry & SOAR playbooks, Events, Certificates, Finance, and standard response envelopes | Frontend, Backend & Integration Engineers |
-| **[`docs/AUTH_SECURITY.md`](AUTH_SECURITY.md)** | Authentication lifecycle (Argon2id/bcrypt, `HttpOnly` cookies, TOTP 2FA, WebAuthn Passkeys), Global Legal Compliance (Terms of Service, GDPR Privacy Policy, Cookie Policy), Autonomous SoC Defense, DEFCON levels, Canary Honeypots, and FIM | Security Engineers & Auditors |
-| **[`docs/DATABASE.md`](DATABASE.md)** | PostgreSQL 16 schema reference (45 tables), dynamic runtime pool reconfiguration (`reconfigurePgPool`), advisory & row-level locking patterns, idempotent startup migrations, and backup/restore workflows | Database Administrators & Backend Engineers |
-| **[`docs/DATA_MODEL_ROADMAP.md`](DATA_MODEL_ROADMAP.md)** | Single-community member data platform: person/account/membership separation, field policies, registration lifecycle, committee/team model, phased migration plan | Product, Backend & Data Engineers |
-| **[`docs/DATA_DICTIONARY.md`](DATA_DICTIONARY.md)** | Field-level data dictionary: ownership, visibility, edit authority, cardinality, retention, and privacy classification for every member/team/role/legal entity | Backend, Security & Compliance Engineers |
-| **[`docs/USER_DATA_SECURITY.md`](USER_DATA_SECURITY.md)** | Current `users` data inventory, invitation lifecycle, password reset, passkey/2FA behavior and PWA fullscreen | Security, Privacy & Support Engineers |
-| **[`docs/ARCHITECTURE_AUDIT.md`](ARCHITECTURE_AUDIT.md)** | Full architecture/data-flow/app-by-app audit, release blockers and prioritized remediation roadmap | Architects, Maintainers & Auditors |
+| **[`docs/ARCHITECTURE.md`](ARCHITECTURE.md)** | Full-stack architecture, App Router & Embedded Microservice mini-app registry, in-memory SWR (`useJsonResource`), 60/120fps window compositor, Zero-Config runtime configuration (`organization_settings` + in-memory state), and directory structure | Software Engineers & Architects |
+| **[`docs/DATABASE.md`](DATABASE.md)** | PostgreSQL 16 schema reference (32 consolidated pure English `snake_case` tables), `JSONB` optimizations, automatic `snake_case` $\rightarrow$ `camelCase` mapping, dynamic runtime pool reconfiguration (`reconfigurePgPool`), and advisory locking | Database Administrators & Backend Engineers |
+| **[`docs/DATA_DICTIONARY.md`](DATA_DICTIONARY.md)** | Field-level data dictionary: 4 Organization Archetypes, ownership, visibility, edit authority, cardinality, retention, and index coverage across all 32 tables | Backend, Security & Compliance Engineers |
+| **[`docs/DATA_MODEL_ROADMAP.md`](DATA_MODEL_ROADMAP.md)** | Universal Community OS data platform architecture, unit/committee model, embedded microservice boundaries, and `translations JSONB` localization design | Product, Backend & Data Engineers |
+| **[`docs/API.md`](API.md)** | REST & SSE API contracts, `/api/setup` onboarding endpoints, OAuth 2.0 Identity Provider endpoints, SoC telemetry & SOAR playbooks, Events, Certificates, Treasury, and standard response envelopes | Frontend, Backend & Integration Engineers |
+| **[`docs/AUTH_SECURITY.md`](AUTH_SECURITY.md)** | Authentication lifecycle (Argon2id/bcrypt, `HttpOnly` `orbit_session` cookies, TOTP 2FA, WebAuthn Passkeys), Global Legal Compliance (Terms of Service, GDPR Privacy Policy, Cookie Policy), Autonomous SoC Defense, DEFCON levels, Canary Honeypots, and FIM | Security Engineers & Auditors |
+| **[`docs/USER_DATA_SECURITY.md`](USER_DATA_SECURITY.md)** | `users` security inventory, cryptographic invitation lifecycle, password reset, `mail_outbox` approval queue, Passkey/2FA behavior, and PWA fullscreen | Security, Privacy & Support Engineers |
+| **[`docs/ARCHITECTURE_AUDIT.md`](ARCHITECTURE_AUDIT.md)** | End-to-end architecture, data-flow, and app-by-app audit report | Architects, Maintainers & Auditors |
 | **[`docs/APP_SURFACE_INDEX.md`](APP_SURFACE_INDEX.md)** | Generated button/onClick/input/API surface index per mini-app | QA, Frontend & Product Engineers |
 | **[`docs/DEPLOYMENT.md`](DEPLOYMENT.md)** | Zero-Config self-hosting with Docker Compose, bare-metal Node.js/PM2, reverse proxy configurations (Nginx & Caddy), TLS/WebAuthn requirements, and first-run web onboarding at `/setup` | DevOps & Systems Administrators |
-| **[`docs/DEVELOPMENT.md`](DEVELOPMENT.md)** | Developer onboarding, Makefile targets, creating new mini-apps (`manifest.ts`), i18n localization (`en` primary, `tr` secondary), context menu hooks (`useContextMenu`), and verification gates (`npm run verify`) | Core Contributors & Plugin Authors |
-| **[`docs/OPERATIONS.md`](OPERATIONS.md)** | Day-2 operations, Autonomous SoC Studio monitoring, DEFCON lockdown recovery, database maintenance, audit retention, and health checks (`/api/healthz`) | Site Reliability Engineers (SRE) & Operators |
+| **[`docs/DEVELOPMENT.md`](DEVELOPMENT.md)** | Developer onboarding, Makefile targets, Embedded Microservice Mini-App Architecture (`manifest.ts`), Zero-Friction 1-PR Localization Guide (`src/locales/registry.ts`), `useContextMenu` hooks, and verification gates (`npm run verify`) | Core Contributors & Plugin Authors |
+| **[`docs/OPERATIONS.md`](OPERATIONS.md)** | Day-2 operations, Autonomous SoC Studio monitoring, DEFCON lockdown recovery, database maintenance, audit retention, and health checks (`/api/healthz` & `/api/setup`) | Site Reliability Engineers (SRE) & Operators |
 | **[`docs/UI_AND_DESIGN.md`](UI_AND_DESIGN.md)** | Dual design language specification: (1) Workspace Desktop Shell & Mini-Apps (adaptive light/dark glass & flat studio surfaces) and (2) Standalone & Static Surfaces (high-contrast monochrome flat surfaces for `/setup`, `/verify`, `/checkin`, `/oauth/authorize`, offline, and error boundaries) | UI/UX Designers & Frontend Engineers |
-| **[`docs/USER_GUIDE.md`](USER_GUIDE.md)** | End-user and administrator handbook covering registration with global Member ID / Handle, desktop navigation, all 16 mini-apps, and community governance | Community Members, Leads & Administrators |
+| **[`docs/USER_GUIDE.md`](USER_GUIDE.md)** | End-user and administrator handbook covering registration with global Member ID / Handle, desktop navigation, all 16 user-facing mini-apps, and community governance | Community Members, Leads & Administrators |
 
 ---
 
@@ -65,12 +65,12 @@ The `docs/` directory is organized into **10 canonical reference documents**:
 
 ### For Software Engineers & Contributors
 1. **[`docs/ARCHITECTURE.md`](ARCHITECTURE.md)** — Learn the modular monolith design, `src/core/*` shared hooks, and SSE real-time channels.
-2. **[`docs/DEVELOPMENT.md`](DEVELOPMENT.md)** — Set up your local development loop, build a new mini-app, and run `npm run verify`.
+2. **[`docs/DEVELOPMENT.md`](DEVELOPMENT.md)** — Set up your local development loop, build an isolated mini-app, add a new language in 1 PR, and run `npm run verify`.
 3. **[`docs/UI_AND_DESIGN.md`](UI_AND_DESIGN.md)** — Follow the dual design system rules and CSS token conventions.
-4. **[`docs/DATABASE.md`](DATABASE.md)** & **[`docs/API.md`](API.md)** — Write domain repositories (`src/server/db/domains/*.repo.ts`) and secure API routes (`requireApp`).
+4. **[`docs/DATABASE.md`](DATABASE.md)** & **[`docs/API.md`](API.md)** — Write domain repositories (`src/db/repositories/*.repo.ts`) and secure API routes (`requireApp`).
 
 ### For Community Administrators & Members
-1. **[`docs/USER_GUIDE.md`](USER_GUIDE.md)** — Master the desktop interface, Member ID / Handle registration, R&D teams, Kanban boards, Event QR check-ins, and RBAC role management.
+1. **[`docs/USER_GUIDE.md`](USER_GUIDE.md)** — Master the desktop interface, Member ID / Handle registration, organizational units, Kanban boards, Event QR check-ins, and RBAC role management.
 
 ---
 
@@ -78,9 +78,9 @@ The `docs/` directory is organized into **10 canonical reference documents**:
 
 - **Studio & Product:** **Orbit Community OS** engineered from the ground up by **tetha42**.
 - **Repository Topology:** Single-package modular monolith (`package.json`, Next.js 16 App Router, React 19, TypeScript 5.9).
-- **Mini-Application Architecture:** 15 isolated feature modules under `src/apps/<id>/`, each exporting a strict `AppManifest` (`manifest.ts`) that drives the Dock, Launcher, Spotlight, TopBar menus, RBAC permission matrix, and notification routing.
-- **Database Engine:** PostgreSQL 16 (`pg` pool) with 45 tables, runtime pool hot-swapping (`reconfigurePgPool`), transactional advisory locks (`pg_advisory_xact_lock`), and `LISTEN/NOTIFY` real-time pub/sub.
-- **Zero-Config Runtime State:** All community branding, SMTP relays, default roles, and security switches live in PostgreSQL (`sistem_ayarlari`) synchronized with in-memory runtime configuration—requiring zero `.env` or `config.ini` files to deploy.
+- **Mini-Application Architecture:** 17 isolated application manifests under `src/apps/<id>/` (16 user-facing workspace apps + 1 internal `mediaviewer`), each exporting a strict `AppManifest` (`manifest.ts`) that drives the Dock, Launcher, Spotlight, TopBar menus, RBAC permission matrix, and notification routing.
+- **Database Engine:** PostgreSQL 16 (`pg` pool) with 32 consolidated English `snake_case` tables, `JSONB` optimizations, runtime pool hot-swapping (`reconfigurePgPool`), transactional advisory locks (`pg_advisory_xact_lock`), and `LISTEN/NOTIFY` real-time pub/sub.
+- **Zero-Config Runtime State:** All community branding, archetype templates, SMTP relays, default roles, and security switches live in PostgreSQL (`organization_settings`) synchronized with in-memory runtime configuration—requiring zero `.env` or `config.ini` files to deploy.
 
 ---
 

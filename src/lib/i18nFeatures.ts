@@ -417,6 +417,117 @@ export const FEATURE_TRANSLATIONS: Record<Language, Record<string, string>> = {
 		gvQuorumMet: 'Yeter sayı sağlandı',
 		gvContent: 'Karar metni',
 		gvNoPermission: 'Bu işlem için yetkiniz yok.',
+
+		// Dock & Desktop Context Menus, Clock, DevTools Guard
+		dockBringToFront: 'Öne Getir',
+		dockOpenApp: 'Uygulamayı Aç',
+		dockOptions: 'Seçenekler',
+		dockKeepInDock: 'Dock’ta Tut',
+		dockOpenAtLogin: 'Girişte Aç',
+		dockTurnHidingOff: 'Gizlemeyi Kapat',
+		dockTurnHidingOn: 'Otomatik Gizlemeyi Aç',
+		dockShowAllWindows: 'Tüm Pencereleri Göster',
+		dockHide: 'Gizle',
+		dockQuitApp: 'Kapat: {title}',
+		ctxCloseApp: '{title} Kapat',
+		clockFallbackTime: '28 Eyl Pzt 09:00',
+		devToolsRestrictedTitle: '“Geliştirici Araçları” Kısıtlandı',
+		devToolsRestrictedBody:
+			'Orbit Community OS korumalı bir PWA çalışma ortamında çalışmaktadır. Güvenlik politikaları gereğince geliştirici konsoluna, sayfa kaynağına ve web eklentilerine erişim sınırlandırılmıştır.',
+
+		// Password Reset Modal
+		pwResetSendError: 'Kod gönderilemedi.',
+		pwResetServerError: 'Sunucu bağlantı hatası.',
+		pwResetCodeLenError: '6 haneli doğrulama kodunu eksiksiz girin.',
+		pwResetMinLenError: 'Yeni şifreniz en az 8 karakter olmalıdır.',
+		pwResetMismatchError: 'Şifreler birbiriyle eşleşmiyor.',
+		pwResetSuccessMsg: 'Şifreniz başarıyla güncellendi! Yeni şifrenizle giriş yapabilirsiniz.',
+		pwResetUpdateError: 'Şifre güncellenemedi.',
+		pwResetTitleRequest: 'Şifremi Unuttum',
+		pwResetTitleVerify: 'Yeni Şifre Belirleyin',
+		pwResetSubRequest: 'Kayıtlı e-posta adresinizi girin',
+		pwResetSubVerify: '{email} adresine gönderilen kod',
+		pwResetEmailLabel: 'E-posta Adresi',
+		pwResetEmailPh: 'uye@orbit.local veya ad.soyad@example.com',
+		pwResetSendBtn: 'Doğrulama Kodu Gönder',
+		pwResetCodeLabel: '6 Haneli Doğrulama Kodu',
+		pwResetNewPasswordLabel: 'Yeni Şifre (En az 8 karakter)',
+		pwResetConfirmPasswordLabel: 'Yeni Şifre Tekrar',
+		pwResetUpdateBtn: 'Şifreyi Güncelle',
+
+		// Legal Modal
+		legalTabTerms: 'Kullanım Koşulları',
+		legalTabPrivacy: 'Gizlilik Politikası (GDPR)',
+		legalTabCookies: 'Çerez & Oturum Politikası',
+		legalModalHeaderTitle: 'Küresel Yasal Standartlar & Veri Koruma',
+		legalTermsH1: '1. Hizmet Koşulları ve Topluluk Kuralları',
+		legalTermsP1:
+			'Orbit Community OS ("Platform"), toplulukların iş birliği, proje yönetimi, etkinlik organizasyonu ve güvenli iletişim yürütmesi için tetha42 tarafından geliştirilen bağımsız bir çalışma alanıdır.',
+		legalTermsH2: '2. Kabul Edilebilir Kullanım ve Hesap Güvenliği',
+		legalTermsP2:
+			'Üyeler, hesap kimlik bilgilerini korumakla, yetkisiz erişim girişimlerinden kaçınmakla ve topluluk çalışma alanlarında saygılı, yapıcı bir iletişim sürdürmekle yükümüdür. Otomatik tarama, yetkisiz sızma girişimleri veya sistem bütünlüğünü bozmaya yönelik eylemler otonom güvenlik duvarı (SoC/WAF) tarafından engellenir.',
+		legalTermsH3: '3. Fikri Mülkiyet ve Sorumluluk',
+		legalTermsP3:
+			'Platform üzerinde paylaşılan projeler, belgeler ve katkılar ilgili yazarların ve topluluğun belirlediği açık kaynak veya iç lisans koşullarına tabidir. Platform "olduğu gibi" sunulmaktadır.',
+		legalPrivacyH1: '1. Küresel Veri Koruma ve GDPR Uyumluluğu',
+		legalPrivacyP1:
+			'Orbit Community OS, Veri Minimizasyonu (Data Minimization) ve Tasarımdan İtibaren Gizlilik (Privacy by Design) ilkelerine göre çalışır. Yalnızca topluluk üyeliği, yetkilendirme ve çalışma alanı işlevleri için zorunlu olan veriler (ad, e-posta, üye kimliği, çalışma alanı/seviye) işlenir.',
+		legalPrivacyH2: '2. Kriptografik Güvenlik ve Saklama',
+		legalPrivacyP2:
+			'Parolalar Bcrypt (maliyet faktörü 12) ile özetlenir, 2FA TOTP sırları AES-256-GCM ile şifrelenir ve tüm veriler yalnızca topluluğun kendi barındırdığı PostgreSQL veritabanında tutulur. Hiçbir veri üçüncü taraf reklam ağlarına veya veri simsarlarına aktarılmaz.',
+		legalPrivacyH3: '3. Kullanıcı Hakları (Erişim, Düzeltme, Silme ve Taşınabilirlik)',
+		legalPrivacyP3:
+			'Üyeler diledikleri zaman kişisel verilerine erişme, profil bilgilerini güncelleme, verilerinin dışa aktarılmasını talep etme ve hesaplarının kalıcı olarak silinmesini (Unutulma Hakkı) isteme hakkına sahiptir.',
+		legalCookiesH1: '1. Zorunlu Oturum Çerezleri (HttpOnly)',
+		legalCookiesP1:
+			'Orbit Community OS, yalnızca güvenli kimlik doğrulama ve CSRF koruması için kriptografik olarak imzalanmış, HttpOnly ve SameSite=Lax bayraklı birinci taraf oturum çerezleri kullanır. Bu çerezler olmadan çalışma alanı oturumu açılamaz.',
+		legalCookiesH2: '2. Yerel Tercih Depolaması (LocalStorage)',
+		legalCookiesP2:
+			'Arayüz dili, tema, pencere düzeni ve ses düzeyi gibi kullanıcı arayüzü tercihleri yalnızca tarayıcınızın yerel depolama alanında (localStorage) saklanır.',
+		legalCookiesH3: '3. Sıfır Üçüncü Taraf İzleme veya Reklam Çerezi',
+		legalCookiesP3:
+			'Platformda hiçbir üçüncü taraf reklam çerezi, davranışsal profilleme pikseli veya çapraz site izleyici (cross-site tracker) bulunmaz.',
+		legalModalAcceptBtn: 'Okudum ve Kabul Ediyorum',
+
+		// PWA Download Landing
+		pwaBlockerInsecure:
+			'Bu adres güvenli (HTTPS) değil ve tarayıcılar güvenli olmayan sayfalardan uygulama kurulumuna izin vermez. Portalı https:// adresinden açın veya yöneticinize bildirin.',
+		pwaBlockerInapp:
+			'Bu, başka bir uygulamanın içindeki bir tarayıcı; buradan kurulum yapılamaz. Bağlantıyı Chrome, Edge veya Safari ile açın.',
+		pwaBlockerFirefoxDesktop:
+			'Firefox masaüstü sürümü web uygulaması kurulumunu desteklemiyor. Portalı Chrome, Edge veya Brave ile açın.',
+		pwaInstallUnavailableHint:
+			"Tarayıcı kurulum penceresini henüz sunmadı. Cihazınızda ({os}) adres çubuğundaki 'Yükle' simgesini kullanın veya aşağıdaki adımları izleyin.",
+		pwaHeaderClientTag: '{os} KURULUMU',
+		pwaStandaloneBadge: '{os} • BAĞIMSIZ UYGULAMA',
+		pwaLandingDesc:
+			'Tam ekran çalışma alanı, entegre terminal, QR yoklama ve çevrimdışı önbellek desteği için Orbit uygulamasını cihazınıza yükleyin.',
+		pwaInstalledBtn: 'Yüklendi — Uygulamayı Cihazınızdan Açın',
+		pwaInstallBtn: 'Uygulamayı Cihaza Yükle',
+		pwaMacStep1Prefix: 'Chrome veya Edge adres çubuğunun sağındaki',
+		pwaMacStep1Strong: 'Yükle (Install)',
+		pwaMacStep1Suffix: 'simgesine tıklayın.',
+		pwaMacStep2Prefix: "Safari'de üst menüden",
+		pwaMacStep2Strong: "Dosya → Dock'a Ekle",
+		pwaMacStep2Suffix: 'seçeneğini seçin.',
+		pwaWinStep1Prefix: 'Edge veya Chrome adres çubuğundaki',
+		pwaWinStep1Strong: 'Uygulama Olarak Yükle',
+		pwaWinStep1Suffix: 'butonuna basın.',
+		pwaWinStep2: 'Uygulama doğrudan Başlat menüsüne ve Görev Çubuğunuza eklenir.',
+		pwaIosStep1Prefix: "Safari'de alt kısımdaki",
+		pwaIosStep1Strong: 'Paylaş',
+		pwaIosStep1Suffix: 'simgesine dokunun.',
+		pwaIosStep2Prefix: 'Listeden',
+		pwaIosStep2Strong: 'Ana Ekrana Ekle',
+		pwaIosStep2Suffix: 'seçeneğini seçin.',
+		pwaAndroidStep1: "Chrome'da sağ üstteki üç nokta menüsüne dokunun.",
+		pwaAndroidStep2Strong: 'Uygulamayı Yükle',
+		pwaAndroidStep2Suffix: 'seçeneğine dokunarak onaylayın.',
+		pwaLinuxStep1Prefix: 'Chromium, Brave veya Chrome adres çubuğundaki',
+		pwaLinuxStep1Strong: 'Yükle',
+		pwaLinuxStep1Suffix: 'simgesine basın.',
+		pwaLinuxStep2: 'Uygulama menünüze yerel masaüstü (.desktop) penceresi olarak eklenir.',
+		pwaContinueInBrowserDev: 'Yüklemeden web tarayıcısında devam et (geliştirici modu)',
 	},
 	en: {
 		// Auth surface
@@ -827,5 +938,116 @@ export const FEATURE_TRANSLATIONS: Record<Language, Record<string, string>> = {
 		gvQuorumMet: 'Quorum met',
 		gvContent: 'Decision text',
 		gvNoPermission: 'You do not have permission for this action.',
+
+		// Dock & Desktop Context Menus, Clock, DevTools Guard
+		dockBringToFront: 'Bring to Front',
+		dockOpenApp: 'Open',
+		dockOptions: 'Options',
+		dockKeepInDock: 'Keep in Dock',
+		dockOpenAtLogin: 'Open at Login',
+		dockTurnHidingOff: 'Turn Hiding Off',
+		dockTurnHidingOn: 'Turn Hiding On',
+		dockShowAllWindows: 'Show All Windows',
+		dockHide: 'Hide',
+		dockQuitApp: 'Quit {title}',
+		ctxCloseApp: 'Close {title}',
+		clockFallbackTime: 'Mon Sep 28 9:00 AM',
+		devToolsRestrictedTitle: '“Developer Tools” Restricted',
+		devToolsRestrictedBody:
+			'Orbit Community OS runs in an isolated, secure PWA environment. Security policy bars access to the developer console, page source inspection, and web extensions.',
+
+		// Password Reset Modal
+		pwResetSendError: 'Could not send reset code.',
+		pwResetServerError: 'Server connection error.',
+		pwResetCodeLenError: 'Please enter the full 6-digit verification code.',
+		pwResetMinLenError: 'New password must be at least 8 characters.',
+		pwResetMismatchError: 'Passwords do not match.',
+		pwResetSuccessMsg: 'Password updated successfully! You can now sign in with your new password.',
+		pwResetUpdateError: 'Could not update password.',
+		pwResetTitleRequest: 'Reset Password',
+		pwResetTitleVerify: 'Set New Password',
+		pwResetSubRequest: 'Enter your registered email address',
+		pwResetSubVerify: 'Verification code sent to {email}',
+		pwResetEmailLabel: 'Email Address',
+		pwResetEmailPh: 'member@orbit.local or name@example.com',
+		pwResetSendBtn: 'Send Reset Code',
+		pwResetCodeLabel: '6-Digit Verification Code',
+		pwResetNewPasswordLabel: 'New Password (Min 8 chars)',
+		pwResetConfirmPasswordLabel: 'Confirm New Password',
+		pwResetUpdateBtn: 'Update Password',
+
+		// Legal Modal
+		legalTabTerms: 'Terms of Service',
+		legalTabPrivacy: 'Privacy Policy (GDPR)',
+		legalTabCookies: 'Cookie & Session Policy',
+		legalModalHeaderTitle: 'Global Legal Standards & Data Protection',
+		legalTermsH1: '1. Terms of Service & Community Guidelines',
+		legalTermsP1:
+			'Orbit Community OS ("the Platform") is a self-hosted digital workspace engineered by tetha42 for engineering teams, open-source collectives, and research communities.',
+		legalTermsH2: '2. Acceptable Use & Account Security',
+		legalTermsP2:
+			'Members are responsible for safeguarding their credentials (passwords, TOTP authenticators, and WebAuthn passkeys) and maintaining constructive conduct across all shared workspaces. Automated scraping, unauthorized probing, or attempts to compromise system integrity are actively mitigated by the autonomous SoC and WAF engine.',
+		legalTermsH3: '3. Intellectual Property & Liability',
+		legalTermsP3:
+			'Projects, documents, and technical artifacts published within the workspace remain subject to the licenses designated by their respective authors and community governance. The Platform is provided "as is" without warranty of any kind.',
+		legalPrivacyH1: '1. GDPR & Global Data Protection Compliance',
+		legalPrivacyP1:
+			'Orbit Community OS operates under strict Data Minimization and Privacy-by-Design principles aligned with GDPR and global privacy regulations. Only data strictly required for identity verification, role-based access control, and workspace collaboration (name, email, member handle, track, and experience level) is processed.',
+		legalPrivacyH2: '2. Cryptographic Security & Self-Hosted Sovereignty',
+		legalPrivacyP2:
+			'Passwords are hashed using Bcrypt (cost factor 12), TOTP secrets are encrypted at rest with AES-256-GCM, and all records reside exclusively within your self-hosted PostgreSQL instance. Zero personal data is sold, shared with data brokers, or transmitted to external telemetry networks.',
+		legalPrivacyH3: '3. Your Rights (Access, Erasure & Portability)',
+		legalPrivacyP3:
+			'Every member retains the right to inspect their stored profile data, rectify inaccuracies, export their records in machine-readable formats, and request permanent account erasure ("Right to be Forgotten") through the workspace administrators.',
+		legalCookiesH1: '1. Strictly Necessary Session Cookies (HttpOnly)',
+		legalCookiesP1:
+			'Orbit Community OS uses strictly necessary, cryptographically signed first-party HttpOnly session cookies (SameSite=Lax) solely to maintain authenticated sessions and enforce CSRF protection.',
+		legalCookiesH2: '2. Local Workspace Preferences',
+		legalCookiesP2:
+			'User interface preferences such as language selection, theme mode, window geometry, and audio volume are stored locally in your browser via LocalStorage.',
+		legalCookiesH3: '3. Zero Third-Party Advertising or Tracking Cookies',
+		legalCookiesP3:
+			'Orbit Community OS deploys zero third-party advertising cookies, behavioral profiling pixels, or cross-site analytics trackers.',
+		legalModalAcceptBtn: 'I Acknowledge & Accept',
+
+		// PWA Download Landing
+		pwaBlockerInsecure:
+			'This address is not secure (HTTPS), and browsers do not allow installing apps from insecure pages. Open the portal over https:// or contact your administrator.',
+		pwaBlockerInapp:
+			'This is an embedded in-app browser, which cannot install web apps. Open the link in Chrome, Edge, or Safari.',
+		pwaBlockerFirefoxDesktop:
+			'Desktop Firefox does not support installing web apps. Open the portal in Chrome, Edge, or Brave.',
+		pwaInstallUnavailableHint:
+			"The browser has not offered its install prompt yet. On {os}, use the 'Install' icon in the address bar or follow the steps below.",
+		pwaHeaderClientTag: '{os} CLIENT',
+		pwaStandaloneBadge: '{os} • STANDALONE PWA',
+		pwaLandingDesc:
+			'Install the Orbit workspace on your device for distraction-free window management, integrated shell terminal, instant QR check-in, and offline caching.',
+		pwaInstalledBtn: 'Installed — Open App From Your Device',
+		pwaInstallBtn: 'Install Workspace App',
+		pwaMacStep1Prefix: 'In Chrome or Edge, click the',
+		pwaMacStep1Strong: 'Install',
+		pwaMacStep1Suffix: 'icon in the address bar.',
+		pwaMacStep2Prefix: 'In Safari, choose',
+		pwaMacStep2Strong: 'File → Add to Dock',
+		pwaMacStep2Suffix: 'from the menu bar.',
+		pwaWinStep1Prefix: 'In Edge or Chrome, click the',
+		pwaWinStep1Strong: 'Install App',
+		pwaWinStep1Suffix: 'button in the address bar.',
+		pwaWinStep2: 'The app is pinned directly to your Start Menu and Taskbar.',
+		pwaIosStep1Prefix: 'Tap the',
+		pwaIosStep1Strong: 'Share',
+		pwaIosStep1Suffix: 'icon at the bottom of Safari.',
+		pwaIosStep2Prefix: 'Select',
+		pwaIosStep2Strong: 'Add to Home Screen',
+		pwaIosStep2Suffix: 'from the menu.',
+		pwaAndroidStep1: 'Tap the three-dot menu in Chrome.',
+		pwaAndroidStep2Strong: 'Install App',
+		pwaAndroidStep2Suffix: 'to add it to your home launcher.',
+		pwaLinuxStep1Prefix: 'In Chromium, Brave, or Chrome, click the',
+		pwaLinuxStep1Strong: 'Install',
+		pwaLinuxStep1Suffix: 'icon in the omnibox.',
+		pwaLinuxStep2: 'Integrated as a native desktop (.desktop) window launcher.',
+		pwaContinueInBrowserDev: 'Continue in browser without installing (developer mode)',
 	},
 };

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import type { Team } from '../types';
-import { TeamChatEmbed } from '@/apps/chat/components/TeamChatEmbed';
+import { TeamChatEmbed } from '@/apps/embeds';
 
 interface TeamChatRoomProps {
 	team: Team;

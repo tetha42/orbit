@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useI18n } from '@/core/i18n';
-import type { FormField } from '@/lib/formFields';
+import { fieldLabel, fieldPlaceholder, optionLabel, type FormField } from '@/lib/formFields';
 import { Mail, Lock, Phone, Calendar, Hash, AlignLeft, List, Type } from 'lucide-react';
 
 interface FormPreviewProps {
@@ -125,14 +125,8 @@ export function FormPreview({
 				<div style={{ display: 'flex', flexDirection: 'column', gap: '11px' }}>
 					{visible.map((field) => {
 						const isActivelyEditing = activeDraftKey && field.fieldKey === activeDraftKey;
-						const label =
-							language === 'tr'
-								? field.labelTr || field.labelEn
-								: field.labelEn || field.labelTr;
-						const placeholder =
-							language === 'tr'
-								? field.placeholderTr || field.placeholderEn
-								: field.placeholderEn || field.placeholderTr;
+						const label = fieldLabel(field, language);
+						const placeholder = fieldPlaceholder(field, language);
 						const isRequired =
 							previewMode === 'registration'
 								? field.requiredAt === 'registration' ||
@@ -195,7 +189,7 @@ export function FormPreview({
 												fontWeight: 600,
 											}}
 										>
-											Editing
+											{t('formPreviewEditingBadge', 'Editing')}
 										</span>
 									)}
 								</div>
@@ -212,9 +206,7 @@ export function FormPreview({
 										<option value="">{placeholder || t('formPreviewSelect')}</option>
 										{field.options.map((option) => (
 											<option key={option.value} value={option.value}>
-												{language === 'tr'
-													? option.labelTr || option.labelEn
-													: option.labelEn || option.labelTr}
+												{optionLabel(option, language)}
 											</option>
 										))}
 									</select>

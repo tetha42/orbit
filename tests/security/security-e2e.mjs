@@ -339,7 +339,7 @@ async function run() {
 		const dummySessionToken = crypto.randomBytes(32).toString('hex');
 		await client.query(
 			`INSERT INTO users (id, first_name, last_name, email, password_hash, department, grade, role_id, status, session_token, created_at)
-			 VALUES ($1, 'Test', 'Member', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Engineering', 2, 'rol_uye', 'aktif', $3, $4)`,
+			 VALUES ($1, 'Test', 'Member', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Engineering', 2, 'role_member', 'aktif', $3, $4)`,
 			[dummyUserId, `e2e_lockdown_${Date.now()}@orbit.local`, dummySessionToken, Date.now()]
 		);
 		log.ok(`Test standard member account and session created (Token: ${dummySessionToken.slice(0, 10)}...).`);
@@ -358,7 +358,7 @@ async function run() {
 			[Date.now()]
 		);
 		// Revoke non-admin sessions
-		await client.query(`UPDATE users SET session_token = NULL WHERE role_id != 'rol_admin'`);
+		await client.query(`UPDATE users SET session_token = NULL WHERE role_id != 'role_admin' AND role_id != 'role_admin'`);
 		log.ok('DEFCON 1 Hard Lockdown engaged and non-admin sessions revoked.');
 
 		// 4.3 Query /api/auth/me with revoked token
@@ -410,7 +410,7 @@ async function run() {
 
 		// Verify existence of system logs
 		const logsRes = await client.query(
-			`SELECT count(*) FROM system_logs WHERE servis IN ('security', 'waf') AND zaman > $1`,
+			`SELECT count(*) FROM system_logs WHERE service IN ('security', 'waf') AND timestamp > $1`,
 			[Date.now() - 60000]
 		);
 		log.ok(`Security and WAF events recorded in audit logs (${logsRes.rows[0].count} new records).`);
@@ -494,7 +494,7 @@ async function run() {
 		const sessionExpiry = Date.now() + 24 * 3600 * 1000;
 		await client.query(
 			`INSERT INTO users (id, first_name, last_name, email, password_hash, department, grade, role_id, status, session_token, session_expires_at, totp_enabled, created_at)
-			 VALUES ($1, 'Admin', 'SoC', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber Savunma', '4', 'rol_admin', 'aktif', $3, $4, 1, $5)`,
+			 VALUES ($1, 'Admin', 'SoC', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber Savunma', '4', 'role_admin', 'aktif', $3, $4, 1, $5)`,
 			[adminUserId, `e2e_soc_inspector_${Date.now()}@orbit.local`, adminSessionToken, sessionExpiry, Date.now()]
 		);
 
@@ -610,7 +610,7 @@ async function run() {
 
 			// Test CSV formula injection defense (OWASP)
 			await client.query(
-				`INSERT INTO system_logs (zaman, servis, seviye, mesaj, ip, userId)
+				`INSERT INTO system_logs (timestamp, service, level, message, ip, user_id)
 				 VALUES ($1, 'security', 'WARN', '=cmd|'' /C calc''!A0', '198.51.100.77', $2)`,
 				[Date.now(), adminUserId]
 			);
@@ -638,7 +638,7 @@ async function run() {
 			// 6.7 SIEM Advanced Filtration and Negative (Not-Equals) Operator Tests
 			const testNow = Date.now();
 			await client.query(
-				`INSERT INTO system_logs (zaman, servis, seviye, mesaj, ip, userId)
+				`INSERT INTO system_logs (timestamp, service, level, message, ip, user_id)
 				 VALUES 
 				 ($1, 'security', 'CRITICAL', 'SIEM_EXCEL_TEST_MALWARE_DETECTED', '198.51.100.88', 'usr_test_1'),
 				 ($2, 'auth', 'INFO', 'SIEM_EXCEL_TEST_INFO_HEARTBEAT', '127.0.0.1', 'usr_test_2'),
@@ -745,10 +745,10 @@ async function run() {
 		const initialSessionToken = `init_tok_${crypto.randomBytes(16).toString('hex')}`;
 		const hardeningExpiry = Date.now() + 7 * 86_400_000;
 
-		// 7.1 Create User (Authorized with rol_admin)
+		// 7.1 Create User (Authorized with role_admin)
 		await client.query(
 			`INSERT INTO users (id, first_name, last_name, email, password_hash, department, grade, role_id, status, session_token, session_expires_at, totp_enabled, created_at)
-			 VALUES ($1, 'Hardening', 'User', $2, $3, 'Software Engineering', 3, 'rol_admin', 'aktif', $4, $5, 0, $6)`,
+			 VALUES ($1, 'Hardening', 'User', $2, $3, 'Software Engineering', 3, 'role_admin', 'aktif', $4, $5, 0, $6)`,
 			[hardeningUserId, `hardening_${Date.now()}@orbit.local`, initialPasswordHash, initialSessionToken, hardeningExpiry, Date.now()]
 		);
 
@@ -937,7 +937,7 @@ async function run() {
 		const testAdminSessionToken = crypto.randomBytes(32).toString('hex');
 		await client.query(
 			`INSERT INTO users (id, first_name, last_name, email, password_hash, department, grade, role_id, status, session_token, session_expires_at, totp_enabled, created_at, last_login_ip)
-			 VALUES ($1, 'Admin', 'Hardening', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber Savunma', 4, 'rol_admin', 'aktif', $3, $4, 1, $5, '127.0.0.1')`,
+			 VALUES ($1, 'Admin', 'Hardening', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber Savunma', 4, 'role_admin', 'aktif', $3, $4, 1, $5, '127.0.0.1')`,
 			[testAdminId, `e2e_hard_admin_${Date.now()}@orbit.local`, testAdminSessionToken, Date.now() + 24 * 3600 * 1000, Date.now()]
 		);
 
@@ -993,8 +993,8 @@ async function run() {
 
 			await client.query(
 				`INSERT INTO users (id, first_name, last_name, email, password_hash, department, grade, role_id, status, session_token, session_expires_at, created_at)
-				 VALUES ($1, 'User', 'A', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Bilgisayar', 3, 'rol_uye', 'aktif', $3, $4, $5),
-				        ($6, 'User', 'B', $7, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Elektrik', 2, 'rol_uye', 'aktif', $8, $4, $5)`,
+				 VALUES ($1, 'User', 'A', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Bilgisayar', 3, 'role_member', 'aktif', $3, $4, $5),
+				        ($6, 'User', 'B', $7, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Elektrik', 2, 'role_member', 'aktif', $8, $4, $5)`,
 				[
 					userAId, `user_a_${Date.now()}@orbit.local`, userASession, Date.now() + 3600000, Date.now(),
 					userBId, `user_b_${Date.now()}@orbit.local`, userBSession
@@ -1040,8 +1040,8 @@ async function run() {
 				log.ok(`Notes IDOR attack attempt (User B -> User A note) repelled with 403 Forbidden.`);
 
 				// Verify original note was not corrupted in database
-				const checkNoteDb = await client.query('SELECT baslik, userid FROM user_notes WHERE id = $1', [noteAId]);
-				if (checkNoteDb.rows.length === 0 || checkNoteDb.rows[0].baslik !== 'User A Confidential Note') {
+				const checkNoteDb = await client.query('SELECT title, user_id FROM user_notes WHERE id = $1', [noteAId]);
+				if (checkNoteDb.rows.length === 0 || checkNoteDb.rows[0].title !== 'User A Confidential Note') {
 					throw new Error('User A note was overwritten in IDOR attack!');
 				}
 				log.ok('Database inspection: Original note content and ownership verified intact.');
@@ -1159,10 +1159,10 @@ async function run() {
 				log.ok(`Valid localhost HTTP and remote HTTPS redirect URI client registered successfully (${validOAuthData.client.id}).`);
 
 				// Cleanup
-				await client.query('DELETE FROM oauth_clients WHERE id = $1', [validOAuthData.client.id]);
+				await client.query('DELETE FROM oauth_clients WHERE client_id = $1', [validOAuthData.client.id]);
 				await client.query('DELETE FROM security_blocks WHERE ip = $1', [bannedIpForPasskey]);
 			} finally {
-				await client.query('DELETE FROM user_notes WHERE userid IN ($1, $2)', [userAId, userBId]).catch(() => {});
+				await client.query('DELETE FROM user_notes WHERE user_id IN ($1, $2)', [userAId, userBId]).catch(() => {});
 				await client.query('DELETE FROM users WHERE id IN ($1, $2)', [userAId, userBId]);
 			}
 		} finally {
@@ -1242,13 +1242,13 @@ async function run() {
 
 		// Verify OTP record in database: code must be hashed with SHA-256
 		const otpDbRes = await client.query(
-			'SELECT code, expires_at FROM email_verifications WHERE email = $1 AND type = $2',
+			'SELECT token_hash, expires_at FROM verification_tokens WHERE target = $1 AND token_type = $2',
 			[regTestEmail, 'registration']
 		);
 		if (otpDbRes.rowCount === 0) {
-			throw new Error('No record found in email_verifications table!');
+			throw new Error('No record found in verification_tokens table!');
 		}
-		const storedOtpHash = otpDbRes.rows[0].code;
+		const storedOtpHash = otpDbRes.rows[0].token_hash;
 		if (!storedOtpHash.startsWith('sha256:') || storedOtpHash.length !== 71) {
 			throw new Error(`OTP not stored in SHA-256 hash format (sha256:<64 hex>) in database! Value: ${storedOtpHash}`);
 		}
@@ -1259,7 +1259,7 @@ async function run() {
 		const testOtpCode = '839217';
 		const testOtpHash = 'sha256:' + crypto.createHash('sha256').update(testOtpCode).digest('hex');
 		await client.query(
-			'UPDATE email_verifications SET code = $1 WHERE email = $2 AND type = $3',
+			'UPDATE verification_tokens SET token_hash = $1 WHERE target = $2 AND token_type = $3',
 			[testOtpHash, regTestEmail, 'registration']
 		);
 
@@ -1292,20 +1292,20 @@ async function run() {
 
 		// Verify OTP row deleted after successful verification
 		const postVerifyOtp = await client.query(
-			'SELECT * FROM email_verifications WHERE email = $1',
+			'SELECT * FROM verification_tokens WHERE target = $1',
 			[regTestEmail]
 		);
 		if (postVerifyOtp.rowCount !== 0) {
-			throw new Error('email_verifications record was not deleted after successful registration!');
+			throw new Error('verification_tokens record was not deleted after successful registration!');
 		}
-		log.ok('Used OTP record immediately purged from email_verifications table upon successful registration.');
+		log.ok('Used OTP record immediately purged from verification_tokens table upon successful registration.');
 
 		// 9.4 Automatic Sweeping of Expired Legacy OTPs Test
 		const staleEmail = `stale_otp_${Date.now()}@orbit.local`;
 		await client.query(
-			`INSERT INTO email_verifications (email, code, type, expires_at, created_at)
-			 VALUES ($1, 'sha256:stale', 'registration', $2, $3)`,
-			[staleEmail, Date.now() - 100000, Date.now() - 100000]
+			`INSERT INTO verification_tokens (id, target, token_hash, token_type, expires_at, created_at)
+			 VALUES ($1, $2, 'sha256:stale', 'registration', $3, $4)`,
+			[`stale_${Date.now()}`, staleEmail, Date.now() - 100000, Date.now() - 100000]
 		);
 
 		// When another registration request is triggered, expired records should be swept
@@ -1327,7 +1327,7 @@ async function run() {
 		});
 
 		const staleCheckRes = await client.query(
-			'SELECT * FROM email_verifications WHERE email = $1',
+			'SELECT * FROM verification_tokens WHERE target = $1',
 			[staleEmail]
 		);
 		if (staleCheckRes.rowCount !== 0) {
@@ -1357,7 +1357,7 @@ async function run() {
 		log.ok('Existing email or handle collision (23505) cleanly handled with HTTP 409 Conflict.');
 
 		// Cleanup
-		await client.query('DELETE FROM email_verifications WHERE email IN ($1, $2, $3)', [regTestEmail, staleEmail, dummyEmail]).catch(() => {});
+		await client.query('DELETE FROM verification_tokens WHERE target IN ($1, $2, $3)', [regTestEmail, staleEmail, dummyEmail]).catch(() => {});
 		await client.query('DELETE FROM users WHERE email IN ($1, $2)', [regTestEmail, dummyEmail]);
 		await client.query('DELETE FROM security_blocks WHERE ip = $1', [botIp]);
 
@@ -1380,7 +1380,7 @@ async function run() {
 		const uploadAdminToken = crypto.randomBytes(32).toString('hex');
 		await client.query(
 			`INSERT INTO users (id, first_name, last_name, email, password_hash, department, grade, role_id, status, session_token, session_expires_at, totp_enabled, created_at)
-			 VALUES ($1, 'Upload', 'Admin', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber Savunma', 4, 'rol_admin', 'aktif', $3, $4, 1, $5)`,
+			 VALUES ($1, 'Upload', 'Admin', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber Savunma', 4, 'role_admin', 'aktif', $3, $4, 1, $5)`,
 			[uploadAdminId, `e2e_uploader_${Date.now()}@orbit.local`, uploadAdminToken, Date.now() + 3600000, Date.now()]
 		);
 
@@ -1439,7 +1439,7 @@ async function run() {
 			const memberASession = crypto.randomBytes(32).toString('hex');
 			await client.query(
 				`INSERT INTO users (id, first_name, last_name, email, password_hash, department, grade, role_id, status, session_token, session_expires_at, created_at)
-				 VALUES ($1, 'Member', 'PostaA', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Bilgisayar', 2, 'rol_uye', 'aktif', $3, $4, $5)`,
+				 VALUES ($1, 'Member', 'PostaA', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Bilgisayar', 2, 'role_member', 'aktif', $3, $4, $5)`,
 				[memberAId, `member_a_${Date.now()}@orbit.local`, memberASession, Date.now() + 3600000, Date.now()]
 			);
 
@@ -1663,7 +1663,7 @@ async function run() {
 		try {
 			await client.query(
 				`INSERT INTO users (id, first_name, last_name, email, password_hash, department, grade, role_id, status, session_token, session_expires_at, last_login_ip, created_at)
-				 VALUES ($1, 'Security', 'Admin14', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber Savunma', 4, 'rol_admin', 'aktif', $3, $4, $5, $6)`,
+				 VALUES ($1, 'Security', 'Admin14', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber Savunma', 4, 'role_admin', 'aktif', $3, $4, $5, $6)`,
 				[test14UserId, `sec14_${Date.now()}@orbit.local`, test14TokenHash, session14Expiry, initialIp, Date.now()]
 			);
 
@@ -1734,7 +1734,7 @@ async function run() {
 		const s15AdminToken = crypto.randomBytes(32).toString('hex');
 		await client.query(
 			`INSERT INTO users (id, first_name, last_name, email, password_hash, department, grade, role_id, status, session_token, session_expires_at, totp_enabled, created_at, last_login_ip)
-			 VALUES ($1, 'Admin', 'KillSwitch', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber', 4, 'rol_admin', 'aktif', $3, $4, 1, $5, '127.0.0.1')`,
+			 VALUES ($1, 'Admin', 'KillSwitch', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber', 4, 'role_admin', 'aktif', $3, $4, 1, $5, '127.0.0.1')`,
 			[s15AdminId, `e2e_killswitch_admin_${Date.now()}@orbit.local`, s15AdminToken, Date.now() + 86400000, Date.now()]
 		);
 
@@ -1899,7 +1899,7 @@ async function run() {
 		const s16AdminToken = crypto.randomBytes(32).toString('hex');
 		await client.query(
 			`INSERT INTO users (id, first_name, last_name, email, password_hash, department, grade, role_id, status, session_token, session_expires_at, totp_enabled, created_at, last_login_ip)
-			 VALUES ($1, 'SIEM', 'Admin', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber', 4, 'rol_admin', 'aktif', $3, $4, 1, $5, '127.0.0.1')`,
+			 VALUES ($1, 'SIEM', 'Admin', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber', 4, 'role_admin', 'aktif', $3, $4, 1, $5, '127.0.0.1')`,
 			[s16AdminId, `e2e_siem_admin_${Date.now()}@orbit.local`, s16AdminToken, Date.now() + 86400000, Date.now()]
 		);
 

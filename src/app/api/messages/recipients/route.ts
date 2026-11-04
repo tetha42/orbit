@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 
 		if (params.get('ulasilabilir') === '1' || params.get('reachable') === '1') {
 			const ids = await reachableIds(await getMailCandidateRoles(user.id));
-			return NextResponse.json({ ids, idler: ids }, { headers: NO_STORE });
+			return NextResponse.json({ ids }, { headers: NO_STORE });
 		}
 
 		const id = params.get('id');
@@ -37,7 +37,7 @@ export async function GET(request: Request) {
 			const candidate = await getMailCandidate(user.id, id.slice(0, 64));
 			const alicilar = candidate ? await recipientList([candidate]) : [];
 			return NextResponse.json(
-				{ q: '', recipients: alicilar, alicilar, suggestion: false, oneri: false },
+				{ q: '', recipients: alicilar, suggestion: false },
 				{ headers: NO_STORE }
 			);
 		}
@@ -49,7 +49,7 @@ export async function GET(request: Request) {
 		const selected = !q && candidates.length === 0 ? await searchMailCandidates(user.id, '', MAIL_SEARCH_LIMIT) : candidates;
 		const alicilar = await recipientList(selected);
 		return NextResponse.json(
-			{ q, recipients: alicilar, alicilar, suggestion, oneri: suggestion },
+			{ q, recipients: alicilar, suggestion },
 			{ headers: NO_STORE }
 		);
 	} catch (error) {

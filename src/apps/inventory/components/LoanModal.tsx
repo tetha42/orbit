@@ -61,7 +61,7 @@ export function LoanModal({
 			? Math.min((item.iadeTarihi ?? now) + 7 * DAY, start + maxDays * DAY)
 			: now + DEFAULT_LOAN_DAYS * DAY;
 	const [date, setTarih] = useState(() => toDateInput(initial));
-	const [userId, setKullaniciId] = useState('');
+	const [userId, setUserId] = useState('');
 	const [ariza, setAriza] = useState(false);
 	const [not, setNot] = useState('');
 	const [error, setError] = useState('');
@@ -142,7 +142,7 @@ export function LoanModal({
 						className={ui.select}
 						style={{ maxWidth: 'none', width: '100%' }}
 						value={userId}
-						onChange={(e) => setKullaniciId(e.target.value)}
+						onChange={(e) => setUserId(e.target.value)}
 						required
 					>
 						<option value="">{members ? t('invSelectMember') : t('loading')}</option>

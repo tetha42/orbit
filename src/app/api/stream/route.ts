@@ -79,7 +79,6 @@ export async function GET(request: Request) {
 					if (active === undefined) return;
 					if (!active || (active.status !== 'aktif' && active.status !== 'mezun')) {
 						emit('session-ended');
-						emit('oturum-sonlandi');
 						finish();
 					}
 				} catch {
@@ -89,59 +88,39 @@ export async function GET(request: Request) {
 
 			const send = (event: AppEvent) => {
 				if (closed) return;
-				if (event.k === 'session' || event.k === 'oturum') {
+				if (event.k === 'session') {
 					void verifySession();
 				} else if (event.k === 'permission') {
 					emit('permission-changed');
-					emit('yetki-degisti');
-				} else if (event.k === 'notification' || event.k === 'bildirim') {
+				} else if (event.k === 'notification') {
 					emit('notification');
-					emit('bildirim');
-				} else if (event.k === 'team_updated' || event.k === 'takim_guncellendi') {
+				} else if (event.k === 'team_updated') {
 					emit('team_updated');
-					emit('takim_guncellendi');
-				} else if (event.k === 'budget_updated' || event.k === 'butce_guncellendi') {
+				} else if (event.k === 'budget_updated') {
 					emit('budget_updated');
-					emit('butce_guncellendi');
-				} else if (event.k === 'inventory_updated' || event.k === 'envanter_guncellendi') {
+				} else if (event.k === 'inventory_updated') {
 					emit('inventory_updated');
-					emit('envanter_guncellendi');
-				} else if (event.k === 'news_updated' || event.k === 'haber_guncellendi') {
+				} else if (event.k === 'news_updated') {
 					emit('news_updated');
-					emit('haber_guncellendi');
-				} else if (event.k === 'event_updated' || event.k === 'etkinlik_guncellendi') {
+				} else if (event.k === 'event_updated') {
 					emit('event_updated');
-					emit('etkinlik_guncellendi');
-				} else if (event.k === 'project_updated' || event.k === 'proje_guncellendi') {
+				} else if (event.k === 'project_updated') {
 					emit('project_updated');
-					emit('proje_guncellendi');
-				} else if (event.k === 'decision_updated' || event.k === 'karar_guncellendi') {
+				} else if (event.k === 'decision_updated') {
 					emit('decision_updated');
-					emit('karar_guncellendi');
-				} else if (event.k === 'note_updated' || event.k === 'not_guncellendi') {
+				} else if (event.k === 'note_updated') {
 					emit('note_updated');
-					emit('not_guncellendi');
-				} else if (event.k === 'refresh' || event.k === 'yenile') {
+				} else if (event.k === 'refresh') {
 					emit('permission-changed');
-					emit('yetki-degisti');
 					emit('notification');
-					emit('bildirim');
 					emit('team_updated');
-					emit('takim_guncellendi');
 					emit('budget_updated');
-					emit('butce_guncellendi');
 					emit('inventory_updated');
-					emit('envanter_guncellendi');
 					emit('news_updated');
-					emit('haber_guncellendi');
 					emit('event_updated');
-					emit('etkinlik_guncellendi');
 					emit('project_updated');
-					emit('proje_guncellendi');
 					emit('decision_updated');
-					emit('karar_guncellendi');
 					emit('note_updated');
-					emit('not_guncellendi');
 				}
 			};
 

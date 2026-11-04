@@ -4,7 +4,7 @@ import { logAuditEvent, type AuditContext } from '@/db/audit';
 import { publishEventQuiet } from '@/db/events';
 import { memberTargetName, memberSummary } from '@/lib/audit';
 import { encryptSecret, isEncrypted } from '@/lib/auth/secretBox';
-import type { User } from '@/db/schema';
+import type { User, WebauthnCredential } from '@/db/schema';
 
 export async function updateUserPassword(
 	userId: string,
@@ -12,18 +12,19 @@ export async function updateUserPassword(
 	invalidateSession = false
 ): Promise<void> {
 	await ensurePostgresInit();
+	const now = Date.now();
 	if (invalidateSession) {
 		await getPgPool().query(
-			'UPDATE users SET password_hash = $1, session_token = NULL, session_expires_at = NULL WHERE id = $2',
-			[passwordHash, userId]
+			'UPDATE users SET password_hash = $1, password_changed_at = $2, must_change_password = 0, session_token = NULL, session_expires_at = NULL WHERE id = $3',
+			[passwordHash, now, userId]
 		);
 		await publishEventQuiet(getPgPool(), { k: 'session', userId });
 		return;
 	}
-	await getPgPool().query('UPDATE users SET password_hash = $1 WHERE id = $2', [
-		passwordHash,
-		userId,
-	]);
+	await getPgPool().query(
+		'UPDATE users SET password_hash = $1, password_changed_at = $2, must_change_password = 0 WHERE id = $3',
+		[passwordHash, now, userId]
+	);
 }
 
 export async function setUserTotpSecret(userId: string, secret: string): Promise<void> {
@@ -55,12 +56,12 @@ export async function disableUserTotp(userId: string, denetim: AuditContext): Pr
 		const u = res.rows[0];
 		if (!u) return;
 		await logAuditEvent(client, denetim, {
-			islem: 'guvenlik.2fa_kapat',
-			hedefTur: 'uye',
-			hedefId: userId,
-			hedefAd: memberTargetName(u),
-			onceki: { ...memberSummary(u), ikiAdim: 'acik' },
-			sonraki: { ...memberSummary(u), ikiAdim: 'kapali' },
+			action: 'security.2fa_disable',
+			targetType: 'member',
+			targetId: userId,
+			targetName: memberTargetName(u),
+			before: { ...memberSummary(u), twoFactor: 'on' },
+			after: { ...memberSummary(u), twoFactor: 'off' },
 		});
 	});
 }
@@ -96,7 +97,21 @@ export interface EmailChangeRequestRow {
 	userAgent: string | null;
 }
 
-/** Replaces any open request: one pending e-mail change per member. */
+function parseTokenPayload(raw: unknown): Record<string, unknown> {
+	if (!raw) return {};
+	if (typeof raw === 'string') {
+		try {
+			const parsed = JSON.parse(raw);
+			return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
+		} catch {
+			return {};
+		}
+	}
+	if (typeof raw === 'object') return raw as Record<string, unknown>;
+	return {};
+}
+
+/** Replaces any open request: one pending e-mail change per member in verification_tokens. */
 export async function replaceEmailChangeRequest(input: {
 	userId: string;
 	newEmail: string;
@@ -108,22 +123,25 @@ export async function replaceEmailChangeRequest(input: {
 	await ensurePostgresInit();
 	await withTransaction(async (client) => {
 		await client.query(
-			'DELETE FROM email_change_requests WHERE user_id = $1 AND used_at IS NULL',
+			"DELETE FROM verification_tokens WHERE user_id = $1 AND token_type = 'email_change' AND used_at IS NULL",
 			[input.userId]
 		);
+		const payload = JSON.stringify({
+			requestedIp: input.ip ?? null,
+			userAgent: input.userAgent ?? null,
+		});
 		await client.query(
-			`INSERT INTO email_change_requests
-				(id, user_id, new_email, code_hash, attempts, expires_at, created_at, requested_ip, user_agent)
-			 VALUES ($1, $2, $3, $4, 0, $5, $6, $7, $8)`,
+			`INSERT INTO verification_tokens
+				(id, user_id, token_type, target, token_hash, payload, attempts, expires_at, used_at, created_at)
+			 VALUES ($1, $2, 'email_change', $3, $4, $5::jsonb, 0, $6, NULL, $7)`,
 			[
 				`ecr_${randomUUID().replace(/-/g, '').slice(0, 16)}`,
 				input.userId,
 				input.newEmail,
 				input.codeHash,
+				payload,
 				input.expiresAt,
 				Date.now(),
-				input.ip ?? null,
-				input.userAgent ?? null,
 			]
 		);
 	});
@@ -134,34 +152,33 @@ export async function getOpenEmailChangeRequest(
 ): Promise<EmailChangeRequestRow | null> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT id, user_id AS "userId", new_email AS "newEmail", code_hash AS "codeHash",
-		        attempts, expires_at AS "expiresAt", created_at AS "createdAt",
-		        requested_ip AS "requestedIp", user_agent AS "userAgent"
-		 FROM email_change_requests
-		 WHERE user_id = $1 AND used_at IS NULL
+		`SELECT id, user_id AS "userId", target AS "newEmail", token_hash AS "codeHash",
+		        attempts, expires_at AS "expiresAt", created_at AS "createdAt", payload
+		 FROM verification_tokens
+		 WHERE user_id = $1 AND token_type = 'email_change' AND used_at IS NULL
 		 ORDER BY created_at DESC LIMIT 1`,
 		[userId]
 	);
 	const row = res.rows[0];
-	return row
-		? {
-				id: String(row.id),
-				userId: String(row.userId),
-				newEmail: String(row.newEmail),
-				codeHash: String(row.codeHash),
-				attempts: Number(row.attempts) || 0,
-				expiresAt: Number(row.expiresAt) || 0,
-				createdAt: Number(row.createdAt) || 0,
-				requestedIp: row.requestedIp ? String(row.requestedIp) : null,
-				userAgent: row.userAgent ? String(row.userAgent) : null,
-			}
-		: null;
+	if (!row) return null;
+	const payload = parseTokenPayload(row.payload);
+	return {
+		id: String(row.id),
+		userId: String(row.userId ?? row.user_id),
+		newEmail: String(row.newEmail ?? row.target ?? ''),
+		codeHash: String(row.codeHash ?? row.token_hash ?? ''),
+		attempts: Number(row.attempts) || 0,
+		expiresAt: Number(row.expiresAt ?? row.expires_at) || 0,
+		createdAt: Number(row.createdAt ?? row.created_at) || 0,
+		requestedIp: payload.requestedIp ? String(payload.requestedIp) : null,
+		userAgent: payload.userAgent ? String(payload.userAgent) : null,
+	};
 }
 
 export async function incrementEmailChangeAttempts(id: string): Promise<number> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`UPDATE email_change_requests SET attempts = attempts + 1 WHERE id = $1 RETURNING attempts`,
+		`UPDATE verification_tokens SET attempts = attempts + 1 WHERE id = $1 AND token_type = 'email_change' RETURNING attempts`,
 		[id]
 	);
 	return Number(res.rows[0]?.attempts) || 0;
@@ -169,7 +186,24 @@ export async function incrementEmailChangeAttempts(id: string): Promise<number> 
 
 export async function deleteEmailChangeRequest(id: string): Promise<void> {
 	await ensurePostgresInit();
-	await getPgPool().query('DELETE FROM email_change_requests WHERE id = $1', [id]);
+	await getPgPool().query(
+		`DELETE FROM verification_tokens WHERE id = $1 AND token_type = 'email_change'`,
+		[id]
+	);
+}
+
+export async function listUserWebauthnCredentials(userId: string): Promise<WebauthnCredential[]> {
+	await ensurePostgresInit();
+	const res = await getPgPool().query(
+		`SELECT id, user_id AS "userId", public_key AS "publicKey", counter, transports,
+		        device_type AS "deviceType", backed_up AS "backedUp", nickname,
+		        created_at AS olusturma, last_used_at AS "sonKullanma"
+		 FROM webauthn_credentials
+		 WHERE user_id = $1
+		 ORDER BY created_at ASC`,
+		[userId]
+	);
+	return res.rows;
 }
 
 export function parseRecoveryCodes(user: User | null): string[] {

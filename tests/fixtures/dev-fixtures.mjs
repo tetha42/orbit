@@ -188,7 +188,7 @@ const once = async (key, fn) => {
 	save();
 };
 await once('team', async () => {
-	const res = await admin.call('POST', '/api/teams', { action: 'createTeam', ad: 'Core Architecture & Web Platform', kategori: 'Web & Mobile', aciklama: 'Core platform development and client suites', kontenjan: 6, liderId: state.users.ege.id });
+	const res = await admin.call('POST', '/api/teams', { action: 'createTeam', ad: 'Core Architecture & Web Platform', kategori: 'Web & Mobile', aciklama: 'Core platform development and client suites', kontenjan: 6, leadId: state.users.ege.id });
 	if (res.status === 409) {
 		const all = await admin.call('GET', '/api/teams');
 		const found = (all.json?.teams ?? all.json ?? []).find?.((t) => t.ad === 'Core Architecture & Web Platform');
@@ -198,7 +198,7 @@ await once('team', async () => {
 });
 await once('news', async () => must(await admin.call('POST', '/api/news', { baslik: 'Güz Dönemi Tanışma Toplantısı', icerik: 'Orbit topluluğu yeni dönem tanışma toplantısı ve platform tanıtımı.', kategori: 'genel', publishStatus: 'yayinda' }), 'news'));
 await once('event', async () => must(await admin.call('POST', '/api/events', { action: 'createEvent', baslik: 'Modern Web ve Git Atölyesi', aciklama: 'Sürüm kontrolü ve açık kaynak işbirliği atölye çalışması', tur: 'atolye', konum: 'Virtual Lab Stage A', baslangic: Date.now() + 3 * 86400000, endTime: Date.now() + 3 * 86400000 + 2 * 3600000, kapasite: 30, status: 'yayinda' }), 'event'));
-await once('income', async () => must(await admin.call('POST', '/api/budget', { tur: 'gelir', kategori: 'Sponsorluk', tutarKurus: 2500000, aciklama: 'Açık Kaynak Ekosistem Sponsorluk Hibesi' }), 'income'));
+await once('income', async () => must(await admin.call('POST', '/api/budget', { tur: 'gelir', kategori: 'Sponsorluk', amountMinor: 2500000, aciklama: 'Açık Kaynak Ekosistem Sponsorluk Hibesi' }), 'income'));
 await once('item', async () => {
 	const res = await admin.call('POST', '/api/inventory', { action: 'create', kod: 'LAB-RPI-001', ad: 'Raspberry Pi 5 (8GB)', kategori: 'Development Board', konum: 'Hardware Lab Rack B-1' });
 	if (res.status === 409) {

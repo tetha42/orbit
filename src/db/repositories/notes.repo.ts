@@ -4,9 +4,12 @@ import type { UserNote, UserNoteFolder } from '@/db/schema';
 export async function getUserNotes(userId: string): Promise<UserNote[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT * FROM user_notes 
-		 WHERE userId = $1 
-		 ORDER BY sabitliMi DESC, guncellenme DESC`,
+		`SELECT id, user_id AS "userId", title AS baslik, content AS icerik, color AS renk,
+		        is_pinned AS "sabitliMi", folder_id AS "klasorId", is_trashed AS "copteMi",
+		        updated_at AS guncellenme, created_at AS olusturma
+		 FROM user_notes
+		 WHERE user_id = $1 AND folder_id <> '__folder__'
+		 ORDER BY is_pinned DESC, updated_at DESC`,
 		[userId]
 	);
 	return res.rows.map((r) => {
@@ -58,17 +61,18 @@ export async function saveUserNote(params: {
 	const noteId = params.id || `not_${now}_${Math.random().toString(36).substring(2, 6)}`;
 	const renk = params.renk || 'sari';
 	const sabitliMi = params.sabitliMi ? 1 : 0;
-	const folderId = params.klasorId || params.renk || 'quick';
+	const rawFolder = params.klasorId || params.renk || 'quick';
+	const folderId = rawFolder === '__folder__' ? 'quick' : rawFolder;
 	const copteMi = params.copteMi ? 1 : 0;
 
 	// IDOR Protection: verify note ownership if existing id is provided
 	if (params.id) {
 		const existing = await pool.query(
-			'SELECT userId FROM user_notes WHERE id = $1',
+			'SELECT user_id AS "userId" FROM user_notes WHERE id = $1',
 			[params.id]
 		);
 		if (existing.rows.length > 0) {
-			const owner = String(existing.rows[0].kullaniciid ?? existing.rows[0].userId);
+			const owner = String(existing.rows[0].kullaniciid ?? existing.rows[0].userid ?? existing.rows[0].userId);
 			if (owner !== params.userId) {
 				throw new Error('Yetkisiz işlem: Bu not başka bir kullanıcıya aittir.');
 			}
@@ -76,17 +80,17 @@ export async function saveUserNote(params: {
 	}
 
 	const res = await pool.query(
-		`INSERT INTO user_notes (id, userId, baslik, icerik, renk, sabitliMi, klasorId, copteMi, guncellenme, olusturma)
+		`INSERT INTO user_notes (id, user_id, title, content, color, is_pinned, folder_id, is_trashed, updated_at, created_at)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9)
 		 ON CONFLICT (id) DO UPDATE SET 
-		   baslik = EXCLUDED.baslik,
-		   icerik = EXCLUDED.icerik,
-		   renk = EXCLUDED.renk,
-		   sabitliMi = EXCLUDED.sabitliMi,
-		   klasorId = EXCLUDED.klasorId,
-		   copteMi = EXCLUDED.copteMi,
-		   guncellenme = EXCLUDED.guncellenme
-		 WHERE user_notes.userId = EXCLUDED.userId
+		   title = EXCLUDED.title,
+		   content = EXCLUDED.content,
+		   color = EXCLUDED.color,
+		   is_pinned = EXCLUDED.is_pinned,
+		   folder_id = EXCLUDED.folder_id,
+		   is_trashed = EXCLUDED.is_trashed,
+		   updated_at = EXCLUDED.updated_at
+		 WHERE user_notes.user_id = EXCLUDED.user_id
 		 RETURNING id`,
 		[noteId, params.userId, params.baslik, params.icerik, renk, sabitliMi, folderId, copteMi, now]
 	);
@@ -112,7 +116,7 @@ export async function saveUserNote(params: {
 export async function deleteUserNote(id: string, userId: string): Promise<boolean> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		'DELETE FROM user_notes WHERE id = $1 AND userId = $2',
+		`DELETE FROM user_notes WHERE id = $1 AND user_id = $2 AND folder_id <> '__folder__'`,
 		[id, userId]
 	);
 	return (res.rowCount ?? 0) > 0;
@@ -121,7 +125,7 @@ export async function deleteUserNote(id: string, userId: string): Promise<boolea
 export async function emptyUserNotesTrash(userId: string): Promise<number> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		'DELETE FROM user_notes WHERE userId = $1 AND copteMi = 1',
+		`DELETE FROM user_notes WHERE user_id = $1 AND is_trashed = 1 AND folder_id <> '__folder__'`,
 		[userId]
 	);
 	return res.rowCount ?? 0;
@@ -130,7 +134,10 @@ export async function emptyUserNotesTrash(userId: string): Promise<number> {
 export async function getUserNoteFolders(userId: string): Promise<UserNoteFolder[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		'SELECT * FROM user_note_folders WHERE userId = $1 ORDER BY sira ASC, olusturma ASC',
+		`SELECT id, user_id AS "userId", title AS ad, color AS renk, is_pinned AS sira, created_at AS olusturma
+		 FROM user_notes
+		 WHERE user_id = $1 AND folder_id = '__folder__'
+		 ORDER BY is_pinned ASC, created_at ASC`,
 		[userId]
 	);
 	return res.rows.map((r) => ({
@@ -160,11 +167,11 @@ export async function saveUserNoteFolder(params: {
 	// IDOR Protection: verify folder ownership if existing id is provided
 	if (params.id) {
 		const existing = await pool.query(
-			'SELECT userId FROM user_note_folders WHERE id = $1',
+			`SELECT user_id AS "userId" FROM user_notes WHERE id = $1`,
 			[params.id]
 		);
 		if (existing.rows.length > 0) {
-			const owner = String(existing.rows[0].kullaniciid ?? existing.rows[0].userId);
+			const owner = String(existing.rows[0].kullaniciid ?? existing.rows[0].userid ?? existing.rows[0].userId);
 			if (owner !== params.userId) {
 				throw new Error('Yetkisiz işlem: Bu klasör başka bir kullanıcıya aittir.');
 			}
@@ -172,13 +179,14 @@ export async function saveUserNoteFolder(params: {
 	}
 
 	const res = await pool.query(
-		`INSERT INTO user_note_folders (id, userId, ad, renk, sira, olusturma)
-		 VALUES ($1, $2, $3, $4, $5, $6)
+		`INSERT INTO user_notes (id, user_id, title, content, color, is_pinned, folder_id, is_trashed, updated_at, created_at)
+		 VALUES ($1, $2, $3, '', $4, $5, '__folder__', 0, $6, $6)
 		 ON CONFLICT (id) DO UPDATE SET
-		   ad = EXCLUDED.ad,
-		   renk = EXCLUDED.renk,
-		   sira = EXCLUDED.sira
-		 WHERE user_note_folders.userId = EXCLUDED.userId
+		   title = EXCLUDED.title,
+		   color = EXCLUDED.color,
+		   is_pinned = EXCLUDED.is_pinned,
+		   updated_at = EXCLUDED.updated_at
+		 WHERE user_notes.user_id = EXCLUDED.user_id AND user_notes.folder_id = '__folder__'
 		 RETURNING id`,
 		[folderId, params.userId, params.ad, renk, sira, now]
 	);
@@ -201,11 +209,11 @@ export async function deleteUserNoteFolder(id: string, userId: string): Promise<
 	await ensurePostgresInit();
 	// Move any notes in this folder to 'quick'
 	await getPgPool().query(
-		`UPDATE user_notes SET klasorId = 'quick' WHERE userId = $1 AND klasorId = $2`,
+		`UPDATE user_notes SET folder_id = 'quick' WHERE user_id = $1 AND folder_id = $2`,
 		[userId, id]
 	);
 	const res = await getPgPool().query(
-		'DELETE FROM user_note_folders WHERE id = $1 AND userId = $2',
+		`DELETE FROM user_notes WHERE id = $1 AND user_id = $2 AND folder_id = '__folder__'`,
 		[id, userId]
 	);
 	return (res.rowCount ?? 0) > 0;

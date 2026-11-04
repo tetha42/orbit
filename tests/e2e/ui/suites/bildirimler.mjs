@@ -60,7 +60,7 @@ export default async function suite(t) {
 	t.cleanup(() => admin.post('/api/etkinlikler', { action: 'deleteEvent', etkinlikId: event.id }));
 
 	const team = fx.content.team.team ?? fx.content.team;
-	const task = must(await admin.post('/api/takimlar', { action: 'addTask', takimId: team.id, baslik: `Bildirim görevi ${stamp}`, atananUyeId: fx.users.ege.id, teslimTarihi: Date.now() + DAY }), 'görev').gorev;
+	const task = must(await admin.post('/api/takimlar', { action: 'addTask', teamId: team.id, baslik: `Bildirim görevi ${stamp}`, atananUyeId: fx.users.ege.id, teslimTarihi: Date.now() + DAY }), 'görev').gorev;
 	t.cleanup(() => admin.post('/api/takimlar', { action: 'deleteTask', gorevId: task.id }));
 
 	// Başvuru: kayıt formunun API'si. Şifre rastgele, hiçbir yere yazılmaz.

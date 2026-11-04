@@ -135,7 +135,7 @@ export function MemberDetailModal({
 		? { ad: member.rolAd ?? '—', renk: member.rolRenk ?? '#8e8e93' }
 		: null;
 	const joinDate = member.olusturma
-		? new Intl.DateTimeFormat(language === 'tr' ? 'tr-TR' : 'en-US', {
+		? new Intl.DateTimeFormat(language, {
 				year: 'numeric',
 				month: 'long',
 				day: 'numeric',
@@ -166,18 +166,18 @@ export function MemberDetailModal({
 					{member.avatarUrl || member.profilFoto ? (
 						<Image
 							src={(member.avatarUrl || member.profilFoto)!}
-							alt={`${member.firstName || member.ad} ${member.lastName || member.soyad}`}
+							alt={`${member.firstName} ${member.lastName}`}
 							width={54}
 							height={54}
 							unoptimized
 							style={{ width: '54px', height: '54px', borderRadius: '50%', objectFit: 'cover' }}
 						/>
 					) : (
-						<AvatarFallback name={`${member.firstName || member.ad} ${member.lastName || member.soyad}`} size={54} />
+						<AvatarFallback name={`${member.firstName} ${member.lastName}`} size={54} />
 					)}
 					<div style={{ flex: 1, minWidth: 0 }}>
 						<div style={{ fontSize: '16px', fontWeight: 700, letterSpacing: '-0.01em' }}>
-							{member.firstName || member.ad} {member.lastName || member.soyad}
+							{member.firstName} {member.lastName}
 						</div>
 						<div style={{ fontSize: '12.5px', opacity: 0.7, wordBreak: 'break-all' }}>
 							{member.email}
@@ -536,7 +536,7 @@ export function MemberDetailModal({
 							style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
 						>
 							<Mail size={14} />
-							{fill(t('membersSendMessageTo'), { name: member.ad })}
+							{fill(t('membersSendMessageTo'), { name: member.firstName })}
 						</button>
 					)}
 					{canEdit && (

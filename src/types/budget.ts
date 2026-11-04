@@ -66,7 +66,7 @@ export function isBudgetCategory(value: unknown): value is BudgetCategory {
 }
 
 /**
- * Largest single entry: 20,000,000 TL in kuruş. `tutarKurus` is a 32-bit INTEGER
+ * Largest single entry: 20,000,000 TL in kuruş. `amountMinor` is a 32-bit INTEGER
  * column, so this also keeps a sum of entries from ever overflowing it.
  */
 export const MAX_AMOUNT_CENTS = 2_000_000_000;
@@ -75,11 +75,10 @@ export const MAX_AMOUNT_CENTS = 2_000_000_000;
 export interface VaultSummary {
 	/** `null` is the general kasa. */
 	teamId: string | null;
-	takimId?: string | null;
 	ad: string;
 	kind: 'genel' | 'proje';
-	toplamGelirKurus: number;
-	toplamGiderKurus: number;
-	netBakiyeKurus: number;
+	totalIncomeMinor: number;
+	totalExpenseMinor: number;
+	netBalanceMinor: number;
 	kayitSayisi: number;
 }

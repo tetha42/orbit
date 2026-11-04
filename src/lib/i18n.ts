@@ -1,5 +1,6 @@
 import { EXTRA_TRANSLATIONS } from './i18nExtra.ts';
 import { FEATURE_TRANSLATIONS } from './i18nFeatures.ts';
+import { APP_TRANSLATIONS } from './i18nApps.ts';
 
 export type Language = 'tr' | 'en';
 
@@ -888,5 +889,5 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 
 // Newer features keep their copy in i18nExtra.ts; fold it into the main dictionary.
 for (const language of ['tr', 'en'] as const) {
-	Object.assign(TRANSLATIONS[language], EXTRA_TRANSLATIONS[language], FEATURE_TRANSLATIONS[language]);
+	Object.assign(TRANSLATIONS[language], EXTRA_TRANSLATIONS[language], FEATURE_TRANSLATIONS[language], APP_TRANSLATIONS[language]);
 }

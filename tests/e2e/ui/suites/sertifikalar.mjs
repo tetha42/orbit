@@ -20,7 +20,7 @@ export default async function suite(t) {
 	const star = await newMember(t, admin, { label: 'rozet', rolId: fx.roles.uye });
 	const peer = await newMember(t, admin, { label: 'akran', rolId: fx.roles.uye });
 	const [starApi, peerApi] = await Promise.all([star.api(), peer.api()]);
-	const certsOf = async (id) => (await admin.get(`/api/sertifikalar?kullaniciId=${encodeURIComponent(id)}`)).json ?? [];
+	const certsOf = async (id) => (await admin.get(`/api/sertifikalar?userId=${encodeURIComponent(id)}`)).json ?? [];
 	t.cleanup(async () => {
 		for (const id of [star.id, peer.id]) for (const c of await certsOf(id)) await admin.del(`/api/sertifikalar?id=${encodeURIComponent(c.id)}`);
 	});
@@ -43,9 +43,9 @@ export default async function suite(t) {
 	await t.step('rozetler gerçek kayıttan: etkinlik, takım, kaptanlık, görev, proje, XP', async () => {
 		// Beş etkinliğe yoklama (İlk Adım + Müdavim).
 		for (let i = 0; i < 5; i++) live.push(await makeEvent(t, admin, { label: `Rozet${i}`, startMin: -5, lengthMin: 60 }));
-		for (const e of live) await admin.post('/api/etkinlikler', { action: 'manuelYoklama', etkinlikId: e.id, kullaniciId: star.id });
+		for (const e of live) await admin.post('/api/etkinlikler', { action: 'manuelYoklama', etkinlikId: e.id, userId: star.id });
 		// Kaptanı olduğu takım (Takım Oyuncusu + Kaptan) ve tamamladığı on görev (Görev Avcısı).
-		const team = await makeTeam(t, admin, { label: 'Rozet', liderId: star.id });
+		const team = await makeTeam(t, admin, { label: 'Rozet', leadId: star.id });
 		for (let i = 0; i < 10; i++) {
 			const g = await addTask(starApi, team.id, { baslik: `Rozet görevi ${i}`, atananUyeId: star.id });
 			await starApi.post('/api/takimlar', { action: 'updateTask', gorevId: g.id, durum: 'tamamlandi' });
@@ -89,7 +89,7 @@ export default async function suite(t) {
 	});
 
 	await astep('yönetim: etkinlik katılımcılarına toplu sertifika; ikinci kez verilmez', async () => {
-		await admin.post('/api/etkinlikler', { action: 'manuelYoklama', etkinlikId: live[1].id, kullaniciId: peer.id });
+		await admin.post('/api/etkinlikler', { action: 'manuelYoklama', etkinlikId: live[1].id, userId: peer.id });
 		const win = await openWide(ap, 'certificates');
 		await win.getByRole('button', { name: 'Yeni Sertifika Düzenle' }).click();
 		const form = ap.locator('[data-cert-issue]');
@@ -142,9 +142,9 @@ export default async function suite(t) {
 	});
 
 	await t.step('üye yetkisi: sertifika veremez, başkasınınkini listeleyemez; düğme yok', async () => {
-		t.eq((await peerApi.post('/api/sertifikalar', { kullaniciId: peer.id, baslik: 'Kendime' })).status, 403, 'üye sertifika veremez');
-		const listed = (await peerApi.get(`/api/sertifikalar?kullaniciId=${star.id}`)).json;
-		t.check(listed.every((c) => c.kullaniciId === peer.id), 'başkasının kimliği istense de yalnız kendi sertifikaları');
+		t.eq((await peerApi.post('/api/sertifikalar', { userId: peer.id, baslik: 'Kendime' })).status, 403, 'üye sertifika veremez');
+		const listed = (await peerApi.get(`/api/sertifikalar?userId=${star.id}`)).json;
+		t.check(listed.every((c) => c.userId === peer.id), 'başkasının kimliği istense de yalnız kendi sertifikaları');
 		const someone = (await certsOf(star.id))[0];
 		t.eq((await peerApi.del(`/api/sertifikalar?id=${someone.id}`)).status, 403, 'üye iptal edemez');
 		const { page } = await peer.open();

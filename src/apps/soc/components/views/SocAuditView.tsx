@@ -59,36 +59,34 @@ interface AuditResponse {
 type CategoryType = 'all' | 'roles' | 'members' | 'security';
 type DatePresetType = 'all' | 'today' | '7d' | '30d' | 'custom';
 
-function getActionCategory(islem: string): 'roles' | 'members' | 'security' {
-	if (islem.startsWith('role.') || islem.startsWith('rol_')) return 'roles';
-	if (islem.startsWith('uye.') || islem.startsWith('basvuru.')) return 'members';
+function getActionCategory(action: string): 'roles' | 'members' | 'security' {
+	if (action.startsWith('role.')) return 'roles';
+	if (action.startsWith('member.') || action.startsWith('application.')) return 'members';
 	return 'security';
 }
 
-function getActionTone(islem: string): 'create' | 'update' | 'delete' | 'security' {
+function getActionTone(action: string): 'create' | 'update' | 'delete' | 'security' {
 	if (
-		islem.includes('olustur') ||
-		islem.includes('ata') ||
-		islem.includes('onayla') ||
-		islem.includes('aktif') ||
-		islem.includes('create')
+		action.includes('create') ||
+		action.includes('grant') ||
+		action.includes('approve') ||
+		action.includes('activate')
 	) {
 		return 'create';
 	}
 	if (
-		islem.includes('sil') ||
-		islem.includes('kaldir') ||
-		islem.includes('reddet') ||
-		islem.includes('kapat') ||
-		islem.includes('delete')
+		action.includes('delete') ||
+		action.includes('revoke') ||
+		action.includes('reject') ||
+		action.includes('disable')
 	) {
 		return 'delete';
 	}
 	if (
-		islem.includes('2fa') ||
-		islem.includes('smtp') ||
-		islem.includes('guvenlik') ||
-		islem.includes('sifre')
+		action.includes('2fa') ||
+		action.includes('smtp') ||
+		action.includes('security') ||
+		action.includes('password')
 	) {
 		return 'security';
 	}
@@ -112,12 +110,12 @@ function formatRelativeTime(timestamp: number, isEn: boolean): string {
 }
 
 function getDiffSummary(record: AuditRecord, t: (k: string, f?: string) => string, isEn: boolean): string | null {
-	const diffs = diffRows(record.onceki, record.sonraki);
+	const diffs = diffRows(record.before, record.after);
 	if (!diffs || diffs.length === 0) return null;
 
-	const roleDiff = diffs.find((d) => d.alan === 'roleId' || d.alan === 'rolAd');
+	const roleDiff = diffs.find((d) => d.alan === 'roleId' || d.alan === 'roleName');
 	if (roleDiff) {
-		const newVal = String(roleDiff.sonraki || '—');
+		const newVal = String(roleDiff.after || '—');
 		return isEn ? `Role: ${newVal}` : `Rol: ${newVal}`;
 	}
 
@@ -151,7 +149,7 @@ export function SocAuditView() {
 		fetch('/api/roles', { cache: 'no-store' })
 			.then((res) => (res.ok ? res.json() : null))
 			.then((payload) => {
-				if (!cancelled && Array.isArray(payload?.roller)) setRoles(payload.roller);
+				if (!cancelled && Array.isArray(payload?.roles)) setRoles(payload.roles);
 			})
 			.catch(() => {});
 		return () => {
@@ -238,7 +236,7 @@ export function SocAuditView() {
 		if (debouncedSearch) p.set('kisi', debouncedSearch);
 		if (selectedRole) p.set('role', selectedRole);
 		if (selectedAction) {
-			p.set('islem', selectedAction);
+			p.set('action', selectedAction);
 		}
 		if (fromDate) p.set('from', fromDate);
 		if (toDate) p.set('to', toDate);
@@ -253,7 +251,7 @@ export function SocAuditView() {
 	const filteredRecords = useMemo(() => {
 		const list = data?.kayitlar ?? [];
 		if (activeCategory === 'all' || selectedAction) return list;
-		return list.filter((r) => getActionCategory(r.islem) === activeCategory);
+		return list.filter((r) => getActionCategory(r.action) === activeCategory);
 	}, [data?.kayitlar, activeCategory, selectedAction]);
 
 	const totalRecords = data?.toplam ?? 0;
@@ -271,7 +269,7 @@ export function SocAuditView() {
 			const p = new URLSearchParams();
 			if (debouncedSearch) p.set('kisi', debouncedSearch);
 			if (selectedRole) p.set('role', selectedRole);
-			if (selectedAction) p.set('islem', selectedAction);
+			if (selectedAction) p.set('action', selectedAction);
 			if (fromDate) p.set('from', fromDate);
 			if (toDate) p.set('to', toDate);
 			p.set('tum', '1');
@@ -598,7 +596,7 @@ export function SocAuditView() {
 							</thead>
 							<tbody>
 								{filteredRecords.map((record) => {
-									const tone = getActionTone(record.islem);
+									const tone = getActionTone(record.action);
 									const toneClass =
 										tone === 'create'
 											? s.badgeCreate
@@ -620,8 +618,8 @@ export function SocAuditView() {
 										);
 
 									const diffSummary = getDiffSummary(record, t, isEn);
-									const actorName = record.yapanAd || record.yapanId || 'System';
-									const targetName = record.hedefAd || record.hedefId || '—';
+									const actorName = record.actorName || record.actorId || 'System';
+									const targetName = record.targetName || record.targetId || '—';
 
 									return (
 										<tr
@@ -632,7 +630,7 @@ export function SocAuditView() {
 											<td>
 												<span className={`${s.badge} ${toneClass}`}>
 													{actionIcon}
-													<span>{formatAuditAction(record.islem, t)}</span>
+													<span>{formatAuditAction(record.action, t)}</span>
 												</span>
 											</td>
 											<td>
@@ -661,9 +659,9 @@ export function SocAuditView() {
 											<td>
 												<span
 													className={s.timeText}
-													title={formatDateTime(record.zaman, isEn ? 'en-GB' : 'tr-TR')}
+													title={formatDateTime(record.timestamp, isEn ? 'en-GB' : 'tr-TR')}
 												>
-													{formatRelativeTime(record.zaman, isEn)}
+													{formatRelativeTime(record.timestamp, isEn)}
 												</span>
 											</td>
 											<td style={{ textAlign: 'right' }}>
@@ -694,7 +692,7 @@ export function SocAuditView() {
 				{filteredRecords.length > 0 && (
 					<div className={s.mobileCardStream}>
 						{filteredRecords.map((record) => {
-							const tone = getActionTone(record.islem);
+							const tone = getActionTone(record.action);
 							const toneClass =
 								tone === 'create'
 									? s.badgeCreate
@@ -716,8 +714,8 @@ export function SocAuditView() {
 								);
 
 							const diffSummary = getDiffSummary(record, t, isEn);
-							const actorName = record.yapanAd || record.yapanId || 'System';
-							const targetName = record.hedefAd || record.hedefId || '—';
+							const actorName = record.actorName || record.actorId || 'System';
+							const targetName = record.targetName || record.targetId || '—';
 
 							return (
 								<button
@@ -730,13 +728,13 @@ export function SocAuditView() {
 									<div className={s.cardTopRow}>
 										<span className={`${s.badge} ${toneClass}`}>
 											{actionIcon}
-											<span>{formatAuditAction(record.islem, t)}</span>
+											<span>{formatAuditAction(record.action, t)}</span>
 										</span>
 										<span
 											className={s.timeText}
-											title={formatDateTime(record.zaman, isEn ? 'en-GB' : 'tr-TR')}
+											title={formatDateTime(record.timestamp, isEn ? 'en-GB' : 'tr-TR')}
 										>
-											{formatRelativeTime(record.zaman, isEn)}
+											{formatRelativeTime(record.timestamp, isEn)}
 										</span>
 									</div>
 
@@ -832,7 +830,7 @@ function SocAuditDetailSheet({
 	const [activeTab, setActiveTab] = useState<'diff' | 'raw'>('diff');
 	const [copiedField, setCopiedField] = useState<string | null>(null);
 
-	const diffs = useMemo(() => diffRows(record.onceki, record.sonraki), [record.onceki, record.sonraki]);
+	const diffs = useMemo(() => diffRows(record.before, record.after), [record.before, record.after]);
 
 	const copyWithFeedback = (key: string, text: string) => {
 		copyToClipboard(text);
@@ -845,7 +843,7 @@ function SocAuditDetailSheet({
 		if (typeof val === 'boolean') {
 			return val ? t('auditYes') : t('auditNo');
 		}
-		if (alan === 'roleId' || alan === 'tasinanRolId') {
+		if (alan === 'roleId' || alan === 'movedToRoleId') {
 			if (val === 'rol_admin') return t('auditRoleAdmin', 'Yönetici (Admin)');
 			if (val === 'rol_yonetim_kurulu') return t('auditRoleBoard', 'Board Member');
 			if (val === 'rol_uye') return t('auditRoleMember', 'Member');
@@ -867,9 +865,9 @@ function SocAuditDetailSheet({
 		return String(val);
 	};
 
-	const actionTitle = formatAuditAction(record.islem, t);
-	const actorName = record.yapanAd || record.yapanId || 'System';
-	const targetName = record.hedefAd || record.hedefId || '—';
+	const actionTitle = formatAuditAction(record.action, t);
+	const actorName = record.actorName || record.actorId || 'System';
+	const targetName = record.targetName || record.targetId || '—';
 
 	return (
 		<Sheet
@@ -915,7 +913,7 @@ function SocAuditDetailSheet({
 					<span className={s.summaryLabel}>{t('auditZaman')}</span>
 					<div className={s.summaryValue}>
 						<span style={{ fontVariantNumeric: 'tabular-nums' }}>
-							{formatDateTime(record.zaman, isEn ? 'en-GB' : 'tr-TR')}
+							{formatDateTime(record.timestamp, isEn ? 'en-GB' : 'tr-TR')}
 						</span>
 					</div>
 				</div>
@@ -1021,12 +1019,12 @@ function SocAuditDetailSheet({
 													</td>
 													<td>
 														<span className={s.diffOldVal}>
-															{formatAuditValue(d.alan, d.onceki)}
+															{formatAuditValue(d.alan, d.before)}
 														</span>
 													</td>
 													<td>
 														<span className={s.diffNewVal}>
-															{formatAuditValue(d.alan, d.sonraki)}
+															{formatAuditValue(d.alan, d.after)}
 														</span>
 													</td>
 												</tr>
@@ -1059,13 +1057,13 @@ function SocAuditDetailSheet({
 												<div className={s.diffCol}>
 													<span className={s.diffColLabel}>{t('auditOnceki')}</span>
 													<span className={s.diffOldVal}>
-														{formatAuditValue(d.alan, d.onceki)}
+														{formatAuditValue(d.alan, d.before)}
 													</span>
 												</div>
 												<div className={s.diffCol}>
 													<span className={s.diffColLabel}>{t('auditSonraki')}</span>
 													<span className={s.diffNewVal}>
-														{formatAuditValue(d.alan, d.sonraki)}
+														{formatAuditValue(d.alan, d.after)}
 													</span>
 												</div>
 											</div>

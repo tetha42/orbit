@@ -29,7 +29,7 @@ export function TeamSettings({ team, roster, categories, notify, onChanged, onDe
 	const [repoUrl, setRepoUrl] = useState(team.repoUrl ?? '');
 	const [katilimTuru, setKatilimTuru] = useState(team.katilimTuru);
 	const [status, setDurum] = useState(team.status);
-	const [liderId, setLiderId] = useState(team.liderId ?? '');
+	const [leadId, setLeadId] = useState(team.leadId ?? '');
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
 
@@ -47,7 +47,7 @@ export function TeamSettings({ team, roster, categories, notify, onChanged, onDe
 			if (ad !== team.ad) body.ad = ad;
 			if (kategori !== team.kategori) body.kategori = kategori;
 			if (status !== team.status) body.status = status;
-			if (liderId && liderId !== team.liderId) body.liderId = liderId;
+			if (leadId && leadId !== team.leadId) body.leadId = leadId;
 		}
 		const res = await sendJson('/api/teams', 'POST', body);
 		setBusy(false);
@@ -123,8 +123,8 @@ export function TeamSettings({ team, roster, categories, notify, onChanged, onDe
 					</label>
 					<label className={ui.field}>
 						<span className={ui.fieldLabel}>{t('tmFieldCaptain')}</span>
-						<select className={ui.select} style={{ maxWidth: 'none' }} value={liderId} onChange={(e) => setLiderId(e.target.value)}>
-							{!team.liderId && <option value="">—</option>}
+						<select className={ui.select} style={{ maxWidth: 'none' }} value={leadId} onChange={(e) => setLeadId(e.target.value)}>
+							{!team.leadId && <option value="">—</option>}
 							{roster.map((m) => (
 								<option key={m.id} value={m.id}>
 									{m.ad} {m.soyad}

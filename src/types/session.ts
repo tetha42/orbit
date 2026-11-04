@@ -35,9 +35,10 @@ export interface SessionUser {
 	twoFactorRequired: boolean;
 	/** Required but not yet configured — drives the blocking setup prompt. */
 	mustSetup2fa: boolean;
-	/** The member's role (name and colour for badges); null until one is assigned. */
-	rolBilgi: { id: string; ad: string; renk: string } | null;
+	roleInfo: { id: string; name: string; color: string } | null;
+	rolBilgi?: { id: string; ad: string; renk: string } | null;
 	/** What the role grants per app — the UI shows only what this allows. */
+	permissions: Permissions;
 	izinler: Permissions;
 	/** Holds the built-in admin role. */
 	admin: boolean;

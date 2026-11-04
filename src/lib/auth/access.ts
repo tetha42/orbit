@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { User } from '@/db/schema';
 import { getRolePermission, type Permission } from '@/db/roles';
-import { canManage, canUse, seviyeOf, type Seviye, PERMISSION_DESCRIPTIONS, isPermissionApp } from '@/core/permissions';
+import { canManage, canUse, seviyeOf, type PermissionLevel, PERMISSION_DESCRIPTIONS, isPermissionApp } from '@/core/permissions';
 import { clientAddress } from '@/lib/http';
 import { consumeRateLimit } from '@/lib/rateLimit';
 import { logSystemEvent } from '@/db/repositories/logs.repo';
@@ -59,20 +59,23 @@ export async function authenticateEnrolled(request: Request): Promise<AccessResu
 	return auth;
 }
 
-/** `can(user, 'events', 'yonet')` — the role's level, and the second factor where required. */
-export function can(user: AuthorizedUser, appId: string, seviye: Seviye = 'kullan'): boolean {
+/** `can(user, 'events', 'manage')` — the role's level, and the second factor where required. */
+export function can(user: AuthorizedUser, appId: string, level: PermissionLevel | 'kullan' | 'yonet' = 'use'): boolean {
 	if (ikiAdimBekliyor(user)) return false;
-	return seviye === 'yonet' ? canManage(user.permission.izinler, appId) : canUse(user.permission.izinler, appId);
+	const permissions = user.permission.permissions ?? user.permission.izinler;
+	return level === 'manage' || level === 'yonet' ? canManage(permissions, appId) : canUse(permissions, appId);
 }
 
-export async function requireApp(request: Request, appId: string, seviye: Seviye = 'kullan'): Promise<AccessResult> {
+export async function requireApp(request: Request, appId: string, level: PermissionLevel | 'kullan' | 'yonet' = 'use'): Promise<AccessResult> {
 	const auth = await authenticateEnrolled(request);
 	if (!auth.authorized) return auth;
 	const user = auth.user;
-	const ok = seviye === 'yonet' ? canManage(user.permission.izinler, appId) : canUse(user.permission.izinler, appId);
+	const permissions = user.permission.permissions ?? user.permission.izinler;
+	const isManage = level === 'manage' || level === 'yonet';
+	const ok = isManage ? canManage(permissions, appId) : canUse(permissions, appId);
 	if (!ok) {
-		const ad = isPermissionApp(appId) ? PERMISSION_DESCRIPTIONS[appId].ad : appId;
-		const has = seviyeOf(user.permission.izinler, appId);
+		const name = isPermissionApp(appId) ? PERMISSION_DESCRIPTIONS[appId].ad : appId;
+		const has = seviyeOf(permissions, appId);
 		const ip = clientAddress(request);
 		const pathname = new URL(request.url).pathname;
 		if (consumeRateLimit(`log:403:${user.id}:${appId}`, 15, 60_000).allowed) {
@@ -82,9 +85,9 @@ export async function requireApp(request: Request, appId: string, seviye: Seviye
 				mesaj: `Unauthorized app access attempt (${request.method} ${pathname}): ${user.email}`,
 				detay: {
 					appId,
-					gerekenSeviye: seviye,
-					mevcutSeviye: has,
-					role: user.permission.role?.ad ?? null,
+					requiredLevel: isManage ? 'manage' : 'use',
+					currentLevel: has,
+					role: user.permission.role?.name ?? user.permission.role?.ad ?? null,
 				},
 				userId: user.id,
 				ip,
@@ -102,7 +105,7 @@ export async function requireApp(request: Request, appId: string, seviye: Seviye
 		return {
 			authorized: false,
 			response: NextResponse.json(
-				{ error: has === 'yok' ? `Bu işlem için ${ad} uygulamasına erişim yetkiniz yok.` : `Bu işlem ${ad} uygulamasında yönetim yetkisi gerektirir.` },
+				{ error: has === 'none' ? `Access denied to ${name} application.` : `Management permission required for ${name}.` },
 				{ status: 403 }
 			),
 		};

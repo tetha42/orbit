@@ -127,7 +127,7 @@ export function TeamMembers({ team, currentUserId, roster, notify, onChanged }: 
 				</h4>
 				<div className={styles.roster}>
 					{team.uyeler.map((u) => {
-						const isCaptain = u.userId === team.liderId;
+						const isCaptain = u.userId === team.leadId;
 						const isMe = u.userId === currentUserId;
 						return (
 							<div key={u.userId} className={styles.memberCard} data-member-id={u.userId}>

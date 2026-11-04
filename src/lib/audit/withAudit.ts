@@ -80,13 +80,13 @@ export function withAudit<TContext = unknown, TBody = unknown>(
 					: bodyObj;
 
 				await writeAuditLog({
-					yapanId: actorId,
-					yapanAd: actorName,
-					islem: options.action,
-					hedefTur: options.target,
-					hedefId: targetId ? String(targetId) : null,
-					hedefAd: options.target,
-					sonraki: details ? recordFields(details) : null,
+					actorId: actorId,
+					actorName: actorName,
+					action: options.action,
+					targetType: options.target,
+					targetId: targetId ? String(targetId) : null,
+					targetName: options.target,
+					after: details ? recordFields(details) : null,
 					ip,
 				});
 			} catch (auditErr) {

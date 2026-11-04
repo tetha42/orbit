@@ -12,17 +12,17 @@ import type { RoleView } from './RoleEditor';
 import s from './Roles.module.css';
 
 interface RolesListProps {
-	roller: RoleView[];
+	roles: RoleView[];
 	onEdit: (role: RoleView) => void;
 	onRemove: (role: RoleView) => void;
 }
 
-export function RolesList({ roller, onEdit, onRemove }: RolesListProps) {
+export function RolesList({ roles, onEdit, onRemove }: RolesListProps) {
 	const { t, language } = useI18n();
 	return (
 		<div className={s.list}>
-			{roller.map((r) => {
-				const apps = PERMISSION_APPS.filter((a) => seviyeOf(r.izinler, a) !== 'yok' && a !== 'settings');
+			{roles.map((r) => {
+				const apps = PERMISSION_APPS.filter((a) => seviyeOf(r.izinler, a) !== 'none' && a !== 'settings');
 				return (
 					<article key={r.id} className={s.role} data-role-id={r.id}>
 						<span className={s.swatch} style={{ background: r.renk }} />
@@ -44,9 +44,9 @@ export function RolesList({ roller, onEdit, onRemove }: RolesListProps) {
 									<span className={ui.muted} style={{ fontSize: 12 }}>{t('rolesOnlyPersonal')}</span>
 								) : (
 									apps.map((a) => (
-										<span key={a} className={`${s.app} ${seviyeOf(r.izinler, a) === 'yonet' ? s.appManage : ''}`}>
+										<span key={a} className={`${s.app} ${seviyeOf(r.izinler, a) === 'manage' ? s.appManage : ''}`}>
 											{getAppMeta(a as AppID, language)?.shortTitle || PERMISSION_DESCRIPTIONS[a].ad}
-											{seviyeOf(r.izinler, a) === 'yonet' ? ` · ${t('rolesLevelManage')}` : ''}
+											{seviyeOf(r.izinler, a) === 'manage' ? ` · ${t('rolesLevelManage')}` : ''}
 										</span>
 									))
 								)}

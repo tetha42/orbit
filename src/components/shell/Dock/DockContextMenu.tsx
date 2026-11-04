@@ -9,7 +9,7 @@ import { useSession } from '@/core/session';
 import { MacOSMenu } from '@/components/Common/MacOSMenu';
 
 export function DockContextMenu() {
-	const { language, getAppMeta } = useI18n();
+	const { t, getAppMeta } = useI18n();
 	const { openApp, closeApp, minimizeApp } = useWindowActions();
 	const windows = useWindows();
 	const { dockContextMenu, closeDockContextMenu, isDockAutoHide, toggleDockAutoHide } = useShell();
@@ -38,9 +38,7 @@ export function DockContextMenu() {
 	const items: MenuItem[] = [
 		{
 			id: 'primary-action',
-			label: isOpen
-				? (language === 'tr' ? 'Öne Getir' : 'Bring to Front')
-				: (language === 'tr' ? 'Uygulamayı Aç' : 'Open'),
+			label: isOpen ? t('dockBringToFront', 'Bring to Front') : t('dockOpenApp', 'Open'),
 			shortcut: isOpen ? '⏎' : '⌘O',
 			action: () => {
 				openApp(appId);
@@ -96,17 +94,17 @@ export function DockContextMenu() {
 		{ id: 'sep-options', label: '', separator: true },
 		{
 			id: 'dock-options',
-			label: language === 'tr' ? 'Seçenekler' : 'Options',
+			label: t('dockOptions', 'Options'),
 			children: [
 				{
 					id: 'opt-keep-in-dock',
-					label: language === 'tr' ? 'Dock’ta Tut' : 'Keep in Dock',
+					label: t('dockKeepInDock', 'Keep in Dock'),
 					checked: true,
 					action: () => closeDockContextMenu(),
 				},
 				{
 					id: 'opt-open-at-login',
-					label: language === 'tr' ? 'Girişte Aç' : 'Open at Login',
+					label: t('dockOpenAtLogin', 'Open at Login'),
 					checked: false,
 					action: () => closeDockContextMenu(),
 				},
@@ -114,8 +112,8 @@ export function DockContextMenu() {
 				{
 					id: 'opt-dock-autohide',
 					label: isDockAutoHide
-						? (language === 'tr' ? 'Gizlemeyi Kapat' : 'Turn Hiding Off')
-						: (language === 'tr' ? 'Otomatik Gizlemeyi Aç' : 'Turn Hiding On'),
+						? t('dockTurnHidingOff', 'Turn Hiding Off')
+						: t('dockTurnHidingOn', 'Turn Hiding On'),
 					shortcut: '⌥⌘D',
 					checked: isDockAutoHide,
 					action: () => {
@@ -127,7 +125,7 @@ export function DockContextMenu() {
 		},
 		{
 			id: 'dock-show-windows',
-			label: language === 'tr' ? 'Tüm Pencereleri Göster' : 'Show All Windows',
+			label: t('dockShowAllWindows', 'Show All Windows'),
 			action: () => {
 				openApp(appId);
 				closeDockContextMenu();
@@ -140,7 +138,7 @@ export function DockContextMenu() {
 			{ id: 'sep-window-ctrl', label: '', separator: true },
 			{
 				id: 'dock-hide',
-				label: language === 'tr' ? 'Gizle' : 'Hide',
+				label: t('dockHide', 'Hide'),
 				shortcut: '⌘H',
 				action: () => {
 					minimizeApp(appId);
@@ -149,7 +147,7 @@ export function DockContextMenu() {
 			},
 			{
 				id: 'dock-quit',
-				label: language === 'tr' ? `Kapat: ${meta.shortTitle}` : `Quit ${meta.shortTitle}`,
+				label: t('dockQuitApp', 'Quit {title}').replace('{title}', meta.shortTitle),
 				shortcut: '⌘Q',
 				action: () => {
 					closeApp(appId);

@@ -4,11 +4,11 @@ import React, { useState } from 'react';
 import { Receipt } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
 import { BUDGET_CATEGORIES, MAX_AMOUNT_CENTS } from '@/types/budget';
-import { formatKurus, parseAmount, dateInputToMs } from '@/lib/budget';
+import { formatMinor, parseAmount, dateInputToMs } from '@/lib/budget';
 import { toDateInput } from '@/lib/kanban';
 import ui from '@/core/ui/ui.module.css';
 import { sendJson } from '@/core/data/http';
-import k from './Kasa.module.css';
+import k from './Vault.module.css';
 import type { VaultRecord } from '../types';
 import { Sheet } from '@/core/ui/Sheet';
 import { ReceiptUploadField } from './ReceiptUploadField';
@@ -20,7 +20,7 @@ import { orbitBus } from '@/core/ipc/orbitBus';
 interface VaultEntryModalProps {
 	teamId: string | null;
 	registration?: VaultRecord;
-	netBakiyeKurus: number;
+	netBalanceMinor: number;
 	onClose: () => void;
 	onSaved: (message: string) => void;
 }
@@ -28,7 +28,7 @@ interface VaultEntryModalProps {
 export function VaultEntryModal({
 	teamId,
 	registration,
-	netBakiyeKurus,
+	netBalanceMinor,
 	onClose,
 	onSaved,
 }: VaultEntryModalProps) {
@@ -48,8 +48,8 @@ export function VaultEntryModal({
 	const [error, setError] = useState('');
 	const [busy, setBusy] = useState(false);
 
-	const kurus = editing ? registration.tutarKurus : parseAmount(tutar);
-	const overdraft = !editing && tur === 'gider' && kurus !== null && kurus > netBakiyeKurus;
+	const kurus = editing ? registration.amountMinor : parseAmount(tutar);
+	const overdraft = !editing && tur === 'gider' && kurus !== null && kurus > netBalanceMinor;
 
 	const upload = async (file: File | undefined) => {
 		if (!file) return;
@@ -80,7 +80,7 @@ export function VaultEntryModal({
 		if (!editing) {
 			if (kurus === null) return setError(t('kasaInvalidAmount'));
 			if (kurus > MAX_AMOUNT_CENTS)
-				return setError(fill(t('kasaMaxAmountError'), { max: formatKurus(MAX_AMOUNT_CENTS) }));
+				return setError(fill(t('kasaMaxAmountError'), { max: formatMinor(MAX_AMOUNT_CENTS) }));
 		}
 		setBusy(true);
 		const res = editing
@@ -94,7 +94,7 @@ export function VaultEntryModal({
 					teamId,
 					tur,
 					kategori,
-					tutarKurus: kurus,
+					amountMinor: kurus,
 					aciklama: aciklama.trim(),
 					date: ms,
 					fisFotoUrl: fisFotoUrl || undefined,
@@ -151,7 +151,7 @@ export function VaultEntryModal({
 					<span className={`${k.tag} ${registration.tur === 'gelir' ? k.tagIn : k.tagOut}`}>
 						{registration.tur === 'gelir' ? t('kasaTagIncome') : t('kasaTagExpense')}
 					</span>{' '}
-					<strong>{formatKurus(registration.tutarKurus)} ₺</strong> — {t('kasaTypeAmountLockedNotice')}
+					<strong>{formatMinor(registration.amountMinor)} ₺</strong> — {t('kasaTypeAmountLockedNotice')}
 				</div>
 			)}
 
@@ -178,7 +178,7 @@ export function VaultEntryModal({
 				<label className={ui.field}>
 					<span className={ui.fieldLabel}>{t('budgetColAmount')}</span>
 					{editing ? (
-						<input className={ui.input} value={formatKurus(registration.tutarKurus)} disabled />
+						<input className={ui.input} value={formatMinor(registration.amountMinor)} disabled />
 					) : (
 						<input
 							className={ui.input}
@@ -205,13 +205,13 @@ export function VaultEntryModal({
 			</div>
 			{!editing && (
 				<div className={k.balanceHint}>
-					{t('kasaCurrentBalance')} <strong>{formatKurus(netBakiyeKurus)} ₺</strong>
+					{t('kasaCurrentBalance')} <strong>{formatMinor(netBalanceMinor)} ₺</strong>
 					{kurus !== null && (
 						<>
 							{' '}
 							{t('kasaAfterEntry')}{' '}
 							<strong className={overdraft ? k.neg : undefined}>
-								{formatKurus(netBakiyeKurus + (tur === 'gelir' ? kurus : -kurus))} ₺
+								{formatMinor(netBalanceMinor + (tur === 'gelir' ? kurus : -kurus))} ₺
 							</strong>
 						</>
 					)}

@@ -7,26 +7,29 @@ const CODE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
 
 function newVerificationCode(): string {
 	const chars = Array.from({ length: 8 }, () => CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]).join('');
-	return `BEU-${new Date().getFullYear()}-${chars.slice(0, 4)}-${chars.slice(4)}`;
+	return `ORB-${new Date().getFullYear()}-${chars.slice(0, 4)}-${chars.slice(4)}`;
 }
 
 export async function getCertificates(userId?: string): Promise<Certificate[]> {
 	await ensurePostgresInit();
 	let query = `
-		SELECT s.*,
+		SELECT s.id, s.verification_code AS "verificationCode", s.user_id AS "userId",
+		       s.event_id AS "etkinlikId", s.title AS "baslik", s.issued_at AS "verilisTarihi",
+		       s.pdf_url AS "pdfUrl", s.created_at AS "olusturma", s.category AS "kategori",
+		       s.locale AS "dil", s.description AS "aciklama",
 		       k.first_name || ' ' || k.last_name as "kullaniciAdSoyad",
 		       k.handle as "ogrenciNo",
-		       e.baslik as "etkinlikBaslik"
+		       e.title as "etkinlikBaslik"
 		FROM certificates s
-		JOIN users k ON s.userId = k.id
-		LEFT JOIN events e ON s.etkinlikId = e.id
+		JOIN users k ON s.user_id = k.id
+		LEFT JOIN events e ON s.event_id = e.id
 	`;
 	const params: unknown[] = [];
 	if (userId) {
-		query += ' WHERE s.userId = $1';
+		query += ' WHERE s.user_id = $1';
 		params.push(userId);
 	}
-	query += ' ORDER BY s.olusturma DESC';
+	query += ' ORDER BY s.created_at DESC';
 
 	const res = await getPgPool().query(query, params);
 	return res.rows;
@@ -36,15 +39,18 @@ export async function getCertificateByCode(kod: string): Promise<Certificate | n
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`
-		SELECT s.*,
+		SELECT s.id, s.verification_code AS "verificationCode", s.user_id AS "userId",
+		       s.event_id AS "etkinlikId", s.title AS "baslik", s.issued_at AS "verilisTarihi",
+		       s.pdf_url AS "pdfUrl", s.created_at AS "olusturma", s.category AS "kategori",
+		       s.locale AS "dil", s.description AS "aciklama",
 		       k.first_name || ' ' || k.last_name as "kullaniciAdSoyad",
 		       k.handle as "ogrenciNo",
 		       k.department as "kullaniciBolum",
-		       e.baslik as "etkinlikBaslik"
+		       e.title as "etkinlikBaslik"
 		FROM certificates s
-		JOIN users k ON s.userId = k.id
-		LEFT JOIN events e ON s.etkinlikId = e.id
-		WHERE s.verificationCode = $1
+		JOIN users k ON s.user_id = k.id
+		LEFT JOIN events e ON s.event_id = e.id
+		WHERE s.verification_code = $1
 	`,
 		[kod]
 	);
@@ -67,7 +73,7 @@ export async function createCertificate(params: {
 		const verificationCode = newVerificationCode();
 		try {
 			await getPgPool().query(
-				`INSERT INTO certificates (id, verificationCode, userId, etkinlikId, baslik, verilisTarihi, pdfUrl, olusturma, kategori, dil, aciklama)
+				`INSERT INTO certificates (id, verification_code, user_id, event_id, title, issued_at, pdf_url, created_at, category, locale, description)
 				 VALUES ($1, $2, $3, $4, $5, $6, $7, $6, $8, $9, $10)`,
 				[
 					id,
@@ -97,9 +103,10 @@ export async function createEventCertificates(
 ): Promise<{ verilen: number; zatenVar: number }> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT y.userId AS "userId",
-		        EXISTS (SELECT 1 FROM certificates s WHERE s.userId = y.userId AND s.etkinlikId = $1) AS "var"
-		 FROM attendances y WHERE y.etkinlikId = $1`,
+		`SELECT y.user_id AS "userId",
+		        EXISTS (SELECT 1 FROM certificates s WHERE s.user_id = y.user_id AND s.event_id = $1) AS "var"
+		 FROM event_participants y
+		 WHERE y.event_id = $1 AND y.status = 'attended'`,
 		[etkinlikId]
 	);
 	let verilen = 0;

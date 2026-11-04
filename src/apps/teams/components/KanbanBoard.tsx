@@ -18,7 +18,7 @@ import { useKanbanDnD } from '../hooks/useKanbanDnD';
 
 export interface KanbanTeam {
 	id: string;
-	liderId: string;
+	leadId: string;
 	liderAdSoyad: string;
 	uyeler: TeamMember[];
 	gorevler: TeamTask[];
@@ -40,7 +40,7 @@ export function KanbanBoard({ team, currentUserId, isManager, mutateTasks, refet
 	const { t, language } = useI18n();
 	const { playSystemSound } = useSound();
 	const tasks = useMemo(() => team.gorevler ?? [], [team.gorevler]);
-	const canManage = isManager || team.liderId === currentUserId;
+	const canManage = isManager || team.leadId === currentUserId;
 	const canWork = (task: TeamTask) => canManage || task.atananUyeId === currentUserId;
 
 	const [query, setQuery] = useState('');
@@ -63,11 +63,11 @@ export function KanbanBoard({ team, currentUserId, isManager, mutateTasks, refet
 	const members = useMemo(() => {
 		const active = (team.uyeler ?? []).filter((u) => u.status === 'aktif');
 		const list = active.map((u) => ({ id: u.userId, name: u.kullaniciAdSoyad, role: u.takimRolu }));
-		if (team.liderId && !list.some((m) => m.id === team.liderId)) {
-			list.unshift({ id: team.liderId, name: team.liderAdSoyad, role: '' });
+		if (team.leadId && !list.some((m) => m.id === team.leadId)) {
+			list.unshift({ id: team.leadId, name: team.liderAdSoyad, role: '' });
 		}
 		return list;
-	}, [team.uyeler, team.liderId, team.liderAdSoyad]);
+	}, [team.uyeler, team.leadId, team.liderAdSoyad]);
 
 	const allLabels = useMemo(
 		() => [...new Set(tasks.flatMap((g) => g.etiketler ?? []))].sort((a, b) => a.localeCompare(b, 'tr')),

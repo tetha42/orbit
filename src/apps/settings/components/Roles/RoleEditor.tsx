@@ -35,7 +35,7 @@ export interface RoleView {
 
 interface RoleEditorProps {
 	role: RoleView | null;
-	benimIzinlerim: Permissions;
+	myPermissions: Permissions;
 	onClose: () => void;
 	onSaved: (msg: string) => void;
 }
@@ -46,20 +46,20 @@ function englishAppTitle(app: PermissionApp): string {
 	return manifest && 'en' in manifest ? manifest.en.shortTitle : PERMISSION_DESCRIPTIONS[app].ad;
 }
 
-export function RoleEditor({ role, benimIzinlerim, onClose, onSaved }: RoleEditorProps) {
+export function RoleEditor({ role, myPermissions, onClose, onSaved }: RoleEditorProps) {
 	const { t, language } = useI18n();
 	const isEn = language === 'en';
-	const SEVIYE_ADI: Record<Seviye, string> = { yok: t('rolesLevelNone'), kullan: t('rolesLevelUse'), yonet: t('rolesLevelManage') };
+	const SEVIYE_ADI: Record<Seviye, string> = { none: t('rolesLevelNone'), use: t('rolesLevelUse'), manage: t('rolesLevelManage') };
 	const [ad, setAd] = useState(role?.ad ?? '');
 	const [renk, setRenk] = useState(role?.renk ?? ROLE_COLORS[0]);
 	const [aciklama, setAciklama] = useState(role?.aciklama ?? '');
-	const [izinler, setIzinler] = useState<Permissions>(role?.izinler ?? { news: 'kullan', settings: 'kullan' });
+	const [izinler, setIzinler] = useState<Permissions>(role?.izinler ?? { news: 'use', settings: 'use' });
 	const isManagement = hasManagementPermission(izinler);
 	const [ikiAdim, setIkiAdim] = useState<boolean | null>(role ? role.ikiAdimZorunlu : null);
 	const ikiAdimEtkin = isManagement ? true : (ikiAdim ?? false);
 	const [error, setError] = useState('');
 	const [busy, setBusy] = useState(false);
-	const excess = useMemo(() => extraPermissions(izinler, benimIzinlerim), [izinler, benimIzinlerim]);
+	const excess = useMemo(() => extraPermissions(izinler, myPermissions), [izinler, myPermissions]);
 
 	const set = (a: PermissionApp, v: Seviye) => setIzinler((cur) => ({ ...cur, [a]: v }));
 
@@ -120,21 +120,21 @@ export function RoleEditor({ role, benimIzinlerim, onClose, onSaved }: RoleEdito
 				{PERMISSION_APPS.map((a) => {
 					const meta = PERMISSION_DESCRIPTIONS[a];
 					const v = seviyeOf(izinler, a);
-					const options: Seviye[] = a === 'settings' ? ['kullan', 'yonet'] : ['yok', 'kullan', 'yonet'];
+					const options: Seviye[] = a === 'settings' ? ['use', 'manage'] : ['none', 'use', 'manage'];
 					return (
 						<div key={a} className={s.matrixRow} role="row" data-app={a}>
 							<div className={s.matrixApp} role="cell">
 								<strong>{isEn ? englishAppTitle(a) : meta.ad}</strong>
 								<span className={ui.muted}>
-									{v === 'yok'
+									{v === 'none'
 										? t('rolesAppHidden')
 										: isEn
-											? fill(t(v === 'yonet' ? 'rolesPermManageGeneric' : 'rolesPermUseGeneric'), {
+											? fill(t(v === 'manage' ? 'rolesPermManageGeneric' : 'rolesPermUseGeneric'), {
 													app: englishAppTitle(a),
 												})
-											: meta[v]}
+											: meta[v === 'manage' ? 'yonet' : 'kullan']}
 								</span>
-								{meta.uyari && v !== 'yok' && (
+								{meta.uyari && v !== 'none' && (
 									<span className={s.warn}>
 										<AlertTriangle size={12} /> {isEn ? t('rolesPermWarningGeneric') : meta.uyari}
 									</span>

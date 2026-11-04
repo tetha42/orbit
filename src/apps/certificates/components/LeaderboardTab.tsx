@@ -72,15 +72,15 @@ export function LeaderboardTab({ topMembers, currentUserId }: LeaderboardTabProp
 									<td style={{ padding: '12px 16px' }}>
 										<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 											<div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg, #0a84ff, #5e5ce6)', display: 'grid', placeItems: 'center', color: '#fff', fontSize: '11px', fontWeight: 700 }}>
-												{member.ad[0]}{member.soyad[0]}
+												{(member.firstName || member.ad || '')[0]}{(member.lastName || member.soyad || '')[0]}
 											</div>
 											<span style={{ fontWeight: isMe ? 700 : 500 }}>
-												{member.ad} {member.soyad} {isMe && ` ${t('certsYou')}`}
+												{member.firstName || member.ad} {member.lastName || member.soyad} {isMe && ` ${t('certsYou')}`}
 											</span>
 										</div>
 									</td>
 									<td style={{ padding: '12px 16px', opacity: 0.8, fontSize: '12px' }}>
-										{member.bolum} ({fill(t('membersClassYear'), { year: member.sinif })})
+										{member.department || member.bolum} ({fill(t('membersClassYear'), { year: member.grade || member.sinif })})
 									</td>
 									<td style={{ padding: '12px 16px' }}>
 										<span style={{ padding: '3px 8px', borderRadius: '6px', background: 'rgba(255, 255, 255, 0.08)', fontSize: '11px' }}>

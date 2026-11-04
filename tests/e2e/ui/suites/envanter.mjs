@@ -226,7 +226,7 @@ export default async function suite(t) {
 		t.eq((await can.post('/api/envanter', { action: 'updateDurum', envanterId: id, durum: 'kayip' })).status, 403, 'Üye durum değiştiremez (403)');
 		t.eq((await can.post('/api/envanter', { action: 'delete', envanterId: id })).status, 403, 'Üye eşya silemez (403)');
 		// "Üye adına" alanı yönetim dışında yok sayılır: ödünç kendi adına yazılır.
-		const o = await can.post('/api/envanter', { action: 'oduncAl', envanterId: id, kullaniciId: t.fx.users.ege.id });
+		const o = await can.post('/api/envanter', { action: 'oduncAl', envanterId: id, userId: t.fx.users.ege.id });
 		t.eq(o.status, 200, 'Üye ödünç alabiliyor');
 		t.eq((await item())?.oduncAlanId, t.fx.users.can.id, 'başkası adına verilmek istenen ödünç kendi adına yazıldı');
 		await can.post('/api/envanter', { action: 'iadeEt', envanterId: id });

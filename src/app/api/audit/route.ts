@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
 import { authenticate, can, requireAdmin } from '@/lib/auth/access';
 import { listAuditLogs } from '@/db/audit';
-import { AUDIT_CSV_LIMIT, suzgecOku } from '@/lib/audit';
+import { AUDIT_CSV_LIMIT, parseAuditFilter } from '@/lib/audit';
 
 /**
  * The audit log — Settings → Roller → Değişiklik geçmişi. Read-only and only
  * for system administrators (the people who manage roles).
  *
- *   GET /api/denetim?kisi=&role=&islem=&from=YYYY-MM-DD&to=YYYY-MM-DD&sayfa=1&boyut=50
- *   GET /api/denetim?…&tum=1   — every matching record, no paging (up to DENETIM_CSV_SINIRI), for the CSV download
+ *   GET /api/audit?user=&role=&action=&from=YYYY-MM-DD&to=YYYY-MM-DD&page=1&pageSize=50
+ *   GET /api/audit?…&all=1   — every matching record, no paging (up to AUDIT_CSV_LIMIT), for the CSV download
  */
 export async function GET(request: Request) {
 	const auth = await authenticate(request);
@@ -19,26 +19,22 @@ export async function GET(request: Request) {
 
 	try {
 		const params = new URL(request.url).searchParams;
-		const suzgec = suzgecOku(params);
-		const tum = params.get('tum') === '1' || params.get('all') === '1';
-		const { kayitlar, toplam } = await listAuditLogs(suzgec, tum ? { limit: AUDIT_CSV_LIMIT, offset: 0 } : {});
-		const page = tum ? 1 : suzgec.sayfa;
-		const pageSize = tum ? AUDIT_CSV_LIMIT : suzgec.boyut;
+		const filter = parseAuditFilter(params);
+		const all = params.get('all') === '1';
+		const { records, total } = await listAuditLogs(filter, all ? { limit: AUDIT_CSV_LIMIT, offset: 0 } : {});
+		const page = all ? 1 : filter.page;
+		const pageSize = all ? AUDIT_CSV_LIMIT : filter.pageSize;
 		return NextResponse.json(
 			{
-				records: kayitlar,
-				total: toplam,
+				records,
+				total,
 				page,
 				pageSize,
-				kayitlar,
-				toplam,
-				sayfa: page,
-				boyut: pageSize,
 			},
 			{ headers: { 'Cache-Control': 'no-store' } }
 		);
 	} catch (error) {
-		console.error('API /api/denetim GET error:', error);
+		console.error('API /api/audit GET error:', error);
 		return NextResponse.json({ error: 'Değişiklik geçmişi okunamadı.' }, { status: 500 });
 	}
 }
@@ -62,14 +58,14 @@ export async function DELETE(request: Request) {
 			servis: 'security',
 			seviye: 'WARN',
 			mesaj: `Denetim geçmişi (denetim_kaydi) yönetici tarafından sıfırlandı: ${auth.user.email}`,
-			detay: { yapanId: auth.user.id, yapanAd: `${auth.user.ad} ${auth.user.soyad}`.trim() },
+			detay: { actorId: auth.user.id, actorName: `${auth.user.ad} ${auth.user.soyad}`.trim() },
 			userId: auth.user.id,
 			ip,
 		});
 
 		return NextResponse.json({ ok: true, message: 'Değişiklik geçmişi temizlendi.' });
 	} catch (error) {
-		console.error('API /api/denetim DELETE error:', error);
+		console.error('API /api/audit DELETE error:', error);
 		return NextResponse.json({ error: 'Değişiklik geçmişi temizlenemedi.' }, { status: 500 });
 	}
 }

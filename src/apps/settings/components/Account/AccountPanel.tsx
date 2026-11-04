@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSession } from '@/core/session';
 import { useSound } from '@/core/sound';
-import { useI18n } from '@/core/i18n';
+import { resolveLocalizedText, useI18n } from '@/core/i18n';
 import { useJsonResource } from '@/core/data/useJsonResource';
 import { BIO_MAX } from '@/lib/profile';
 import { DEFAULT_REGISTRATION_CORE_CONFIG } from '@/lib/registrationConfig';
@@ -650,7 +650,11 @@ export function AccountPanel() {
 								}}
 							>
 								<div style={{ flex: 1, minWidth: 0, fontSize: '12px', fontWeight: 600 }}>
-									{language === 'tr' ? document.titleTr : document.titleEn}
+									{resolveLocalizedText(
+										{ en: document.titleEn, tr: document.titleTr },
+										language,
+										document.titleEn || document.titleTr
+									)}
 								</div>
 								<button
 									type="button"

@@ -6,28 +6,28 @@ import { TRANSFER_CATEGORY, type BudgetCategory } from '@/types/budget';
 
 /** Thrown when an expense — or removing an income — would take a kasa below zero. */
 export class InsufficientFundsError extends Error {
-	readonly netBakiyeKurus: number;
+	readonly netBalanceMinor: number;
 
-	constructor(netBakiyeKurus: number) {
+	constructor(netBalanceMinor: number) {
 		super('INSUFFICIENT_FUNDS');
 		this.name = 'InsufficientFundsError';
-		this.netBakiyeKurus = netBakiyeKurus;
+		this.netBalanceMinor = netBalanceMinor;
 	}
 }
 
 export interface CashTotals {
 	/** `null` is the general kasa. */
 	teamId: string | null;
-	toplamGelirKurus: number;
-	toplamGiderKurus: number;
+	totalIncomeMinor: number;
+	totalExpenseMinor: number;
 	kayitSayisi: number;
 }
 
 /** WHERE fragment (with its parameters) that selects one kasa; `null` is the general kasa. */
 function cashFilter(teamId: string | null): { sql: string; params: string[] } {
 	return teamId === null
-		? { sql: 'teamId IS NULL', params: [] }
-		: { sql: 'teamId = $1', params: [teamId] };
+		? { sql: 'team_id IS NULL', params: [] }
+		: { sql: 'team_id = $1', params: [teamId] };
 }
 
 /**
@@ -47,7 +47,7 @@ async function lockCashRegisters(client: PoolClient, kasalar: (string | null)[])
 async function cashNetCents(client: PoolClient, teamId: string | null): Promise<number> {
 	const filter = cashFilter(teamId);
 	const res = await client.query(
-		`SELECT COALESCE(SUM(CASE WHEN tur = 'gelir' THEN tutarKurus ELSE -tutarKurus END), 0) AS net
+		`SELECT COALESCE(SUM(CASE WHEN entry_type = 'gelir' THEN amount_minor ELSE -amount_minor END), 0) AS net
 		 FROM budget_records WHERE ${filter.sql}`,
 		filter.params
 	);
@@ -58,17 +58,17 @@ async function cashNetCents(client: PoolClient, teamId: string | null): Promise<
 export async function getCashTotals(): Promise<CashTotals[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(`
-		SELECT teamId,
-		       COALESCE(SUM(CASE WHEN tur = 'gelir' THEN tutarKurus ELSE 0 END), 0) AS gelir,
-		       COALESCE(SUM(CASE WHEN tur = 'gider' THEN tutarKurus ELSE 0 END), 0) AS gider,
+		SELECT team_id AS "teamId",
+		       COALESCE(SUM(CASE WHEN entry_type = 'gelir' THEN amount_minor ELSE 0 END), 0) AS gelir,
+		       COALESCE(SUM(CASE WHEN entry_type = 'gider' THEN amount_minor ELSE 0 END), 0) AS gider,
 		       COUNT(*)::int AS sayi
 		FROM budget_records
-		GROUP BY teamId
+		GROUP BY team_id
 	`);
 	return res.rows.map((r) => ({
 		teamId: (r.teamId as string | null) ?? null,
-		toplamGelirKurus: Number(r.gelir),
-		toplamGiderKurus: Number(r.gider),
+		totalIncomeMinor: Number(r.gelir),
+		totalExpenseMinor: Number(r.gider),
 		kayitSayisi: Number(r.sayi),
 	}));
 }
@@ -82,17 +82,20 @@ export async function getBudgetRecords(teamId: string | null): Promise<BudgetRec
 	const filter = cashFilter(teamId);
 	const res = await getPgPool().query(
 		`
-		SELECT b.*,
+		SELECT b.id, b.date, b.entry_type AS "tur", b.category AS "kategori",
+		       b.amount_minor AS "amountMinor", b.description AS "aciklama", b.receipt_url AS "fisFotoUrl",
+		       b.recorded_by AS "kaydedenId", b.team_id AS "teamId", b.created_at AS "olusturma",
+		       b.transfer_pair_id AS "aktarimId", b.updated_by AS "guncelleyenId", b.updated_at AS "guncellenme",
 		       k.first_name || ' ' || k.last_name as "kaydedenAdSoyad",
 		       g.first_name || ' ' || g.last_name as "guncelleyenAdSoyad",
-		       CASE WHEN o.id IS NULL THEN NULL ELSE COALESCE(t.ad, 'Genel Kasa') END as "karsiKasaAd"
+		       CASE WHEN o.id IS NULL THEN NULL ELSE COALESCE(t.name, 'Genel Kasa') END as "karsiKasaAd"
 		FROM budget_records b
-		LEFT JOIN users k ON b.kaydedenId = k.id
-		LEFT JOIN users g ON b.guncelleyenId = g.id
-		LEFT JOIN budget_records o ON b.aktarimId IS NOT NULL AND o.aktarimId = b.aktarimId AND o.id <> b.id
-		LEFT JOIN teams t ON t.id = o.teamId
+		LEFT JOIN users k ON b.recorded_by = k.id
+		LEFT JOIN users g ON b.updated_by = g.id
+		LEFT JOIN budget_records o ON b.transfer_pair_id IS NOT NULL AND o.transfer_pair_id = b.transfer_pair_id AND o.id <> b.id
+		LEFT JOIN teams t ON t.id = o.team_id
 		WHERE b.${filter.sql}
-		ORDER BY b.date DESC, b.olusturma DESC
+		ORDER BY b.date DESC, b.created_at DESC
 	`,
 		filter.params
 	);
@@ -101,14 +104,21 @@ export async function getBudgetRecords(teamId: string | null): Promise<BudgetRec
 
 export async function getBudgetRecordById(id: string): Promise<BudgetRecord | null> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query('SELECT * FROM budget_records WHERE id = $1', [id]);
+	const res = await getPgPool().query(
+		`SELECT id, date, entry_type AS "tur", category AS "kategori", amount_minor AS "amountMinor",
+		        description AS "aciklama", receipt_url AS "fisFotoUrl", recorded_by AS "kaydedenId",
+		        team_id AS "teamId", created_at AS "olusturma", transfer_pair_id AS "aktarimId",
+		        updated_by AS "guncelleyenId", updated_at AS "guncellenme"
+		 FROM budget_records WHERE id = $1`,
+		[id]
+	);
 	return (res.rows[0] as BudgetRecord | undefined) ?? null;
 }
 
 /** Which kasas reference this receipt file (usually one). `null` is the general kasa. */
 export async function getBudgetTeamIdsByReceipt(url: string): Promise<(string | null)[]> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query('SELECT teamId FROM budget_records WHERE fisFotoUrl = $1', [url]);
+	const res = await getPgPool().query('SELECT team_id AS "teamId" FROM budget_records WHERE receipt_url = $1', [url]);
 	return res.rows.map((r) => (r.teamId as string | null) ?? null);
 }
 
@@ -119,9 +129,9 @@ export async function getBudgetTeamIdsByReceipt(url: string): Promise<(string | 
  * kasas' locks, so the pair is never half-written and never overspends.
  */
 export async function addOdenekAktarimi(params: {
-	kaynakTakimId: string | null;
-	hedefTakimId: string | null;
-	tutarKurus: number;
+	sourceTeamId: string | null;
+	targetTeamId: string | null;
+	amountMinor: number;
 	aciklama: string;
 	kaydedenId: string;
 	date?: number;
@@ -130,17 +140,17 @@ export async function addOdenekAktarimi(params: {
 	const aktarimId = `akt_${now}_${randomBytes(4).toString('hex')}`;
 	const date = params.date || now;
 	await withTransaction(async (client) => {
-		await lockCashRegisters(client, [params.kaynakTakimId, params.hedefTakimId]);
-		const net = await cashNetCents(client, params.kaynakTakimId);
-		if (params.tutarKurus > net) throw new InsufficientFundsError(net);
+		await lockCashRegisters(client, [params.sourceTeamId, params.targetTeamId]);
+		const net = await cashNetCents(client, params.sourceTeamId);
+		if (params.amountMinor > net) throw new InsufficientFundsError(net);
 		const insert = (tur: 'gelir' | 'gider', teamId: string | null, suffix: string) =>
 			client.query(
-				`INSERT INTO budget_records (id, date, tur, kategori, tutarKurus, aciklama, fisFotoUrl, kaydedenId, teamId, olusturma, aktarimId)
+				`INSERT INTO budget_records (id, date, entry_type, category, amount_minor, description, receipt_url, recorded_by, team_id, created_at, transfer_pair_id)
 				 VALUES ($1, $2, $3, $4, $5, $6, NULL, $7, $8, $9, $10)`,
-				[`btc_${now}_${suffix}_${randomBytes(3).toString('hex')}`, date, tur, TRANSFER_CATEGORY, params.tutarKurus, params.aciklama.trim(), params.kaydedenId, teamId, now, aktarimId]
+				[`btc_${now}_${suffix}_${randomBytes(3).toString('hex')}`, date, tur, TRANSFER_CATEGORY, params.amountMinor, params.aciklama.trim(), params.kaydedenId, teamId, now, aktarimId]
 			);
-		await insert('gider', params.kaynakTakimId, 'out');
-		await insert('gelir', params.hedefTakimId, 'in');
+		await insert('gider', params.sourceTeamId, 'out');
+		await insert('gelir', params.targetTeamId, 'in');
 	});
 	return { aktarimId };
 }
@@ -157,7 +167,7 @@ export async function updateBudgetRecord(
 	guncelleyenId: string
 ): Promise<'ok' | 'yok' | 'aktarim'> {
 	return withTransaction(async (client) => {
-		const found = await client.query('SELECT id, aktarimId FROM budget_records WHERE id = $1 FOR UPDATE', [id]);
+		const found = await client.query('SELECT id, transfer_pair_id AS "aktarimId" FROM budget_records WHERE id = $1 FOR UPDATE', [id]);
 		const row = found.rows[0] as { id: string; aktarimId: string | null } | undefined;
 		if (!row) return 'yok';
 		if (row.aktarimId && (changes.kategori !== undefined || changes.fisFotoUrl !== undefined)) return 'aktarim';
@@ -168,16 +178,16 @@ export async function updateBudgetRecord(
 			values.push(value);
 			sets.push(`${column} = $${values.length}`);
 		};
-		if (changes.aciklama !== undefined) set('aciklama', changes.aciklama.trim());
-		if (changes.kategori !== undefined) set('kategori', changes.kategori);
+		if (changes.aciklama !== undefined) set('description', changes.aciklama.trim());
+		if (changes.kategori !== undefined) set('category', changes.kategori);
 		if (changes.date !== undefined) set('date', changes.date);
-		if (changes.fisFotoUrl !== undefined) set('fisFotoUrl', changes.fisFotoUrl);
+		if (changes.fisFotoUrl !== undefined) set('receipt_url', changes.fisFotoUrl);
 		if (sets.length === 0) return 'ok';
-		set('guncelleyenId', guncelleyenId);
-		set('guncellenme', Date.now());
+		set('updated_by', guncelleyenId);
+		set('updated_at', Date.now());
 
 		values.push(row.aktarimId ?? row.id);
-		const where = row.aktarimId ? `aktarimId = $${values.length}` : `id = $${values.length}`;
+		const where = row.aktarimId ? `transfer_pair_id = $${values.length}` : `id = $${values.length}`;
 		await client.query(`UPDATE budget_records SET ${sets.join(', ')} WHERE ${where}`, values);
 		return 'ok';
 	});
@@ -186,7 +196,7 @@ export async function updateBudgetRecord(
 export async function createBudgetRecord(params: {
 	tur: 'gelir' | 'gider';
 	kategori: BudgetCategory;
-	tutarKurus: number;
+	amountMinor: number;
 	aciklama: string;
 	kaydedenId: string;
 	/** The project whose kasa this belongs to; omit for the general kasa. */
@@ -202,7 +212,7 @@ export async function createBudgetRecord(params: {
 		date: params.date || now,
 		tur: params.tur,
 		kategori: params.kategori,
-		tutarKurus: Math.round(params.tutarKurus),
+		amountMinor: Math.round(params.amountMinor),
 		aciklama: params.aciklama.trim(),
 		fisFotoUrl: params.fisFotoUrl,
 		kaydedenId: params.kaydedenId,
@@ -216,17 +226,17 @@ export async function createBudgetRecord(params: {
 		await lockCashRegister(client, teamId);
 		if (registration.tur === 'gider') {
 			const net = await cashNetCents(client, teamId);
-			if (registration.tutarKurus > net) throw new InsufficientFundsError(net);
+			if (registration.amountMinor > net) throw new InsufficientFundsError(net);
 		}
 		await client.query(
-			`INSERT INTO budget_records (id, date, tur, kategori, tutarKurus, aciklama, fisFotoUrl, kaydedenId, teamId, olusturma)
+			`INSERT INTO budget_records (id, date, entry_type, category, amount_minor, description, receipt_url, recorded_by, team_id, created_at)
 			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
 			[
 				registration.id,
 				registration.date,
 				registration.tur,
 				registration.kategori,
-				registration.tutarKurus,
+				registration.amountMinor,
 				registration.aciklama,
 				registration.fisFotoUrl || null,
 				registration.kaydedenId,
@@ -245,12 +255,12 @@ export async function createBudgetRecord(params: {
  */
 export async function deleteBudgetRecord(id: string): Promise<boolean> {
 	return withTransaction(async (client) => {
-		const found = await client.query('SELECT tur, tutarKurus, teamId, aktarimId FROM budget_records WHERE id = $1', [id]);
+		const found = await client.query('SELECT entry_type AS "tur", amount_minor AS "amountMinor", team_id AS "teamId", transfer_pair_id AS "aktarimId" FROM budget_records WHERE id = $1', [id]);
 		const row = found.rows[0];
 		if (!row) return false;
 
-		const rows: { tur: string; tutarKurus: number; teamId: string | null }[] = row.aktarimId
-			? (await client.query('SELECT tur, tutarKurus, teamId FROM budget_records WHERE aktarimId = $1', [row.aktarimId])).rows
+		const rows: { tur: string; amountMinor: number; teamId: string | null }[] = row.aktarimId
+			? (await client.query('SELECT entry_type AS "tur", amount_minor AS "amountMinor", team_id AS "teamId" FROM budget_records WHERE transfer_pair_id = $1', [row.aktarimId])).rows
 			: [row];
 		await lockCashRegisters(client, rows.map((r) => r.teamId ?? null));
 
@@ -259,11 +269,11 @@ export async function deleteBudgetRecord(id: string): Promise<boolean> {
 			if (r.tur !== 'gelir') continue;
 			const teamId = r.teamId ?? null;
 			const net = await cashNetCents(client, teamId);
-			if (net - Number(r.tutarKurus) < 0) throw new InsufficientFundsError(net);
+			if (net - Number(r.amountMinor) < 0) throw new InsufficientFundsError(net);
 		}
 
 		const res = row.aktarimId
-			? await client.query('DELETE FROM budget_records WHERE aktarimId = $1', [row.aktarimId])
+			? await client.query('DELETE FROM budget_records WHERE transfer_pair_id = $1', [row.aktarimId])
 			: await client.query('DELETE FROM budget_records WHERE id = $1', [id]);
 		return (res.rowCount ?? 0) > 0;
 	});

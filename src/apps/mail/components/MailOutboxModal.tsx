@@ -62,7 +62,7 @@ export function MailOutboxModal({ items, busyId, onClose, onApprove, onReject }:
 								<div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
 									<strong style={{ fontSize: 12.5, flex: 1 }}>{item.recipient}</strong>
 									<span style={{ fontSize: 10.5, opacity: 0.6 }}>
-										{new Date(item.createdAt).toLocaleString(language === 'tr' ? 'tr-TR' : 'en-US')}
+										{new Date(item.createdAt).toLocaleString(language)}
 									</span>
 								</div>
 								<div style={{ fontSize: 11.5, opacity: 0.75 }}>{item.subject}</div>

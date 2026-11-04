@@ -97,13 +97,16 @@ export async function POST(request: Request) {
 			const hashedCode = hashOtpCode(code);
 
 			// Süresi dolmuş eski OTP kayıtlarını temizle
-			await pool.query('DELETE FROM email_verifications WHERE expires_at < $1', [Date.now()]);
+			await pool.query('DELETE FROM verification_tokens WHERE expires_at < $1', [Date.now()]);
 
 			await pool.query(
-				`INSERT INTO email_verifications (email, code, type, expires_at, created_at)
-				 VALUES ($1, $2, 'sifre_sifirlama', $3, $4)
-				 ON CONFLICT (email) DO UPDATE SET code = $2, type = 'sifre_sifirlama', expires_at = $3, created_at = $4`,
-				[normalizedEmail, hashedCode, sonGecerlilik, Date.now()]
+				'DELETE FROM verification_tokens WHERE lower(target) = lower($1) AND token_type = $2',
+				[normalizedEmail, 'sifre_sifirlama']
+			);
+			await pool.query(
+				`INSERT INTO verification_tokens (id, user_id, token_type, target, token_hash, expires_at, created_at)
+				 VALUES ($1, $2, 'sifre_sifirlama', $3, $4, $5, $6)`,
+				[`otp_${crypto.randomUUID()}`, user.id, normalizedEmail, hashedCode, sonGecerlilik, Date.now()]
 			);
 
 			clearRateLimit(`pwd_reset:verify:${normalizedEmail}`);
@@ -138,7 +141,7 @@ export async function POST(request: Request) {
 			const verifyKey = `pwd_reset:verify:${normalizedEmail}`;
 			const gate = isRateLimited(verifyKey, MAX_OTP_ATTEMPTS);
 			if (!gate.allowed) {
-				await pool.query('DELETE FROM email_verifications WHERE email = $1 AND type = $2', [
+				await pool.query('DELETE FROM verification_tokens WHERE lower(target) = lower($1) AND token_type = $2', [
 					normalizedEmail,
 					'sifre_sifirlama',
 				]);
@@ -159,17 +162,17 @@ export async function POST(request: Request) {
 			}
 
 			const codeRes = await pool.query(
-				'SELECT code AS kod, expires_at AS songecerlilik FROM email_verifications WHERE email = $1 AND type = $2',
+				'SELECT token_hash AS kod, expires_at AS songecerlilik FROM verification_tokens WHERE lower(target) = lower($1) AND token_type = $2 ORDER BY created_at DESC LIMIT 1',
 				[normalizedEmail, 'sifre_sifirlama']
 			);
 
 			const record = codeRes.rows[0];
-			const expectedCode = record ? String(record.kod ?? record.code ?? '').trim() : '';
+			const expectedCode = record ? String(record.kod ?? record.tokenHash ?? record.token_hash ?? '').trim() : '';
 			const submittedCode = String(kod).trim();
 			if (!record || !verifyOtpCode(expectedCode, submittedCode)) {
 				const attempts = recordFailure(verifyKey, OTP_WINDOW_MS);
 				if (attempts >= MAX_OTP_ATTEMPTS) {
-					await pool.query('DELETE FROM email_verifications WHERE email = $1 AND type = $2', [
+					await pool.query('DELETE FROM verification_tokens WHERE lower(target) = lower($1) AND token_type = $2', [
 						normalizedEmail,
 						'sifre_sifirlama',
 					]);
@@ -202,7 +205,10 @@ export async function POST(request: Request) {
 			]);
 
 			// Kodu ve sayacı temizle
-			await pool.query('DELETE FROM email_verifications WHERE email = $1', [normalizedEmail]);
+			await pool.query('DELETE FROM verification_tokens WHERE lower(target) = lower($1) AND token_type = $2', [
+				normalizedEmail,
+				'sifre_sifirlama',
+			]);
 			clearRateLimit(verifyKey);
 
 			void notifyPasswordReset({ ad: user.ad, soyad: user.soyad, email: user.email });

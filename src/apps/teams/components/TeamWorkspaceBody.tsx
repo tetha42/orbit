@@ -8,7 +8,7 @@ import type { TeamWorkspaceTab } from './TeamWorkspaceHeader';
 import { KanbanBoard } from './KanbanBoard';
 import { TeamMembers } from './TeamMembers';
 import { TeamSettings } from './TeamSettings';
-import { VaultPanel } from '@/apps/budget/components/KasaPanel';
+import { VaultPanel } from '@/apps/embeds';
 import { TeamChatRoom } from './TeamChatRoom';
 
 interface TeamWorkspaceBodyProps {
@@ -82,7 +82,7 @@ export function TeamWorkspaceBody({
 			{visibleTab === 'kasa' && canSeeVault && <VaultPanel key={team.id} teamId={team.id} embedded />}
 			{visibleTab === 'settings' && team.izinler.manage && (
 				<TeamSettings
-					key={`${team.id}:${team.ad}:${team.kontenjan}:${team.liderId}:${team.status}:${team.katilimTuru}`}
+					key={`${team.id}:${team.ad}:${team.kontenjan}:${team.leadId}:${team.status}:${team.katilimTuru}`}
 					team={team}
 					roster={roster}
 					categories={categories}

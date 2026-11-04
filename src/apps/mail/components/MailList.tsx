@@ -223,7 +223,7 @@ export const MailList: React.FC<MailListProps> = ({
 	onEmptyTrash,
 }) => {
 	const { t, language } = useI18n();
-	const locale = language === 'tr' ? 'tr-TR' : 'en-US';
+	const locale = language;
 	const totalPages = Math.max(1, Math.ceil(total / pageSize));
 	const [isSelectMode, setIsSelectMode] = useState(false);
 

@@ -3,14 +3,14 @@
 import React from 'react';
 import { ShieldAlert } from 'lucide-react';
 import ui from '@/core/ui/ui.module.css';
-import k from './Kasa.module.css';
+import k from './Vault.module.css';
 import type { VaultRecord, VaultSummary } from '../types';
-import { useVaultLedger } from '../hooks/useKasaLedger';
-import { VaultCardSummary } from './KasaCardSummary';
-import { VaultInsights } from './KasaInsights';
-import { VaultToolbar } from './KasaToolbar';
-import { VaultLedgerTable } from './KasaLedgerTable';
-import { VaultEntryModal } from './KasaEntryModal';
+import { useVaultLedger } from '../hooks/useVaultLedger';
+import { VaultCardSummary } from './VaultCardSummary';
+import { VaultInsights } from './VaultInsights';
+import { VaultToolbar } from './VaultToolbar';
+import { VaultLedgerTable } from './VaultLedgerTable';
+import { VaultEntryModal } from './VaultEntryModal';
 import { TransferModal } from './TransferModal';
 
 export interface VaultPanelProps {
@@ -157,7 +157,7 @@ export function VaultPanel({ teamId, onChanged, embedded = false, vaults }: Vaul
 			{modal?.kind === 'new' && (
 				<VaultEntryModal
 					teamId={teamId}
-					netBakiyeKurus={summary?.netBakiyeKurus ?? 0}
+					netBalanceMinor={summary?.netBalanceMinor ?? 0}
 					onClose={() => setModal(null)}
 					onSaved={changed}
 				/>
@@ -166,7 +166,7 @@ export function VaultPanel({ teamId, onChanged, embedded = false, vaults }: Vaul
 				<VaultEntryModal
 					teamId={teamId}
 					registration={modal.registration}
-					netBakiyeKurus={summary?.netBakiyeKurus ?? 0}
+					netBalanceMinor={summary?.netBalanceMinor ?? 0}
 					onClose={() => setModal(null)}
 					onSaved={changed}
 				/>

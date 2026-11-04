@@ -94,15 +94,15 @@ export interface SchemaGraphData {
 
 export interface AuditRecord {
 	id: number;
-	zaman: number;
-	yapanId: string;
-	yapanAd: string;
-	islem: string;
-	hedefTur: string;
-	hedefId: string;
-	hedefAd: string;
-	onceki: Record<string, unknown> | null;
-	sonraki: Record<string, unknown> | null;
+	timestamp: number;
+	actorId: string;
+	actorName: string;
+	action: string;
+	targetType: string;
+	targetId: string;
+	targetName: string;
+	before: Record<string, unknown> | null;
+	after: Record<string, unknown> | null;
 	ip: string;
 }
 

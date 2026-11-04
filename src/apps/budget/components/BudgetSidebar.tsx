@@ -77,12 +77,12 @@ export function BudgetSidebar({ active, general, projects, onSelect }: BudgetSid
 					style={{
 						fontSize: '12px',
 						fontWeight: 700,
-						color: isActive ? '#ffffff' : (kasa.netBakiyeKurus > 0 ? '#34c759' : 'inherit'),
-						opacity: isActive ? 1 : (kasa.netBakiyeKurus > 0 ? 1 : 0.55),
+						color: isActive ? '#ffffff' : (kasa.netBalanceMinor > 0 ? '#34c759' : 'inherit'),
+						opacity: isActive ? 1 : (kasa.netBalanceMinor > 0 ? 1 : 0.55),
 						whiteSpace: 'nowrap',
 					}}
 				>
-					₺{formatTL(kasa.netBakiyeKurus)}
+					₺{formatTL(kasa.netBalanceMinor)}
 				</span>
 			</button>
 		);

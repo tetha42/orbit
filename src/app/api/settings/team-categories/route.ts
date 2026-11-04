@@ -31,7 +31,7 @@ export async function PATCH(request: Request) {
 	void logSystemEvent({
 		servis: 'settings',
 		seviye: 'INFO',
-		mesaj: `Team categories updated (${auth.user.ad} ${auth.user.soyad})`,
+		mesaj: `Team categories updated (${auth.user.firstName || auth.user.ad || ""} ${auth.user.lastName || auth.user.soyad || ""})`,
 		detay: { count: categories.length, categories },
 		userId: auth.user.id,
 	});

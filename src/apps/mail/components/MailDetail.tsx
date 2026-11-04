@@ -48,7 +48,7 @@ export const MailDetail: React.FC<MailDetailProps> = ({
 	onBackMobile,
 }) => {
 	const { t, language } = useI18n();
-	const locale = language === 'tr' ? 'tr-TR' : 'en-US';
+	const locale = language;
 	const [loadRemoteImages, setLoadRemoteImages] = useState(false);
 
 	// Reset remote images state when message changes without effect cascades

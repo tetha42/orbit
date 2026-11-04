@@ -11,8 +11,7 @@ interface PasswordResetModalProps {
 }
 
 export function PasswordResetModal({ isOpen, onClose, onSuccess }: PasswordResetModalProps) {
-	const { language } = useI18n();
-	const isTr = language === 'tr';
+	const { t } = useI18n();
 
 	const [step, setStep] = useState<'email' | 'verify'>('email');
 	const [email, setEmail] = useState('');
@@ -40,10 +39,10 @@ export function PasswordResetModal({ isOpen, onClose, onSuccess }: PasswordReset
 			if (res.ok && data.success) {
 				setStep('verify');
 			} else {
-				setError(data.error || (isTr ? 'Kod gönderilemedi.' : 'Could not send reset code.'));
+				setError(data.error || t('pwResetSendError', 'Could not send reset code.'));
 			}
 		} catch {
-			setError(isTr ? 'Sunucu bağlantı hatası.' : 'Server connection error.');
+			setError(t('pwResetServerError', 'Server connection error.'));
 		} finally {
 			setLoading(false);
 		}
@@ -52,15 +51,15 @@ export function PasswordResetModal({ isOpen, onClose, onSuccess }: PasswordReset
 	const handleResetPassword = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (kod.trim().length !== 6) {
-			setError(isTr ? '6 haneli doğrulama kodunu eksiksiz girin.' : 'Please enter the full 6-digit verification code.');
+			setError(t('pwResetCodeLenError', 'Please enter the full 6-digit verification code.'));
 			return;
 		}
 		if (yeniSifre.length < 8) {
-			setError(isTr ? 'Yeni şifreniz en az 8 karakter olmalıdır.' : 'New password must be at least 8 characters.');
+			setError(t('pwResetMinLenError', 'New password must be at least 8 characters.'));
 			return;
 		}
 		if (yeniSifre !== yeniSifreTekrar) {
-			setError(isTr ? 'Şifreler birbiriyle eşleşmiyor.' : 'Passwords do not match.');
+			setError(t('pwResetMismatchError', 'Passwords do not match.'));
 			return;
 		}
 
@@ -81,16 +80,17 @@ export function PasswordResetModal({ isOpen, onClose, onSuccess }: PasswordReset
 			if (res.ok && data.success) {
 				onSuccess(
 					data.message ||
-						(isTr
-							? 'Şifreniz başarıyla güncellendi! Yeni şifrenizle giriş yapabilirsiniz.'
-							: 'Password updated successfully! You can now sign in with your new password.')
+						t(
+							'pwResetSuccessMsg',
+							'Password updated successfully! You can now sign in with your new password.'
+						)
 				);
 				onClose();
 			} else {
-				setError(data.error || (isTr ? 'Şifre güncellenemedi.' : 'Could not update password.'));
+				setError(data.error || t('pwResetUpdateError', 'Could not update password.'));
 			}
 		} catch {
-			setError(isTr ? 'Sunucu bağlantı hatası.' : 'Server connection error.');
+			setError(t('pwResetServerError', 'Server connection error.'));
 		} finally {
 			setLoading(false);
 		}
@@ -126,7 +126,7 @@ export function PasswordResetModal({ isOpen, onClose, onSuccess }: PasswordReset
 				<button
 					type="button"
 					onClick={onClose}
-					aria-label={isTr ? 'Kapat' : 'Close'}
+					aria-label={t('close', 'Close')}
 					style={{
 						position: 'absolute',
 						top: '16px',
@@ -165,13 +165,13 @@ export function PasswordResetModal({ isOpen, onClose, onSuccess }: PasswordReset
 					<div>
 						<h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>
 							{step === 'email'
-								? isTr ? 'Şifremi Unuttum' : 'Reset Password'
-								: isTr ? 'Yeni Şifre Belirleyin' : 'Set New Password'}
+								? t('pwResetTitleRequest', 'Reset Password')
+								: t('pwResetTitleVerify', 'Set New Password')}
 						</h3>
 						<p style={{ fontSize: '11.5px', color: '#a1a1aa', margin: 0 }}>
 							{step === 'email'
-								? isTr ? 'Kayıtlı e-posta adresinizi girin' : 'Enter your registered email address'
-								: isTr ? `${email} adresine gönderilen kod` : `Verification code sent to ${email}`}
+								? t('pwResetSubRequest', 'Enter your registered email address')
+								: t('pwResetSubVerify', 'Verification code sent to {email}').replace('{email}', email)}
 						</p>
 					</div>
 				</div>
@@ -196,14 +196,14 @@ export function PasswordResetModal({ isOpen, onClose, onSuccess }: PasswordReset
 					<form onSubmit={handleRequestCode}>
 						<div style={{ marginBottom: '16px' }}>
 							<label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: '#d4d4d8', marginBottom: '6px' }}>
-								{isTr ? 'E-posta Adresi' : 'Email Address'}
+								{t('pwResetEmailLabel', 'Email Address')}
 							</label>
 							<input
 								type="email"
 								required
 								value={email}
 								onChange={(e) => setEmail(e.target.value)}
-								placeholder={isTr ? 'uye@orbit.local veya ad.soyad@example.com' : 'member@orbit.local or name@example.com'}
+								placeholder={t('pwResetEmailPh', 'member@orbit.local or name@example.com')}
 								style={{
 									width: '100%',
 									minHeight: '40px',
@@ -240,14 +240,14 @@ export function PasswordResetModal({ isOpen, onClose, onSuccess }: PasswordReset
 							}}
 						>
 							{loading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
-							{isTr ? 'Doğrulama Kodu Gönder' : 'Send Reset Code'}
+							{t('pwResetSendBtn', 'Send Reset Code')}
 						</button>
 					</form>
 				) : (
 					<form onSubmit={handleResetPassword}>
 						<div style={{ marginBottom: '12px' }}>
 							<label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: '#d4d4d8', marginBottom: '6px' }}>
-								{isTr ? '6 Haneli Doğrulama Kodu' : '6-Digit Verification Code'}
+								{t('pwResetCodeLabel', '6-Digit Verification Code')}
 							</label>
 							<input
 								type="text"
@@ -278,7 +278,7 @@ export function PasswordResetModal({ isOpen, onClose, onSuccess }: PasswordReset
 
 						<div style={{ marginBottom: '12px' }}>
 							<label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: '#d4d4d8', marginBottom: '6px' }}>
-								{isTr ? 'Yeni Şifre (En az 8 karakter)' : 'New Password (Min 8 chars)'}
+								{t('pwResetNewPasswordLabel', 'New Password (Min 8 chars)')}
 							</label>
 							<input
 								type="password"
@@ -305,7 +305,7 @@ export function PasswordResetModal({ isOpen, onClose, onSuccess }: PasswordReset
 
 						<div style={{ marginBottom: '16px' }}>
 							<label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: '#d4d4d8', marginBottom: '6px' }}>
-								{isTr ? 'Yeni Şifre Tekrar' : 'Confirm New Password'}
+								{t('pwResetConfirmPasswordLabel', 'Confirm New Password')}
 							</label>
 							<input
 								type="password"
@@ -347,7 +347,7 @@ export function PasswordResetModal({ isOpen, onClose, onSuccess }: PasswordReset
 									cursor: 'pointer',
 								}}
 							>
-								{isTr ? 'Geri' : 'Back'}
+								{t('back', 'Back')}
 							</button>
 							<button
 								type="submit"
@@ -370,7 +370,7 @@ export function PasswordResetModal({ isOpen, onClose, onSuccess }: PasswordReset
 								}}
 							>
 								{loading ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-								{isTr ? 'Şifreyi Güncelle' : 'Update Password'}
+								{t('pwResetUpdateBtn', 'Update Password')}
 							</button>
 						</div>
 					</form>

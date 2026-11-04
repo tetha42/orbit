@@ -1,7 +1,7 @@
 'use client';
 
 import { returnStatus } from '@/lib/inventory';
-import { formatKurus } from '@/lib/budget';
+import { formatMinor } from '@/lib/budget';
 import { escapeHtml } from '@/core/text/escape';
 import { openPrintWindow, writePrintWindow } from '@/core/data/print';
 
@@ -33,9 +33,9 @@ interface Team {
 }
 interface Vault {
 	ad: string;
-	toplamGelirKurus: number;
-	toplamGiderKurus: number;
-	netBakiyeKurus: number;
+	totalIncomeMinor: number;
+	totalExpenseMinor: number;
+	netBalanceMinor: number;
 }
 interface Item {
 	status: string;
@@ -93,7 +93,7 @@ table{width:100%;border-collapse:collapse}td,th{border-bottom:1px solid #ddd;pad
 ${
 	kasalar
 		? `<h2>Kasalar</h2><table><tr><th>Kasa</th><th class="n">Gelir (₺)</th><th class="n">Gider (₺)</th><th class="n">Bakiye (₺)</th></tr>${kasalar.kasalar
-				.map((k) => `<tr><td>${esc(k.ad)}</td><td class="n">${formatKurus(k.toplamGelirKurus)}</td><td class="n">${formatKurus(k.toplamGiderKurus)}</td><td class="n"><b>${formatKurus(k.netBakiyeKurus)}</b></td></tr>`)
+				.map((k) => `<tr><td>${esc(k.ad)}</td><td class="n">${formatMinor(k.totalIncomeMinor)}</td><td class="n">${formatMinor(k.totalExpenseMinor)}</td><td class="n"><b>${formatMinor(k.netBalanceMinor)}</b></td></tr>`)
 				.join('')}</table>`
 		: ''
 }

@@ -16,9 +16,9 @@ import { DeleteRoleSheet } from './DeleteRoleSheet';
 import s from './Roles.module.css';
 
 interface RolesResponse {
-	roller: RoleView[];
-	varsayilanRolId: string | null;
-	benimIzinlerim: Permissions;
+	roles: RoleView[];
+	defaultRoleId: string | null;
+	myPermissions: Permissions;
 }
 
 export function RolesPanel() {
@@ -36,7 +36,7 @@ export function RolesPanel() {
 		const fresh = await fetch('/api/roles')
 			.then((r) => (r.ok ? (r.json() as Promise<RolesResponse>) : null))
 			.catch(() => null);
-		const role = fresh?.roller.find((r) => r.id === shown.id) ?? shown;
+		const role = fresh?.roles.find((r) => r.id === shown.id) ?? shown;
 		if (role.kullaniciSayisi > 0) return setDeleting(role);
 		if (!(await dialog.confirm({ message: fill(t('rolesDeleteConfirm'), { name: role.ad }), tone: 'danger' }))) return;
 		await deleteRole(role, null);
@@ -86,12 +86,12 @@ export function RolesPanel() {
 				<select
 					className={ui.select}
 					style={{ maxWidth: 260 }}
-					value={data.varsayilanRolId ?? ''}
+					value={data.defaultRoleId ?? ''}
 					onChange={(e) => void setDefault(e.target.value)}
 					aria-label={t('rolesDefaultRoleAria')}
 				>
 					<option value="">{t('rolesOnlyPersonal')}</option>
-					{data.roller
+					{data.roles
 						.filter((r) => !r.sistem && !isAlumniRole(r))
 						.map((r) => (
 							<option key={r.id} value={r.id}>
@@ -101,14 +101,14 @@ export function RolesPanel() {
 				</select>
 			</label>
 
-			<RolesList roller={data.roller} onEdit={(r) => setEditing(r)} onRemove={(r) => void remove(r)} />
+			<RolesList roles={data.roles} onEdit={(r) => setEditing(r)} onRemove={(r) => void remove(r)} />
 
 
 			{deleting && (
 				<DeleteRoleSheet
 					role={deleting}
-					hedefler={data.roller.filter((r) => !r.sistem && r.id !== deleting.id)}
-					varsayilan={data.varsayilanRolId}
+					hedefler={data.roles.filter((r) => !r.sistem && r.id !== deleting.id)}
+					varsayilan={data.defaultRoleId}
 					onClose={() => setDeleting(null)}
 					onDelete={(tasi) => deleteRole(deleting, tasi)}
 				/>
@@ -117,7 +117,7 @@ export function RolesPanel() {
 			{editing && (
 				<RoleEditor
 					role={editing === 'new' ? null : editing}
-					benimIzinlerim={data.benimIzinlerim}
+					myPermissions={data.myPermissions}
 					onClose={() => setEditing(null)}
 					onSaved={async (msg) => {
 						setEditing(null);

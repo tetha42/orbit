@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 	if (!auth.authorized) return auth.response;
 
 	const { searchParams } = new URL(request.url);
-	const odaId = searchParams.get('odaId');
+	const roomId = searchParams.get('roomId');
 	const rawLimit = Number(searchParams.get('limit') || '50');
 	const limit = Number.isFinite(rawLimit) ? Math.max(1, Math.min(Math.trunc(rawLimit), 100)) : 50;
 	const beforeDate = Number(searchParams.get('before'));
@@ -39,27 +39,27 @@ export async function GET(request: Request) {
 			? { date: beforeDate, id: beforeId }
 			: null;
 
-	if (!odaId) {
+	if (!roomId) {
 		return NextResponse.json({ error: 'Oda ID belirtilmedi.' }, { status: 400, headers: NO_CACHE });
 	}
 
 	try {
 		const isAdmin = Boolean(auth.user.permission?.admin || auth.user.roleId === 'admin');
-		const hasAccess = await canUserAccessChatRoom(odaId, auth.user.id, isAdmin);
+		const hasAccess = await canUserAccessChatRoom(roomId, auth.user.id, isAdmin);
 		if (!hasAccess) {
 			const ip = clientAddress(request);
 			void logSystemEvent({
 				servis: 'security',
 				seviye: 'WARN',
-				mesaj: `Unauthorized chat room read attempt (IDOR: ${odaId}): ${auth.user.email}`,
-				detay: { odaId },
+				mesaj: `Unauthorized chat room read attempt (IDOR: ${roomId}): ${auth.user.email}`,
+				detay: { roomId },
 				userId: auth.user.id,
 				ip,
 			});
 			void recordSecurityStrike({
 				ip,
 				points: 25,
-				reason: `Private chat IDOR read attempt (${odaId})`,
+				reason: `Private chat IDOR read attempt (${roomId})`,
 				path: '/api/chat/messages',
 				userId: auth.user.id,
 			});
@@ -72,7 +72,7 @@ export async function GET(request: Request) {
 		// second query. The repo returns the window oldest → newest, so the extra
 		// (oldest) row is dropped and the next page starts before the first
 		// returned message.
-		const page = await getChatRoomMessages(odaId, limit + 1, isAdmin, auth.user.id, before);
+		const page = await getChatRoomMessages(roomId, limit + 1, isAdmin, auth.user.id, before);
 		const hasMore = page.length > limit;
 		const messages = hasMore ? page.slice(1) : page;
 		return NextResponse.json({ ok: true, messages, hasMore }, { headers: NO_CACHE });
@@ -110,7 +110,7 @@ async function cloneAttachmentsForRoom(
 				yukleyenId: userId,
 				mime,
 				boyut: buffer.length,
-				sohbetOdaId: roomId,
+				chatRoomId: roomId,
 			});
 			cloned.push({
 				ad: attachment.ad,
@@ -143,15 +143,15 @@ export async function POST(request: Request) {
 
 		// Handle forward action
 		if (body.action === 'forward') {
-			const { mesajId, targetOdaIds } = body;
-			if (!mesajId || !Array.isArray(targetOdaIds) || targetOdaIds.length === 0) {
+			const { mesajId, targetRoomIds } = body;
+			if (!mesajId || !Array.isArray(targetRoomIds) || targetRoomIds.length === 0) {
 				return NextResponse.json(
 					{ error: 'İletilecek mesaj ve hedef odalar belirtilmelidir.' },
 					{ status: 400, headers: NO_CACHE }
 				);
 			}
 
-			if (targetOdaIds.length > 10) {
+			if (targetRoomIds.length > 10) {
 				return NextResponse.json(
 					{ error: 'Bir seferde en fazla 10 odaya iletilebilir.' },
 					{ status: 400, headers: NO_CACHE }
@@ -163,22 +163,22 @@ export async function POST(request: Request) {
 				return NextResponse.json({ error: 'İletilecek mesaj bulunamadı.' }, { status: 404, headers: NO_CACHE });
 			}
 
-			const hasSourceAccess = await canUserAccessChatRoom(sourceMsg.odaId, auth.user.id, isAdmin);
+			const hasSourceAccess = await canUserAccessChatRoom(sourceMsg.roomId, auth.user.id, isAdmin);
 			if (!hasSourceAccess) {
 				return NextResponse.json({ error: 'Kaynak mesaja erişim yetkiniz yok.' }, { status: 403, headers: NO_CACHE });
 			}
 
 			const forwardedMessages = [];
-			for (const targetOdaId of targetOdaIds) {
-				const canSend = await canUserAccessChatRoom(String(targetOdaId), auth.user.id, isAdmin);
+			for (const targetRoomId of targetRoomIds) {
+				const canSend = await canUserAccessChatRoom(String(targetRoomId), auth.user.id, isAdmin);
 				if (canSend) {
 					const copiedAttachments = await cloneAttachmentsForRoom(
 						sourceMsg.ekler,
-						String(targetOdaId),
+						String(targetRoomId),
 						auth.user.id
 					);
 					const fMsg = await createChatMessage(
-						String(targetOdaId),
+						String(targetRoomId),
 						{
 							id: auth.user.id,
 							ad: auth.user.ad,
@@ -197,7 +197,7 @@ export async function POST(request: Request) {
 				servis: 'chat',
 				seviye: 'INFO',
 				mesaj: `Sohbet mesajı iletildi: ${mesajId} -> ${forwardedMessages.length} oda`,
-				detay: { sourceMessageId: mesajId, targetOdaIds, forwardedCount: forwardedMessages.length },
+				detay: { sourceMessageId: mesajId, targetRoomIds, forwardedCount: forwardedMessages.length },
 				userId: auth.user.id,
 				ip: clientAddress(request),
 			});
@@ -208,7 +208,7 @@ export async function POST(request: Request) {
 			);
 		}
 
-		const { odaId, icerik, ekler, yanitlananMesajId, yanitlananMesaj, iletildiMi } = body;
+		const { roomId, icerik, ekler, yanitlananMesajId, yanitlananMesaj, iletildiMi } = body;
 
 		// Attachments-only messages are valid; the text may be empty.
 		const attachments = (Array.isArray(ekler) ? ekler : [])
@@ -230,7 +230,7 @@ export async function POST(request: Request) {
 		if (typeof icerik !== 'string' || (!icerik.trim() && attachments.length === 0)) {
 			return NextResponse.json({ error: 'Mesaj içeriği boş olamaz.' }, { status: 400, headers: NO_CACHE });
 		}
-		if (!odaId) {
+		if (!roomId) {
 			return NextResponse.json({ error: 'Oda ID belirtilmedi.' }, { status: 400, headers: NO_CACHE });
 		}
 
@@ -242,21 +242,21 @@ export async function POST(request: Request) {
 			);
 		}
 
-		const hasAccess = await canUserAccessChatRoom(String(odaId), auth.user.id, isAdmin);
+		const hasAccess = await canUserAccessChatRoom(String(roomId), auth.user.id, isAdmin);
 		if (!hasAccess) {
 			const ip = clientAddress(request);
 			void logSystemEvent({
 				servis: 'security',
 				seviye: 'WARN',
-				mesaj: `Unauthorized chat room send attempt (IDOR: ${odaId}): ${auth.user.email}`,
-				detay: { odaId },
+				mesaj: `Unauthorized chat room send attempt (IDOR: ${roomId}): ${auth.user.email}`,
+				detay: { roomId },
 				userId: auth.user.id,
 				ip,
 			});
 			void recordSecurityStrike({
 				ip,
 				points: 25,
-				reason: `Private chat IDOR write attempt (${odaId})`,
+				reason: `Private chat IDOR write attempt (${roomId})`,
 				path: '/api/chat/messages',
 				userId: auth.user.id,
 			});
@@ -275,7 +275,7 @@ export async function POST(request: Request) {
 					const name = attachment.url.replace('/api/uploads/', '');
 					const file = await getStoredFile(name);
 					if (!file) return null;
-					if (file.sohbetOdaId === String(odaId)) return attachment;
+					if (file.chatRoomId === String(roomId)) return attachment;
 					return null;
 				})
 			)
@@ -306,11 +306,11 @@ export async function POST(request: Request) {
 				}
 			}
 
-			const clearRes = await softDeleteChatMessagesBatch(odaId, count, true);
+			const clearRes = await softDeleteChatMessagesBatch(roomId, count, true);
 
 			// Post a system notification to the room
 			const sysMsg = await createChatMessage(
-				odaId,
+				roomId,
 				{
 					id: 'sistem',
 					ad: 'Sistem',
@@ -323,8 +323,8 @@ export async function POST(request: Request) {
 			void logSystemEvent({
 				servis: 'chat',
 				seviye: 'WARN',
-				mesaj: `/clear komutu çalıştırıldı: ${odaId} (${clearRes.count} mesaj)`,
-				detay: { odaId, count: clearRes.count, deletedIds: clearRes.deletedIds },
+				mesaj: `/clear komutu çalıştırıldı: ${roomId} (${clearRes.count} mesaj)`,
+				detay: { roomId, count: clearRes.count, deletedIds: clearRes.deletedIds },
 				userId: auth.user.id,
 				ip: clientAddress(request),
 			});
@@ -342,7 +342,7 @@ export async function POST(request: Request) {
 		}
 
 		const message = await createChatMessage(
-			odaId,
+			roomId,
 			{
 				id: auth.user.id,
 				ad: auth.user.ad,
@@ -361,12 +361,12 @@ export async function POST(request: Request) {
 		// One audit row per message would mean ~13M rows/day at 150 msg/s.
 		// Keep a heartbeat entry per room per minute instead; message rows are
 		// already persisted in sohbet_mesajlari.
-		if (consumeRateLimit(`chat:log:${odaId}`, 1, 60_000).allowed) {
+		if (consumeRateLimit(`chat:log:${roomId}`, 1, 60_000).allowed) {
 			void logSystemEvent({
 				servis: 'chat',
 				seviye: 'INFO',
-				mesaj: `Sohbet mesajı gönderildi: ${odaId}`,
-				detay: { odaId, messageId: message.id },
+				mesaj: `Sohbet mesajı gönderildi: ${roomId}`,
+				detay: { roomId, messageId: message.id },
 				userId: auth.user.id,
 				ip: clientAddress(request),
 			});
@@ -449,7 +449,7 @@ export async function DELETE(request: Request) {
 			servis: 'chat',
 			seviye: 'WARN',
 			mesaj: `Sohbet mesajı silindi: ${targetId}`,
-			detay: { messageId: targetId, odaId: res.odaId },
+			detay: { messageId: targetId, roomId: res.roomId },
 			userId: auth.user.id,
 			ip: clientAddress(request),
 		});

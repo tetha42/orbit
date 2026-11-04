@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useI18n } from '@/core/i18n';
+import { getLocaleDefinition, useI18n } from '@/core/i18n';
 import { useShell } from '@/core/shell';
 import { CalendarPanel } from './CalendarPanel';
 
@@ -16,14 +16,13 @@ export function ClockApplet() {
 	useEffect(() => {
 		const updateTime = () => {
 			const now = new Date();
-			const isTr = language === 'tr';
-			const formatted = new Intl.DateTimeFormat(isTr ? 'tr-TR' : 'en-US', {
+			const localeDef = getLocaleDefinition(language);
+			const formatted = new Intl.DateTimeFormat(localeDef.dateLocale, {
 				weekday: 'short',
 				day: 'numeric',
 				month: 'short',
-				hour: isTr ? '2-digit' : 'numeric',
+				hour: '2-digit',
 				minute: '2-digit',
-				hour12: !isTr,
 			}).format(now);
 			setTimeStr(formatted);
 		};
@@ -66,7 +65,7 @@ export function ClockApplet() {
 					border: 'none',
 				}}
 			>
-				{timeStr || (language === 'tr' ? '28 Eyl Pzt 09:00' : 'Mon Sep 28 9:00 AM')}
+				{timeStr || t('clockFallbackTime', 'Mon Sep 28 9:00 AM')}
 			</button>
 
 			{isCalendarOpen && <CalendarPanel returnFocusTo={buttonRef} />}

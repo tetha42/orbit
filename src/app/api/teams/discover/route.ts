@@ -72,7 +72,7 @@ async function handlePOST(request: Request) {
 
 		// The roster screens refresh, and the captain's bell shows the new application at once.
 		const team = await getTeamById(teamId);
-		await publishEventQuiet(getPgPool(), [{ k: 'team_updated', teamId }, ...notificationEvents([team?.liderId])]);
+		await publishEventQuiet(getPgPool(), [{ k: 'team_updated', teamId }, ...notificationEvents([team?.leadId])]);
 		return NextResponse.json({ success: true, status: result.status, message: result.message });
 	} catch (error) {
 		console.error('API /api/takimlar/kesfet POST error:', error);

@@ -225,10 +225,10 @@ export function ChatMobileView() {
 
 	// Filter rooms based on search query
 	const filteredRooms = useMemo(() => {
-		const q = searchQuery.trim().toLocaleLowerCase(language === 'tr' ? 'tr-TR' : undefined);
+		const q = searchQuery.trim().toLocaleLowerCase(language);
 		if (!q) return rooms;
 		return rooms.filter((r) =>
-			r.ad.toLocaleLowerCase(language === 'tr' ? 'tr-TR' : undefined).includes(q)
+			r.ad.toLocaleLowerCase(language).includes(q)
 		);
 	}, [rooms, searchQuery, language]);
 
@@ -327,7 +327,7 @@ export function ChatMobileView() {
 	const uploadOne = async (file: File): Promise<ChatAttachmentItem | null> => {
 		if (!activeRoomId) return null;
 		const formData = new FormData();
-		formData.set('odaId', activeRoomId);
+		formData.set('roomId', activeRoomId);
 		formData.set('file', file);
 		const res = await fetch('/api/chat/upload', { method: 'POST', body: formData });
 		const data = await res.json();
@@ -463,8 +463,8 @@ export function ChatMobileView() {
 					onClose={() => setIsAddMemberOpen(false)}
 					room={activeRoom}
 					currentUserId={currentUser.id}
-					onAddMembers={async (odaId, memberIds) => {
-						await addMembers(odaId, memberIds);
+					onAddMembers={async (roomId, memberIds) => {
+						await addMembers(roomId, memberIds);
 					}}
 					onCreateGroupWithCounterpart={async (memberIds, title) => {
 						const rId = await createGroupDm(memberIds, title);
@@ -685,10 +685,10 @@ export function ChatMobileView() {
 					type="button"
 					className={s.convBackBtn}
 					onClick={() => setScreen('rooms')}
-					aria-label="Sohbet listesi"
+					aria-label={t('chatMobileRoomsBack', 'Chats')}
 				>
 					<ChevronLeft size={22} strokeWidth={2.4} />
-					<span>{language === 'tr' ? 'Sohbetler' : 'Chats'}</span>
+					<span>{t('chatMobileRoomsBack', 'Chats')}</span>
 				</button>
 
 				<button

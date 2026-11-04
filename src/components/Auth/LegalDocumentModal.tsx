@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Check, FileText, X } from 'lucide-react';
-import { useI18n } from '@/core/i18n';
+import { resolveLocalizedText, useI18n } from '@/core/i18n';
 
 export interface LegalDocumentContent {
 	id: string;
@@ -68,12 +68,11 @@ function LegalBody({ text }: { text: string }) {
 }
 
 export function LegalDocumentModal({ document, onClose, onAccept }: LegalDocumentModalProps) {
-	const { language } = useI18n();
+	const { language, t } = useI18n();
 	if (!document) return null;
 
-	const isTr = language === 'tr';
-	const title = isTr ? document.titleTr : document.titleEn;
-	const body = isTr ? document.bodyTr : document.bodyEn;
+	const title = resolveLocalizedText({ en: document.titleEn, tr: document.titleTr }, language);
+	const body = resolveLocalizedText({ en: document.bodyEn, tr: document.bodyTr }, language);
 
 	return (
 		<div
@@ -146,7 +145,7 @@ export function LegalDocumentModal({ document, onClose, onAccept }: LegalDocumen
 					<button
 						type="button"
 						onClick={onClose}
-						aria-label={isTr ? 'Kapat' : 'Close'}
+						aria-label={t('close', 'Close')}
 						style={{
 							width: '30px',
 							height: '30px',
@@ -193,7 +192,7 @@ export function LegalDocumentModal({ document, onClose, onAccept }: LegalDocumen
 							cursor: 'pointer',
 						}}
 					>
-						{isTr ? 'Kapat' : 'Close'}
+						{t('close', 'Close')}
 					</button>
 					{onAccept && (
 						<button
@@ -215,7 +214,7 @@ export function LegalDocumentModal({ document, onClose, onAccept }: LegalDocumen
 							}}
 						>
 							<Check size={13} />
-							{isTr ? 'Okudum ve kabul ediyorum' : 'I have read and accept'}
+							{t('authLegalReadPrefix', 'I have read and accept')}
 						</button>
 					)}
 				</div>

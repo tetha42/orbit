@@ -13,7 +13,11 @@ export interface RecipientDecision {
 	hata?: string;
 }
 
-const fullName = (u: { ad: string; soyad: string }) => `${u.ad} ${u.soyad}`.trim();
+const fullName = (u: { ad?: string; soyad?: string; firstName?: string; lastName?: string }) => {
+	const first = u.firstName || u.ad || '';
+	const last = u.lastName || u.soyad || '';
+	return `${first} ${last}`.trim();
+};
 
 /**
  * Decides who a message reaches. Recipients must be active members whose role
@@ -41,7 +45,7 @@ export async function recipientDecision(
 			continue;
 		}
 		const permission = await getRolePermission(u.roleId);
-		if (!canUse(permission.izinler, 'mail')) atlananlar.push({ id, ad: fullName(u), neden: 'rol' });
+		if (!canUse(permission.izinler, 'mail')) atlananlar.push({ id, ad: fullName(u), neden: 'role' });
 		else gidecek.push(u);
 	}
 	return { gidecek, atlananlar };
@@ -67,7 +71,7 @@ export async function reachableIds(candidates: { id: string; roleId: string | nu
 }
 
 /** The e-mail heads-up for recipients who asked for it. Never awaited by the request: a mail failure must not fail the message. */
-export function notifyByEmail(recipients: MailMember[], sender: { ad: string; soyad: string }, subject: string): void {
+export function notifyByEmail(recipients: MailMember[], sender: { ad?: string; soyad?: string; firstName?: string; lastName?: string }, subject: string): void {
 	for (const u of recipients) {
 		if (Number(u.postaEposta) !== 1) continue;
 		void notifyPortalMessage(u, fullName(sender), subject).catch(() => {});

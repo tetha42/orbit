@@ -15,7 +15,7 @@ export async function POST(request: Request) {
 
 	try {
 		const body = await request.json();
-		const userId = body.userId ?? body.kullaniciId;
+		const userId = body.userId;
 		const action = body.action ?? body.aksiyon;
 		const rejectionReason =
 			typeof body.rejectionReason === 'string' ? body.rejectionReason.trim().slice(0, 500) : null;
@@ -56,8 +56,8 @@ export async function POST(request: Request) {
 		// Fire-and-forget: the decision is already persisted, so a mail failure must
 		// not roll it back or fail the request.
 		const recipient = {
-			ad: targetUser.ad,
-			soyad: targetUser.soyad,
+			ad: targetUser.firstName || targetUser.ad || '',
+			soyad: targetUser.lastName || targetUser.soyad || '',
 			email: targetUser.email,
 			preferredLanguage: targetUser.preferredLanguage,
 		};

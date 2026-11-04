@@ -5,7 +5,21 @@ import { clientAddress } from '@/lib/http';
 import { logSystemEvent } from '@/db/repositories/logs.repo';
 import type { AuditRecord } from '@/apps/database/types';
 
-const SENSITIVE_COLUMNS = new Set(['sifrehash', 'totpsecret', 'aktifoturumtoken', 'totprecoverycodes']);
+const SENSITIVE_COLUMNS = new Set([
+	'password_hash',
+	'passwordhash',
+	'sifrehash',
+	'totp_secret',
+	'totpsecret',
+	'session_token',
+	'sessiontoken',
+	'aktifoturumtoken',
+	'totp_recovery_codes',
+	'totprecoverycodes',
+	'secret_hash',
+	'secrethash',
+	'smtp_pass',
+]);
 
 export async function GET(request: Request) {
 	const auth = await requireDatabaseAdmin(request);
@@ -17,19 +31,19 @@ export async function GET(request: Request) {
 		const res = await pool.query<AuditRecord>(`
 			SELECT
 				id,
-				zaman,
-				yapanId AS "yapanId",
-				yapanAd AS "yapanAd",
-				islem,
-				hedefTur AS "hedefTur",
-				hedefId AS "hedefId",
-				hedefAd AS "hedefAd",
-				onceki,
-				sonraki,
+				timestamp AS timestamp,
+				actor_id AS "actorId",
+				actor_name AS "actorName",
+				action AS action,
+				target_type AS "targetType",
+				target_id AS "targetId",
+				target_name AS "targetName",
+				before_state AS before,
+				after_state AS after,
 				ip
 			FROM audit_logs
-			WHERE hedefTur = 'database_table'
-			ORDER BY zaman DESC
+			WHERE target_type = 'database_table'
+			ORDER BY timestamp DESC
 			LIMIT 100;
 		`);
 
@@ -46,9 +60,9 @@ export async function POST(request: Request) {
 
 	const ip = clientAddress(request);
 	const body = await request.json().catch(() => ({}));
-	const auditId = Number(body.auditId);
+	const auditId = String(body.auditId ?? '').trim();
 
-	if (!auditId || isNaN(auditId)) {
+	if (!auditId) {
 		return NextResponse.json({ error: 'Geçersiz denetim kaydı ID.' }, { status: 400 });
 	}
 
@@ -56,11 +70,11 @@ export async function POST(request: Request) {
 
 	try {
 		const checkRes = await pool.query<{
-			id: number;
-			hedefId: string;
-			onceki: Record<string, unknown> | null;
+			id: string;
+			targetId: string;
+			before: Record<string, unknown> | string | null;
 		}>(
-			`SELECT id, hedefId AS "hedefId", onceki FROM audit_logs WHERE id = $1 AND hedefTur = 'database_table'`,
+			`SELECT id, target_id AS "targetId", before_state AS before FROM audit_logs WHERE id = $1 AND target_type = 'database_table'`,
 			[auditId]
 		);
 
@@ -69,8 +83,8 @@ export async function POST(request: Request) {
 		}
 
 		const rec = checkRes.rows[0];
-		const table = rec.hedefId;
-		const previous = rec.onceki || {};
+		const table = rec.targetId;
+		const previous = (typeof rec.before === 'string' ? JSON.parse(rec.before) : rec.before) || {};
 
 		const pkCol = String(previous.pkCol || '');
 		const pkVal = previous.pkVal;

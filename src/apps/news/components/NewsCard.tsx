@@ -189,7 +189,7 @@ export function NewsCard({
 						>
 							<Clock size={11} />
 							{new Date(article.olusturma).toLocaleDateString(
-								language === 'tr' ? 'tr-TR' : 'en-US',
+								language,
 								{ day: 'numeric', month: 'short' }
 							)}
 						</span>

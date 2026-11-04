@@ -31,7 +31,7 @@ import { TeamJoinButton } from './TeamJoinButton';
 import { LockedTeamView } from './LockedTeamView';
 import { TeamMembers } from './TeamMembers';
 import { TeamChatRoom } from './TeamChatRoom';
-import { VaultPanel } from '@/apps/budget/components/KasaPanel';
+import { VaultPanel } from '@/apps/embeds';
 import { TaskDetailModal } from './TaskDetailModal';
 import { NewTaskModal } from './NewTaskModal';
 import { EditTeamModal, NewTeamModal, ApplyModal } from './TeamDialogs';
@@ -60,7 +60,7 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 	const myTeamsList = useMemo(
 		() =>
 			state.visibleTeams.filter(
-				(tm) => tm.benimDurumum === 'aktif' || tm.liderId === state.currentUserId
+				(tm) => tm.benimDurumum === 'aktif' || tm.leadId === state.currentUserId
 			),
 		[state.visibleTeams, state.currentUserId]
 	);
@@ -91,7 +91,7 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 
 	const canManageTeam = Boolean(
 		activeBoardTeam &&
-			(activeBoardTeam.izinler?.editAll || activeBoardTeam.liderId === state.currentUserId)
+			(activeBoardTeam.izinler?.editAll || activeBoardTeam.leadId === state.currentUserId)
 	);
 
 	const canWorkOnTask = (task: TeamTask) =>

@@ -4,7 +4,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { CompactField, Field, PasswordInput, TextInput } from './AuthControls';
 import { PasswordStrengthMeter } from '@/components/Common/PasswordStrengthMeter';
 import type { AuthFlow } from './useAuthFlow';
-import { useI18n } from '@/core/i18n';
+import { resolveLocalizedText, useI18n } from '@/core/i18n';
 import { useIdentity } from '@/core/identity';
 import styles from './AuthPortal.module.css';
 import { ChevronDown, Search, KeyRound, Check } from 'lucide-react';
@@ -119,18 +119,26 @@ export function RegisterForm({ flow }: { flow: AuthFlow }) {
 		};
 	}, []);
 
-	const trackLabel = language === 'tr' ? coreConfig.track.labelTr : coreConfig.track.labelEn;
-	const levelLabel = language === 'tr' ? coreConfig.level.labelTr : coreConfig.level.labelEn;
-	const trackPlaceholder =
-		language === 'tr'
-			? coreConfig.track.placeholderTr
-			: coreConfig.track.placeholderEn;
-	const memberIdLabel =
-		language === 'tr' ? coreConfig.memberId.labelTr : coreConfig.memberId.labelEn;
-	const memberIdPlaceholder =
-		language === 'tr'
-			? coreConfig.memberId.placeholderTr
-			: coreConfig.memberId.placeholderEn;
+	const trackLabel = resolveLocalizedText(
+		{ en: coreConfig.track.labelEn, tr: coreConfig.track.labelTr },
+		language
+	);
+	const levelLabel = resolveLocalizedText(
+		{ en: coreConfig.level.labelEn, tr: coreConfig.level.labelTr },
+		language
+	);
+	const trackPlaceholder = resolveLocalizedText(
+		{ en: coreConfig.track.placeholderEn, tr: coreConfig.track.placeholderTr },
+		language
+	);
+	const memberIdLabel = resolveLocalizedText(
+		{ en: coreConfig.memberId.labelEn, tr: coreConfig.memberId.labelTr },
+		language
+	);
+	const memberIdPlaceholder = resolveLocalizedText(
+		{ en: coreConfig.memberId.placeholderEn, tr: coreConfig.memberId.placeholderTr },
+		language
+	);
 	const selectedTrack = coreConfig.track.options.find((option) => option.value === track);
 	const filteredTrackOptions = coreConfig.track.options.filter((option) => {
 		const query = trackSearch.trim().toLowerCase();
@@ -175,7 +183,7 @@ export function RegisterForm({ flow }: { flow: AuthFlow }) {
 	};
 
 	const currentDocumentTitle = (document: LegalDocumentContent) =>
-		language === 'tr' ? document.titleTr : document.titleEn;
+		resolveLocalizedText({ en: document.titleEn, tr: document.titleTr }, language);
 
 	const goTo = (step: WizardStep) => {
 		setWizardStep(step);
@@ -260,7 +268,7 @@ export function RegisterForm({ flow }: { flow: AuthFlow }) {
 					.filter((document) => acceptedDocuments[document.id])
 					.map((document) => document.id),
 				inviteToken,
-				preferredLanguage: language === 'tr' ? 'tr' : 'en',
+				preferredLanguage: language,
 			});
 			if (res?.fieldErrors) setFieldErrors(res.fieldErrors);
 			if (res?.requireVerification) {
@@ -291,7 +299,7 @@ export function RegisterForm({ flow }: { flow: AuthFlow }) {
 				.filter((document) => acceptedDocuments[document.id])
 				.map((document) => document.id),
 			inviteToken,
-			preferredLanguage: language === 'tr' ? 'tr' : 'en',
+			preferredLanguage: language,
 		});
 	};
 

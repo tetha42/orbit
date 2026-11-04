@@ -138,8 +138,8 @@ export async function GET(request: Request) {
 			);
 		}
 
-		const canSeeTasksOf = (teamId: string, liderId: string) =>
-			manages('teams') || liderId === user.id || memberTeamIds.includes(teamId);
+		const canSeeTasksOf = (teamId: string, leadId: string) =>
+			manages('teams') || leadId === user.id || memberTeamIds.includes(teamId);
 
 		for (const team of teams) {
 			add(
@@ -161,7 +161,7 @@ export async function GET(request: Request) {
 
 		const taskLists = await Promise.all(
 			teams
-				.filter((team) => canSeeTasksOf(team.id, team.liderId))
+				.filter((team) => canSeeTasksOf(team.id, team.leadId))
 				.map(async (team) => ({ team, tasks: await getTeamTasks(team.id) }))
 		);
 		for (const { team, tasks } of taskLists) {
@@ -276,7 +276,7 @@ export async function GET(request: Request) {
 						// The Kasa app if the role opens it; otherwise a captain reaches their kasa through the team.
 						appId: vaultApp ? 'budget' : 'teams',
 						title: r.aciklama,
-						subtitle: [formatTL(r.tutarKurus), r.kategori, kasa.ad].join(' · '),
+						subtitle: [formatTL(r.amountMinor), r.kategori, kasa.ad].join(' · '),
 						target: vaultApp
 							? { kind: 'ledger', itemId: r.id, parentId: kasa.teamId ?? 'genel' }
 							: { section: 'kasa', kind: 'ledger', itemId: r.id, parentId: kasa.teamId ?? undefined },
@@ -284,7 +284,7 @@ export async function GET(request: Request) {
 					[
 						{ text: r.aciklama, weight: 4 },
 						{ text: r.kategori, weight: 2 },
-						{ text: (r.tutarKurus / 100).toFixed(2), weight: 1 },
+						{ text: (r.amountMinor / 100).toFixed(2), weight: 1 },
 					]
 				);
 			}

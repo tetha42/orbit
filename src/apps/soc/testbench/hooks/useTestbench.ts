@@ -82,10 +82,10 @@ export function useTestbench(canManage: boolean) {
 
 					if (item.requiredLevel === 'admin') {
 						expectedStatus = admin ? 200 : 403;
-					} else if (item.requiredLevel === 'kullan') {
-						expectedStatus = (admin || userPerm !== 'yok') ? 200 : 403;
-					} else if (item.requiredLevel === 'yonet') {
-						expectedStatus = (admin || userPerm === 'yonet') ? 200 : 403;
+					} else if (item.requiredLevel === 'kullan' || (item.requiredLevel as string) === 'use') {
+						expectedStatus = (admin || userPerm !== 'none') ? 200 : 403;
+					} else if (item.requiredLevel === 'yonet' || (item.requiredLevel as string) === 'manage') {
+						expectedStatus = (admin || userPerm === 'manage') ? 200 : 403;
 					}
 
 					const start = performance.now();

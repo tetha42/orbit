@@ -190,7 +190,7 @@ export async function updateMemberForAdmin(
 
 	await withTransaction(async (client) => {
 		const currentRes = await client.query(
-			`SELECT first_name, last_name, email, handle, department, grade, bio, avatar_url, role_id, status
+			`SELECT first_name, last_name, email, handle, department, grade, bio, avatar_url, role_id, status, custom_fields
 			 FROM users WHERE id = $1 FOR UPDATE`,
 			[id]
 		);
@@ -213,19 +213,15 @@ export async function updateMemberForAdmin(
 			? (input.customFields as Record<string, unknown>)
 			: {};
 
-		const beforeValuesRes = await client.query(
-			`SELECT f.field_key AS "fieldKey", v.value
-			 FROM member_field_values v
-			 JOIN form_fields f ON f.id = v.field_id
-			 WHERE v.user_id = $1`,
-			[id]
-		);
+		const rawCurrentCustom =
+			current.customFields && typeof current.customFields === 'object'
+				? (current.customFields as Record<string, unknown>)
+				: {};
 		const beforeCustom: FormFieldValueMap = {};
 		const editableKeys = new Set(fields.map((field) => field.fieldKey));
-		for (const row of beforeValuesRes.rows) {
-			const key = String(row.fieldKey);
+		for (const [key, val] of Object.entries(rawCurrentCustom)) {
 			if (!editableKeys.has(key)) continue;
-			beforeCustom[key] = String(row.value ?? '');
+			beforeCustom[key] = String(val ?? '');
 		}
 
 		await client.query(
@@ -245,8 +241,8 @@ export async function updateMemberForAdmin(
 			const raw = submitted[field.fieldKey];
 			if (typeof raw === 'string' && raw.trim() === '') {
 				await client.query(
-					'DELETE FROM member_field_values WHERE user_id = $1 AND field_id = $2',
-					[id, field.id]
+					`UPDATE users SET custom_fields = COALESCE(custom_fields, '{}'::jsonb) - $2 WHERE id = $1`,
+					[id, field.fieldKey]
 				);
 			}
 		}
@@ -282,16 +278,16 @@ export async function updateMemberForAdmin(
 		const fark = alanFarki(before, after);
 		if (fark) {
 			await logAuditEvent(client, ctx, {
-				islem: 'uye.profil',
-				hedefTur: 'uye',
-				hedefId: id,
-				hedefAd: memberTargetName({
+				action: 'member.profile',
+				targetType: 'member',
+				targetId: id,
+				targetName: memberTargetName({
 					ad: String(current.firstName),
 					soyad: String(current.lastName),
 					email: String(current.email),
 				}),
-				onceki: fark.onceki,
-				sonraki: fark.sonraki,
+				before: fark.before,
+				after: fark.after,
 			});
 		}
 
@@ -360,7 +356,7 @@ export async function updateSelfProfile(
 
 	await withTransaction(async (client) => {
 		const currentRes = await client.query(
-			`SELECT first_name, last_name, email, department, grade, bio, avatar_url
+			`SELECT first_name, last_name, email, department, grade, bio, avatar_url, custom_fields
 			 FROM users WHERE id = $1 FOR UPDATE`,
 			[userId]
 		);
@@ -368,17 +364,13 @@ export async function updateSelfProfile(
 		if (!current) throw new Error('MEMBER_NOT_FOUND');
 
 		const fieldKeys = new Set(fields.map((field) => field.fieldKey));
-		const beforeValues = await client.query(
-			`SELECT f.field_key AS "fieldKey", v.value
-			 FROM member_field_values v
-			 JOIN form_fields f ON f.id = v.field_id
-			 WHERE v.user_id = $1`,
-			[userId]
-		);
+		const rawCurrentCustom =
+			current.customFields && typeof current.customFields === 'object'
+				? (current.customFields as Record<string, unknown>)
+				: {};
 		const beforeCustom: FormFieldValueMap = {};
-		for (const row of beforeValues.rows) {
-			const key = String(row.fieldKey);
-			if (fieldKeys.has(key)) beforeCustom[key] = String(row.value ?? '');
+		for (const [key, val] of Object.entries(rawCurrentCustom)) {
+			if (fieldKeys.has(key)) beforeCustom[key] = String(val ?? '');
 		}
 
 		await client.query(
@@ -394,8 +386,8 @@ export async function updateSelfProfile(
 			const raw = submitted[field.fieldKey];
 			if (typeof raw === 'string' && raw.trim() === '') {
 				await client.query(
-					'DELETE FROM member_field_values WHERE user_id = $1 AND field_id = $2',
-					[userId, field.id]
+					`UPDATE users SET custom_fields = COALESCE(custom_fields, '{}'::jsonb) - $2 WHERE id = $1`,
+					[userId, field.fieldKey]
 				);
 			}
 		}
@@ -418,16 +410,16 @@ export async function updateSelfProfile(
 		const fark = alanFarki(before, after);
 		if (fark) {
 			await logAuditEvent(client, ctx, {
-				islem: 'uye.profil',
-				hedefTur: 'uye',
-				hedefId: userId,
-				hedefAd: memberTargetName({
+				action: 'member.profile',
+				targetType: 'member',
+				targetId: userId,
+				targetName: memberTargetName({
 					ad: String(current.firstName),
 					soyad: String(current.lastName),
 					email: String(current.email),
 				}),
-				onceki: fark.onceki,
-				sonraki: fark.sonraki,
+				before: fark.before,
+				after: fark.after,
 			});
 		}
 

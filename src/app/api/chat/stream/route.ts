@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 class ChatEventBus extends EventEmitter {}
 
 interface ChatBusEvent {
-	odaId: string;
+	roomId: string;
 	/** Pre-encoded `event: chat` frame, reused by all recipients. */
 	bytes: Uint8Array;
 }
@@ -64,10 +64,10 @@ async function ensurePgListener() {
 		if (msg.channel !== 'club_chat_events' || !msg.payload) return;
 		try {
 			const data = JSON.parse(msg.payload);
-			const payload = (data && typeof data === 'object' ? data : null) as { odaId?: unknown } | null;
-			const odaId = typeof payload?.odaId === 'string' ? payload.odaId : '';
+			const payload = (data && typeof data === 'object' ? data : null) as { roomId?: unknown } | null;
+			const roomId = typeof payload?.roomId === 'string' ? payload.roomId : '';
 			const event: ChatBusEvent = {
-				odaId,
+				roomId,
 				bytes: encoder.encode(`event: chat\ndata: ${JSON.stringify(data)}\n\n`),
 			};
 			chatBus.emit('event', event);
@@ -109,8 +109,8 @@ export async function GET(request: Request) {
 			onEvent = (event: ChatBusEvent) => {
 				deliveryChain = deliveryChain
 					.then(async () => {
-						if (event.odaId) {
-							const audience = peekChatAudience(event.odaId) ?? (await getChatAudience(event.odaId));
+						if (event.roomId) {
+							const audience = peekChatAudience(event.roomId) ?? (await getChatAudience(event.roomId));
 							if (!audience || !audienceIncludes(audience, userId, isAdmin)) return;
 						}
 						controller.enqueue(event.bytes);

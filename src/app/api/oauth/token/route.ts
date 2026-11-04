@@ -239,10 +239,12 @@ export async function POST(request: Request) {
 		};
 
 		if (scopes.includes('profile')) {
-			idTokenClaims.name = `${user.ad} ${user.soyad}`.trim();
-			idTokenClaims.given_name = user.ad;
-			idTokenClaims.family_name = user.soyad;
-			idTokenClaims.picture = user.profilFoto || null;
+			const first = user.firstName || user.ad || '';
+			const last = user.lastName || user.soyad || '';
+			idTokenClaims.name = `${first} ${last}`.trim();
+			idTokenClaims.given_name = first;
+			idTokenClaims.family_name = last;
+			idTokenClaims.picture = user.avatarUrl || user.profilFoto || null;
 		}
 
 		if (scopes.includes('email')) {

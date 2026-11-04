@@ -23,14 +23,14 @@ export async function GET(request: Request) {
 		const totals = new Map((await getCashTotals()).map((t) => [t.teamId, t]));
 		const vaults: VaultSummary[] = accessible.map((vault) => {
 			const t = totals.get(vault.teamId);
-			const income = t?.toplamGelirKurus ?? 0;
-			const expense = t?.toplamGiderKurus ?? 0;
+			const income = t?.totalIncomeMinor ?? 0;
+			const expense = t?.totalExpenseMinor ?? 0;
 			return {
 				...vault,
-				takimId: vault.teamId,
-				toplamGelirKurus: income,
-				toplamGiderKurus: expense,
-				netBakiyeKurus: income - expense,
+				teamId: vault.teamId,
+				totalIncomeMinor: income,
+				totalExpenseMinor: expense,
+				netBalanceMinor: income - expense,
 				kayitSayisi: t?.kayitSayisi ?? 0,
 			};
 		});

@@ -35,17 +35,24 @@ export interface YeniAtama {
 
 type TaskWriter = Pick<PoolClient, 'query'> | Pool;
 
+const TASK_COLUMNS = `
+	tg.id, tg.team_id AS "teamId", tg.title AS "baslik", tg.description AS "aciklama", tg.status, tg.priority AS "oncelik",
+	tg.assignee_id AS "atananUyeId", tg.due_at AS "teslimTarihi",
+	tg.labels AS "etiketler", tg.created_by AS "olusturanId", tg.updated_at AS "guncellenme", tg.completed_at AS "tamamlanma",
+	tg.xp_awarded AS "xpVerildi", tg.created_at AS "olusturma"
+`;
+
 const TASK_SELECT = `
-	SELECT tg.*,
-	       COALESCE(tg.sira, -tg.olusturma) AS sira,
+	SELECT ${TASK_COLUMNS},
+	       COALESCE(tg.position, -tg.created_at) AS sira,
 	       k.first_name || ' ' || k.last_name AS "atananAdSoyad",
 	       o.first_name || ' ' || o.last_name AS "olusturanAdSoyad",
-	       (SELECT COUNT(*) FROM team_task_items m WHERE m.gorevId = tg.id)::int AS "maddeSayisi",
-	       (SELECT COUNT(*) FROM team_task_items m WHERE m.gorevId = tg.id AND m.tamamMi = 1)::int AS "tamamMaddeSayisi",
-	       (SELECT COUNT(*) FROM team_task_comments y WHERE y.gorevId = tg.id)::int AS "yorumSayisi"
+	       jsonb_array_length(COALESCE(tg.checklist, '[]'::jsonb))::int AS "maddeSayisi",
+	       (SELECT COUNT(*)::int FROM jsonb_array_elements(COALESCE(tg.checklist, '[]'::jsonb)) AS elem WHERE COALESCE((elem->>'tamamMi')::int, 0) = 1) AS "tamamMaddeSayisi",
+	       jsonb_array_length(COALESCE(tg.comments, '[]'::jsonb))::int AS "yorumSayisi"
 	FROM team_tasks tg
-	LEFT JOIN users k ON tg.atananUyeId = k.id
-	LEFT JOIN users o ON tg.olusturanId = o.id
+	LEFT JOIN users k ON tg.assignee_id = k.id
+	LEFT JOIN users o ON tg.created_by = o.id
 `;
 
 export function parseEtiketler(raw: unknown): string[] {
@@ -70,23 +77,32 @@ export async function logTaskActivity(
 	tur: TaskActivityType,
 	detay?: Record<string, string | number | null>
 ): Promise<void> {
+	const entry = {
+		id: randomUUID(),
+		gorevId,
+		aktorId: aktorId || null,
+		tur,
+		detay: detay ?? null,
+		olusturma: Date.now(),
+	};
 	await db.query(
-		`INSERT INTO team_task_activities (id, gorevId, aktorId, tur, detay, olusturma)
-		 VALUES ($1, $2, $3, $4, $5, $6)`,
-		[randomUUID(), gorevId, aktorId || null, tur, detay ? JSON.stringify(detay) : null, Date.now()]
+		`UPDATE team_tasks
+		 SET activities = COALESCE(activities, '[]'::jsonb) || jsonb_build_array($1::jsonb)
+		 WHERE id = $2`,
+		[JSON.stringify(entry), gorevId]
 	);
 }
 
 export async function touchTask(db: TaskWriter, gorevId: string): Promise<void> {
-	await db.query('UPDATE team_tasks SET guncellenme = $1 WHERE id = $2', [Date.now(), gorevId]);
+	await db.query('UPDATE team_tasks SET updated_at = $1 WHERE id = $2', [Date.now(), gorevId]);
 }
 
 export async function getTeamTasks(teamId: string): Promise<TeamTask[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`${TASK_SELECT}
-		WHERE tg.teamId = $1
-		ORDER BY COALESCE(tg.sira, -tg.olusturma) ASC, tg.olusturma DESC`,
+		WHERE tg.team_id = $1
+		ORDER BY COALESCE(tg.position, -tg.created_at) ASC, tg.created_at DESC`,
 		[teamId]
 	);
 	return res.rows.map(toTask);
@@ -98,14 +114,14 @@ export async function getUserUpcomingTasks(
 ): Promise<UpcomingTask[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT tg.id, tg.teamId, tg.baslik, tg.oncelik, tg.teslimTarihi, t.ad AS "takimAdi"
+		`SELECT tg.id, tg.team_id AS "teamId", tg.title AS "baslik", tg.priority AS "oncelik", tg.due_at AS "teslimTarihi", t.name AS "takimAdi"
 		FROM team_tasks tg
-		JOIN teams t ON t.id = tg.teamId
-		WHERE tg.atananUyeId = $1
+		JOIN teams t ON t.id = tg.team_id
+		WHERE tg.assignee_id = $1
 		  AND tg.status <> 'tamamlandi'
-		  AND tg.teslimTarihi IS NOT NULL
-		  AND tg.teslimTarihi <= $2
-		ORDER BY tg.teslimTarihi ASC
+		  AND tg.due_at IS NOT NULL
+		  AND tg.due_at <= $2
+		ORDER BY tg.due_at ASC
 		LIMIT 20`,
 		[userId, until]
 	);
@@ -147,9 +163,9 @@ export async function createTeamTask(params: {
 	await withTransaction(async (client) => {
 		await client.query(
 			`INSERT INTO team_tasks
-			   (id, teamId, baslik, aciklama, status, oncelik, atananUyeId, teslimTarihi, olusturma,
-			    sira, etiketler, olusturanId, guncellenme, tamamlanma)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+			   (id, team_id, title, description, status, priority, assignee_id, due_at, created_at,
+			    position, labels, checklist, comments, activities, created_by, updated_at, completed_at)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, $12, $13, $14)`,
 			[
 				task.id,
 				task.teamId,
@@ -193,7 +209,7 @@ export async function updateTeamTaskStatus(params: {
 }): Promise<{ xpVerildi: boolean }> {
 	return withTransaction(async (client) => {
 		const prev = await client.query(
-			'SELECT teamId, status, atananUyeId, xpVerildi FROM team_tasks WHERE id = $1 FOR UPDATE',
+			'SELECT team_id AS "teamId", status, assignee_id AS "atananUyeId", xp_awarded AS "xpVerildi" FROM team_tasks WHERE id = $1 FOR UPDATE',
 			[params.gorevId]
 		);
 		const row = prev.rows[0];
@@ -204,18 +220,18 @@ export async function updateTeamTaskStatus(params: {
 		await client.query(
 			`UPDATE team_tasks
 			 SET status = $1,
-			     sira = COALESCE($2, sira),
-			     guncellenme = $3,
-			     tamamlanma = CASE WHEN $1 = 'tamamlandi' THEN COALESCE(CASE WHEN status = 'tamamlandi' THEN tamamlanma END, $3) ELSE NULL END
+			     position = COALESCE($2, position),
+			     updated_at = $3,
+			     completed_at = CASE WHEN $1 = 'tamamlandi' THEN COALESCE(CASE WHEN status = 'tamamlandi' THEN completed_at END, $3) ELSE NULL END
 			 WHERE id = $4`,
 			[params.status, Number.isFinite(params.sira) ? params.sira : null, now, params.gorevId]
 		);
 		if (params.sirala?.length) {
 			await client.query(
 				`UPDATE team_tasks t
-				 SET sira = v.idx * ${SIRA_ADIMI}
+				 SET position = v.idx * ${SIRA_ADIMI}
 				 FROM unnest($1::text[]) WITH ORDINALITY AS v(id, idx)
-				 WHERE t.id = v.id AND t.teamId = $2 AND t.status = $3`,
+				 WHERE t.id = v.id AND t.team_id = $2 AND t.status = $3`,
 				[params.sirala, row.teamId, params.status]
 			);
 		}
@@ -227,7 +243,7 @@ export async function updateTeamTaskStatus(params: {
 		}
 
 		if (params.status === 'tamamlandi' && row.atananUyeId && !Number(row.xpVerildi)) {
-			await client.query('UPDATE team_tasks SET xpVerildi = 1 WHERE id = $1', [params.gorevId]);
+			await client.query('UPDATE team_tasks SET xp_awarded = 1 WHERE id = $1', [params.gorevId]);
 			await client.query('UPDATE users SET xp = COALESCE(xp, 0) + 100 WHERE id = $1', [
 				row.atananUyeId,
 			]);
@@ -244,7 +260,7 @@ export async function updateTeamTask(
 ): Promise<TeamTask | null> {
 	await ensurePostgresInit();
 	const found = await withTransaction(async (client) => {
-		const prev = await client.query('SELECT * FROM team_tasks WHERE id = $1 FOR UPDATE', [gorevId]);
+		const prev = await client.query(`SELECT ${TASK_COLUMNS} FROM team_tasks tg WHERE tg.id = $1 FOR UPDATE`, [gorevId]);
 		const row = prev.rows[0];
 		if (!row) return false;
 
@@ -257,24 +273,24 @@ export async function updateTeamTask(
 			changed.push(field);
 		};
 
-		if (patch.baslik !== undefined && patch.baslik !== row.baslik) set('baslik', patch.baslik, 'baslik');
-		if (patch.aciklama !== undefined && patch.aciklama !== (row.aciklama ?? '')) set('aciklama', patch.aciklama, 'aciklama');
-		if (patch.oncelik !== undefined && patch.oncelik !== row.oncelik) set('oncelik', patch.oncelik, 'oncelik');
+		if (patch.baslik !== undefined && patch.baslik !== row.baslik) set('title', patch.baslik, 'baslik');
+		if (patch.aciklama !== undefined && patch.aciklama !== (row.aciklama ?? '')) set('description', patch.aciklama, 'aciklama');
+		if (patch.oncelik !== undefined && patch.oncelik !== row.oncelik) set('priority', patch.oncelik, 'oncelik');
 		if (patch.teslimTarihi !== undefined && (patch.teslimTarihi ?? null) !== (row.teslimTarihi ?? null)) {
-			set('teslimTarihi', patch.teslimTarihi, 'teslimTarihi');
+			set('due_at', patch.teslimTarihi, 'teslimTarihi');
 		}
 		if (patch.etiketler !== undefined) {
 			const next = JSON.stringify(patch.etiketler);
-			if (next !== JSON.stringify(parseEtiketler(row.etiketler))) set('etiketler', next, 'etiketler');
+			if (next !== JSON.stringify(parseEtiketler(row.etiketler))) set('labels', next, 'etiketler');
 		}
 		const assigneeChanged =
 			patch.atananUyeId !== undefined && (patch.atananUyeId ?? null) !== (row.atananUyeId ?? null);
-		if (assigneeChanged) set('atananUyeId', patch.atananUyeId, 'atananUyeId');
+		if (assigneeChanged) set('assignee_id', patch.atananUyeId, 'atananUyeId');
 
 		if (sets.length === 0) return true;
 
 		values.push(Date.now());
-		sets.push(`guncellenme = $${values.length}`);
+		sets.push(`updated_at = $${values.length}`);
 		values.push(gorevId);
 		await client.query(`UPDATE team_tasks SET ${sets.join(', ')} WHERE id = $${values.length}`, values);
 
@@ -300,39 +316,77 @@ export async function getTeamTaskDetail(gorevId: string): Promise<TeamTaskDetail
 	const db = getPgPool();
 	const [maddeler, yorumlar, aktivite] = await Promise.all([
 		db.query(
-			'SELECT * FROM team_task_items WHERE gorevId = $1 ORDER BY sira ASC, olusturma ASC',
+			`SELECT elem->>'id' AS id,
+			        tg.id AS "gorevId",
+			        COALESCE(elem->>'metin', '') AS metin,
+			        COALESCE((elem->>'tamamMi')::int, 0) AS "tamamMi",
+			        COALESCE((elem->>'sira')::float8, 0) AS sira,
+			        COALESCE((elem->>'olusturma')::bigint, 0) AS olusturma
+			 FROM team_tasks tg,
+			      jsonb_array_elements(COALESCE(tg.checklist, '[]'::jsonb)) AS elem
+			 WHERE tg.id = $1
+			 ORDER BY COALESCE((elem->>'sira')::float8, 0) ASC, COALESCE((elem->>'olusturma')::bigint, 0) ASC`,
 			[gorevId]
 		),
 		db.query(
-			`SELECT y.*, k.first_name || ' ' || k.last_name AS "kullaniciAdSoyad"
-			 FROM team_task_comments y
-			 LEFT JOIN users k ON k.id = y.userId
-			 WHERE y.gorevId = $1
-			 ORDER BY y.olusturma ASC`,
+			`SELECT elem->>'id' AS id,
+			        tg.id AS "gorevId",
+			        elem->>'userId' AS "userId",
+			        COALESCE(elem->>'icerik', '') AS icerik,
+			        COALESCE((elem->>'olusturma')::bigint, 0) AS olusturma,
+			        k.first_name || ' ' || k.last_name AS "kullaniciAdSoyad"
+			 FROM team_tasks tg,
+			      jsonb_array_elements(COALESCE(tg.comments, '[]'::jsonb)) AS elem
+			 LEFT JOIN users k ON k.id = (elem->>'userId')
+			 WHERE tg.id = $1
+			 ORDER BY COALESCE((elem->>'olusturma')::bigint, 0) ASC`,
 			[gorevId]
 		),
 		db.query(
-			`SELECT a.*, k.first_name || ' ' || k.last_name AS "aktorAdSoyad"
-			 FROM team_task_activities a
-			 LEFT JOIN users k ON k.id = a.aktorId
-			 WHERE a.gorevId = $1
-			 ORDER BY a.olusturma DESC
+			`SELECT elem->>'id' AS id,
+			        tg.id AS "gorevId",
+			        elem->>'aktorId' AS "aktorId",
+			        elem->>'tur' AS tur,
+			        elem->'detay' AS detay,
+			        COALESCE((elem->>'olusturma')::bigint, 0) AS olusturma,
+			        k.first_name || ' ' || k.last_name AS "aktorAdSoyad"
+			 FROM team_tasks tg,
+			      jsonb_array_elements(COALESCE(tg.activities, '[]'::jsonb)) AS elem
+			 LEFT JOIN users k ON k.id = (elem->>'aktorId')
+			 WHERE tg.id = $1
+			 ORDER BY COALESCE((elem->>'olusturma')::bigint, 0) DESC
 			 LIMIT 50`,
 			[gorevId]
 		),
 	]);
 	return {
 		task,
-		maddeler: maddeler.rows as TeamTaskItem[],
-		yorumlar: yorumlar.rows as TeamTaskComment[],
+		maddeler: maddeler.rows.map((r) => ({
+			...r,
+			tamamMi: Number(r.tamamMi),
+			sira: Number(r.sira),
+			olusturma: Number(r.olusturma),
+		})) as TeamTaskItem[],
+		yorumlar: yorumlar.rows.map((r) => ({
+			...r,
+			olusturma: Number(r.olusturma),
+		})) as TeamTaskComment[],
 		aktivite: aktivite.rows.map((r) => {
 			let detay: TeamTaskActivity['detay'] = null;
-			try {
-				detay = r.detay ? JSON.parse(r.detay as string) : null;
-			} catch {
-				detay = null;
+			if (typeof r.detay === 'string') {
+				try {
+					detay = JSON.parse(r.detay);
+				} catch {
+					detay = null;
+				}
+			} else if (r.detay && typeof r.detay === 'object') {
+				detay = r.detay as TeamTaskActivity['detay'];
 			}
-			return { ...(r as unknown as TeamTaskActivity), detay };
+			return {
+				...(r as unknown as TeamTaskActivity),
+				olusturma: Number(r.olusturma),
+				detay,
+			};
 		}),
 	};
 }
@@ -341,7 +395,10 @@ export async function addTaskItem(gorevId: string, metin: string, aktorId?: stri
 	await ensurePostgresInit();
 	return withTransaction(async (client) => {
 		const max = await client.query(
-			'SELECT COALESCE(MAX(sira), 0) AS m FROM team_task_items WHERE gorevId = $1',
+			`SELECT COALESCE(MAX((elem->>'sira')::float8), 0) AS m
+			 FROM team_tasks tg,
+			      jsonb_array_elements(COALESCE(tg.checklist, '[]'::jsonb)) AS elem
+			 WHERE tg.id = $1`,
 			[gorevId]
 		);
 		const madde: TeamTaskItem = {
@@ -353,11 +410,12 @@ export async function addTaskItem(gorevId: string, metin: string, aktorId?: stri
 			olusturma: Date.now(),
 		};
 		await client.query(
-			`INSERT INTO team_task_items (id, gorevId, metin, tamamMi, sira, olusturma)
-			 VALUES ($1, $2, $3, 0, $4, $5)`,
-			[madde.id, gorevId, metin, madde.sira, madde.olusturma]
+			`UPDATE team_tasks
+			 SET checklist = COALESCE(checklist, '[]'::jsonb) || jsonb_build_array($1::jsonb),
+			     updated_at = $2
+			 WHERE id = $3`,
+			[JSON.stringify(madde), madde.olusturma, gorevId]
 		);
-		await touchTask(client, gorevId);
 		await logTaskActivity(client, gorevId, aktorId, 'madde_eklendi', { metin: metin.slice(0, 80) });
 		return madde;
 	});
@@ -365,8 +423,29 @@ export async function addTaskItem(gorevId: string, metin: string, aktorId?: stri
 
 export async function getTaskItem(id: string): Promise<TeamTaskItem | null> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query('SELECT * FROM team_task_items WHERE id = $1', [id]);
-	return (res.rows[0] as TeamTaskItem | undefined) ?? null;
+	const res = await getPgPool().query(
+		`SELECT elem->>'id' AS id,
+		        tg.id AS "gorevId",
+		        COALESCE(elem->>'metin', '') AS metin,
+		        COALESCE((elem->>'tamamMi')::int, 0) AS "tamamMi",
+		        COALESCE((elem->>'sira')::float8, 0) AS sira,
+		        COALESCE((elem->>'olusturma')::bigint, 0) AS olusturma
+		 FROM team_tasks tg,
+		      jsonb_array_elements(COALESCE(tg.checklist, '[]'::jsonb)) AS elem
+		 WHERE elem->>'id' = $1
+		 LIMIT 1`,
+		[id]
+	);
+	const r = res.rows[0];
+	if (!r) return null;
+	return {
+		id: String(r.id),
+		gorevId: String(r.gorevId),
+		metin: String(r.metin),
+		tamamMi: Number(r.tamamMi),
+		sira: Number(r.sira),
+		olusturma: Number(r.olusturma),
+	};
 }
 
 export async function updateTaskItem(
@@ -376,15 +455,42 @@ export async function updateTaskItem(
 ): Promise<boolean> {
 	await ensurePostgresInit();
 	return withTransaction(async (client) => {
-		const prev = await client.query('SELECT * FROM team_task_items WHERE id = $1 FOR UPDATE', [id]);
+		const prev = await client.query(
+			`SELECT tg.id AS "gorevId", tg.checklist
+			 FROM team_tasks tg
+			 WHERE EXISTS (
+			   SELECT 1 FROM jsonb_array_elements(COALESCE(tg.checklist, '[]'::jsonb)) AS elem
+			   WHERE elem->>'id' = $1
+			 )
+			 FOR UPDATE`,
+			[id]
+		);
 		const row = prev.rows[0];
 		if (!row) return false;
-		const metin = patch.metin ?? row.metin;
-		const tamamMi = patch.tamamMi === undefined ? Number(row.tamamMi) : patch.tamamMi ? 1 : 0;
-		await client.query('UPDATE team_task_items SET metin = $1, tamamMi = $2 WHERE id = $3', [metin, tamamMi, id]);
-		await touchTask(client, row.gorevId as string);
-		if (tamamMi === 1 && Number(row.tamamMi) !== 1) {
-			await logTaskActivity(client, row.gorevId as string, aktorId, 'madde_tamamlandi', {
+		const gorevId = String(row.gorevId);
+		const checklist: Array<Record<string, unknown>> = Array.isArray(row.checklist) ? row.checklist : [];
+		const idx = checklist.findIndex((item) => String(item.id) === id);
+		if (idx === -1) return false;
+
+		const currentItem = checklist[idx];
+		const prevTamamMi = Number(currentItem.tamamMi ?? 0);
+		const metin = patch.metin ?? String(currentItem.metin ?? '');
+		const tamamMi = patch.tamamMi === undefined ? prevTamamMi : patch.tamamMi ? 1 : 0;
+
+		const nextChecklist = [...checklist];
+		nextChecklist[idx] = {
+			...currentItem,
+			gorevId,
+			metin,
+			tamamMi,
+		};
+
+		await client.query(
+			'UPDATE team_tasks SET checklist = $1::jsonb, updated_at = $2 WHERE id = $3',
+			[JSON.stringify(nextChecklist), Date.now(), gorevId]
+		);
+		if (tamamMi === 1 && prevTamamMi !== 1) {
+			await logTaskActivity(client, gorevId, aktorId, 'madde_tamamlandi', {
 				metin: String(metin).slice(0, 80),
 			});
 		}
@@ -394,7 +500,18 @@ export async function updateTaskItem(
 
 export async function deleteTaskItem(id: string): Promise<boolean> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query('DELETE FROM team_task_items WHERE id = $1', [id]);
+	const res = await getPgPool().query(
+		`UPDATE team_tasks tg
+		 SET checklist = COALESCE(
+		       (SELECT jsonb_agg(elem) FROM jsonb_array_elements(COALESCE(tg.checklist, '[]'::jsonb)) AS elem WHERE elem->>'id' <> $1),
+		       '[]'::jsonb
+		     ),
+		     updated_at = $2
+		 WHERE EXISTS (
+		   SELECT 1 FROM jsonb_array_elements(COALESCE(tg.checklist, '[]'::jsonb)) AS elem WHERE elem->>'id' = $1
+		 )`,
+		[id, Date.now()]
+	);
 	return (res.rowCount ?? 0) > 0;
 }
 
@@ -409,11 +526,12 @@ export async function addTaskComment(gorevId: string, userId: string, icerik: st
 			olusturma: Date.now(),
 		};
 		await client.query(
-			`INSERT INTO team_task_comments (id, gorevId, userId, icerik, olusturma)
-			 VALUES ($1, $2, $3, $4, $5)`,
-			[yorum.id, gorevId, userId, icerik, yorum.olusturma]
+			`UPDATE team_tasks
+			 SET comments = COALESCE(comments, '[]'::jsonb) || jsonb_build_array($1::jsonb),
+			     updated_at = $2
+			 WHERE id = $3`,
+			[JSON.stringify(yorum), yorum.olusturma, gorevId]
 		);
-		await touchTask(client, gorevId);
 		await logTaskActivity(client, gorevId, userId, 'yorum');
 		return yorum;
 	});
@@ -421,13 +539,43 @@ export async function addTaskComment(gorevId: string, userId: string, icerik: st
 
 export async function getTaskComment(id: string): Promise<TeamTaskComment | null> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query('SELECT * FROM team_task_comments WHERE id = $1', [id]);
-	return (res.rows[0] as TeamTaskComment | undefined) ?? null;
+	const res = await getPgPool().query(
+		`SELECT elem->>'id' AS id,
+		        tg.id AS "gorevId",
+		        elem->>'userId' AS "userId",
+		        COALESCE(elem->>'icerik', '') AS icerik,
+		        COALESCE((elem->>'olusturma')::bigint, 0) AS olusturma
+		 FROM team_tasks tg,
+		      jsonb_array_elements(COALESCE(tg.comments, '[]'::jsonb)) AS elem
+		 WHERE elem->>'id' = $1
+		 LIMIT 1`,
+		[id]
+	);
+	const r = res.rows[0];
+	if (!r) return null;
+	return {
+		id: String(r.id),
+		gorevId: String(r.gorevId),
+		userId: r.userId ? String(r.userId) : null,
+		icerik: String(r.icerik),
+		olusturma: Number(r.olusturma),
+	};
 }
 
 export async function deleteTaskComment(id: string): Promise<boolean> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query('DELETE FROM team_task_comments WHERE id = $1', [id]);
+	const res = await getPgPool().query(
+		`UPDATE team_tasks tg
+		 SET comments = COALESCE(
+		       (SELECT jsonb_agg(elem) FROM jsonb_array_elements(COALESCE(tg.comments, '[]'::jsonb)) AS elem WHERE elem->>'id' <> $1),
+		       '[]'::jsonb
+		     ),
+		     updated_at = $2
+		 WHERE EXISTS (
+		   SELECT 1 FROM jsonb_array_elements(COALESCE(tg.comments, '[]'::jsonb)) AS elem WHERE elem->>'id' = $1
+		 )`,
+		[id, Date.now()]
+	);
 	return (res.rowCount ?? 0) > 0;
 }
 
@@ -444,8 +592,8 @@ export async function unassignTeamMemberTasks(
 	aktorId?: string
 ): Promise<void> {
 	const open = await db.query(
-		`UPDATE team_tasks SET atananUyeId = NULL, guncellenme = $3
-		 WHERE teamId = $1 AND atananUyeId = $2 AND status <> 'tamamlandi'
+		`UPDATE team_tasks SET assignee_id = NULL, updated_at = $3
+		 WHERE team_id = $1 AND assignee_id = $2 AND status <> 'tamamlandi'
 		 RETURNING id`,
 		[teamId, userId, Date.now()]
 	);
@@ -461,21 +609,23 @@ export async function getUserNewAssignments(userId: string, since: number): Prom
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`SELECT DISTINCT ON (tg.id)
-		        tg.id, tg.teamId AS "teamId", t.ad AS "takimAdi", tg.baslik,
-		        k.first_name || ' ' || k.last_name AS "atayan", a.olusturma AS "at"
-		 FROM team_task_activities a
-		 JOIN team_tasks tg ON tg.id = a.gorevId
-		 JOIN teams t ON t.id = tg.teamId
-		 LEFT JOIN users k ON k.id = a.aktorId
-		 WHERE a.tur = 'atandi'
-		   AND a.detay::jsonb ->> 'to' = $1
-		   AND (a.aktorId IS NULL OR a.aktorId <> $1)
-		   AND a.olusturma >= $2
-		   AND tg.atananUyeId = $1
+		        tg.id, tg.team_id AS "teamId", t.name AS "takimAdi", tg.title AS "baslik",
+		        k.first_name || ' ' || k.last_name AS "atayan", COALESCE((elem->>'olusturma')::bigint, 0) AS "at"
+		 FROM team_tasks tg
+		 CROSS JOIN LATERAL jsonb_array_elements(COALESCE(tg.activities, '[]'::jsonb)) AS elem
+		 JOIN teams t ON t.id = tg.team_id
+		 LEFT JOIN users k ON k.id = (elem->>'aktorId')
+		 WHERE elem->>'tur' = 'atandi'
+		   AND (elem->'detay'->>'to') = $1
+		   AND ((elem->>'aktorId') IS NULL OR (elem->>'aktorId') <> $1)
+		   AND COALESCE((elem->>'olusturma')::bigint, 0) >= $2
+		   AND tg.assignee_id = $1
 		   AND tg.status <> 'tamamlandi'
-		 ORDER BY tg.id, a.olusturma DESC`,
+		 ORDER BY tg.id, COALESCE((elem->>'olusturma')::bigint, 0) DESC`,
 		[userId, since]
 	);
-	return (res.rows as YeniAtama[]).sort((a, b) => b.at - a.at);
+	return res.rows
+		.map((r) => ({ ...(r as YeniAtama), at: Number(r.at) }))
+		.sort((a, b) => b.at - a.at);
 }
 

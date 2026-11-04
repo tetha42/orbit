@@ -43,5 +43,5 @@ export interface AssignableRole {
 	id: string;
 	ad: string;
 	renk: string;
-	assignableRoles: boolean;
+	assignable: boolean;
 }

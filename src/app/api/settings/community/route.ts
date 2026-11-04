@@ -4,6 +4,7 @@ import { getSystemSettings, setSystemSettings } from '@/db';
 import { logSystemEvent } from '@/db/repositories/logs.repo';
 import { invalidateCache } from '@/server/cache';
 import { updateConfigIniSync } from '@/server/iniWriter';
+import { DEFAULT_ARCHETYPE, isOrganizationArchetype } from '@/lib/archetypes';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,10 +14,15 @@ export async function GET(request: Request) {
 
 	try {
 		const settings = await getSystemSettings();
+		const archetype = isOrganizationArchetype(settings.organization_archetype)
+			? settings.organization_archetype
+			: DEFAULT_ARCHETYPE;
 		return NextResponse.json({
 			kulupAdi: settings.kulup_adi || 'Orbit Community',
 			universite: settings.universite || 'tetha42',
 			kulupDomain: settings.kulup_domain || 'orbit.local',
+			archetype,
+			organizationArchetype: archetype,
 			imza1Ad: settings.imza1_ad || '',
 			imza1Unvan: settings.imza1_unvan || 'Topluluk Lideri',
 			imza2Ad: settings.imza2_ad || '',
@@ -38,6 +44,8 @@ export async function PATCH(request: Request) {
 			kulupAdi,
 			universite,
 			kulupDomain,
+			archetype,
+			organizationArchetype,
 			imza1Ad,
 			imza1Unvan,
 			imza2Ad,
@@ -75,6 +83,13 @@ export async function PATCH(request: Request) {
 			if (!domain) return NextResponse.json({ error: 'Topluluk alan adı boş bırakılamaz.' }, { status: 400 });
 			updates.kulup_domain = domain;
 		}
+		const rawArchetype = archetype ?? organizationArchetype;
+		if (rawArchetype !== undefined) {
+			if (!isOrganizationArchetype(rawArchetype)) {
+				return NextResponse.json({ error: 'Geçersiz organizasyon arketipi.' }, { status: 400 });
+			}
+			updates.organization_archetype = rawArchetype;
+		}
 		if (imza1Ad !== undefined) updates.imza1_ad = clean(imza1Ad);
 		if (imza1Unvan !== undefined) updates.imza1_unvan = clean(imza1Unvan) || 'Topluluk Lideri';
 		if (imza2Ad !== undefined) updates.imza2_ad = clean(imza2Ad);
@@ -89,7 +104,7 @@ export async function PATCH(request: Request) {
 		void logSystemEvent({
 			servis: 'settings',
 			seviye: 'INFO',
-			mesaj: `Topluluk kimliği güncellendi (${auth.user.ad} ${auth.user.soyad})`,
+			mesaj: `Topluluk kimliği güncellendi (${auth.user.firstName || auth.user.ad || ""} ${auth.user.lastName || auth.user.soyad || ""})`,
 			detay: updates,
 		});
 
@@ -114,13 +129,19 @@ export async function PATCH(request: Request) {
 		invalidateCache('kulup_bilgileri');
 
 		const fresh = await getSystemSettings();
+		const freshArchetype = isOrganizationArchetype(fresh.organization_archetype)
+			? fresh.organization_archetype
+			: DEFAULT_ARCHETYPE;
 		return NextResponse.json({
 			ok: true,
 			success: true,
+			archetype: freshArchetype,
 			settings: {
 				kulupAdi: fresh.kulup_adi,
 				universite: fresh.universite,
 				kulupDomain: fresh.kulup_domain,
+				archetype: freshArchetype,
+				organizationArchetype: freshArchetype,
 				imza1Ad: fresh.imza1_ad,
 				imza1Unvan: fresh.imza1_unvan,
 				imza2Ad: fresh.imza2_ad,
@@ -131,4 +152,12 @@ export async function PATCH(request: Request) {
 		console.error('API /api/settings/community PATCH error:', error);
 		return NextResponse.json({ error: 'Topluluk ayarları kaydedilemedi.' }, { status: 500 });
 	}
+}
+
+export async function PUT(request: Request) {
+	return PATCH(request);
+}
+
+export async function POST(request: Request) {
+	return PATCH(request);
 }

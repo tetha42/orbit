@@ -23,7 +23,7 @@ export interface CommitteeDetail {
 	decisions: Decision[];
 }
 
-const MEETING_COLUMNS = `id, committee_id AS "committeeId", title, date, agenda, minutes,
+const MEETING_COLUMNS = `id, body_id AS "committeeId", title, date, agenda, content AS "minutes",
 	status, created_by AS "createdBy", created_at AS "createdAt", updated_at AS "updatedAt"`;
 
 function mapMeeting(row: Record<string, unknown>): CommitteeMeeting {
@@ -44,11 +44,14 @@ function mapMeeting(row: Record<string, unknown>): CommitteeMeeting {
 export async function listCommittees(): Promise<Team[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT t.*, k.first_name || ' ' || k.last_name AS "liderAdSoyad",
-		        (SELECT COUNT(*) FROM team_members tu WHERE tu.teamId = t.id AND tu.status = 'aktif')::int AS "aktifUyeSayisi"
-		 FROM teams t LEFT JOIN users k ON k.id = t.liderId
+		`SELECT t.id, t.name AS "ad", t.slug, t.description AS "aciklama", t.category AS "kategori", t.lead_id AS "leadId",
+		        t.capacity AS "kontenjan", t.repo_url AS "repoUrl", t.status, t.join_policy AS "katilimTuru",
+		        t.type, t.quorum, t.created_at AS "olusturma",
+		        k.first_name || ' ' || k.last_name AS "liderAdSoyad",
+		        (SELECT COUNT(*) FROM team_members tu WHERE tu.team_id = t.id AND tu.status = 'aktif')::int AS "aktifUyeSayisi"
+		 FROM teams t LEFT JOIN users k ON k.id = t.lead_id
 		 WHERE t.type = 'committee'
-		 ORDER BY t.olusturma DESC`
+		 ORDER BY t.created_at DESC`
 	);
 	return res.rows as Team[];
 }
@@ -58,25 +61,37 @@ export async function getCommitteeDetail(id: string): Promise<CommitteeDetail | 
 	if (!committee || committee.type !== 'committee') return null;
 	const [members, meetings, decisions] = await Promise.all([
 		getPgPool().query(
-			`SELECT tu.*, k.first_name || ' ' || k.last_name AS "kullaniciAdSoyad",
+			`SELECT tu.id, tu.team_id AS "teamId", tu.user_id AS "userId", tu.role_title AS "takimRolu",
+			        tu.status, tu.application_note AS "basvuruNotu", tu.joined_at AS "katilimTarihi",
+			        k.first_name || ' ' || k.last_name AS "kullaniciAdSoyad",
 			        k.department AS "kullaniciBolum", k.avatar_url AS "kullaniciProfilFoto",
 			        tu.voting_right AS "votingRight", tu.term_start AS "termStart", tu.term_end AS "termEnd"
-			 FROM team_members tu JOIN users k ON tu.userId = k.id
-			 WHERE tu.teamId = $1 AND tu.status = 'aktif'
-			 ORDER BY tu.voting_right DESC, tu.katilimTarihi ASC`,
+			 FROM team_members tu JOIN users k ON tu.user_id = k.id
+			 WHERE tu.team_id = $1 AND tu.status = 'aktif'
+			 ORDER BY tu.voting_right DESC, tu.joined_at ASC`,
 			[id]
 		),
 		getPgPool().query(
-			`SELECT ${MEETING_COLUMNS} FROM committee_meetings
-			 WHERE committee_id = $1 ORDER BY date DESC`,
+			`SELECT ${MEETING_COLUMNS} FROM decisions
+			 WHERE body_id = $1 AND record_type = 'meeting' ORDER BY date DESC`,
 			[id]
 		),
 		getPgPool().query(
-			`SELECT d.*, b.ad AS "bodyAd", k.first_name || ' ' || k.last_name AS "olusturanAdSoyad"
+			`SELECT d.id, d.reference_no AS "kararNo", d.record_type AS "belgeTuru", d.title AS "baslik", d.date,
+			        d.agenda AS "gundem", d.content AS "icerik", d.is_public AS "kamuyaAcikMi", d.is_locked AS "kilitliMi",
+			        d.created_by AS "olusturanId", d.created_at AS "olusturma",
+			        d.body_id, d.body_id AS "bodyId",
+			        d.decision_type, d.decision_type AS "decisionType",
+			        d.quorum_met, d.quorum_met AS "quorumMet",
+			        d.votes_for, d.votes_for AS "votesFor",
+			        d.votes_against, d.votes_against AS "votesAgainst",
+			        d.votes_abstain, d.votes_abstain AS "votesAbstain",
+			        d.published_at, d.published_at AS "publishedAt",
+			        b.name AS "bodyAd", k.first_name || ' ' || k.last_name AS "olusturanAdSoyad"
 			 FROM decisions d
 			 LEFT JOIN teams b ON b.id = d.body_id
-			 LEFT JOIN users k ON k.id = d.olusturanId
-			 WHERE d.body_id = $1 ORDER BY d.date DESC`,
+			 LEFT JOIN users k ON k.id = d.created_by
+			 WHERE d.body_id = $1 AND d.record_type <> 'meeting' ORDER BY d.date DESC`,
 			[id]
 		),
 	]);
@@ -97,7 +112,7 @@ export async function createCommittee(input: {
 	kategori: string;
 	aciklama: string;
 	quorum?: number;
-	liderId?: string;
+	leadId?: string;
 	kontenjan?: number;
 }): Promise<Team> {
 	return createTeam({
@@ -121,10 +136,10 @@ export async function addCommitteeMember(input: {
 	const now = Date.now();
 	const id = `tu_${randomUUID().replace(/-/g, '').slice(0, 14)}`;
 	const res = await getPgPool().query(
-		`INSERT INTO team_members (id, teamId, userId, takimRolu, status, katilimTarihi, voting_right, term_start, term_end)
+		`INSERT INTO team_members (id, team_id, user_id, role_title, status, joined_at, voting_right, term_start, term_end)
 		 VALUES ($1, $2, $3, $4, 'aktif', $5, $6, $7, $8)
-		 ON CONFLICT (teamId, userId) DO UPDATE SET
-			takimRolu = EXCLUDED.takimRolu, status = 'aktif',
+		 ON CONFLICT (team_id, user_id) DO UPDATE SET
+			role_title = EXCLUDED.role_title, status = 'aktif',
 			voting_right = EXCLUDED.voting_right, term_start = EXCLUDED.term_start, term_end = EXCLUDED.term_end`,
 		[
 			id,
@@ -143,7 +158,7 @@ export async function addCommitteeMember(input: {
 export async function removeCommitteeMember(committeeId: string, userId: string): Promise<boolean> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		"DELETE FROM team_members WHERE teamId = $1 AND userId = $2 AND takimRolu <> 'Team Captain'",
+		"DELETE FROM team_members WHERE team_id = $1 AND user_id = $2 AND role_title <> 'Team Captain'",
 		[committeeId, userId]
 	);
 	return (res.rowCount ?? 0) > 0;
@@ -162,9 +177,9 @@ export async function createCommitteeMeeting(input: {
 	const now = Date.now();
 	const id = `cm_${randomUUID().replace(/-/g, '').slice(0, 16)}`;
 	const res = await getPgPool().query(
-		`INSERT INTO committee_meetings
-			(id, committee_id, title, date, agenda, minutes, status, created_by, created_at, updated_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9)
+		`INSERT INTO decisions
+			(id, record_type, body_id, title, date, agenda, content, status, created_by, created_at, updated_at)
+		 VALUES ($1, 'meeting', $2, $3, $4, $5, $6, $7, $8, $9, $9)
 		 RETURNING ${MEETING_COLUMNS}`,
 		[
 			id,
@@ -195,14 +210,14 @@ export async function updateCommitteeMeeting(
 	if (patch.title !== undefined) set('title', patch.title);
 	if (patch.date !== undefined) set('date', patch.date);
 	if (patch.agenda !== undefined) set('agenda', patch.agenda);
-	if (patch.minutes !== undefined) set('minutes', patch.minutes);
+	if (patch.minutes !== undefined) set('content', patch.minutes);
 	if (patch.status !== undefined) set('status', patch.status);
 	if (!sets.length) return true;
 	values.push(Date.now());
 	sets.push(`updated_at = $${values.length}`);
 	values.push(id);
 	const res = await getPgPool().query(
-		`UPDATE committee_meetings SET ${sets.join(', ')} WHERE id = $${values.length}`,
+		`UPDATE decisions SET ${sets.join(', ')} WHERE id = $${values.length} AND record_type = 'meeting'`,
 		values
 	);
 	return (res.rowCount ?? 0) > 0;
@@ -210,6 +225,6 @@ export async function updateCommitteeMeeting(
 
 export async function deleteCommitteeMeeting(id: string): Promise<boolean> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query('DELETE FROM committee_meetings WHERE id = $1', [id]);
+	const res = await getPgPool().query("DELETE FROM decisions WHERE id = $1 AND record_type = 'meeting'", [id]);
 	return (res.rowCount ?? 0) > 0;
 }

@@ -345,7 +345,7 @@ export function ItemDetailModal({
 									<div className={s.eventTitle}>{getEventLabel(h)}</div>
 									{h.aciklama && <div>{h.aciklama}</div>}
 									<div className={s.eventMeta}>
-										{new Date(h.date).toLocaleString(language === 'tr' ? 'tr-TR' : 'en-US', {
+										{new Date(h.date).toLocaleString(language, {
 											day: '2-digit',
 											month: '2-digit',
 											year: 'numeric',

@@ -5,23 +5,29 @@ import { clientAddress } from '@/lib/http';
 import { logSystemEvent } from '@/db/repositories/logs.repo';
 
 const SENSITIVE_COLUMNS = new Set([
+	'password_hash',
+	'passwordhash',
 	'sifrehash',
+	'totp_secret',
 	'totpsecret',
+	'session_token',
+	'sessiontoken',
 	'aktifoturumtoken',
+	'totp_recovery_codes',
 	'totprecoverycodes',
+	'secret_hash',
 	'secrethash',
 	'smtp_pass',
 ]);
 
 const PROTECTED_TABLES = new Set([
-	'sistem_loglari',
 	'system_logs',
-	'denetim_kaydi',
 	'audit_logs',
-	'guvenlik_engelleri',
 	'security_blocks',
-	'sistem_ayarlari',
 	'system_settings',
+	'webauthn_credentials',
+	'verification_tokens',
+	'oauth_clients',
 ]);
 const PROTECTED_SETTINGS_KEYS = new Set(['smtp_pass', 'soc_lockdown_mode', 'soc_lockdown_reason']);
 
@@ -114,7 +120,7 @@ export async function POST(request: Request) {
 
 		await withTransaction(async (client) => {
 			for (const r of rows) {
-				if (lowerTable === 'sistem_ayarlari' && PROTECTED_SETTINGS_KEYS.has(String(r.anahtar ?? '').toLowerCase())) {
+				if (lowerTable === 'system_settings' && PROTECTED_SETTINGS_KEYS.has(String(r.key ?? '').toLowerCase())) {
 					continue;
 				}
 				const cols: string[] = [];

@@ -21,14 +21,14 @@ export function AuditDetailModal({ detay, onClose }: AuditDetailModalProps) {
 
 	if (!detay) return null;
 
-	const diffs = diffRows(detay.onceki, detay.sonraki);
+	const diffs = diffRows(detay.before, detay.after);
 
 	const formatAuditValue = (alan: string, val: unknown): string => {
 		if (val === null || val === undefined) return '—';
 		if (typeof val === 'boolean') {
 			return val ? t('auditYes') : t('auditNo');
 		}
-		if (alan === 'roleId' || alan === 'tasinanRolId') {
+		if (alan === 'roleId' || alan === 'movedToRoleId') {
 			if (val === 'rol_admin') return t('auditRoleAdmin', 'Yönetici (Admin)');
 			if (val === 'rol_yonetim_kurulu') return t('auditRoleBoard', 'Management Board');
 			if (val === 'rol_uye') return t('auditRoleMember', 'Member');
@@ -42,7 +42,7 @@ export function AuditDetailModal({ detay, onClose }: AuditDetailModalProps) {
 		return String(val);
 	};
 
-	const actionTitle = formatAuditAction(detay.islem, t);
+	const actionTitle = formatAuditAction(detay.action, t);
 
 	return (
 		<Sheet
@@ -69,7 +69,7 @@ export function AuditDetailModal({ detay, onClose }: AuditDetailModalProps) {
 						{t('auditYapan')}
 					</span>
 					<strong style={{ color: 'var(--text-primary)', wordBreak: 'break-word' }}>
-						{detay.yapanAd || detay.yapanId || '—'}
+						{detay.actorName || detay.actorId || '—'}
 					</strong>
 				</div>
 				<div>
@@ -77,7 +77,7 @@ export function AuditDetailModal({ detay, onClose }: AuditDetailModalProps) {
 						{t('auditHedef')}
 					</span>
 					<strong style={{ color: 'var(--text-primary)', wordBreak: 'break-word' }}>
-						{detay.hedefAd || detay.hedefId || '—'}
+						{detay.targetName || detay.targetId || '—'}
 					</strong>
 				</div>
 				<div>
@@ -85,7 +85,7 @@ export function AuditDetailModal({ detay, onClose }: AuditDetailModalProps) {
 						{t('auditZaman')}
 					</span>
 					<span style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-						{formatDateTime(detay.zaman, language === 'en' ? 'en-GB' : 'tr-TR')}
+						{formatDateTime(detay.timestamp, language === 'en' ? 'en-GB' : 'tr-TR')}
 					</span>
 				</div>
 				<div>
@@ -126,15 +126,15 @@ export function AuditDetailModal({ detay, onClose }: AuditDetailModalProps) {
 										<span
 											className={s.auditOld}
 											style={{
-												textDecoration: d.onceki !== null && d.onceki !== undefined ? 'line-through' : 'none',
+												textDecoration: d.before !== null && d.before !== undefined ? 'line-through' : 'none',
 											}}
 										>
-											{formatAuditValue(d.alan, d.onceki)}
+											{formatAuditValue(d.alan, d.before)}
 										</span>
 									</div>
 									<div>
 										<span className={s.auditNew}>
-											{formatAuditValue(d.alan, d.sonraki)}
+											{formatAuditValue(d.alan, d.after)}
 										</span>
 									</div>
 								</div>

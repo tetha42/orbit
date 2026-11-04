@@ -14,6 +14,12 @@ export interface Certificate {
 
 export interface MemberRankItem {
 	id: string;
+	firstName?: string;
+	lastName?: string;
+	department?: string;
+	grade?: number;
+	roleName?: string | null;
+	teamName?: string | null;
 	ad: string;
 	soyad: string;
 	bolum: string;

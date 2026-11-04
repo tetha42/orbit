@@ -25,7 +25,7 @@ export interface QuotedMessageSnapshot {
 
 export interface ChatMessageRecord {
 	id: string;
-	odaId: string;
+	roomId: string;
 	gonderenId: string;
 	gonderenAd: string;
 	gonderenFoto: string | null;
@@ -51,15 +51,15 @@ export interface UnreadChatRoomSummary {
 
 /**
  * Emits a `notification` event on the global `orbit_events` SSE bus for all members
- * of `odaId` (except `excludeUserId`), so their TopBar Notification Center,
+ * of `roomId` (except `excludeUserId`), so their TopBar Notification Center,
  * Dock badge, and background PWA/OS notifications update even when the Chat window is closed.
  */
-async function notifyChatRoomParticipants(odaId: string, excludeUserId?: string): Promise<void> {
+async function notifyChatRoomParticipants(roomId: string, excludeUserId?: string): Promise<void> {
 	const p = getPgPool();
 	try {
 		// The audience is cached for a few seconds, so this no longer adds a
 		// room + membership query to every single message.
-		const audience = await getChatAudience(odaId);
+		const audience = await getChatAudience(roomId);
 		if (!audience) return;
 
 		if (audience.all) {
@@ -78,28 +78,29 @@ async function notifyChatRoomParticipants(odaId: string, excludeUserId?: string)
 }
 
 export async function canUserAccessChatRoom(
-	odaId: string,
+	roomId: string,
 	userId: string,
 	isAdmin = false
 ): Promise<boolean> {
-	if (!odaId || !userId) return false;
+	if (!roomId || !userId) return false;
 	await ensurePostgresInit();
 	const p = getPgPool();
 	const res = await p.query(
 		`SELECT 1
 		 FROM chat_rooms o
 		 WHERE o.id = $1
+		   AND o.room_type <> 'mail_thread'
 		   AND (
-		     o.tur = 'genel'
-		     OR ($3 = true AND o.tur = 'takim')
-		     OR (o.tur = 'takim' AND (
-		       EXISTS (SELECT 1 FROM team_members tu WHERE tu.teamId = o.teamId AND tu.userId = $2 AND tu.status = 'aktif')
-		       OR EXISTS (SELECT 1 FROM chat_members su WHERE su.odaId = o.id AND su.userId = $2)
+		     o.room_type = 'genel'
+		     OR ($3 = true AND o.room_type = 'takim')
+		     OR (o.room_type = 'takim' AND (
+		       EXISTS (SELECT 1 FROM team_members tu WHERE tu.team_id = o.team_id AND tu.user_id = $2 AND tu.status = 'aktif')
+		       OR EXISTS (SELECT 1 FROM chat_members su WHERE su.room_id = o.id AND su.user_id = $2)
 		     ))
-		     OR (o.tur = 'ozel' AND EXISTS (SELECT 1 FROM chat_members su WHERE su.odaId = o.id AND su.userId = $2))
+		     OR (o.room_type = 'ozel' AND EXISTS (SELECT 1 FROM chat_members su WHERE su.room_id = o.id AND su.user_id = $2))
 		   )
 		 LIMIT 1`,
-		[odaId, userId, isAdmin]
+		[roomId, userId, isAdmin]
 	);
 	return res.rows.length > 0;
 }
@@ -108,41 +109,44 @@ export async function getChatRooms(userId: string, isAdmin = false): Promise<Cha
 	await ensurePostgresInit();
 	const p = getPgPool();
 
-	// Return public/general rooms + team rooms the user belongs to (or all if admin)
+	// Return public/general rooms + team rooms the user belongs to (or all if admin), excluding internal mail_thread rooms
 	const res = await p.query(
-		`SELECT o.id, o.tur, o.teamId AS "teamId", o.ad, o.olusturma,
-		        (SELECT COUNT(*)::int FROM chat_members su_count WHERE su_count.odaId = o.id) as "memberCount",
+		`SELECT o.id, o.room_type AS tur, o.team_id AS "teamId", o.name AS ad, o.created_at AS olusturma,
+		        (SELECT COUNT(*)::int FROM chat_members su_count WHERE su_count.room_id = o.id) as "memberCount",
 		        (SELECT json_build_object(
 		            'id', k.id,
 		            'ad', (k.first_name || ' ' || k.last_name),
 		            'profilFoto', k.avatar_url
 		         )
 		         FROM chat_members su2
-		         JOIN users k ON k.id = su2.userId
-		         WHERE su2.odaId = o.id AND su2.userId <> $1
+		         JOIN users k ON k.id = su2.user_id
+		         WHERE su2.room_id = o.id AND su2.user_id <> $1
 		         LIMIT 1
 		        ) as "karsiKullanici",
 		        (SELECT json_build_object(
-		            'id', m.id, 'odaId', m.odaId, 'gonderenId', m.gonderenId,
-		            'gonderenAd', m.gonderenAd, 'gonderenFoto', m.gonderenFoto,
-		            'icerik', m.icerik, 'ekler', m.ekler, 'date', m.date,
-		            'silinmeTarihi', m.silinmeTarihi, 'duzenlenmeTarihi', m.duzenlenmeTarihi,
-		            'yanitlananMesajId', m.yanitlananMesajId, 'yanitlananMesaj', m.yanitlananMesaj,
-		            'iletildiMi', m.iletildiMi
-		         ) FROM chat_messages m WHERE m.odaId = o.id AND ($2 = true OR m.silinmeTarihi IS NULL) ORDER BY m.date DESC LIMIT 1) as "sonMesaj",
+		            'id', m.id, 'roomId', m.room_id, 'gonderenId', m.sender_id,
+		            'gonderenAd', m.sender_name, 'gonderenFoto', m.sender_avatar,
+		            'icerik', m.content, 'ekler', m.attachments, 'date', m.date,
+		            'silinmeTarihi', m.deleted_at, 'duzenlenmeTarihi', m.edited_at,
+		            'yanitlananMesajId', m.reply_to_id, 'yanitlananMesaj', m.reply_snapshot,
+		            'iletildiMi', m.is_delivered
+		         ) FROM chat_messages m WHERE m.room_id = o.id AND ($2 = true OR m.deleted_at IS NULL) ORDER BY m.date DESC LIMIT 1) as "sonMesaj",
 		        (SELECT COUNT(*)::int FROM chat_messages m2
-		         WHERE m2.odaId = o.id
-		           AND m2.gonderenId <> $1
-		           AND m2.silinmeTarihi IS NULL
+		         WHERE m2.room_id = o.id
+		           AND m2.sender_id <> $1
+		           AND m2.deleted_at IS NULL
 		           AND m2.date > COALESCE(
-		             (SELECT u.sonOkuma FROM chat_members u WHERE u.odaId = o.id AND u.userId = $1), 0
+		             (SELECT u.last_read_at FROM chat_members u WHERE u.room_id = o.id AND u.user_id = $1), 0
 		         )) as "okunmamisSayisi"
 		 FROM chat_rooms o
-		 WHERE o.tur = 'genel'
-		    OR ($2 = true AND o.tur = 'takim')
-		    OR (o.tur = 'takim' AND EXISTS (SELECT 1 FROM team_members tu WHERE tu.teamId = o.teamId AND tu.userId = $1 AND tu.status = 'aktif'))
-		    OR (o.tur = 'ozel' AND EXISTS (SELECT 1 FROM chat_members su WHERE su.odaId = o.id AND su.userId = $1))
-		 ORDER BY o.tur = 'genel' DESC, COALESCE((SELECT m3.date FROM chat_messages m3 WHERE m3.odaId = o.id AND ($2 = true OR m3.silinmeTarihi IS NULL) ORDER BY m3.date DESC LIMIT 1), o.olusturma) DESC`,
+		 WHERE o.room_type <> 'mail_thread'
+		   AND (
+		     o.room_type = 'genel'
+		     OR ($2 = true AND o.room_type = 'takim')
+		     OR (o.room_type = 'takim' AND EXISTS (SELECT 1 FROM team_members tu WHERE tu.team_id = o.team_id AND tu.user_id = $1 AND tu.status = 'aktif'))
+		     OR (o.room_type = 'ozel' AND EXISTS (SELECT 1 FROM chat_members su WHERE su.room_id = o.id AND su.user_id = $1))
+		   )
+		 ORDER BY o.room_type = 'genel' DESC, COALESCE((SELECT m3.date FROM chat_messages m3 WHERE m3.room_id = o.id AND ($2 = true OR m3.deleted_at IS NULL) ORDER BY m3.date DESC LIMIT 1), o.created_at) DESC`,
 		[userId, isAdmin]
 	);
 
@@ -179,7 +183,7 @@ export async function getChatRooms(userId: string, isAdmin = false): Promise<Cha
 			sonMesaj: rawSon
 				? {
 						id: String(rawSon.id ?? ''),
-						odaId: String(rawSon.odaId ?? rawSon.odaid ?? row.id),
+						roomId: String(rawSon.roomId ?? rawSon.odaid ?? row.id),
 						gonderenId: String(rawSon.gonderenId ?? rawSon.gonderenid ?? ''),
 						gonderenAd: String(rawSon.gonderenAd ?? rawSon.gonderenad ?? 'Üye'),
 						gonderenFoto: rawSon.gonderenFoto ?? rawSon.gonderenfoto ?? null,
@@ -206,12 +210,27 @@ export async function getChatRooms(userId: string, isAdmin = false): Promise<Cha
 	});
 }
 
+interface RawPollOption {
+	id: string;
+	text: string;
+	sortOrder?: number;
+}
+
+interface RawPollVote {
+	optionId: string;
+	userId: string;
+	userName?: string;
+	userAvatar?: string | null;
+	votedAt?: number;
+}
+
 export async function getPollDetails(pollId: string, currentUserId?: string): Promise<ChatPollItem | null> {
 	await ensurePostgresInit();
 	const p = getPgPool();
 
 	const pollRes = await p.query(
-		`SELECT id, mesajId, odaId, olusturanId, soru, cokluSecim, anonim, endsAt, kapali, olusturma
+		`SELECT id, room_id AS "roomId", created_by AS "olusturanId", question AS soru,
+		        allow_multiple AS "cokluSecim", options, votes, ends_at AS "endsAt", created_at AS olusturma
 		 FROM chat_polls
 		 WHERE id = $1`,
 		[pollId]
@@ -219,45 +238,68 @@ export async function getPollDetails(pollId: string, currentUserId?: string): Pr
 
 	if (pollRes.rows.length === 0) return null;
 	const row = pollRes.rows[0];
+	const roomId = String(row.roomId ?? '');
+	const creatorId = String(row.olusturanId ?? '');
 
 	let creatorName = 'Yönetici';
 	try {
 		const uRes = await p.query(
 			`SELECT first_name AS ad, last_name AS soyad FROM users WHERE id = $1`,
-			[row.olusturanid ?? row.olusturanId]
+			[creatorId]
 		);
 		if (uRes.rows.length > 0) {
 			creatorName = `${uRes.rows[0].ad} ${uRes.rows[0].soyad}`.trim();
 		}
 	} catch {}
 
-	const optRes = await p.query(
-		`SELECT id, pollId, sira, metin
-		 FROM chat_poll_options
-		 WHERE pollId = $1
-		 ORDER BY sira ASC`,
-		[pollId]
-	);
+	let mesajId = '';
+	let isAnon = true;
+	try {
+		const msgRes = await p.query(
+			`SELECT id, attachments FROM chat_messages WHERE room_id = $1 AND attachments LIKE $2 LIMIT 1`,
+			[roomId, `%${pollId}%`]
+		);
+		if (msgRes.rows.length > 0) {
+			mesajId = String(msgRes.rows[0].id ?? '');
+			const rawAtt = msgRes.rows[0].attachments;
+			const parsedAtt = Array.isArray(rawAtt)
+				? rawAtt
+				: typeof rawAtt === 'string'
+				? JSON.parse(rawAtt)
+				: [];
+			const pollAtt = Array.isArray(parsedAtt)
+				? parsedAtt.find((a: Record<string, unknown>) => a && (a.pollId === pollId || a.tip === 'anket'))
+				: null;
+			if (pollAtt && typeof pollAtt.anonim === 'boolean') {
+				isAnon = pollAtt.anonim;
+			}
+		}
+	} catch {}
 
-	const votesRes = await p.query(
-		`SELECT id, secenekId, userId, userFirstName, userAvatar
-		 FROM chat_poll_votes
-		 WHERE pollId = $1`,
-		[pollId]
-	);
+	const rawOptions: RawPollOption[] = Array.isArray(row.options)
+		? row.options
+		: typeof row.options === 'string'
+		? JSON.parse(row.options)
+		: [];
+	const sortedOptions = [...rawOptions].sort((a, b) => Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0));
 
-	const totalVotes = votesRes.rows.length;
-	const isAnon = Boolean(row.anonim ?? row.anonim);
+	const rawVotes: RawPollVote[] = Array.isArray(row.votes)
+		? row.votes
+		: typeof row.votes === 'string'
+		? JSON.parse(row.votes)
+		: [];
+
+	const totalVotes = rawVotes.length;
 	const userVotes: string[] = [];
 
-	const options: ChatPollOptionItem[] = optRes.rows.map((opt) => {
+	const options: ChatPollOptionItem[] = sortedOptions.map((opt, idx) => {
 		const optId = String(opt.id);
-		const optVotes = votesRes.rows.filter((v) => String(v.secenekid ?? v.secenekId) === optId);
+		const optVotes = rawVotes.filter((v) => String(v.optionId) === optId);
 		const count = optVotes.length;
 		const yuzde = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
 
 		const hasUserVoted = currentUserId
-			? optVotes.some((v) => String(v.kullaniciid ?? v.userId) === currentUserId)
+			? optVotes.some((v) => String(v.userId) === currentUserId)
 			: false;
 		if (hasUserVoted) {
 			userVotes.push(optId);
@@ -265,36 +307,35 @@ export async function getPollDetails(pollId: string, currentUserId?: string): Pr
 
 		return {
 			id: optId,
-			pollId: String(opt.anketid ?? opt.pollId ?? pollId),
-			sira: Number(opt.sira ?? 0),
-			metin: String(opt.metin ?? ''),
+			pollId,
+			sira: Number(opt.sortOrder ?? idx),
+			metin: String(opt.text ?? ''),
 			oySayisi: count,
 			yuzde,
 			oyVerenler: !isAnon
 				? optVotes.map((v) => ({
-						id: String(v.kullaniciid ?? v.userId),
-						ad: String(v.kullaniciad ?? v.userFirstName),
-						foto: (v.kullanicifoto ?? v.userAvatar ?? null) as string | null,
+						id: String(v.userId),
+						ad: String(v.userName ?? 'Üye'),
+						foto: (v.userAvatar ?? null) as string | null,
 				  }))
 				: undefined,
 		};
 	});
 
-	const endsAt = row.sonlanmatarihi ?? row.endsAt ? Number(row.sonlanmatarihi ?? row.endsAt) : null;
-	const isExpired = endsAt ? Date.now() > endsAt : false;
-	const isClosed = Boolean(row.kapali) || isExpired;
+	const endsAt = row.endsAt !== null && row.endsAt !== undefined ? Number(row.endsAt) : null;
+	const isExpired = endsAt !== null ? Date.now() >= endsAt : false;
 
 	return {
 		id: String(row.id),
-		mesajId: String(row.mesajid ?? row.mesajId),
-		odaId: String(row.odaid ?? row.odaId),
-		olusturanId: String(row.olusturanid ?? row.olusturanId),
+		mesajId,
+		roomId,
+		olusturanId: creatorId,
 		olusturanAd: creatorName,
 		soru: String(row.soru ?? ''),
-		cokluSecim: Boolean(row.coklusecim ?? row.cokluSecim),
+		cokluSecim: Boolean(row.cokluSecim),
 		anonim: isAnon,
 		endsAt,
-		kapali: isClosed,
+		kapali: isExpired,
 		olusturma: Number(row.olusturma ?? 0),
 		secenekler: options,
 		toplamOy: totalVotes,
@@ -316,28 +357,15 @@ async function enrichMessagesWithPolls(messages: ChatMessageRecord[], currentUse
 		}
 	}
 
-	if (pollMessageMap.size === 0) {
-		try {
-			await ensurePostgresInit();
-			const p = getPgPool();
-			const mIds = messages.map((m) => m.id);
-			const foundPolls = await p.query(
-				`SELECT id, mesajId FROM chat_polls WHERE mesajId = ANY($1)`,
-				[mIds]
-			);
-			for (const r of foundPolls.rows) {
-				pollMessageMap.set(String(r.mesajid ?? r.mesajId), String(r.id));
-			}
-		} catch {}
-	}
-
 	if (pollMessageMap.size === 0) return messages;
 
 	const pollDetailsMap = new Map<string, ChatPollItem>();
 	await Promise.all(
 		Array.from(pollMessageMap.entries()).map(async ([mesajId, pollId]) => {
 			const poll = await getPollDetails(pollId, currentUserId);
-			if (poll) pollDetailsMap.set(mesajId, poll);
+			if (poll) {
+				pollDetailsMap.set(mesajId, { ...poll, mesajId: poll.mesajId || mesajId });
+			}
 		})
 	);
 
@@ -353,7 +381,7 @@ export interface ChatMessageCursor {
 }
 
 export async function getChatRoomMessages(
-	odaId: string,
+	roomId: string,
 	limit = 60,
 	isAdmin = false,
 	currentUserId?: string,
@@ -371,27 +399,27 @@ export async function getChatRoomMessages(
 		`SELECT *
 		 FROM (
 		   SELECT id,
-		          odaId AS "odaId",
-		          gonderenId AS "gonderenId",
-		          gonderenAd AS "gonderenAd",
-		          gonderenFoto AS "gonderenFoto",
-		          icerik,
-		          ekler,
+		          room_id AS "roomId",
+		          sender_id AS "gonderenId",
+		          sender_name AS "gonderenAd",
+		          sender_avatar AS "gonderenFoto",
+		          content AS icerik,
+		          attachments AS ekler,
 		          date,
-		          silinmeTarihi AS "silinmeTarihi",
-		          duzenlenmeTarihi AS "duzenlenmeTarihi",
-		          yanitlananMesajId AS "yanitlananMesajId",
-		          yanitlananMesaj AS "yanitlananMesaj",
-		          COALESCE(iletildiMi, 0) AS "iletildiMi"
+		          deleted_at AS "silinmeTarihi",
+		          edited_at AS "duzenlenmeTarihi",
+		          reply_to_id AS "yanitlananMesajId",
+		          reply_snapshot AS "yanitlananMesaj",
+		          COALESCE(is_delivered, 0) AS "iletildiMi"
 		   FROM chat_messages
-		   WHERE odaId = $1
-		     AND ($3 = true OR silinmeTarihi IS NULL)
+		   WHERE room_id = $1
+		     AND ($3 = true OR deleted_at IS NULL)
 		     AND ($4::bigint IS NULL OR date < $4 OR (date = $4 AND id < $5))
 		   ORDER BY date DESC, id DESC
 		   LIMIT $2
 		 ) AS latest
 		 ORDER BY date ASC, id ASC`,
-		[odaId, safeLimit, isAdmin, before?.date ?? null, before?.id ?? null]
+		[roomId, safeLimit, isAdmin, before?.date ?? null, before?.id ?? null]
 	);
 
 	const rawMessages: ChatMessageRecord[] = res.rows.map((row) => {
@@ -409,7 +437,7 @@ export async function getChatRoomMessages(
 
 		return {
 			id: String(r.id ?? ''),
-			odaId: String(r.odaId ?? r.odaid ?? odaId),
+			roomId: String(r.roomId ?? r.odaid ?? roomId),
 			gonderenId: String(r.gonderenId ?? r.gonderenid ?? ''),
 			gonderenAd: String(r.gonderenAd ?? r.gonderenad ?? 'Üye'),
 			gonderenFoto: (r.gonderenFoto ?? r.gonderenfoto ?? null) as string | null,
@@ -436,18 +464,18 @@ export async function getChatMessageById(mesajId: string): Promise<ChatMessageRe
 	const p = getPgPool();
 	const res = await p.query(
 		`SELECT id,
-		        odaId AS "odaId",
-		        gonderenId AS "gonderenId",
-		        gonderenAd AS "gonderenAd",
-		        gonderenFoto AS "gonderenFoto",
-		        icerik,
-		        ekler,
+		        room_id AS "roomId",
+		        sender_id AS "gonderenId",
+		        sender_name AS "gonderenAd",
+		        sender_avatar AS "gonderenFoto",
+		        content AS icerik,
+		        attachments AS ekler,
 		        date,
-		        silinmeTarihi AS "silinmeTarihi",
-		        duzenlenmeTarihi AS "duzenlenmeTarihi",
-		        yanitlananMesajId AS "yanitlananMesajId",
-		        yanitlananMesaj AS "yanitlananMesaj",
-		        COALESCE(iletildiMi, 0) AS "iletildiMi"
+		        deleted_at AS "silinmeTarihi",
+		        edited_at AS "duzenlenmeTarihi",
+		        reply_to_id AS "yanitlananMesajId",
+		        reply_snapshot AS "yanitlananMesaj",
+		        COALESCE(is_delivered, 0) AS "iletildiMi"
 		 FROM chat_messages
 		 WHERE id = $1
 		 LIMIT 1`,
@@ -470,7 +498,7 @@ export async function getChatMessageById(mesajId: string): Promise<ChatMessageRe
 
 	return {
 		id: String(r.id ?? ''),
-		odaId: String(r.odaId ?? r.odaid ?? ''),
+		roomId: String(r.roomId ?? r.odaid ?? ''),
 		gonderenId: String(r.gonderenId ?? r.gonderenid ?? ''),
 		gonderenAd: String(r.gonderenAd ?? r.gonderenad ?? 'Üye'),
 		gonderenFoto: (r.gonderenFoto ?? r.gonderenfoto ?? null) as string | null,
@@ -490,7 +518,7 @@ export async function getChatMessageById(mesajId: string): Promise<ChatMessageRe
 }
 
 export async function createChatMessage(
-	odaId: string,
+	roomId: string,
 	gonderen: { id: string; ad: string; soyad: string; profilFoto?: string | null },
 	icerik: string,
 	ekler: Array<{ ad: string; url: string; boyut?: number; tip?: string }> = [],
@@ -527,11 +555,11 @@ export async function createChatMessage(
 	const yanitlananMesajJson = yanitlananMesaj ? JSON.stringify(yanitlananMesaj) : null;
 
 	await p.query(
-		`INSERT INTO chat_messages (id, odaId, gonderenId, gonderenAd, gonderenFoto, icerik, ekler, date, yanitlananMesajId, yanitlananMesaj, iletildiMi)
+		`INSERT INTO chat_messages (id, room_id, sender_id, sender_name, sender_avatar, content, attachments, date, reply_to_id, reply_snapshot, is_delivered)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
 		[
 			id,
-			odaId,
+			roomId,
 			gonderen.id,
 			senderName,
 			gonderenFoto,
@@ -546,15 +574,15 @@ export async function createChatMessage(
 
 	// Mark sender's read pointer
 	await p.query(
-		`INSERT INTO chat_members (odaId, userId, sonOkuma)
+		`INSERT INTO chat_members (room_id, user_id, last_read_at)
 		 VALUES ($1, $2, $3)
-		 ON CONFLICT (odaId, userId) DO UPDATE SET sonOkuma = $3`,
-		[odaId, gonderen.id, date]
+		 ON CONFLICT (room_id, user_id) DO UPDATE SET last_read_at = $3`,
+		[roomId, gonderen.id, date]
 	);
 
 	const createdMsg: ChatMessageRecord = {
 		id,
-		odaId,
+		roomId,
 		gonderenId: gonderen.id,
 		gonderenAd: senderName,
 		gonderenFoto,
@@ -570,14 +598,14 @@ export async function createChatMessage(
 	try {
 		await p.query(
 			`SELECT pg_notify('club_chat_events', $1)`,
-			[JSON.stringify({ type: 'new_message', odaId, message: createdMsg })]
+			[JSON.stringify({ type: 'new_message', roomId, message: createdMsg })]
 		);
 	} catch (err) {
 		console.warn('[Chat notify warning]:', err);
 	}
 
 	// 2. Notify global Notification Center & Dock Badge SSE stream (`orbit_events`)
-	void notifyChatRoomParticipants(odaId, gonderen.id);
+	void notifyChatRoomParticipants(roomId, gonderen.id);
 
 	return createdMsg;
 }
@@ -586,12 +614,12 @@ export async function softDeleteChatMessage(
 	mesajId: string,
 	userId: string,
 	isAdmin = false
-): Promise<{ ok: boolean; odaId?: string; messageId?: string; silinmeTarihi?: number }> {
+): Promise<{ ok: boolean; roomId?: string; messageId?: string; silinmeTarihi?: number }> {
 	await ensurePostgresInit();
 	const p = getPgPool();
 
 	const checkRes = await p.query(
-		`SELECT id, odaId, gonderenId FROM chat_messages WHERE id = $1 LIMIT 1`,
+		`SELECT id, room_id AS "roomId", sender_id AS "gonderenId" FROM chat_messages WHERE id = $1 LIMIT 1`,
 		[mesajId]
 	);
 	const msg = checkRes.rows[0];
@@ -604,7 +632,7 @@ export async function softDeleteChatMessage(
 
 	const now = Date.now();
 	await p.query(
-		`UPDATE chat_messages SET silinmeTarihi = $1 WHERE id = $2`,
+		`UPDATE chat_messages SET deleted_at = $1 WHERE id = $2`,
 		[now, mesajId]
 	);
 
@@ -614,7 +642,7 @@ export async function softDeleteChatMessage(
 			[
 				JSON.stringify({
 					type: 'message_deleted',
-					odaId: msg.odaId,
+					roomId: msg.roomId,
 					messageId: mesajId,
 					silinmeTarihi: now,
 				}),
@@ -624,11 +652,11 @@ export async function softDeleteChatMessage(
 		console.warn('[Chat notify delete error]:', e);
 	}
 
-	return { ok: true, odaId: msg.odaId, messageId: mesajId, silinmeTarihi: now };
+	return { ok: true, roomId: msg.roomId, messageId: mesajId, silinmeTarihi: now };
 }
 
 export async function softDeleteChatMessagesBatch(
-	odaId: string,
+	roomId: string,
 	count = 50,
 	isAdmin = false
 ): Promise<{ ok: boolean; count: number; deletedIds: string[]; silinmeTarihi: number }> {
@@ -645,10 +673,10 @@ export async function softDeleteChatMessagesBatch(
 	// Select last N non-deleted messages in room
 	const selectRes = await p.query(
 		`SELECT id FROM chat_messages
-		 WHERE odaId = $1 AND silinmeTarihi IS NULL
+		 WHERE room_id = $1 AND deleted_at IS NULL
 		 ORDER BY date DESC
 		 LIMIT $2`,
-		[odaId, limit]
+		[roomId, limit]
 	);
 
 	const deletedIds = selectRes.rows.map((r) => String(r.id));
@@ -658,7 +686,7 @@ export async function softDeleteChatMessagesBatch(
 
 	await p.query(
 		`UPDATE chat_messages
-		 SET silinmeTarihi = $1
+		 SET deleted_at = $1
 		 WHERE id = ANY($2)`,
 		[now, deletedIds]
 	);
@@ -670,7 +698,7 @@ export async function softDeleteChatMessagesBatch(
 			[
 				JSON.stringify({
 					type: 'messages_cleared',
-					odaId,
+					roomId,
 					deletedIds,
 					silinmeTarihi: now,
 					count: deletedIds.length,
@@ -693,7 +721,7 @@ export async function editChatMessage(
 	const p = getPgPool();
 
 	const checkRes = await p.query(
-		`SELECT id, odaId, gonderenId, gonderenAd, gonderenFoto, ekler, date, silinmeTarihi
+		`SELECT id, room_id AS "roomId", sender_id AS "gonderenId", sender_name AS "gonderenAd", sender_avatar AS "gonderenFoto", attachments AS ekler, date, deleted_at AS "silinmeTarihi"
 		 FROM chat_messages WHERE id = $1 LIMIT 1`,
 		[mesajId]
 	);
@@ -710,13 +738,13 @@ export async function editChatMessage(
 
 	const now = Date.now();
 	await p.query(
-		`UPDATE chat_messages SET icerik = $1, duzenlenmeTarihi = $2 WHERE id = $3`,
+		`UPDATE chat_messages SET content = $1, edited_at = $2 WHERE id = $3`,
 		[trimmed, now, mesajId]
 	);
 
 	const updatedMsg: ChatMessageRecord = {
 		id: String(existing.id),
-		odaId: String(existing.odaId),
+		roomId: String(existing.roomId),
 		gonderenId: String(existing.gonderenId),
 		gonderenAd: String(existing.gonderenAd),
 		gonderenFoto: existing.gonderenFoto || null,
@@ -737,7 +765,7 @@ export async function editChatMessage(
 			[
 				JSON.stringify({
 					type: 'message_edited',
-					odaId: updatedMsg.odaId,
+					roomId: updatedMsg.roomId,
 					message: updatedMsg,
 				}),
 			]
@@ -749,15 +777,15 @@ export async function editChatMessage(
 	return { ok: true, message: updatedMsg };
 }
 
-export async function markRoomAsRead(odaId: string, userId: string): Promise<void> {
+export async function markRoomAsRead(roomId: string, userId: string): Promise<void> {
 	await ensurePostgresInit();
 	const p = getPgPool();
 	const now = Date.now();
 	await p.query(
-		`INSERT INTO chat_members (odaId, userId, sonOkuma)
+		`INSERT INTO chat_members (room_id, user_id, last_read_at)
 		 VALUES ($1, $2, $3)
-		 ON CONFLICT (odaId, userId) DO UPDATE SET sonOkuma = $3`,
-		[odaId, userId, now]
+		 ON CONFLICT (room_id, user_id) DO UPDATE SET last_read_at = $3`,
+		[roomId, userId, now]
 	);
 	// Refresh the reader's Notification Center & Dock badge
 	void publishEventQuiet(p, { k: 'notification', userId });
@@ -768,9 +796,9 @@ export async function ensureTeamChatRoom(teamId: string, takimAd: string): Promi
 	const p = getPgPool();
 	const roomId = `oda_takim_${teamId}`;
 	await p.query(
-		`INSERT INTO chat_rooms (id, tur, teamId, ad, olusturma)
+		`INSERT INTO chat_rooms (id, room_type, team_id, name, created_at)
 		 VALUES ($1, 'takim', $2, $3, $4)
-		 ON CONFLICT (id) DO UPDATE SET ad = $3`,
+		 ON CONFLICT (id) DO UPDATE SET name = $3`,
 		[roomId, teamId, `${takimAd} Takım Sohbeti`, Date.now()]
 	);
 	return roomId;
@@ -787,6 +815,11 @@ export interface ChatContactItem {
 
 export interface ChatRoomMemberItem {
 	id: string;
+	firstName?: string;
+	lastName?: string;
+	avatarUrl?: string | null;
+	roleName?: string | null;
+	department?: string;
 	ad: string;
 	soyad: string;
 	profilFoto: string | null;
@@ -801,7 +834,7 @@ export interface ChatRoomMemberItem {
 export async function getOrCreateDmRoom(
 	kullanici1Id: string,
 	kullanici2Id: string
-): Promise<{ odaId: string; isNew: boolean }> {
+): Promise<{ roomId: string; isNew: boolean }> {
 	await ensurePostgresInit();
 	// Serialize the check-then-create sequence for the same pair. Without this,
 	// two quick clicks can both observe "no room" and create duplicate DMs.
@@ -810,18 +843,18 @@ export async function getOrCreateDmRoom(
 		await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [lockKey]);
 		const existing = await client.query(
 			`SELECT o.id FROM chat_rooms o
-			 WHERE o.tur = 'ozel'
-			   AND (SELECT COUNT(*) FROM chat_members WHERE odaId = o.id) = 2
-			   AND EXISTS (SELECT 1 FROM chat_members WHERE odaId = o.id AND userId = $1)
-			   AND EXISTS (SELECT 1 FROM chat_members WHERE odaId = o.id AND userId = $2)
+			 WHERE o.room_type = 'ozel'
+			   AND (SELECT COUNT(*) FROM chat_members WHERE room_id = o.id) = 2
+			   AND EXISTS (SELECT 1 FROM chat_members WHERE room_id = o.id AND user_id = $1)
+			   AND EXISTS (SELECT 1 FROM chat_members WHERE room_id = o.id AND user_id = $2)
 			 LIMIT 1`,
 			[kullanici1Id, kullanici2Id]
 		);
 		if (existing.rows.length > 0) {
-			return { odaId: String(existing.rows[0].id), isNew: false };
+			return { roomId: String(existing.rows[0].id), isNew: false };
 		}
 
-		const odaId = `dm_${randomUUID()}`;
+		const roomId = `dm_${randomUUID()}`;
 		const now = Date.now();
 		const usersRes = await client.query(
 			`SELECT id, first_name AS ad, last_name AS soyad FROM users WHERE id IN ($1, $2)`,
@@ -831,17 +864,17 @@ export async function getOrCreateDmRoom(
 		const roomName = names || 'Özel Sohbet';
 
 		await client.query(
-			`INSERT INTO chat_rooms (id, tur, ad, olusturma)
-			 VALUES ($1, 'ozel', $2, $3)`,
-			[odaId, roomName, now]
+			`INSERT INTO chat_rooms (id, room_type, name, created_by, created_at)
+			 VALUES ($1, 'ozel', $2, $3, $4)`,
+			[roomId, roomName, kullanici1Id, now]
 		);
 		await client.query(
-			`INSERT INTO chat_members (odaId, userId, sonOkuma)
-			 VALUES ($1, $2, $3), ($1, $4, $3)
-			 ON CONFLICT (odaId, userId) DO NOTHING`,
-			[odaId, kullanici1Id, now, kullanici2Id]
+			`INSERT INTO chat_members (room_id, user_id, last_read_at, joined_at)
+			 VALUES ($1, $2, $3, $3), ($1, $4, $3, $3)
+			 ON CONFLICT (room_id, user_id) DO NOTHING`,
+			[roomId, kullanici1Id, now, kullanici2Id]
 		);
-		return { odaId, isNew: true };
+		return { roomId, isNew: true };
 	});
 }
 
@@ -853,11 +886,11 @@ export async function createGroupDm(
 	olusturan: { id: string; ad: string; soyad: string },
 	uyeIdleri: string[],
 	baslik?: string
-): Promise<{ odaId: string; ad: string }> {
+): Promise<{ roomId: string; ad: string }> {
 	await ensurePostgresInit();
 	const p = getPgPool();
 	const now = Date.now();
-	const odaId = `grp_${randomUUID()}`;
+	const roomId = `grp_${randomUUID()}`;
 
 	const allMemberIds = Array.from(new Set([olusturan.id, ...uyeIdleri]));
 
@@ -873,19 +906,19 @@ export async function createGroupDm(
 	}
 
 	await p.query(
-		`INSERT INTO chat_rooms (id, tur, ad, olusturma)
-		 VALUES ($1, 'ozel', $2, $3)`,
-		[odaId, groupTitle, now]
+		`INSERT INTO chat_rooms (id, room_type, name, created_by, created_at)
+		 VALUES ($1, 'ozel', $2, $3, $4)`,
+		[roomId, groupTitle, olusturan.id, now]
 	);
 
 	for (const uid of allMemberIds) {
 		// Creator has read up to `now`; invited members get `now - 1` so the creation message is unread for them
 		const initialRead = uid === olusturan.id ? now : now - 1;
 		await p.query(
-			`INSERT INTO chat_members (odaId, userId, sonOkuma)
-			 VALUES ($1, $2, $3)
-			 ON CONFLICT (odaId, userId) DO NOTHING`,
-			[odaId, uid, initialRead]
+			`INSERT INTO chat_members (room_id, user_id, last_read_at, joined_at)
+			 VALUES ($1, $2, $3, $4)
+			 ON CONFLICT (room_id, user_id) DO NOTHING`,
+			[roomId, uid, initialRead, now]
 		);
 	}
 
@@ -894,9 +927,9 @@ export async function createGroupDm(
 	const creatorName = `${olusturan.ad} ${olusturan.soyad}`.trim();
 	const sysContent = `${creatorName} grubu oluşturdu.`;
 	await p.query(
-		`INSERT INTO chat_messages (id, odaId, gonderenId, gonderenAd, gonderenFoto, icerik, ekler, date)
+		`INSERT INTO chat_messages (id, room_id, sender_id, sender_name, sender_avatar, content, attachments, date)
 		 VALUES ($1, $2, 'sistem', 'Sistem', NULL, $3, '[]', $4)`,
-		[sysMsgId, odaId, sysContent, now]
+		[sysMsgId, roomId, sysContent, now]
 	);
 
 	try {
@@ -905,10 +938,10 @@ export async function createGroupDm(
 			[
 				JSON.stringify({
 					type: 'new_message',
-					odaId,
+					roomId,
 					message: {
 						id: sysMsgId,
-						odaId,
+						roomId,
 						gonderenId: 'sistem',
 						gonderenAd: 'Sistem',
 						gonderenFoto: null,
@@ -923,16 +956,16 @@ export async function createGroupDm(
 		console.warn('[Chat notify warning]:', e);
 	}
 
-	void notifyChatRoomParticipants(odaId, olusturan.id);
+	void notifyChatRoomParticipants(roomId, olusturan.id);
 
-	return { odaId, ad: groupTitle };
+	return { roomId, ad: groupTitle };
 }
 
 /**
  * Adds new members to an existing room and publishes a system notification.
  */
 export async function addMembersToRoom(
-	odaId: string,
+	roomId: string,
 	actor: { id: string; ad: string; soyad: string },
 	yeniUyeIdleri: string[]
 ): Promise<{ addedCount: number }> {
@@ -945,21 +978,21 @@ export async function addMembersToRoom(
 	const toAddRes = await p.query(
 		`SELECT id, first_name AS ad, last_name AS soyad FROM users
 		 WHERE id = ANY($1)
-		   AND id NOT IN (SELECT userId FROM chat_members WHERE odaId = $2)`,
-		[yeniUyeIdleri, odaId]
+		   AND id NOT IN (SELECT user_id FROM chat_members WHERE room_id = $2)`,
+		[yeniUyeIdleri, roomId]
 	);
 
 	if (toAddRes.rows.length === 0) return { addedCount: 0 };
 
 	for (const row of toAddRes.rows) {
 		await p.query(
-			`INSERT INTO chat_members (odaId, userId, sonOkuma)
-			 VALUES ($1, $2, $3)
-			 ON CONFLICT (odaId, userId) DO NOTHING`,
-			[odaId, row.id, now - 1]
+			`INSERT INTO chat_members (room_id, user_id, last_read_at, joined_at)
+			 VALUES ($1, $2, $3, $4)
+			 ON CONFLICT (room_id, user_id) DO NOTHING`,
+			[roomId, row.id, now - 1, now]
 		);
 	}
-	invalidateChatAudience(odaId);
+	invalidateChatAudience(roomId);
 
 	const addedNames = toAddRes.rows.map((r) => `${r.ad} ${r.soyad}`.trim()).join(', ');
 	const actorName = `${actor.ad} ${actor.soyad}`.trim();
@@ -967,9 +1000,9 @@ export async function addMembersToRoom(
 	const sysMsgId = randomUUID();
 
 	await p.query(
-		`INSERT INTO chat_messages (id, odaId, gonderenId, gonderenAd, gonderenFoto, icerik, ekler, date)
+		`INSERT INTO chat_messages (id, room_id, sender_id, sender_name, sender_avatar, content, attachments, date)
 		 VALUES ($1, $2, 'sistem', 'Sistem', NULL, $3, '[]', $4)`,
-		[sysMsgId, odaId, sysContent, now]
+		[sysMsgId, roomId, sysContent, now]
 	);
 
 	try {
@@ -978,10 +1011,10 @@ export async function addMembersToRoom(
 			[
 				JSON.stringify({
 					type: 'new_message',
-					odaId,
+					roomId,
 					message: {
 						id: sysMsgId,
-						odaId,
+						roomId,
 						gonderenId: 'sistem',
 						gonderenAd: 'Sistem',
 						gonderenFoto: null,
@@ -996,7 +1029,7 @@ export async function addMembersToRoom(
 		console.warn('[Chat notify warning]:', e);
 	}
 
-	void notifyChatRoomParticipants(odaId, actor.id);
+	void notifyChatRoomParticipants(roomId, actor.id);
 
 	return { addedCount: toAddRes.rows.length };
 }
@@ -1004,27 +1037,39 @@ export async function addMembersToRoom(
 /**
  * Retrieves members of a specific chat room.
  */
-export async function getRoomMembers(odaId: string): Promise<ChatRoomMemberItem[]> {
+export async function getRoomMembers(roomId: string): Promise<ChatRoomMemberItem[]> {
 	await ensurePostgresInit();
 	const p = getPgPool();
 	const res = await p.query(
-		`SELECT k.id, k.first_name AS ad, k.last_name AS soyad, k.avatar_url as "profilFoto", k.department as bolum, r.ad as "rolAd"
+		`SELECT k.id, k.first_name AS ad, k.last_name AS soyad, k.avatar_url as "profilFoto", k.department as bolum, r.name as "rolAd"
 		 FROM chat_members su
-		 JOIN users k ON k.id = su.userId
+		 JOIN users k ON k.id = su.user_id
 		 LEFT JOIN roles r ON r.id = k.role_id
-		 WHERE su.odaId = $1
+		 WHERE su.room_id = $1
 		 ORDER BY k.first_name ASC, k.last_name ASC`,
-		[odaId]
+		[roomId]
 	);
 
-	return res.rows.map((r) => ({
-		id: String(r.id),
-		ad: String(r.ad),
-		soyad: String(r.soyad),
-		profilFoto: r.profilFoto ? String(r.profilFoto) : null,
-		rolAd: r.rolAd ? String(r.rolAd) : null,
-		bolum: r.bolum ? String(r.bolum) : '',
-	}));
+	return res.rows.map((r) => {
+		const firstName = String(r.ad ?? '');
+		const lastName = String(r.soyad ?? '');
+		const avatarUrl = r.profilFoto ? String(r.profilFoto) : null;
+		const roleName = r.rolAd ? String(r.rolAd) : null;
+		const department = r.bolum ? String(r.bolum) : '';
+		return {
+			id: String(r.id),
+			firstName,
+			lastName,
+			avatarUrl,
+			roleName,
+			department,
+			ad: firstName,
+			soyad: lastName,
+			profilFoto: avatarUrl,
+			rolAd: roleName,
+			bolum: department,
+		};
+	});
 }
 
 /**
@@ -1034,7 +1079,7 @@ export async function getChatContacts(excludeUserId: string): Promise<ChatContac
 	await ensurePostgresInit();
 	const p = getPgPool();
 	const res = await p.query(
-		`SELECT k.id, k.first_name AS ad, k.last_name AS soyad, k.avatar_url as "profilFoto", k.department as bolum, r.ad as "rolAd"
+		`SELECT k.id, k.first_name AS ad, k.last_name AS soyad, k.avatar_url as "profilFoto", k.department as bolum, r.name as "rolAd"
 		 FROM users k
 		 LEFT JOIN roles r ON r.id = k.role_id
 		 WHERE k.status = 'aktif' AND k.id <> $1
@@ -1092,7 +1137,7 @@ export async function getUnreadChatCount(userId: string, isAdmin = false): Promi
 }
 
 export async function createPollInRoom(
-	odaId: string,
+	roomId: string,
 	olusturan: { id: string; ad: string; soyad: string; profilFoto?: string | null },
 	data: {
 		soru: string;
@@ -1126,70 +1171,66 @@ export async function createPollInRoom(
 		: null;
 	const senderName = `${olusturan.ad} ${olusturan.soyad}`.trim() || 'Yönetici';
 	const gonderenFoto = olusturan.profilFoto || null;
-	const eklerJson = JSON.stringify([{ tip: 'anket', pollId, soru }]);
+	const isAnon = data.anonim !== false;
+	const eklerJson = JSON.stringify([{ tip: 'anket', pollId, soru, anonim: isAnon }]);
 
 	// 1. Insert chat message
 	await p.query(
-		`INSERT INTO chat_messages (id, odaId, gonderenId, gonderenAd, gonderenFoto, icerik, ekler, date)
+		`INSERT INTO chat_messages (id, room_id, sender_id, sender_name, sender_avatar, content, attachments, date)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-		[messageId, odaId, olusturan.id, senderName, gonderenFoto, soru, eklerJson, now]
+		[messageId, roomId, olusturan.id, senderName, gonderenFoto, soru, eklerJson, now]
 	);
 
-	// 2. Insert poll
+	// 2. Build options JSONB and insert poll
+	const optionsList: RawPollOption[] = cleanSecenekler.map((text, idx) => ({
+		id: `opt_${randomUUID()}`,
+		text,
+		sortOrder: idx,
+	}));
+
 	await p.query(
-		`INSERT INTO chat_polls (id, mesajId, odaId, olusturanId, soru, cokluSecim, anonim, endsAt, kapali, olusturma)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false, $9)`,
+		`INSERT INTO chat_polls (id, room_id, created_by, question, allow_multiple, options, votes, ends_at, created_at)
+		 VALUES ($1, $2, $3, $4, $5, $6::jsonb, '[]'::jsonb, $7, $8)`,
 		[
 			pollId,
-			messageId,
-			odaId,
+			roomId,
 			olusturan.id,
 			soru,
 			Boolean(data.cokluSecim),
-			data.anonim !== false,
+			JSON.stringify(optionsList),
 			endsAt,
 			now,
 		]
 	);
 
-	// 3. Insert options
-	for (let i = 0; i < cleanSecenekler.length; i++) {
-		const optId = `opt_${randomUUID()}`;
-		await p.query(
-			`INSERT INTO chat_poll_options (id, pollId, sira, metin)
-			 VALUES ($1, $2, $3, $4)`,
-			[optId, pollId, i, cleanSecenekler[i]]
-		);
-	}
-
-	// 4. Mark sender read pointer
+	// 3. Mark sender read pointer
 	await p.query(
-		`INSERT INTO chat_members (odaId, userId, sonOkuma)
+		`INSERT INTO chat_members (room_id, user_id, last_read_at)
 		 VALUES ($1, $2, $3)
-		 ON CONFLICT (odaId, userId) DO UPDATE SET sonOkuma = EXCLUDED.sonOkuma`,
-		[odaId, olusturan.id, now]
+		 ON CONFLICT (room_id, user_id) DO UPDATE SET last_read_at = EXCLUDED.last_read_at`,
+		[roomId, olusturan.id, now]
 	);
 
-	// 5. Fetch complete poll details
+	// 4. Fetch complete poll details
 	const pollDetails = await getPollDetails(pollId, olusturan.id);
 
 	const createdMsg: ChatMessageRecord = {
 		id: messageId,
-		odaId,
+		roomId,
 		gonderenId: olusturan.id,
 		gonderenAd: senderName,
 		gonderenFoto,
 		icerik: soru,
 		ekler: [{ tip: 'anket', pollId, ad: 'Anket', url: '' }],
 		date: now,
-		anket: pollDetails,
+		anket: pollDetails ? { ...pollDetails, mesajId: messageId } : null,
 	};
 
-	// 6. Real-time broadcast
+	// 5. Real-time broadcast
 	try {
 		await p.query(
 			`SELECT pg_notify('club_chat_events', $1)`,
-			[JSON.stringify({ type: 'new_message', odaId, message: createdMsg })]
+			[JSON.stringify({ type: 'new_message', roomId, message: createdMsg })]
 		);
 	} catch (e) {
 		console.warn('[Chat notify poll create error]:', e);
@@ -1209,7 +1250,7 @@ export async function castPollVote(
 
 	// 1. Fetch poll
 	const pollRes = await p.query(
-		`SELECT id, odaId, cokluSecim, kapali, endsAt
+		`SELECT id, room_id AS "roomId", allow_multiple AS "cokluSecim", options, votes, ends_at AS "endsAt"
 		 FROM chat_polls
 		 WHERE id = $1`,
 		[pollId]
@@ -1220,63 +1261,65 @@ export async function castPollVote(
 	}
 
 	const pollRow = pollRes.rows[0];
-	const pollOdaId = String(pollRow.odaid ?? pollRow.odaId ?? '');
-	const hasAccess = await canUserAccessChatRoom(pollOdaId, kullanici.id, isAdmin);
+	const pollRoomId = String(pollRow.roomId ?? '');
+	const hasAccess = await canUserAccessChatRoom(pollRoomId, kullanici.id, isAdmin);
 	if (!hasAccess) {
 		return { ok: false, error: 'Bu odadaki ankete erişim yetkiniz yok.' };
 	}
 
-	const isClosed = Boolean(pollRow.kapali);
-	const endsAt = pollRow.sonlanmatarihi ?? pollRow.endsAt;
-	if (isClosed || (endsAt && Date.now() > Number(endsAt))) {
+	const endsAt = pollRow.endsAt;
+	if (endsAt !== null && endsAt !== undefined && Date.now() >= Number(endsAt)) {
 		return { ok: false, error: 'Bu anket oylamaya kapatılmıştır.' };
 	}
 
-	// Verify secenekId belongs to this poll
-	const optRes = await p.query(
-		`SELECT 1 FROM chat_poll_options WHERE id = $1 AND pollId = $2 LIMIT 1`,
-		[secenekId, pollId]
-	);
-	if (optRes.rows.length === 0) {
+	const rawOptions: RawPollOption[] = Array.isArray(pollRow.options)
+		? pollRow.options
+		: typeof pollRow.options === 'string'
+		? JSON.parse(pollRow.options)
+		: [];
+	if (!rawOptions.some((o) => String(o.id) === secenekId)) {
 		return { ok: false, error: 'Geçersiz anket seçeneği.' };
 	}
 
-	const isMulti = Boolean(pollRow.coklusecim ?? pollRow.cokluSecim);
+	const isMulti = Boolean(pollRow.cokluSecim);
 	const userFirstName = `${kullanici.ad} ${kullanici.soyad}`.trim() || 'Üye';
 	const userAvatar = kullanici.profilFoto || null;
 
-	// 2. Check if user already voted for this option
-	const existingVoteRes = await p.query(
-		`SELECT id FROM chat_poll_votes
-		 WHERE pollId = $1 AND secenekId = $2 AND userId = $3`,
-		[pollId, secenekId, kullanici.id]
+	const rawVotes: RawPollVote[] = Array.isArray(pollRow.votes)
+		? pollRow.votes
+		: typeof pollRow.votes === 'string'
+		? JSON.parse(pollRow.votes)
+		: [];
+
+	const alreadyVoted = rawVotes.some(
+		(v) => String(v.optionId) === secenekId && String(v.userId) === kullanici.id
 	);
 
-	if (existingVoteRes.rows.length > 0) {
-		// Toggle off: remove vote
-		await p.query(
-			`DELETE FROM chat_poll_votes
-			 WHERE pollId = $1 AND secenekId = $2 AND userId = $3`,
-			[pollId, secenekId, kullanici.id]
+	let nextVotes: RawPollVote[];
+	if (alreadyVoted) {
+		nextVotes = rawVotes.filter(
+			(v) => !(String(v.optionId) === secenekId && String(v.userId) === kullanici.id)
 		);
 	} else {
-		// If single-choice, remove any prior votes on this poll
-		if (!isMulti) {
-			await p.query(
-				`DELETE FROM chat_poll_votes
-				 WHERE pollId = $1 AND userId = $2`,
-				[pollId, kullanici.id]
-			);
-		}
-
-		// Insert vote
-		const voteId = `vote_${randomUUID()}`;
-		await p.query(
-			`INSERT INTO chat_poll_votes (id, pollId, secenekId, userId, userFirstName, userAvatar, date)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-			[voteId, pollId, secenekId, kullanici.id, userFirstName, userAvatar, Date.now()]
-		);
+		const baseVotes = isMulti
+			? rawVotes
+			: rawVotes.filter((v) => String(v.userId) !== kullanici.id);
+		nextVotes = [
+			...baseVotes,
+			{
+				optionId: secenekId,
+				userId: kullanici.id,
+				userName: userFirstName,
+				userAvatar,
+				votedAt: Date.now(),
+			},
+		];
 	}
+
+	await p.query(
+		`UPDATE chat_polls SET votes = $2::jsonb WHERE id = $1`,
+		[pollId, JSON.stringify(nextVotes)]
+	);
 
 	// 3. Get updated poll details
 	const updatedPoll = await getPollDetails(pollId, kullanici.id);
@@ -1291,7 +1334,7 @@ export async function castPollVote(
 			[
 				JSON.stringify({
 					type: 'poll_updated',
-					odaId: pollRow.odaid ?? pollRow.odaId,
+					roomId: pollRoomId,
 					pollId,
 					poll: updatedPoll,
 				}),
@@ -1313,7 +1356,7 @@ export async function closePoll(
 	const p = getPgPool();
 
 	const pollRes = await p.query(
-		`SELECT id, odaId, olusturanId, kapali FROM chat_polls WHERE id = $1`,
+		`SELECT id, room_id AS "roomId", created_by AS "olusturanId" FROM chat_polls WHERE id = $1`,
 		[pollId]
 	);
 
@@ -1322,13 +1365,13 @@ export async function closePoll(
 	}
 
 	const pollRow = pollRes.rows[0];
-	const creatorId = String(pollRow.olusturanid ?? pollRow.olusturanId);
+	const creatorId = String(pollRow.olusturanId ?? '');
 
 	if (!isAdmin && creatorId !== userId) {
 		return { ok: false, error: 'Bu anketi kapatma yetkiniz yok.' };
 	}
 
-	await p.query(`UPDATE chat_polls SET kapali = true WHERE id = $1`, [pollId]);
+	await p.query(`UPDATE chat_polls SET ends_at = $2 WHERE id = $1`, [pollId, Date.now() - 1]);
 
 	const updatedPoll = await getPollDetails(pollId, userId);
 	if (!updatedPoll) {
@@ -1342,7 +1385,7 @@ export async function closePoll(
 			[
 				JSON.stringify({
 					type: 'poll_updated',
-					odaId: pollRow.odaid ?? pollRow.odaId,
+					roomId: pollRow.roomId,
 					pollId,
 					poll: updatedPoll,
 				}),

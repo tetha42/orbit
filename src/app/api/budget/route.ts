@@ -43,13 +43,13 @@ async function transfer(request: Request, body: Record<string, unknown>) {
 	if (!access.authorized) return access.response;
 	if (!access.isManagement) return bad('Kasalar arası aktarım Kasa yönetim yetkisi gerektirir.', 403);
 
-	const kaynak = parseVault(body.kaynak ?? body.kaynakTakimId);
-	const target = parseVault(body.hedef ?? body.hedefTakimId);
+	const kaynak = parseVault(body.kaynak ?? body.sourceTeamId);
+	const target = parseVault(body.hedef ?? body.targetTeamId);
 	if (kaynak === target) return bad('Kaynak ve hedef kasa aynı olamaz.');
 	for (const id of [kaynak, target]) {
 		if (id && !(await getTeamById(id))) return bad('Project bulunamadı.', 404);
 	}
-	const amountCents = Number(body.tutarKurus);
+	const amountCents = Number(body.amountMinor);
 	if (!Number.isInteger(amountCents) || amountCents < 1 || amountCents > MAX_AMOUNT_CENTS) {
 		return bad(`Tutar 0,01 ₺ ile ${formatTL(MAX_AMOUNT_CENTS)} arasında olmalıdır.`);
 	}
@@ -59,13 +59,13 @@ async function transfer(request: Request, body: Record<string, unknown>) {
 	if (!date.ok) return bad(date.error);
 
 	try {
-		const result = await addOdenekAktarimi({ kaynakTakimId: kaynak, hedefTakimId: target, tutarKurus: amountCents, aciklama: description, kaydedenId: access.user.id, date: date.date });
+		const result = await addOdenekAktarimi({ sourceTeamId: kaynak, targetTeamId: target, amountMinor: amountCents, aciklama: description, kaydedenId: access.user.id, date: date.date });
 		await publishEventQuiet(getPgPool(), { k: 'budget_updated' });
 		return NextResponse.json(result, { status: 201 });
 	} catch (error) {
 		if (error instanceof InsufficientFundsError) {
 			return NextResponse.json(
-				{ error: `Kaynak kasanın bakiyesi (${formatTL(error.netBakiyeKurus)}) bu aktarım için yetersiz.`, code: 'INSUFFICIENT_FUNDS', netBakiyeKurus: error.netBakiyeKurus },
+				{ error: `Kaynak kasanın bakiyesi (${formatTL(error.netBalanceMinor)}) bu aktarım için yetersiz.`, code: 'INSUFFICIENT_FUNDS', netBalanceMinor: error.netBalanceMinor },
 				{ status: 409 }
 			);
 		}
@@ -75,7 +75,7 @@ async function transfer(request: Request, body: Record<string, unknown>) {
 
 export async function GET(request: Request) {
 	const url = new URL(request.url);
-	const teamId = parseVault(url.searchParams.get('teamId') ?? url.searchParams.get('takimId'));
+	const teamId = parseVault(url.searchParams.get('teamId'));
 
 	// Kasa readers and managers see every kasa; a captain sees their project's.
 	const access = await verifyVaultAccess(request, teamId, 'oku');
@@ -91,24 +91,24 @@ export async function GET(request: Request) {
 
 		const records = await getBudgetRecords(teamId);
 
-		let toplamGelirKurus = 0;
-		let toplamGiderKurus = 0;
+		let totalIncomeMinor = 0;
+		let totalExpenseMinor = 0;
 		for (const r of records) {
-			if (r.tur === 'gelir') toplamGelirKurus += r.tutarKurus;
-			else toplamGiderKurus += r.tutarKurus;
+			if (r.tur === 'gelir') totalIncomeMinor += r.amountMinor;
+			else totalExpenseMinor += r.amountMinor;
 		}
-		const netBalanceCents = toplamGelirKurus - toplamGiderKurus;
+		const netBalanceCents = totalIncomeMinor - totalExpenseMinor;
 
 		return NextResponse.json({
-			kasa: { teamId, takimId: teamId, ad, kind: teamId ? 'proje' : 'genel' },
+			kasa: { teamId, ad, kind: teamId ? 'proje' : 'genel' },
 			// What the caller may do here — the panel hides what the server would refuse.
 			izin: { yaz: access.erisim === 'yaz' && access.user.status !== 'mezun', yonet: access.isManagement },
 			kayitlar: records,
 			// Amounts travel as integer kuruş only; each client formats them for its language.
 			ozet: {
-				toplamGelirKurus,
-				toplamGiderKurus,
-				netBakiyeKurus: netBalanceCents,
+				totalIncomeMinor,
+				totalExpenseMinor,
+				netBalanceMinor: netBalanceCents,
 				kayitSayisi: records.length,
 			},
 		});
@@ -122,14 +122,14 @@ export const POST = withAudit(async function POST(request: Request) {
 	try {
 		const body = await request.json();
 		if (body?.action === 'aktar') return await transfer(request, body);
-		const teamId = parseVault(body?.teamId ?? body?.takimId);
+		const teamId = parseVault(body?.teamId);
 
 		const access = await verifyVaultAccess(request, teamId, 'yaz');
 		if (!access.authorized) return access.response;
 
 		const { tur, kategori, fisFotoUrl } = body;
 		const description = typeof body.aciklama === 'string' ? body.aciklama.trim() : '';
-		const amountCents = Number(body.tutarKurus);
+		const amountCents = Number(body.amountMinor);
 
 		if (!tur || !kategori || !description) {
 			return NextResponse.json({ error: 'Tür, kategori, tutar ve açıklama zorunludur.' }, { status: 400 });
@@ -149,7 +149,7 @@ export const POST = withAudit(async function POST(request: Request) {
 			);
 		}
 
-		// `!tutarKurus` used to be the only check, which let negatives and NaN
+		// `!amountMinor` used to be the only check, which let negatives and NaN
 		// through, and the column is a 32-bit INTEGER.
 		if (!Number.isInteger(amountCents) || amountCents < 1 || amountCents > MAX_AMOUNT_CENTS) {
 			return NextResponse.json(
@@ -177,7 +177,7 @@ export const POST = withAudit(async function POST(request: Request) {
 			const result = await createBudgetRecord({
 				tur,
 				kategori: resolvedCategory,
-				tutarKurus: amountCents,
+				amountMinor: amountCents,
 				aciklama: description,
 				fisFotoUrl: fisFotoUrl || undefined,
 				kaydedenId: access.user.id,
@@ -191,9 +191,9 @@ export const POST = withAudit(async function POST(request: Request) {
 			if (error instanceof InsufficientFundsError) {
 				return NextResponse.json(
 					{
-						error: `Yetersiz bakiye! Bu kasanın mevcut bakiyesi (${formatTL(error.netBakiyeKurus)}) aşılacağından kasa eksiye düşemez.`,
+						error: `Yetersiz bakiye! Bu kasanın mevcut bakiyesi (${formatTL(error.netBalanceMinor)}) aşılacağından kasa eksiye düşemez.`,
 						code: 'INSUFFICIENT_FUNDS',
-						netBakiyeKurus: error.netBakiyeKurus,
+						netBalanceMinor: error.netBalanceMinor,
 					},
 					{ status: 409 }
 				);
@@ -218,7 +218,7 @@ export const PATCH = withAudit(async function PATCH(request: Request) {
 		if (!registration) return bad('Kayıt bulunamadı.', 404);
 		// An allocation also touches the general kasa, which only Kasa managers may change.
 		if (registration.aktarimId && !access.isManagement) return bad('Ödenek aktarımlarını yalnızca Kasa yöneticileri değiştirebilir.', 403);
-		if (body.tutarKurus !== undefined || body.tur !== undefined) {
+		if (body.amountMinor !== undefined || body.tur !== undefined) {
 			return bad('Tutar ve tür değiştirilemez; kaydı silip doğrusunu girin.');
 		}
 
@@ -287,7 +287,7 @@ export const DELETE = withAudit(async function DELETE(request: Request) {
 					{
 						error: 'Bu gelir kaydı silinirse kasa bakiyesi eksiye düşer; önce buna bağlı giderleri silin.',
 						code: 'INSUFFICIENT_FUNDS',
-						netBakiyeKurus: error.netBakiyeKurus,
+						netBalanceMinor: error.netBalanceMinor,
 					},
 					{ status: 409 }
 				);

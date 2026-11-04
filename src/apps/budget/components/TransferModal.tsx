@@ -2,11 +2,11 @@
 
 import React, { useState } from 'react';
 import { ArrowRightLeft } from 'lucide-react';
-import { formatKurus, parseAmount, dateInputToMs } from '@/lib/budget';
+import { formatMinor, parseAmount, dateInputToMs } from '@/lib/budget';
 import { toDateInput } from '@/lib/kanban';
 import ui from '@/core/ui/ui.module.css';
 import { sendJson } from '@/core/data/http';
-import k from './Kasa.module.css';
+import k from './Vault.module.css';
 import { vaultKey, type VaultSummary } from '../types';
 import { Sheet } from '@/core/ui/Sheet';
 import { useI18n } from '@/core/i18n';
@@ -42,7 +42,7 @@ export function TransferModal({
 	const source = byKey.get(kaynak);
 	const target = byKey.get(hedef);
 	const kurus = parseAmount(tutar);
-	const tooMuch = kurus !== null && !!source && kurus > source.netBakiyeKurus;
+	const tooMuch = kurus !== null && !!source && kurus > source.netBalanceMinor;
 
 	const submit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -56,7 +56,7 @@ export function TransferModal({
 			action: 'aktar',
 			kaynak,
 			hedef,
-			tutarKurus: kurus,
+			amountMinor: kurus,
 			aciklama: aciklama.trim() || undefined,
 			date: ms,
 		});
@@ -98,7 +98,7 @@ export function TransferModal({
 					>
 						{vaults.map((x) => (
 							<option key={vaultKey(x.teamId)} value={vaultKey(x.teamId)}>
-								{x.ad} ({formatKurus(x.netBakiyeKurus)} ₺)
+								{x.ad} ({formatMinor(x.netBalanceMinor)} ₺)
 							</option>
 						))}
 					</select>
@@ -125,23 +125,23 @@ export function TransferModal({
 			</div>
 			{source && (
 				<div className={k.balanceHint}>
-					{source.ad}: {t('kasaCurrentBalance')} <strong>{formatKurus(source.netBakiyeKurus)} ₺</strong>
+					{source.ad}: {t('kasaCurrentBalance')} <strong>{formatMinor(source.netBalanceMinor)} ₺</strong>
 					{kurus !== null && (
 						<>
 							{' '}
 							· {t('kasaAfterTransfer')}{' '}
 							<strong className={tooMuch ? k.neg : undefined}>
-								{formatKurus(source.netBakiyeKurus - kurus)} ₺
+								{formatMinor(source.netBalanceMinor - kurus)} ₺
 							</strong>
 						</>
 					)}
 					{target && (
 						<div style={{ marginTop: 4 }}>
-							{target.ad}: {formatKurus(target.netBakiyeKurus)} ₺
+							{target.ad}: {formatMinor(target.netBalanceMinor)} ₺
 							{kurus !== null && (
 								<>
 									{' '}
-									→ <strong>{formatKurus(target.netBakiyeKurus + kurus)} ₺</strong>
+									→ <strong>{formatMinor(target.netBalanceMinor + kurus)} ₺</strong>
 								</>
 							)}
 						</div>

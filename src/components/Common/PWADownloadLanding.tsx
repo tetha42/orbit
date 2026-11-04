@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useI18n } from '@/core/i18n';
+import { LOCALE_REGISTRY, useI18n } from '@/core/i18n';
 import { ALLOW_BROWSER_LOGIN, enableDevBypass, promptInstall, useJustInstalled } from '@/lib/client/pwa';
 import { detectBrowser, detectPlatform, type Platform } from '@/lib/client/pwaDetect';
 import {
@@ -44,7 +44,6 @@ function detectBlocker(platform: Platform): InstallBlocker | null {
 
 export function PWADownloadLanding() {
 	const { language, setLanguage, t } = useI18n();
-	const isTr = language === 'tr';
 	const justInstalled = useJustInstalled();
 	const [initialDetected] = useState(getInitialPlatform);
 	const [activePlatform, setActivePlatform] = useState<Platform>(initialDetected.platform);
@@ -56,17 +55,20 @@ export function PWADownloadLanding() {
 
 	const blockerMessage =
 		blocker === 'insecure'
-			? isTr
-				? 'Bu adres güvenli (HTTPS) değil ve tarayıcılar güvenli olmayan sayfalardan uygulama kurulumuna izin vermez. Portalı https:// adresinden açın veya yöneticinize bildirin.'
-				: 'This address is not secure (HTTPS), and browsers do not allow installing apps from insecure pages. Open the portal over https:// or contact your administrator.'
+			? t(
+					'pwaBlockerInsecure',
+					'This address is not secure (HTTPS), and browsers do not allow installing apps from insecure pages. Open the portal over https:// or contact your administrator.'
+				)
 			: blocker === 'inapp'
-				? isTr
-					? 'Bu, başka bir uygulamanın içindeki bir tarayıcı; buradan kurulum yapılamaz. Bağlantıyı Chrome, Edge veya Safari ile açın.'
-					: 'This is an embedded in-app browser, which cannot install web apps. Open the link in Chrome, Edge, or Safari.'
+				? t(
+						'pwaBlockerInapp',
+						'This is an embedded in-app browser, which cannot install web apps. Open the link in Chrome, Edge, or Safari.'
+					)
 				: blocker === 'firefox-desktop'
-					? isTr
-						? 'Firefox masaüstü sürümü web uygulaması kurulumunu desteklemiyor. Portalı Chrome, Edge veya Brave ile açın.'
-						: 'Desktop Firefox does not support installing web apps. Open the portal in Chrome, Edge, or Brave.'
+					? t(
+							'pwaBlockerFirefoxDesktop',
+							'Desktop Firefox does not support installing web apps. Open the portal in Chrome, Edge, or Brave.'
+						)
 					: null;
 
 	const handleInstallClick = async () => {
@@ -76,9 +78,10 @@ export function PWADownloadLanding() {
 			setHint(null);
 		} else if (outcome === 'unavailable') {
 			setHint(
-				isTr
-					? `Tarayıcı kurulum penceresini henüz sunmadı. Cihazınızda (${detectedOS}) adres çubuğundaki 'Yükle' simgesini kullanın veya aşağıdaki adımları izleyin.`
-					: `The browser has not offered its install prompt yet. On ${detectedOS}, use the 'Install' icon in the address bar or follow the steps below.`
+				t(
+					'pwaInstallUnavailableHint',
+					"The browser has not offered its install prompt yet. On {os}, use the 'Install' icon in the address bar or follow the steps below."
+				).replace('{os}', detectedOS)
 			);
 		}
 	};
@@ -170,38 +173,28 @@ export function PWADownloadLanding() {
 							border: '1px solid #27272a',
 						}}
 					>
-						<button
-							type="button"
-							onClick={() => setLanguage('en')}
-							style={{
-								padding: '4px 10px',
-								borderRadius: '4px',
-								border: 'none',
-								backgroundColor: !isTr ? '#fafafa' : 'transparent',
-								color: !isTr ? '#09090b' : '#a1a1aa',
-								fontSize: '11px',
-								fontWeight: 600,
-								cursor: 'pointer',
-							}}
-						>
-							EN
-						</button>
-						<button
-							type="button"
-							onClick={() => setLanguage('tr')}
-							style={{
-								padding: '4px 10px',
-								borderRadius: '4px',
-								border: 'none',
-								backgroundColor: isTr ? '#fafafa' : 'transparent',
-								color: isTr ? '#09090b' : '#a1a1aa',
-								fontSize: '11px',
-								fontWeight: 600,
-								cursor: 'pointer',
-							}}
-						>
-							TR
-						</button>
+						{LOCALE_REGISTRY.map((loc) => {
+							const active = language === loc.code;
+							return (
+								<button
+									key={loc.code}
+									type="button"
+									onClick={() => setLanguage(loc.code as typeof language)}
+									style={{
+										padding: '4px 10px',
+										borderRadius: '4px',
+										border: 'none',
+										backgroundColor: active ? '#fafafa' : 'transparent',
+										color: active ? '#09090b' : '#a1a1aa',
+										fontSize: '11px',
+										fontWeight: 600,
+										cursor: 'pointer',
+									}}
+								>
+									{loc.code.toUpperCase()}
+								</button>
+							);
+						})}
 					</div>
 
 					{ALLOW_BROWSER_LOGIN && (
@@ -274,7 +267,7 @@ export function PWADownloadLanding() {
 					>
 						<span>ORBIT // TETHA42</span>
 						<span style={{ color: '#fafafa' }}>
-							{isTr ? `${detectedOS} KURULUMU` : `${detectedOS} CLIENT`}
+							{t('pwaHeaderClientTag', '{os} CLIENT').replace('{os}', detectedOS)}
 						</span>
 					</div>
 
@@ -322,7 +315,7 @@ export function PWADownloadLanding() {
 								marginBottom: '14px',
 							}}
 						>
-							{isTr ? `${detectedOS} • BAĞIMSIZ UYGULAMA` : `${detectedOS} • STANDALONE PWA`}
+							{t('pwaStandaloneBadge', '{os} • STANDALONE PWA').replace('{os}', detectedOS)}
 						</div>
 
 						<h1
@@ -346,9 +339,10 @@ export function PWADownloadLanding() {
 								margin: '0 0 24px 0',
 							}}
 						>
-							{isTr
-								? 'Tam ekran çalışma alanı, entegre terminal, QR yoklama ve çevrimdışı önbellek desteği için Orbit uygulamasını cihazınıza yükleyin.'
-								: 'Install the Orbit workspace on your device for distraction-free window management, integrated shell terminal, instant QR check-in, and offline caching.'}
+							{t(
+								'pwaLandingDesc',
+								'Install the Orbit workspace on your device for distraction-free window management, integrated shell terminal, instant QR check-in, and offline caching.'
+							)}
 						</p>
 
 						{blockerMessage && (
@@ -398,8 +392,8 @@ export function PWADownloadLanding() {
 							{isInstalled ? <Check size={16} /> : <Download size={16} />}
 							<span>
 								{isInstalled
-									? isTr ? 'Yüklendi — Uygulamayı Cihazınızdan Açın' : 'Installed — Open App From Your Device'
-									: isTr ? 'Uygulamayı Cihaza Yükle' : 'Install Workspace App'}
+									? t('pwaInstalledBtn', 'Installed — Open App From Your Device')
+									: t('pwaInstallBtn', 'Install Workspace App')}
 							</span>
 						</button>
 
@@ -484,21 +478,17 @@ export function PWADownloadLanding() {
 									<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 										<span style={{ color: '#fafafa', fontWeight: 700, fontFamily: 'monospace' }}>01</span>
 										<span>
-											{isTr
-												? 'Chrome veya Edge adres çubuğunun sağındaki'
-												: 'In Chrome or Edge, click the'}{' '}
-											<strong style={{ color: '#fafafa' }}>{isTr ? 'Yükle (Install)' : 'Install'}</strong>{' '}
-											{isTr ? 'simgesine tıklayın.' : 'icon in the address bar.'}
+											{t('pwaMacStep1Prefix', 'In Chrome or Edge, click the')}{' '}
+											<strong style={{ color: '#fafafa' }}>{t('pwaMacStep1Strong', 'Install')}</strong>{' '}
+											{t('pwaMacStep1Suffix', 'icon in the address bar.')}
 										</span>
 									</div>
 									<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 										<span style={{ color: '#fafafa', fontWeight: 700, fontFamily: 'monospace' }}>02</span>
 										<span>
-											{isTr
-												? "Safari'de üst menüden"
-												: 'In Safari, choose'}{' '}
-											<strong style={{ color: '#fafafa' }}>{isTr ? "Dosya → Dock'a Ekle" : 'File → Add to Dock'}</strong>{' '}
-											{isTr ? 'seçeneğini seçin.' : 'from the menu bar.'}
+											{t('pwaMacStep2Prefix', 'In Safari, choose')}{' '}
+											<strong style={{ color: '#fafafa' }}>{t('pwaMacStep2Strong', 'File → Add to Dock')}</strong>{' '}
+											{t('pwaMacStep2Suffix', 'from the menu bar.')}
 										</span>
 									</div>
 								</>
@@ -509,19 +499,15 @@ export function PWADownloadLanding() {
 									<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 										<span style={{ color: '#fafafa', fontWeight: 700, fontFamily: 'monospace' }}>01</span>
 										<span>
-											{isTr
-												? 'Edge veya Chrome adres çubuğundaki'
-												: 'In Edge or Chrome, click the'}{' '}
-											<strong style={{ color: '#fafafa' }}>{isTr ? 'Uygulama Olarak Yükle' : 'Install App'}</strong>{' '}
-											{isTr ? 'butonuna basın.' : 'button in the address bar.'}
+											{t('pwaWinStep1Prefix', 'In Edge or Chrome, click the')}{' '}
+											<strong style={{ color: '#fafafa' }}>{t('pwaWinStep1Strong', 'Install App')}</strong>{' '}
+											{t('pwaWinStep1Suffix', 'button in the address bar.')}
 										</span>
 									</div>
 									<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 										<span style={{ color: '#fafafa', fontWeight: 700, fontFamily: 'monospace' }}>02</span>
 										<span>
-											{isTr
-												? 'Uygulama doğrudan Başlat menüsüne ve Görev Çubuğunuza eklenir.'
-												: 'The app is pinned directly to your Start Menu and Taskbar.'}
+											{t('pwaWinStep2', 'The app is pinned directly to your Start Menu and Taskbar.')}
 										</span>
 									</div>
 								</>
@@ -533,22 +519,18 @@ export function PWADownloadLanding() {
 										<span style={{ color: '#fafafa', fontWeight: 700, fontFamily: 'monospace' }}>01</span>
 										<Share size={13} style={{ color: '#fafafa' }} />
 										<span>
-											{isTr
-												? "Safari'de alt kısımdaki"
-												: 'Tap the'}{' '}
-											<strong style={{ color: '#fafafa' }}>{isTr ? 'Paylaş' : 'Share'}</strong>{' '}
-											{isTr ? 'simgesine dokunun.' : 'icon at the bottom of Safari.'}
+											{t('pwaIosStep1Prefix', 'Tap the')}{' '}
+											<strong style={{ color: '#fafafa' }}>{t('pwaIosStep1Strong', 'Share')}</strong>{' '}
+											{t('pwaIosStep1Suffix', 'icon at the bottom of Safari.')}
 										</span>
 									</div>
 									<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 										<span style={{ color: '#fafafa', fontWeight: 700, fontFamily: 'monospace' }}>02</span>
 										<PlusSquare size={13} style={{ color: '#fafafa' }} />
 										<span>
-											{isTr
-												? 'Listeden'
-												: 'Select'}{' '}
-											<strong style={{ color: '#fafafa' }}>{isTr ? 'Ana Ekrana Ekle' : 'Add to Home Screen'}</strong>{' '}
-											{isTr ? 'seçeneğini seçin.' : 'from the menu.'}
+											{t('pwaIosStep2Prefix', 'Select')}{' '}
+											<strong style={{ color: '#fafafa' }}>{t('pwaIosStep2Strong', 'Add to Home Screen')}</strong>{' '}
+											{t('pwaIosStep2Suffix', 'from the menu.')}
 										</span>
 									</div>
 								</>
@@ -559,16 +541,14 @@ export function PWADownloadLanding() {
 									<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 										<span style={{ color: '#fafafa', fontWeight: 700, fontFamily: 'monospace' }}>01</span>
 										<span>
-											{isTr
-												? "Chrome'da sağ üstteki üç nokta menüsüne dokunun."
-												: 'Tap the three-dot menu in Chrome.'}
+											{t('pwaAndroidStep1', 'Tap the three-dot menu in Chrome.')}
 										</span>
 									</div>
 									<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 										<span style={{ color: '#fafafa', fontWeight: 700, fontFamily: 'monospace' }}>02</span>
 										<span>
-											<strong style={{ color: '#fafafa' }}>{isTr ? 'Uygulamayı Yükle' : 'Install App'}</strong>{' '}
-											{isTr ? 'seçeneğine dokunarak onaylayın.' : 'to add it to your home launcher.'}
+											<strong style={{ color: '#fafafa' }}>{t('pwaAndroidStep2Strong', 'Install App')}</strong>{' '}
+											{t('pwaAndroidStep2Suffix', 'to add it to your home launcher.')}
 										</span>
 									</div>
 								</>
@@ -579,19 +559,15 @@ export function PWADownloadLanding() {
 									<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 										<span style={{ color: '#fafafa', fontWeight: 700, fontFamily: 'monospace' }}>01</span>
 										<span>
-											{isTr
-												? 'Chromium, Brave veya Chrome adres çubuğundaki'
-												: 'In Chromium, Brave, or Chrome, click the'}{' '}
-											<strong style={{ color: '#fafafa' }}>{isTr ? 'Yükle' : 'Install'}</strong>{' '}
-											{isTr ? 'simgesine basın.' : 'icon in the omnibox.'}
+											{t('pwaLinuxStep1Prefix', 'In Chromium, Brave, or Chrome, click the')}{' '}
+											<strong style={{ color: '#fafafa' }}>{t('pwaLinuxStep1Strong', 'Install')}</strong>{' '}
+											{t('pwaLinuxStep1Suffix', 'icon in the omnibox.')}
 										</span>
 									</div>
 									<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 										<span style={{ color: '#fafafa', fontWeight: 700, fontFamily: 'monospace' }}>02</span>
 										<span>
-											{isTr
-												? 'Uygulama menünüze yerel masaüstü (.desktop) penceresi olarak eklenir.'
-												: 'Integrated as a native desktop (.desktop) window launcher.'}
+											{t('pwaLinuxStep2', 'Integrated as a native desktop (.desktop) window launcher.')}
 										</span>
 									</div>
 								</>
@@ -626,9 +602,10 @@ export function PWADownloadLanding() {
 								}}
 							>
 								<span>
-									{isTr
-										? 'Yüklemeden web tarayıcısında devam et (geliştirici modu)'
-										: 'Continue in browser without installing (developer mode)'}
+									{t(
+										'pwaContinueInBrowserDev',
+										'Continue in browser without installing (developer mode)'
+									)}
 								</span>
 								<ArrowRight size={13} />
 							</button>

@@ -5,6 +5,13 @@ import { notificationEvents, publishEventQuiet } from '@/db/events';
 import { slugify, uniqueSlug } from '@/lib/text';
 import type { NewsVisibility } from '@/types/news';
 
+const NEWS_COLUMNS = `
+	h.id, h.slug, h.title AS baslik, h.summary AS ozet, h.content AS icerik, h.category AS kategori,
+	h.is_pinned AS "onemliMi", h.cover_url AS "resimUrl",
+	h.publish_status AS "publishStatus", h.published_at AS "yayinTarihi",
+	h.author_id AS "yazarId", h.created_at AS olusturma, h.updated_at AS guncellenme
+`;
+
 function mapNews(r: Record<string, unknown>): NewsItem {
 	return {
 		...(r as unknown as NewsItem),
@@ -22,12 +29,12 @@ function mapNews(r: Record<string, unknown>): NewsItem {
 export async function getNews(audience: 'yonetim' | 'uye' = 'yonetim'): Promise<NewsItem[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(`
-		SELECT h.*,
+		SELECT ${NEWS_COLUMNS},
 		       k.first_name || ' ' || k.last_name as "yazarAdSoyad"
 		FROM news h
-		LEFT JOIN users k ON h.yazarId = k.id
-		${audience === 'yonetim' ? '' : "WHERE h.publishStatus <> 'taslak'"}
-		ORDER BY h.onemliMi DESC, COALESCE(h.yayinTarihi, h.olusturma) DESC
+		LEFT JOIN users k ON h.author_id = k.id
+		${audience === 'yonetim' ? '' : "WHERE h.publish_status <> 'taslak'"}
+		ORDER BY h.is_pinned DESC, COALESCE(h.published_at, h.created_at) DESC
 	`);
 	return res.rows.map(mapNews);
 }
@@ -36,10 +43,10 @@ export async function getNewsById(id: string): Promise<NewsItem | null> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`
-		SELECT h.*,
+		SELECT ${NEWS_COLUMNS},
 		       k.first_name || ' ' || k.last_name as "yazarAdSoyad"
 		FROM news h
-		LEFT JOIN users k ON h.yazarId = k.id
+		LEFT JOIN users k ON h.author_id = k.id
 		WHERE h.id = $1
 	`,
 		[id]
@@ -77,7 +84,7 @@ export async function createNews(params: {
 		const slug = await newsSlug(p, params.baslik.trim());
 		try {
 			await p.query(
-				`INSERT INTO news (id, slug, baslik, ozet, icerik, kategori, onemliMi, resimUrl, publishStatus, yayinTarihi, yazarId, olusturma, guncellenme)
+				`INSERT INTO news (id, slug, title, summary, content, category, is_pinned, cover_url, publish_status, published_at, author_id, created_at, updated_at)
 				 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $12)`,
 				[
 					id,
@@ -125,18 +132,18 @@ export async function updateNews(
 		sets.push(`${column} = $${values.length}`);
 	};
 
-	if (patch.baslik !== undefined) add('baslik', patch.baslik.trim());
-	if (patch.ozet !== undefined) add('ozet', patch.ozet.trim());
-	if (patch.icerik !== undefined) add('icerik', patch.icerik.trim());
-	if (patch.kategori !== undefined) add('kategori', patch.kategori);
-	if (patch.onemliMi !== undefined) add('onemliMi', patch.onemliMi ? 1 : 0);
-	if (patch.resimUrl !== undefined) add('resimUrl', patch.resimUrl || null);
+	if (patch.baslik !== undefined) add('title', patch.baslik.trim());
+	if (patch.ozet !== undefined) add('summary', patch.ozet.trim());
+	if (patch.icerik !== undefined) add('content', patch.icerik.trim());
+	if (patch.kategori !== undefined) add('category', patch.kategori);
+	if (patch.onemliMi !== undefined) add('is_pinned', patch.onemliMi ? 1 : 0);
+	if (patch.resimUrl !== undefined) add('cover_url', patch.resimUrl || null);
 	if (patch.publishStatus !== undefined) {
-		add('publishStatus', patch.publishStatus);
-		if (patch.publishStatus !== 'taslak') sets.push('yayinTarihi = COALESCE(yayinTarihi, $' + (values.length + 1) + ')');
+		add('publish_status', patch.publishStatus);
+		if (patch.publishStatus !== 'taslak') sets.push('published_at = COALESCE(published_at, $' + (values.length + 1) + ')');
 		if (patch.publishStatus !== 'taslak') values.push(Date.now());
 	}
-	add('guncellenme', Date.now());
+	add('updated_at', Date.now());
 
 	values.push(id);
 	const res = await getPgPool().query(
@@ -155,20 +162,20 @@ export interface PublicNewsQuery {
 
 export async function getPublicNews(query: PublicNewsQuery): Promise<{ rows: NewsItem[]; total: number }> {
 	await ensurePostgresInit();
-	const conditions = ["h.publishStatus = 'yayinda'", 'h.yayinTarihi <= $1'];
+	const conditions = ["h.publish_status = 'yayinda'", 'h.published_at <= $1'];
 	const values: unknown[] = [Date.now()];
 	if (query.category) {
 		values.push(query.category);
-		conditions.push(`h.kategori = $${values.length}`);
+		conditions.push(`h.category = $${values.length}`);
 	}
-	if (query.featured) conditions.push('h.onemliMi = 1');
+	if (query.featured) conditions.push('h.is_pinned = 1');
 	const where = conditions.join(' AND ');
 
 	const total = await getPgPool().query(`SELECT count(*)::int AS n FROM news h WHERE ${where}`, values);
 	values.push(query.pageSize, (query.page - 1) * query.pageSize);
 	const rows = await getPgPool().query(
-		`SELECT h.* FROM news h WHERE ${where}
-		 ORDER BY h.yayinTarihi DESC, h.id ASC
+		`SELECT ${NEWS_COLUMNS} FROM news h WHERE ${where}
+		 ORDER BY h.published_at DESC, h.id ASC
 		 LIMIT $${values.length - 1} OFFSET $${values.length}`,
 		values
 	);
@@ -178,7 +185,7 @@ export async function getPublicNews(query: PublicNewsQuery): Promise<{ rows: New
 export async function getPublicNewsBySlug(slug: string): Promise<NewsItem | null> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT h.* FROM news h WHERE h.slug = $1 AND h.publishStatus = 'yayinda' AND h.yayinTarihi <= $2`,
+		`SELECT ${NEWS_COLUMNS} FROM news h WHERE h.slug = $1 AND h.publish_status = 'yayinda' AND h.published_at <= $2`,
 		[slug, Date.now()]
 	);
 	return res.rows.length === 0 ? null : mapNews(res.rows[0]);
@@ -187,8 +194,8 @@ export async function getPublicNewsBySlug(slug: string): Promise<NewsItem | null
 export async function getPublicNewsCategoryCounts(): Promise<{ kategori: string; sayi: number }[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT kategori, count(*)::int AS sayi FROM news
-		 WHERE publishStatus = 'yayinda' AND yayinTarihi <= $1 GROUP BY kategori`,
+		`SELECT category AS kategori, count(*)::int AS sayi FROM news
+		 WHERE publish_status = 'yayinda' AND published_at <= $1 GROUP BY category`,
 		[Date.now()]
 	);
 	return res.rows;

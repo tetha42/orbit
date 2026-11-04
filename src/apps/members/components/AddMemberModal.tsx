@@ -3,7 +3,7 @@
 import React from 'react';
 import { UserPlus } from 'lucide-react';
 import { Sheet } from '@/core/ui/Sheet';
-import { useI18n } from '@/core/i18n';
+import { resolveLocalizedText, useI18n } from '@/core/i18n';
 import ui from '@/core/ui/ui.module.css';
 import type { AssignableRole } from '../types';
 import type { RegistrationCoreConfig } from '@/lib/registrationConfig';
@@ -36,7 +36,7 @@ interface AddMemberModalProps {
 	setCustomValues: (updater: (previous: Record<string, string>) => Record<string, string>) => void;
 	fieldErrors: Record<string, string>;
 	isSubmitting: boolean;
-	roleData: { roller: AssignableRole[]; varsayilanRolId: string | null } | null;
+	roleData: { roles: AssignableRole[]; defaultRoleId: string | null } | null;
 	rolesById: Map<string, AssignableRole>;
 	assignableRoles: AssignableRole[];
 }
@@ -131,7 +131,11 @@ export function AddMemberModal({
 				{coreConfig.track.visible && (
 					<label className={ui.field}>
 						<span className={ui.fieldLabel}>
-							{language === 'tr' ? coreConfig.track.labelTr : coreConfig.track.labelEn}
+							{resolveLocalizedText(
+								{ en: coreConfig.track.labelEn, tr: coreConfig.track.labelTr },
+								language,
+								coreConfig.track.labelEn || coreConfig.track.labelTr
+							)}
 						</span>
 						<select className={ui.select} style={{ maxWidth: 'none' }} value={newTrack} onChange={(e) => setNewTrack(e.target.value)} required>
 							{coreConfig.track.options.map((option) => (
@@ -144,7 +148,11 @@ export function AddMemberModal({
 				)}
 				<label className={ui.field}>
 					<span className={ui.fieldLabel}>
-						{language === 'tr' ? coreConfig.level.labelTr : coreConfig.level.labelEn}
+						{resolveLocalizedText(
+							{ en: coreConfig.level.labelEn, tr: coreConfig.level.labelTr },
+							language,
+							coreConfig.level.labelEn || coreConfig.level.labelTr
+						)}
 					</span>
 					<select className={ui.select} style={{ maxWidth: 'none' }} value={newGrade} onChange={(e) => setNewGrade(Number(e.target.value))}>
 						{coreConfig.level.options.map((option) => (
@@ -161,7 +169,7 @@ export function AddMemberModal({
 					<span className={ui.fieldLabel}>{t('membersRoleLabel')}</span>
 					<select className={ui.select} style={{ maxWidth: 'none' }} value={newRoleId} data-new-member-role onChange={(e) => setNewRoleId(e.target.value)}>
 						<option value="">
-							{t('membersDefaultRole')}{roleData?.varsayilanRolId && rolesById.get(roleData.varsayilanRolId) ? ` (${rolesById.get(roleData.varsayilanRolId)!.ad})` : ` ${t('membersNoRoleAssigned')}`}
+							{t('membersDefaultRole')}{roleData?.defaultRoleId && rolesById.get(roleData.defaultRoleId) ? ` (${rolesById.get(roleData.defaultRoleId)!.ad})` : ` ${t('membersNoRoleAssigned')}`}
 						</option>
 						{assignableRoles.map((r) => (
 							<option key={r.id} value={r.id}>{r.ad}</option>
@@ -170,7 +178,11 @@ export function AddMemberModal({
 				</label>
 				<label className={ui.field}>
 					<span className={ui.fieldLabel}>
-						{language === 'tr' ? coreConfig.memberId.labelTr : coreConfig.memberId.labelEn}
+						{resolveLocalizedText(
+							{ en: coreConfig.memberId.labelEn, tr: coreConfig.memberId.labelTr },
+							language,
+							coreConfig.memberId.labelEn || coreConfig.memberId.labelTr
+						)}
 						{coreConfig.memberId.required ? ' *' : ` (${t('authOptional', 'optional')})`}
 					</span>
 					<input
@@ -180,11 +192,11 @@ export function AddMemberModal({
 						minLength={3}
 						maxLength={32}
 						required={coreConfig.memberId.required}
-						placeholder={
-							language === 'tr'
-								? coreConfig.memberId.placeholderTr
-								: coreConfig.memberId.placeholderEn
-						}
+						placeholder={resolveLocalizedText(
+							{ en: coreConfig.memberId.placeholderEn, tr: coreConfig.memberId.placeholderTr },
+							language,
+							coreConfig.memberId.placeholderEn || coreConfig.memberId.placeholderTr
+						)}
 						value={newMemberHandle}
 						onChange={(e) => setNewMemberHandle(e.target.value)}
 					/>

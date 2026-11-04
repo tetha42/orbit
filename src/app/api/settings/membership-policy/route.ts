@@ -28,7 +28,7 @@ export async function PATCH(request: Request) {
 	void logSystemEvent({
 		servis: 'settings',
 		seviye: 'INFO',
-		mesaj: `Üyelik politikası güncellendi (${auth.user.ad} ${auth.user.soyad})`,
+		mesaj: `Üyelik politikası güncellendi (${auth.user.firstName || auth.user.ad || ""} ${auth.user.lastName || auth.user.soyad || ""})`,
 		detay: {
 			selfRegistration: policy.selfRegistration,
 			adminCreate: policy.adminCreate,

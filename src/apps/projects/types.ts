@@ -8,7 +8,7 @@ export interface ProjectsResponse {
 export interface TeamOption {
 	id: string;
 	ad: string;
-	liderId: string;
+	leadId: string;
 	uyeler?: { userId: string; status: string }[];
 }
 

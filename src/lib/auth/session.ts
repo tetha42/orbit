@@ -111,8 +111,10 @@ export function toSessionUser(user: User, permission: Permission): SessionUser {
 		twoFactorRequired,
 		authMethod: user.authMethod ?? 'password',
 		mustSetup2fa: twoFactorRequired && !twoFactorEnabled && !passkeySession,
-		rolBilgi: permission.role,
-		izinler: permission.izinler,
+		roleInfo: permission.role ? { id: permission.role.id, name: permission.role.name ?? permission.role.ad, color: permission.role.color ?? permission.role.renk } : null,
+		rolBilgi: permission.role ? { id: permission.role.id, ad: permission.role.name ?? permission.role.ad, renk: permission.role.color ?? permission.role.renk } : null,
+		permissions: permission.permissions ?? permission.izinler,
+		izinler: permission.permissions ?? permission.izinler,
 		admin: permission.admin,
 	};
 }

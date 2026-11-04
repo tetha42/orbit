@@ -137,7 +137,8 @@ async function handlePOST(request: Request) {
 
 		return NextResponse.json({
 			...result,
-			yazarAdSoyad: `${auth.user.ad} ${auth.user.soyad}`.trim(),
+			yazarAdSoyad: `${auth.user.firstName || auth.user.ad || ''} ${auth.user.lastName || auth.user.soyad || ''}`.trim(),
+			authorName: `${auth.user.firstName || auth.user.ad || ''} ${auth.user.lastName || auth.user.soyad || ''}`.trim(),
 		});
 	} catch (error) {
 		console.error('API /api/haberler POST error:', error);

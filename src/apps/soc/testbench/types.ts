@@ -78,6 +78,10 @@ export interface SystemDiagnostics {
 export interface UserSessionInfo {
 	user: {
 		id: string;
+		firstName?: string;
+		lastName?: string;
+		handle?: string;
+		roleName?: string;
 		ad: string;
 		soyad: string;
 		email: string;
@@ -87,7 +91,7 @@ export interface UserSessionInfo {
 		totpEnabled: boolean;
 		status: string;
 	};
-	permissions: Record<string, 'yok' | 'kullan' | 'yonet'>;
+	permissions: Record<string, 'none' | 'use' | 'manage' | 'yok' | 'kullan' | 'yonet'>;
 }
 
 export interface OAuthClientOption {

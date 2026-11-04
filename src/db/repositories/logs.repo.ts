@@ -137,23 +137,21 @@ export function startSystemLogMaintenance(): void {
 			const pool = getPgPool();
 			const sinir = Date.now() - systemLogRetentionDays() * 24 * 3600 * 1000;
 			// 1. Süreye dayalı genel temizlik
-			await pool.query('DELETE FROM system_logs WHERE zaman < $1', [sinir]);
+			await pool.query('DELETE FROM system_logs WHERE timestamp < $1', [sinir]);
 			// 2. Maksimum satır kotası (Yalnızca INFO ve WARN temizlenir; CRITICAL alarmlar ve denetim logları korunur)
 			await pool.query(
 				`DELETE FROM system_logs
-				 WHERE seviye NOT IN ('CRITICAL', 'ERROR')
+				 WHERE level NOT IN ('CRITICAL', 'ERROR')
 				   AND id NOT IN (
 					 SELECT id FROM system_logs
-					 WHERE seviye NOT IN ('CRITICAL', 'ERROR')
-					 ORDER BY zaman DESC
+					 WHERE level NOT IN ('CRITICAL', 'ERROR')
+					 ORDER BY timestamp DESC
 					 LIMIT $1
 				 )`,
 				[MAX_SYSTEM_LOG_COUNT]
 			);
 			// 3. Süresi dolmuş e-posta doğrulama OTP kayıtlarını temizle (Disk bloat önleme)
-			await pool.query('DELETE FROM email_verifications WHERE expires_at < $1', [Date.now()]);
-			// 4. Süresi dolmuş webauthn meydan okumalarını temizle (>10 dakika eski)
-			await pool.query('DELETE FROM webauthn_challenges WHERE olusturma < $1', [Date.now() - 10 * 60_000]);
+			await pool.query('DELETE FROM verification_tokens WHERE expires_at < $1', [Date.now()]);
 		} catch (err) {
 			console.error('[SystemLog] Temizlik hatası:', err);
 		}
@@ -200,7 +198,7 @@ export async function logSystemEvent(params: {
 		const zaman = Date.now();
 
 		const insertRes = await p.query(
-			`INSERT INTO system_logs (zaman, seviye, servis, mesaj, detay, userId, ip)
+			`INSERT INTO system_logs (timestamp, level, service, message, details, user_id, ip)
 			 VALUES ($1, $2, $3, $4, $5, $6, $7)
 			 RETURNING id`,
 			[zaman, seviye, servis, message, detayJson, userId, ip]
@@ -369,11 +367,11 @@ export async function getSystemLogsPaginated(filtre: SystemLogFilter = {}): Prom
 	}
 
 	if (effectiveStart !== undefined && Number.isFinite(effectiveStart)) {
-		conditions.push(`zaman >= $${idx++}`);
+		conditions.push(`timestamp >= $${idx++}`);
 		values.push(effectiveStart);
 	}
 	if (effectiveEnd !== undefined && Number.isFinite(effectiveEnd)) {
-		conditions.push(`zaman <= $${idx++}`);
+		conditions.push(`timestamp <= $${idx++}`);
 		values.push(effectiveEnd);
 	}
 
@@ -381,9 +379,9 @@ export async function getSystemLogsPaginated(filtre: SystemLogFilter = {}): Prom
 	if (filtre.servis && filtre.servis !== 'all') {
 		const srv = sanitizeLogText(filtre.servis, MAX_SERVIS_LEN).toLowerCase();
 		if (filtre.servisOp === 'neq') {
-			conditions.push(`servis != $${idx++}`);
+			conditions.push(`service != $${idx++}`);
 		} else {
-			conditions.push(`servis = $${idx++}`);
+			conditions.push(`service = $${idx++}`);
 		}
 		values.push(srv);
 	}
@@ -392,9 +390,9 @@ export async function getSystemLogsPaginated(filtre: SystemLogFilter = {}): Prom
 	if (filtre.seviye && filtre.seviye !== 'all') {
 		const sev = sanitizeLogText(filtre.seviye, 16).toUpperCase();
 		if (filtre.seviyeOp === 'neq') {
-			conditions.push(`seviye != $${idx++}`);
+			conditions.push(`level != $${idx++}`);
 		} else {
-			conditions.push(`seviye = $${idx++}`);
+			conditions.push(`level = $${idx++}`);
 		}
 		values.push(sev);
 	}
@@ -428,15 +426,15 @@ export async function getSystemLogsPaginated(filtre: SystemLogFilter = {}): Prom
 		const getColumnExpr = (f: FilterColumn): string | null => {
 			switch (f) {
 				case 'mesaj':
-					return 'mesaj';
+					return 'message';
 				case 'ip':
 					return 'ip';
 				case 'servis':
-					return 'servis';
+					return 'service';
 				case 'userId':
-					return "COALESCE(userId, '')";
+					return "COALESCE(user_id, '')";
 				case 'detay':
-					return "COALESCE(detay::text, '')";
+					return "COALESCE(details::text, '')";
 				default:
 					return null;
 			}
@@ -467,20 +465,20 @@ export async function getSystemLogsPaginated(filtre: SystemLogFilter = {}): Prom
 		} else {
 			if (op === 'equals') {
 				conditions.push(
-					`(mesaj = $${idx} OR ip = $${idx} OR servis = $${idx} OR COALESCE(userId, '') = $${idx})`
+					`(message = $${idx} OR ip = $${idx} OR service = $${idx} OR COALESCE(user_id, '') = $${idx})`
 				);
 				values.push(rawQuery);
 				idx++;
 			} else if (op === 'not_equals') {
 				conditions.push(
-					`(mesaj != $${idx} AND ip != $${idx} AND servis != $${idx} AND COALESCE(userId, '') != $${idx})`
+					`(message != $${idx} AND ip != $${idx} AND service != $${idx} AND COALESCE(user_id, '') != $${idx})`
 				);
 				values.push(rawQuery);
 				idx++;
 			} else if (op === 'not_contains') {
 				const esc = likeKacis(rawQuery);
 				conditions.push(
-					`(mesaj NOT ILIKE $${idx} ESCAPE '\\' AND ip NOT ILIKE $${idx} ESCAPE '\\' AND servis NOT ILIKE $${idx} ESCAPE '\\' AND COALESCE(userId, '') NOT ILIKE $${idx} ESCAPE '\\' AND COALESCE(detay::text, '') NOT ILIKE $${idx} ESCAPE '\\')`
+					`(message NOT ILIKE $${idx} ESCAPE '\\' AND ip NOT ILIKE $${idx} ESCAPE '\\' AND service NOT ILIKE $${idx} ESCAPE '\\' AND COALESCE(user_id, '') NOT ILIKE $${idx} ESCAPE '\\' AND COALESCE(details::text, '') NOT ILIKE $${idx} ESCAPE '\\')`
 				);
 				values.push(`%${esc}%`);
 				idx++;
@@ -494,11 +492,11 @@ export async function getSystemLogsPaginated(filtre: SystemLogFilter = {}): Prom
 						const val = kqlMatch[3].trim();
 						if (key === 'service' || key === 'servis') {
 							const srv = sanitizeLogText(val, MAX_SERVIS_LEN).toLowerCase();
-							conditions.push(isNeg ? `servis != $${idx++}` : `servis = $${idx++}`);
+							conditions.push(isNeg ? `service != $${idx++}` : `service = $${idx++}`);
 							values.push(srv);
 						} else if (key === 'level' || key === 'seviye') {
 							const lvl = sanitizeLogText(val, 16).toUpperCase();
-							conditions.push(isNeg ? `seviye != $${idx++}` : `seviye = $${idx++}`);
+							conditions.push(isNeg ? `level != $${idx++}` : `level = $${idx++}`);
 							values.push(lvl);
 						} else if (key === 'ip') {
 							const cleanIp = sanitizeLogText(val, 45);
@@ -506,24 +504,24 @@ export async function getSystemLogsPaginated(filtre: SystemLogFilter = {}): Prom
 							values.push(cleanIp);
 						} else if (key === 'user' || key === 'kullanici') {
 							const uId = sanitizeLogText(val, 120);
-							conditions.push(isNeg ? `COALESCE(userId, '') != $${idx++}` : `COALESCE(userId, '') = $${idx++}`);
+							conditions.push(isNeg ? `COALESCE(user_id, '') != $${idx++}` : `COALESCE(user_id, '') = $${idx++}`);
 							values.push(uId);
 						} else if (key === 'msg' || key === 'mesaj') {
 							const esc = likeKacis(val);
-							conditions.push(isNeg ? `mesaj NOT ILIKE $${idx++} ESCAPE '\\'` : `mesaj ILIKE $${idx++} ESCAPE '\\'`);
+							conditions.push(isNeg ? `message NOT ILIKE $${idx++} ESCAPE '\\'` : `message ILIKE $${idx++} ESCAPE '\\'`);
 							values.push(`%${esc}%`);
 						}
 					} else if ((token.startsWith('-') || token.startsWith('!')) && token.length > 1) {
 						const negEsc = likeKacis(token.slice(1));
 						conditions.push(
-							`(mesaj NOT ILIKE $${idx} ESCAPE '\\' AND ip NOT ILIKE $${idx} ESCAPE '\\' AND servis NOT ILIKE $${idx} ESCAPE '\\' AND COALESCE(userId, '') NOT ILIKE $${idx} ESCAPE '\\' AND COALESCE(detay::text, '') NOT ILIKE $${idx} ESCAPE '\\')`
+							`(message NOT ILIKE $${idx} ESCAPE '\\' AND ip NOT ILIKE $${idx} ESCAPE '\\' AND service NOT ILIKE $${idx} ESCAPE '\\' AND COALESCE(user_id, '') NOT ILIKE $${idx} ESCAPE '\\' AND COALESCE(details::text, '') NOT ILIKE $${idx} ESCAPE '\\')`
 						);
 						values.push(`%${negEsc}%`);
 						idx++;
 					} else {
 						const posEsc = likeKacis(token);
 						conditions.push(
-							`(mesaj ILIKE $${idx} ESCAPE '\\' OR servis ILIKE $${idx} ESCAPE '\\' OR ip ILIKE $${idx} ESCAPE '\\' OR COALESCE(userId, '') ILIKE $${idx} ESCAPE '\\' OR COALESCE(detay::text, '') ILIKE $${idx} ESCAPE '\\')`
+							`(message ILIKE $${idx} ESCAPE '\\' OR service ILIKE $${idx} ESCAPE '\\' OR ip ILIKE $${idx} ESCAPE '\\' OR COALESCE(user_id, '') ILIKE $${idx} ESCAPE '\\' OR COALESCE(details::text, '') ILIKE $${idx} ESCAPE '\\')`
 						);
 						values.push(`%${posEsc}%`);
 						idx++;
@@ -565,12 +563,12 @@ export async function getSystemLogsPaginated(filtre: SystemLogFilter = {}): Prom
 
 		const histRes = await p.query(
 			`SELECT
-				(zaman / ${bucketSize}) * ${bucketSize} AS bucket,
+				(timestamp / ${bucketSize}) * ${bucketSize} AS bucket,
 				COUNT(*)::int AS count,
-				COUNT(*) FILTER (WHERE seviye = 'CRITICAL')::int AS critical,
-				COUNT(*) FILTER (WHERE seviye = 'ERROR')::int AS error,
-				COUNT(*) FILTER (WHERE seviye = 'WARN')::int AS warn,
-				COUNT(*) FILTER (WHERE seviye = 'INFO')::int AS info
+				COUNT(*) FILTER (WHERE level = 'CRITICAL')::int AS critical,
+				COUNT(*) FILTER (WHERE level = 'ERROR')::int AS error,
+				COUNT(*) FILTER (WHERE level = 'WARN')::int AS warn,
+				COUNT(*) FILTER (WHERE level = 'INFO')::int AS info
 			 FROM system_logs
 			 ${whereClause}
 			 GROUP BY 1
@@ -607,10 +605,10 @@ export async function getSystemLogsPaginated(filtre: SystemLogFilter = {}): Prom
 	// 8. Query Paginated Log Rows
 	const paginatedValues = [...values, limit, offset];
 	const rowsRes = await p.query(
-		`SELECT id, zaman, seviye, servis, mesaj, detay, userId, ip
+		`SELECT id, timestamp AS zaman, level AS seviye, service AS servis, message AS mesaj, details AS detay, user_id AS "userId", ip
 		 FROM system_logs
 		 ${whereClause}
-		 ORDER BY zaman DESC, id DESC
+		 ORDER BY timestamp DESC NULLS LAST, id DESC
 		 LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
 		paginatedValues
 	);

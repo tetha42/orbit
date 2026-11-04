@@ -18,12 +18,12 @@ import {
 	FileText,
 } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
-import { formatKurus } from '@/lib/budget';
+import { formatMinor } from '@/lib/budget';
 import { formatDate } from '@/core/data/format';
 import type { VaultSummary, VaultRecord } from '../types';
-import { useVaultLedger } from '../hooks/useKasaLedger';
-import { VaultInsights } from './KasaInsights';
-import { VaultEntryModal } from './KasaEntryModal';
+import { useVaultLedger } from '../hooks/useVaultLedger';
+import { VaultInsights } from './VaultInsights';
+import { VaultEntryModal } from './VaultEntryModal';
 import { TransferModal } from './TransferModal';
 import s from './BudgetMobile.module.css';
 
@@ -39,7 +39,7 @@ export interface BudgetMobileViewProps {
 
 type BudgetMobileTab = 'transactions' | 'wallets' | 'insights' | 'add';
 
-const tl = (kurus: number) => `₺${formatKurus(kurus)}`;
+const tl = (kurus: number) => `₺${formatMinor(kurus)}`;
 
 export function BudgetMobileView({
 	vaults,
@@ -97,20 +97,20 @@ export function BudgetMobileView({
 						</span>
 					</div>
 					<span className={`${s.badge} ${s.badgeOk}`}>
-						{(active?.netBakiyeKurus ?? 0) >= 0 ? t('kasaStatusPositive') : t('kasaStatusDeficit')}
+						{(active?.netBalanceMinor ?? 0) >= 0 ? t('kasaStatusPositive') : t('kasaStatusDeficit')}
 					</span>
 				</div>
 
-				<div className={s.heroBalance}>{tl(ledger.summary?.netBakiyeKurus ?? 0)}</div>
+				<div className={s.heroBalance}>{tl(ledger.summary?.netBalanceMinor ?? 0)}</div>
 
 				<div className={s.statRow}>
 					<div className={s.statItem}>
 						<span className={s.statLabel}>{t('kasaTotalIncome')}</span>
-						<span className={s.statValIncome}>+{tl(ledger.summary?.toplamGelirKurus ?? 0)}</span>
+						<span className={s.statValIncome}>+{tl(ledger.summary?.totalIncomeMinor ?? 0)}</span>
 					</div>
 					<div className={s.statItem}>
 						<span className={s.statLabel}>{t('kasaTotalExpense')}</span>
-						<span className={s.statValExpense}>-{tl(ledger.summary?.toplamGiderKurus ?? 0)}</span>
+						<span className={s.statValExpense}>-{tl(ledger.summary?.totalExpenseMinor ?? 0)}</span>
 					</div>
 				</div>
 			</div>
@@ -197,7 +197,7 @@ export function BudgetMobileView({
 
 								<div className={s.txRight}>
 									<span className={`${s.txAmount} ${isIncome ? s.txAmountIncome : s.txAmountExpense}`}>
-										{isIncome ? '+' : '-'}{tl(r.tutarKurus)}
+										{isIncome ? '+' : '-'}{tl(r.amountMinor)}
 									</span>
 									{r.karsiKasaAd && (
 										<span style={{ fontSize: '10px', opacity: 0.55, display: 'flex', alignItems: 'center', gap: '3px' }}>
@@ -275,7 +275,7 @@ export function BudgetMobileView({
 
 							<div style={{ textAlign: 'right' }}>
 								<div style={{ fontSize: '16px', fontWeight: 800, fontFamily: 'ui-monospace, monospace' }}>
-									{tl(k.netBakiyeKurus)}
+									{tl(k.netBalanceMinor)}
 								</div>
 								{isCurrent && (
 									<span className={`${s.badge} ${s.badgeOk}`} style={{ marginTop: '4px' }}>
@@ -327,7 +327,7 @@ export function BudgetMobileView({
 
 								<div style={{ textAlign: 'right' }}>
 									<div style={{ fontSize: '16px', fontWeight: 800, fontFamily: 'ui-monospace, monospace' }}>
-										{tl(k.netBakiyeKurus)}
+										{tl(k.netBalanceMinor)}
 									</div>
 									{isCurrent && (
 										<span className={`${s.badge} ${s.badgeOk}`} style={{ marginTop: '4px' }}>
@@ -443,7 +443,7 @@ export function BudgetMobileView({
 								<div style={{ fontSize: '12px', opacity: 0.6 }}>{selectedRecord.kategori} • {formatDate(selectedRecord.date)}</div>
 							</div>
 							<div style={{ fontSize: '18px', fontWeight: 800, color: selectedRecord.tur === 'gelir' ? '#34c759' : '#ffffff' }}>
-								{selectedRecord.tur === 'gelir' ? '+' : '-'}{tl(selectedRecord.tutarKurus)}
+								{selectedRecord.tur === 'gelir' ? '+' : '-'}{tl(selectedRecord.amountMinor)}
 							</div>
 						</div>
 
@@ -509,7 +509,7 @@ export function BudgetMobileView({
 			{ledger.modal?.kind === 'new' && (
 				<VaultEntryModal
 					teamId={active?.teamId ?? null}
-					netBakiyeKurus={ledger.summary?.netBakiyeKurus ?? 0}
+					netBalanceMinor={ledger.summary?.netBalanceMinor ?? 0}
 					onClose={() => ledger.setModal(null)}
 					onSaved={ledger.changed}
 				/>

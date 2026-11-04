@@ -6,7 +6,7 @@ export interface VaultRecord {
 	olusturma?: number;
 	tur: 'gelir' | 'gider';
 	kategori: string;
-	tutarKurus: number;
+	amountMinor: number;
 	aciklama: string;
 	fisFotoUrl: string | null;
 	kaydedenId: string;
@@ -18,9 +18,9 @@ export interface VaultRecord {
 }
 
 export interface CashTotals {
-	toplamGelirKurus: number;
-	toplamGiderKurus: number;
-	netBakiyeKurus: number;
+	totalIncomeMinor: number;
+	totalExpenseMinor: number;
+	netBalanceMinor: number;
 	kayitSayisi: number;
 }
 

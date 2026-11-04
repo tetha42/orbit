@@ -85,7 +85,7 @@ export function NewTeamModal({
 	const [aciklama, setAciklama] = useState('');
 	const [kontenjan, setKontenjan] = useState('6');
 	const [repoUrl, setRepoUrl] = useState('');
-	const [liderId, setLiderId] = useState('');
+	const [leadId, setLeadId] = useState('');
 	const [katilimTuru, setKatilimTuru] = useState<ParticipationType>('acik');
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
@@ -101,7 +101,7 @@ export function NewTeamModal({
 			aciklama: aciklama.trim(),
 			kontenjan: Number(kontenjan),
 			repoUrl: repoUrl.trim() || undefined,
-			liderId: liderId || undefined,
+			leadId: leadId || undefined,
 			katilimTuru,
 		});
 		setBusy(false);
@@ -177,8 +177,8 @@ export function NewTeamModal({
 				<select
 					className={ui.select}
 					style={{ maxWidth: 'none' }}
-					value={liderId}
-					onChange={(e) => setLiderId(e.target.value)}
+					value={leadId}
+					onChange={(e) => setLeadId(e.target.value)}
 				>
 					<option value="">—</option>
 					{roster.map((m) => (
@@ -262,7 +262,7 @@ export function EditTeamModal({
 	const [aciklama, setAciklama] = useState(team.aciklama);
 	const [kontenjan, setKontenjan] = useState(String(team.kontenjan));
 	const [repoUrl, setRepoUrl] = useState(team.repoUrl ?? '');
-	const [liderId, setLiderId] = useState(team.liderId ?? '');
+	const [leadId, setLeadId] = useState(team.leadId ?? '');
 	const [katilimTuru, setKatilimTuru] = useState<ParticipationType>(team.katilimTuru);
 	const [status, setDurum] = useState(team.status);
 	const [busy, setBusy] = useState(false);
@@ -281,7 +281,7 @@ export function EditTeamModal({
 			if (ad !== team.ad) body.ad = ad.trim();
 			if (kategori !== team.kategori) body.kategori = kategori;
 			if (status !== team.status) body.status = status;
-			if (liderId !== team.liderId) body.liderId = liderId;
+			if (leadId !== team.leadId) body.leadId = leadId;
 		}
 		const res = await sendJson('/api/teams', 'POST', body);
 		setBusy(false);
@@ -378,8 +378,8 @@ export function EditTeamModal({
 						<select
 							className={ui.select}
 							style={{ maxWidth: 'none' }}
-							value={liderId}
-							onChange={(e) => setLiderId(e.target.value)}
+							value={leadId}
+							onChange={(e) => setLeadId(e.target.value)}
 						>
 							<option value="">—</option>
 							{roster.map((m) => (

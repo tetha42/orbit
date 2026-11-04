@@ -9,7 +9,7 @@ import s from '../Chat.module.css';
 interface ChatRoomListProps {
 	rooms: ChatOdaItem[];
 	activeRoomId: string | null;
-	onSelectRoom: (odaId: string) => void;
+	onSelectRoom: (roomId: string) => void;
 }
 
 export function ChatRoomList({ rooms, activeRoomId, onSelectRoom }: ChatRoomListProps) {

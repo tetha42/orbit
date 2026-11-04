@@ -26,16 +26,16 @@ export async function POST(request: Request) {
 				);
 			}
 
-			const { odaId, soru, secenekler, cokluSecim, anonim, endsAt } = body;
+			const { roomId, soru, secenekler, cokluSecim, anonim, endsAt } = body;
 
-			if (!odaId || !soru || typeof soru !== 'string' || !soru.trim()) {
+			if (!roomId || !soru || typeof soru !== 'string' || !soru.trim()) {
 				return NextResponse.json(
 					{ error: 'Anket sorusu boş olamaz.' },
 					{ status: 400, headers: NO_CACHE }
 				);
 			}
 
-			const canAccess = await canUserAccessChatRoom(String(odaId), auth.user.id, isAdmin);
+			const canAccess = await canUserAccessChatRoom(String(roomId), auth.user.id, isAdmin);
 			if (!canAccess) {
 				return NextResponse.json(
 					{ error: 'Bu sohbet odasına erişim yetkiniz yok.' },
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
 			}
 
 			const res = await createPollInRoom(
-				odaId,
+				roomId,
 				{
 					id: auth.user.id,
 					ad: auth.user.ad,
@@ -74,8 +74,8 @@ export async function POST(request: Request) {
 			void logSystemEvent({
 				servis: 'chat',
 				seviye: 'INFO',
-				mesaj: `Yeni anket oluşturuldu: "${soru.trim().slice(0, 50)}" (${odaId})`,
-				detay: { odaId, pollId: res.message?.anket?.id, soru: soru.trim().slice(0, 120) },
+				mesaj: `Yeni anket oluşturuldu: "${soru.trim().slice(0, 50)}" (${roomId})`,
+				detay: { roomId, pollId: res.message?.anket?.id, soru: soru.trim().slice(0, 120) },
 				userId: auth.user.id,
 				ip: clientAddress(request),
 			});

@@ -7,7 +7,7 @@ import { RegisterForm } from './RegisterForm';
 import { TwoFactorForm } from './TwoFactorForm';
 import { Notice } from './AuthControls';
 import { useAuthFlow } from './useAuthFlow';
-import { useI18n } from '@/core/i18n';
+import { LOCALE_REGISTRY, resolveLocalizedText, useI18n } from '@/core/i18n';
 import { useIdentity } from '@/core/identity';
 import { useRouter } from 'next/navigation';
 import styles from './AuthPortal.module.css';
@@ -121,36 +121,27 @@ export function AuthPortal() {
 							background: '#111113',
 						}}
 					>
-						<button
-							type="button"
-							onClick={() => setLanguage('en')}
-							style={{
-								padding: '4px 10px',
-								border: 'none',
-								background: language === 'en' ? '#fafafa' : 'transparent',
-								color: language === 'en' ? '#09090b' : '#a1a1aa',
-								fontSize: '11px',
-								fontWeight: 700,
-								cursor: 'pointer',
-							}}
-						>
-							EN
-						</button>
-						<button
-							type="button"
-							onClick={() => setLanguage('tr')}
-							style={{
-								padding: '4px 10px',
-								border: 'none',
-								background: language === 'tr' ? '#fafafa' : 'transparent',
-								color: language === 'tr' ? '#09090b' : '#a1a1aa',
-								fontSize: '11px',
-								fontWeight: 700,
-								cursor: 'pointer',
-							}}
-						>
-							TR
-						</button>
+						{LOCALE_REGISTRY.map((loc) => {
+							const active = language === loc.code;
+							return (
+								<button
+									key={loc.code}
+									type="button"
+									onClick={() => setLanguage(loc.code as typeof language)}
+									style={{
+										padding: '4px 10px',
+										border: 'none',
+										background: active ? '#fafafa' : 'transparent',
+										color: active ? '#09090b' : '#a1a1aa',
+										fontSize: '11px',
+										fontWeight: 700,
+										cursor: 'pointer',
+									}}
+								>
+									{loc.code.toUpperCase()}
+								</button>
+							);
+						})}
 					</div>
 				</nav>
 			</header>
@@ -220,7 +211,7 @@ export function AuthPortal() {
 						<span>Community OS</span>
 					</h1>
 					<p className={styles.heroSubtitle}>
-						{language === 'tr' ? identity.descriptionTr : identity.descriptionEn}
+						{resolveLocalizedText({ en: identity.descriptionEn, tr: identity.descriptionTr }, language)}
 					</p>
 				</div>
 			</main>

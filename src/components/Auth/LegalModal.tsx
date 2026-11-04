@@ -14,8 +14,7 @@ interface LegalModalProps {
 }
 
 export function LegalModal({ isOpen, initialTab = 'terms', onClose, onAccept }: LegalModalProps) {
-	const { language } = useI18n();
-	const isTr = language === 'tr';
+	const { t } = useI18n();
 	const [activeTab, setActiveTab] = useState<LegalTab>(initialTab);
 
 	React.useEffect(() => {
@@ -29,17 +28,17 @@ export function LegalModal({ isOpen, initialTab = 'terms', onClose, onAccept }: 
 	const tabs: Array<{ id: LegalTab; label: string; icon: React.ReactNode }> = [
 		{
 			id: 'terms',
-			label: isTr ? 'Kullanım Koşulları' : 'Terms of Service',
+			label: t('legalTabTerms', 'Terms of Service'),
 			icon: <FileText size={14} />,
 		},
 		{
 			id: 'privacy',
-			label: isTr ? 'Gizlilik Politikası (GDPR)' : 'Privacy Policy (GDPR)',
+			label: t('legalTabPrivacy', 'Privacy Policy (GDPR)'),
 			icon: <Shield size={14} />,
 		},
 		{
 			id: 'cookies',
-			label: isTr ? 'Çerez & Oturum Politikası' : 'Cookie & Session Policy',
+			label: t('legalTabCookies', 'Cookie & Session Policy'),
 			icon: <Cookie size={14} />,
 		},
 	];
@@ -89,13 +88,13 @@ export function LegalModal({ isOpen, initialTab = 'terms', onClose, onAccept }: 
 							ORBIT // TETHA42 • LEGAL & COMPLIANCE
 						</div>
 						<h3 style={{ fontSize: '16px', fontWeight: 700, margin: '4px 0 0', color: '#fafafa' }}>
-							{isTr ? 'Küresel Yasal Standartlar & Veri Koruma' : 'Global Legal Standards & Data Protection'}
+							{t('legalModalHeaderTitle', 'Global Legal Standards & Data Protection')}
 						</h3>
 					</div>
 					<button
 						type="button"
 						onClick={onClose}
-						aria-label={isTr ? 'Kapat' : 'Close'}
+						aria-label={t('close', 'Close')}
 						style={{
 							width: '32px',
 							height: '32px',
@@ -169,28 +168,31 @@ export function LegalModal({ isOpen, initialTab = 'terms', onClose, onAccept }: 
 					{activeTab === 'terms' && (
 						<>
 							<h4 style={{ fontSize: '14px', fontWeight: 700, color: '#fafafa', margin: 0 }}>
-								{isTr ? '1. Hizmet Koşulları ve Topluluk Kuralları' : '1. Terms of Service & Community Guidelines'}
+								{t('legalTermsH1', '1. Terms of Service & Community Guidelines')}
 							</h4>
 							<p style={{ margin: 0 }}>
-								{isTr
-									? 'Orbit Community OS ("Platform"), toplulukların iş birliği, proje yönetimi, etkinlik organizasyonu ve güvenli iletişim yürütmesi için tetha42 tarafından geliştirilen bağımsız bir çalışma alanıdır.'
-									: 'Orbit Community OS ("the Platform") is a self-hosted digital workspace engineered by tetha42 for engineering teams, open-source collectives, and research communities.'}
+								{t(
+									'legalTermsP1',
+									'Orbit Community OS ("the Platform") is a self-hosted digital workspace engineered by tetha42 for engineering teams, open-source collectives, and research communities.'
+								)}
 							</p>
 							<h4 style={{ fontSize: '14px', fontWeight: 700, color: '#fafafa', margin: 0 }}>
-								{isTr ? '2. Kabul Edilebilir Kullanım ve Hesap Güvenliği' : '2. Acceptable Use & Account Security'}
+								{t('legalTermsH2', '2. Acceptable Use & Account Security')}
 							</h4>
 							<p style={{ margin: 0 }}>
-								{isTr
-									? 'Üyeler, hesap kimlik bilgilerini korumakla, yetkisiz erişim girişimlerinden kaçınmakla ve topluluk çalışma alanlarında saygılı, yapıcı bir iletişim sürdürmekle yükümlüdür. Otomatik tarama, yetkisiz sızma girişimleri veya sistem bütünlüğünü bozmaya yönelik eylemler otonom güvenlik duvarı (SoC/WAF) tarafından engellenir.'
-									: 'Members are responsible for safeguarding their credentials (passwords, TOTP authenticators, and WebAuthn passkeys) and maintaining constructive conduct across all shared workspaces. Automated scraping, unauthorized probing, or attempts to compromise system integrity are actively mitigated by the autonomous SoC and WAF engine.'}
+								{t(
+									'legalTermsP2',
+									'Members are responsible for safeguarding their credentials (passwords, TOTP authenticators, and WebAuthn passkeys) and maintaining constructive conduct across all shared workspaces. Automated scraping, unauthorized probing, or attempts to compromise system integrity are actively mitigated by the autonomous SoC and WAF engine.'
+								)}
 							</p>
 							<h4 style={{ fontSize: '14px', fontWeight: 700, color: '#fafafa', margin: 0 }}>
-								{isTr ? '3. Fikri Mülkiyet ve Sorumluluk' : '3. Intellectual Property & Liability'}
+								{t('legalTermsH3', '3. Intellectual Property & Liability')}
 							</h4>
 							<p style={{ margin: 0 }}>
-								{isTr
-									? 'Platform üzerinde paylaşılan projeler, belgeler ve katkılar ilgili yazarların ve topluluğun belirlediği açık kaynak veya iç lisans koşullarına tabidir. Platform "olduğu gibi" sunulmaktadır.'
-									: 'Projects, documents, and technical artifacts published within the workspace remain subject to the licenses designated by their respective authors and community governance. The Platform is provided "as is" without warranty of any kind.'}
+								{t(
+									'legalTermsP3',
+									'Projects, documents, and technical artifacts published within the workspace remain subject to the licenses designated by their respective authors and community governance. The Platform is provided "as is" without warranty of any kind.'
+								)}
 							</p>
 						</>
 					)}
@@ -198,28 +200,31 @@ export function LegalModal({ isOpen, initialTab = 'terms', onClose, onAccept }: 
 					{activeTab === 'privacy' && (
 						<>
 							<h4 style={{ fontSize: '14px', fontWeight: 700, color: '#fafafa', margin: 0 }}>
-								{isTr ? '1. Küresel Veri Koruma ve GDPR Uyumluluğu' : '1. GDPR & Global Data Protection Compliance'}
+								{t('legalPrivacyH1', '1. GDPR & Global Data Protection Compliance')}
 							</h4>
 							<p style={{ margin: 0 }}>
-								{isTr
-									? 'Orbit Community OS, Veri Minimizasyonu (Data Minimization) ve Tasarımdan İtibaren Gizlilik (Privacy by Design) ilkelerine göre çalışır. Yalnızca topluluk üyeliği, yetkilendirme ve çalışma alanı işlevleri için zorunlu olan veriler (ad, e-posta, üye kimliği, çalışma alanı/seviye) işlenir.'
-									: 'Orbit Community OS operates under strict Data Minimization and Privacy-by-Design principles aligned with GDPR and global privacy regulations. Only data strictly required for identity verification, role-based access control, and workspace collaboration (name, email, member handle, track, and experience level) is processed.'}
+								{t(
+									'legalPrivacyP1',
+									'Orbit Community OS operates under strict Data Minimization and Privacy-by-Design principles aligned with GDPR and global privacy regulations. Only data strictly required for identity verification, role-based access control, and workspace collaboration (name, email, member handle, track, and experience level) is processed.'
+								)}
 							</p>
 							<h4 style={{ fontSize: '14px', fontWeight: 700, color: '#fafafa', margin: 0 }}>
-								{isTr ? '2. Kriptografik Güvenlik ve Saklama' : '2. Cryptographic Security & Self-Hosted Sovereignty'}
+								{t('legalPrivacyH2', '2. Cryptographic Security & Self-Hosted Sovereignty')}
 							</h4>
 							<p style={{ margin: 0 }}>
-								{isTr
-									? 'Parolalar Bcrypt (maliyet faktörü 12) ile özetlenir, 2FA TOTP sırları AES-256-GCM ile şifrelenir ve tüm veriler yalnızca topluluğun kendi barındırdığı PostgreSQL veritabanında tutulur. Hiçbir veri üçüncü taraf reklam ağlarına veya veri simsarlarına aktarılmaz.'
-									: 'Passwords are hashed using Bcrypt (cost factor 12), TOTP secrets are encrypted at rest with AES-256-GCM, and all records reside exclusively within your self-hosted PostgreSQL instance. Zero personal data is sold, shared with data brokers, or transmitted to external telemetry networks.'}
+								{t(
+									'legalPrivacyP2',
+									'Passwords are hashed using Bcrypt (cost factor 12), TOTP secrets are encrypted at rest with AES-256-GCM, and all records reside exclusively within your self-hosted PostgreSQL instance. Zero personal data is sold, shared with data brokers, or transmitted to external telemetry networks.'
+								)}
 							</p>
 							<h4 style={{ fontSize: '14px', fontWeight: 700, color: '#fafafa', margin: 0 }}>
-								{isTr ? '3. Kullanıcı Hakları (Erişim, Düzeltme, Silme ve Taşınabilirlik)' : '3. Your Rights (Access, Erasure & Portability)'}
+								{t('legalPrivacyH3', '3. Your Rights (Access, Erasure & Portability)')}
 							</h4>
 							<p style={{ margin: 0 }}>
-								{isTr
-									? 'Üyeler diledikleri zaman kişisel verilerine erişme, profil bilgilerini güncelleme, verilerinin dışa aktarılmasını talep etme ve hesaplarının kalıcı olarak silinmesini (Unutulma Hakkı) isteme hakkına sahiptir.'
-									: 'Every member retains the right to inspect their stored profile data, rectify inaccuracies, export their records in machine-readable formats, and request permanent account erasure ("Right to be Forgotten") through the workspace administrators.'}
+								{t(
+									'legalPrivacyP3',
+									'Every member retains the right to inspect their stored profile data, rectify inaccuracies, export their records in machine-readable formats, and request permanent account erasure ("Right to be Forgotten") through the workspace administrators.'
+								)}
 							</p>
 						</>
 					)}
@@ -227,28 +232,31 @@ export function LegalModal({ isOpen, initialTab = 'terms', onClose, onAccept }: 
 					{activeTab === 'cookies' && (
 						<>
 							<h4 style={{ fontSize: '14px', fontWeight: 700, color: '#fafafa', margin: 0 }}>
-								{isTr ? '1. Zorunlu Oturum Çerezleri (HttpOnly)' : '1. Strictly Necessary Session Cookies (HttpOnly)'}
+								{t('legalCookiesH1', '1. Strictly Necessary Session Cookies (HttpOnly)')}
 							</h4>
 							<p style={{ margin: 0 }}>
-								{isTr
-									? 'Orbit Community OS, yalnızca güvenli kimlik doğrulama ve CSRF koruması için криptografik olarak imzalanmış, HttpOnly ve SameSite=Lax bayraklı birinci taraf oturum çerezleri kullanır. Bu çerezler olmadan çalışma alanı oturumu açılamaz.'
-									: 'Orbit Community OS uses strictly necessary, cryptographically signed first-party HttpOnly session cookies (SameSite=Lax) solely to maintain authenticated sessions and enforce CSRF protection.'}
+								{t(
+									'legalCookiesP1',
+									'Orbit Community OS uses strictly necessary, cryptographically signed first-party HttpOnly session cookies (SameSite=Lax) solely to maintain authenticated sessions and enforce CSRF protection.'
+								)}
 							</p>
 							<h4 style={{ fontSize: '14px', fontWeight: 700, color: '#fafafa', margin: 0 }}>
-								{isTr ? '2. Yerel Tercih Depolaması (LocalStorage)' : '2. Local Workspace Preferences'}
+								{t('legalCookiesH2', '2. Local Workspace Preferences')}
 							</h4>
 							<p style={{ margin: 0 }}>
-								{isTr
-									? 'Arayüz dili (EN/TR), tema, pencere düzeni ve ses düzeyi gibi kullanıcı arayüzü tercihleri yalnızca tarayıcınızın yerel depolama alanında (localStorage) saklanır.'
-									: 'User interface preferences such as language selection (EN/TR), theme mode, window geometry, and audio volume are stored locally in your browser via LocalStorage.'}
+								{t(
+									'legalCookiesP2',
+									'User interface preferences such as language selection, theme mode, window geometry, and audio volume are stored locally in your browser via LocalStorage.'
+								)}
 							</p>
 							<h4 style={{ fontSize: '14px', fontWeight: 700, color: '#fafafa', margin: 0 }}>
-								{isTr ? '3. Sıfır Üçüncü Taraf İzleme veya Reklam Çerezi' : '3. Zero Third-Party Advertising or Tracking Cookies'}
+								{t('legalCookiesH3', '3. Zero Third-Party Advertising or Tracking Cookies')}
 							</h4>
 							<p style={{ margin: 0 }}>
-								{isTr
-									? 'Platformda hiçbir üçüncü taraf reklam çerezi, davranışsal profilleme pikseli veya çapraz site izleyici (cross-site tracker) bulunmaz.'
-									: 'Orbit Community OS deploys zero third-party advertising cookies, behavioral profiling pixels, or cross-site analytics trackers.'}
+								{t(
+									'legalCookiesP3',
+									'Orbit Community OS deploys zero third-party advertising cookies, behavioral profiling pixels, or cross-site analytics trackers.'
+								)}
 							</p>
 						</>
 					)}
@@ -281,7 +289,7 @@ export function LegalModal({ isOpen, initialTab = 'terms', onClose, onAccept }: 
 							cursor: 'pointer',
 						}}
 					>
-						{isTr ? 'Kapat' : 'Close'}
+						{t('close', 'Close')}
 					</button>
 					{onAccept && (
 						<button
@@ -303,7 +311,7 @@ export function LegalModal({ isOpen, initialTab = 'terms', onClose, onAccept }: 
 							}}
 						>
 							<Check size={15} />
-							<span>{isTr ? 'Okudum ve Kabul Ediyorum' : 'I Acknowledge & Accept'}</span>
+							<span>{t('legalModalAcceptBtn', 'I Acknowledge & Accept')}</span>
 						</button>
 					)}
 				</div>

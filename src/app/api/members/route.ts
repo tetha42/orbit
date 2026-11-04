@@ -155,7 +155,7 @@ export async function POST(request: Request) {
 		}
 
 		// No role given: the club's default role for new members.
-		const rawRoleId = body.roleId ?? body.rolId;
+		const rawRoleId = body.roleId;
 		const roleId: string | null = typeof rawRoleId === 'string' && rawRoleId ? rawRoleId : await getDefaultRoleId();
 		const sinir = await roleLimitProblem(auth.user, roleId);
 		if (sinir) return bad(sinir, 403);
@@ -206,7 +206,7 @@ export async function POST(request: Request) {
 		return NextResponse.json({
 			success: true,
 			member: { ...safe, eposta: safe.email, rolId: safe.roleId, durum: safe.status },
-			...(generatedPassword ? { geciciSifre: memberPassword, temporaryPassword: memberPassword } : {}),
+			...(generatedPassword ? { temporaryPassword: memberPassword } : {}),
 		});
 	} catch (error) {
 		console.error('API /api/uyeler POST error:', error);
@@ -221,7 +221,7 @@ export async function PATCH(request: Request) {
 
 	try {
 		const body = await request.json();
-		const rawRoleId = body.roleId !== undefined ? body.roleId : body.rolId;
+		const rawRoleId = body.roleId;
 		const status = body.status ?? body.durum;
 		const { id, addXp } = body;
 		const rejectionReason =
@@ -244,7 +244,7 @@ export async function PATCH(request: Request) {
 			return NextResponse.json({
 				success: true,
 				message: 'Üyenin şifresi sıfırlandı.',
-				geciciSifre: defaultPass,
+				temporaryPassword: defaultPass,
 			});
 		}
 

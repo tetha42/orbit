@@ -76,7 +76,7 @@ export async function POST(request: Request) {
 	void logSystemEvent({
 		servis: 'settings',
 		seviye: 'INFO',
-		mesaj: `Üyelik daveti oluşturuldu${email ? `: ${email}` : ''} (${auth.user.ad} ${auth.user.soyad})`,
+		mesaj: `Üyelik daveti oluşturuldu${email ? `: ${email}` : ''} (${auth.user.firstName || auth.user.ad || ""} ${auth.user.lastName || auth.user.soyad || ""})`,
 		detay: { invitationId: invitation.id, roleId, days },
 		userId: auth.user.id,
 	});

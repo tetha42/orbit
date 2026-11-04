@@ -12,7 +12,7 @@ interface ForwardMessageModalProps {
 	onClose: () => void;
 	message: ChatMessageItem | null;
 	rooms: ChatOdaItem[];
-	onForward: (mesajId: string, targetOdaIds: string[]) => Promise<{ ok: boolean; count?: number }>;
+	onForward: (mesajId: string, targetRoomIds: string[]) => Promise<{ ok: boolean; count?: number }>;
 }
 
 export function ForwardMessageModal({
@@ -36,10 +36,10 @@ export function ForwardMessageModal({
 	}, [isOpen]);
 
 	const filteredRooms = useMemo(() => {
-		const q = searchQuery.trim().toLocaleLowerCase(language === 'tr' ? 'tr-TR' : undefined);
+		const q = searchQuery.trim().toLocaleLowerCase(language);
 		if (!q) return rooms;
 		return rooms.filter((r) =>
-			r.ad.toLocaleLowerCase(language === 'tr' ? 'tr-TR' : undefined).includes(q)
+			r.ad.toLocaleLowerCase(language).includes(q)
 		);
 	}, [rooms, searchQuery, language]);
 

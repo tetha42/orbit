@@ -254,7 +254,7 @@ export function NewsDetailModal({
 						<span>
 							{t('newsDate')}{' '}
 							{new Date(article.olusturma).toLocaleDateString(
-								language === 'tr' ? 'tr-TR' : 'en-US',
+								language,
 								{ day: 'numeric', month: 'long', year: 'numeric' }
 							)}
 						</span>

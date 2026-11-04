@@ -14,20 +14,20 @@ import type { MenuItem } from '@/types/workspace';
 import ui from '@/core/ui/ui.module.css';
 import { AUDIT_CSV_HEADERS, AUDIT_PAGE_SIZE, auditCsvRows, formatAuditAction, type AuditRecord } from '@/lib/audit';
 import { fill } from '@/lib/text';
-import { AuditFilterBar, type Suzgec } from './AuditFilterBar';
+import { AuditFilterBar, type AuditQuery } from './AuditFilterBar';
 import { AuditDetailModal } from './AuditDetailModal';
 import s from './Roles.module.css';
 
 interface AuditResponse {
-	kayitlar: AuditRecord[];
-	toplam: number;
-	sayfa: number;
-	boyut: number;
+	records: AuditRecord[];
+	total: number;
+	page: number;
+	pageSize: number;
 }
 
-const BOS: Suzgec = { kisi: '', role: '', islem: '', from: '', to: '', sayfa: 1 };
+const BOS: AuditQuery = { user: '', role: '', action: '', from: '', to: '', page: 1 };
 
-function query(f: Suzgec, extra: Record<string, string> = {}): string {
+function query(f: AuditQuery, extra: Record<string, string> = {}): string {
 	const p = new URLSearchParams();
 	for (const [k, v] of Object.entries(f)) if (v && v !== 1) p.set(k, String(v));
 	for (const [k, v] of Object.entries(extra)) p.set(k, v);
@@ -54,16 +54,16 @@ function AuditHistoryRow({ record, language, onSelect }: AuditHistoryRowProps) {
 			id: 'copy-actor',
 			label: t('ctxSettingsCopyActor'),
 			icon: <Copy size={13} />,
-			action: () => copyToClipboard(record.yapanAd || record.yapanId || ''),
+			action: () => copyToClipboard(record.actorName || record.actorId || ''),
 		},
 	];
 
-	if (record.hedefAd || record.hedefId) {
+	if (record.targetName || record.targetId) {
 		menuItems.push({
 			id: 'copy-target',
 			label: t('ctxSettingsCopyTarget'),
 			icon: <Copy size={13} />,
-			action: () => copyToClipboard(record.hedefAd || record.hedefId || ''),
+			action: () => copyToClipboard(record.targetName || record.targetId || ''),
 		});
 	}
 
@@ -76,26 +76,26 @@ function AuditHistoryRow({ record, language, onSelect }: AuditHistoryRowProps) {
 			onClick={() => onSelect(record)}
 			{...contextMenuProps}
 		>
-			<span className={s.auditOp} title={formatAuditAction(record.islem, t)}>
-				{formatAuditAction(record.islem, t)}
+			<span className={s.auditOp} title={formatAuditAction(record.action, t)}>
+				{formatAuditAction(record.action, t)}
 			</span>
-			<span className={s.auditTarget} title={record.hedefAd || record.hedefId || ''}>
-				{record.hedefAd || record.hedefId || '—'}
+			<span className={s.auditTarget} title={record.targetName || record.targetId || ''}>
+				{record.targetName || record.targetId || '—'}
 			</span>
-			<span className={s.auditActor} title={record.yapanAd || record.yapanId}>
-				{record.yapanAd || record.yapanId}
+			<span className={s.auditActor} title={record.actorName || record.actorId}>
+				{record.actorName || record.actorId}
 			</span>
-			<span className={s.auditDate}>{formatDateTime(record.zaman, language === 'en' ? 'en-GB' : 'tr-TR')}</span>
+			<span className={s.auditDate}>{formatDateTime(record.timestamp, language === 'en' ? 'en-GB' : 'tr-TR')}</span>
 		</button>
 	);
 }
 
-export function AuditHistory({ roller, variant = 'settings' }: { roller: { id: string; ad: string }[]; variant?: 'settings' | 'soc' }) {
+export function AuditHistory({ roles, variant = 'settings' }: { roles: { id: string; ad: string }[]; variant?: 'settings' | 'soc' }) {
 	const { t, language } = useI18n();
 	const notify = useToast();
 	const dialog = useDialog();
-	const [filtre, setFiltre] = useState<Suzgec>(BOS);
-	const [kisiYazilan, setKisiYazilan] = useState('');
+	const [filtre, setFiltre] = useState<AuditQuery>(BOS);
+	const [userDraft, setUserDraft] = useState('');
 	const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const [detay, setDetay] = useState<AuditRecord | null>(null);
 	const [indiriliyor, setIndiriliyor] = useState(false);
@@ -105,18 +105,18 @@ export function AuditHistory({ roller, variant = 'settings' }: { roller: { id: s
 	if (httpStatus === 403) return null;
 
 	const onKisiDegisti = (deger: string) => {
-		setKisiYazilan(deger);
+		setUserDraft(deger);
 		if (timer.current) clearTimeout(timer.current);
-		timer.current = setTimeout(() => setFiltre((cur) => ({ ...cur, kisi: deger.trim(), sayfa: 1 })), 300);
+		timer.current = setTimeout(() => setFiltre((cur) => ({ ...cur, user: deger.trim(), page: 1 })), 300);
 	};
 
 	const exportCsv = async () => {
 		setIndiriliyor(true);
 		try {
-			const res = await fetch(query(filtre, { tum: '1' }));
+			const res = await fetch(query(filtre, { all: '1' }));
 			if (!res.ok) throw new Error();
 			const json = (await res.json()) as AuditResponse;
-			const rows = auditCsvRows(json.kayitlar);
+			const rows = auditCsvRows(json.records);
 			downloadCsv('denetim-gecmisi', AUDIT_CSV_HEADERS, rows);
 		} catch {
 			notify(t('auditCsvHata'), 'error');
@@ -147,9 +147,9 @@ export function AuditHistory({ roller, variant = 'settings' }: { roller: { id: s
 		}
 	};
 
-	const records = data?.kayitlar ?? [];
-	const toplam = data?.toplam ?? 0;
-	const toplamSayfa = Math.max(1, Math.ceil(toplam / AUDIT_PAGE_SIZE));
+	const records = data?.records ?? [];
+	const total = data?.total ?? 0;
+	const toplamSayfa = Math.max(1, Math.ceil(total / AUDIT_PAGE_SIZE));
 
 	return (
 		<section className={`${s.audit} ${variant === 'soc' ? s.auditSoc : ''}`} aria-label={t('auditTitle')}>
@@ -159,7 +159,7 @@ export function AuditHistory({ roller, variant = 'settings' }: { roller: { id: s
 						<History size={16} /> {t('auditTitle')}
 					</h4>
 					<span className={ui.muted} style={{ fontSize: 12 }}>
-						{fill(t('auditToplam'), { n: toplam, count: toplam })}
+						{fill(t('auditToplam'), { n: total, count: total })}
 					</span>
 				</div>
 				<div className={s.auditBarActions}>
@@ -167,7 +167,7 @@ export function AuditHistory({ roller, variant = 'settings' }: { roller: { id: s
 						type="button"
 						className={ui.btn}
 						onClick={exportCsv}
-						disabled={indiriliyor || toplam === 0}
+						disabled={indiriliyor || total === 0}
 						title={t('auditCsvIndir')}
 					>
 						<Download size={14} /> {indiriliyor ? t('auditCsvIndiriliyor') : 'CSV'}
@@ -176,7 +176,7 @@ export function AuditHistory({ roller, variant = 'settings' }: { roller: { id: s
 						type="button"
 						className={`${ui.btn} ${ui.btnDanger}`}
 						onClick={gecmisiTemizle}
-						disabled={temizleniyor || toplam === 0}
+						disabled={temizleniyor || total === 0}
 						title={t('auditTemizle')}
 					>
 						<Trash2 size={14} /> {t('auditTemizle')}
@@ -186,15 +186,15 @@ export function AuditHistory({ roller, variant = 'settings' }: { roller: { id: s
 
 			<AuditFilterBar
 				filtre={filtre}
-				kisiYazilan={kisiYazilan}
-				roller={roller}
+				userDraft={userDraft}
+				roles={roles}
 				onKisiChange={onKisiDegisti}
-				onRolChange={(val) => setFiltre((c) => ({ ...c, role: val, sayfa: 1 }))}
-				onIslemChange={(val) => setFiltre((c) => ({ ...c, islem: val, sayfa: 1 }))}
-				onFromChange={(val) => setFiltre((c) => ({ ...c, from: val, sayfa: 1 }))}
-				onToChange={(val) => setFiltre((c) => ({ ...c, to: val, sayfa: 1 }))}
+				onRolChange={(val) => setFiltre((c) => ({ ...c, role: val, page: 1 }))}
+				onIslemChange={(val) => setFiltre((c) => ({ ...c, action: val, page: 1 }))}
+				onFromChange={(val) => setFiltre((c) => ({ ...c, from: val, page: 1 }))}
+				onToChange={(val) => setFiltre((c) => ({ ...c, to: val, page: 1 }))}
 				onResetFilters={() => {
-					setKisiYazilan('');
+					setUserDraft('');
 					setFiltre(BOS);
 				}}
 			/>
@@ -217,11 +217,11 @@ export function AuditHistory({ roller, variant = 'settings' }: { roller: { id: s
 
 			{toplamSayfa > 1 && (
 				<div className={s.pager}>
-					<button type="button" className={ui.btn} disabled={filtre.sayfa <= 1} onClick={() => setFiltre((c) => ({ ...c, sayfa: c.sayfa - 1 }))} title={t('previous')}>
+					<button type="button" className={ui.btn} disabled={filtre.page <= 1} onClick={() => setFiltre((c) => ({ ...c, page: c.page - 1 }))} title={t('previous')}>
 						<ChevronLeft size={14} />
 					</button>
-					<span style={{ fontSize: 12 }}>{fill(t('auditSayfa'), { current: filtre.sayfa, total: toplamSayfa })}</span>
-					<button type="button" className={ui.btn} disabled={filtre.sayfa >= toplamSayfa} onClick={() => setFiltre((c) => ({ ...c, sayfa: c.sayfa + 1 }))} title={t('next')}>
+					<span style={{ fontSize: 12 }}>{fill(t('auditSayfa'), { current: filtre.page, total: toplamSayfa })}</span>
+					<button type="button" className={ui.btn} disabled={filtre.page >= toplamSayfa} onClick={() => setFiltre((c) => ({ ...c, page: c.page + 1 }))} title={t('next')}>
 						<ChevronRight size={14} />
 					</button>
 				</div>

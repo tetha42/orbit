@@ -128,44 +128,44 @@ export function MembersMobileView({ m }: MembersMobileViewProps) {
 							>
 								<div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
 									<div className={s.avatar}>
-										{member.profilFoto ? (
+										{member.avatarUrl || member.profilFoto ? (
 											// eslint-disable-next-line @next/next/no-img-element
-											<img src={member.profilFoto} alt="" className={s.avatarImg} />
+											<img src={member.avatarUrl || member.profilFoto} alt="" className={s.avatarImg} />
 										) : (
-											initials(`${member.ad} ${member.soyad}`)
+											initials(`${member.firstName} ${member.lastName}`)
 										)}
 									</div>
 
 									<div className={s.memberInfo}>
 										<div className={s.memberName}>
-											<span>{member.ad} {member.soyad}</span>
+											<span>{member.firstName} {member.lastName}</span>
 											{isMe && <span className={`${s.badge} ${s.badgeAccent}`} style={{ fontSize: '9.5px', padding: '1px 5px' }}>{t('you')}</span>}
 										</div>
 										<div className={s.memberSub}>
-											{member.bolum || t('membersDefaultDept')} {member.sinif ? `• ${fill(t('membersClassYear'), { year: member.sinif })}` : ''}
+											{member.department || member.bolum || t('membersDefaultDept')} {(member.grade || member.sinif) ? `• ${fill(t('membersClassYear'), { year: member.grade || member.sinif })}` : ''}
 										</div>
 									</div>
 								</div>
 
 								<div className={s.memberRight}>
 									<div className={s.memberActionRow}>
-										{member.rolAd && (
+										{(member.roleName || member.rolAd) && (
 											<span
 												className={s.badge}
 												style={{
-													background: member.rolRenk ? `${member.rolRenk}25` : 'rgba(10, 132, 255, 0.15)',
-													color: member.rolRenk || '#0a84ff',
+													background: (member.roleColor || member.rolRenk) ? `${member.roleColor || member.rolRenk}25` : 'rgba(10, 132, 255, 0.15)',
+													color: (member.roleColor || member.rolRenk) || '#0a84ff',
 													fontSize: '10.5px',
 												}}
 											>
-												{member.rolAd}
+												{member.roleName || member.rolAd}
 											</span>
 										)}
 										{!isMe && m.mailUser && member.status === 'aktif' && (
 											<button
 												type="button"
-												aria-label={fill(t('membersSendMessageTo'), { name: member.ad })}
-												title={fill(t('membersSendMessageTo'), { name: member.ad })}
+												aria-label={fill(t('membersSendMessageTo'), { name: member.firstName })}
+												title={fill(t('membersSendMessageTo'), { name: member.firstName })}
 												className={s.quickMessageBtn}
 												onClick={(e) => {
 													e.stopPropagation();
@@ -209,16 +209,16 @@ export function MembersMobileView({ m }: MembersMobileViewProps) {
 					<div key={member.id} className={s.pendingCard}>
 						<div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
 							<div className={s.avatar}>
-								{member.profilFoto ? (
+								{member.avatarUrl || member.profilFoto ? (
 									// eslint-disable-next-line @next/next/no-img-element
-									<img src={member.profilFoto} alt="" className={s.avatarImg} />
+									<img src={member.avatarUrl || member.profilFoto} alt="" className={s.avatarImg} />
 								) : (
-									initials(`${member.firstName || member.ad} ${member.lastName || member.soyad}`)
+									initials(`${member.firstName} ${member.lastName}`)
 								)}
 							</div>
 							<div style={{ flex: 1, minWidth: 0 }}>
 								<div style={{ fontSize: '14.5px', fontWeight: 700, color: '#f8fafc' }}>
-									{member.firstName || member.ad} {member.lastName || member.soyad}
+									{member.firstName} {member.lastName}
 								</div>
 								<div style={{ fontSize: '12px', opacity: 0.65, marginTop: '2px' }}>
 									{member.email}
@@ -267,7 +267,7 @@ export function MembersMobileView({ m }: MembersMobileViewProps) {
 
 			{/* Roles List */}
 			<div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-				{m.roleData?.roller.map((role) => {
+				{m.roleData?.roles.map((role) => {
 					const count = m.members.filter((mbr) => mbr.roleId === role.id).length;
 					return (
 						<div
@@ -284,7 +284,7 @@ export function MembersMobileView({ m }: MembersMobileViewProps) {
 								<div>
 									<div style={{ fontSize: '13.5px', fontWeight: 700, color: '#f8fafc' }}>{role.ad}</div>
 									<div style={{ fontSize: '11px', opacity: 0.6 }}>
-										{role.assignableRoles ? t('membersRoleStandardDesc') : t('membersRoleSystemDesc')}
+										{role.assignable ? t('membersRoleStandardDesc') : t('membersRoleSystemDesc')}
 									</div>
 								</div>
 							</div>

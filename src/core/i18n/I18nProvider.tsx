@@ -4,6 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import type { AppID } from '@/types/workspace';
 import { ExtendedAppMetadata, getAppMeta as getAppMetaConfig } from '@/configs/apps.config';
 import { Language, TRANSLATIONS } from '@/lib/i18n';
+import { DEFAULT_LOCALE, getLocaleDefinition, isSupportedLocale } from '@/locales/registry';
 
 export interface I18nContextValue {
 	language: Language;
@@ -16,24 +17,28 @@ export interface I18nContextValue {
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
-/** The interface language (English or Turkish), remembered in localStorage, and `t()`. */
+/** The interface language, remembered in localStorage under `orbit_locale`, and `t()`. */
 export function I18nProvider({ children }: { children: React.ReactNode }) {
 	const [language, setLanguageState] = useState<Language>(() => {
 		if (typeof window !== 'undefined') {
 			try {
-				return localStorage.getItem('kulup_language') === 'tr' ? 'tr' : 'en';
+				const stored = localStorage.getItem('orbit_locale');
+				if (isSupportedLocale(stored)) {
+					return stored;
+				}
 			} catch {
-				// Storage blocked (private window): default to English.
+				// Storage blocked (private window): default to DEFAULT_LOCALE.
 			}
 		}
-		return 'en';
+		return DEFAULT_LOCALE;
 	});
 
 	const setLanguage = useCallback((lang: Language) => {
-		setLanguageState(lang);
+		const nextLang = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
+		setLanguageState(nextLang);
 		if (typeof window !== 'undefined') {
 			try {
-				localStorage.setItem('kulup_language', lang);
+				localStorage.setItem('orbit_locale', nextLang);
 			} catch {
 				// Storage blocked: the choice holds until the page closes.
 			}
@@ -51,8 +56,8 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 		(key: string, fallback?: string): string => {
 			const dict = TRANSLATIONS[language];
 			if (dict && dict[key]) return dict[key];
-			const enDict = TRANSLATIONS.en;
-			if (enDict && enDict[key]) return enDict[key];
+			const defaultDict = TRANSLATIONS[DEFAULT_LOCALE];
+			if (defaultDict && defaultDict[key]) return defaultDict[key];
 			return fallback || key;
 		},
 		[language]
@@ -60,7 +65,9 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 
 	useEffect(() => {
 		if (typeof document !== 'undefined') {
-			document.documentElement.setAttribute('lang', language);
+			const def = getLocaleDefinition(language);
+			document.documentElement.setAttribute('lang', def.code);
+			document.documentElement.setAttribute('dir', def.dir);
 		}
 	}, [language]);
 

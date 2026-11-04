@@ -144,7 +144,7 @@ export function CertificateCard({
 
 				<div style={{ fontSize: '12px', opacity: 0.7, display: 'flex', alignItems: 'center', gap: '6px' }}>
 					<Calendar size={13} />
-					<span>{t('certsIssueDateLabel')} {new Date(cert.verilisTarihi).toLocaleDateString(language === 'tr' ? 'tr-TR' : 'en-US')}</span>
+					<span>{t('certsIssueDateLabel')} {new Date(cert.verilisTarihi).toLocaleDateString(language)}</span>
 				</div>
 			</div>
 
