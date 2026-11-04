@@ -69,7 +69,7 @@ export const meta = { title: 'Kısa açıklama' };   // isolated: true → boş 
 export default async function suite(t) {
 	const { fx } = t;                                // fikstür (isolated pakette null; t.bootstrap = .env admini)
 	const admin = await t.api('admin');              // cookie'li API istemcisi; 2FA'lı hesap için TOTP'yi kendisi girer
-	t.cleanup(() => admin.patch('/api/uyeler', { id: fx.users.can.id, rolId: fx.roles.uye })); // hata olsa da çalışır
+	t.cleanup(() => admin.patch('/api/members', { id: fx.users.can.id, rolId: fx.roles.uye })); // hata olsa da çalışır
 
 	await t.step('Üye Rehberi açılıyor', async () => {   // step içindeki hata yalnız o adımı düşürür
 		const { page } = await t.open('can');            // 'admin' | 'zeynep' | 'ege' | 'can' | 'okur'; { mobile: true } → 390×844

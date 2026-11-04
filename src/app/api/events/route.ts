@@ -41,7 +41,7 @@ const bad = (error: string, status = 400) => NextResponse.json({ error }, { stat
 /**
  * Every event the member may see, with counts and their own registration and
  * check-in. Who else signed up is not part of this — organisers read the list
- * from `/api/etkinlikler/[id]/katilim`.
+ * from `/api/events/[id]/katilim`.
  */
 export async function GET(request: Request) {
 	const auth = await requireApp(request, 'events', 'use');
@@ -61,7 +61,7 @@ export async function GET(request: Request) {
 		);
 		return NextResponse.json({ events: events, permissions: { manage }, serverTime: now });
 	} catch (error) {
-		console.error('API /api/etkinlikler GET error:', error);
+		console.error('API /api/events GET error:', error);
 		return bad('Etkinlikler okunamadı.', 500);
 	}
 }
@@ -342,7 +342,7 @@ async function handlePOST(request: Request) {
 
 		return bad('Geçersiz işlem.');
 	} catch (error) {
-		console.error('API /api/etkinlikler POST error:', error);
+		console.error('API /api/events POST error:', error);
 		return bad('İşlem tamamlanamadı.', 500);
 	}
 }

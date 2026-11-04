@@ -18,10 +18,10 @@ const ICONS: Record<Badge['icon'], React.ComponentType<{ size?: number; color?: 
 	star: Star,
 };
 
-/** Badges earned from the member's real record (`/api/profile`), with progress towards the rest. */
+/** Badges earned from the member's real record (`/api/profilee`), with progress towards the rest. */
 export function BadgesGrid() {
 	const { t } = useI18n();
-	const { data } = useJsonResource<{ user: { xp: number }; summary: UserSummary }>('/api/profile');
+	const { data } = useJsonResource<{ user: { xp: number }; summary: UserSummary }>('/api/profilee');
 	if (!data) return null;
 	const list = badges({
 		xp: Number(data.user.xp) || 0,

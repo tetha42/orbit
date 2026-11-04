@@ -187,9 +187,9 @@ export default async function suite(t) {
 		t.track(o.context);
 		await loginUi(o.page, follow.email, follow.password);
 		t.eq(await o.page.locator(MODAL).count(), 0, 'başlangıçta modal yok');
-		const role = (await admin.get('/api/roller')).json.roles.find((r) => r.id === roleFollow);
-		const patch = (required) => admin.patch('/api/roller', { id: roleFollow, name: role.name, color: role.color, description: role.description, permissions: role.permissions, twoStepRequired: required });
-		t.eq((await patch(true)).status, 200, 'PATCH /api/roller {ikiAdimZorunlu: true} 200');
+		const role = (await admin.get('/api/roles')).json.roles.find((r) => r.id === roleFollow);
+		const patch = (required) => admin.patch('/api/roles', { id: roleFollow, name: role.name, color: role.color, description: role.description, permissions: role.permissions, twoStepRequired: required });
+		t.eq((await patch(true)).status, 200, 'PATCH /api/roles {ikiAdimZorunlu: true} 200');
 		const ms = await t.waitFor(async () => (await o.page.locator(MODAL).count()) === 1, { timeout: 25_000 });
 		t.check(ms >= 0 && ms <= 20_000, `modal sayfa yenilenmeden belirdi (${ms} ms)`);
 		t.eq(await dockApps(o.page), ['settings'], 'Dock yalnız Ayarlar\'a indi');

@@ -36,8 +36,8 @@ export default async function suite(t) {
 		await dlg.getByText('Başvuru ile — kaptan onaylar').click();
 		await dlg.getByRole('button', { name: 'Takımı Kur' }).click();
 		await toast(ap, 'Yeni takım kuruldu.');
-		appTeam = (await admin.get('/api/takimlar')).json.find((tm) => tm.name === name);
-		t.cleanup(() => admin.post('/api/takimlar', { action: 'deleteTeam', teamId: appTeam.id }));
+		appTeam = (await admin.get('/api/teams')).json.find((tm) => tm.name === name);
+		t.cleanup(() => admin.post('/api/teams', { action: 'deleteTeam', teamId: appTeam.id }));
 		t.eq(appTeam?.participationType, 'approval', 'katılım: başvuru ile');
 		t.eq(appTeam?.capacity, 3, 'kontenjan 3');
 		t.eq(appTeam?.category, 'Robotik & Gömülü', 'kategori');
@@ -45,8 +45,8 @@ export default async function suite(t) {
 		const cap = appTeam.members.find((u) => u.userId === captain.id);
 		t.eq(cap?.teamRole, 'Takım Kaptanı', 'kaptan "Takım Kaptanı" unvanıyla üye');
 		await card(win, appTeam.id).getByText('Başvuru ile', { exact: true }).waitFor();
-		t.eq((await admin.post('/api/takimlar', { action: 'createTeam', name: 'E2E kötü', category: 'Uydurma', description: 'Geçersiz kategori denemesi' })).status, 400, 'geçersiz kategori 400');
-		t.eq((await admin.post('/api/takimlar', { action: 'createTeam', name: 'E2E kötü', category: 'Yapay Zeka', description: 'Kontenjan sınır dışı', capacity: 99 })).status, 400, 'kontenjan sınır dışı 400');
+		t.eq((await admin.post('/api/teams', { action: 'createTeam', name: 'E2E kötü', category: 'Uydurma', description: 'Geçersiz kategori denemesi' })).status, 400, 'geçersiz kategori 400');
+		t.eq((await admin.post('/api/teams', { action: 'createTeam', name: 'E2E kötü', category: 'Yapay Zeka', description: 'Kontenjan sınır dışı', capacity: 99 })).status, 400, 'kontenjan sınır dışı 400');
 		await t.shot(ap, 'takim-kuruldu');
 	});
 
@@ -63,15 +63,15 @@ export default async function suite(t) {
 			await card(win, appTeam.id).getByText('Başvurun bekliyor').waitFor();
 			t.eq((await statusOf(appTeam.id, deniz.id)) ?? null, null, 'başvuru kadroda değil');
 			t.eq((await readTeam(denizApi, appTeam.id)).myMyStatus, 'applied', 'durum: başvurdu');
-			t.eq((await denizApi.post('/api/takimlar', { action: 'join', teamId: appTeam.id })).status, 409, 'ikinci başvuru 409');
+			t.eq((await denizApi.post('/api/teams', { action: 'join', teamId: appTeam.id })).status, 409, 'ikinci başvuru 409');
 			t.eq((await readTeam(denizApi, appTeam.id)).applications, [], 'üye başvuru listesini görmüyor');
 			await card(win, appTeam.id).getByRole('button', { name: 'Başvuruyu geri çek' }).click();
 			await answerDialog(page);
 			await toast(page, 'Başvurunuz geri çekildi.');
 			t.eq((await readTeam(denizApi, appTeam.id)).myMyStatus, null, 'başvuru geri çekildi');
 		});
-		await denizApi.post('/api/takimlar', { action: 'join', teamId: appTeam.id, applicationNote: 'Yeniden başvuruyorum.' });
-		await eceApi.post('/api/takimlar', { action: 'join', teamId: appTeam.id, applicationNote: 'Ben de katılmak isterim.' });
+		await denizApi.post('/api/teams', { action: 'join', teamId: appTeam.id, applicationNote: 'Yeniden başvuruyorum.' });
+		await eceApi.post('/api/teams', { action: 'join', teamId: appTeam.id, applicationNote: 'Ben de katılmak isterim.' });
 	});
 
 	await t.step('kaptan: başvuruyu kabul eder, diğerini reddeder', async () => {
@@ -88,7 +88,7 @@ export default async function suite(t) {
 		await answerDialog(page);
 		await toast(page, 'Başvuru reddedildi.');
 		t.eq((await readTeam(eceApi, appTeam.id)).myMyStatus, null, 'reddedilen başvuru silindi');
-		t.eq((await eceApi.post('/api/takimlar', { action: 'approve', teamId: appTeam.id, userId: ece.id })).status, 403, 'üye kendi başvurusunu onaylayamaz');
+		t.eq((await eceApi.post('/api/teams', { action: 'approve', teamId: appTeam.id, userId: ece.id })).status, 403, 'üye kendi başvurusunu onaylayamaz');
 		await t.shot(page, 'basvurular');
 	});
 
@@ -102,8 +102,8 @@ export default async function suite(t) {
 		await t.waitFor(async () => (await statusOf(appTeam.id, deniz.id))?.teamRole === 'Donanım Sorumlusu');
 		t.eq((await statusOf(appTeam.id, deniz.id))?.teamRole, 'Donanım Sorumlusu', 'unvan kaydedildi (boşluklar toplandı)');
 		t.check(await win.locator(`[data-member-id="${captain.id}"] input`).isDisabled(), 'kaptanın unvan kutusu kapalı');
-		t.eq((await capApi.post('/api/takimlar', { action: 'setMemberRole', teamId: appTeam.id, userId: captain.id, teamRole: 'Üye' })).status, 409, 'kaptanın unvanı değiştirilemez (409)');
-		t.eq((await denizApi.post('/api/takimlar', { action: 'setMemberRole', teamId: appTeam.id, userId: deniz.id, teamRole: 'Lider' })).status, 403, 'üye kendine unvan veremez');
+		t.eq((await capApi.post('/api/teams', { action: 'setMemberRole', teamId: appTeam.id, userId: captain.id, teamRole: 'Üye' })).status, 409, 'kaptanın unvanı değiştirilemez (409)');
+		t.eq((await denizApi.post('/api/teams', { action: 'setMemberRole', teamId: appTeam.id, userId: deniz.id, teamRole: 'Lider' })).status, 403, 'üye kendine unvan veremez');
 		const { page: dp } = await deniz.open();
 		const dw = await openTeam(dp, appTeam.id);
 		await teamTab(dw, 'Üyeler');
@@ -124,9 +124,9 @@ export default async function suite(t) {
 		const tm = await readTeam(admin, appTeam.id);
 		t.eq(tm.capacity, 2, 'kontenjan 2');
 		t.eq(tm.participationType, 'open', 'katılım açık');
-		t.eq((await capApi.post('/api/takimlar', { action: 'updateTeam', teamId: appTeam.id, capacity: 1 })).status, 400, 'aktif üyelerin altına düşürülemez');
-		t.eq((await capApi.post('/api/takimlar', { action: 'updateTeam', teamId: appTeam.id, name: 'Yeni ad' })).status, 403, 'kaptan adı değiştiremez');
-		t.eq((await capApi.post('/api/takimlar', { action: 'updateTeam', teamId: appTeam.id, leadId: deniz.id })).status, 403, 'kaptan kaptanlığı kendi devredemez');
+		t.eq((await capApi.post('/api/teams', { action: 'updateTeam', teamId: appTeam.id, capacity: 1 })).status, 400, 'aktif üyelerin altına düşürülemez');
+		t.eq((await capApi.post('/api/teams', { action: 'updateTeam', teamId: appTeam.id, name: 'Yeni ad' })).status, 403, 'kaptan adı değiştiremez');
+		t.eq((await capApi.post('/api/teams', { action: 'updateTeam', teamId: appTeam.id, leadId: deniz.id })).status, 403, 'kaptan kaptanlığı kendi devredemez');
 	});
 
 	await t.step('kontenjan dolu: açık takıma katılım kapalı', async () => {
@@ -134,13 +134,13 @@ export default async function suite(t) {
 		const win = await openWide(page, 'teams');
 		const full = card(win, appTeam.id).getByRole('button', { name: 'Kontenjan dolu' });
 		t.check(await full.isDisabled(), '"Kontenjan dolu" düğmesi kapalı');
-		const r = await eceApi.post('/api/takimlar', { action: 'join', teamId: appTeam.id });
+		const r = await eceApi.post('/api/teams', { action: 'join', teamId: appTeam.id });
 		t.eq(r.status, 409, 'API 409');
 		t.includes(r.json?.error ?? '', 'kontenjan', 'hata kontenjanı söylüyor');
 	});
 
 	await t.step('kaptan devri (yönetim): yeni kaptan unvanı alır, eski kaptan takımda kalır', async () => {
-		t.eq((await capApi.post('/api/takimlar', { action: 'leave', teamId: appTeam.id })).status, 409, 'kaptan devretmeden ayrılamaz');
+		t.eq((await capApi.post('/api/teams', { action: 'leave', teamId: appTeam.id })).status, 409, 'kaptan devretmeden ayrılamaz');
 		const win = await openTeam(ap, appTeam.id);
 		await teamTab(win, 'Ayarlar');
 		await win.locator('label:has(> span:text-is("Captain")) select').selectOption(deniz.id);
@@ -168,7 +168,7 @@ export default async function suite(t) {
 		const after = (await readTeam(admin, appTeam.id)).tasks.find((g) => g.id === task.id);
 		t.eq(after?.assigneeMemberId, null, 'açık görevi havuza döndü');
 		// Açık takıma kendisi katılıp kendisi ayrılır.
-		await capApi.post('/api/takimlar', { action: 'join', teamId: appTeam.id });
+		await capApi.post('/api/teams', { action: 'join', teamId: appTeam.id });
 		const { page: cp } = await captain.open();
 		const cw = await openWide(cp, 'teams');
 		await card(cw, appTeam.id).getByRole('button', { name: 'Ayrıl' }).click();
@@ -180,8 +180,8 @@ export default async function suite(t) {
 	await t.step('takım sınırı: bir üye aynı anda en fazla 3 takımda', async () => {
 		const extra = [];
 		for (const i of [1, 2, 3, 4]) extra.push(await makeTeam(t, admin, { label: `Sinir${i}` }));
-		for (const tm of extra.slice(0, 3)) t.eq((await eceApi.post('/api/takimlar', { action: 'join', teamId: tm.id })).status, 200, `${tm.name}: katıldı`);
-		const fourth = await eceApi.post('/api/takimlar', { action: 'join', teamId: extra[3].id });
+		for (const tm of extra.slice(0, 3)) t.eq((await eceApi.post('/api/teams', { action: 'join', teamId: tm.id })).status, 200, `${tm.name}: katıldı`);
+		const fourth = await eceApi.post('/api/teams', { action: 'join', teamId: extra[3].id });
 		t.eq(fourth.status, 409, 'dördüncü takım 409');
 		const { page } = await ece.open();
 		const win = await openWide(page, 'teams');
@@ -191,8 +191,8 @@ export default async function suite(t) {
 
 	await t.step('askıya alınan takım üye almaz; yönetim takımı siler', async () => {
 		const paused = await makeTeam(t, admin, { label: 'Askida' });
-		await admin.post('/api/takimlar', { action: 'updateTeam', teamId: paused.id, status: 'suspended' });
-		t.eq((await denizApi.post('/api/takimlar', { action: 'join', teamId: paused.id })).status, 409, 'askıdaki takıma katılım 409');
+		await admin.post('/api/teams', { action: 'updateTeam', teamId: paused.id, status: 'suspended' });
+		t.eq((await denizApi.post('/api/teams', { action: 'join', teamId: paused.id })).status, 409, 'askıdaki takıma katılım 409');
 		// The list is read once when the app opens: reload to see the paused team.
 		await ap.reload();
 		await ap.locator('[data-window-frame=teams]').waitFor();
@@ -201,19 +201,19 @@ export default async function suite(t) {
 		await card(w, paused.id).getByRole('button', { name: /Takımı sil/ }).click();
 		await answerDialog(ap);
 		await toast(ap, 'Takım silindi.');
-		t.eq((await admin.get(`/api/takimlar?teamId=${paused.id}`)).status, 404, 'takım silindi');
+		t.eq((await admin.get(`/api/teams?teamId=${paused.id}`)).status, 404, 'takım silindi');
 	});
 
 	await t.step('yetkisiz roller: üye takım kuramaz/silemez; "Sadece Haberler" hiç göremez', async () => {
-		t.eq((await eceApi.post('/api/takimlar', { action: 'createTeam', name: 'E2E izinsiz', category: 'Yapay Zeka', description: 'Üyenin takım kurma denemesi' })).status, 403, 'üye takım kuramaz');
-		t.eq((await eceApi.post('/api/takimlar', { action: 'deleteTeam', teamId: appTeam.id })).status, 403, 'üye takım silemez');
-		t.eq((await eceApi.post('/api/takimlar', { action: 'addMember', teamId: appTeam.id, userId: ece.id })).status, 403, 'üye kendini doğrudan ekleyemez');
-		t.eq((await denizApi.post('/api/takimlar', { action: 'addMember', teamId: appTeam.id, userId: ece.id })).status, 403, 'kaptan bile doğrudan üye ekleyemez (yönetim işi)');
+		t.eq((await eceApi.post('/api/teams', { action: 'createTeam', name: 'E2E izinsiz', category: 'Yapay Zeka', description: 'Üyenin takım kurma denemesi' })).status, 403, 'üye takım kuramaz');
+		t.eq((await eceApi.post('/api/teams', { action: 'deleteTeam', teamId: appTeam.id })).status, 403, 'üye takım silemez');
+		t.eq((await eceApi.post('/api/teams', { action: 'addMember', teamId: appTeam.id, userId: ece.id })).status, 403, 'üye kendini doğrudan ekleyemez');
+		t.eq((await denizApi.post('/api/teams', { action: 'addMember', teamId: appTeam.id, userId: ece.id })).status, 403, 'kaptan bile doğrudan üye ekleyemez (yönetim işi)');
 		const { page } = await ece.open();
 		const win = await openWide(page, 'teams');
 		t.eq(await win.getByRole('button', { name: 'Yeni Takım' }).count(), 0, 'üyede "Yeni Takım" yok');
 		t.eq(await win.getByRole('button', { name: /Takımı sil/ }).count(), 0, 'üyede silme düğmesi yok');
 		const reader = await t.api('reader');
-		t.eq((await reader.post('/api/takimlar', { action: 'join', teamId: appTeam.id })).status, 403, '"Sadece Haberler": katılım 403');
+		t.eq((await reader.post('/api/teams', { action: 'join', teamId: appTeam.id })).status, 403, '"Sadece Haberler": katılım 403');
 	});
 }

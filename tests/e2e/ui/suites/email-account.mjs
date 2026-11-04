@@ -14,7 +14,7 @@ export default async function suite(t) {
 		t.eq(Object.keys(res.json).filter((k) => k.startsWith('imap')), [], 'yanıtta imap_* alanı yok');
 		t.check('smtp_host' in res.json && 'hasPassword' in res.json, 'SMTP alanları yerinde');
 		t.eq((await admin.post('/api/settings/imap/test', {})).status, 404, 'IMAP test ucu → 404');
-		for (const path of ['/api/posta/kulup', '/api/posta/kulup/1', '/api/posta/kulup/1/ek/2']) {
+		for (const path of ['/api/messages/kulup', '/api/messages/kulup/1', '/api/messages/kulup/1/ek/2']) {
 			t.eq((await admin.get(path)).status, 404, `${path} → 404`);
 		}
 	});

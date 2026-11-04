@@ -171,17 +171,17 @@ export default async function suite(t) {
 		const key = keyOf(start);
 		const { page } = await t.open('can');
 		const reqs = [];
-		page.on('request', (r) => r.url().includes('/api/etkinlikler') && reqs.push(r.url()));
+		page.on('request', (r) => r.url().includes('/api/events') && reqs.push(r.url()));
 		await open(page);
 		await dayCell(page, key).waitFor();
 		await page.waitForFunction((k) => document.querySelector(`[data-calendar-day="${k}"]`)?.hasAttribute('data-has-event'), key, { timeout: 5000 });
 		t.eq(await dayCell(page, key).getAttribute('data-has-event'), '', 'etkinlik günü işaretli');
-		t.check(reqs.length >= 1, 'yetkili rol açılışta /api/etkinlikler okudu', String(reqs.length));
+		t.check(reqs.length >= 1, 'yetkili rol açılışta /api/events okudu', String(reqs.length));
 		await dayCell(page, key).click();
 		t.check((await page.locator(`[data-calendar-event="${ev.id}"]`).count()) === 1, 'güne tıklayınca etkinlik listede', ev.title);
 		t.check((await page.locator(`[data-calendar-event="${ev.id}"]`).textContent()).includes(ev.title), 'etkinlik başlığı görünüyor');
 		// Beklenen: ızgaradaki, (taslak/iptal olmayan) bir etkinliğin değdiği günler — fikstürdeki etkinlikler de dahil.
-		const all = (await admin.get('/api/etkinlikler')).json.events.filter((e) => e.status !== 'draft' && e.status !== 'cancelled');
+		const all = (await admin.get('/api/events')).json.events.filter((e) => e.status !== 'draft' && e.status !== 'cancelled');
 		const touched = new Set();
 		for (const e of all) for (let d = new Date(new Date(e.start).setHours(0, 0, 0, 0)); d.getTime() <= e.end; d.setDate(d.getDate() + 1)) touched.add(keyOf(d));
 		const shown = await gridKeys(page);
@@ -191,14 +191,14 @@ export default async function suite(t) {
 		await t.shot(page, 'etkinlik-isareti');
 		await page.keyboard.press('Escape');
 
-		// Yetkisiz (yalnız Haberler): sekme açılmadan da, panel açıkken de /api/etkinlikler'e istek yok; liste kutusu da yok.
+		// Yetkisiz (yalnız Haberler): sekme açılmadan da, panel açıkken de /api/events'e istek yok; liste kutusu da yok.
 		const { page: reader } = await t.open('reader');
 		const readerReqs = [];
-		reader.on('request', (r) => r.url().includes('/api/etkinlikler') && readerReqs.push(r.url()));
+		reader.on('request', (r) => r.url().includes('/api/events') && readerReqs.push(r.url()));
 		await open(reader);
 		await reader.locator('[data-calendar-next]').click();
 		await reader.waitForTimeout(800);
-		t.eq(readerReqs, [], 'events yetkisi olmayan rol: /api/etkinlikler\'e hiç istek atılmadı');
+		t.eq(readerReqs, [], 'events yetkisi olmayan rol: /api/events\'e hiç istek atılmadı');
 		t.eq(await reader.locator('[data-calendar-day][data-has-event]').count(), 0, 'işaret yok');
 		t.eq(await reader.locator('[data-calendar-agenda]').count(), 0, 'etkinlik listesi kutusu yok');
 		t.eq(await reader.locator('[data-calendar-day]').count(), 42, 'takvim yine de açılıyor');

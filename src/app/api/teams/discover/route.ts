@@ -33,7 +33,7 @@ export async function GET(request: Request) {
 			{ headers: NO_STORE }
 		);
 	} catch (error) {
-		console.error('API /api/takimlar/kesfet GET error:', error);
+		console.error('API /api/teams/kesfet GET error:', error);
 		return NextResponse.json({ error: 'Takımlar okunamadı.' }, { status: 500, headers: NO_STORE });
 	}
 }
@@ -75,7 +75,7 @@ async function handlePOST(request: Request) {
 		await publishEventQuiet(getPgPool(), [{ k: 'team_updated', teamId }, ...notificationEvents([team?.leadId])]);
 		return NextResponse.json({ success: true, status: result.status, message: result.message });
 	} catch (error) {
-		console.error('API /api/takimlar/kesfet POST error:', error);
+		console.error('API /api/teams/kesfet POST error:', error);
 		return NextResponse.json({ error: 'İşlem tamamlanamadı.' }, { status: 500 });
 	}
 }

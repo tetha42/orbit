@@ -23,11 +23,11 @@ export default async function suite(t) {
 	// The items go: a borrowed one is returned first (the server refuses to delete it).
 	t.cleanup(async () => {
 		for (const id of ids) {
-			await admin.post('/api/envanter', { action: 'return', inventoryId: id });
-			await admin.post('/api/envanter', { action: 'delete', inventoryId: id });
+			await admin.post('/api/inventory', { action: 'return', inventoryId: id });
+			await admin.post('/api/inventory', { action: 'delete', inventoryId: id });
 		}
 	});
-	const items = async (c = admin) => (await c.get('/api/envanter')).json;
+	const items = async (c = admin) => (await c.get('/api/inventory')).json;
 	const item = async (code = CODE) => (await items()).find((i) => i.code === code);
 	const card = (win, code = CODE) => win.locator(`[data-item-kod="${code}"]`);
 	const sheet = (page, name) => page.getByRole('dialog', { name });
@@ -54,9 +54,9 @@ export default async function suite(t) {
 		t.includes((await card(zWin).textContent()).toLocaleLowerCase('tr'), 'müsait', 'kart "Müsait" diyor');
 		await t.shot(zPage, 'eşya-eklendi');
 
-		const dup = await zeynep.post('/api/envanter', { action: 'create', code: CODE, name: NAME, category: 'Sensör', location: 'Başka raf' });
+		const dup = await zeynep.post('/api/inventory', { action: 'create', code: CODE, name: NAME, category: 'Sensör', location: 'Başka raf' });
 		t.eq(dup.status, 409, 'aynı kod ikinci kez eklenemez (409)');
-		const badCode = await zeynep.post('/api/envanter', { action: 'create', code: 'küçük harf!', name: NAME, category: 'Sensör', location: 'Raf' });
+		const badCode = await zeynep.post('/api/inventory', { action: 'create', code: 'küçük harf!', name: NAME, category: 'Sensör', location: 'Raf' });
 		t.eq(badCode.status, 400, 'geçersiz kod reddedilir (400)');
 	});
 
@@ -80,11 +80,11 @@ export default async function suite(t) {
 	});
 
 	await t.step('başkası iade edemez, uzatamaz, ödünç alamaz', async () => {
-		const r = await ege.post('/api/envanter', { action: 'return', inventoryId: id });
+		const r = await ege.post('/api/inventory', { action: 'return', inventoryId: id });
 		t.eq(r.status, 403, 'başka üye iade edemez (403)');
-		const u = await ege.post('/api/envanter', { action: 'extend', inventoryId: id, returnDate: Date.now() + 20 * DAY });
+		const u = await ege.post('/api/inventory', { action: 'extend', inventoryId: id, returnDate: Date.now() + 20 * DAY });
 		t.eq(u.status, 403, 'başka üye süre uzatamaz (403)');
-		const o = await ege.post('/api/envanter', { action: 'borrow', inventoryId: id });
+		const o = await ege.post('/api/inventory', { action: 'borrow', inventoryId: id });
 		t.eq(o.status, 409, 'ödünçteki eşya ödünç alınamaz (409)');
 		t.eq((await item())?.loanFieldId, t.fx.users.can.id, 'eşya hâlâ Can\'da');
 		const { page } = await t.open('ege');
@@ -107,9 +107,9 @@ export default async function suite(t) {
 		await t.waitFor(async () => (await item()).returnDate > before);
 		const after = (await item()).returnDate;
 		t.check(after > before, 'iade tarihi ileri alındı', `${before} → ${after}`);
-		const tooLong = await can.post('/api/envanter', { action: 'extend', inventoryId: id, returnDate: Date.now() + 60 * DAY });
+		const tooLong = await can.post('/api/inventory', { action: 'extend', inventoryId: id, returnDate: Date.now() + 60 * DAY });
 		t.eq(tooLong.status, 400, '60 gün isteyen üye reddedildi (400)');
-		const past = await can.post('/api/envanter', { action: 'extend', inventoryId: id, returnDate: Date.now() - DAY });
+		const past = await can.post('/api/inventory', { action: 'extend', inventoryId: id, returnDate: Date.now() - DAY });
 		t.eq(past.status, 400, 'geçmiş tarih reddedildi (400)');
 	});
 
@@ -129,7 +129,7 @@ export default async function suite(t) {
 		t.includes(label, NAME, 'etiket eşyanın adını basıyor');
 		t.eq(await popup.locator('.label img').count(), 1, 'etikette karekod görseli var');
 		await popup.close();
-		const hist = (await zeynep.get(`/api/envanter?gecmis=${encodeURIComponent(id)}`)).json.movements.map((h) => h.typeValue);
+		const hist = (await zeynep.get(`/api/inventory?gecmis=${encodeURIComponent(id)}`)).json.movements.map((h) => h.typeValue);
 		for (const typeValue of ['add', 'loan', 'extend']) t.includes(hist, typeValue, `geçmişte "${typeValue}" kaydı var`);
 		await detail.getByRole('button', { name: 'Kapat' }).click();
 	});
@@ -147,7 +147,7 @@ export default async function suite(t) {
 		t.eq(it?.status, 'faulty', 'arıza bildirilen eşya "arızalı"');
 		t.eq(it?.loanFieldId, null, 'zimmet kapandı');
 		t.eq(await card(cWin).getByRole('button', { name: 'Ödünç Al' }).count(), 0, 'arızalı eşya ödünç alınamıyor');
-		const o = await can.post('/api/envanter', { action: 'borrow', inventoryId: id });
+		const o = await can.post('/api/inventory', { action: 'borrow', inventoryId: id });
 		t.eq(o.status, 409, 'arızalı eşya API ile de ödünç alınamaz (409)');
 		await t.shot(canPage, 'faulty');
 	});
@@ -176,7 +176,7 @@ export default async function suite(t) {
 
 		await detail.waitFor();
 		t.eq(await detail.getByRole('button', { name: 'Sil' }).isDisabled(), true, 'ödünçteki eşyanın "Sil" düğmesi kapalı');
-		t.eq((await zeynep.post('/api/envanter', { action: 'delete', inventoryId: id })).status, 409, 'ödünçteki eşya API ile de silinemez (409)');
+		t.eq((await zeynep.post('/api/inventory', { action: 'delete', inventoryId: id })).status, 409, 'ödünçteki eşya API ile de silinemez (409)');
 		await detail.getByRole('button', { name: 'Kayıp işaretle' }).click();
 		const lost = await dialogReply(zPage, true);
 		t.includes(lost, 'Ödünç kaydı kapanır', 'kayıp onayı zimmetin kapanacağını söylüyor');
@@ -189,10 +189,10 @@ export default async function suite(t) {
 		await dialogReply(zPage, true);
 		await t.waitFor(async () => (await item())?.status === 'available');
 		t.eq((await item())?.status, 'available', 'bulunan eşya müsait');
-		const hist = (await zeynep.get(`/api/envanter?gecmis=${encodeURIComponent(id)}`)).json.movements.map((h) => h.typeValue);
+		const hist = (await zeynep.get(`/api/inventory?gecmis=${encodeURIComponent(id)}`)).json.movements.map((h) => h.typeValue);
 		for (const typeValue of ['return', 'durum']) t.includes(hist, typeValue, `geçmişte "${typeValue}" kaydı var`);
 
-		const second = await zeynep.post('/api/envanter', { action: 'create', code: CODE_2, name: `${NAME} B`, category: 'Sensör', location: 'E2E Test Rafı' });
+		const second = await zeynep.post('/api/inventory', { action: 'create', code: CODE_2, name: `${NAME} B`, category: 'Sensör', location: 'E2E Test Rafı' });
 		if (second.json?.item?.id) ids.push(second.json.item.id);
 		await zPage.reload();
 		const win2 = await openApp(zPage, 'inventory');
@@ -221,22 +221,22 @@ export default async function suite(t) {
 		t.eq(await detail.locator('[aria-label="Yönetim"]').count(), 0, 'Üye: "Yönetim" bölümü yok');
 		t.eq(await detail.getByRole('button', { name: 'Üye adına ödünç ver' }).count(), 0, 'Üye: "Üye adına ödünç ver" yok');
 		const f = { code: 'E2E-UYE', name: 'Üye ekleyemez', category: 'Sensör', location: 'Raf' };
-		t.eq((await can.post('/api/envanter', { action: 'create', ...f })).status, 403, 'Üye eşya ekleyemez (403)');
-		t.eq((await can.post('/api/envanter', { action: 'update', inventoryId: id, ...f })).status, 403, 'Üye eşya düzenleyemez (403)');
-		t.eq((await can.post('/api/envanter', { action: 'updateStatus', inventoryId: id, status: 'lost' })).status, 403, 'Üye durum değiştiremez (403)');
-		t.eq((await can.post('/api/envanter', { action: 'delete', inventoryId: id })).status, 403, 'Üye eşya silemez (403)');
+		t.eq((await can.post('/api/inventory', { action: 'create', ...f })).status, 403, 'Üye eşya ekleyemez (403)');
+		t.eq((await can.post('/api/inventory', { action: 'update', inventoryId: id, ...f })).status, 403, 'Üye eşya düzenleyemez (403)');
+		t.eq((await can.post('/api/inventory', { action: 'updateStatus', inventoryId: id, status: 'lost' })).status, 403, 'Üye durum değiştiremez (403)');
+		t.eq((await can.post('/api/inventory', { action: 'delete', inventoryId: id })).status, 403, 'Üye eşya silemez (403)');
 		// "Üye adına" alanı yönetim dışında yok sayılır: ödünç kendi adına yazılır.
-		const o = await can.post('/api/envanter', { action: 'borrow', inventoryId: id, userId: t.fx.users.ege.id });
+		const o = await can.post('/api/inventory', { action: 'borrow', inventoryId: id, userId: t.fx.users.ege.id });
 		t.eq(o.status, 200, 'Üye ödünç alabiliyor');
 		t.eq((await item())?.loanFieldId, t.fx.users.can.id, 'başkası adına verilmek istenen ödünç kendi adına yazıldı');
-		await can.post('/api/envanter', { action: 'return', inventoryId: id });
+		await can.post('/api/inventory', { action: 'return', inventoryId: id });
 	});
 
 	await t.step('Sadece Haberler: Envanter hiç görünmez, API kapalı', async () => {
 		const { page } = await t.open('reader');
 		t.eq(await dockApps(page), ['news', 'settings'], 'Dock\'ta Envanter yok');
-		t.eq((await reader.get('/api/envanter')).status, 403, 'liste 403');
-		t.eq((await reader.post('/api/envanter', { action: 'borrow', inventoryId: id })).status, 403, 'ödünç alma 403');
-		t.eq((await client(t.base).get('/api/envanter')).status, 401, 'oturumsuz istek 401');
+		t.eq((await reader.get('/api/inventory')).status, 403, 'liste 403');
+		t.eq((await reader.post('/api/inventory', { action: 'borrow', inventoryId: id })).status, 403, 'ödünç alma 403');
+		t.eq((await client(t.base).get('/api/inventory')).status, 401, 'oturumsuz istek 401');
 	});
 }

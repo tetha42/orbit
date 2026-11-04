@@ -46,7 +46,7 @@ export async function GET(request: Request, { params }: Params) {
 			permissions: { manage: access.manage, work: access.work, comment: access.view },
 		});
 	} catch (error) {
-		console.error('API /api/takimlar/gorevler GET error:', error);
+		console.error('API /api/teams/gorevler GET error:', error);
 		return NextResponse.json({ error: 'Görev okunamadı.' }, { status: 500 });
 	}
 }
@@ -125,7 +125,7 @@ async function handlePATCH(request: Request, { params }: Params) {
 		await publishEventQuiet(getPgPool(), { k: 'team_updated', teamId: access.task.teamId });
 		return NextResponse.json({ success: true, task });
 	} catch (error) {
-		console.error('API /api/takimlar/gorevler PATCH error:', error);
+		console.error('API /api/teams/gorevler PATCH error:', error);
 		return NextResponse.json({ error: 'Görev güncellenemedi.' }, { status: 500 });
 	}
 }
@@ -210,7 +210,7 @@ async function handlePOST(request: Request, { params }: Params) {
 
 		return badRequest('Geçersiz işlem.');
 	} catch (error) {
-		console.error('API /api/takimlar/gorevler POST error:', error);
+		console.error('API /api/teams/gorevler POST error:', error);
 		return NextResponse.json({ error: 'İşlem tamamlanamadı.' }, { status: 500 });
 	}
 }

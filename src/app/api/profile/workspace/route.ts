@@ -20,7 +20,7 @@ export async function GET(request: Request) {
 			updatedAt: record?.updatedAt ?? 0,
 		});
 	} catch (error) {
-		console.error('GET /api/profile/workspace error:', error);
+		console.error('GET /api/profilee/workspace error:', error);
 		return jsonError('Failed to fetch workspace preferences.', 500);
 	}
 }
@@ -52,7 +52,7 @@ async function handlePUT(request: Request) {
 			updatedAt: updated.updatedAt,
 		});
 	} catch (error) {
-		console.error('PUT /api/profile/workspace error:', error);
+		console.error('PUT /api/profilee/workspace error:', error);
 		return jsonError('Failed to update workspace preferences.', 500);
 	}
 }

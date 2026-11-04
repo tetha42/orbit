@@ -113,7 +113,7 @@ export async function GET(request: Request) {
 			},
 		});
 	} catch (error) {
-		console.error('API /api/butce GET error:', error);
+		console.error('API /api/budget GET error:', error);
 		return NextResponse.json({ error: 'İşlem tamamlanamadı.' }, { status: 500 });
 	}
 }
@@ -201,7 +201,7 @@ export const POST = withAudit(async function POST(request: Request) {
 			throw error;
 		}
 	} catch (error) {
-		console.error('API /api/butce POST error:', error);
+		console.error('API /api/budget POST error:', error);
 		return NextResponse.json({ error: 'İşlem tamamlanamadı.' }, { status: 500 });
 	}
 }, { action: 'budget.create', target: 'budget' });
@@ -249,7 +249,7 @@ export const PATCH = withAudit(async function PATCH(request: Request) {
 		await publishEventQuiet(getPgPool(), { k: 'budget_updated' });
 		return jsonSuccess({ success: true });
 	} catch (error) {
-		console.error('API /api/butce PATCH error:', error);
+		console.error('API /api/budget PATCH error:', error);
 		return bad('İşlem tamamlanamadı.', 500);
 	}
 }, { action: 'budget.update', target: 'budget' });
@@ -297,7 +297,7 @@ export const DELETE = withAudit(async function DELETE(request: Request) {
 
 		return jsonSuccess({ success: true, message: 'Bütçe kaydı silindi.' });
 	} catch (error) {
-		console.error('API /api/butce DELETE error:', error);
+		console.error('API /api/budget DELETE error:', error);
 		return NextResponse.json({ error: 'İşlem tamamlanamadı.' }, { status: 500 });
 	}
 }, {

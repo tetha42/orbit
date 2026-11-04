@@ -25,11 +25,11 @@ export default async function suite(t) {
 	const made = [];
 	t.cleanup(async () => {
 		for (const id of made) {
-			await admin.post('/api/kararlar', { action: 'unlock', id });
-			await admin.del(`/api/kararlar?id=${encodeURIComponent(id)}`);
+			await admin.post('/api/decisions', { action: 'unlock', id });
+			await admin.del(`/api/decisions?id=${encodeURIComponent(id)}`);
 		}
 	});
-	const list = async (c = admin) => (await c.get('/api/kararlar')).json;
+	const list = async (c = admin) => (await c.get('/api/decisions')).json;
 	const byTitle = async (title, c = admin) => (await list(c)).find((d) => d.title === title);
 	const row = (win, title) => win.locator('[data-focus-id^="decision:"]', { hasText: title });
 
@@ -73,16 +73,16 @@ export default async function suite(t) {
 	});
 
 	await t.step('belge numaraları art arda gidiyor (API)', async () => {
-		const res = await zeynep.post('/api/kararlar', { title: TITLE_2, content: CONTENT, documentType: 'event_permission', isPublicOpen: false });
+		const res = await zeynep.post('/api/decisions', { title: TITLE_2, content: CONTENT, documentType: 'event_permission', isPublicOpen: false });
 		t.eq(res.status, 201, 'Yönetim Kurulu API ile belge yazabiliyor');
 		secret = res.json;
 		if (secret?.id) made.push(secret.id);
 		t.eq(secret?.decisionNo, (doc?.decisionNo ?? -1) + 1, 'ikinci belge bir sonraki numarayı aldı');
-		const bad = await zeynep.post('/api/kararlar', { title: 'ab', content: CONTENT });
+		const bad = await zeynep.post('/api/decisions', { title: 'ab', content: CONTENT });
 		t.eq(bad.status, 400, 'çok kısa başlık reddedildi');
-		const bad2 = await zeynep.post('/api/kararlar', { title: TITLE, content: 'kısa' });
+		const bad2 = await zeynep.post('/api/decisions', { title: TITLE, content: 'kısa' });
 		t.eq(bad2.status, 400, 'çok kısa içerik reddedildi');
-		const bad3 = await zeynep.post('/api/kararlar', { title: TITLE, content: CONTENT, documentType: 'yok_boyle_tur' });
+		const bad3 = await zeynep.post('/api/decisions', { title: TITLE, content: CONTENT, documentType: 'yok_boyle_tur' });
 		t.eq(bad3.status, 400, 'bilinmeyen belge türü reddedildi');
 	});
 
@@ -144,11 +144,11 @@ export default async function suite(t) {
 		t.eq(await zWin.getByRole('button', { name: 'Resmi SKS Dilekçesi Al' }).count(), 1, 'kilitli belge için resmi dilekçe alınabiliyor');
 		await t.shot(zeynepPage, 'belge-kilitli');
 
-		const patch = await zeynep.patch('/api/kararlar', { id: doc.id, title: 'Kilitliyken değişmemeli' });
+		const patch = await zeynep.patch('/api/decisions', { id: doc.id, title: 'Kilitliyken değişmemeli' });
 		t.eq(patch.status, 409, 'kilitli belge API ile de düzenlenemiyor (409)');
-		const del = await zeynep.del(`/api/kararlar?id=${encodeURIComponent(doc.id)}`);
+		const del = await zeynep.del(`/api/decisions?id=${encodeURIComponent(doc.id)}`);
 		t.eq(del.status, 409, 'kilitli belge API ile de silinemiyor (409)');
-		const unlock = await zeynep.post('/api/kararlar', { action: 'unlock', id: doc.id });
+		const unlock = await zeynep.post('/api/decisions', { action: 'unlock', id: doc.id });
 		t.eq(unlock.status, 403, 'Yönetim Kurulu API ile kilit açamıyor (403)');
 		t.eq(Number((await byTitle(doc.title))?.isLocked), 1, 'reddedilen istekler sonrası belge hâlâ kilitli');
 	});
@@ -192,13 +192,13 @@ export default async function suite(t) {
 		await win.getByRole('button', { name: 'Düzenle' }).waitFor();
 		t.eq(Number((await byTitle(doc.title))?.isLocked), 0, 'Admin kilidi açtı');
 		t.eq(await win.getByRole('button', { name: 'Kilidi Aç' }).count(), 0, 'kilit açılınca "Kilidi Aç" kayboldu');
-		const ok = await zeynep.patch('/api/kararlar', { id: doc.id, agenda: 'Kilit açıldıktan sonra düzenlendi' });
+		const ok = await zeynep.patch('/api/decisions', { id: doc.id, agenda: 'Kilit açıldıktan sonra düzenlendi' });
 		t.eq(ok.status, 200, 'kilit açılınca düzenleme yeniden mümkün');
 		await t.shot(page, 'admin-kilit-acti');
 	});
 
 	await t.step('silme: kilitsiz belge arayüzden silinir', async () => {
-		const victim = await admin.post('/api/kararlar', { title: `E2E Silinecek ${tag}`, content: CONTENT });
+		const victim = await admin.post('/api/decisions', { title: `E2E Silinecek ${tag}`, content: CONTENT });
 		t.eq(victim.status, 201, 'silinecek belge yazıldı');
 		if (victim.json?.id) made.push(victim.json.id);
 		// The list on screen was loaded before this document existed: reopen the desktop to refetch.
@@ -229,21 +229,21 @@ export default async function suite(t) {
 		}
 		await t.shot(page, 'uye-salt-okur');
 
-		t.eq((await can.post('/api/kararlar', { title: 'Üye yazamaz', content: CONTENT })).status, 403, 'Üye belge yazamaz (403)');
-		t.eq((await can.patch('/api/kararlar', { id: doc?.id, title: 'Üye düzeltemez' })).status, 403, 'Üye belge düzenleyemez (403)');
-		t.eq((await can.del(`/api/kararlar?id=${encodeURIComponent(doc?.id ?? 'x')}`)).status, 403, 'Üye belge silemez (403)');
-		t.eq((await can.post('/api/kararlar', { action: 'lock', id: doc?.id })).status, 403, 'Üye belge kilitleyemez (403)');
-		t.eq((await can.post('/api/kararlar', { action: 'unlock', id: doc?.id })).status, 403, 'Üye kilit açamaz (403)');
+		t.eq((await can.post('/api/decisions', { title: 'Üye yazamaz', content: CONTENT })).status, 403, 'Üye belge yazamaz (403)');
+		t.eq((await can.patch('/api/decisions', { id: doc?.id, title: 'Üye düzeltemez' })).status, 403, 'Üye belge düzenleyemez (403)');
+		t.eq((await can.del(`/api/decisions?id=${encodeURIComponent(doc?.id ?? 'x')}`)).status, 403, 'Üye belge silemez (403)');
+		t.eq((await can.post('/api/decisions', { action: 'lock', id: doc?.id })).status, 403, 'Üye belge kilitleyemez (403)');
+		t.eq((await can.post('/api/decisions', { action: 'unlock', id: doc?.id })).status, 403, 'Üye kilit açamaz (403)');
 		t.eq((await byTitle(doc?.title ?? TITLE))?.title, doc?.title, 'reddedilen isteklerden sonra belge değişmedi');
 	});
 
 	await t.step('Sadece Haberler: Kararlar uygulaması hiç yok, API kapalı', async () => {
 		const { page } = await t.open('reader');
 		t.eq(await dockApps(page), ['news', 'settings'], 'Dock\'ta Kararlar yok');
-		t.eq((await reader.get('/api/kararlar')).status, 403, 'okuma 403');
-		t.eq((await reader.post('/api/kararlar', { title: TITLE, content: CONTENT })).status, 403, 'yazma 403');
+		t.eq((await reader.get('/api/decisions')).status, 403, 'okuma 403');
+		t.eq((await reader.post('/api/decisions', { title: TITLE, content: CONTENT })).status, 403, 'yazma 403');
 		const anon = client(t.base);
-		t.eq((await anon.get('/api/kararlar')).status, 401, 'oturumsuz istek 401');
+		t.eq((await anon.get('/api/decisions')).status, 401, 'oturumsuz istek 401');
 	});
 
 	await t.step('Yönetim Kurulu gizli belgeyi görüyor', async () => {

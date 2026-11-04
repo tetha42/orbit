@@ -66,7 +66,7 @@ export async function POST(request: Request) {
 		});
 		return attachSessionCookie(response, newSessionToken);
 	} catch (error) {
-		console.error('API /api/profil/password error:', error);
+		console.error('API /api/profile/password error:', error);
 		return NextResponse.json({ error: 'Şifre değiştirilemedi.' }, { status: 500 });
 	}
 }

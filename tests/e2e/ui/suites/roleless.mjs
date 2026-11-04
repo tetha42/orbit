@@ -1,4 +1,4 @@
-// Rolsüz üye: PATCH /api/uyeler {rolId: null} → "rol atanmadı" uyarısı, Dock'ta yalnız Ayarlar.
+// Rolsüz üye: PATCH /api/members {rolId: null} → "rol atanmadı" uyarısı, Dock'ta yalnız Ayarlar.
 import { dockApps, openWindows } from '../lib/browser.mjs';
 
 export const meta = { title: 'Rolsüz kullanıcı: uyarı ve yalnız Ayarlar' };
@@ -7,11 +7,11 @@ export default async function suite(t) {
 	const { fx } = t;
 	const admin = await t.api('admin');
 	const readerId = fx.users.reader.id;
-	t.cleanup(() => admin.patch('/api/uyeler', { id: readerId, roleId: fx.roles.news }));
+	t.cleanup(() => admin.patch('/api/members', { id: readerId, roleId: fx.roles.news }));
 
 	await t.step('yeni giriş: rol kaldırılmış kullanıcıda uyarı görünüyor', async () => {
-		const res = await admin.patch('/api/uyeler', { id: readerId, roleId: null });
-		t.eq(res.status, 200, 'PATCH /api/uyeler {rolId: null} 200');
+		const res = await admin.patch('/api/members', { id: readerId, roleId: null });
+		t.eq(res.status, 200, 'PATCH /api/members {rolId: null} 200');
 		const { page } = await t.open('reader');
 		await page.locator('[data-no-role-notice]').waitFor();
 		t.eq(await page.locator('[data-no-role-notice]').count(), 1, '[data-no-role-notice] görünüyor');
@@ -31,11 +31,11 @@ export default async function suite(t) {
 	});
 
 	await t.step('canlı: açık oturumda rol kaldırılınca uyarı ≤15 sn içinde çıkıyor', async () => {
-		await admin.patch('/api/uyeler', { id: readerId, roleId: fx.roles.news });
+		await admin.patch('/api/members', { id: readerId, roleId: fx.roles.news });
 		const { page } = await t.open('reader');
 		await page.locator('[data-dock-app=news]').waitFor();
 		t.eq(await page.locator('[data-no-role-notice]').count(), 0, 'rolü varken uyarı yok');
-		await admin.patch('/api/uyeler', { id: readerId, roleId: null });
+		await admin.patch('/api/members', { id: readerId, roleId: null });
 		const ms = await t.waitFor(async () => (await page.locator('[data-no-role-notice]').count()) === 1, { timeout: 25_000 });
 		t.check(ms >= 0 && ms <= 20_000, `rol kaldırılınca uyarı sayfa yenilenmeden çıktı (${ms} ms)`);
 		t.eq(await dockApps(page), ['settings'], 'Dock yalnız Ayarlar');

@@ -20,13 +20,13 @@ export default async function suite(t) {
 	const ticket = await newMember(t, admin, { label: 'ticket', roleId: fx.roles.member });
 	const walkIn = await newMember(t, admin, { label: 'elle', roleId: fx.roles.member });
 	const [qrApi, linkApi, ticketApi] = await Promise.all([qr.api(), link.api(), ticket.api()]);
-	const studentNo = (await admin.get('/api/uyeler')).json.members.find((m) => m.id === walkIn.id)?.studentNo;
+	const studentNo = (await admin.get('/api/members')).json.members.find((m) => m.id === walkIn.id)?.studentNo;
 
 	// Şu an sürmekte olan etkinlik (on dakika önce başladı) ve üç gün sonraki bir etkinlik.
 	const live = await makeEvent(t, admin, { label: 'Canli', startMin: -10, lengthMin: 90 });
 	const later = await makeEvent(t, admin, { label: 'Sonra', startMin: 3 * 24 * 60 });
-	await ticketApi.post('/api/etkinlikler', { action: 'register', eventId: live.id });
-	const codeOf = (id) => admin.get(`/api/etkinlikler/${encodeURIComponent(id)}/yoklama-kodu`);
+	await ticketApi.post('/api/events', { action: 'register', eventId: live.id });
+	const codeOf = (id) => admin.get(`/api/events/${encodeURIComponent(id)}/yoklama-kodu`);
 
 	const { page: ap } = await t.open('admin');
 	const astep = stepper(t, ap);
@@ -35,11 +35,11 @@ export default async function suite(t) {
 		const closed = await codeOf(live.id);
 		t.eq(closed.status, 409, 'kapalı yoklama: 409');
 		t.eq(closed.json?.code, 'YOKLAMA_KAPALI', 'kod: YOKLAMA_KAPALI');
-		await admin.post('/api/etkinlikler', { action: 'setAttendance', eventId: later.id, open: true });
+		await admin.post('/api/events', { action: 'setAttendance', eventId: later.id, open: true });
 		const early = await codeOf(later.id);
 		t.eq(early.status, 409, 'zamanı gelmemiş etkinlik: 409');
 		t.eq(early.json?.code, 'ZAMAN_DISI', 'kod: ZAMAN_DISI');
-		await admin.post('/api/etkinlikler', { action: 'setAttendance', eventId: later.id, open: false });
+		await admin.post('/api/events', { action: 'setAttendance', eventId: later.id, open: false });
 	});
 
 	await astep('organizatör yoklamayı açar; projeksiyon karekodu sunucudan gelir', async () => {
@@ -74,7 +74,7 @@ export default async function suite(t) {
 		t.eq(await xpOf(qrApi), before + 150, '150 XP kazanıldı');
 		await t.waitFor(async () => (await detail.getByText('Katıldın').count()) > 0);
 		t.check(await detail.getByText('Katıldın').count() > 0, '"Katıldın" rozeti');
-		const again = await qrApi.post('/api/etkinlikler', { action: 'attend', code: (await codeOf(live.id)).json.text });
+		const again = await qrApi.post('/api/events', { action: 'attend', code: (await codeOf(live.id)).json.text });
 		t.eq(again.json?.already, true, 'ikinci yoklama "zaten" diyor');
 		t.eq(await xpOf(qrApi), before + 150, 'XP ikinci kez verilmedi');
 		await t.shot(page, 'qr-yoklama');
@@ -96,11 +96,11 @@ export default async function suite(t) {
 	await t.step('sahte veya başka etkinliğin kodu kabul edilmez', async () => {
 		const real = (await codeOf(live.id)).json.text;
 		const forged = real.replace(/\.[^.]+$/, '.AAAAAAAAAAAAAAAAAAAAAAAA');
-		t.eq((await qrApi.post('/api/etkinlikler', { action: 'attend', code: forged })).status, 403, 'imzası bozuk kod 403');
+		t.eq((await qrApi.post('/api/events', { action: 'attend', code: forged })).status, 403, 'imzası bozuk kod 403');
 		const [, evId, window, signature] = real.split('.');
-		t.eq((await qrApi.post('/api/etkinlikler', { action: 'attend', code: `BY1.${evId}.${Number(window) + 5}.${signature}` })).status, 403, 'pencere numarası değiştirilmiş kod 403');
-		t.eq((await qrApi.post('/api/etkinlikler', { action: 'attend', code: 'rastgele' })).status, 400, 'biçimsiz kod 400');
-		t.eq((await qrApi.get(`/api/etkinlikler/${live.id}/yoklama-kodu`)).status, 403, 'üye projeksiyon kodu alamaz');
+		t.eq((await qrApi.post('/api/events', { action: 'attend', code: `BY1.${evId}.${Number(window) + 5}.${signature}` })).status, 403, 'pencere numarası değiştirilmiş kod 403');
+		t.eq((await qrApi.post('/api/events', { action: 'attend', code: 'rastgele' })).status, 400, 'biçimsiz kod 400');
+		t.eq((await qrApi.get(`/api/events/${live.id}/yoklama-kodu`)).status, 403, 'üye projeksiyon kodu alamaz');
 	});
 
 	await astep('kapıda bilet okutma ve öğrenci numarasıyla elle ekleme', async () => {
@@ -124,8 +124,8 @@ export default async function suite(t) {
 		await detail.locator(`tr[data-member-id="${walkIn.id}"]`).getByText('Kayıtsız').waitFor();
 		t.eq(await detail.locator(`tr[data-member-id="${walkIn.id}"]`).getByText('Kayıtsız').count(), 1, 'listede "Kayıtsız" rozeti');
 		t.check((await t.waitFor(async () => (await detail.getByText('4/4').count()) >= 1)) >= 0, 'sayaç 4/4 (yoklama/kayıt+gelen)');
-		t.eq((await admin.post('/api/etkinlikler', { action: 'scanTicket', eventId: later.id, code: ticket })).status, 409, 'başka etkinliğin bileti 409');
-		t.eq((await admin.post('/api/etkinlikler', { action: 'scanTicket', eventId: live.id, code: ticket.slice(0, -3) + 'xyz' })).status, 403, 'bozuk bilet 403');
+		t.eq((await admin.post('/api/events', { action: 'scanTicket', eventId: later.id, code: ticket })).status, 409, 'başka etkinliğin bileti 409');
+		t.eq((await admin.post('/api/events', { action: 'scanTicket', eventId: live.id, code: ticket.slice(0, -3) + 'xyz' })).status, 403, 'bozuk bilet 403');
 		await t.shot(ap, 'katilim-listesi');
 	});
 
@@ -157,17 +157,17 @@ export default async function suite(t) {
 		const { detail } = await openEvent(ap, live.id);
 		await detail.getByText('Yoklama açık').click();
 		await detail.getByText('Yoklama kapalı').waitFor();
-		const r = await qrApi.post('/api/etkinlikler', { action: 'attend', code: code });
+		const r = await qrApi.post('/api/events', { action: 'attend', code: code });
 		t.eq(r.status, 409, 'kapalı yoklamada kod 409');
 		t.eq((await codeOf(live.id)).status, 409, 'yeni kod verilmiyor');
 	});
 
 	await t.step('yetkisiz rol: "Sadece Haberler" yoklama veremez, kod alamaz', async () => {
 		const reader = await t.api('reader');
-		await admin.post('/api/etkinlikler', { action: 'setAttendance', eventId: live.id, open: true });
+		await admin.post('/api/events', { action: 'setAttendance', eventId: live.id, open: true });
 		const code = (await codeOf(live.id)).json.text;
-		t.eq((await reader.post('/api/etkinlikler', { action: 'attend', code: code })).status, 403, 'yoklama 403');
-		t.eq((await reader.get(`/api/etkinlikler/${live.id}/yoklama-kodu`)).status, 403, 'kod 403');
-		t.eq((await reader.get(`/api/etkinlikler/${live.id}/katilim`)).status, 403, 'katılım listesi 403');
+		t.eq((await reader.post('/api/events', { action: 'attend', code: code })).status, 403, 'yoklama 403');
+		t.eq((await reader.get(`/api/events/${live.id}/yoklama-kodu`)).status, 403, 'kod 403');
+		t.eq((await reader.get(`/api/events/${live.id}/katilim`)).status, 403, 'katılım listesi 403');
 	});
 }

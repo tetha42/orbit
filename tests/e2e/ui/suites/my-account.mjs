@@ -10,11 +10,11 @@ export const meta = { title: 'Hesabım: profil, şifre değiştirme, fotoğraf (
 export default async function suite(t) {
 	// "Sadece Haberler" rolünde: yetkisi en az olan üye de kendi hesabını yönetebilir.
 	const me = await temporaryMember(t, { roleId: t.fx.roles.news, name: 'Hesap' });
-	const profile = async () => (await me.api.get('/api/profil')).json;
+	const profile = async () => (await me.api.get('/api/profile')).json;
 	const upload = async (file) => {
 		const form = new FormData();
 		form.append('file', new Blob([file.buffer], { type: file.mimeType }), file.name);
-		const res = await fetch(`${t.base}/api/profil/foto`, { method: 'POST', headers: { cookie: `${SESSION_COOKIE}=${me.api.token}` }, body: form });
+		const res = await fetch(`${t.base}/api/profile/foto`, { method: 'POST', headers: { cookie: `${SESSION_COOKIE}=${me.api.token}` }, body: form });
 		return { status: res.status, json: await res.json().catch(() => null) };
 	};
 
@@ -55,13 +55,13 @@ export default async function suite(t) {
 
 	await t.step('profil API: kimlik alanları ve geçersiz değerler reddedilir', async () => {
 		const before = (await profile()).user;
-		const r = await me.api.patch('/api/profil', { name: 'Başkası', email: 'baska@club.test', roleId: t.fx.roles.management, grade: 3 });
+		const r = await me.api.patch('/api/profile', { name: 'Başkası', email: 'baska@club.test', roleId: t.fx.roles.management, grade: 3 });
 		t.eq(r.status, 200, 'bilinen alan kaydedildi');
 		const after = (await profile()).user;
 		t.eq([after.name, after.email, after.roleInfo?.name], [before.name, before.email, before.roleInfo?.name], 'ad, e-posta ve rol bu uçtan değişmiyor');
-		t.eq((await me.api.patch('/api/profil', { grade: 99 })).status, 400, 'sınıf 99 reddedildi');
-		t.eq((await me.api.patch('/api/profil', { department: 'Olmayan Bölüm' })).status, 400, 'listede olmayan bölüm reddedildi');
-		t.eq((await me.api.patch('/api/profil', { bio: 'x'.repeat(5000) })).status, 400, 'çok uzun hakkımda reddedildi');
+		t.eq((await me.api.patch('/api/profile', { grade: 99 })).status, 400, 'sınıf 99 reddedildi');
+		t.eq((await me.api.patch('/api/profile', { department: 'Olmayan Bölüm' })).status, 400, 'listede olmayan bölüm reddedildi');
+		t.eq((await me.api.patch('/api/profile', { bio: 'x'.repeat(5000) })).status, 400, 'çok uzun hakkımda reddedildi');
 	});
 
 	await t.step('fotoğraf: yükleme, görünme, kaldırma', async () => {
@@ -125,11 +125,11 @@ export default async function suite(t) {
 
 	await t.step('şifre API: kural ihlalleri ve oturumsuz erişim', async () => {
 		const c = client(t.base);
-		t.eq((await c.get('/api/profil')).status, 401, 'oturumsuz profil okuma 401');
-		t.eq((await c.patch('/api/profil', { bio: 'x' })).status, 401, 'oturumsuz profil yazma 401');
-		t.eq((await c.post('/api/profil/sifre', { current: 'a', fresh: 'b' })).status, 401, 'oturumsuz şifre değiştirme 401');
-		t.eq((await c.del('/api/profil/foto')).status, 401, 'oturumsuz fotoğraf silme 401');
-		const weak = await me.api.post('/api/profil/sifre', { current: '', fresh: 'abc12345' });
+		t.eq((await c.get('/api/profile')).status, 401, 'oturumsuz profil okuma 401');
+		t.eq((await c.patch('/api/profile', { bio: 'x' })).status, 401, 'oturumsuz profil yazma 401');
+		t.eq((await c.post('/api/profile/sifre', { current: 'a', fresh: 'b' })).status, 401, 'oturumsuz şifre değiştirme 401');
+		t.eq((await c.del('/api/profile/foto')).status, 401, 'oturumsuz fotoğraf silme 401');
+		const weak = await me.api.post('/api/profile/sifre', { current: '', fresh: 'abc12345' });
 		t.eq(weak.status, 400, 'mevcut şifre olmadan değişiklik yok (400)');
 	});
 }

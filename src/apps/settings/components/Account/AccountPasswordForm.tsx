@@ -38,7 +38,7 @@ export function AccountPasswordForm({
 			return;
 		}
 		onSetBusy('password');
-		const res = await sendJson('/api/profile/password', 'POST', { current, fresh });
+		const res = await sendJson('/api/profilee/password', 'POST', { current, fresh });
 		if (res.ok) {
 			setCurrent('');
 			setNew('');

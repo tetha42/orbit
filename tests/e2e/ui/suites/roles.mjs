@@ -10,7 +10,7 @@ const GREEN = '#30d158';
 export default async function suite(t) {
 	const { fx } = t;
 	const admin = await t.api('admin');
-	const rolesApi = async (c = admin) => (await c.get('/api/roller')).json;
+	const rolesApi = async (c = admin) => (await c.get('/api/roles')).json;
 	const roleName = `E2E Etkinlik Ekibi ${Date.now().toString(36)}`;
 	const roleNameLocked = `E2E Notlar Yönetimi ${Date.now().toString(36)}`;
 	let createdId = null;
@@ -19,10 +19,10 @@ export default async function suite(t) {
 	// Whatever this suite leaves behind goes: members back to their fixture roles, test roles deleted.
 	t.cleanup(async () => {
 		for (const [key, roleKey] of [['ege', 'member'], ['can', 'member']]) {
-			await admin.patch('/api/uyeler', { id: t.fx.users[key].id, roleId: t.fx.roles[roleKey] });
+			await admin.patch('/api/members', { id: t.fx.users[key].id, roleId: t.fx.roles[roleKey] });
 		}
 		for (const id of [createdId, lockedId]) {
-			if (id) await admin.del('/api/roller', { id, move: fx.roles.member });
+			if (id) await admin.del('/api/roles', { id, move: fx.roles.member });
 		}
 	});
 
@@ -93,7 +93,7 @@ export default async function suite(t) {
 
 		const r = (await rolesApi()).roles.find((x) => x.name === roleName);
 		createdId = r?.id ?? null;
-		t.check(r, 'GET /api/roller yeni rolü döndürüyor');
+		t.check(r, 'GET /api/roles yeni rolü döndürüyor');
 		t.eq(r?.color, GREEN, 'renk #30d158 kaydedildi');
 		t.eq(r?.permissions?.events, 'manage', 'Etkinlikler = yonet kaydedildi');
 		t.eq(r?.permissions?.news, 'use', 'Haberler = kullan kaydedildi');
@@ -105,7 +105,7 @@ export default async function suite(t) {
 
 	// Yöneticinin (zeynep) kendinde olmayan yetkiyi içeren rol: o atayamaz, admin atayabilir.
 	await t.step('kilitli rol (zeynep atayamaz) hazırlanıyor', async () => {
-		const res = await admin.post('/api/roller', { name: roleNameLocked, color: '#ff375f', description: '', twoStepRequired: true, permissions: { notes: 'manage', news: 'use', settings: 'use' } });
+		const res = await admin.post('/api/roles', { name: roleNameLocked, color: '#ff375f', description: '', twoStepRequired: true, permissions: { notes: 'manage', news: 'use', settings: 'use' } });
 		lockedId = res.json?.id ?? null;
 		t.check(res.status === 200 || res.status === 201, 'notlar=yönet rolü API ile oluşturuldu', JSON.stringify(res));
 	});
@@ -176,7 +176,7 @@ export default async function suite(t) {
 		const after = (await rolesApi()).roles;
 		t.check(!after.some((r) => r.id === createdId), 'rol API listesinden silindi');
 		const memberCount = after.find((r) => r.id === fx.roles.member)?.userCount;
-		const members = (await admin.get('/api/uyeler')).json.members;
+		const members = (await admin.get('/api/members')).json.members;
 		for (const key of ['ege', 'can']) {
 			t.eq(members.find((m) => m.id === fx.users[key].id)?.roleId, fx.roles.member, `${key} "Üye" rolüne taşındı`);
 		}

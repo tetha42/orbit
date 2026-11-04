@@ -58,7 +58,7 @@ export function AccountPanel() {
 	const dialog = useDialog();
 	const { t, language } = useI18n();
 	const { playSystemSound } = useSound();
-	const { data, refetch } = useJsonResource<ProfileResponse>('/api/profile');
+	const { data, refetch } = useJsonResource<ProfileResponse>('/api/profilee');
 	const [resetMessage, setResetMessage] = useState<string | null>(null);
 
 	const handleResetWorkspace = async () => {
@@ -129,7 +129,7 @@ export function AccountPanel() {
 	useEffect(() => {
 		if (!emailOpen) return;
 		let cancelled = false;
-		fetch('/api/profile/email', { cache: 'no-store' })
+		fetch('/api/profilee/email', { cache: 'no-store' })
 			.then((res) => (res.ok ? res.json() : null))
 			.then((payload) => {
 				if (cancelled || !payload?.pending) return;
@@ -197,7 +197,7 @@ export function AccountPanel() {
 		let ok = false;
 		let message = t('kbActionFailed');
 		try {
-			const res = await fetch('/api/profile', {
+			const res = await fetch('/api/profilee', {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ ...values, customFields: customValues }),
@@ -233,7 +233,7 @@ export function AccountPanel() {
 		setEmailBusy(true);
 		setEmailMsg(null);
 		try {
-			const res = await fetch('/api/profile/email', {
+			const res = await fetch('/api/profilee/email', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ newEmail: newEmail.trim() }),
@@ -261,7 +261,7 @@ export function AccountPanel() {
 		setEmailBusy(true);
 		setEmailMsg(null);
 		try {
-			const res = await fetch('/api/profile/email/confirm', {
+			const res = await fetch('/api/profilee/email/confirm', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ code: emailCode.trim() }),

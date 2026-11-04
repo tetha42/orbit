@@ -115,7 +115,7 @@ export async function POST(request: Request) {
 		if (code === 'MEMBER_NOT_FOUND') {
 			return NextResponse.json({ error: 'Üye bulunamadı.' }, { status: 404 });
 		}
-		console.error('API /api/profile/email/confirm POST error:', error);
+		console.error('API /api/profilee/email/confirm POST error:', error);
 		return NextResponse.json({ error: 'E-posta değiştirilemedi.' }, { status: 500 });
 	}
 }

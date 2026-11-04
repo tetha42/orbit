@@ -156,7 +156,7 @@ for (const m of MEMBERS) {
 	const u = client();
 	const initialPw = created.temporaryPassword;
 	must(await u.call('POST', '/api/auth/login', { email: m.email, password: initialPw }), `first login ${m.email}`);
-	must(await u.call('POST', '/api/profile/password', { current: initialPw, fresh: PASSWORD, currentPassword: initialPw, newPassword: PASSWORD }), `password ${m.email}`);
+	must(await u.call('POST', '/api/profilee/password', { current: initialPw, fresh: PASSWORD, currentPassword: initialPw, newPassword: PASSWORD }), `password ${m.email}`);
 	let totpSecret = null;
 	// Roles that require a second factor: enrol it now, as the first sign-in would demand.
 	if (ROLES[m.role].twoStepRequired) {

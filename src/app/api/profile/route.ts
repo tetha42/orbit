@@ -71,7 +71,7 @@ export async function PATCH(request: Request) {
 		if (code === 'MEMBER_NOT_FOUND') {
 			return NextResponse.json({ error: 'Üye bulunamadı.' }, { status: 404 });
 		}
-		console.error('API /api/profile PATCH error:', error);
+		console.error('API /api/profilee PATCH error:', error);
 		return NextResponse.json({ error: 'Profil güncellenemedi.' }, { status: 500 });
 	}
 }

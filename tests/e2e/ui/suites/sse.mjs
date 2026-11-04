@@ -1,4 +1,4 @@
-// Canlı olaylar (SSE, /api/olaylar) ve PostgreSQL NOTIFY: rol değişimi saniyeler içinde açık oturuma
+// Canlı olaylar (SSE, /api/stream) ve PostgreSQL NOTIFY: rol değişimi saniyeler içinde açık oturuma
 // yansır (15 sn'lik yoklama beklenmeden), iki sunucu süreci aynı veritabanında birbirini duyar ve
 // izin önbelleğini geçersiz kılar, yetkisiz istek 401 alır, kullanıcı başına bağlantı sınırı vardır,
 // yeni bildirim zil sayacını sayfa yenilenmeden artırır ve SSE yokken davranış yoklamaya düşer.
@@ -32,7 +32,7 @@ const badge = async (page) => {
 /** Bir SSE akışını açar; gelen olay adlarını toplar, bitince `ended` true olur. */
 async function openStream(base, token) {
 	const ac = new AbortController();
-	const res = await fetch(`${base}/api/olaylar`, { headers: { cookie: `${SESSION_COOKIE}=${token}` }, signal: ac.signal });
+	const res = await fetch(`${base}/api/stream`, { headers: { cookie: `${SESSION_COOKIE}=${token}` }, signal: ac.signal });
 	const stream = { res, events: [], ended: false, text: '', close: () => ac.abort() };
 	if (res.status !== 200) return stream;
 	(async () => {
@@ -57,7 +57,7 @@ export default async function suite(t) {
 	const { fx } = t;
 	const admin = await t.api('admin');
 	const canId = fx.users.can.id;
-	const setRole = (roleId) => admin.patch('/api/uyeler', { id: canId, roleId });
+	const setRole = (roleId) => admin.patch('/api/members', { id: canId, roleId });
 	t.cleanup(() => setRole(fx.roles.member));
 	const stamp = Date.now().toString(36);
 
@@ -65,16 +65,16 @@ export default async function suite(t) {
 	await t.step('SSE: admin rolü değiştirir → üyenin ekranı yoklama beklemeden güncellenir', async () => {
 		const { page } = await t.open('can');
 		const opened = [];
-		page.on('request', (r) => r.url().includes('/api/olaylar') && opened.push(r.url()));
+		page.on('request', (r) => r.url().includes('/api/stream') && opened.push(r.url()));
 		await page.reload({ waitUntil: 'domcontentloaded' });
 		await waitDesktop(page);
 		await openApp(page, 'events');
 		t.sameSet(await dockApps(page), MEMBER_DOCK, 'başlangıç: Dock Üye rolünün uygulamaları');
-		t.check(await t.waitFor(() => opened.length > 0, { timeout: 8000 }) >= 0, 'sayfa /api/olaylar akışını açtı');
+		t.check(await t.waitFor(() => opened.length > 0, { timeout: 8000 }) >= 0, 'sayfa /api/stream akışını açtı');
 		// Akışın açılması (ilk bayt) için kısa bir pay; ardından değişiklik.
 		await t.sleep(1000);
 
-		t.eq((await setRole(fx.roles.news)).status, 200, 'PATCH /api/uyeler {rolId: Sadece Haberler} 200');
+		t.eq((await setRole(fx.roles.news)).status, 200, 'PATCH /api/members {rolId: Sadece Haberler} 200');
 		const ms = await t.waitFor(async () => !(await dockApps(page)).includes('events'), { timeout: 25_000, every: 100 });
 		t.check(ms >= 0 && ms <= SSE_LIMIT_MS, `Dock'tan Etkinlikler kayboldu (${ms} ms ≤ ${SSE_LIMIT_MS}; yoklama olsaydı ~15 sn)`);
 		t.sameSet(await dockApps(page), NEWS_DOCK, 'Dock yalnız Haberler ve Ayarlar');
@@ -99,9 +99,9 @@ export default async function suite(t) {
 
 	// ---- (c) yetkisiz istek ve bağlantı sınırı ---------------------------------------------------
 	await t.step('SSE: oturumsuz / geçersiz oturum 401, başlıklar doğru', async () => {
-		const anon = await fetch(`${t.base}/api/olaylar`);
-		t.eq(anon.status, 401, 'oturumsuz GET /api/olaylar 401');
-		const bad = await fetch(`${t.base}/api/olaylar`, { headers: { cookie: `${SESSION_COOKIE}=gecersiz-belirtec` } });
+		const anon = await fetch(`${t.base}/api/stream`);
+		t.eq(anon.status, 401, 'oturumsuz GET /api/stream 401');
+		const bad = await fetch(`${t.base}/api/stream`, { headers: { cookie: `${SESSION_COOKIE}=gecersiz-belirtec` } });
 		t.eq(bad.status, 401, 'geçersiz oturum çerezi 401');
 		const s = await openStream(t.base, (await t.api('can')).token);
 		t.eq(s.res.status, 200, 'geçerli oturum 200');
@@ -157,8 +157,8 @@ export default async function suite(t) {
 		await page.locator('[data-notification-toggle]').waitFor();
 		await t.sleep(1500);
 		const before = await badge(page);
-		const news = must(await admin.post('/api/haberler', { title: `SSE bildirim haberi ${stamp}`, content: 'Canlı bildirim.', category: 'general', publishStatus: 'published' }), 'news');
-		t.cleanup(() => admin.del(`/api/haberler?id=${news.id}`));
+		const news = must(await admin.post('/api/news', { title: `SSE bildirim haberi ${stamp}`, content: 'Canlı bildirim.', category: 'general', publishStatus: 'published' }), 'news');
+		t.cleanup(() => admin.del(`/api/news?id=${news.id}`));
 		const ms = await t.waitFor(async () => (await badge(page)) > before, { timeout: 20_000, every: 100 });
 		t.check(ms >= 0 && ms <= SSE_LIMIT_MS, `zil sayacı ${before} → ${await badge(page)} (${ms} ms; yoklama 60 sn'de bir)`);
 		await t.shot(page, 'sse-zil-artti');
@@ -170,7 +170,7 @@ export default async function suite(t) {
 		const context = t.track(await newContext(t.browser));
 		await context.addCookies([{ name: SESSION_COOKIE, value: token, url: t.base }]);
 		let blocked = 0;
-		await context.route('**/api/olaylar', (route) => {
+		await context.route('**/api/stream', (route) => {
 			blocked++;
 			return route.abort();
 		});
@@ -178,7 +178,7 @@ export default async function suite(t) {
 		await page.goto(t.base, { waitUntil: 'domcontentloaded' });
 		await waitDesktop(page);
 		t.sameSet(await dockApps(page), MEMBER_DOCK, 'akış engelli: masaüstü yine de açıldı');
-		t.check(await t.waitFor(() => blocked > 0, { timeout: 8000 }) >= 0, '/api/olaylar denemesi engellendi');
+		t.check(await t.waitFor(() => blocked > 0, { timeout: 8000 }) >= 0, '/api/stream denemesi engellendi');
 		await t.sleep(500);
 		await setRole(fx.roles.news);
 		const ms = await t.waitFor(async () => !(await dockApps(page)).includes('events'), { timeout: 30_000, every: 250 });
@@ -247,14 +247,14 @@ export default async function suite(t) {
 
 		// (2) B'nin 5 sn'lik izin önbelleği, A'daki rol düzenlemesiyle hemen geçersiz kalır.
 		const roleName = `E2E SSE ${stamp}`;
-		const role = must(await admin.post('/api/roller', { name: roleName, color: '#8e8e93', description: 'SSE önbellek', twoStepRequired: false, permissions: { news: 'use', events: 'use', settings: 'use' } }), 'rol');
-		t.cleanup(() => admin.del('/api/roller', { id: role.id, move: fx.roles.member }));
+		const role = must(await admin.post('/api/roles', { name: roleName, color: '#8e8e93', description: 'SSE önbellek', twoStepRequired: false, permissions: { news: 'use', events: 'use', settings: 'use' } }), 'rol');
+		t.cleanup(() => admin.del('/api/roles', { id: role.id, move: fx.roles.member }));
 		must(await setRole(role.id), 'üyeye rol');
-		t.eq((await canB.get('/api/etkinlikler')).status, 200, 'B: Etkinlikler izinli (izin önbelleğe alındı)');
-		t.eq((await canB.get('/api/etkinlikler')).status, 200, 'B: ikinci istek önbellekten 200');
-		const edit = await admin.patch('/api/roller', { id: role.id, name: roleName, color: '#8e8e93', description: 'SSE önbellek', twoStepRequired: false, permissions: { news: 'use', settings: 'use' } });
+		t.eq((await canB.get('/api/events')).status, 200, 'B: Etkinlikler izinli (izin önbelleğe alındı)');
+		t.eq((await canB.get('/api/events')).status, 200, 'B: ikinci istek önbellekten 200');
+		const edit = await admin.patch('/api/roles', { id: role.id, name: roleName, color: '#8e8e93', description: 'SSE önbellek', twoStepRequired: false, permissions: { news: 'use', settings: 'use' } });
 		t.eq(edit.status, 200, 'A: rolden Etkinlikler izni kaldırıldı');
-		const cacheMs = await t.waitFor(async () => (await canB.get('/api/etkinlikler')).status === 403, { timeout: 8000, every: 100 });
+		const cacheMs = await t.waitFor(async () => (await canB.get('/api/events')).status === 403, { timeout: 8000, every: 100 });
 		t.check(cacheMs >= 0 && cacheMs < 2500, `B'nin önbelleği NOTIFY ile geçersiz kaldı (${cacheMs} ms; TTL olsaydı ~5000 ms'ye kadar 200 dönerdi)`);
 		await setRole(fx.roles.member);
 	});

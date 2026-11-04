@@ -1,5 +1,5 @@
 // Canlı yetki değişimi: admin bir üyenin rolünü değiştirir, üyenin açık oturumu
-// sayfa yenilenmeden güncellenir: SSE akışıyla (/api/olaylar) saniyeler içinde. Akış yokken
+// sayfa yenilenmeden güncellenir: SSE akışıyla (/api/stream) saniyeler içinde. Akış yokken
 // 15 sn'lik yoklamaya düşüş `sse` paketinde sınanır.
 import { dockApps, openApp, openWindows } from '../lib/browser.mjs';
 
@@ -14,7 +14,7 @@ export default async function suite(t) {
 	const { fx } = t;
 	const admin = await t.api('admin');
 	const canId = fx.users.can.id;
-	const setRole = (roleId) => admin.patch('/api/uyeler', { id: canId, roleId });
+	const setRole = (roleId) => admin.patch('/api/members', { id: canId, roleId });
 	t.cleanup(() => setRole(fx.roles.member));
 
 	// "can" (Üye) kendi tarayıcı bağlamında Etkinlikler'i açık tutuyor; admin ayrı bir istemci.
@@ -29,7 +29,7 @@ export default async function suite(t) {
 
 	await t.step('admin rolü "Sadece Haberler" yapıyor → ≤4 sn içinde Dock ve pencere güncelleniyor', async () => {
 		const res = await setRole(fx.roles.news);
-		t.eq(res.status, 200, 'PATCH /api/uyeler {rolId: Sadece Haberler} 200');
+		t.eq(res.status, 200, 'PATCH /api/members {rolId: Sadece Haberler} 200');
 		const ms = await t.waitFor(async () => {
 			const dock = await dockApps(page);
 			return !dock.includes('events') && !dock.includes('teams');

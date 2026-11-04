@@ -26,14 +26,14 @@ export async function temporaryMember(t, { permissions, roleId, name = 'Geçici'
 	if (!role) {
 		role = await createRole(admin, { name: `E2E Rol ${tag}`, color: '#64d2ff', description: 'Geçici test rolü', twoStepRequired: false, permissions });
 		t.cleanup(async () => {
-			await admin.del('/api/roller', { id: role, move: t.fx.roles.member });
+			await admin.del('/api/roles', { id: role, move: t.fx.roles.member });
 		});
 	}
 	const surname = `Test${tag}`;
 	const email = `e2e-${tag}@club.test`;
 	const m = await createMember(admin, t.base, { name, surname, email, roleId: role });
 	t.cleanup(async () => {
-		await admin.del(`/api/uyeler?id=${encodeURIComponent(m.id)}`);
+		await admin.del(`/api/members?id=${encodeURIComponent(m.id)}`);
 	});
 	const api = await loginApi(t.base, email, m.password);
 	return {

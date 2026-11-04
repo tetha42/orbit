@@ -83,7 +83,7 @@ export async function GET(request: Request) {
 			...(members.length === 0 ? { message: 'Henüz kayıtlı üye bulunmuyor.' } : {}),
 		});
 	} catch (error) {
-		console.error('API /api/uyeler GET error:', error);
+		console.error('API /api/members GET error:', error);
 		return NextResponse.json({
 			success: true,
 			members: [],
@@ -209,7 +209,7 @@ export async function POST(request: Request) {
 			...(generatedPassword ? { temporaryPassword: memberPassword } : {}),
 		});
 	} catch (error) {
-		console.error('API /api/uyeler POST error:', error);
+		console.error('API /api/members POST error:', error);
 		return bad('İşlem tamamlanamadı.', 500);
 	}
 }
@@ -292,7 +292,7 @@ export async function PATCH(request: Request) {
 
 		return NextResponse.json({ success: true, message: 'Üye bilgileri güncellendi.' });
 	} catch (error) {
-		console.error('API /api/uyeler PATCH error:', error);
+		console.error('API /api/members PATCH error:', error);
 		return bad('İşlem tamamlanamadı.', 500);
 	}
 }
@@ -314,7 +314,7 @@ export async function DELETE(request: Request) {
 		if (!(await deleteUser(id, auditContext(request, auth.user)))) return bad('Kullanıcı bulunamadı veya silinemedi.', 400);
 		return NextResponse.json({ success: true, message: 'Üye kaydı silindi.' });
 	} catch (error) {
-		console.error('API /api/uyeler DELETE error:', error);
+		console.error('API /api/members DELETE error:', error);
 		return bad('İşlem tamamlanamadı.', 500);
 	}
 }

@@ -58,7 +58,7 @@ const formatDate = (ms: number) => new Date(Number(ms)).toLocaleDateString('tr-T
  *  - kasa entries: only kasas the caller may open (see `kasaAccess`);
  *  - messages: the caller's own conversations (trash left out), never anyone else's; and, for
  *    roles that use Mail, up to five people to "send a message" to (the recipient picker's
- *    lookup: active members whose role opens Mail, name only — see /api/posta/alicilar).
+ *    lookup: active members whose role opens Mail, name only — see /api/messages/alicilar).
  *
  * Matching is done in JS with `foldTr`, not SQL `ILIKE`: the database collation
  * (en_US.utf8) does not fold İ/ı/ş/ğ, and folding here needs no escaping of `%`/`_`.

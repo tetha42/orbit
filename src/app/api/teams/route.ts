@@ -89,7 +89,7 @@ export async function GET(request: Request) {
 
 		return NextResponse.json(enrichedTeams);
 	} catch (error) {
-		console.error('API /api/takimlar GET error:', error);
+		console.error('API /api/teams GET error:', error);
 		return NextResponse.json({ error: 'Takımlar okunamadı.' }, { status: 500 });
 	}
 }
@@ -438,7 +438,7 @@ async function handlePOST(request: Request) {
 
 		return NextResponse.json({ error: 'Geçersiz işlem.' }, { status: 400 });
 	} catch (error) {
-		console.error('API /api/takimlar POST error:', error);
+		console.error('API /api/teams POST error:', error);
 		return NextResponse.json({ error: 'İşlem tamamlanamadı.' }, { status: 500 });
 	}
 }

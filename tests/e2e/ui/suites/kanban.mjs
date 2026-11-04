@@ -18,7 +18,7 @@ export default async function suite(t) {
 	const captain = await newMember(t, admin, { label: 'kaptan', roleId: fx.roles.member });
 	const worker = await newMember(t, admin, { label: 'member', roleId: fx.roles.member });
 	const team = await makeTeam(t, admin, { label: 'Kanban', leadId: captain.id });
-	await (await worker.api()).post('/api/takimlar', { action: 'join', teamId: team.id });
+	await (await worker.api()).post('/api/teams', { action: 'join', teamId: team.id });
 
 	const { page } = await t.open('admin');
 	const win = await openTeam(page, team.id);
@@ -120,8 +120,8 @@ export default async function suite(t) {
 			return orderOf(second) < orderOf(first);
 		}, { timeout: 5000, every: 150 });
 		t.check(orderOf(second) < orderOf(first), 'sunucudaki "sira" da değişti', `${orderOf(second)} < ${orderOf(first)}`);
-		await admin.post('/api/takimlar', { action: 'deleteTask', taskId: a.id });
-		await admin.post('/api/takimlar', { action: 'deleteTask', taskId: b.id });
+		await admin.post('/api/teams', { action: 'deleteTask', taskId: a.id });
+		await admin.post('/api/teams', { action: 'deleteTask', taskId: b.id });
 	});
 
 	await step('ok düğmeleri ve Alt+ok: bir sütun sola/sağa', async () => {
@@ -247,8 +247,8 @@ export default async function suite(t) {
 		await toast(page, '+100 XP');
 		t.eq(await xpOf(api), before + 100, 'görev sahibi 100 XP kazandı');
 		// Geri alıp yeniden tamamlamak ikinci kez XP vermez.
-		await admin.post('/api/takimlar', { action: 'updateTask', taskId: mine.id, status: 'in_progress' });
-		const again = await admin.post('/api/takimlar', { action: 'updateTask', taskId: mine.id, status: 'done' });
+		await admin.post('/api/teams', { action: 'updateTask', taskId: mine.id, status: 'in_progress' });
+		const again = await admin.post('/api/teams', { action: 'updateTask', taskId: mine.id, status: 'done' });
 		t.eq(again.json?.xpGiven, false, 'ikinci tamamlamada XP verilmedi');
 		t.eq(await xpOf(api), before + 100, 'XP değişmedi');
 	});
@@ -294,12 +294,12 @@ export default async function suite(t) {
 
 	await step('yetkisiz rol: "Sadece Haberler" kullanıcısı takımları ve görevleri göremez', async () => {
 		const reader = await t.api('reader');
-		const list = await reader.get('/api/takimlar');
-		t.eq(list.status, 403, 'GET /api/takimlar 403');
+		const list = await reader.get('/api/teams');
+		t.eq(list.status, 403, 'GET /api/teams 403');
 		const task = (await tasksOf())[0];
 		const detail = await readTask(reader, task.id);
 		t.eq(detail.status, 403, 'görev ayrıntısı 403');
-		const add = await reader.post('/api/takimlar', { action: 'addTask', teamId: team.id, title: 'sızma' });
+		const add = await reader.post('/api/teams', { action: 'addTask', teamId: team.id, title: 'sızma' });
 		t.eq(add.status, 403, 'görev ekleme 403');
 		const { page: readerPage } = await t.open('reader');
 		t.eq(await readerPage.locator('[data-dock-app=teams]').count(), 0, 'Dock\'ta Takımlar yok');

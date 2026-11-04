@@ -591,9 +591,9 @@ const AUDIT_ENDPOINTS: Array<{
 	{ endpoint: '/api/auth/passkey/login/verify', category: 'auth', isPublic: true, method: 'POST' },
 	{ endpoint: '/api/auth/passkey/register/options', category: 'auth', isPublic: false, method: 'POST' },
 	{ endpoint: '/api/auth/passkey/register/verify', category: 'auth', isPublic: false, method: 'POST' },
-	{ endpoint: '/api/profile', category: 'auth', isPublic: false, method: 'GET' },
-	{ endpoint: '/api/profile/photo', category: 'auth', isPublic: false, method: 'POST' },
-	{ endpoint: '/api/profile/password', category: 'auth', isPublic: false, method: 'POST' },
+	{ endpoint: '/api/profilee', category: 'auth', isPublic: false, method: 'GET' },
+	{ endpoint: '/api/profilee/photo', category: 'auth', isPublic: false, method: 'POST' },
+	{ endpoint: '/api/profilee/password', category: 'auth', isPublic: false, method: 'POST' },
 
 	// 2. Dışa Açık ve Genel Servisler (8 Endpoint)
 	{ endpoint: '/api/public/v1/news', category: 'public', isPublic: true, method: 'GET' },

@@ -84,7 +84,7 @@ async function handlePATCH(request: Request, { params }: Params) {
 		await publishEventQuiet(getPgPool(), [{ k: 'project_updated' }]);
 		return NextResponse.json({ success: true, project: await getProjectById(id, auth.user.id) });
 	} catch (error) {
-		console.error('API /api/projeler PATCH error:', error);
+		console.error('API /api/projects PATCH error:', error);
 		return NextResponse.json({ error: 'Project güncellenemedi.' }, { status: 500 });
 	}
 }

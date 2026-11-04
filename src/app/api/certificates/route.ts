@@ -19,7 +19,7 @@ export async function GET(request: Request) {
 		const certs = await getCertificates(userId);
 		return NextResponse.json(certs);
 	} catch (error) {
-		console.error('API /api/sertifikalar GET error:', error);
+		console.error('API /api/certificates GET error:', error);
 		return NextResponse.json({ error: 'Sertifikalar okunamadı.' }, { status: 500 });
 	}
 }
@@ -73,7 +73,7 @@ async function handlePOST(request: Request) {
 
 		return NextResponse.json({ success: true, id: result.id, verificationCode: result.verificationCode });
 	} catch (error) {
-		console.error('API /api/sertifikalar POST error:', error);
+		console.error('API /api/certificates POST error:', error);
 		return NextResponse.json({ error: 'Certificate oluşturulamadı.' }, { status: 500 });
 	}
 }
@@ -99,7 +99,7 @@ async function handleDELETE(request: Request) {
 
 		return NextResponse.json({ success: true, message: 'Certificate iptal edildi.' });
 	} catch (error) {
-		console.error('API /api/sertifikalar DELETE error:', error);
+		console.error('API /api/certificates DELETE error:', error);
 		return NextResponse.json({ error: 'İşlem tamamlanamadı.' }, { status: 500 });
 	}
 }

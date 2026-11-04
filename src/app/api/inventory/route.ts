@@ -45,7 +45,7 @@ export async function GET(request: Request) {
 		const items = await getInventoryItems();
 		return NextResponse.json(items);
 	} catch (error) {
-		console.error('API /api/envanter GET error:', error);
+		console.error('API /api/inventory GET error:', error);
 		return bad('Envanter okunamadı.', 500);
 	}
 }
@@ -254,7 +254,7 @@ async function handlePOST(request: Request) {
 
 		return bad('Geçersiz işlem.');
 	} catch (error) {
-		console.error('API /api/envanter error:', error);
+		console.error('API /api/inventory error:', error);
 		return bad('İşlem tamamlanamadı.', 500);
 	}
 }

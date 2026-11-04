@@ -28,7 +28,7 @@ export default async function suite(t) {
 	t.cleanup(async () => {
 		for (const id of [eventId, draftId]) if (id) await removeEvent(admin, id);
 	});
-	const findId = async (title) => (await admin.get('/api/etkinlikler')).json.events.find((e) => e.title === title)?.id ?? null;
+	const findId = async (title) => (await admin.get('/api/events')).json.events.find((e) => e.title === title)?.id ?? null;
 
 	await astep('organizatör: "Yeni Etkinlik" formuyla yayında etkinlik oluşturur', async () => {
 		const win = await openWide(ap, 'events');
@@ -65,7 +65,7 @@ export default async function suite(t) {
 		draftId = await findId(draftTitle);
 		t.eq((await eventOf(admin, draftId))?.status, 'draft', 'durum: taslak');
 		t.eq(await eventOf(ayseApi, draftId), undefined, 'üye taslağı görmüyor');
-		t.eq((await ayseApi.post('/api/etkinlikler', { action: 'register', eventId: draftId })).status, 400, 'taslağa kayıt olunamaz');
+		t.eq((await ayseApi.post('/api/events', { action: 'register', eventId: draftId })).status, 400, 'taslağa kayıt olunamaz');
 		const { detail } = await openEvent(ap, draftId, 'Taslaklar');
 		await detail.getByRole('button', { name: 'Yayınla' }).click();
 		await toast(ap, 'Değişiklikler kaydedildi.');
@@ -86,7 +86,7 @@ export default async function suite(t) {
 			t.eq(e.myMyRecord, true, 'API: kayıtlı');
 			t.eq(e.registeredCount, 1, 'kayıtlı sayısı 1');
 			t.check(/^BB1\./.test(e.ticketCode ?? ''), 'imzalı bilet kodu üretildi');
-			t.eq((await ayseApi.post('/api/etkinlikler', { action: 'register', eventId: eventId })).status, 409, 'ikinci kayıt 409');
+			t.eq((await ayseApi.post('/api/events', { action: 'register', eventId: eventId })).status, 409, 'ikinci kayıt 409');
 		});
 		await step('ticket', async () => {
 			const { detail } = await openEvent(page, eventId);
@@ -105,8 +105,8 @@ export default async function suite(t) {
 		const { detail } = await openEvent(page, eventId);
 		const btn = detail.getByRole('button', { name: 'Kontenjan doldu' });
 		t.check(await btn.isDisabled(), '"Kontenjan doldu" düğmesi kapalı');
-		t.eq((await burakApi.post('/api/etkinlikler', { action: 'register', eventId: eventId })).status, 409, 'API 409 (kontenjan doldu)');
-		t.eq((await burakApi.post('/api/etkinlikler', { action: 'cancelRegistration', eventId: eventId })).status, 404, 'kaydı olmayanın iptali 404');
+		t.eq((await burakApi.post('/api/events', { action: 'register', eventId: eventId })).status, 409, 'API 409 (kontenjan doldu)');
+		t.eq((await burakApi.post('/api/events', { action: 'cancelRegistration', eventId: eventId })).status, 404, 'kaydı olmayanın iptali 404');
 	});
 
 	await t.step('üye: kaydını iptal eder (onaylı), yer açılır', async () => {
@@ -118,7 +118,7 @@ export default async function suite(t) {
 		const e = await eventOf(ayseApi, eventId);
 		t.eq(e.myMyRecord, false, 'kayıt kalktı');
 		t.eq(e.ticketCode, null, 'bilet geçersiz (kod yok)');
-		t.eq((await burakApi.post('/api/etkinlikler', { action: 'register', eventId: eventId })).status, 200, 'açılan yere diğer üye kaydoldu');
+		t.eq((await burakApi.post('/api/events', { action: 'register', eventId: eventId })).status, 200, 'açılan yere diğer üye kaydoldu');
 	});
 
 	await astep('organizatör: düzenler, iptal eder, yeniden yayınlar', async () => {
@@ -138,7 +138,7 @@ export default async function suite(t) {
 		await t.waitFor(async () => (await eventOf(admin, eventId)).status === 'cancelled');
 		t.eq((await eventOf(admin, eventId)).status, 'cancelled', 'iptal edildi');
 		t.check((await t.waitFor(async () => (await detail.getByText('İptal edildi').count()) >= 1)) >= 0, '"İptal edildi" rozeti');
-		t.eq((await ayseApi.post('/api/etkinlikler', { action: 'register', eventId: eventId })).status, 400, 'iptal edilen etkinliğe kayıt olunamaz');
+		t.eq((await ayseApi.post('/api/events', { action: 'register', eventId: eventId })).status, 400, 'iptal edilen etkinliğe kayıt olunamaz');
 		await detail.getByRole('button', { name: 'Yeniden yayınla' }).click();
 		await t.waitFor(async () => (await eventOf(admin, eventId)).status === 'published');
 		t.eq((await eventOf(admin, eventId)).status, 'published', 'yeniden yayında');
@@ -148,8 +148,8 @@ export default async function suite(t) {
 
 	await astep('organizatör: katılımı olmayan etkinliği siler; katılımı olanı silemez', async () => {
 		const live = await makeEvent(t, admin, { label: 'Silinemez', startMin: -10, lengthMin: 60 });
-		await admin.post('/api/etkinlikler', { action: 'manualAttendance', eventId: live.id, userId: ayse.id });
-		t.eq((await admin.post('/api/etkinlikler', { action: 'deleteEvent', eventId: live.id })).status, 409, 'katılımı olan etkinlik silinemez (409)');
+		await admin.post('/api/events', { action: 'manualAttendance', eventId: live.id, userId: ayse.id });
+		t.eq((await admin.post('/api/events', { action: 'deleteEvent', eventId: live.id })).status, 409, 'katılımı olan etkinlik silinemez (409)');
 		const { detail } = await openEvent(ap, draftId);
 		await detail.getByRole('button', { name: 'Sil' }).click();
 		await answerDialog(ap);
@@ -166,8 +166,8 @@ export default async function suite(t) {
 			['deleteEvent', { eventId: eventId }],
 			['manualAttendance', { eventId: eventId, userId: ayse.id }],
 		];
-		for (const [action, body] of bad) t.eq((await ayseApi.post('/api/etkinlikler', { action, ...body })).status, 403, `üye: ${action} 403`);
-		t.eq((await ayseApi.get(`/api/etkinlikler/${eventId}/katilim`)).status, 403, 'üye katılım listesini okuyamaz');
+		for (const [action, body] of bad) t.eq((await ayseApi.post('/api/events', { action, ...body })).status, 403, `üye: ${action} 403`);
+		t.eq((await ayseApi.get(`/api/events/${eventId}/katilim`)).status, 403, 'üye katılım listesini okuyamaz');
 		const { page } = await ayse.open();
 		const { win, detail } = await openEvent(page, eventId);
 		t.eq(await win.getByRole('button', { name: 'Yeni Etkinlik' }).count(), 0, '"Yeni Etkinlik" yok');
@@ -177,8 +177,8 @@ export default async function suite(t) {
 
 	await t.step('yetkisiz rol: "Sadece Haberler" etkinliklere ulaşamaz', async () => {
 		const reader = await t.api('reader');
-		t.eq((await reader.get('/api/etkinlikler')).status, 403, 'GET 403');
-		t.eq((await reader.post('/api/etkinlikler', { action: 'register', eventId: eventId })).status, 403, 'kayıt 403');
+		t.eq((await reader.get('/api/events')).status, 403, 'GET 403');
+		t.eq((await reader.post('/api/events', { action: 'register', eventId: eventId })).status, 403, 'kayıt 403');
 		const { page } = await t.open('reader');
 		t.eq(await page.locator('[data-dock-app=events]').count(), 0, 'Dock\'ta Etkinlikler yok');
 	});

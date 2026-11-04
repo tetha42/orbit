@@ -822,7 +822,7 @@ async function run() {
 
 			// 7.3 Session Revocation and Fresh Session Issuance on Password Change
 			const newPassword = 'NewHardenedPass2026!';
-			const changePassRes = await fetch(`${BASE_URL}/api/profile/password`, {
+			const changePassRes = await fetch(`${BASE_URL}/api/profilee/password`, {
 				method: 'POST',
 				headers: {
 					Cookie: `club_session_token=${initialSessionToken}`,
@@ -845,7 +845,7 @@ async function run() {
 			}
 
 			// Old session token must be invalidated (must return 401)
-			const oldSessionCheck = await fetch(`${BASE_URL}/api/profile`, {
+			const oldSessionCheck = await fetch(`${BASE_URL}/api/profilee`, {
 				headers: { Cookie: `club_session_token=${initialSessionToken}` },
 			});
 			if (oldSessionCheck.status !== 401) {
@@ -854,7 +854,7 @@ async function run() {
 			log.ok('Old session token immediately revoked from database upon password change (HTTP 401).');
 
 			// New session token must work seamlessly (must return 200)
-			const newSessionCheck = await fetch(`${BASE_URL}/api/profile`, {
+			const newSessionCheck = await fetch(`${BASE_URL}/api/profilee`, {
 				headers: { Cookie: `club_session_token=${freshSessionToken}` },
 			});
 			if (!newSessionCheck.ok) {
@@ -864,7 +864,7 @@ async function run() {
 
 			// 7.4 SoC Live Rate-Limit Telemetry & 1-Click Unthrottle Test
 			for (let i = 0; i < 6; i++) {
-				await fetch(`${BASE_URL}/api/profile/password`, {
+				await fetch(`${BASE_URL}/api/profilee/password`, {
 					method: 'POST',
 					headers: {
 						Cookie: `club_session_token=${freshSessionToken}`,
@@ -906,7 +906,7 @@ async function run() {
 			}
 			log.ok(`SoC 1-Click Rate Limit Reset (clear_rate_limit) applied successfully for '${rateLimitKey}'.`);
 
-			const postUnthrottleTest = await fetch(`${BASE_URL}/api/profile/password`, {
+			const postUnthrottleTest = await fetch(`${BASE_URL}/api/profilee/password`, {
 				method: 'POST',
 				headers: {
 					Cookie: `club_session_token=${freshSessionToken}`,
@@ -1057,7 +1057,7 @@ async function run() {
 				log.ok('Secure logout (POST /api/auth/logout) completed successfully.');
 
 				// Verify session deleted from database (profile should no longer be readable)
-				const postLogoutProfileRes = await fetch(`${BASE_URL}/api/profile`, {
+				const postLogoutProfileRes = await fetch(`${BASE_URL}/api/profilee`, {
 					headers: { Cookie: `club_session_token=${userASession}` },
 				});
 				if (postLogoutProfileRes.status !== 401) {

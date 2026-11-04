@@ -20,9 +20,9 @@ export default async function suite(t) {
 	const star = await newMember(t, admin, { label: 'rozet', roleId: fx.roles.member });
 	const peer = await newMember(t, admin, { label: 'akran', roleId: fx.roles.member });
 	const [starApi, peerApi] = await Promise.all([star.api(), peer.api()]);
-	const certsOf = async (id) => (await admin.get(`/api/sertifikalar?userId=${encodeURIComponent(id)}`)).json ?? [];
+	const certsOf = async (id) => (await admin.get(`/api/certificates?userId=${encodeURIComponent(id)}`)).json ?? [];
 	t.cleanup(async () => {
-		for (const id of [star.id, peer.id]) for (const c of await certsOf(id)) await admin.del(`/api/sertifikalar?id=${encodeURIComponent(c.id)}`);
+		for (const id of [star.id, peer.id]) for (const c of await certsOf(id)) await admin.del(`/api/certificates?id=${encodeURIComponent(c.id)}`);
 	});
 
 	const badges = async (page) => {
@@ -43,19 +43,19 @@ export default async function suite(t) {
 	await t.step('rozetler gerçek kayıttan: etkinlik, takım, kaptanlık, görev, proje, XP', async () => {
 		// Beş etkinliğe yoklama (İlk Adım + Müdavim).
 		for (let i = 0; i < 5; i++) live.push(await makeEvent(t, admin, { label: `Rozet${i}`, startMin: -5, lengthMin: 60 }));
-		for (const e of live) await admin.post('/api/etkinlikler', { action: 'manualAttendance', eventId: e.id, userId: star.id });
+		for (const e of live) await admin.post('/api/events', { action: 'manualAttendance', eventId: e.id, userId: star.id });
 		// Kaptanı olduğu takım (Takım Oyuncusu + Kaptan) ve tamamladığı on görev (Görev Avcısı).
 		const team = await makeTeam(t, admin, { label: 'Rozet', leadId: star.id });
 		for (let i = 0; i < 10; i++) {
 			const g = await addTask(starApi, team.id, { title: `Rozet görevi ${i}`, assigneeMemberId: star.id });
-			await starApi.post('/api/takimlar', { action: 'updateTask', taskId: g.id, status: 'done' });
+			await starApi.post('/api/teams', { action: 'updateTask', taskId: g.id, status: 'done' });
 		}
 		// Üyenin önerisi yayınlanınca "Yapımcı".
-		const own = await starApi.post('/api/projeler', { title: `E2E Rozetim ${runTag()}`, summary: 'Üyenin kendi yayındaki projesi', repoUrl: 'https://example.com/benim', technologies: 'Go' });
-		t.cleanup(() => admin.del(`/api/projeler/${own.json.project.id}`));
+		const own = await starApi.post('/api/projects', { title: `E2E Rozetim ${runTag()}`, summary: 'Üyenin kendi yayındaki projesi', repoUrl: 'https://example.com/benim', technologies: 'Go' });
+		t.cleanup(() => admin.del(`/api/projects/${own.json.project.id}`));
 		const { page: before } = await star.open();
 		t.eq((await badges(before)).producer, false, 'öneri aşamasında "Yapımcı" yok');
-		await admin.patch(`/api/projeler/${own.json.project.id}`, { status: 'published' });
+		await admin.patch(`/api/projects/${own.json.project.id}`, { status: 'published' });
 
 		const { page } = await star.open();
 		const got = await badges(page);
@@ -89,7 +89,7 @@ export default async function suite(t) {
 	});
 
 	await astep('yönetim: etkinlik katılımcılarına toplu sertifika; ikinci kez verilmez', async () => {
-		await admin.post('/api/etkinlikler', { action: 'manualAttendance', eventId: live[1].id, userId: peer.id });
+		await admin.post('/api/events', { action: 'manualAttendance', eventId: live[1].id, userId: peer.id });
 		const win = await openWide(ap, 'certificates');
 		await win.getByRole('button', { name: 'Yeni Sertifika Düzenle' }).click();
 		const form = ap.locator('[data-cert-issue]');
@@ -100,7 +100,7 @@ export default async function suite(t) {
 		await form.getByRole('button', { name: 'Sertifikayı Onayla & Ver' }).click();
 		await win.getByText('2 katılımcıya sertifika verildi').waitFor();
 		t.eq((await certsOf(peer.id)).length, 1, 'diğer katılımcı da aldı');
-		const again = await admin.post('/api/sertifikalar', { action: 'bulk', eventId: live[1].id, title: 'Tekrar' });
+		const again = await admin.post('/api/certificates', { action: 'bulk', eventId: live[1].id, title: 'Tekrar' });
 		t.eq(again.json?.given, 0, 'ikinci toplu verme kimseye yeni sertifika vermedi');
 		t.eq(again.json?.alreadyVar, 2, 'iki kişide zaten var');
 	});
@@ -110,7 +110,7 @@ export default async function suite(t) {
 		const got = await badges(page);
 		t.eq(got.documented, true, '"Belgeli" kazanıldı');
 		const win = page.locator('[data-window-frame=certificates]');
-		const cert = (await starApi.get('/api/sertifikalar')).json.find((c) => c.title === title);
+		const cert = (await starApi.get('/api/certificates')).json.find((c) => c.title === title);
 		const cardEl = win.locator(`[data-cert-code="${cert.verificationCode}"]`);
 		await cardEl.getByRole('button', { name: 'Görüntüle' }).click();
 		const view = page.locator('[data-cert-view]');
@@ -131,22 +131,22 @@ export default async function suite(t) {
 	await t.step('herkese açık doğrulama: geçerli kod doğrulanır, uydurma kod reddedilir', async () => {
 		const cert = (await certsOf(star.id)).find((c) => c.title === title);
 		const anon = await t.anonymous();
-		const api = await anon.page.request.get(`${t.base}/api/sertifikalar/${cert.verificationCode}`);
+		const api = await anon.page.request.get(`${t.base}/api/certificates/${cert.verificationCode}`);
 		t.eq(api.status(), 200, 'oturumsuz doğrulama 200');
 		t.eq((await api.json()).isValid, true, 'gecerliMi: true');
-		t.eq((await anon.page.request.get(`${t.base}/api/sertifikalar/UYDURMA-${runTag()}`)).status(), 404, 'uydurma kod 404');
+		t.eq((await anon.page.request.get(`${t.base}/api/certificates/UYDURMA-${runTag()}`)).status(), 404, 'uydurma kod 404');
 		await anon.page.goto(`${t.base}/dogrula/${cert.verificationCode}`);
 		await anon.page.getByText('Dijital Sertifika Doğrulandı').waitFor();
 		t.check(await anon.page.getByText(star.nameSurname).count() === 1, 'doğrulama sayfasında üyenin adı');
-		t.eq((await anon.page.request.get(`${t.base}/api/sertifikalar`)).status(), 401, 'oturumsuz liste 401');
+		t.eq((await anon.page.request.get(`${t.base}/api/certificates`)).status(), 401, 'oturumsuz liste 401');
 	});
 
 	await t.step('üye yetkisi: sertifika veremez, başkasınınkini listeleyemez; düğme yok', async () => {
-		t.eq((await peerApi.post('/api/sertifikalar', { userId: peer.id, title: 'Kendime' })).status, 403, 'üye sertifika veremez');
-		const listed = (await peerApi.get(`/api/sertifikalar?userId=${star.id}`)).json;
+		t.eq((await peerApi.post('/api/certificates', { userId: peer.id, title: 'Kendime' })).status, 403, 'üye sertifika veremez');
+		const listed = (await peerApi.get(`/api/certificates?userId=${star.id}`)).json;
 		t.check(listed.every((c) => c.userId === peer.id), 'başkasının kimliği istense de yalnız kendi sertifikaları');
 		const someone = (await certsOf(star.id))[0];
-		t.eq((await peerApi.del(`/api/sertifikalar?id=${someone.id}`)).status, 403, 'üye iptal edemez');
+		t.eq((await peerApi.del(`/api/certificates?id=${someone.id}`)).status, 403, 'üye iptal edemez');
 		const { page } = await peer.open();
 		const win = await openWide(page, 'certificates');
 		await win.locator('[data-badge]').first().waitFor();
@@ -164,12 +164,12 @@ export default async function suite(t) {
 		await win.locator(`[data-cert-code="${cert.verificationCode}"]`).locator('button[title="Sertifikayı İptal Et / Sil"]').click();
 		await answerDialog(ap);
 		await win.getByText('Sertifika iptal edildi.').waitFor();
-		t.eq((await admin.get(`/api/sertifikalar/${cert.verificationCode}`)).status, 404, 'iptal edilen kod 404');
+		t.eq((await admin.get(`/api/certificates/${cert.verificationCode}`)).status, 404, 'iptal edilen kod 404');
 	});
 
 	await t.step('yetkisiz rol: "Sadece Haberler" sertifikalara ulaşamaz', async () => {
 		const reader = await t.api('reader');
-		t.eq((await reader.get('/api/sertifikalar')).status, 403, 'GET 403');
+		t.eq((await reader.get('/api/certificates')).status, 403, 'GET 403');
 		const { page } = await t.open('reader');
 		t.eq(await page.locator('[data-dock-app=certificates]').count(), 0, 'Dock\'ta Sertifikalar yok');
 	});

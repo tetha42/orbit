@@ -8,8 +8,8 @@ export const meta = { title: 'Projeler: öneri → onay/yayın, yıldız, arşiv
 
 /** Projects named "E2E …" left by a killed run. */
 async function sweepProjects(admin) {
-	for (const p of (await admin.get('/api/projeler')).json?.projects ?? []) {
-		if (/^E2E /.test(p.title)) await admin.del(`/api/projeler/${encodeURIComponent(p.id)}`);
+	for (const p of (await admin.get('/api/projects')).json?.projects ?? []) {
+		if (/^E2E /.test(p.title)) await admin.del(`/api/projects/${encodeURIComponent(p.id)}`);
 	}
 }
 
@@ -28,9 +28,9 @@ export default async function suite(t) {
 	const title = `E2E Proje ${runTag()}`;
 	let id = null;
 	t.cleanup(async () => {
-		if (id) await admin.del(`/api/projeler/${encodeURIComponent(id)}`);
+		if (id) await admin.del(`/api/projects/${encodeURIComponent(id)}`);
 	});
-	const read = async (who = admin) => (await who.get(`/api/projeler/${encodeURIComponent(id)}`)).json;
+	const read = async (who = admin) => (await who.get(`/api/projects/${encodeURIComponent(id)}`)).json;
 
 	const { page } = await author.open();
 	const win = await openWide(page, 'projects');
@@ -38,9 +38,9 @@ export default async function suite(t) {
 	const card = () => win.locator(`[data-project-id="${id}"]`);
 
 	await step('üye: bağlantısız öneri reddedilir, başkasının takımına bağlanamaz', async () => {
-		t.eq((await authorApi.post('/api/projeler', { title: 'E2E bağlantısız', summary: 'Bağlantısı olmayan öneri metni', technologies: 'Go' })).status, 400, 'bağlantı yoksa 400');
-		t.eq((await authorApi.post('/api/projeler', { title: 'E2E kötü', summary: 'Zararlı bağlantılı öneri', repoUrl: 'javascript:alert(1)', technologies: 'Go' })).status, 400, 'javascript: bağlantısı 400');
-		const r = await authorApi.post('/api/projeler', { title: 'E2E yabancı takım', summary: 'Başka takıma bağlı öneri', repoUrl: 'https://example.com/x', technologies: 'Go', teamId: other.id });
+		t.eq((await authorApi.post('/api/projects', { title: 'E2E bağlantısız', summary: 'Bağlantısı olmayan öneri metni', technologies: 'Go' })).status, 400, 'bağlantı yoksa 400');
+		t.eq((await authorApi.post('/api/projects', { title: 'E2E kötü', summary: 'Zararlı bağlantılı öneri', repoUrl: 'javascript:alert(1)', technologies: 'Go' })).status, 400, 'javascript: bağlantısı 400');
+		const r = await authorApi.post('/api/projects', { title: 'E2E yabancı takım', summary: 'Başka takıma bağlı öneri', repoUrl: 'https://example.com/x', technologies: 'Go', teamId: other.id });
 		t.eq(r.status, 400, 'üyesi olmadığı takıma bağlayamaz');
 	});
 
@@ -55,7 +55,7 @@ export default async function suite(t) {
 		t.check(await dlg.getByText('Öneriniz yönetim onayından sonra vitrinde yer alır.').count() === 1, 'üye ipucu görünüyor');
 		await dlg.getByRole('button', { name: 'Öneriyi Gönder' }).click();
 		await toast(page, 'Öneriniz yönetime iletildi.');
-		const mine = (await authorApi.get('/api/projeler')).json.projects.find((p) => p.title === title);
+		const mine = (await authorApi.get('/api/projects')).json.projects.find((p) => p.title === title);
 		id = mine?.id;
 		t.eq(mine?.status, 'proposed', 'durum: öneri');
 		t.eq(mine?.technologies, ['Next.js', 'PostgreSQL'], 'teknolojiler tekilleştirildi');
@@ -69,11 +69,11 @@ export default async function suite(t) {
 	});
 
 	await step('öneri yalnız sahibine ve yönetime görünür', async () => {
-		t.eq((await fanApi.get(`/api/projeler/${id}`)).status, 404, 'başka üye için 404');
-		t.check(!(await fanApi.get('/api/projeler')).json.projects.some((p) => p.id === id), 'başka üyenin listesinde yok');
-		t.eq((await fanApi.post(`/api/projeler/${id}`, { action: 'star' })).status, 404, 'başka üye yıldızlayamaz (404)');
-		t.eq((await authorApi.post(`/api/projeler/${id}`, { action: 'star' })).status, 400, 'öneri yıldızlanamaz (400)');
-		t.eq((await authorApi.patch(`/api/projeler/${id}`, { status: 'published' })).status, 403, 'sahibi kendi önerisini yayınlayamaz');
+		t.eq((await fanApi.get(`/api/projects/${id}`)).status, 404, 'başka üye için 404');
+		t.check(!(await fanApi.get('/api/projects')).json.projects.some((p) => p.id === id), 'başka üyenin listesinde yok');
+		t.eq((await fanApi.post(`/api/projects/${id}`, { action: 'star' })).status, 404, 'başka üye yıldızlayamaz (404)');
+		t.eq((await authorApi.post(`/api/projects/${id}`, { action: 'star' })).status, 400, 'öneri yıldızlanamaz (400)');
+		t.eq((await authorApi.patch(`/api/projects/${id}`, { status: 'published' })).status, 403, 'sahibi kendi önerisini yayınlayamaz');
 	});
 
 	await step('üye: kendi önerisini düzenler', async () => {
@@ -96,7 +96,7 @@ export default async function suite(t) {
 		await sheet.getByRole('button', { name: 'Yayınla' }).click();
 		await toast(ap, 'Proje yayınlandı.');
 		t.eq((await read()).status, 'published', 'durum: yayında');
-		t.check((await fanApi.get('/api/projeler')).json.projects.some((p) => p.id === id), 'artık başka üyeler de görüyor');
+		t.check((await fanApi.get('/api/projects')).json.projects.some((p) => p.id === id), 'artık başka üyeler de görüyor');
 		await t.shot(ap, 'yayinlandi');
 	});
 
@@ -109,7 +109,7 @@ export default async function suite(t) {
 		await t.waitFor(async () => (await read(fanApi)).likeCount === 1);
 		t.eq((await read(fanApi)).likeCount, 1, 'sunucuda 1 yıldız');
 		t.eq(await star.getAttribute('aria-pressed'), 'true', 'düğme basılı');
-		t.eq((await authorApi.post(`/api/projeler/${id}`, { action: 'star' })).json?.likeCount, 2, 'ikinci üye yıldızlayınca 2');
+		t.eq((await authorApi.post(`/api/projects/${id}`, { action: 'star' })).json?.likeCount, 2, 'ikinci üye yıldızlayınca 2');
 		await star.click();
 		await t.waitFor(async () => (await read(fanApi)).likeCount === 1);
 		t.eq((await read(fanApi)).likeCount, 1, 'geri alınca 1');
@@ -117,7 +117,7 @@ export default async function suite(t) {
 	});
 
 	await step('öne çıkarma: yalnız yönetim; kartta "Öne çıkan" rozeti', async () => {
-		t.eq((await authorApi.patch(`/api/projeler/${id}`, { oneLeaving: true })).status, 403, 'sahibi öne çıkaramaz');
+		t.eq((await authorApi.patch(`/api/projects/${id}`, { oneLeaving: true })).status, 403, 'sahibi öne çıkaramaz');
 		const { page: ap } = await t.open('admin');
 		const aw = await openWide(ap, 'projects');
 		await aw.locator(`[data-project-id="${id}"]`).click();
@@ -140,9 +140,9 @@ export default async function suite(t) {
 		const p = await read();
 		t.eq(p.status, 'archived', 'durum: arşiv');
 		t.eq(Number(p.oneLeaving), 0, 'öne çıkarma kalktı');
-		t.eq((await fanApi.get(`/api/projeler/${id}`)).status, 404, 'arşivdeki proje başka üyeye görünmez');
-		t.eq((await authorApi.post(`/api/projeler/${id}`, { action: 'star' })).status, 400, 'arşivdeki proje (sahibince bile) yıldızlanamaz');
-		t.eq((await authorApi.patch(`/api/projeler/${id}`, { summary: 'Arşivdeyken değiştirmeye çalışıyor' })).status, 403, 'sahibi arşivdeki projeyi düzenleyemez');
+		t.eq((await fanApi.get(`/api/projects/${id}`)).status, 404, 'arşivdeki proje başka üyeye görünmez');
+		t.eq((await authorApi.post(`/api/projects/${id}`, { action: 'star' })).status, 400, 'arşivdeki proje (sahibince bile) yıldızlanamaz');
+		t.eq((await authorApi.patch(`/api/projects/${id}`, { summary: 'Arşivdeyken değiştirmeye çalışıyor' })).status, 403, 'sahibi arşivdeki projeyi düzenleyemez');
 		await ap.keyboard.press('Escape');
 		await aw.getByRole('tab', { name: /Arşiv/ }).click();
 		t.eq(await aw.locator(`[data-project-id="${id}"]`).count(), 1, 'Arşiv sekmesinde');
@@ -156,9 +156,9 @@ export default async function suite(t) {
 	});
 
 	await step('yayından geri alma ve silme yetkisi', async () => {
-		t.eq((await authorApi.del(`/api/projeler/${id}`)).status, 403, 'sahibi yayındaki projeyi silemez');
-		t.eq((await admin.patch(`/api/projeler/${id}`, { status: 'proposed' })).status, 200, 'yönetim öneriye geri aldı');
-		t.eq((await fanApi.get(`/api/projeler/${id}`)).status, 404, 'öneriye dönünce başka üyeden gizlendi');
+		t.eq((await authorApi.del(`/api/projects/${id}`)).status, 403, 'sahibi yayındaki projeyi silemez');
+		t.eq((await admin.patch(`/api/projects/${id}`, { status: 'proposed' })).status, 200, 'yönetim öneriye geri aldı');
+		t.eq((await fanApi.get(`/api/projects/${id}`)).status, 404, 'öneriye dönünce başka üyeden gizlendi');
 		await page.reload();
 		await page.locator('[data-window-frame=projects]').waitFor();
 		const w = await openWide(page, 'projects');
@@ -166,15 +166,15 @@ export default async function suite(t) {
 		await w.locator(`[data-project-id="${id}"]`).click();
 		await page.getByRole('dialog', { name: title }).getByRole('button', { name: 'Sil', exact: true }).click();
 		await answerDialog(page);
-		await t.waitFor(async () => (await authorApi.get(`/api/projeler/${id}`)).status === 404);
-		t.eq((await admin.get(`/api/projeler/${id}`)).status, 404, 'sahibi kendi önerisini sildi');
+		await t.waitFor(async () => (await authorApi.get(`/api/projects/${id}`)).status === 404);
+		t.eq((await admin.get(`/api/projects/${id}`)).status, 404, 'sahibi kendi önerisini sildi');
 		id = null;
 	});
 
 	await step('yetkisiz rol: "Sadece Haberler" projeleri göremez ve öneremez', async () => {
 		const reader = await t.api('reader');
-		t.eq((await reader.get('/api/projeler')).status, 403, 'GET /api/projeler 403');
-		t.eq((await reader.post('/api/projeler', { title: 'E2E sızma', summary: 'Yetkisiz kullanıcı önerisi', repoUrl: 'https://example.com', technologies: 'Go' })).status, 403, 'öneri 403');
+		t.eq((await reader.get('/api/projects')).status, 403, 'GET /api/projects 403');
+		t.eq((await reader.post('/api/projects', { title: 'E2E sızma', summary: 'Yetkisiz kullanıcı önerisi', repoUrl: 'https://example.com', technologies: 'Go' })).status, 403, 'öneri 403');
 		const { page: op } = await t.open('reader');
 		t.eq(await op.locator('[data-dock-app=projects]').count(), 0, 'Dock\'ta Projeler yok');
 	});

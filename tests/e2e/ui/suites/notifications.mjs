@@ -50,18 +50,18 @@ export default async function suite(t) {
 	const stamp = Date.now().toString(36);
 
 	// --- veri: haber (önemli + normal), yakın etkinlik, ege'ye görev, bekleyen başvuru ---
-	const news = must(await admin.post('/api/haberler', { title: `Bildirim testi haberi ${stamp}`, content: 'Bildirim paketi için.', category: 'general', publishStatus: 'published' }), 'news');
-	t.cleanup(() => admin.del(`/api/haberler?id=${news.id}`));
-	const pinned = must(await admin.post('/api/haberler', { title: `Önemli duyuru ${stamp}`, content: 'Sabitlenen duyuru.', category: 'general', publishStatus: 'published', isImportant: true }), 'önemli haber');
-	t.cleanup(() => admin.del(`/api/haberler?id=${pinned.id}`));
+	const news = must(await admin.post('/api/news', { title: `Bildirim testi haberi ${stamp}`, content: 'Bildirim paketi için.', category: 'general', publishStatus: 'published' }), 'news');
+	t.cleanup(() => admin.del(`/api/news?id=${news.id}`));
+	const pinned = must(await admin.post('/api/news', { title: `Önemli duyuru ${stamp}`, content: 'Sabitlenen duyuru.', category: 'general', publishStatus: 'published', isImportant: true }), 'önemli haber');
+	t.cleanup(() => admin.del(`/api/news?id=${pinned.id}`));
 
 	const start = Date.now() + 2 * 3600_000;
-	const event = must(await admin.post('/api/etkinlikler', { action: 'createEvent', title: `Bildirim etkinliği ${stamp}`, description: 'Bildirim paketi', typeValue: 'workshop', location: 'D-101', start: start, end: start + 3600_000, capacity: 10, status: 'published' }), 'etkinlik');
-	t.cleanup(() => admin.post('/api/etkinlikler', { action: 'deleteEvent', eventId: event.id }));
+	const event = must(await admin.post('/api/events', { action: 'createEvent', title: `Bildirim etkinliği ${stamp}`, description: 'Bildirim paketi', typeValue: 'workshop', location: 'D-101', start: start, end: start + 3600_000, capacity: 10, status: 'published' }), 'etkinlik');
+	t.cleanup(() => admin.post('/api/events', { action: 'deleteEvent', eventId: event.id }));
 
 	const team = fx.content.team.team ?? fx.content.team;
-	const task = must(await admin.post('/api/takimlar', { action: 'addTask', teamId: team.id, title: `Bildirim görevi ${stamp}`, assigneeMemberId: fx.users.ege.id, dueDate: Date.now() + DAY }), 'görev').task;
-	t.cleanup(() => admin.post('/api/takimlar', { action: 'deleteTask', taskId: task.id }));
+	const task = must(await admin.post('/api/teams', { action: 'addTask', teamId: team.id, title: `Bildirim görevi ${stamp}`, assigneeMemberId: fx.users.ege.id, dueDate: Date.now() + DAY }), 'görev').task;
+	t.cleanup(() => admin.post('/api/teams', { action: 'deleteTask', taskId: task.id }));
 
 	// Başvuru: kayıt formunun API'si. Şifre rastgele, hiçbir yere yazılmaz.
 	const reg = await fetch(`${t.base}/api/auth/register`, {
@@ -71,12 +71,12 @@ export default async function suite(t) {
 		body: JSON.stringify({ name: 'Başvuru', surname: `Test ${stamp}`, email: `basvuru-${stamp}@club.test`, password: crypto.randomBytes(12).toString('hex'), department: 'Fizik', grade: 1, kvkkAccept: true }),
 	}).then(async (r) => ({ status: r.status, json: await r.json().catch(() => null) }));
 	const applicant = must(reg, 'başvuru').user;
-	t.cleanup(() => admin.del(`/api/uyeler?id=${applicant.id}`));
+	t.cleanup(() => admin.del(`/api/members?id=${applicant.id}`));
 
 	const ids = { news: `news:${news.id}`, pinned: `news:${pinned.id}`, event: `event:${event.id}`, task: `task:${task.id}`, approval: `approval:${applicant.id}` };
 
 	await t.step('API: her rol yalnız kendi uygulamalarının bildirimini alır', async () => {
-		const feed = async (key) => must(await (await t.api(key)).get('/api/bildirimler'), `bildirimler ${key}`).items.map((i) => i.id);
+		const feed = async (key) => must(await (await t.api(key)).get('/api/notifications'), `bildirimler ${key}`).items.map((i) => i.id);
 		const reader = await feed('reader');
 		t.includes(reader, ids.news, 'okur: haber bildirimi var');
 		for (const k of ['event', 'task', 'approval']) t.excludes(reader, ids[k], `okur: ${k} bildirimi yok`);
@@ -90,7 +90,7 @@ export default async function suite(t) {
 
 	await t.step('ege: zil sayacı, panel grupları, okundu', async () => {
 		const ege = await t.api('ege');
-		const api = must(await ege.get('/api/bildirimler'), 'bildirimler ege');
+		const api = must(await ege.get('/api/notifications'), 'bildirimler ege');
 		const { page } = await t.open('ege');
 		// Bu tarayıcıda ilk bakış: yapılacaklar + son 3 gündeki bilgi bildirimleri.
 		const expected = api.counts.actionRequired + api.items.filter((i) => i.priority === 'info' && i.at > api.generatedAt - FIRST_LOOK_MS).length;
@@ -117,8 +117,8 @@ export default async function suite(t) {
 		await closePanel(page);
 
 		// Yeni bir haber: yeniden yüklemeden sonra sayaç bir artar (son bakış tarayıcıda saklı).
-		const late = must(await admin.post('/api/haberler', { title: `Sonradan gelen ${stamp}`, content: 'Yeni.', category: 'general', publishStatus: 'published' }), 'ikinci haber');
-		t.cleanup(() => admin.del(`/api/haberler?id=${late.id}`));
+		const late = must(await admin.post('/api/news', { title: `Sonradan gelen ${stamp}`, content: 'Yeni.', category: 'general', publishStatus: 'published' }), 'ikinci haber');
+		t.cleanup(() => admin.del(`/api/news?id=${late.id}`));
 		await page.reload({ waitUntil: 'domcontentloaded' });
 		await page.locator('[data-notification-toggle]').waitFor();
 		t.check((await t.waitFor(async () => (await badge(page)) === api.counts.actionRequired + 1)) >= 0, 'yeniden yüklemede sayaç yalnız yeni haber kadar arttı', `gelen ${await badge(page)}`);
@@ -148,7 +148,7 @@ export default async function suite(t) {
 		await dialog.getByRole('button').last().click();
 		await row.waitFor({ state: 'detached' });
 		t.eq(await row.count(), 0, 'reddedilen başvuru panelden kalktı');
-		const after = must(await (await t.api('zeynep')).get('/api/bildirimler'), 'bildirimler zeynep').items.map((i) => i.id);
+		const after = must(await (await t.api('zeynep')).get('/api/notifications'), 'bildirimler zeynep').items.map((i) => i.id);
 		t.excludes(after, ids.approval, 'API de başvuruyu artık göstermiyor');
 	});
 

@@ -272,7 +272,7 @@ export async function GET(request: Request) {
 		};
 		return NextResponse.json(body, { headers: NO_STORE });
 	} catch (error) {
-		console.error('API /api/bildirimler error:', error);
+		console.error('API /api/notifications error:', error);
 		return NextResponse.json({ error: 'Bildirimler okunamadı.' }, { status: 500, headers: NO_STORE });
 	}
 }

@@ -11,7 +11,7 @@ const MIN = 60_000;
  */
 export async function makeEvent(t, admin, { label, startMin = 3 * 24 * 60, lengthMin = 120, capacity = 30, status = 'published', typeValue = 'workshop' } = {}) {
 	const now = Date.now();
-	const res = await admin.post('/api/etkinlikler', {
+	const res = await admin.post('/api/events', {
 		action: 'createEvent',
 		title: `E2E ${label} ${runTag()}`,
 		description: 'E2E sınaması için kurulan geçici etkinlik.',
@@ -30,24 +30,24 @@ export async function makeEvent(t, admin, { label, startMin = 3 * 24 * 60, lengt
 
 /** Deletes an event after taking back its check-ins. */
 export async function removeEvent(admin, id) {
-	const list = (await admin.get(`/api/etkinlikler/${encodeURIComponent(id)}/katilim`)).json?.list ?? [];
-	for (const r of list) if (r.participationTime) await admin.post('/api/etkinlikler', { action: 'removeAttendance', eventId: id, userId: r.userId });
-	await admin.post('/api/etkinlikler', { action: 'deleteEvent', eventId: id });
+	const list = (await admin.get(`/api/events/${encodeURIComponent(id)}/katilim`)).json?.list ?? [];
+	for (const r of list) if (r.participationTime) await admin.post('/api/events', { action: 'removeAttendance', eventId: id, userId: r.userId });
+	await admin.post('/api/events', { action: 'deleteEvent', eventId: id });
 }
 
 /** Events named "E2E …" left by a killed run. */
 export async function sweepEvents(admin) {
-	for (const e of (await admin.get('/api/etkinlikler')).json?.events ?? []) if (/^E2E /.test(e.title)) await removeEvent(admin, e.id);
+	for (const e of (await admin.get('/api/events')).json?.events ?? []) if (/^E2E /.test(e.title)) await removeEvent(admin, e.id);
 }
 
-/** The event as `who` sees it in `/api/etkinlikler` (undefined when hidden). */
+/** The event as `who` sees it in `/api/events` (undefined when hidden). */
 export async function eventOf(who, id) {
-	return (await who.get('/api/etkinlikler')).json?.events?.find((e) => e.id === id);
+	return (await who.get('/api/events')).json?.events?.find((e) => e.id === id);
 }
 
 /** The organiser's list of registrations and check-ins. */
 export async function attendance(admin, id) {
-	return (await admin.get(`/api/etkinlikler/${encodeURIComponent(id)}/katilim`)).json?.list ?? [];
+	return (await admin.get(`/api/events/${encodeURIComponent(id)}/katilim`)).json?.list ?? [];
 }
 
 /** Events app, maximised, with one event selected; returns { win, detail }. */

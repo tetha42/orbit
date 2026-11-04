@@ -41,7 +41,7 @@ function normalizeDockApps(candidate: unknown): AppID[] {
  * Keeps the workspace across reloads (IndexedDB) and roams it across devices (Server Sync).
  *
  * 1. Immediate startup hydration from client IndexedDB.
- * 2. Background server-state hydration from /api/profile/workspace when authenticated,
+ * 2. Background server-state hydration from /api/profilee/workspace when authenticated,
  *    allowing window layouts, custom wallpapers, and dock apps to roam across machines.
  * 3. Debounced local storage and server sync upon changes.
  */
@@ -100,7 +100,7 @@ export function useWorkspacePersistence(shell: PersistedShell, set: PersistedSet
 		if (!isAuthenticated || remoteLoadedRef.current) return;
 		remoteLoadedRef.current = true;
 
-		fetch('/api/profile/workspace')
+		fetch('/api/profilee/workspace')
 			.then((res) => (res.ok ? res.json() : null))
 			.then((res) => {
 				const remote = res?.data?.workspace;
@@ -170,7 +170,7 @@ export function useWorkspacePersistence(shell: PersistedShell, set: PersistedSet
 				if (isAuthenticated) {
 					if (serverSyncTimerRef.current) clearTimeout(serverSyncTimerRef.current);
 					serverSyncTimerRef.current = setTimeout(() => {
-						fetch('/api/profile/workspace', {
+						fetch('/api/profilee/workspace', {
 							method: 'PUT',
 							headers: { 'Content-Type': 'application/json' },
 							body: JSON.stringify(payload),

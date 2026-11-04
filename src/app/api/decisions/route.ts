@@ -23,7 +23,7 @@ export async function GET(request: Request) {
 		// The digest is printed on the document and shown on the verification page.
 		return jsonSuccess(visible.map((k) => ({ ...k, summary: documentSummary(k) })));
 	} catch (error) {
-		console.error('API /api/kararlar GET error:', error);
+		console.error('API /api/decisions GET error:', error);
 		return bad('Kararlar okunamadı.', 500);
 	}
 }
@@ -129,7 +129,7 @@ async function handlePOST(request: Request) {
 		await publishEventQuiet(getPgPool(), [{ k: 'decision_updated' }, ...notificationEvents()]);
 		return NextResponse.json({ ...result, summary: documentSummary(result) }, { status: 201 });
 	} catch (error) {
-		console.error('API /api/kararlar POST error:', error);
+		console.error('API /api/decisions POST error:', error);
 		return bad('İşlem tamamlanamadı.', 500);
 	}
 }
@@ -151,7 +151,7 @@ async function handlePATCH(request: Request) {
 		await publishEventQuiet(getPgPool(), [{ k: 'decision_updated' }]);
 		return jsonSuccess({ success: true });
 	} catch (error) {
-		console.error('API /api/kararlar PATCH error:', error);
+		console.error('API /api/decisions PATCH error:', error);
 		return bad('Belge güncellenemedi.', 500);
 	}
 }

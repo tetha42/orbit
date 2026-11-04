@@ -24,7 +24,7 @@ export async function GET(
 			ip,
 			points: waf.points,
 			reason: `WAF: ${waf.signature}`,
-			path: '/api/sertifikalar/[code]',
+			path: '/api/certificates/[code]',
 		});
 		return NextResponse.json(
 			{ isValid: false, error: 'Güvenlik duvarı (WAF) tarafından şüpheli istek engellendi.' },

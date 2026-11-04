@@ -28,14 +28,14 @@ export default async function suite(t) {
 	const [iApi, sApi, yApi, hApi] = await Promise.all([ipek.api(), isil.api(), yan.api(), news.api()]);
 
 	const roleId = must(
-		await admin.post('/api/roller', { name: `E2E Rehber ${tag}`, color: '#8e8e93', description: 'Üye Rehberi var, Posta yok', twoStepRequired: false, permissions: { members: 'use', news: 'use', settings: 'use' } }),
+		await admin.post('/api/roles', { name: `E2E Rehber ${tag}`, color: '#8e8e93', description: 'Üye Rehberi var, Posta yok', twoStepRequired: false, permissions: { members: 'use', news: 'use', settings: 'use' } }),
 		'rol'
 	).id;
-	t.cleanup(() => admin.del('/api/roller', { id: roleId, move: fx.roles.member }));
+	t.cleanup(() => admin.del('/api/roles', { id: roleId, move: fx.roles.member }));
 	const guide = await newMember(t, admin, { label: 'kisi-r', name: 'Rehber', surname: 'Okuru', roleId: roleId });
 	const rApi = await guide.api();
 
-	const lookup = async (api, q) => (await api.get(`/api/posta/alicilar?q=${encodeURIComponent(q)}`)).json;
+	const lookup = async (api, q) => (await api.get(`/api/messages/recipients?q=${encodeURIComponent(q)}`)).json;
 	const ids = (body) => (body?.recipients ?? []).map((a) => a.id);
 
 	await t.step('API: ad, soyad (Türkçe harfler katlanarak), e-posta, bölüm ve öğrenci no ile bulunur', async () => {
@@ -81,10 +81,10 @@ export default async function suite(t) {
 		// En çok 20 kişi.
 		const wide = (await lookup(iApi, 'e')).recipients.length;
 		t.check(wide <= 20, `en çok 20 sonuç (${wide})`);
-		t.eq((await iApi.get(`/api/posta/alicilar?id=${encodeURIComponent(isil.id)}`)).json.recipients.map((a) => a.id), [isil.id], 'kimlikle tek kişi');
-		t.eq((await iApi.get(`/api/posta/alicilar?id=${encodeURIComponent(ipek.id)}`)).json.recipients, [], 'kendi kimliği: boş');
-		t.eq((await iApi.get('/api/posta/alicilar?id=olmayan')).json.recipients, [], 'olmayan kimlik: boş');
-		const reach = (await iApi.get('/api/posta/alicilar?ulasilabilir=1')).json;
+		t.eq((await iApi.get(`/api/messages/recipients?id=${encodeURIComponent(isil.id)}`)).json.recipients.map((a) => a.id), [isil.id], 'kimlikle tek kişi');
+		t.eq((await iApi.get(`/api/messages/recipients?id=${encodeURIComponent(ipek.id)}`)).json.recipients, [], 'kendi kimliği: boş');
+		t.eq((await iApi.get('/api/messages/recipients?id=olmayan')).json.recipients, [], 'olmayan kimlik: boş');
+		const reach = (await iApi.get('/api/messages/recipients?ulasilabilir=1')).json;
 		t.eq(Object.keys(reach), ['idler'], 'ulasilabilir=1 yalnız kimlik listesi döner');
 		t.includes(reach.ids, isil.id, 'ulaşılabilir listesinde berk');
 		t.excludes(reach.ids, news.id, 'Posta’sız rol listede yok');
@@ -92,12 +92,12 @@ export default async function suite(t) {
 		// Aktif olmayan üye bulunmaz.
 		const alumni = await newMember(t, admin, { label: 'kisi-m', name: 'Mezun', surname: 'Eski', roleId: fx.roles.member });
 		t.includes(ids(await lookup(iApi, alumni.surname)), alumni.id, 'aktif üye bulunur');
-		t.eq((await admin.patch('/api/uyeler', { id: alumni.id, status: 'alumni' })).status, 200, 'üye mezun yapıldı');
+		t.eq((await admin.patch('/api/members', { id: alumni.id, status: 'alumni' })).status, 200, 'üye mezun yapıldı');
 		t.eq(ids(await lookup(iApi, alumni.surname)), [], 'mezun (aktif değil) bulunmaz');
 	});
 
 	await t.step('API: Posta’sız rol arama uçlarının hiçbirine giremez (403); aramada kişi önerisi çıkmaz', async () => {
-		for (const path of ['/api/posta/alicilar', '/api/posta/alicilar?q=isil', `/api/posta/alicilar?id=${isil.id}`, '/api/posta/alicilar?ulasilabilir=1']) {
+		for (const path of ['/api/messages/recipients', '/api/messages/recipients?q=isil', `/api/messages/recipients?id=${isil.id}`, '/api/messages/recipients?ulasilabilir=1']) {
 			t.eq((await hApi.get(path)).status, 403, `Posta’sız GET ${path} → 403`);
 			t.eq((await rApi.get(path)).status, 403, `Üye Rehberi var, Posta yok: GET ${path} → 403`);
 		}
@@ -120,12 +120,12 @@ export default async function suite(t) {
 		t.eq(empty.proposed, false, 'yazışma yokken öneri değil, dizin başı');
 		t.check(empty.recipients.length > 0 && empty.recipients.length <= 20, 'yine de liste boş değil');
 		t.eq((await lookup(iApi, '')).proposed, false, 'ipek: henüz yazışma yok');
-		must(await iApi.post('/api/posta', { topic: `Öneri ${tag}`, body: 'ilk', recipients: [isil.id] }), 'ilk mesaj');
+		must(await iApi.post('/api/messages', { topic: `Öneri ${tag}`, body: 'ilk', recipients: [isil.id] }), 'ilk mesaj');
 		await t.sleep(20);
 		const first = await lookup(iApi, '');
 		t.eq([first.proposed, ids(first)], [true, [isil.id]], 'ilk yazışmadan sonra öneri: Işıl');
 		await t.sleep(20);
-		must(await iApi.post('/api/posta', { topic: `Öneri 2 ${tag}`, body: 'ikinci', recipients: [yan.id, isil.id] }), 'ikinci mesaj');
+		must(await iApi.post('/api/messages', { topic: `Öneri 2 ${tag}`, body: 'ikinci', recipients: [yan.id, isil.id] }), 'ikinci mesaj');
 		const second = await lookup(iApi, '');
 		t.eq(second.proposed, true, 'öneri işaretli');
 		t.sameSet(ids(second), [yan.id, isil.id], 'iki kişi öneride');
@@ -203,8 +203,8 @@ export default async function suite(t) {
 		await sheet.locator('[data-mail-send]').click();
 		await toast(page, 'Mesaj gönderildi.');
 		await sheet.waitFor({ state: 'detached' });
-		const toIsil = must(await sApi.get('/api/posta?klasor=gelen'), 'liste').topics.find((k) => k.topic === `Çoklu ${tag}`);
-		const toYan = must(await yApi.get('/api/posta?klasor=gelen'), 'liste').topics.find((k) => k.topic === `Çoklu ${tag}`);
+		const toIsil = must(await sApi.get('/api/messages?klasor=gelen'), 'liste').topics.find((k) => k.topic === `Çoklu ${tag}`);
+		const toYan = must(await yApi.get('/api/messages?klasor=gelen'), 'liste').topics.find((k) => k.topic === `Çoklu ${tag}`);
 		t.check(toIsil && toYan, 'iki alıcının da gelen kutusuna düştü');
 	});
 
@@ -220,7 +220,7 @@ export default async function suite(t) {
 		await sheet.locator('[data-mail-body]').fill('Seni bölümünden buldum.');
 		await sheet.locator('[data-mail-send]').click();
 		await toast(page, 'Mesaj gönderildi.');
-		const got = must(await iApi.get('/api/posta?klasor=gelen'), 'ipek gelen').topics.find((k) => k.topic === `Selam ${tag}`);
+		const got = must(await iApi.get('/api/messages?klasor=gelen'), 'ipek gelen').topics.find((k) => k.topic === `Selam ${tag}`);
 		t.check(got, 'ipek mesajı aldı');
 		const ip = (await ipek.open()).page;
 		const iWin = await openApp(ip, 'mail');
@@ -228,12 +228,12 @@ export default async function suite(t) {
 		await iWin.locator('[data-mail-reply]').fill('Buldun beni, merhaba!');
 		await iWin.locator('[data-mail-reply-send]').click();
 		await toast(ip, 'Yanıt gönderildi.');
-		t.eq(must(await sApi.get(`/api/posta/${got.id}`), 'konu').messages.length, 2, 'Işıl yanıtı görüyor: iki mesaj');
+		t.eq(must(await sApi.get(`/api/messages/${got.id}`), 'konu').messages.length, 2, 'Işıl yanıtı görüyor: iki mesaj');
 		await t.shot(ip, 'ikili-yazisma');
 	});
 
 	await t.step('arayüz (ipek): Üye Rehberi’nde "Mesaj gönder" yalnız ulaşılabilir kişide; tıklayınca Posta alıcı seçili açılır', async () => {
-		t.eq((await iApi.get('/api/uyeler')).status, 200, 'önkoşul: ipek Üye Rehberi’ni açabiliyor');
+		t.eq((await iApi.get('/api/members')).status, 200, 'önkoşul: ipek Üye Rehberi’ni açabiliyor');
 		const { page } = await ipek.open();
 		const dir = await openApp(page, 'members');
 		await dir.locator(`[data-focus-id="member:${isil.id}"]`).waitFor();
@@ -256,7 +256,7 @@ export default async function suite(t) {
 		await sheet.locator('[data-mail-body]').fill('Üye Rehberi’nden geldim.');
 		await sheet.locator('[data-mail-send]').click();
 		await toast(page, 'Mesaj gönderildi.');
-		t.check(must(await sApi.get('/api/posta?klasor=gelen'), 'liste').topics.some((k) => k.topic === `Rehberden ${tag}`), 'Işıl mesajı aldı');
+		t.check(must(await sApi.get('/api/messages?klasor=gelen'), 'liste').topics.some((k) => k.topic === `Rehberden ${tag}`), 'Işıl mesajı aldı');
 	});
 
 	await t.step('arayüz (Spotlight): kişi arayınca "Mesaj gönder" sonucu Posta’yı alıcı seçili açar', async () => {
@@ -294,8 +294,8 @@ export default async function suite(t) {
 		const apps = await dockApps(page);
 		t.excludes(apps, 'mail', 'Dock’ta Posta yok');
 		t.excludes(apps, 'members', 'Dock’ta Üye Rehberi yok');
-		t.eq((await hApi.get('/api/uyeler')).status, 403, 'GET /api/uyeler → 403');
-		t.eq((await hApi.get('/api/posta/alicilar?q=caglar')).status, 403, 'GET /api/posta/alicilar → 403');
+		t.eq((await hApi.get('/api/members')).status, 403, 'GET /api/members → 403');
+		t.eq((await hApi.get('/api/messages/recipients?q=caglar')).status, 403, 'GET /api/messages/recipients → 403');
 		await page.keyboard.press('Control+Space');
 		await page.locator('input[role=combobox][maxlength="120"]').fill('çağlar');
 		await page.waitForTimeout(700);

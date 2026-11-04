@@ -102,7 +102,7 @@ export async function GET(request: Request) {
 		const newsItems = await getNews(manager ? 'management' : 'member');
 		return NextResponse.json(newsItems, { headers: { 'Cache-Control': 'no-store' } });
 	} catch (error) {
-		console.error('API /api/haberler GET error:', error);
+		console.error('API /api/news GET error:', error);
 		return NextResponse.json({ error: 'Haberler okunamadı.' }, { status: 500 });
 	}
 }
@@ -141,7 +141,7 @@ async function handlePOST(request: Request) {
 			authorName: `${auth.user.firstName || auth.user.name || ''} ${auth.user.lastName || auth.user.surname || ''}`.trim(),
 		});
 	} catch (error) {
-		console.error('API /api/haberler POST error:', error);
+		console.error('API /api/news POST error:', error);
 		return NextResponse.json({ error: 'NewsItem ve duyuru yayınlanamadı.' }, { status: 500 });
 	}
 }
@@ -174,7 +174,7 @@ async function handlePATCH(request: Request) {
 		await publishEventQuiet(getPgPool(), [{ k: 'news_updated' }, ...notificationEvents()]);
 		return NextResponse.json(updated);
 	} catch (error) {
-		console.error('API /api/haberler PATCH error:', error);
+		console.error('API /api/news PATCH error:', error);
 		return NextResponse.json({ error: 'NewsItem güncellenemedi.' }, { status: 500 });
 	}
 }
@@ -197,7 +197,7 @@ async function handleDELETE(request: Request) {
 		if (success) await publishEventQuiet(getPgPool(), [{ k: 'news_updated' }, ...notificationEvents()]);
 		return NextResponse.json({ success });
 	} catch (error) {
-		console.error('API /api/haberler DELETE error:', error);
+		console.error('API /api/news DELETE error:', error);
 		return NextResponse.json({ error: 'NewsItem silinemedi.' }, { status: 500 });
 	}
 }
