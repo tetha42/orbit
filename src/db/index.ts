@@ -10,6 +10,7 @@ import { startAuditMaintenance, ensureAuditSchema } from './audit';
 
 import { ADMIN_ROLE_ID } from '@/core/permissions';
 import { runSchemaMigrations } from './schema.init';
+import { migrateLegacyValues } from './legacyValues';
 import { CONFIG } from '@/server/config';
 import { updateConfigIniSync } from '@/server/iniWriter';
 
@@ -345,6 +346,7 @@ export async function ensurePostgresInit(): Promise<void> {
 			await ensureAuditSchema(client);
 			await ensureMailSchema(client);
 			await ensureOAuthSchema(client);
+			await migrateLegacyValues(client);
 			const countRes = await client.query('SELECT count(*)::int AS count FROM users');
 			if (countRes.rows[0].count === 0) await bootstrapFirstAdmin(client);
 			await client.query('COMMIT');

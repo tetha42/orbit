@@ -64,7 +64,7 @@ export async function getTeamMembers(teamId: string): Promise<TeamMember[]> {
 
 export async function getUserTeamIds(userId: string): Promise<string[]> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query('SELECT team_id AS "teamId" FROM team_members WHERE user_id = $1 AND status = \'aktif\'', [userId]);
+	const res = await getPgPool().query('SELECT team_id AS "teamId" FROM team_members WHERE user_id = $1 AND status = \'active\'', [userId]);
 	return res.rows.map((r) => r.teamId);
 }
 

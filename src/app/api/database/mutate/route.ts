@@ -126,7 +126,7 @@ export async function POST(request: Request) {
 								now,
 								auth.user.id,
 								actorName,
-								'db_hucre_guncelleme',
+								'db_cell_update',
 								'database_table',
 								table,
 								String(u.pk.val),
@@ -169,7 +169,7 @@ export async function POST(request: Request) {
 			for (const d of deletes) {
 				const pkCol = String(d.col || '').trim();
 				if (!/^[a-zA-Z0-9_]+$/.test(pkCol)) throw new Error('Geçersiz silme hedefi.');
-				if (lowerTable === 'sistem_ayarlari' && PROTECTED_SETTINGS_KEYS.has(String(d.val ?? '').toLowerCase())) {
+				if (lowerTable === 'system_settings' && PROTECTED_SETTINGS_KEYS.has(String(d.val ?? '').toLowerCase())) {
 					continue;
 				}
 

@@ -34,8 +34,8 @@ export function BudgetSidebar({ active, general, projects, onSelect }: BudgetSid
 		return (
 			<button
 				key={vault.teamId ?? 'general'}
-				className="kasa-item"
-				data-focus-id={`kasa-item:${vault.teamId ?? 'general'}`}
+				className="vault-item"
+				data-focus-id={`vault-item:${vault.teamId ?? 'general'}`}
 				onClick={() => onSelect(vault.teamId)}
 				style={{
 					display: 'flex',
@@ -89,17 +89,17 @@ export function BudgetSidebar({ active, general, projects, onSelect }: BudgetSid
 	};
 
 	return (
-		<nav aria-label="Kasalar" className="kasa-nav">
-			<div className="kasa-nav-label" style={sectionLabel}>
+		<nav aria-label="Kasalar" className="vault-nav">
+			<div className="vault-nav-label" style={sectionLabel}>
 				{t('kasaGeneral')}
 			</div>
 			{general.map(renderItem)}
-			<div className="kasa-nav-label" style={sectionLabel}>
+			<div className="vault-nav-label" style={sectionLabel}>
 				{t('kasaProjectTreasuries')}
 			</div>
 			{projects.map(renderItem)}
 			{projects.length === 0 && (
-				<div className="kasa-nav-label" style={{ padding: '4px 10px', fontSize: '12px', opacity: 0.55 }}>
+				<div className="vault-nav-label" style={{ padding: '4px 10px', fontSize: '12px', opacity: 0.55 }}>
 					{t('kasaNoProjects')}
 				</div>
 			)}

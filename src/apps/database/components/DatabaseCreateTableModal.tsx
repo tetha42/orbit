@@ -57,7 +57,7 @@ export function DatabaseCreateTableModal({ dbToken, onClose, onSuccess }: Databa
 	};
 
 	const generatedSql = useMemo(() => {
-		const safeTable = tableName.trim().replace(/[^a-zA-Z0-9_]/g, '') || 'yeni_tablo';
+		const safeTable = tableName.trim().replace(/[^a-zA-Z0-9_]/g, '') || 'new_table';
 		const colDefs: string[] = [];
 		const pks: string[] = [];
 

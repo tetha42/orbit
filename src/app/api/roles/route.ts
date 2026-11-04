@@ -89,7 +89,7 @@ export async function POST(request: Request) {
 		const parsed = readRole(body, auth.user);
 		if (parsed.error !== undefined) return bad(parsed.error, parsed.status);
 		const r = await createRole(parsed.value, auditContext(request, auth.user));
-		if (!r.ok) return bad(r.error === 'ad-var' ? 'Bu adla bir role zaten var.' : 'Role oluşturulamadı.', 409);
+		if (!r.ok) return bad(r.error === 'name_taken' ? 'Bu adla bir role zaten var.' : 'Role oluşturulamadı.', 409);
 		invalidateCache('roles_raw');
 		return NextResponse.json({ success: true, id: r.id }, { status: 201 });
 	} catch (error) {

@@ -75,8 +75,7 @@ export function readSessionToken(request: Request): string | null {
 	const cookieHeader = request.headers.get('cookie') || '';
 	const match = fromHeader
 		? null
-		: cookieHeader.match(new RegExp(`${SESSION_COOKIE}=([^;]+)`)) ||
-		  cookieHeader.match(/oturum_token=([^;]+)/);
+		: cookieHeader.match(new RegExp(`${SESSION_COOKIE}=([^;]+)`));
 	const raw = (fromHeader || (match ? match[1] : '')).trim();
 	if (!raw || raw.length < 16 || raw.length > 128 || !/^[A-Za-z0-9_-]+$/.test(raw)) {
 		return null;

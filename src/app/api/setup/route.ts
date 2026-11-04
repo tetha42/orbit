@@ -346,14 +346,6 @@ export async function handleSetupSubmission(request: Request) {
 
 		if (sessionToken) {
 			attachSessionCookie(response, sessionToken);
-			// Also set oturum_token for explicit compatibility
-			response.cookies.set('oturum_token', sessionToken, {
-				path: '/',
-				httpOnly: true,
-				sameSite: 'lax',
-				secure: process.env.NODE_ENV === 'production',
-				maxAge: 7 * 24 * 60 * 60,
-			});
 		}
 
 		return response;

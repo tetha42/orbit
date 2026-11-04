@@ -34,9 +34,9 @@ const ATTACK_SCENARIOS: AttackScenario[] = [
 		id: 'sqli_union_export',
 		name: 'SQL Injection: UNION Extraction Probe',
 		category: 'SQLi',
-		endpoint: "/api/soc/export?servis=auth' UNION SELECT 1,2,3--",
+		endpoint: "/api/soc/export?service=auth' UNION SELECT 1,2,3--",
 		method: 'GET',
-		payload: "servis=auth' UNION SELECT 1,2,3--",
+		payload: "service=auth' UNION SELECT 1,2,3--",
 		expectedBlocked: true,
 	},
 	{

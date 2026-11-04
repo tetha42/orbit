@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-const dict=JSON.parse(fs.readFileSync('scripts/turkish-words.json','utf8'));
+const dict=JSON.parse(fs.readFileSync('src/db/legacy/words.json','utf8'));
 const W=Object.assign(Object.create(null),dict.words), DATA=new Set(dict.dataWords||[]);
 export const MI=Object.assign(Object.create(null),{doneMi:'isDone',publicOpenMi:'isPublicOpen',importantMi:'isImportant',iLikedMi:'likedByMe',deliveredMi:'isDelivered',lockedMi:'isLocked',trashedMi:'isTrashed',pinnedMi:'isPinned',newImportantMi:'newIsImportant',validMi:'isValid',captainMi:'isCaptain',leaderMi:'isLeader',kamuyaAcikMi:'isPublicOpen',kilitliMi:'isLocked',gecerliMi:'isValid',onemliMi:'isImportant'});
 const RES=new Set(['return','delete','new','default','in','of','if','else','for','while','do','switch','case','break','continue','import','export','this','void','typeof','with','yield','await','static','enum','null','true','false','try','catch','finally','throw','class','const','let','var','function','order','end','user','group','limit','table','column','check','desc','asc','from','to','all','any','select','where','like','not','or','on','union','unique','using','when','then','else','case','cast','create','window']);

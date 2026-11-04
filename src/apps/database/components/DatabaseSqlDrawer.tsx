@@ -69,9 +69,9 @@ ORDER BY n_dead_tup DESC;`,
 		desc: 'Tabloların Sequential Scan yerine ne sıklıkla Index Scan kullandığını gösterir.',
 		sql: `SELECT
   relname AS table_name,
-  seq_scan AS order_tarama,
-  idx_scan AS indeks_tarama,
-  ROUND(100.0 * idx_scan / NULLIF(seq_scan + idx_scan, 0), 1) AS indeks_kullanim_yuzdesi
+  seq_scan AS order_scan,
+  idx_scan AS index_scan,
+  ROUND(100.0 * idx_scan / NULLIF(seq_scan + idx_scan, 0), 1) AS index_usage_yuzdesi
 FROM pg_stat_user_tables
 ORDER BY seq_scan DESC
 LIMIT 50;`,

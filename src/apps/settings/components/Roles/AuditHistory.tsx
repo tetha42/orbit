@@ -117,7 +117,7 @@ export function AuditHistory({ roles, variant = 'settings' }: { roles: { id: str
 			if (!res.ok) throw new Error();
 			const json = (await res.json()) as AuditResponse;
 			const rows = auditCsvRows(json.records);
-			downloadCsv('denetim-gecmisi', AUDIT_CSV_HEADERS, rows);
+			downloadCsv('audit-history', AUDIT_CSV_HEADERS, rows);
 		} catch {
 			notify(t('auditCsvHata'), 'error');
 		} finally {

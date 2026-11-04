@@ -300,7 +300,7 @@ export function DatabaseSqlConsole({ dbToken, onQueryExecuted }: DatabaseSqlCons
 																: String(v);
 													})
 												);
-												downloadCsv('sql_sonuc', headers, dataRows);
+												downloadCsv('sql_result', headers, dataRows);
 											}}
 											style={{
 												display: 'inline-flex',
@@ -326,7 +326,7 @@ export function DatabaseSqlConsole({ dbToken, onQueryExecuted }: DatabaseSqlCons
 												const jsonStr = JSON.stringify(result.rows, null, 2);
 												downloadBlob(
 													new Blob([jsonStr], { type: 'application/json;charset=utf-8' }),
-													`sql_sonuc_${new Date().toISOString().slice(0, 10)}.json`
+													`sql_result_${new Date().toISOString().slice(0, 10)}.json`
 												);
 											}}
 											style={{

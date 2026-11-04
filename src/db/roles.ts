@@ -257,7 +257,7 @@ const CACHE_TTL_MS = 5000;
 const g = globalThis as typeof globalThis & { __beuRoleCache?: Map<string, { at: number; permission: Permission }> };
 const cache = (g.__beuRoleCache ??= new Map());
 const dropCache = () => cache.clear();
-registerEventHandler('role-onbellegi', (event) => {
+registerEventHandler('role-cache', (event) => {
 	if (event.k === 'permission' || event.k === 'refresh') {
 		dropCache();
 		invalidateCache('roles_raw');
@@ -354,7 +354,7 @@ export async function getRoles(): Promise<Role[]> {
 	}
 }
 
-export type RoleResult = { ok: true; id: string; error?: undefined } | { ok: false; error: 'none' | 'system' | 'ad-var'; id?: undefined };
+export type RoleResult = { ok: true; id: string; error?: undefined } | { ok: false; error: 'none' | 'system' | 'name_taken'; id?: undefined };
 
 /** A role as the audit log records it, read inside the operation's transaction. */
 async function readRoleSummary(client: PoolClient, id: string): Promise<RoleSummary | null> {
@@ -396,7 +396,7 @@ export async function createRole(r: { name?: string;color?: string;description?:
 			await logAuditEvent(client, ctx, { action: 'role.create', targetType: 'role', targetId: id, targetName: name, before: null, after: await readRoleSummary(client, id) });
 		});
 	} catch (err) {
-		if ((err as { code?: string }).code === '23505') return { ok: false, error: 'ad-var' };
+		if ((err as { code?: string }).code === '23505') return { ok: false, error: 'name_taken' };
 		throw err;
 	}
 	dropCache();
@@ -432,7 +432,7 @@ export async function updateRole(id: string, r: { name?: string;color?: string;d
 		dropCache();
 		return out;
 	} catch (err) {
-		if ((err as { code?: string }).code === '23505') return { ok: false, error: 'ad-var' };
+		if ((err as { code?: string }).code === '23505') return { ok: false, error: 'name_taken' };
 		throw err;
 	}
 }

@@ -3,7 +3,7 @@
  *
  * Stored in the unified communication tables:
  *   chat_rooms    — room_type = 'mail_thread', name = subject, created_by = creator user_id
- *   chat_members  — room_id, user_id, folder ('gelen' | 'gonderilen' | 'arsiv' | 'cop' | 'silindi'),
+ *   chat_members  — room_id, user_id, folder ('inbox' | 'sent' | 'archived' | 'trash' | 'deleted'),
  *                   is_starred, last_read_at, joined_at
  *   chat_messages — id, room_id, sender_id, content, date
  */
@@ -103,7 +103,7 @@ export async function getRecentMailThreads(userId: string, limit: number): Promi
 		 JOIN users x ON x.id = o.user_id AND x.status = 'active'
 		 WHERE me.user_id = $1 AND me.folder <> 'deleted'
 		 GROUP BY x.id, x.first_name, x.last_name, x.role_id
-		 ORDER BY son DESC, x.id
+		 ORDER BY last DESC, x.id
 		 LIMIT $2`,
 		[userId, limit]
 	);
@@ -155,10 +155,10 @@ export async function getMailThreads(
 	const pool = getPgPool();
 	const folder =
 		folderName === 'sent'
-			? `t.yazdim AND t.klasor <> 'trash'`
+			? `t.wrote AND t.folder <> 'trash'`
 			: folderName === 'inbox'
-				? `t.klasor = 'inbox' AND t.aldim`
-				: `t.klasor = '${folderName === 'archived' ? 'archived' : 'trash'}'`;
+				? `t.folder = 'inbox' AND t.received`
+				: `t.folder = '${folderName === 'archived' ? 'archived' : 'trash'}'`;
 	const lateralFilter =
 		folderName === 'sent'
 			? `AND mine.sender_id = $1`
@@ -167,12 +167,12 @@ export async function getMailThreads(
 				: '';
 	const lastExpr =
 		folderName === 'sent'
-			? `COALESCE(t.son_gonderilen, t.son)`
+			? `COALESCE(t.last_sent, t.last)`
 			: folderName === 'inbox'
-				? `COALESCE(t.son_gelen, t.son)`
-				: `t.son`;
-	const countExpr = folderName === 'sent' ? `t.gonderilen_adet` : `t.adet`;
-	const unreadExpr = folderName === 'sent' ? `0` : `t.okunmamis`;
+				? `COALESCE(t.last_incoming, t.last)`
+				: `t.last`;
+	const countExpr = folderName === 'sent' ? `t.sent_count` : `t.count`;
+	const unreadExpr = folderName === 'sent' ? `0` : `t.unread`;
 	const base = `
 		WITH mine AS (
 			SELECT m.room_id, m.sender_id, m.content, m.date,
@@ -185,14 +185,14 @@ export async function getMailThreads(
 		), t AS (
 			SELECT room_id,
 				MAX(date) AS last,
-				MAX(CASE WHEN sender_id = $1 THEN date END) AS last_gonderilen,
+				MAX(CASE WHEN sender_id = $1 THEN date END) AS last_sent,
 				MAX(CASE WHEN sender_id IS DISTINCT FROM $1 THEN date END) AS last_incoming,
 				COUNT(*)::int AS count,
-				COUNT(*) FILTER (WHERE sender_id = $1)::int AS gonderilen_count,
-				SUM(CASE WHEN okundu = 0 AND sender_id IS DISTINCT FROM $1 THEN 1 ELSE 0 END)::int AS unread,
-				(array_agg(klasor ORDER BY date DESC))[1] AS folder,
-				bool_or(sender_id = $1) AS yazdim,
-				bool_or(sender_id IS DISTINCT FROM $1) AS aldim
+				COUNT(*) FILTER (WHERE sender_id = $1)::int AS sent_count,
+				SUM(CASE WHEN read = 0 AND sender_id IS DISTINCT FROM $1 THEN 1 ELSE 0 END)::int AS unread,
+				(array_agg(folder ORDER BY date DESC))[1] AS folder,
+				bool_or(sender_id = $1) AS wrote,
+				bool_or(sender_id IS DISTINCT FROM $1) AS received
 			FROM mine GROUP BY room_id
 		)`;
 	const total = await pool.query(`${base} SELECT COUNT(*)::int AS n FROM t WHERE ${folder}`, [userId]);
@@ -285,7 +285,7 @@ export async function getUnreadMailThreads(userId: string, limit: number): Promi
 			  AND m.sender_id IS DISTINCT FROM $1
 			  AND m.date > cm.last_read_at
 			ORDER BY m.room_id, m.date DESC
-		) x ORDER BY zaman DESC LIMIT $2`,
+		) x ORDER BY time DESC LIMIT $2`,
 		[userId, limit]
 	);
 	return res.rows.map((r) => ({ id: String(r.id), topic: String(r.topic), at: Number(r.time), sender: person(r, 'g') }));
@@ -507,7 +507,7 @@ export async function getMailSearchThreads(userId: string, limit = 200): Promise
 		 LEFT JOIN users u ON u.id = m.sender_id
 		 WHERE cm.user_id = $1 AND cm.folder <> 'deleted' AND cm.folder <> 'trash'
 		 GROUP BY m.room_id, k.name
-		 ORDER BY son DESC
+		 ORDER BY last DESC
 		 LIMIT $2`,
 		[userId, limit]
 	);

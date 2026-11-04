@@ -36,11 +36,11 @@ export default async function suite(t) {
 	const find = async (description, teamId = null) => (await vaultRecords(admin, teamId)).find((r) => r.description === description);
 	const track = (r) => r && created.push(r.id);
 	const row = (win, description) => win.locator('tr[data-focus-id^="kasa-row:"]', { hasText: description });
-	const balanceText = (win) => win.locator('[data-testid=kasa-balance][data-loaded]').first().innerText();
+	const balanceText = (win) => win.locator('[data-testid=vault-balance][data-loaded]').first().innerText();
 
 	const zPage = (await t.open('zeynep')).page;
 	const win = await openApp(zPage, 'budget');
-	await win.locator('[data-testid=kasa-balance][data-loaded]').first().waitFor();
+	await win.locator('[data-testid=vault-balance][data-loaded]').first().waitFor();
 	const start = await vaultBalance(admin);
 
 	async function fillEntry(page, { typeValue, category, amount, description, file }) {
@@ -221,7 +221,7 @@ export default async function suite(t) {
 		// The panel on screen was loaded before the last transfers (made over the API): reload it.
 		await zPage.reload();
 		await openApp(zPage, 'budget');
-		await zPage.locator('[data-testid=kasa-balance][data-loaded]').first().waitFor();
+		await zPage.locator('[data-testid=vault-balance][data-loaded]').first().waitFor();
 		await zPage.locator('[data-menubar-category=file]').click();
 		const [popup] = await Promise.all([zPage.context().waitForEvent('page'), zPage.locator('[data-menu-item=export-pdf]').click()]);
 		await popup.waitForLoadState('domcontentloaded');
@@ -239,7 +239,7 @@ export default async function suite(t) {
 	await t.step('Kullan = salt okur: görür, yazamaz', async () => {
 		const { page } = await reader.open();
 		const w = await openApp(page, 'budget');
-		await w.locator('[data-testid=kasa-balance][data-loaded]').first().waitFor();
+		await w.locator('[data-testid=vault-balance][data-loaded]').first().waitFor();
 		await row(w, OPEN('income')).waitFor();
 		t.eq(await w.getByRole('button', { name: 'Yeni Gelir / Gider Girişi' }).count(), 0, 'okuyucuda "yeni kayıt" yok');
 		t.eq(await w.getByRole('button', { name: 'Ödenek aktar', exact: true }).count(), 0, 'okuyucuda "ödenek aktar" yok');
@@ -265,7 +265,7 @@ export default async function suite(t) {
 		const w = await openApp(page, 'teams');
 		await w.locator(`[data-team-id="${team.id}"]`).getByRole('button', { name: 'Çalışma Alanı' }).click();
 		await w.locator('[data-focus-section=kasa]').click();
-		await w.locator('[data-testid=kasa-balance][data-loaded]').first().waitFor();
+		await w.locator('[data-testid=vault-balance][data-loaded]').first().waitFor();
 		t.includes(await balanceText(w), tl(50000), 'proje kasasının bakiyesi aktarılan ödenek');
 		t.eq(await w.getByRole('button', { name: 'Ödenek aktar', exact: true }).count(), 0, 'kaptan ödenek aktaramaz');
 		await w.getByRole('button', { name: 'Yeni Gelir / Gider Girişi' }).click();

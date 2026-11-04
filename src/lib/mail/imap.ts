@@ -618,7 +618,7 @@ export async function getMessageDetail(
 		);
 
 		const attachments: MailAttachmentMeta[] = (parsed.attachments || []).map((att) => ({
-			filename: att.filename || 'ek-dosya',
+			filename: att.filename || 'attachment',
 			contentType: att.contentType || 'application/octet-stream',
 			size: att.size || (att.content ? att.content.length : 0),
 			checksum: att.checksum,

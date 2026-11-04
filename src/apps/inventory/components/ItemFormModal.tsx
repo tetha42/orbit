@@ -123,14 +123,14 @@ export function ItemFormModal({
 					<span className={ui.fieldLabel}>{t('invColCategory')}</span>
 					<input
 						className={ui.input}
-						list="envanter-kategorileri"
+						list="inventory-categories"
 						value={category}
 						minLength={2}
 						maxLength={60}
 						onChange={(e) => setCategory(e.target.value)}
 						required
 					/>
-					<datalist id="envanter-kategorileri">
+					<datalist id="inventory-categories">
 						{CATEGORY_SUGGESTIONS.map((k) => (
 							<option key={k} value={k} />
 						))}

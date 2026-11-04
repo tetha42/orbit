@@ -100,8 +100,8 @@ export function BudgetApp() {
 	}
 
 	return (
-		<div className="kasa-app" style={shellStyle}>
-			<div className="kasa-shell">
+		<div className="vault-app" style={shellStyle}>
+			<div className="vault-shell">
 				<BudgetSidebar
 					vaults={vaults}
 					active={active}
@@ -110,7 +110,7 @@ export function BudgetApp() {
 					onSelect={setSelected}
 				/>
 
-				<div className="kasa-main">
+				<div className="vault-main">
 					{active && (
 						<>
 							<div style={{ padding: '18px 24px 0', fontSize: '17px', fontWeight: 750 }}>

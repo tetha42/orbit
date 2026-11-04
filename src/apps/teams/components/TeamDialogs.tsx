@@ -216,7 +216,7 @@ export function NewTeamModal({
 					<label className={styles.radio}>
 						<input
 							type="radio"
-							name="yeni-katilim"
+							name="new-participation"
 							checked={participationType === 'open'}
 							onChange={() => setParticipationType('open')}
 						/>
@@ -225,7 +225,7 @@ export function NewTeamModal({
 					<label className={styles.radio}>
 						<input
 							type="radio"
-							name="yeni-katilim"
+							name="new-participation"
 							checked={participationType === 'approval'}
 							onChange={() => setParticipationType('approval')}
 						/>
@@ -419,7 +419,7 @@ export function EditTeamModal({
 					<label className={styles.radio}>
 						<input
 							type="radio"
-							name="duzenle-katilim"
+							name="edit-participation"
 							checked={participationType === 'open'}
 							onChange={() => setParticipationType('open')}
 						/>
@@ -428,7 +428,7 @@ export function EditTeamModal({
 					<label className={styles.radio}>
 						<input
 							type="radio"
-							name="duzenle-katilim"
+							name="edit-participation"
 							checked={participationType === 'approval'}
 							onChange={() => setParticipationType('approval')}
 						/>

@@ -525,7 +525,14 @@
   "yetkililer": "authorized",
   "yonetebilir": "canManage",
   "yesno": "yesNo",
-  "tip": "type"
+  "tip": "type",
+  "aldim": "received",
+  "yazdim": "wrote",
+  "gonderilen": "sent",
+  "kullanim": "usage",
+  "tarama": "scan",
+  "indeks": "index",
+  "olu": "dead"
  },
  "wholeTokens": {
   "yeni": "fresh",

@@ -1,7 +1,7 @@
 import fs from 'node:fs'; import path from 'node:path'; import {createRequire} from 'node:module';
 import {mapIdent,isReserved} from './.map.mjs';
 const ts=createRequire(import.meta.url)('typescript');
-const dict=JSON.parse(fs.readFileSync('scripts/turkish-words.json','utf8')); const W=Object.assign(Object.create(null),dict.words);
+const dict=JSON.parse(fs.readFileSync('src/db/legacy/words.json','utf8')); const W=Object.assign(Object.create(null),dict.words);
 const KEEP=new Set(['AS','NOT','ASC','DESC']);
 const walk=(x,o=[])=>{for(const e of fs.readdirSync(x,{withFileTypes:true})){const f=path.join(x,e.name);if(e.isDirectory())walk(f,o);else o.push(f)}return o};
 const SQL=/\b(SELECT|INSERT INTO|UPDATE\s+\w+\s+SET|DELETE FROM|WITH\s+\w+\s+AS|RETURNING|ORDER BY|GROUP BY)\b/;

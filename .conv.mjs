@@ -1,6 +1,6 @@
 import fs from 'node:fs'; import path from 'node:path'; import {createRequire} from 'node:module';
 const ts=createRequire(import.meta.url)('typescript');
-const V=Object.assign(Object.create(null),JSON.parse(fs.readFileSync('scripts/turkish-values.json','utf8')).values);
+const V=Object.assign(Object.create(null),JSON.parse(fs.readFileSync('src/db/legacy/values.json','utf8')).values);
 const walk=(x,o=[])=>{for(const e of fs.readdirSync(x,{withFileTypes:true})){const f=path.join(x,e.name);if(e.isDirectory())walk(f,o);else o.push(f)}return o};
 const SQL=/\b(SELECT|INSERT INTO|UPDATE\s+\w+\s+SET|DELETE FROM|RETURNING|WHERE|ON CONFLICT)\b/i;
 const NOATTR=/^(className|id|name|key|htmlFor|href|src|aria-.*|data-testid|placeholder|title|label|alt|style|type|role)$/;

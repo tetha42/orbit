@@ -280,7 +280,7 @@ export function inspectDatabaseSql(
 		};
 	}
 
-	if (/(?:\bsistem_ayarlari\b|\bsystem_settings\b)/i.test(cleaned) && DB_MUTATION_OR_DDL_RE.test(cleaned) && DB_PROTECTED_SETTINGS_KEY_RE.test(cleaned)) {
+	if (/\bsystem_settings\b/i.test(cleaned) && DB_MUTATION_OR_DDL_RE.test(cleaned) && DB_PROTECTED_SETTINGS_KEY_RE.test(cleaned)) {
 		return {
 			allowed: false,
 			strikePoints: 40,

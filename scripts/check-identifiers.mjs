@@ -1,7 +1,7 @@
 // Identifier purity: no Turkish words in variable, parameter, property, function,
 // type or member names under src/. Walks the TypeScript AST (not text), so strings,
 // comments and i18n copy are ignored. The Turkish vocabulary lives in
-// scripts/turkish-words.json (`words`); `dataWords` are stored data values
+// src/db/legacy/words.json (`words`); `dataWords` are stored data values
 // (statuses, enum members) that may still be spelled as identifiers.
 //
 //   node scripts/check-identifiers.mjs
@@ -13,7 +13,7 @@ import ts from 'typescript';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SRC_DIR = path.join(ROOT, 'src');
-const dict = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts', 'turkish-words.json'), 'utf8'));
+const dict = JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'db', 'legacy', 'words.json'), 'utf8'));
 const WORDS = new Set(Object.keys(dict.words));
 const DATA = new Set(dict.dataWords);
 const SKIP_FILE = /(^|\/)(i18n[A-Za-z]*|translations)\.ts$|\.gen\.ts$/;

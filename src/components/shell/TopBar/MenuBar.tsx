@@ -179,7 +179,7 @@ export function MenuBar() {
 							// toCsv quotes commas and neutralises cells Excel would run as formulas;
 							// the old hand-joined line broke on "Bilgisayar Mühendisliği, Çift Anadal".
 							downloadCsv(
-								'uye_listesi',
+								'member_list',
 								['Ad', 'Soyad', 'Bölüm', 'Sınıf', 'Role', 'Durum', 'XP'],
 								data.members.map((m) => [m.name, m.surname, m.department, m.grade, m.roleName ?? '—', m.status, m.xp ?? 0])
 							);

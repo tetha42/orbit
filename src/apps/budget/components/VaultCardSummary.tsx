@@ -34,7 +34,7 @@ export function VaultCardSummary({
 				</div>
 				<div
 					className={`${k.cardValue} ${(summary?.netBalanceMinor ?? 0) > 0 ? k.pos : ''}`}
-					data-testid="kasa-balance"
+					data-testid="vault-balance"
 					data-loaded={summary ? '' : undefined}
 				>
 					{summary ? tl(summary.netBalanceMinor) : '—'}

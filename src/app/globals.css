@@ -675,16 +675,16 @@ select optgroup {
    236px sidebar would leave the ledger too little room, so below 760px of app width the
    sidebar turns into a horizontal strip of chips above it. These are container queries:
    they follow the size of the app's window, not of the screen. */
-.kasa-app {
+.vault-app {
 	container: kasa / inline-size;
 }
 
-.kasa-shell {
+.vault-shell {
 	display: flex;
 	height: 100%;
 }
 
-.kasa-nav {
+.vault-nav {
 	width: 236px;
 	flex-shrink: 0;
 	padding: 12px 8px;
@@ -693,11 +693,11 @@ select optgroup {
 	overflow-y: auto;
 }
 
-.kasa-item {
+.vault-item {
 	width: 100%;
 }
 
-.kasa-main {
+.vault-main {
 	flex: 1;
 	min-width: 0;
 	min-height: 0;
@@ -705,11 +705,11 @@ select optgroup {
 }
 
 @container kasa (max-width: 760px) {
-	.kasa-shell {
+	.vault-shell {
 		flex-direction: column;
 	}
 
-	.kasa-nav {
+	.vault-nav {
 		width: auto;
 		display: flex;
 		gap: 6px;
@@ -723,15 +723,15 @@ select optgroup {
 		-webkit-overflow-scrolling: touch;
 	}
 
-	.kasa-nav::-webkit-scrollbar {
+	.vault-nav::-webkit-scrollbar {
 		display: none;
 	}
 
-	.kasa-nav-label {
+	.vault-nav-label {
 		display: none;
 	}
 
-	.kasa-item {
+	.vault-item {
 		width: auto;
 		flex: 0 0 auto;
 		min-width: 150px;
