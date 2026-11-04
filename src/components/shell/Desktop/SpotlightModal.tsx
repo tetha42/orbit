@@ -201,7 +201,7 @@ export function SpotlightModal() {
 	if (q) {
 		for (const section of SETTINGS_SECTIONS) {
 			if ((section.id === 'integrations' || section.id === 'roles') && !isAdmin) continue;
-			if (section.sistem && !canManageApp('settings')) continue;
+			if (section.system && !canManageApp('settings')) continue;
 			const label = section[language];
 			const score = scoreMatch(q, [
 				{ text: label, weight: 4 },

@@ -4,10 +4,10 @@ import React from 'react';
 import { Award, Calendar, CheckSquare, Crown, FolderGit2, Lock, Rocket, Star, Users } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
 import { useJsonResource } from '@/core/data/useJsonResource';
-import { rozetler, type Rozet } from '@/lib/badges';
+import { badges, type Badge } from '@/lib/badges';
 import type { UserSummary } from '@/db';
 
-const ICONS: Record<Rozet['ikon'], React.ComponentType<{ size?: number; color?: string }>> = {
+const ICONS: Record<Badge['icon'], React.ComponentType<{ size?: number; color?: string }>> = {
 	rocket: Rocket,
 	users: Users,
 	crown: Crown,
@@ -21,18 +21,18 @@ const ICONS: Record<Rozet['ikon'], React.ComponentType<{ size?: number; color?: 
 /** Badges earned from the member's real record (`/api/profile`), with progress towards the rest. */
 export function BadgesGrid() {
 	const { t } = useI18n();
-	const { data } = useJsonResource<{ user: { xp: number }; ozet: UserSummary }>('/api/profile');
+	const { data } = useJsonResource<{ user: { xp: number }; summary: UserSummary }>('/api/profile');
 	if (!data) return null;
-	const list = rozetler({
+	const list = badges({
 		xp: Number(data.user.xp) || 0,
-		takim: data.ozet.takimlar.length,
-		kaptan: data.ozet.takimlar.some((tm) => tm.kaptanMi),
-		katilinanEtkinlik: data.ozet.katilinanEtkinlik,
-		tamamlananGorev: data.ozet.tamamlananGorev,
-		sertifika: data.ozet.sertifika,
-		proje: data.ozet.proje,
+		team: data.summary.teams.length,
+		captain: data.summary.teams.some((tm) => tm.captainMi),
+		attendedEvent: data.summary.attendedEvent,
+		completedTask: data.summary.completedTask,
+		certificate: data.summary.certificate,
+		project: data.summary.project,
 	});
-	const earned = list.filter((r) => r.kazanildi).length;
+	const earned = list.filter((r) => r.earned).length;
 	return (
 		<div>
 			<h3 style={{ fontSize: '16px', fontWeight: 700, margin: '0 0 14px 0' }}>
@@ -40,22 +40,22 @@ export function BadgesGrid() {
 			</h3>
 			<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '10px' }}>
 				{list.map((r) => {
-					const Icon = ICONS[r.ikon];
+					const Icon = ICONS[r.icon];
 					return (
 						<div
 							key={r.id}
 							data-badge={r.id}
-							data-earned={r.kazanildi ? 'yes' : 'no'}
-							title={t(r.aciklama)}
+							data-earned={r.earned ? 'yes' : 'no'}
+							title={t(r.description)}
 							style={{
 								display: 'flex',
 								gap: 12,
 								alignItems: 'center',
 								padding: 12,
 								borderRadius: 12,
-								border: `1px solid ${r.kazanildi ? `${r.renk}66` : 'var(--card-border)'}`,
-								background: r.kazanildi ? `color-mix(in srgb, ${r.renk} 10%, var(--card-bg))` : 'var(--card-bg)',
-								opacity: r.kazanildi ? 1 : 0.75,
+								border: `1px solid ${r.earned ? `${r.color}66` : 'var(--card-border)'}`,
+								background: r.earned ? `color-mix(in srgb, ${r.color} 10%, var(--card-bg))` : 'var(--card-bg)',
+								opacity: r.earned ? 1 : 0.75,
 							}}
 						>
 							<span
@@ -66,24 +66,24 @@ export function BadgesGrid() {
 									display: 'grid',
 									placeItems: 'center',
 									flexShrink: 0,
-									background: r.kazanildi ? r.renk : 'color-mix(in srgb, var(--text-primary) 8%, transparent)',
-									color: r.kazanildi ? '#fff' : 'var(--text-secondary)',
+									background: r.earned ? r.color : 'color-mix(in srgb, var(--text-primary) 8%, transparent)',
+									color: r.earned ? '#fff' : 'var(--text-secondary)',
 								}}
 							>
-								{r.kazanildi ? <Icon size={19} /> : <Lock size={16} />}
+								{r.earned ? <Icon size={19} /> : <Lock size={16} />}
 							</span>
 							<div style={{ minWidth: 0, flex: 1 }}>
-								<div style={{ fontSize: 13, fontWeight: 700 }}>{t(r.ad)}</div>
-								<div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.35 }}>{t(r.aciklama)}</div>
-								{!r.kazanildi && (
+								<div style={{ fontSize: 13, fontWeight: 700 }}>{t(r.name)}</div>
+								<div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.35 }}>{t(r.description)}</div>
+								{!r.earned && (
 									<div style={{ marginTop: 5, height: 4, borderRadius: 2, background: 'color-mix(in srgb, var(--text-primary) 8%, transparent)', overflow: 'hidden' }}>
-										<div style={{ height: '100%', width: `${(r.deger / r.hedef) * 100}%`, background: r.renk }} />
+										<div style={{ height: '100%', width: `${(r.value / r.target) * 100}%`, background: r.color }} />
 									</div>
 								)}
 							</div>
-							{!r.kazanildi && (
+							{!r.earned && (
 								<span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-									{r.deger}/{r.hedef}
+									{r.value}/{r.target}
 								</span>
 							)}
 						</div>

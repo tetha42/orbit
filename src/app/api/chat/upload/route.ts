@@ -83,10 +83,10 @@ async function handlePOST(request: Request) {
 	await mkdir(dir, { recursive: true });
 	await writeFile(path.join(dir, name), buffer, { flag: 'wx' });
 	await addStoredFile({
-		ad: name,
-		yukleyenId: auth.user.id,
+		name: name,
+		uploaderId: auth.user.id,
 		mime: media.mime,
-		boyut: buffer.length,
+		size: buffer.length,
 		chatRoomId: roomId,
 	});
 
@@ -99,9 +99,9 @@ async function handlePOST(request: Request) {
 	return NextResponse.json({
 		ok: true,
 		attachment: {
-			ad: originalName,
+			name: originalName,
 			url: `/api/uploads/${name}`,
-			boyut: buffer.length,
+			size: buffer.length,
 			tip: media.mime,
 		},
 	});

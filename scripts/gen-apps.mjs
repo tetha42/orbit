@@ -68,7 +68,7 @@ async function readManifest(dir) {
 	if (manifest.id !== dir) fail(`id "${manifest.id}" must equal the folder name "${dir}"`);
 	if (!ID.test(dir)) fail('the id must be lower-case letters and digits, starting with a letter');
 	const p = manifest.permission;
-	if (!p?.ad || !p.kullan || !p.yonet) fail('permission needs ad, kullan and yonet (every app is something a role grants)');
+	if (!p?.name || !p.kullan || !p.yonet) fail('permission needs ad, kullan and yonet (every app is something a role grants)');
 	if (manifest.window) {
 		for (const key of ['title', 'shortTitle', 'description', 'en', 'category', 'icon', 'accentColor', 'component']) {
 			if (!manifest[key]) fail(`"${key}" is required for an app with a window`);

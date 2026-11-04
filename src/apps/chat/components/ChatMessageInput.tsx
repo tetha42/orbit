@@ -20,7 +20,7 @@ interface ChatMessageInputProps {
 	roomId?: string | null;
 	disabled?: boolean;
 	editingMessage?: ChatMessageItem | null;
-	onSaveEdit?: (mesajId: string, text: string) => Promise<boolean>;
+	onSaveEdit?: (messageId: string, text: string) => Promise<boolean>;
 	onCancelEdit?: () => void;
 	replyingMessage?: ChatMessageItem | null;
 	onCancelReply?: () => void;
@@ -55,7 +55,7 @@ export function ChatMessageInput({
 	// Sync text when editingMessage changes
 	useEffect(() => {
 		if (editingMessage) {
-			setText(editingMessage.icerik);
+			setText(editingMessage.content);
 			inputRef.current?.focus();
 		} else {
 			setText('');
@@ -201,7 +201,7 @@ export function ChatMessageInput({
 					{attachments.map((attachment, index) => (
 						<span key={`${attachment.url}-${index}`} className={s.pendingAttachment}>
 							<Paperclip size={11} />
-							<span>{attachment.ad}</span>
+							<span>{attachment.name}</span>
 							<button
 								type="button"
 								onClick={() =>
@@ -230,8 +230,8 @@ export function ChatMessageInput({
 						<Pencil size={13} className={s.editingBannerIcon} />
 						<span>
 							<strong>{t('chatEditingBanner')}:</strong>{' '}
-							{editingMessage.icerik.slice(0, 48)}
-							{editingMessage.icerik.length > 48 ? '…' : ''}
+							{editingMessage.content.slice(0, 48)}
+							{editingMessage.content.length > 48 ? '…' : ''}
 						</span>
 					</div>
 					<button
@@ -252,9 +252,9 @@ export function ChatMessageInput({
 						<Reply size={13} className={s.replyBannerIcon} />
 						<span>
 							<strong>{t('chatReplyingBanner')}:</strong>{' '}
-							<span style={{ fontWeight: 600 }}>{replyingMessage.gonderenAd}</span>{' '}
-							&mdash; {replyingMessage.icerik.slice(0, 48)}
-							{replyingMessage.icerik.length > 48 ? '…' : ''}
+							<span style={{ fontWeight: 600 }}>{replyingMessage.senderName}</span>{' '}
+							&mdash; {replyingMessage.content.slice(0, 48)}
+							{replyingMessage.content.length > 48 ? '…' : ''}
 						</span>
 					</div>
 					<button

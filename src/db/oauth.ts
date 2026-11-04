@@ -5,17 +5,17 @@ import { getPgPool, withTransaction, ensurePostgresInit } from './index';
 
 export interface OAuthClient {
 	id: string;
-	ad: string;
-	aciklama: string;
+	name: string;
+	description: string;
 	logoUrl?: string | null;
 	redirectUris: string[];
 	allowedScopes: string[];
-	guvenilir: boolean;
+	trusted: boolean;
 	aktif: boolean;
-	olusturanId?: string | null;
-	olusturanAdSoyad?: string | null;
-	olusturma: number;
-	guncellenme: number;
+	creatorId?: string | null;
+	creatorNameSurname?: string | null;
+	creation: number;
+	update: number;
 }
 
 export const DEFAULT_ALLOWED_SCOPES = ['openid', 'profile', 'email', 'academic', 'roles'];
@@ -116,7 +116,7 @@ interface RawClientRow {
 	allowed_scopes?: string;
 	createdBy?: string | null;
 	created_by?: string | null;
-	olusturanad?: string | null;
+	creatorName?: string | null;
 	createdAt?: number;
 	created_at?: number;
 }
@@ -125,17 +125,17 @@ function mapClientRow(row: RawClientRow): OAuthClient {
 	const createdAt = Number(row.createdAt ?? row.created_at ?? 0);
 	return {
 		id: String(row.clientId ?? row.client_id ?? ''),
-		ad: String(row.name ?? ''),
-		aciklama: String(row.description ?? ''),
+		name: String(row.name ?? ''),
+		description: String(row.description ?? ''),
 		logoUrl: row.logoUrl ?? row.logo_url ?? null,
 		redirectUris: parseRedirectUris(row.redirectUris ?? row.redirect_uris),
 		allowedScopes: parseAllowedScopes(row.allowedScopes ?? row.allowed_scopes),
-		guvenilir: false,
+		trusted: false,
 		aktif: true,
-		olusturanId: row.createdBy ?? row.created_by ?? null,
-		olusturanAdSoyad: row.olusturanad ? row.olusturanad.trim() : null,
-		olusturma: createdAt,
-		guncellenme: createdAt,
+		creatorId: row.createdBy ?? row.created_by ?? null,
+		creatorNameSurname: row.creatorName ? row.creatorName.trim() : null,
+		creation: createdAt,
+		update: createdAt,
 	};
 }
 
@@ -151,7 +151,7 @@ export async function getOAuthClients(): Promise<OAuthClient[]> {
 			c.redirect_uris AS "redirectUris",
 			c.allowed_scopes AS "allowedScopes",
 			c.created_by AS "createdBy",
-			CONCAT(k.first_name, ' ', k.last_name) AS "olusturanad",
+			CONCAT(k.first_name, ' ', k.last_name) AS "creatorName",
 			c.created_at AS "createdAt"
 		 FROM oauth_clients c
 		 LEFT JOIN users k ON k.id = c.created_by
@@ -173,7 +173,7 @@ export async function getOAuthClientById(id: string): Promise<OAuthClient | null
 			c.redirect_uris AS "redirectUris",
 			c.allowed_scopes AS "allowedScopes",
 			c.created_by AS "createdBy",
-			CONCAT(k.first_name, ' ', k.last_name) AS "olusturanad",
+			CONCAT(k.first_name, ' ', k.last_name) AS "creatorName",
 			c.created_at AS "createdAt"
 		 FROM oauth_clients c
 		 LEFT JOIN users k ON k.id = c.created_by
@@ -187,14 +187,14 @@ export async function getOAuthClientById(id: string): Promise<OAuthClient | null
 
 export async function createOAuthClient(
 	data: {
-		ad: string;
-		aciklama?: string;
+		name: string;
+		description?: string;
 		logoUrl?: string;
 		redirectUris: string[];
 		allowedScopes?: string[];
-		guvenilir?: boolean;
+		trusted?: boolean;
 	},
-	olusturanId: string
+	creatorId: string
 ): Promise<{ client: OAuthClient; plainSecret: string }> {
 	await ensurePostgresInit();
 	const pool = getPgPool();
@@ -223,12 +223,12 @@ export async function createOAuthClient(
 		[
 			id,
 			secretHash,
-			data.ad.trim(),
-			data.aciklama?.trim() || '',
+			data.name.trim(),
+			data.description?.trim() || '',
 			data.logoUrl?.trim() || null,
 			redirectUrisJson,
 			allowedScopesJson,
-			olusturanId,
+			creatorId,
 			now,
 		]
 	);
@@ -240,12 +240,12 @@ export async function createOAuthClient(
 export async function updateOAuthClient(
 	id: string,
 	data: {
-		ad?: string;
-		aciklama?: string;
+		name?: string;
+		description?: string;
 		logoUrl?: string | null;
 		redirectUris?: string[];
 		allowedScopes?: string[];
-		guvenilir?: boolean;
+		trusted?: boolean;
 		aktif?: boolean;
 	}
 ): Promise<boolean> {
@@ -255,8 +255,8 @@ export async function updateOAuthClient(
 
 	const pool = getPgPool();
 
-	const newName = data.ad !== undefined ? data.ad.trim() : existing.ad;
-	const newDescription = data.aciklama !== undefined ? data.aciklama.trim() : existing.aciklama;
+	const newName = data.name !== undefined ? data.name.trim() : existing.name;
+	const newDescription = data.description !== undefined ? data.description.trim() : existing.description;
 	const newLogo = data.logoUrl !== undefined ? data.logoUrl : existing.logoUrl;
 	let newRedirect = JSON.stringify(existing.redirectUris);
 	if (data.redirectUris !== undefined) {

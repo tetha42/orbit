@@ -10,7 +10,7 @@ export function useBudget() {
 	const { canUseApp } = useSession();
 	const allowed = canUseApp('budget');
 
-	const { data, refetch, httpStatus } = useJsonResource<{ kasalar: VaultSummary[] }>(
+	const { data, refetch, httpStatus } = useJsonResource<{ vaults: VaultSummary[] }>(
 		allowed ? '/api/budget/vaults' : null
 	);
 	const [selected, setSelected] = useState<string | null>(null);
@@ -24,7 +24,7 @@ export function useBudget() {
 		refetch,
 	});
 
-	const vaults = data?.kasalar ?? [];
+	const vaults = data?.vaults ?? [];
 	const active = vaults.find((k) => k.teamId === selected) ?? vaults[0];
 	const general = vaults.filter((k) => k.kind === 'genel');
 	const projects = vaults.filter((k) => k.kind === 'proje');

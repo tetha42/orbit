@@ -5,60 +5,60 @@ export interface TeamMember {
 	id: string;
 	teamId: string;
 	userId: string;
-	takimRolu: string;
+	teamRole: string;
 	status: string;
-	kullaniciAdSoyad: string;
-	kullaniciBolum: string;
+	userNameSurname: string;
+	userDepartment: string;
 }
 
 export interface TeamTask {
 	id: string;
 	teamId: string;
-	baslik: string;
-	aciklama: string | null;
+	title: string;
+	description: string | null;
 	status: TaskStatus;
-	oncelik: TaskPriority;
-	atananUyeId: string | null;
-	atananAdSoyad: string | null;
-	teslimTarihi: number | null;
-	sira: number;
-	etiketler: string[];
-	olusturanId?: string | null;
-	olusturanAdSoyad?: string | null;
-	guncellenme?: number | null;
-	tamamlanma?: number | null;
-	maddeSayisi?: number;
-	tamamMaddeSayisi?: number;
-	yorumSayisi?: number;
-	olusturma: number;
+	priority: TaskPriority;
+	assigneeMemberId: string | null;
+	assigneeNameSurname: string | null;
+	dueDate: number | null;
+	order: number;
+	tags: string[];
+	creatorId?: string | null;
+	creatorNameSurname?: string | null;
+	update?: number | null;
+	completion?: number | null;
+	itemCount?: number;
+	doneItemCount?: number;
+	commentCount?: number;
+	creation: number;
 }
 
 export interface TeamApplication extends TeamMember {
-	basvuruNotu?: string | null;
-	katilimTarihi: number;
+	applicationNote?: string | null;
+	participationDate: number;
 }
 
 /** A team as `/api/teams` returns it to one member. */
 export interface Team {
 	id: string;
-	ad: string;
+	name: string;
 	slug: string;
-	aciklama: string;
-	kategori: string;
+	description: string;
+	category: string;
 	leadId: string;
-	liderAdSoyad: string;
-	kontenjan: number;
+	leaderNameSurname: string;
+	capacity: number;
 	repoUrl: string | null;
 	status: 'aktif' | 'askida' | 'tamamlandi';
-	katilimTuru: 'acik' | 'onayli';
-	doluKontenjan: number;
-	kalanKontenjan: number;
-	dolulukOrani: number;
-	uyeler: (TeamMember & { katilimTarihi?: number })[];
-	basvurular: TeamApplication[];
-	benimDurumum: 'aktif' | 'basvurdu' | null;
-	izinler: { manage: boolean; editAll: boolean };
-	gorevler: TeamTask[];
+	participationType: 'acik' | 'onayli';
+	fullCapacity: number;
+	remainingCapacity: number;
+	occupancyRatio: number;
+	uyeler: (TeamMember & { participationDate?: number })[];
+	applications: TeamApplication[];
+	myMyStatus: 'aktif' | 'basvurdu' | null;
+	permissions: { manage: boolean; editAll: boolean };
+	tasks: TeamTask[];
 	yonetebilir?: boolean;
 }
 
@@ -89,22 +89,22 @@ export function labelHue(label: string): string {
 
 export function sortTasks(tasks: TeamTask[], mode: 'manual' | 'priority' | 'due'): TeamTask[] {
 	const list = [...tasks];
-	const byManual = (a: TeamTask, b: TeamTask) => a.sira - b.sira || b.olusturma - a.olusturma;
+	const byManual = (a: TeamTask, b: TeamTask) => a.order - b.order || b.creation - a.creation;
 	if (mode === 'manual') return list.sort(byManual);
 	if (mode === 'priority') {
 		return list.sort(
 			(a, b) =>
-				(b.oncelik === 'kritik' ? 4 : b.oncelik === 'yuksek' ? 3 : b.oncelik === 'orta' ? 2 : 1) -
-				(a.oncelik === 'kritik' ? 4 : a.oncelik === 'yuksek' ? 3 : a.oncelik === 'orta' ? 2 : 1) ||
-				(a.teslimTarihi ?? Infinity) - (b.teslimTarihi ?? Infinity) ||
+				(b.priority === 'kritik' ? 4 : b.priority === 'yuksek' ? 3 : b.priority === 'orta' ? 2 : 1) -
+				(a.priority === 'kritik' ? 4 : a.priority === 'yuksek' ? 3 : a.priority === 'orta' ? 2 : 1) ||
+				(a.dueDate ?? Infinity) - (b.dueDate ?? Infinity) ||
 				byManual(a, b)
 		);
 	}
 	return list.sort(
 		(a, b) =>
-			(a.teslimTarihi ?? Infinity) - (b.teslimTarihi ?? Infinity) ||
-			(b.oncelik === 'kritik' ? 4 : b.oncelik === 'yuksek' ? 3 : b.oncelik === 'orta' ? 2 : 1) -
-			(a.oncelik === 'kritik' ? 4 : a.oncelik === 'yuksek' ? 3 : a.oncelik === 'orta' ? 2 : 1) ||
+			(a.dueDate ?? Infinity) - (b.dueDate ?? Infinity) ||
+			(b.priority === 'kritik' ? 4 : b.priority === 'yuksek' ? 3 : b.priority === 'orta' ? 2 : 1) -
+			(a.priority === 'kritik' ? 4 : a.priority === 'yuksek' ? 3 : a.priority === 'orta' ? 2 : 1) ||
 			byManual(a, b)
 	);
 }

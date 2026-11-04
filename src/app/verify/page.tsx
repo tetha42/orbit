@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { ShieldCheck, ArrowLeft } from 'lucide-react';
-import styles from './[kod]/verify.module.css';
+import styles from './[code]/verify.module.css';
 
 /**
  * Certificate & official document verification lookup page (`/verify` and `/dogrula`).
@@ -9,10 +9,10 @@ import styles from './[kod]/verify.module.css';
 export default async function VerifyIndexPage({
 	searchParams,
 }: {
-	searchParams: Promise<{ kod?: string; code?: string }>;
+	searchParams: Promise<{ code?: string;}>;
 }) {
 	const params = await searchParams;
-	const targetCode = (params.code || params.kod || '').trim();
+	const targetCode = (params.code || params.code || '').trim();
 
 	if (targetCode) {
 		redirect(`/verify/${encodeURIComponent(targetCode)}`);

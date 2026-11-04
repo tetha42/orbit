@@ -81,10 +81,10 @@ export async function POST(request: Request) {
 	});
 
 	void logSystemEvent({
-		servis: 'settings',
-		seviye: 'INFO',
-		mesaj: `Custom wallpaper added: ${titleEn}`,
-		detay: { wallpaperId: wallpaper.id, filename },
+		service: 'settings',
+		level: 'INFO',
+		message: `Custom wallpaper added: ${titleEn}`,
+		detail: { wallpaperId: wallpaper.id, filename },
 		userId: auth.user.id,
 	});
 

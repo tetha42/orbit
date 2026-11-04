@@ -1,7 +1,7 @@
 import os from 'node:os';
 import { ensurePostgresInit, getPgPool } from '@/db';
 import type { User } from '@/db/schema';
-import { temizIp } from '@/lib/audit';
+import { cleanIp } from '@/lib/audit';
 import { publishEventQuiet } from '@/db/events';
 import { closeUserTerminalSessions } from '@/server/terminalManager';
 import { getActiveRateLimits, type ActiveRateLimit } from '@/lib/rateLimit';
@@ -35,13 +35,13 @@ export interface HostAndPoolTelemetry {
 export interface SecurityBlock {
 	ip: string;
 	status: 'ban' | 'whitelist';
-	neden: string;
-	tehditPuani: number;
-	ihlaller: number;
-	olusturanId: string | null;
+	reason: string;
+	threatScore: number;
+	violations: number;
+	creatorId: string | null;
 	expiresAt: number | null;
-	olusturma: number;
-	guncellenme: number;
+	creation: number;
+	update: number;
 	threatIntel?: ThreatIntelligence;
 }
 
@@ -73,21 +73,17 @@ export interface ActiveSessionInfo {
 	lastActiveIp?: string | null;
 	lastActiveAt?: number | null;
 	lastLoginUserAgent?: string | null;
-	ad: string;
-	soyad: string;
+	name: string;
+	surname: string;
 	email: string;
 	roleId: string | null;
-	rolAd: string;
 	admin: boolean;
 	status: string;
 	totpEnabled: boolean;
-	sonGirisTarihi: number | null;
-	oturumBitis: number | null;
-	sonGirisIp: string | null;
-	sonAktifIp: string | null;
-	sonAktifTarihi: number | null;
-	sonGirisUserAgent: string | null;
-	ipDegisti: boolean;
+	lastLoginDate: number | null;
+	sessionEnd: number | null;
+	lastActiveDate: number | null;
+	ipChanged: boolean;
 	impossibleTravel?: {
 		detected: boolean;
 		speedKmh?: number;
@@ -101,9 +97,9 @@ export interface ActiveSessionInfo {
 export interface TopAttackerItem {
 	ip: string;
 	eventCount: number;
-	tehditPuani: number;
-	sonGorulme: number;
-	sonMesaj: string;
+	threatScore: number;
+	lastSeen: number;
+	lastMessage: string;
 	status: 'ban' | 'whitelist' | 'izleniyor';
 	threatIntel?: ThreatIntelligence;
 }
@@ -213,10 +209,10 @@ export async function getEmergencyKillSwitches(): Promise<EmergencyKillSwitches>
 		await ensurePostgresInit();
 		const p = getPgPool();
 		const res = await p.query(
-			`SELECT value AS deger FROM system_settings WHERE key = 'soc_emergency_switches' LIMIT 1`
+			`SELECT value AS value FROM system_settings WHERE key = 'soc_emergency_switches' LIMIT 1`
 		);
-		if (res.rows.length > 0 && res.rows[0].deger) {
-			const parsed = JSON.parse(res.rows[0].deger) as Partial<EmergencyKillSwitches>;
+		if (res.rows.length > 0 && res.rows[0].value) {
+			const parsed = JSON.parse(res.rows[0].value) as Partial<EmergencyKillSwitches>;
 			killSwitchesCache = { ...DEFAULT_KILL_SWITCHES, ...parsed };
 		} else {
 			killSwitchesCache = { ...DEFAULT_KILL_SWITCHES };
@@ -247,11 +243,11 @@ export async function setEmergencyKillSwitch(
 	killSwitchesCacheExpiresAt = Date.now() + 100;
 
 	await logSystemEvent({
-		servis: 'security',
-		seviye: value ? 'WARN' : 'INFO',
-		mesaj: `🚨 [EMERGENCY SWITCH] '${key}' anahtarı ${value ? 'DEVREYE ALINDI (AÇIK)' : 'DEVREDEN ÇIKARILDI (KAPALI)'}.`,
+		service: 'security',
+		level: value ? 'WARN' : 'INFO',
+		message: `🚨 [EMERGENCY SWITCH] '${key}' anahtarı ${value ? 'DEVREYE ALINDI (AÇIK)' : 'DEVREDEN ÇIKARILDI (KAPALI)'}.`,
 		userId: actorId,
-		detay: { switch: key, value },
+		detail: { switch: key, value },
 	}).catch(() => {});
 
 	return updated;
@@ -289,15 +285,15 @@ async function loadFirewallMap(): Promise<Map<string, SecurityBlock>> {
 
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT ip, status AS status, reason AS neden, threat_score AS "tehditPuani",
-		        violations AS ihlaller, creator_id AS "olusturanId", expires_at AS "expiresAt",
-		        created_at AS olusturma, updated_at AS guncellenme
+		`SELECT ip, status AS status, reason AS reason, threat_score AS "threatScore",
+		        violations AS violations, creator_id AS "creatorId", expires_at AS "expiresAt",
+		        created_at AS creation, updated_at AS update
 		 FROM security_blocks`
 	);
 
 	const map = new Map<string, SecurityBlock>();
 	for (const r of res.rows) {
-		const endTime = r.bitistarihi ?? r.expiresAt;
+		const endTime = r.endDate ?? r.expiresAt;
 		const endTimestamp = endTime !== null && endTime !== undefined ? Number(endTime) : null;
 		const status = (r.status === 'whitelist' ? 'whitelist' : 'ban') as 'ban' | 'whitelist';
 		// Skip expired bans
@@ -308,13 +304,13 @@ async function loadFirewallMap(): Promise<Map<string, SecurityBlock>> {
 		map.set(ipKey, {
 			ip: ipKey,
 			status,
-			neden: String(r.neden || ''),
-			tehditPuani: Number(r.tehditpuani ?? r.tehditPuani ?? 100),
-			ihlaller: Number(r.ihlaller ?? 1),
-			olusturanId: (r.olusturanid ?? r.olusturanId) ? String(r.olusturanid ?? r.olusturanId) : null,
+			reason: String(r.reason || ''),
+			threatScore: Number(r.threatScore ?? r.threatScore ?? 100),
+			violations: Number(r.violations ?? 1),
+			creatorId: (r.creatorId ?? r.creatorId) ? String(r.creatorId ?? r.creatorId) : null,
 			expiresAt: endTimestamp,
-			olusturma: Number(r.olusturma ?? now),
-			guncellenme: Number(r.guncellenme ?? now),
+			creation: Number(r.creation ?? now),
+			update: Number(r.update ?? now),
 		});
 	}
 
@@ -446,7 +442,7 @@ export async function isIpBanned(ip: string): Promise<{
 	reason?: string;
 	expiresAt?: number | null;
 }> {
-	const clean = temizIp(ip);
+	const clean = cleanIp(ip);
 	if (isLocalOrUnknownIp(clean)) {
 		return { banned: false, whitelisted: true };
 	}
@@ -456,13 +452,13 @@ export async function isIpBanned(ip: string): Promise<{
 		const entry = map.get(clean);
 		if (entry) {
 			if (entry.status === 'whitelist') {
-				return { banned: false, whitelisted: true, reason: entry.neden };
+				return { banned: false, whitelisted: true, reason: entry.reason };
 			}
 			if (entry.expiresAt === null || entry.expiresAt > Date.now()) {
 				return {
 					banned: true,
 					whitelisted: false,
-					reason: entry.neden,
+					reason: entry.reason,
 					expiresAt: entry.expiresAt,
 				};
 			}
@@ -473,7 +469,7 @@ export async function isIpBanned(ip: string): Promise<{
 		for (const fwEntry of map.values()) {
 			if (fwEntry.ip.includes('/') && isIpInCidr(clean, fwEntry.ip)) {
 				if (fwEntry.status === 'whitelist') {
-					return { banned: false, whitelisted: true, reason: fwEntry.neden };
+					return { banned: false, whitelisted: true, reason: fwEntry.reason };
 				}
 				if ((fwEntry.expiresAt === null || fwEntry.expiresAt > Date.now()) && !bannedCidrMatch) {
 					bannedCidrMatch = fwEntry;
@@ -485,7 +481,7 @@ export async function isIpBanned(ip: string): Promise<{
 			return {
 				banned: true,
 				whitelisted: false,
-				reason: bannedCidrMatch.neden,
+				reason: bannedCidrMatch.reason,
 				expiresAt: bannedCidrMatch.expiresAt,
 			};
 		}
@@ -497,7 +493,7 @@ export async function isIpBanned(ip: string): Promise<{
 }
 
 export function getLiveThreatScore(ip: string): number {
-	const clean = temizIp(ip);
+	const clean = cleanIp(ip);
 	const bucket = strikeBuckets.get(clean);
 	if (!bucket || bucket.resetAt <= Date.now()) return 0;
 	return bucket.points;
@@ -505,20 +501,20 @@ export function getLiveThreatScore(ip: string): number {
 
 export async function banIp(params: {
 	ip: string;
-	neden: string;
+	reason: string;
 	durationMs?: number | null;
-	tehditPuani?: number;
-	olusturanId?: string | null;
+	threatScore?: number;
+	creatorId?: string | null;
 }): Promise<void> {
-	const clean = temizIp(params.ip);
+	const clean = cleanIp(params.ip);
 	if (!clean || clean === 'unknown') return;
 
 	await ensurePostgresInit();
 	const now = Date.now();
 	const expiresAt =
 		params.durationMs && params.durationMs > 0 ? now + params.durationMs : null;
-	const puan = Math.max(100, Math.round(params.tehditPuani ?? 100));
-	const neden = String(params.neden || 'Güvenlik ihlali').slice(0, 300);
+	const points = Math.max(100, Math.round(params.threatScore ?? 100));
+	const reason = String(params.reason || 'Güvenlik ihlali').slice(0, 300);
 
 	await getPgPool().query(
 		`INSERT INTO security_blocks (ip, status, reason, threat_score, violations, creator_id, expires_at, created_at, updated_at)
@@ -531,7 +527,7 @@ export async function banIp(params: {
 		     creator_id = COALESCE(EXCLUDED.creator_id, security_blocks.creator_id),
 		     expires_at = EXCLUDED.expires_at,
 		     updated_at = EXCLUDED.updated_at`,
-		[clean, neden, puan, params.olusturanId ?? null, expiresAt, now]
+		[clean, reason, points, params.creatorId ?? null, expiresAt, now]
 	);
 
 	strikeBuckets.delete(clean);
@@ -541,7 +537,7 @@ export async function banIp(params: {
 }
 
 export async function unbanIp(ip: string): Promise<void> {
-	const clean = temizIp(ip);
+	const clean = cleanIp(ip);
 	if (!clean) return;
 	await ensurePostgresInit();
 	await getPgPool().query(`DELETE FROM security_blocks WHERE ip = $1`, [clean]);
@@ -553,15 +549,15 @@ export async function unbanIp(ip: string): Promise<void> {
 
 export async function whitelistIp(params: {
 	ip: string;
-	neden?: string;
-	olusturanId?: string | null;
+	reason?: string;
+	creatorId?: string | null;
 }): Promise<void> {
-	const clean = temizIp(params.ip);
+	const clean = cleanIp(params.ip);
 	if (!clean || clean === 'unknown') return;
 
 	await ensurePostgresInit();
 	const now = Date.now();
-	const neden = String(params.neden || 'Güvenilir IP (Whitelist)').slice(0, 300);
+	const reason = String(params.reason || 'Güvenilir IP (Whitelist)').slice(0, 300);
 
 	await getPgPool().query(
 		`INSERT INTO security_blocks (ip, status, reason, threat_score, violations, creator_id, expires_at, created_at, updated_at)
@@ -573,7 +569,7 @@ export async function whitelistIp(params: {
 		     expires_at = NULL,
 		     creator_id = COALESCE(EXCLUDED.creator_id, security_blocks.creator_id),
 		     updated_at = EXCLUDED.updated_at`,
-		[clean, neden, params.olusturanId ?? null, now]
+		[clean, reason, params.creatorId ?? null, now]
 	);
 
 	strikeBuckets.delete(clean);
@@ -584,27 +580,27 @@ export async function getSecurityBlocks(): Promise<SecurityBlock[]> {
 	await ensurePostgresInit();
 	const now = Date.now();
 	const res = await getPgPool().query(
-		`SELECT ip, status AS status, reason AS neden, threat_score AS "tehditPuani",
-		        violations AS ihlaller, creator_id AS "olusturanId", expires_at AS "expiresAt",
-		        created_at AS olusturma, updated_at AS guncellenme
+		`SELECT ip, status AS status, reason AS reason, threat_score AS "threatScore",
+		        violations AS violations, creator_id AS "creatorId", expires_at AS "expiresAt",
+		        created_at AS creation, updated_at AS update
 		 FROM security_blocks
 		 WHERE status = 'whitelist' OR expires_at IS NULL OR expires_at > $1
 		 ORDER BY updated_at DESC`,
 		[now]
 	);
 	return res.rows.map((r) => {
-		const endTime = r.bitistarihi ?? r.expiresAt;
+		const endTime = r.endDate ?? r.expiresAt;
 		const ip = String(r.ip);
 		return {
 			ip,
 			status: (r.status === 'whitelist' ? 'whitelist' : 'ban') as 'ban' | 'whitelist',
-			neden: String(r.neden || ''),
-			tehditPuani: Number(r.tehditpuani ?? r.tehditPuani ?? 100),
-			ihlaller: Number(r.ihlaller ?? 1),
-			olusturanId: (r.olusturanid ?? r.olusturanId) ? String(r.olusturanid ?? r.olusturanId) : null,
+			reason: String(r.reason || ''),
+			threatScore: Number(r.threatScore ?? r.threatScore ?? 100),
+			violations: Number(r.violations ?? 1),
+			creatorId: (r.creatorId ?? r.creatorId) ? String(r.creatorId ?? r.creatorId) : null,
 			expiresAt: endTime !== null && endTime !== undefined ? Number(endTime) : null,
-			olusturma: Number(r.olusturma ?? now),
-			guncellenme: Number(r.guncellenme ?? now),
+			creation: Number(r.creation ?? now),
+			update: Number(r.update ?? now),
 			threatIntel: classifyThreatIntel(ip),
 		};
 	});
@@ -622,7 +618,7 @@ export async function recordSecurityStrike(params: {
 	path?: string;
 	userId?: string | null;
 }): Promise<{ autoBanned: boolean; totalPoints: number }> {
-	const clean = temizIp(params.ip);
+	const clean = cleanIp(params.ip);
 	if (isLocalOrUnknownIp(clean) || isInfrastructureIp(clean)) {
 		return { autoBanned: false, totalPoints: 0 };
 	}
@@ -679,9 +675,9 @@ export async function recordSecurityStrike(params: {
 		const combinedReason = `[IPS Auto-Quarantine] ${bucket.reasons.join(' + ')}`.slice(0, 280);
 		await banIp({
 			ip: clean,
-			neden: combinedReason,
+			reason: combinedReason,
 			durationMs,
-			tehditPuani: bucket.points,
+			threatScore: bucket.points,
 		});
 
 		void createSocIncident({
@@ -698,15 +694,15 @@ export async function recordSecurityStrike(params: {
 		}).catch(() => {});
 
 		void logSystemEvent({
-			servis: 'security',
-			seviye: 'ERROR',
-			mesaj: `[IPS AUTO-BAN] Hostile IP auto-quarantined: ${clean} (Threat Score: ${bucket.points})`,
-			detay: {
+			service: 'security',
+			level: 'ERROR',
+			message: `[IPS AUTO-BAN] Hostile IP auto-quarantined: ${clean} (Threat Score: ${bucket.points})`,
+			detail: {
 				ip: clean,
-				tehditPuani: bucket.points,
-				nedenler: bucket.reasons,
-				sureDakika: Math.round(durationMs / 60_000),
-				hedefYol: params.path,
+				threatScore: bucket.points,
+				reasons: bucket.reasons,
+				sureMinutes: Math.round(durationMs / 60_000),
+				targetPath: params.path,
 			},
 			userId: params.userId ?? null,
 			ip: clean,
@@ -719,9 +715,9 @@ export async function recordSecurityStrike(params: {
 			severity: 'CRITICAL',
 			ip: clean,
 			details: {
-				tehditPuani: bucket.points,
+				threatScore: bucket.points,
 				sure: `${Math.round(durationMs / 60_000)} dakika`,
-				hedefYol: params.path || '-',
+				targetPath: params.path || '-',
 			},
 		});
 
@@ -796,12 +792,12 @@ export async function setLockdownState(params: {
 	}
 
 	await logSystemEvent({
-		servis: 'security',
-		seviye: params.active ? 'ERROR' : 'WARN',
-		mesaj: params.active
+		service: 'security',
+		level: params.active ? 'ERROR' : 'WARN',
+		message: params.active
 			? `🚨 [DEFCON LOCKDOWN] Saldırı Altındayız Kalkanı ETKİNLEŞTİRİLDİ: ${reason}`
 			: `🛡️ [DEFCON LOCKDOWN] Saldırı Altındayız Kalkanı devre dışı bırakıldı`,
-		detay: { active: params.active, reason },
+		detail: { active: params.active, reason },
 		userId: params.actorId,
 		ip: params.ip,
 	});
@@ -849,43 +845,43 @@ export function recordSessionActivity(
 	user: User,
 	currentIp: string
 ): { suspiciousJump: boolean } {
-	const cleanIp = temizIp(currentIp);
-	if (!cleanIp || cleanIp === 'unknown') return { suspiciousJump: false };
+	const cleanedIp = cleanIp(currentIp);
+	if (!cleanedIp || cleanedIp === 'unknown') return { suspiciousJump: false };
 
 	const now = Date.now();
 	const prev = sessionActivityThrottle.get(user.id);
 
 	// Check if login IP differs from current request IP
-	const loginIp = user.sonGirisIp ? temizIp(user.sonGirisIp) : (prev?.lastIp ?? null);
-	if (loginIp && loginIp !== 'unknown' && loginIp !== cleanIp) {
-		if (loginIp === '127.0.0.1' || loginIp === '::1' || cleanIp === '127.0.0.1' || cleanIp === '::1') {
+	const loginIp = user.lastLoginIp ? cleanIp(user.lastLoginIp) : (prev?.lastIp ?? null);
+	if (loginIp && loginIp !== 'unknown' && loginIp !== cleanedIp) {
+		if (loginIp === '127.0.0.1' || loginIp === '::1' || cleanedIp === '127.0.0.1' || cleanedIp === '::1') {
 			return { suspiciousJump: false };
 		}
-		const isSubnetMatch = isSameSubnet(loginIp, cleanIp);
+		const isSubnetMatch = isSameSubnet(loginIp, cleanedIp);
 		const lastAnomaly = prev?.anomalyLoggedAt ?? 0;
 		if (now - lastAnomaly > 5 * 60_000) {
 			sessionActivityThrottle.set(user.id, {
-				lastIp: cleanIp,
+				lastIp: cleanedIp,
 				updatedAt: now,
 				anomalyLoggedAt: now,
 			});
 			void logSystemEvent({
-				servis: 'security',
-				seviye: 'WARN',
-				mesaj: `Oturum IP değişimi (Session Hijack şüphesi): ${user.email} (${loginIp} -> ${cleanIp})`,
-				detay: {
+				service: 'security',
+				level: 'WARN',
+				message: `Oturum IP değişimi (Session Hijack şüphesi): ${user.email} (${loginIp} -> ${cleanedIp})`,
+				detail: {
 					email: user.email,
-					girisIp: loginIp,
-					yeniIp: cleanIp,
-					girisCihazi: user.sonGirisUserAgent ?? null,
-					subnetFarkli: !isSubnetMatch,
+					loginIp: loginIp,
+					newIp: cleanedIp,
+					loginDevice: user.lastLoginUserAgent ?? null,
+					subnetDifferent: !isSubnetMatch,
 				},
 				userId: user.id,
-				ip: cleanIp,
+				ip: cleanedIp,
 			});
 			void getPgPool()
 				.query(`UPDATE users SET last_active_ip = $1, last_active_at = $2 WHERE id = $3`, [
-					cleanIp,
+					cleanedIp,
 					now,
 					user.id,
 				])
@@ -899,9 +895,9 @@ export function recordSessionActivity(
 	}
 
 	// Update last active IP/timestamp at most once every 60 seconds per user
-	if (!prev || prev.lastIp !== cleanIp || now - prev.updatedAt > 60_000) {
+	if (!prev || prev.lastIp !== cleanedIp || now - prev.updatedAt > 60_000) {
 		sessionActivityThrottle.set(user.id, {
-			lastIp: cleanIp,
+			lastIp: cleanedIp,
 			updatedAt: now,
 			anomalyLoggedAt: prev?.anomalyLoggedAt ?? 0,
 		});
@@ -924,9 +920,9 @@ export async function getActiveSessions(): Promise<ActiveSessionInfo[]> {
 	await ensurePostgresInit();
 	const now = Date.now();
 	const res = await getPgPool().query(
-		`SELECT u.id, u.first_name AS ad, u.last_name AS soyad, u.email AS email, u.role_id AS "roleId", u.status AS status, u.totp_enabled AS "totpEnabled",
-		        u.last_login_at AS "sonGirisTarihi", u.session_expires_at AS "oturumBitis", u.last_login_ip AS "sonGirisIp", u.last_active_ip AS "sonAktifIp", u.last_active_at AS "sonAktifTarihi", u.last_login_user_agent AS "sonGirisUserAgent",
-		        r.name AS "rolAd", r.name AS "roleName", r.is_system AS "rolSistem", r.is_system AS "isSystem"
+		`SELECT u.id, u.first_name AS name, u.last_name AS surname, u.email AS email, u.role_id AS "roleId", u.status AS status, u.totp_enabled AS "totpEnabled",
+		        u.last_login_at AS "lastLoginDate", u.session_expires_at AS "sessionEnd", u.last_login_ip AS "lastLoginIp", u.last_active_ip AS "lastActiveIp", u.last_active_at AS "lastActiveDate", u.last_login_user_agent AS "lastLoginUserAgent",
+		        r.name AS "roleName", r.name AS "roleName", r.is_system AS "roleSystem", r.is_system AS "isSystem"
 		 FROM users u
 		 LEFT JOIN roles r ON r.id = u.role_id
 		 WHERE u.session_token IS NOT NULL
@@ -936,49 +932,49 @@ export async function getActiveSessions(): Promise<ActiveSessionInfo[]> {
 	);
 
 	return res.rows.map((r) => {
-		const girisIp = (r.songirisip ?? r.sonGirisIp) ? String(r.songirisip ?? r.sonGirisIp) : null;
-		const aktifIp = (r.sonaktifip ?? r.sonAktifIp) ? String(r.sonaktifip ?? r.sonAktifIp) : girisIp;
-		const roleId = (r.rolid ?? r.roleId) ? String(r.rolid ?? r.roleId) : null;
-		const ipDegisti = Boolean(girisIp && aktifIp && girisIp !== aktifIp);
+		const loginIp = (r.lastLoginIp ?? r.lastLoginIp) ? String(r.lastLoginIp ?? r.lastLoginIp) : null;
+		const activeIp = (r.lastActiveIp ?? r.lastActiveIp) ? String(r.lastActiveIp ?? r.lastActiveIp) : loginIp;
+		const roleId = (r.roleId ?? r.roleId) ? String(r.roleId ?? r.roleId) : null;
+		const ipChanged = Boolean(loginIp && activeIp && loginIp !== activeIp);
 		let impossibleTravel: ActiveSessionInfo['impossibleTravel'] = undefined;
 
-		if (ipDegisti && girisIp && aktifIp) {
-			const girisTime = r.songiristarihi || r.sonGirisTarihi ? Number(r.songiristarihi ?? r.sonGirisTarihi) : now;
-			const aktifTime = r.sonaktiftarihi || r.sonAktifTarihi ? Number(r.sonaktiftarihi ?? r.sonAktifTarihi) : now;
-			const deltaMs = Math.abs(aktifTime - girisTime);
+		if (ipChanged && loginIp && activeIp) {
+			const loginTime = r.lastLoginDate || r.lastLoginDate ? Number(r.lastLoginDate ?? r.lastLoginDate) : now;
+			const activeTime = r.lastActiveDate || r.lastActiveDate ? Number(r.lastActiveDate ?? r.lastActiveDate) : now;
+			const deltaMs = Math.abs(activeTime - loginTime);
 			const deltaMinutes = Math.max(1, Math.round(deltaMs / 60_000));
 
-			const intelGiris = classifyThreatIntel(girisIp);
-			const intelAktif = classifyThreatIntel(aktifIp);
+			const intelLogin = classifyThreatIntel(loginIp);
+			const intelActive = classifyThreatIntel(activeIp);
 
-			const p1 = girisIp.split('.').slice(0, 2).join('.');
-			const p2 = aktifIp.split('.').slice(0, 2).join('.');
+			const p1 = loginIp.split('.').slice(0, 2).join('.');
+			const p2 = activeIp.split('.').slice(0, 2).join('.');
 			const isDiffSubnet = p1 !== p2;
 
 			if (isDiffSubnet && deltaMinutes < 45) {
-				const estDistKm = intelGiris.provider !== intelAktif.provider ? 1500 : 800;
+				const estDistKm = intelLogin.provider !== intelActive.provider ? 1500 : 800;
 				const speedKmh = Math.round(estDistKm / (deltaMinutes / 60));
 				if (speedKmh > 800) {
 					impossibleTravel = {
 						detected: true,
 						speedKmh,
 						deltaMinutes,
-						fromIp: girisIp,
-						toIp: aktifIp,
-						reason: `${deltaMinutes}m delta between distinct prefixes (${intelGiris.provider} ➔ ${intelAktif.provider}), calculated velocity ~${speedKmh} km/h`,
+						fromIp: loginIp,
+						toIp: activeIp,
+						reason: `${deltaMinutes}m delta between distinct prefixes (${intelLogin.provider} ➔ ${intelActive.provider}), calculated velocity ~${speedKmh} km/h`,
 					};
 				}
 			}
 		}
 
-		const firstName = String(r.firstName ?? r.ad ?? '');
-		const lastName = String(r.lastName ?? r.soyad ?? '');
-		const roleName = r.roleName ? String(r.roleName) : (r.rolAd ? String(r.rolAd) : 'Member');
-		const lastLoginAt = r.lastLoginAt || r.songiristarihi || r.sonGirisTarihi ? Number(r.lastLoginAt ?? r.songiristarihi ?? r.sonGirisTarihi) : null;
-		const sessionExpiresAt = r.sessionExpiresAt || r.oturumbitis || r.oturumBitis ? Number(r.sessionExpiresAt ?? r.oturumbitis ?? r.oturumBitis) : null;
-		const lastActiveAt = r.lastActiveAt || r.sonaktiftarihi || r.sonAktifTarihi ? Number(r.lastActiveAt ?? r.sonaktiftarihi ?? r.sonAktifTarihi) : null;
-		const lastLoginUserAgent = (r.lastLoginUserAgent ?? r.songirisuseragent ?? r.sonGirisUserAgent)
-			? String(r.lastLoginUserAgent ?? r.songirisuseragent ?? r.sonGirisUserAgent)
+		const firstName = String(r.firstName ?? r.name ?? '');
+		const lastName = String(r.lastName ?? r.surname ?? '');
+		const roleName = r.roleName ? String(r.roleName) : (r.roleName ? String(r.roleName) : 'Member');
+		const lastLoginAt = r.lastLoginAt || r.lastLoginDate || r.lastLoginDate ? Number(r.lastLoginAt ?? r.lastLoginDate ?? r.lastLoginDate) : null;
+		const sessionExpiresAt = r.sessionExpiresAt || r.sessionEnd || r.sessionEnd ? Number(r.sessionExpiresAt ?? r.sessionEnd ?? r.sessionEnd) : null;
+		const lastActiveAt = r.lastActiveAt || r.lastActiveDate || r.lastActiveDate ? Number(r.lastActiveAt ?? r.lastActiveDate ?? r.lastActiveDate) : null;
+		const lastLoginUserAgent = (r.lastLoginUserAgent ?? r.lastLoginUserAgent ?? r.lastLoginUserAgent)
+			? String(r.lastLoginUserAgent ?? r.lastLoginUserAgent ?? r.lastLoginUserAgent)
 			: null;
 
 		return {
@@ -988,25 +984,21 @@ export async function getActiveSessions(): Promise<ActiveSessionInfo[]> {
 			roleName,
 			lastLoginAt,
 			sessionExpiresAt,
-			lastLoginIp: girisIp,
-			lastActiveIp: aktifIp,
+			lastLoginIp: loginIp,
+			lastActiveIp: activeIp,
 			lastActiveAt,
 			lastLoginUserAgent,
-			ad: firstName,
-			soyad: lastName,
+			name: firstName,
+			surname: lastName,
 			email: String(r.email),
 			roleId,
-			rolAd: roleName,
 			admin: roleId === 'role_admin' || roleId === 'rol_admin',
 			status: String(r.status || 'aktif'),
 			totpEnabled: Number(r.totpenabled ?? r.totpEnabled ?? 0) === 1,
-			sonGirisTarihi: lastLoginAt,
-			oturumBitis: sessionExpiresAt,
-			sonGirisIp: girisIp,
-			sonAktifIp: aktifIp,
-			sonAktifTarihi: lastActiveAt,
-			sonGirisUserAgent: lastLoginUserAgent,
-			ipDegisti,
+			lastLoginDate: lastLoginAt,
+			sessionEnd: sessionExpiresAt,
+			lastActiveDate: lastActiveAt,
+			ipChanged,
 			impossibleTravel,
 		};
 	});
@@ -1024,7 +1016,7 @@ export async function revokeUserSession(params: {
 		`UPDATE users
 		 SET session_token = NULL, session_expires_at = NULL
 		 WHERE id = $1
-		 RETURNING email AS email, first_name AS ad, last_name AS soyad`,
+		 RETURNING email AS email, first_name AS name, last_name AS surname`,
 		[params.targetUserId]
 	);
 	if ((res.rowCount ?? 0) === 0) return false;
@@ -1032,10 +1024,10 @@ export async function revokeUserSession(params: {
 	closeUserTerminalSessions(params.targetUserId);
 	await publishEventQuiet(pool, { k: 'session', userId: params.targetUserId });
 	await logSystemEvent({
-		servis: 'security',
-		seviye: 'WARN',
-		mesaj: `SoC tarafından kullanıcı oturumu zorla sonlandırıldı: ${u.email}`,
-		detay: { targetUserId: params.targetUserId, email: u.email },
+		service: 'security',
+		level: 'WARN',
+		message: `SoC tarafından kullanıcı oturumu zorla sonlandırıldı: ${u.email}`,
+		detail: { targetUserId: params.targetUserId, email: u.email },
 		userId: params.actorId,
 		ip: params.ip,
 	});
@@ -1062,10 +1054,10 @@ export async function revokeAllNonAdminSessions(params: {
 	}
 	const count = res.rowCount ?? 0;
 	await logSystemEvent({
-		servis: 'security',
-		seviye: 'ERROR',
-		mesaj: `🚨 SoC Acil Durum Kill-Switch: ${count} aktif kullanıcı oturumu sıfırlandı`,
-		detay: { dusurulenOturumSayisi: count },
+		service: 'security',
+		level: 'ERROR',
+		message: `🚨 SoC Acil Durum Kill-Switch: ${count} aktif kullanıcı oturumu sıfırlandı`,
+		detail: { droppedSessionCount: count },
 		userId: params.actorId,
 		ip: params.ip,
 	});
@@ -1104,10 +1096,10 @@ export async function revokeAnomalousSessions(
 
 	const count = res.rowCount ?? 0;
 	await logSystemEvent({
-		servis: 'security',
-		seviye: 'WARN',
-		mesaj: `🚨 SoC Toplu Oturum Feshi: IP anomalisi tespit edilen ${count} oturum sonlandırıldı`,
-		detay: { dusurulenOturumSayisi: count },
+		service: 'security',
+		level: 'WARN',
+		message: `🚨 SoC Toplu Oturum Feshi: IP anomalisi tespit edilen ${count} oturum sonlandırıldı`,
+		detail: { droppedSessionCount: count },
 		userId: actorId,
 		ip,
 	});
@@ -1132,7 +1124,7 @@ export async function suspendUserAccount(params: {
 		return { ok: false, error: 'Kullanıcı bulunamadı.' };
 	}
 	const target = check.rows[0];
-	if ((target.rolid ?? target.roleId) === 'rol_admin') {
+	if ((target.roleId ?? target.roleId) === 'rol_admin') {
 		return { ok: false, error: 'Tam yetkili yönetici hesabı askıya alınamaz.' };
 	}
 
@@ -1146,10 +1138,10 @@ export async function suspendUserAccount(params: {
 	await publishEventQuiet(pool, { k: 'session', userId: params.targetUserId });
 
 	await logSystemEvent({
-		servis: 'security',
-		seviye: 'ERROR',
-		mesaj: `SoC tarafından şüpheli kullanıcı hesabı askıya alındı ve oturumu kapatıldı: ${target.email}`,
-		detay: { targetUserId: params.targetUserId, email: target.email },
+		service: 'security',
+		level: 'ERROR',
+		message: `SoC tarafından şüpheli kullanıcı hesabı askıya alındı ve oturumu kapatıldı: ${target.email}`,
+		detail: { targetUserId: params.targetUserId, email: target.email },
 		userId: params.actorId,
 		ip: params.ip,
 	});
@@ -1249,10 +1241,10 @@ export async function getDefconResetAt(): Promise<number> {
 		await ensurePostgresInit();
 		const p = getPgPool();
 		const res = await p.query(
-			`SELECT value AS deger FROM system_settings WHERE key = 'soc_defcon_reset_at' LIMIT 1`
+			`SELECT value AS value FROM system_settings WHERE key = 'soc_defcon_reset_at' LIMIT 1`
 		);
-		if (res.rows.length > 0 && res.rows[0].deger) {
-			const n = Number(res.rows[0].deger);
+		if (res.rows.length > 0 && res.rows[0].value) {
+			const n = Number(res.rows[0].value);
 			if (Number.isFinite(n)) return n;
 		}
 	} catch {
@@ -1272,10 +1264,10 @@ export async function resetDefconBaseline(params: { actorId?: string | null; act
 		[String(now), now]
 	);
 	await logSystemEvent({
-		servis: 'security',
-		seviye: 'INFO',
-		mesaj: '🛡️ [DEFCON RESET] Güvenlik alarmları yönetici tarafından teyit edildi ve DEFCON temel metriği sıfırlandı.',
-		detay: { actorId: params.actorId || null, resetAt: now },
+		service: 'security',
+		level: 'INFO',
+		message: '🛡️ [DEFCON RESET] Güvenlik alarmları yönetici tarafından teyit edildi ve DEFCON temel metriği sıfırlandı.',
+		detail: { actorId: params.actorId || null, resetAt: now },
 		userId: params.actorId || null,
 		ip: params.actorIp || '127.0.0.1',
 	});
@@ -1293,7 +1285,7 @@ export async function getSocOverview(): Promise<SocOverviewData> {
 
 	const [
 		lockdown,
-		engeller,
+		blocks,
 		statsRes,
 		attackersRes,
 		hourlyRes,
@@ -1320,8 +1312,8 @@ export async function getSocOverview(): Promise<SocOverviewData> {
 			`SELECT
 				ip,
 				COUNT(*)::int AS "eventCount",
-				MAX(timestamp) AS "sonGorulme",
-				(ARRAY_AGG(message ORDER BY timestamp DESC))[1] AS "sonMesaj"
+				MAX(timestamp) AS "lastSeen",
+				(ARRAY_AGG(message ORDER BY timestamp DESC))[1] AS "lastMessage"
 			 FROM system_logs
 			 WHERE timestamp >= $1
 			   AND level IN ('WARN', 'ERROR', 'CRITICAL')
@@ -1353,14 +1345,14 @@ export async function getSocOverview(): Promise<SocOverviewData> {
 		getHourlyStrikeDistribution(),
 	]);
 
-	const activeBansCount = engeller.filter((e) => e.status === 'ban').length;
-	const whitelistedCount = engeller.filter((e) => e.status === 'whitelist').length;
+	const activeBansCount = blocks.filter((e) => e.status === 'ban').length;
+	const whitelistedCount = blocks.filter((e) => e.status === 'whitelist').length;
 
 	// Active unacknowledged bans created after DEFCON reset baseline (excluding localhost in tests)
-	const newActiveBansCount = engeller.filter(
+	const newActiveBansCount = blocks.filter(
 		(e) =>
 			e.status === 'ban' &&
-			(!defconResetAt || e.olusturma >= defconResetAt) &&
+			(!defconResetAt || e.creation >= defconResetAt) &&
 			e.ip !== '127.0.0.1' &&
 			e.ip !== '::1' &&
 			e.ip !== 'localhost'
@@ -1374,7 +1366,7 @@ export async function getSocOverview(): Promise<SocOverviewData> {
 	const criticalEvents24h = Number(st.criticalEvents ?? 0);
 	const activeSessionsCount = Number(sessionsRes.rows[0]?.n ?? 0);
 
-	const blockMap = new Map(engeller.map((e) => [e.ip, e]));
+	const blockMap = new Map(blocks.map((e) => [e.ip, e]));
 
 	const topAttackers: TopAttackerItem[] = attackersRes.rows.map((r) => {
 		const ip = String(r.ip);
@@ -1382,14 +1374,14 @@ export async function getSocOverview(): Promise<SocOverviewData> {
 		const liveScore = getLiveThreatScore(ip);
 		const eventCount = Number(r.eventCount ?? 1);
 		const computedScore = block
-			? block.tehditPuani
+			? block.threatScore
 			: Math.min(99, Math.max(liveScore, eventCount * 15));
 		return {
 			ip,
 			eventCount,
-			tehditPuani: computedScore,
-			sonGorulme: Number(r.sonGorulme ?? now),
-			sonMesaj: String(r.sonMesaj ?? ''),
+			threatScore: computedScore,
+			lastSeen: Number(r.lastSeen ?? now),
+			lastMessage: String(r.lastMessage ?? ''),
 			status: block ? block.status : 'izleniyor',
 			threatIntel: classifyThreatIntel(ip),
 		};
@@ -1577,10 +1569,10 @@ export async function updateSocIncident(
 			if (sourceIp) {
 				await banIp({
 					ip: sourceIp,
-					neden: `Stateful Incident Containment [Incident #${id}]`,
+					reason: `Stateful Incident Containment [Incident #${id}]`,
 					durationMs: 24 * 60 * 60 * 1000,
-					tehditPuani: 100,
-					olusturanId: updates.assignedTo || null,
+					threatScore: 100,
+					creatorId: updates.assignedTo || null,
 				});
 			}
 		} catch (containErr) {

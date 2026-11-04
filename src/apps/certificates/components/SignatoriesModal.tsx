@@ -21,14 +21,14 @@ export function SignatoriesModal({
 }) {
 	const { t } = useI18n();
 	const notify = useToast();
-	const [universite, setUniversite] = useState(initial.universite);
-	const [kulupAdi, setKulupAdi] = useState(initial.kulupAdi);
-	const [imzalar, setImzalar] = useState(initial.imzalar.map((i) => ({ ...i })));
+	const [university, setUniversity] = useState(initial.university);
+	const [clubName, setClubName] = useState(initial.clubName);
+	const [signatures, setSignatures] = useState(initial.signatures.map((i) => ({ ...i })));
 	const [error, setError] = useState('');
 	const [busy, setBusy] = useState(false);
 
-	const set = (i: number, key: 'ad' | 'unvan', v: string) =>
-		setImzalar((list) => list.map((row, j) => (j === i ? { ...row, [key]: v } : row)));
+	const set = (i: number, key: 'name' | 'rank', v: string) =>
+		setSignatures((list) => list.map((row, j) => (j === i ? { ...row, [key]: v } : row)));
 
 	return (
 		<Sheet
@@ -39,7 +39,7 @@ export function SignatoriesModal({
 				e.preventDefault();
 				setBusy(true);
 				setError('');
-				const res = await sendJson('/api/community', 'PATCH', { universite, kulupAdi, imzalar });
+				const res = await sendJson('/api/community', 'PATCH', { university, clubName, signatures });
 				setBusy(false);
 				if (!res.ok) {
 					setError(res.error || t('kbActionFailed'));
@@ -58,8 +58,8 @@ export function SignatoriesModal({
 					className={ui.input}
 					required
 					maxLength={80}
-					value={universite}
-					onChange={(e) => setUniversite(e.target.value)}
+					value={university}
+					onChange={(e) => setUniversity(e.target.value)}
 				/>
 			</label>
 			<label className={ui.field}>
@@ -68,20 +68,20 @@ export function SignatoriesModal({
 					className={ui.input}
 					required
 					maxLength={80}
-					value={kulupAdi}
-					onChange={(e) => setKulupAdi(e.target.value)}
+					value={clubName}
+					onChange={(e) => setClubName(e.target.value)}
 				/>
 			</label>
-			{imzalar.map((row, i) => (
+			{signatures.map((row, i) => (
 				<div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
 					<label className={ui.field}>
 						<span className={ui.fieldLabel}>{`${t('crtSignatory')} ${i + 1}`}</span>
 						<input
 							className={ui.input}
 							maxLength={80}
-							value={row.ad}
+							value={row.name}
 							placeholder={t('crtSignatoryPh')}
-							onChange={(e) => set(i, 'ad', e.target.value)}
+							onChange={(e) => set(i, 'name', e.target.value)}
 						/>
 					</label>
 					<label className={ui.field}>
@@ -90,8 +90,8 @@ export function SignatoriesModal({
 							className={ui.input}
 							required
 							maxLength={80}
-							value={row.unvan}
-							onChange={(e) => set(i, 'unvan', e.target.value)}
+							value={row.rank}
+							onChange={(e) => set(i, 'rank', e.target.value)}
 						/>
 					</label>
 				</div>

@@ -11,8 +11,8 @@ interface MemberOption {
 	id: string;
 	firstName?: string;
 	lastName?: string;
-	ad: string;
-	soyad: string;
+	name: string;
+	surname: string;
 	email: string;
 }
 
@@ -139,7 +139,7 @@ export function PrivacyDataPanel() {
 					<option value="">{t('privacySelectMember')}</option>
 					{members.map((member) => (
 						<option key={member.id} value={member.id}>
-							{member.firstName || member.ad} {member.lastName || member.soyad} · {member.email}
+							{member.firstName || member.name} {member.lastName || member.surname} · {member.email}
 						</option>
 					))}
 				</select>

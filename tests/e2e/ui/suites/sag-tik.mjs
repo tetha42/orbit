@@ -7,10 +7,10 @@ export const meta = { title: 'Sağ tık menüsü: alt menü öğeleri role göre
 const MENU = (page) => page.locator('[data-menu-item]').evaluateAll((els) => els.map((e) => e.getAttribute('data-menu-item')));
 
 const CASES = [
-	{ key: 'okur', apps: ['news', 'settings'], yeni: [] },
-	{ key: 'can', apps: ['teams', 'events', 'projects', 'decisions', 'news', 'certificates', 'inventory', 'members', 'notes', 'settings', 'mail'], yeni: [] },
-	{ key: 'zeynep', apps: ['teams', 'events', 'projects', 'budget', 'decisions', 'news', 'certificates', 'inventory', 'members', 'notes', 'settings', 'mail'], yeni: ['dt-new-event', 'dt-new-member', 'dt-new-budget'] },
-	{ key: 'admin', apps: ['teams', 'events', 'projects', 'budget', 'decisions', 'news', 'certificates', 'inventory', 'members', 'notes', 'settings', 'terminal', 'mail'], yeni: ['dt-new-event', 'dt-new-member', 'dt-new-budget'] },
+	{ key: 'okur', apps: ['news', 'settings'], fresh: [] },
+	{ key: 'can', apps: ['teams', 'events', 'projects', 'decisions', 'news', 'certificates', 'inventory', 'members', 'notes', 'settings', 'mail'], fresh: [] },
+	{ key: 'zeynep', apps: ['teams', 'events', 'projects', 'budget', 'decisions', 'news', 'certificates', 'inventory', 'members', 'notes', 'settings', 'mail'], fresh: ['dt-new-event', 'dt-new-member', 'dt-new-budget'] },
+	{ key: 'admin', apps: ['teams', 'events', 'projects', 'budget', 'decisions', 'news', 'certificates', 'inventory', 'members', 'notes', 'settings', 'terminal', 'mail'], fresh: ['dt-new-event', 'dt-new-member', 'dt-new-budget'] },
 ];
 
 export default async function suite(t) {
@@ -22,7 +22,7 @@ export default async function suite(t) {
 			t.sameSet(apps, c.apps, `${c.key}: alt menüde tam olarak izinli uygulamalar var`);
 			const all = await MENU(page);
 			for (const id of ['dt-new-event', 'dt-new-member', 'dt-new-budget']) {
-				t.check(all.includes(id) === c.yeni.includes(id), `${c.key}: "${id}" ${c.yeni.includes(id) ? 'var' : 'yok'}`, JSON.stringify(all));
+				t.check(all.includes(id) === c.fresh.includes(id), `${c.key}: "${id}" ${c.fresh.includes(id) ? 'var' : 'yok'}`, JSON.stringify(all));
 			}
 			await t.shot(page, `${c.key}-sag-tik-alt-menu`);
 		});

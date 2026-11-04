@@ -17,16 +17,14 @@ interface MemberAdminDetail {
 		handle?: string;
 		department?: string;
 		grade?: number;
-		ad: string;
-		soyad: string;
+		name: string;
+		surname: string;
 		email: string;
-		ogrenciNo: string;
-		bolum: string;
-		sinif: number;
+		studentNo: string;
 		bio: string;
 		status: string;
 		roleId: string | null;
-		rolBilgi: { id: string; ad: string; renk: string } | null;
+		roleInfo: { id: string; name: string; color: string } | null;
 	};
 	fields: FormField[];
 	customFields: Record<string, string>;
@@ -40,12 +38,12 @@ interface MemberEditSheetProps {
 }
 
 interface Values {
-	ad: string;
-	soyad: string;
+	name: string;
+	surname: string;
 	email: string;
-	ogrenciNo: string;
-	bolum: string;
-	sinif: number;
+	studentNo: string;
+	department: string;
+	grade: number;
 	bio: string;
 }
 
@@ -82,12 +80,12 @@ export function MemberEditSheet({ memberId, onClose, onSaved }: MemberEditSheetP
 				const next = data as MemberAdminDetail;
 				setDetail(next);
 				setValues({
-					ad: next.member.firstName || next.member.ad,
-					soyad: next.member.lastName || next.member.soyad,
+					name: next.member.firstName || next.member.name,
+					surname: next.member.lastName || next.member.surname,
 					email: next.member.email,
-					ogrenciNo: next.member.handle || next.member.ogrenciNo,
-					bolum: next.member.department || next.member.bolum,
-					sinif: next.member.grade || next.member.sinif,
+					studentNo: next.member.handle || next.member.studentNo,
+					department: next.member.department || next.member.department,
+					grade: next.member.grade || next.member.grade,
 					bio: next.member.bio,
 				});
 				setCustomValues(next.customFields ?? {});
@@ -106,11 +104,11 @@ export function MemberEditSheet({ memberId, onClose, onSaved }: MemberEditSheetP
 	const trackOptions = useMemo(() => {
 		if (!detail || !values) return [];
 		const options = [...detail.core.track.options];
-		if (!options.some((option) => option.value === values.bolum)) {
+		if (!options.some((option) => option.value === values.department)) {
 			options.unshift({
-				value: values.bolum,
-				labelTr: values.bolum,
-				labelEn: values.bolum,
+				value: values.department,
+				labelTr: values.department,
+				labelEn: values.department,
 			});
 		}
 		return options;
@@ -119,11 +117,11 @@ export function MemberEditSheet({ memberId, onClose, onSaved }: MemberEditSheetP
 	const levelOptions = useMemo(() => {
 		if (!detail || !values) return [];
 		const options = [...detail.core.level.options];
-		if (!options.some((option) => Number(option.value) === values.sinif)) {
+		if (!options.some((option) => Number(option.value) === values.grade)) {
 			options.unshift({
-				value: String(values.sinif),
-				labelTr: String(values.sinif),
-				labelEn: String(values.sinif),
+				value: String(values.grade),
+				labelTr: String(values.grade),
+				labelEn: String(values.grade),
 			});
 		}
 		return options;
@@ -147,11 +145,11 @@ export function MemberEditSheet({ memberId, onClose, onSaved }: MemberEditSheetP
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					...values,
-					firstName: values.ad,
-					lastName: values.soyad,
-					handle: values.ogrenciNo,
-					department: values.bolum,
-					grade: values.sinif,
+					firstName: values.name,
+					lastName: values.surname,
+					handle: values.studentNo,
+					department: values.department,
+					grade: values.grade,
 					customFields: customValues,
 				}),
 			});
@@ -201,8 +199,8 @@ export function MemberEditSheet({ memberId, onClose, onSaved }: MemberEditSheetP
 							<span className={ui.fieldLabel}>{t('membersFirstName')}</span>
 							<input
 								className={ui.input}
-								value={values.ad}
-								onChange={(event) => update('ad', event.target.value)}
+								value={values.name}
+								onChange={(event) => update('name', event.target.value)}
 								maxLength={60}
 								required
 							/>
@@ -211,8 +209,8 @@ export function MemberEditSheet({ memberId, onClose, onSaved }: MemberEditSheetP
 							<span className={ui.fieldLabel}>{t('membersLastName')}</span>
 							<input
 								className={ui.input}
-								value={values.soyad}
-								onChange={(event) => update('soyad', event.target.value)}
+								value={values.surname}
+								onChange={(event) => update('surname', event.target.value)}
 								maxLength={60}
 								required
 							/>
@@ -236,8 +234,8 @@ export function MemberEditSheet({ memberId, onClose, onSaved }: MemberEditSheetP
 						</span>
 						<input
 							className={ui.input}
-							value={values.ogrenciNo}
-							onChange={(event) => update('ogrenciNo', event.target.value)}
+							value={values.studentNo}
+							onChange={(event) => update('studentNo', event.target.value)}
 							maxLength={32}
 							required
 						/>
@@ -251,8 +249,8 @@ export function MemberEditSheet({ memberId, onClose, onSaved }: MemberEditSheetP
 							<select
 								className={ui.select}
 								style={{ maxWidth: 'none' }}
-								value={values.bolum}
-								onChange={(event) => update('bolum', event.target.value)}
+								value={values.department}
+								onChange={(event) => update('department', event.target.value)}
 							>
 								{trackOptions.map((option) => (
 									<option key={option.value} value={option.value}>
@@ -268,8 +266,8 @@ export function MemberEditSheet({ memberId, onClose, onSaved }: MemberEditSheetP
 							<select
 								className={ui.select}
 								style={{ maxWidth: 'none' }}
-								value={values.sinif}
-								onChange={(event) => update('sinif', Number(event.target.value))}
+								value={values.grade}
+								onChange={(event) => update('grade', Number(event.target.value))}
 							>
 								{levelOptions.map((option) => (
 									<option key={option.value} value={Number(option.value)}>

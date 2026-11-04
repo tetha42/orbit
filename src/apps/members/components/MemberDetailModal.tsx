@@ -102,7 +102,7 @@ export function MemberDetailModal({
 	}, [isOpen, member?.id, canEdit]);
 
 	const memberTeams = React.useMemo(() => {
-		const teams = member?.takimlar ?? [];
+		const teams = member?.teams ?? [];
 		return [...new Map(teams.map((team) => [team.id, team])).values()];
 	}, [member]);
 
@@ -123,23 +123,23 @@ export function MemberDetailModal({
 
 	const isSelf = member.id === currentUserId;
 	const canMessage = mailUser && !isSelf && member.status === 'aktif';
-	const isAlumni = member.status === 'mezun' || isAlumniRole({ id: member.roleId, ad: member.rolAd });
+	const isAlumni = member.status === 'mezun' || isAlumniRole({ id: member.roleId, name: member.roleName });
 	const displayRole = isAlumni
 		? {
-				ad: isAlumniRole({ id: member.roleId, ad: member.rolAd })
-					? (member.rolAd ?? t('membersStatusAlumni', 'Mezun'))
+				name: isAlumniRole({ id: member.roleId, name: member.roleName })
+					? (member.roleName ?? t('membersStatusAlumni', 'Mezun'))
 					: t('membersStatusAlumni', 'Mezun'),
-				renk: isAlumniRole({ id: member.roleId, ad: member.rolAd }) ? (member.rolRenk ?? '#64d2ff') : '#64d2ff',
+				color: isAlumniRole({ id: member.roleId, name: member.roleName }) ? (member.roleColor ?? '#64d2ff') : '#64d2ff',
 		  }
 		: member.roleId
-		? { ad: member.rolAd ?? '—', renk: member.rolRenk ?? '#8e8e93' }
+		? { name: member.roleName ?? '—', color: member.roleColor ?? '#8e8e93' }
 		: null;
-	const joinDate = member.olusturma
+	const joinDate = member.creation
 		? new Intl.DateTimeFormat(language, {
 				year: 'numeric',
 				month: 'long',
 				day: 'numeric',
-		  }).format(new Date(member.olusturma))
+		  }).format(new Date(member.creation))
 		: null;
 
 	return (
@@ -163,9 +163,9 @@ export function MemberDetailModal({
 						border: '1px solid var(--window-border)',
 					}}
 				>
-					{member.avatarUrl || member.profilFoto ? (
+					{member.avatarUrl || member.profilePhoto ? (
 						<Image
-							src={(member.avatarUrl || member.profilFoto)!}
+							src={(member.avatarUrl || member.profilePhoto)!}
 							alt={`${member.firstName} ${member.lastName}`}
 							width={54}
 							height={54}
@@ -185,7 +185,7 @@ export function MemberDetailModal({
 						<div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
 							<RoleBadge
 								role={displayRole}
-								bosMetin={t('roleNone')}
+								emptyText={t('roleNone')}
 							/>
 							<span
 								style={{
@@ -245,10 +245,10 @@ export function MemberDetailModal({
 							<span>{t('membersDeptClassLabel')}</span>
 						</div>
 						<div style={{ fontSize: '12.5px', fontWeight: 600, marginTop: '4px' }}>
-							{member.bolum}
+							{member.department}
 						</div>
 						<div style={{ fontSize: '11.5px', opacity: 0.7 }}>
-							{fill(t('membersClassYear'), { year: member.sinif })}
+							{fill(t('membersClassYear'), { year: member.grade })}
 						</div>
 					</div>
 
@@ -265,7 +265,7 @@ export function MemberDetailModal({
 							<span>{t('membersStudentIdLabel')}</span>
 						</div>
 						<div style={{ fontSize: '13px', fontWeight: 600, marginTop: '4px' }}>
-							{member.handle || member.ogrenciNo || '—'}
+							{member.handle || member.studentNo || '—'}
 						</div>
 					</div>
 
@@ -282,7 +282,7 @@ export function MemberDetailModal({
 							<span>{t('membersAttendanceLabel', 'Attendance Katılımı')}</span>
 						</div>
 						<div style={{ fontSize: '13px', fontWeight: 600, marginTop: '4px' }}>
-							{member.yoklamaSayisi ?? 0} {t('eventsAttendanceUnit', 'CommunityEvent')}
+							{member.attendanceCount ?? 0} {t('eventsAttendanceUnit', 'CommunityEvent')}
 						</div>
 					</div>
 
@@ -360,8 +360,8 @@ export function MemberDetailModal({
 										fontSize: '12px',
 									}}
 								>
-									<span style={{ fontWeight: 600 }}>{tm.ad}</span>
-									{tm.liderMi && (
+									<span style={{ fontWeight: 600 }}>{tm.name}</span>
+									{tm.leaderMi && (
 										<span
 											style={{
 												fontSize: '10px',
@@ -375,19 +375,19 @@ export function MemberDetailModal({
 											👑 {t('teamRoleCaptain')}
 										</span>
 									)}
-									{tm.role && !tm.liderMi && (
+									{tm.role && !tm.leaderMi && (
 										<span style={{ fontSize: '11px', opacity: 0.7 }}>({tm.role})</span>
 									)}
-									{tm.kategori && (
+									{tm.category && (
 										<span style={{ fontSize: '10px', opacity: 0.5, borderLeft: '1px solid var(--border-subtle)', paddingLeft: '5px' }}>
-											{tm.kategori}
+											{tm.category}
 										</span>
 									)}
 								</div>
 							))}
 						</div>
 					</div>
-				) : member.takimAdi ? (
+				) : member.teamName ? (
 					<div
 						style={{
 							padding: '10px 12px',
@@ -401,7 +401,7 @@ export function MemberDetailModal({
 							<span>{t('membersConnectedTeams', 'Bağlı Olduğu Ar-Ge Takımları')}</span>
 						</div>
 						<div style={{ fontSize: '12.5px', fontWeight: 600, marginTop: '4px' }}>
-							{member.takimAdi}
+							{member.teamName}
 						</div>
 					</div>
 				) : (

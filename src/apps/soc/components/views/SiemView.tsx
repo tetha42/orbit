@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { useSoc } from '../../context/SocContext';
 import { formatDateTime } from '../../types';
-import type { TimeRangePreset, SiemAramaOp, SiemAramaAlani } from '../../types';
+import type { TimeRangePreset, SiemSearchOp, SiemSearchField } from '../../types';
 import { formatSocAlertMessage } from '../../utils/alertLocalization';
 import s from '../../Soc.module.css';
 
@@ -52,27 +52,27 @@ export const SiemView = React.memo(function SiemView() {
 		handleSelectTimeRange,
 		handleZoomBucket,
 		setShowCustomDateModal,
-		siemAramaAlani,
-		setSiemAramaAlani,
-		siemAramaOp,
-		setSiemAramaOp,
-		siemArama,
-		setSiemArama,
+		siemSearchField,
+		setSiemSearchField,
+		siemSearchOp,
+		setSiemSearchOp,
+		siemSearch,
+		setSiemSearch,
 		fetchSiemFiltered,
-		siemServis,
-		setSiemServis,
-		siemServisOp,
-		setSiemServisOp,
-		siemSeviye,
-		setSiemSeviye,
-		siemSeviyeOp,
-		setSiemSeviyeOp,
+		siemService,
+		setSiemService,
+		siemServiceOp,
+		setSiemServiceOp,
+		siemLevel,
+		setSiemLevel,
+		siemLevelOp,
+		setSiemLevelOp,
 		siemIp,
 		setSiemIp,
 		siemIpOp,
 		setSiemIpOp,
-		handleQuickExcludeSeviye,
-		handleQuickExcludeServis,
+		handleQuickExcludeLevel,
+		handleQuickExcludeService,
 		handleQuickExcludeIp,
 		handleResetAllFilters,
 		expandedLogIds,
@@ -306,30 +306,30 @@ export const SiemView = React.memo(function SiemView() {
 							<Filter size={12} style={{ color: 'var(--text-secondary)' }} />
 							<select
 								className={s.siemScopeSelect}
-								value={siemAramaAlani}
+								value={siemSearchField}
 								onChange={(e) => {
-									const next = e.target.value as SiemAramaAlani;
-									setSiemAramaAlani(next);
-									if (siemArama.trim()) void fetchSiemFiltered({ aramaAlani: next });
+									const next = e.target.value as SiemSearchField;
+									setSiemSearchField(next);
+									if (siemSearch.trim()) void fetchSiemFiltered({ searchField: next });
 								}}
 							>
 								<option value="all">{isEn ? 'All Columns' : 'Tüm Alanlar'}</option>
-								<option value="mesaj">{isEn ? 'Message' : 'Mesaj'}</option>
+								<option value="message">{isEn ? 'Message' : 'Mesaj'}</option>
 								<option value="ip">IP</option>
-								<option value="servis">{isEn ? 'Service' : 'Servis'}</option>
+								<option value="service">{isEn ? 'Service' : 'Servis'}</option>
 								<option value="userId">{isEn ? 'Actor' : 'Aktör'}</option>
-								<option value="detay">{isEn ? 'JSON Detail' : 'JSON Detay'}</option>
+								<option value="detail">{isEn ? 'JSON Detail' : 'JSON Detay'}</option>
 							</select>
 						</div>
 
 						<div className={s.siemOmnibarScope} title={isEn ? 'Matching Condition' : 'Arama Koşulu'}>
 							<select
 								className={s.siemScopeSelect}
-								value={siemAramaOp}
+								value={siemSearchOp}
 								onChange={(e) => {
-									const next = e.target.value as SiemAramaOp;
-									setSiemAramaOp(next);
-									if (siemArama.trim()) void fetchSiemFiltered({ aramaOp: next });
+									const next = e.target.value as SiemSearchOp;
+									setSiemSearchOp(next);
+									if (siemSearch.trim()) void fetchSiemFiltered({ searchOp: next });
 								}}
 							>
 								<option value="contains">{isEn ? 'Contains' : 'İçerir'}</option>
@@ -350,19 +350,19 @@ export const SiemView = React.memo(function SiemView() {
 										? 'Query terms, status codes, IPs... (prefix - or ! to exclude, e.g. -127.0.0.1)'
 										: 'Sorgu, status kodu, IP... (hariç tutmak için - veya ! kullanın, örn: -127.0.0.1)'
 								}
-								value={siemArama}
-								onChange={(e) => setSiemArama(e.target.value)}
+								value={siemSearch}
+								onChange={(e) => setSiemSearch(e.target.value)}
 								onKeyDown={(e) => {
 									if (e.key === 'Enter') void fetchSiemFiltered();
 								}}
 							/>
-							{siemArama && (
+							{siemSearch && (
 								<button
 									type="button"
 									className={s.siemOmnibarClear}
 									onClick={() => {
-										setSiemArama('');
-										void fetchSiemFiltered({ arama: '' });
+										setSiemSearch('');
+										void fetchSiemFiltered({ search: '' });
 									}}
 									title={isEn ? 'Clear search' : 'Aramayı temizle'}
 								>
@@ -396,8 +396,8 @@ export const SiemView = React.memo(function SiemView() {
 								key={pill.label}
 								type="button"
 								onClick={() => {
-									const next = `${siemArama ? `${siemArama.trim()} ` : ''}${pill.val}`;
-									setSiemArama(next);
+									const next = `${siemSearch ? `${siemSearch.trim()} ` : ''}${pill.val}`;
+									setSiemSearch(next);
 								}}
 								style={{
 									background: 'var(--fill-soft, rgba(0,0,0,0.04))',
@@ -413,7 +413,7 @@ export const SiemView = React.memo(function SiemView() {
 								+{pill.label}
 							</button>
 						))}
-						{siemArama.includes(':') && (
+						{siemSearch.includes(':') && (
 							<span
 								style={{
 									fontSize: 10,
@@ -440,27 +440,27 @@ export const SiemView = React.memo(function SiemView() {
 							</span>
 							<button
 								type="button"
-								className={`${s.siemOpToggle} ${siemServisOp === 'neq' ? s.siemOpToggleActive : ''}`}
+								className={`${s.siemOpToggle} ${siemServiceOp === 'neq' ? s.siemOpToggleActive : ''}`}
 								onClick={() => {
-									const nextOp = siemServisOp === 'eq' ? 'neq' : 'eq';
-									setSiemServisOp(nextOp);
-									if (siemServis !== 'all') void fetchSiemFiltered({ servisOp: nextOp });
+									const nextOp = siemServiceOp === 'eq' ? 'neq' : 'eq';
+									setSiemServiceOp(nextOp);
+									if (siemService !== 'all') void fetchSiemFiltered({ serviceOp: nextOp });
 								}}
 								title={
-									siemServisOp === 'eq'
+									siemServiceOp === 'eq'
 										? isEn ? 'Click to invert (≠ Is Not)' : 'Tıkla: Dışla (≠ Değildir)'
 										: isEn ? 'Currently excluding. Click to match (= Equals).' : 'Şu an dışlanıyor. Tıkla: Eşittir yap.'
 								}
 							>
-								{siemServisOp === 'neq' ? '≠' : '='}
+								{siemServiceOp === 'neq' ? '≠' : '='}
 							</button>
 							<select
 								className={s.siemFilterSelect}
-								value={siemServis}
+								value={siemService}
 								onChange={(e) => {
 									const next = e.target.value;
-									setSiemServis(next);
-									void fetchSiemFiltered({ servis: next });
+									setSiemService(next);
+									void fetchSiemFiltered({ service: next });
 								}}
 							>
 								<option value="all">{isEn ? 'All Services' : 'Tüm Servisler'}</option>
@@ -482,22 +482,22 @@ export const SiemView = React.memo(function SiemView() {
 							</span>
 							<button
 								type="button"
-								className={`${s.siemOpToggle} ${siemSeviyeOp === 'neq' ? s.siemOpToggleActive : ''}`}
+								className={`${s.siemOpToggle} ${siemLevelOp === 'neq' ? s.siemOpToggleActive : ''}`}
 								onClick={() => {
-									const nextOp = siemSeviyeOp === 'eq' ? 'neq' : 'eq';
-									setSiemSeviyeOp(nextOp);
-									if (siemSeviye !== 'all') void fetchSiemFiltered({ seviyeOp: nextOp });
+									const nextOp = siemLevelOp === 'eq' ? 'neq' : 'eq';
+									setSiemLevelOp(nextOp);
+									if (siemLevel !== 'all') void fetchSiemFiltered({ levelOp: nextOp });
 								}}
 							>
-								{siemSeviyeOp === 'neq' ? '≠' : '='}
+								{siemLevelOp === 'neq' ? '≠' : '='}
 							</button>
 							<select
 								className={s.siemFilterSelect}
-								value={siemSeviye}
+								value={siemLevel}
 								onChange={(e) => {
 									const next = e.target.value;
-									setSiemSeviye(next);
-									void fetchSiemFiltered({ seviye: next });
+									setSiemLevel(next);
+									void fetchSiemFiltered({ level: next });
 								}}
 							>
 								<option value="all">{isEn ? 'All Severities' : 'Tüm Seviyeler'}</option>
@@ -576,16 +576,16 @@ export const SiemView = React.memo(function SiemView() {
 
 						<button
 							type="button"
-							className={`${s.siemPresetChip} ${siemSeviye === 'INFO' && siemSeviyeOp === 'neq' ? s.siemPresetChipActive : ''}`}
+							className={`${s.siemPresetChip} ${siemLevel === 'INFO' && siemLevelOp === 'neq' ? s.siemPresetChipActive : ''}`}
 							onClick={() => {
-								if (siemSeviye === 'INFO' && siemSeviyeOp === 'neq') {
-									setSiemSeviye('all');
-									setSiemSeviyeOp('eq');
-									void fetchSiemFiltered({ seviye: 'all', seviyeOp: 'eq' });
+								if (siemLevel === 'INFO' && siemLevelOp === 'neq') {
+									setSiemLevel('all');
+									setSiemLevelOp('eq');
+									void fetchSiemFiltered({ level: 'all', levelOp: 'eq' });
 								} else {
-									setSiemSeviye('INFO');
-									setSiemSeviyeOp('neq');
-									void fetchSiemFiltered({ seviye: 'INFO', seviyeOp: 'neq' });
+									setSiemLevel('INFO');
+									setSiemLevelOp('neq');
+									void fetchSiemFiltered({ level: 'INFO', levelOp: 'neq' });
 								}
 							}}
 							title={isEn ? 'Toggle exclude INFO level logs' : 'INFO seviyesini gizlemeyi aç/kapat'}
@@ -597,15 +597,15 @@ export const SiemView = React.memo(function SiemView() {
 
 						<button
 							type="button"
-							className={`${s.siemPresetChip} ${siemSeviye === 'CRITICAL' && siemSeviyeOp === 'eq' ? s.siemPresetChipActive : ''}`}
+							className={`${s.siemPresetChip} ${siemLevel === 'CRITICAL' && siemLevelOp === 'eq' ? s.siemPresetChipActive : ''}`}
 							onClick={() => {
-								if (siemSeviye === 'CRITICAL' && siemSeviyeOp === 'eq') {
-									setSiemSeviye('all');
-									void fetchSiemFiltered({ seviye: 'all' });
+								if (siemLevel === 'CRITICAL' && siemLevelOp === 'eq') {
+									setSiemLevel('all');
+									void fetchSiemFiltered({ level: 'all' });
 								} else {
-									setSiemSeviye('CRITICAL');
-									setSiemSeviyeOp('eq');
-									void fetchSiemFiltered({ seviye: 'CRITICAL', seviyeOp: 'eq' });
+									setSiemLevel('CRITICAL');
+									setSiemLevelOp('eq');
+									void fetchSiemFiltered({ level: 'CRITICAL', levelOp: 'eq' });
 								}
 							}}
 							title={isEn ? 'Show only critical logs' : 'Yalnızca kritik logları göster'}
@@ -617,15 +617,15 @@ export const SiemView = React.memo(function SiemView() {
 
 						<button
 							type="button"
-							className={`${s.siemPresetChip} ${siemServis === 'security' && siemServisOp === 'eq' ? s.siemPresetChipActive : ''}`}
+							className={`${s.siemPresetChip} ${siemService === 'security' && siemServiceOp === 'eq' ? s.siemPresetChipActive : ''}`}
 							onClick={() => {
-								if (siemServis === 'security' && siemServisOp === 'eq') {
-									setSiemServis('all');
-									void fetchSiemFiltered({ servis: 'all' });
+								if (siemService === 'security' && siemServiceOp === 'eq') {
+									setSiemService('all');
+									void fetchSiemFiltered({ service: 'all' });
 								} else {
-									setSiemServis('security');
-									setSiemServisOp('eq');
-									void fetchSiemFiltered({ servis: 'security', servisOp: 'eq' });
+									setSiemService('security');
+									setSiemServiceOp('eq');
+									void fetchSiemFiltered({ service: 'security', serviceOp: 'eq' });
 								}
 							}}
 							title={isEn ? 'Show only security & WAF logs' : 'Yalnızca güvenlik ve WAF loglarını göster'}
@@ -635,7 +635,7 @@ export const SiemView = React.memo(function SiemView() {
 							<span>{isEn ? 'Security / WAF' : 'Güvenlik / WAF'}</span>
 						</button>
 
-						{(siemServis !== 'all' || siemSeviye !== 'all' || siemIp.trim() || siemArama.trim()) && (
+						{(siemService !== 'all' || siemLevel !== 'all' || siemIp.trim() || siemSearch.trim()) && (
 							<button
 								type="button"
 								className={s.siemResetBtn}
@@ -649,7 +649,7 @@ export const SiemView = React.memo(function SiemView() {
 					</div>
 
 					{/* Active Filter Badges */}
-					{(siemServis !== 'all' || siemSeviye !== 'all' || siemIp.trim() || siemArama.trim() || siemTimeRange !== '24h' || siemStartTime !== null) && (
+					{(siemService !== 'all' || siemLevel !== 'all' || siemIp.trim() || siemSearch.trim() || siemTimeRange !== '24h' || siemStartTime !== null) && (
 						<div className={s.excelChipsBar}>
 							<span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)' }}>
 								{isEn ? 'Active Filters:' : 'Uygulanan Filtreler:'}
@@ -671,16 +671,16 @@ export const SiemView = React.memo(function SiemView() {
 								</span>
 							)}
 
-							{siemServis !== 'all' && (
-								<span className={`${s.excelChip} ${siemServisOp === 'neq' ? s.excelChipNeg : ''}`}>
-									{isEn ? 'Service' : 'Servis'} {siemServisOp === 'neq' ? '≠' : '='} {siemServis}
+							{siemService !== 'all' && (
+								<span className={`${s.excelChip} ${siemServiceOp === 'neq' ? s.excelChipNeg : ''}`}>
+									{isEn ? 'Service' : 'Servis'} {siemServiceOp === 'neq' ? '≠' : '='} {siemService}
 									<button
 										type="button"
 										className={s.excelChipClose}
 										onClick={() => {
-											setSiemServis('all');
-											setSiemServisOp('eq');
-											void fetchSiemFiltered({ servis: 'all', servisOp: 'eq' });
+											setSiemService('all');
+											setSiemServiceOp('eq');
+											void fetchSiemFiltered({ service: 'all', serviceOp: 'eq' });
 										}}
 									>
 										<X size={12} />
@@ -688,16 +688,16 @@ export const SiemView = React.memo(function SiemView() {
 								</span>
 							)}
 
-							{siemSeviye !== 'all' && (
-								<span className={`${s.excelChip} ${siemSeviyeOp === 'neq' ? s.excelChipNeg : ''}`}>
-									{isEn ? 'Level' : 'Seviye'} {siemSeviyeOp === 'neq' ? '≠' : '='} {siemSeviye}
+							{siemLevel !== 'all' && (
+								<span className={`${s.excelChip} ${siemLevelOp === 'neq' ? s.excelChipNeg : ''}`}>
+									{isEn ? 'Level' : 'Seviye'} {siemLevelOp === 'neq' ? '≠' : '='} {siemLevel}
 									<button
 										type="button"
 										className={s.excelChipClose}
 										onClick={() => {
-											setSiemSeviye('all');
-											setSiemSeviyeOp('eq');
-											void fetchSiemFiltered({ seviye: 'all', seviyeOp: 'eq' });
+											setSiemLevel('all');
+											setSiemLevelOp('eq');
+											void fetchSiemFiltered({ level: 'all', levelOp: 'eq' });
 										}}
 									>
 										<X size={12} />
@@ -722,19 +722,19 @@ export const SiemView = React.memo(function SiemView() {
 								</span>
 							)}
 
-							{siemArama.trim() && (
+							{siemSearch.trim() && (
 								<span
 									className={`${s.excelChip} ${
-										siemAramaOp === 'not_contains' || siemAramaOp === 'not_equals' ? s.excelChipNeg : ''
+										siemSearchOp === 'not_contains' || siemSearchOp === 'not_equals' ? s.excelChipNeg : ''
 									}`}
 								>
-									{siemAramaAlani}: &quot;{siemArama}&quot;
+									{siemSearchField}: &quot;{siemSearch}&quot;
 									<button
 										type="button"
 										className={s.excelChipClose}
 										onClick={() => {
-											setSiemArama('');
-											void fetchSiemFiltered({ arama: '' });
+											setSiemSearch('');
+											void fetchSiemFiltered({ search: '' });
 										}}
 									>
 										<X size={12} />
@@ -765,12 +765,12 @@ export const SiemView = React.memo(function SiemView() {
 							</thead>
 							<tbody>
 								{siemLogs.map((log) => {
-									const hasDetay = Boolean(log.detay && Object.keys(log.detay).length > 0);
+									const hasDetail = Boolean(log.detail && Object.keys(log.detail).length > 0);
 									const isExpanded = expandedLogIds.has(log.id);
 									const sevClass =
-										log.seviye === 'CRITICAL' || log.seviye === 'ERROR'
+										log.level === 'CRITICAL' || log.level === 'ERROR'
 											? s.badgeDanger
-											: log.seviye === 'WARN'
+											: log.level === 'WARN'
 											? s.badgeWarn
 											: s.badgeInfo;
 									const canBanLogIp =
@@ -790,7 +790,7 @@ export const SiemView = React.memo(function SiemView() {
 													onDoubleClick={handleSelectDataOnDoubleClick}
 													title={isEn ? 'Double-click to select timestamp' : 'Zaman damgasını seçmek için çift tıklayın'}
 												>
-													{formatDateTime(log.zaman, language)}
+													{formatDateTime(log.time, language)}
 												</span>
 											</td>
 											<td>
@@ -800,13 +800,13 @@ export const SiemView = React.memo(function SiemView() {
 													onDoubleClick={handleSelectDataOnDoubleClick}
 													title={isEn ? 'Double-click to select level' : 'Seviyeyi seçmek için çift tıklayın'}
 												>
-													{log.seviye}
+													{log.level}
 												</span>
 												<button
 													type="button"
 													className={s.quickExcludeBtn}
-													title={isEn ? `Exclude level ${log.seviye}` : `Bu seviyeyi dışla (${log.seviye} hariç)`}
-													onClick={() => handleQuickExcludeSeviye(log.seviye)}
+													title={isEn ? `Exclude level ${log.level}` : `Bu seviyeyi dışla (${log.level} hariç)`}
+													onClick={() => handleQuickExcludeLevel(log.level)}
 												>
 													≠
 												</button>
@@ -814,18 +814,18 @@ export const SiemView = React.memo(function SiemView() {
 											<td>
 												<span
 													data-type="service"
-													data-value={log.servis}
+													data-value={log.service}
 													className={`${s.badge} ${s.badgeNeutral} ${s.mono} ${s.selectableData}`}
 													onDoubleClick={handleSelectDataOnDoubleClick}
 													title={isEn ? 'Double-click to select service' : 'Servisi seçmek için çift tıklayın'}
 												>
-													{log.servis}
+													{log.service}
 												</span>
 												<button
 													type="button"
 													className={s.quickExcludeBtn}
-													title={isEn ? `Exclude service ${log.servis}` : `Bu servisi dışla (${log.servis} hariç)`}
-													onClick={() => handleQuickExcludeServis(log.servis)}
+													title={isEn ? `Exclude service ${log.service}` : `Bu servisi dışla (${log.service} hariç)`}
+													onClick={() => handleQuickExcludeService(log.service)}
 												>
 													≠
 												</button>
@@ -838,7 +838,7 @@ export const SiemView = React.memo(function SiemView() {
 														onDoubleClick={handleSelectDataOnDoubleClick}
 														title={isEn ? 'Double-click to select message' : 'Mesajı seçmek için çift tıklayın'}
 													>
-														{formatSocAlertMessage(log.mesaj, isEn)}
+														{formatSocAlertMessage(log.message, isEn)}
 													</span>
 													<div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
 														<button
@@ -851,7 +851,7 @@ export const SiemView = React.memo(function SiemView() {
 															<Eye size={12} />
 															<span>{isEn ? 'Inspect' : 'İncele'}</span>
 														</button>
-														{hasDetay && (
+														{hasDetail && (
 															<button
 																type="button"
 																className={s.actionBtn}
@@ -878,14 +878,14 @@ export const SiemView = React.memo(function SiemView() {
 														</span>
 													</div>
 												)}
-												{hasDetay && isExpanded && (
+												{hasDetail && isExpanded && (
 													<div style={{ marginTop: 6 }}>
 														<pre className={s.detayBox}>
-															{JSON.stringify(log.detay, null, 2)}
+															{JSON.stringify(log.detail, null, 2)}
 														</pre>
-														{typeof log.detay === 'object' && log.detay !== null && (
+														{typeof log.detail === 'object' && log.detail !== null && (
 															<div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-																{Object.entries(log.detay).map(([k, v]) => {
+																{Object.entries(log.detail).map(([k, v]) => {
 																	const valStr = typeof v === 'object' ? JSON.stringify(v) : String(v);
 																	if (!valStr || valStr.length > 50) return null;
 																	return (
@@ -954,8 +954,8 @@ export const SiemView = React.memo(function SiemView() {
 																void handleQuickBan(
 																	log.ip,
 																	isEn
-																		? `SIEM Forensic Quarantine (#${log.id}: ${log.servis})`
-																		: `SIEM Adli Log Karantinası (#${log.id}: ${log.servis})`
+																		? `SIEM Forensic Quarantine (#${log.id}: ${log.service})`
+																		: `SIEM Adli Log Karantinası (#${log.id}: ${log.service})`
 																)
 															}
 															disabled={isSubmitting}

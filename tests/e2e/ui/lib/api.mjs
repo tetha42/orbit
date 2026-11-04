@@ -51,18 +51,18 @@ export function client(base, token = '') {
  * Signs `eposta` in over the API (answering the 2FA step with `totp` when asked)
  * and returns the client. Throws with the server's answer when it does not work.
  */
-export async function loginApi(base, eposta, sifre, totp) {
+export async function loginApi(base, email, password, totp) {
 	const c = client(base);
-	const r = await c.post('/api/auth/login', { eposta, sifre });
+	const r = await c.post('/api/auth/login', { email, password });
 	if (r.json?.require2fa) {
-		if (!totp) throw new Error(`${eposta} needs a second factor but no TOTP secret was given.`);
+		if (!totp) throw new Error(`${email} needs a second factor but no TOTP secret was given.`);
 		let v = await c.post('/api/auth/2fa/challenge', { challengeToken: r.json.challengeToken, code: await totpCode(totp) });
 		// Another script may have spent this window's code; totpCode now waits for the next one.
 		if (v.status !== 200) {
-			const again = await c.post('/api/auth/login', { eposta, sifre });
+			const again = await c.post('/api/auth/login', { email, password });
 			v = await c.post('/api/auth/2fa/challenge', { challengeToken: again.json?.challengeToken, code: await totpCode(totp) });
 		}
-		if (v.status !== 200) throw new Error(`2FA for ${eposta}: ${v.status} ${JSON.stringify(v.json)}`);
-	} else if (r.status !== 200) throw new Error(`login ${eposta}: ${r.status} ${JSON.stringify(r.json)}`);
+		if (v.status !== 200) throw new Error(`2FA for ${email}: ${v.status} ${JSON.stringify(v.json)}`);
+	} else if (r.status !== 200) throw new Error(`login ${email}: ${r.status} ${JSON.stringify(r.json)}`);
 	return c;
 }

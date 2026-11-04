@@ -58,8 +58,8 @@ export async function POST(request: Request) {
 		? await getUserById(item.targetUserId)
 		: await getUserByEmail(item.recipient);
 	const recipient = user
-		? { ad: user.ad, soyad: user.soyad, email: item.recipient }
-		: { ad: 'Aday', soyad: '', email: item.recipient };
+		? { name: user.name, surname: user.surname, email: item.recipient }
+		: { name: 'Aday', surname: '', email: item.recipient };
 
 	const result =
 		item.kind === 'registration_verification'
@@ -70,10 +70,10 @@ export async function POST(request: Request) {
 		const reason = result.simulated ? 'SMTP yapılandırılmamış' : result.error || 'Gönderim başarısız';
 		await markMailOutbox(id, 'failed', { error: reason, approvedBy: auth.user.id });
 		await logSystemEvent({
-			servis: 'mail',
-			seviye: 'WARN',
-			mesaj: `Bekleyen e-posta gönderilemedi: ${item.recipient}`,
-			detay: { outboxId: id, reason },
+			service: 'mail',
+			level: 'WARN',
+			message: `Bekleyen e-posta gönderilemedi: ${item.recipient}`,
+			detail: { outboxId: id, reason },
 			userId: auth.user.id,
 			ip: clientAddress(request),
 		});
@@ -82,10 +82,10 @@ export async function POST(request: Request) {
 
 	await markMailOutbox(id, 'sent', { approvedBy: auth.user.id });
 	await logSystemEvent({
-		servis: 'mail',
-		seviye: 'INFO',
-		mesaj: `Bekleyen e-posta onaylandı ve gönderildi: ${item.recipient}`,
-		detay: { outboxId: id, kind: item.kind },
+		service: 'mail',
+		level: 'INFO',
+		message: `Bekleyen e-posta onaylandı ve gönderildi: ${item.recipient}`,
+		detail: { outboxId: id, kind: item.kind },
 		userId: auth.user.id,
 		ip: clientAddress(request),
 	});

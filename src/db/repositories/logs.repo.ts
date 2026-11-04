@@ -1,14 +1,14 @@
 import { Client } from 'pg';
 import { getPgPool, ensurePostgresInit } from '@/db';
-import { temizIp } from '@/lib/audit';
+import { cleanIp } from '@/lib/audit';
 
 export interface SystemLog {
 	id: number;
-	zaman: number;
-	seviye: 'INFO' | 'WARN' | 'ERROR' | 'CRITICAL';
-	servis: string;
-	mesaj: string;
-	detay: Record<string, unknown> | null;
+	time: number;
+	level: 'INFO' | 'WARN' | 'ERROR' | 'CRITICAL';
+	service: string;
+	message: string;
+	detail: Record<string, unknown> | null;
 	userId: string | null;
 	ip: string;
 }
@@ -21,7 +21,7 @@ export type FilterOperator =
 	| 'starts_with'
 	| 'ends_with';
 
-export type FilterColumn = 'all' | 'mesaj' | 'ip' | 'servis' | 'userId' | 'detay';
+export type FilterColumn = 'all' | 'message' | 'ip' | 'service' | 'userId' | 'detail';
 
 export type TimeRangePreset = '15m' | '1h' | '6h' | '24h' | '7d' | 'custom' | 'all';
 
@@ -47,15 +47,15 @@ export interface SiemLogsResponse {
 }
 
 export interface SystemLogFilter {
-	servis?: string;
-	servisOp?: 'eq' | 'neq';
-	seviye?: string;
-	seviyeOp?: 'eq' | 'neq';
+	service?: string;
+	serviceOp?: 'eq' | 'neq';
+	level?: string;
+	levelOp?: 'eq' | 'neq';
 	ip?: string;
 	ipOp?: 'eq' | 'neq' | 'contains' | 'not_contains';
-	arama?: string;
-	aramaOp?: FilterOperator;
-	aramaAlani?: FilterColumn;
+	search?: string;
+	searchOp?: FilterOperator;
+	searchField?: FilterColumn;
 	timeRange?: TimeRangePreset;
 	startTime?: number;
 	endTime?: number;
@@ -67,8 +67,8 @@ const SENSITIVE_LOG_KEY_RE =
 	/password|password|secret|pass_?hash|sifre_?hash|totp_?secret|recovery|cookie|authorization|private_?key|plain_?secret/i;
 
 const MAX_MESSAGE_LENGTH = 1000;
-const MAX_SERVIS_LEN = 40;
-const MAX_DETAY_JSON_LEN = 8192;
+const MAX_SERVICE_LEN = 40;
+const MAX_DETAIL_JSON_LEN = 8192;
 const DEFAULT_RETENTION_DAYS = 90;
 
 /**
@@ -84,7 +84,7 @@ export function sanitizeLogText(value: unknown, maxLen: number): string {
 		.slice(0, maxLen);
 }
 
-export function sanitizeLogDetay(
+export function sanitizeLogDetail(
 	input: Record<string, unknown> | null | undefined,
 	depth = 0
 ): Record<string, unknown> | null {
@@ -112,15 +112,15 @@ export function sanitizeLogDetay(
 						: String(item ?? '').slice(0, 100)
 			);
 		} else if (typeof rawVal === 'object') {
-			out[cleanKey] = sanitizeLogDetay(rawVal as Record<string, unknown>, depth + 1);
+			out[cleanKey] = sanitizeLogDetail(rawVal as Record<string, unknown>, depth + 1);
 		}
 	}
 	return Object.keys(out).length > 0 ? out : null;
 }
 
-const likeKacis = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
+const likeEscape = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
 
-const logBakimState = globalThis as { __sistemLogBakimi?: boolean };
+const logMaintenanceState = globalThis as { __SystemLogMaintenance?: boolean };
 
 const MAX_SYSTEM_LOG_COUNT = 5_000;
 
@@ -130,14 +130,14 @@ function systemLogRetentionDays(): number {
 }
 
 export function startSystemLogMaintenance(): void {
-	if (logBakimState.__sistemLogBakimi) return;
-	logBakimState.__sistemLogBakimi = true;
-	const calistir = async () => {
+	if (logMaintenanceState.__SystemLogMaintenance) return;
+	logMaintenanceState.__SystemLogMaintenance = true;
+	const run = async () => {
 		try {
 			const pool = getPgPool();
-			const sinir = Date.now() - systemLogRetentionDays() * 24 * 3600 * 1000;
+			const limit = Date.now() - systemLogRetentionDays() * 24 * 3600 * 1000;
 			// 1. Süreye dayalı genel temizlik
-			await pool.query('DELETE FROM system_logs WHERE timestamp < $1', [sinir]);
+			await pool.query('DELETE FROM system_logs WHERE timestamp < $1', [limit]);
 			// 2. Maksimum satır kotası (Yalnızca INFO ve WARN temizlenir; CRITICAL alarmlar ve denetim logları korunur)
 			await pool.query(
 				`DELETE FROM system_logs
@@ -156,15 +156,15 @@ export function startSystemLogMaintenance(): void {
 			console.error('[SystemLog] Temizlik hatası:', err);
 		}
 	};
-	setTimeout(calistir, 15_000).unref?.();
-	setInterval(calistir, 60 * 60 * 1000).unref?.();
+	setTimeout(run, 15_000).unref?.();
+	setInterval(run, 60 * 60 * 1000).unref?.();
 }
 
 export async function logSystemEvent(params: {
-	servis: string;
-	seviye?: 'INFO' | 'WARN' | 'ERROR' | 'CRITICAL';
-	mesaj: string;
-	detay?: Record<string, unknown> | null;
+	service: string;
+	level?: 'INFO' | 'WARN' | 'ERROR' | 'CRITICAL';
+	message: string;
+	detail?: Record<string, unknown> | null;
 	userId?: string | null;
 	ip?: string;
 }): Promise<void> {
@@ -173,45 +173,45 @@ export async function logSystemEvent(params: {
 		startSystemLogMaintenance();
 		const p = getPgPool();
 
-		let seviye: 'INFO' | 'WARN' | 'ERROR' | 'CRITICAL' =
-			params.seviye === 'CRITICAL' || params.seviye === 'WARN' || params.seviye === 'ERROR'
-				? params.seviye
+		let level: 'INFO' | 'WARN' | 'ERROR' | 'CRITICAL' =
+			params.level === 'CRITICAL' || params.level === 'WARN' || params.level === 'ERROR'
+				? params.level
 				: 'INFO';
-		const servis = sanitizeLogText(params.servis || 'system', MAX_SERVIS_LEN).toLowerCase() || 'system';
-		const message = sanitizeLogText(params.mesaj, MAX_MESSAGE_LENGTH);
+		const service = sanitizeLogText(params.service || 'system', MAX_SERVICE_LEN).toLowerCase() || 'system';
+		const message = sanitizeLogText(params.message, MAX_MESSAGE_LENGTH);
 		if (!message) return;
 
-		const ip = temizIp(params.ip || '');
+		const ip = cleanIp(params.ip || '');
 		// Localhost test isolation: Do not write CRITICAL for localhost traffic in development/test
 		const isLocalhost = ip === '127.0.0.1' || ip === '::1' || ip === 'localhost';
-		if (seviye === 'CRITICAL' && isLocalhost && process.env.NODE_ENV !== 'production') {
-			seviye = 'WARN';
+		if (level === 'CRITICAL' && isLocalhost && process.env.NODE_ENV !== 'production') {
+			level = 'WARN';
 		}
 
-		const safeDetay = sanitizeLogDetay(params.detay);
-		let detayJson = safeDetay ? JSON.stringify(safeDetay) : null;
-		if (detayJson && detayJson.length > MAX_DETAY_JSON_LEN) {
-			detayJson = JSON.stringify({ _truncated: true, preview: detayJson.slice(0, 1024) });
+		const safeDetail = sanitizeLogDetail(params.detail);
+		let detailJson = safeDetail ? JSON.stringify(safeDetail) : null;
+		if (detailJson && detailJson.length > MAX_DETAIL_JSON_LEN) {
+			detailJson = JSON.stringify({ _truncated: true, preview: detailJson.slice(0, 1024) });
 		}
 
 		const userId = params.userId ? sanitizeLogText(params.userId, 120) : null;
-		const zaman = Date.now();
+		const time = Date.now();
 
 		const insertRes = await p.query(
 			`INSERT INTO system_logs (timestamp, level, service, message, details, user_id, ip)
 			 VALUES ($1, $2, $3, $4, $5, $6, $7)
 			 RETURNING id`,
-			[zaman, seviye, servis, message, detayJson, userId, ip]
+			[time, level, service, message, detailJson, userId, ip]
 		);
 
-		const logId = Number(insertRes.rows[0]?.id ?? zaman);
+		const logId = Number(insertRes.rows[0]?.id ?? time);
 		const broadcastObj: SystemLog = {
 			id: logId,
-			zaman,
-			seviye,
-			servis,
-			mesaj: message,
-			detay: safeDetay ?? null,
+			time,
+			level,
+			service,
+			message: message,
+			detail: safeDetail ?? null,
 			userId,
 			ip,
 		};
@@ -221,11 +221,11 @@ export async function logSystemEvent(params: {
 		try {
 			const notifyPayload = JSON.stringify({
 				id: logId,
-				zaman,
-				seviye,
-				servis,
-				mesaj: message.slice(0, 500),
-				detay: safeDetay ? (typeof safeDetay === 'object' ? safeDetay : String(safeDetay)) : null,
+				time,
+				level,
+				service,
+				message: message.slice(0, 500),
+				detail: safeDetail ? (typeof safeDetail === 'object' ? safeDetail : String(safeDetail)) : null,
 				userId,
 				ip,
 			});
@@ -322,7 +322,7 @@ export function subscribeToLiveLogs(listener: LogListener): () => void {
 	};
 }
 
-export async function getSystemLogsPaginated(filtre: SystemLogFilter = {}): Promise<SiemLogsResponse> {
+export async function getSystemLogsPaginated(filter: SystemLogFilter = {}): Promise<SiemLogsResponse> {
 	await ensurePostgresInit();
 	const p = getPgPool();
 	const conditions: string[] = [];
@@ -334,35 +334,35 @@ export async function getSystemLogsPaginated(filtre: SystemLogFilter = {}): Prom
 	let effectiveStart: number | undefined;
 	let effectiveEnd: number | undefined;
 
-	if (filtre.timeRange === '15m') {
+	if (filter.timeRange === '15m') {
 		effectiveStart = now - 15 * 60_000;
 		effectiveEnd = now;
-	} else if (filtre.timeRange === '1h') {
+	} else if (filter.timeRange === '1h') {
 		effectiveStart = now - 60 * 60_000;
 		effectiveEnd = now;
-	} else if (filtre.timeRange === '6h') {
+	} else if (filter.timeRange === '6h') {
 		effectiveStart = now - 6 * 60 * 60_000;
 		effectiveEnd = now;
-	} else if (filtre.timeRange === '24h') {
+	} else if (filter.timeRange === '24h') {
 		effectiveStart = now - 24 * 60 * 60_000;
 		effectiveEnd = now;
-	} else if (filtre.timeRange === '7d') {
+	} else if (filter.timeRange === '7d') {
 		effectiveStart = now - 7 * 24 * 60 * 60_000;
 		effectiveEnd = now;
-	} else if (filtre.timeRange === 'custom') {
-		if (filtre.startTime && Number.isFinite(Number(filtre.startTime))) {
-			effectiveStart = Number(filtre.startTime);
+	} else if (filter.timeRange === 'custom') {
+		if (filter.startTime && Number.isFinite(Number(filter.startTime))) {
+			effectiveStart = Number(filter.startTime);
 		}
-		if (filtre.endTime && Number.isFinite(Number(filtre.endTime))) {
-			effectiveEnd = Number(filtre.endTime);
+		if (filter.endTime && Number.isFinite(Number(filter.endTime))) {
+			effectiveEnd = Number(filter.endTime);
 		}
 	} else {
 		// Fallbacks if directly passed
-		if (filtre.startTime && Number.isFinite(Number(filtre.startTime))) {
-			effectiveStart = Number(filtre.startTime);
+		if (filter.startTime && Number.isFinite(Number(filter.startTime))) {
+			effectiveStart = Number(filter.startTime);
 		}
-		if (filtre.endTime && Number.isFinite(Number(filtre.endTime))) {
-			effectiveEnd = Number(filtre.endTime);
+		if (filter.endTime && Number.isFinite(Number(filter.endTime))) {
+			effectiveEnd = Number(filter.endTime);
 		}
 	}
 
@@ -376,9 +376,9 @@ export async function getSystemLogsPaginated(filtre: SystemLogFilter = {}): Prom
 	}
 
 	// 2. Service condition
-	if (filtre.servis && filtre.servis !== 'all') {
-		const srv = sanitizeLogText(filtre.servis, MAX_SERVIS_LEN).toLowerCase();
-		if (filtre.servisOp === 'neq') {
+	if (filter.service && filter.service !== 'all') {
+		const srv = sanitizeLogText(filter.service, MAX_SERVICE_LEN).toLowerCase();
+		if (filter.serviceOp === 'neq') {
 			conditions.push(`service != $${idx++}`);
 		} else {
 			conditions.push(`service = $${idx++}`);
@@ -387,9 +387,9 @@ export async function getSystemLogsPaginated(filtre: SystemLogFilter = {}): Prom
 	}
 
 	// 3. Severity condition
-	if (filtre.seviye && filtre.seviye !== 'all') {
-		const sev = sanitizeLogText(filtre.seviye, 16).toUpperCase();
-		if (filtre.seviyeOp === 'neq') {
+	if (filter.level && filter.level !== 'all') {
+		const sev = sanitizeLogText(filter.level, 16).toUpperCase();
+		if (filter.levelOp === 'neq') {
 			conditions.push(`level != $${idx++}`);
 		} else {
 			conditions.push(`level = $${idx++}`);
@@ -398,18 +398,18 @@ export async function getSystemLogsPaginated(filtre: SystemLogFilter = {}): Prom
 	}
 
 	// 4. IP condition
-	if (filtre.ip && filtre.ip.trim()) {
-		const cleanIp = sanitizeLogText(filtre.ip.trim(), 45);
+	if (filter.ip && filter.ip.trim()) {
+		const cleanIp = sanitizeLogText(filter.ip.trim(), 45);
 		if (cleanIp) {
-			if (filtre.ipOp === 'neq') {
+			if (filter.ipOp === 'neq') {
 				conditions.push(`ip != $${idx++}`);
 				values.push(cleanIp);
-			} else if (filtre.ipOp === 'not_contains') {
+			} else if (filter.ipOp === 'not_contains') {
 				conditions.push(`ip NOT ILIKE $${idx++} ESCAPE '\\'`);
-				values.push(`%${likeKacis(cleanIp)}%`);
-			} else if (filtre.ipOp === 'contains') {
+				values.push(`%${likeEscape(cleanIp)}%`);
+			} else if (filter.ipOp === 'contains') {
 				conditions.push(`ip ILIKE $${idx++} ESCAPE '\\'`);
-				values.push(`%${likeKacis(cleanIp)}%`);
+				values.push(`%${likeEscape(cleanIp)}%`);
 			} else {
 				conditions.push(`ip = $${idx++}`);
 				values.push(cleanIp);
@@ -418,22 +418,22 @@ export async function getSystemLogsPaginated(filtre: SystemLogFilter = {}): Prom
 	}
 
 	// 5. Search condition
-	if (filtre.arama && filtre.arama.trim()) {
-		const rawQuery = filtre.arama.trim().slice(0, 160);
-		const op = filtre.aramaOp || 'contains';
-		const field = filtre.aramaAlani || 'all';
+	if (filter.search && filter.search.trim()) {
+		const rawQuery = filter.search.trim().slice(0, 160);
+		const op = filter.searchOp || 'contains';
+		const field = filter.searchField || 'all';
 
 		const getColumnExpr = (f: FilterColumn): string | null => {
 			switch (f) {
-				case 'mesaj':
+				case 'message':
 					return 'message';
 				case 'ip':
 					return 'ip';
-				case 'servis':
+				case 'service':
 					return 'service';
 				case 'userId':
 					return "COALESCE(user_id, '')";
-				case 'detay':
+				case 'detail':
 					return "COALESCE(details::text, '')";
 				default:
 					return null;
@@ -451,16 +451,16 @@ export async function getSystemLogsPaginated(filtre: SystemLogFilter = {}): Prom
 				values.push(rawQuery);
 			} else if (op === 'not_contains') {
 				conditions.push(`${colExpr} NOT ILIKE $${idx++} ESCAPE '\\'`);
-				values.push(`%${likeKacis(rawQuery)}%`);
+				values.push(`%${likeEscape(rawQuery)}%`);
 			} else if (op === 'starts_with') {
 				conditions.push(`${colExpr} ILIKE $${idx++} ESCAPE '\\'`);
-				values.push(`${likeKacis(rawQuery)}%`);
+				values.push(`${likeEscape(rawQuery)}%`);
 			} else if (op === 'ends_with') {
 				conditions.push(`${colExpr} ILIKE $${idx++} ESCAPE '\\'`);
-				values.push(`%${likeKacis(rawQuery)}`);
+				values.push(`%${likeEscape(rawQuery)}`);
 			} else {
 				conditions.push(`${colExpr} ILIKE $${idx++} ESCAPE '\\'`);
-				values.push(`%${likeKacis(rawQuery)}%`);
+				values.push(`%${likeEscape(rawQuery)}%`);
 			}
 		} else {
 			if (op === 'equals') {
@@ -476,7 +476,7 @@ export async function getSystemLogsPaginated(filtre: SystemLogFilter = {}): Prom
 				values.push(rawQuery);
 				idx++;
 			} else if (op === 'not_contains') {
-				const esc = likeKacis(rawQuery);
+				const esc = likeEscape(rawQuery);
 				conditions.push(
 					`(message NOT ILIKE $${idx} ESCAPE '\\' AND ip NOT ILIKE $${idx} ESCAPE '\\' AND service NOT ILIKE $${idx} ESCAPE '\\' AND COALESCE(user_id, '') NOT ILIKE $${idx} ESCAPE '\\' AND COALESCE(details::text, '') NOT ILIKE $${idx} ESCAPE '\\')`
 				);
@@ -485,16 +485,16 @@ export async function getSystemLogsPaginated(filtre: SystemLogFilter = {}): Prom
 			} else {
 				const tokens = rawQuery.split(/\s+/).filter(Boolean);
 				for (const token of tokens) {
-					const kqlMatch = token.match(/^(service|servis|level|seviye|ip|user|kullanici|msg|mesaj):(!?)(.+)$/i);
+					const kqlMatch = token.match(/^(service|level|ip|user|msg):(!?)(.+)$/i);
 					if (kqlMatch) {
 						const key = kqlMatch[1].toLowerCase();
 						const isNeg = kqlMatch[2] === '!';
 						const val = kqlMatch[3].trim();
-						if (key === 'service' || key === 'servis') {
-							const srv = sanitizeLogText(val, MAX_SERVIS_LEN).toLowerCase();
+						if (key === 'service') {
+							const srv = sanitizeLogText(val, MAX_SERVICE_LEN).toLowerCase();
 							conditions.push(isNeg ? `service != $${idx++}` : `service = $${idx++}`);
 							values.push(srv);
-						} else if (key === 'level' || key === 'seviye') {
+						} else if (key === 'level') {
 							const lvl = sanitizeLogText(val, 16).toUpperCase();
 							conditions.push(isNeg ? `level != $${idx++}` : `level = $${idx++}`);
 							values.push(lvl);
@@ -502,24 +502,24 @@ export async function getSystemLogsPaginated(filtre: SystemLogFilter = {}): Prom
 							const cleanIp = sanitizeLogText(val, 45);
 							conditions.push(isNeg ? `ip != $${idx++}` : `ip = $${idx++}`);
 							values.push(cleanIp);
-						} else if (key === 'user' || key === 'kullanici') {
+						} else if (key === 'user') {
 							const uId = sanitizeLogText(val, 120);
 							conditions.push(isNeg ? `COALESCE(user_id, '') != $${idx++}` : `COALESCE(user_id, '') = $${idx++}`);
 							values.push(uId);
-						} else if (key === 'msg' || key === 'mesaj') {
-							const esc = likeKacis(val);
+						} else if (key === 'msg') {
+							const esc = likeEscape(val);
 							conditions.push(isNeg ? `message NOT ILIKE $${idx++} ESCAPE '\\'` : `message ILIKE $${idx++} ESCAPE '\\'`);
 							values.push(`%${esc}%`);
 						}
 					} else if ((token.startsWith('-') || token.startsWith('!')) && token.length > 1) {
-						const negEsc = likeKacis(token.slice(1));
+						const negEsc = likeEscape(token.slice(1));
 						conditions.push(
 							`(message NOT ILIKE $${idx} ESCAPE '\\' AND ip NOT ILIKE $${idx} ESCAPE '\\' AND service NOT ILIKE $${idx} ESCAPE '\\' AND COALESCE(user_id, '') NOT ILIKE $${idx} ESCAPE '\\' AND COALESCE(details::text, '') NOT ILIKE $${idx} ESCAPE '\\')`
 						);
 						values.push(`%${negEsc}%`);
 						idx++;
 					} else {
-						const posEsc = likeKacis(token);
+						const posEsc = likeEscape(token);
 						conditions.push(
 							`(message ILIKE $${idx} ESCAPE '\\' OR service ILIKE $${idx} ESCAPE '\\' OR ip ILIKE $${idx} ESCAPE '\\' OR COALESCE(user_id, '') ILIKE $${idx} ESCAPE '\\' OR COALESCE(details::text, '') ILIKE $${idx} ESCAPE '\\')`
 						);
@@ -532,8 +532,8 @@ export async function getSystemLogsPaginated(filtre: SystemLogFilter = {}): Prom
 	}
 
 	const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-	const page = Math.max(1, Number(filtre.page) || 1);
-	const limit = Math.max(1, Math.min(Number(filtre.limit) || 100, 5000));
+	const page = Math.max(1, Number(filter.page) || 1);
+	const limit = Math.max(1, Math.min(Number(filter.limit) || 100, 5000));
 	const offset = (page - 1) * limit;
 
 	// 6. Query Total Count
@@ -605,7 +605,7 @@ export async function getSystemLogsPaginated(filtre: SystemLogFilter = {}): Prom
 	// 8. Query Paginated Log Rows
 	const paginatedValues = [...values, limit, offset];
 	const rowsRes = await p.query(
-		`SELECT id, timestamp AS zaman, level AS seviye, service AS servis, message AS mesaj, details AS detay, user_id AS "userId", ip
+		`SELECT id, timestamp AS time, level AS level, service AS service, message AS message, details AS detail, user_id AS "userId", ip
 		 FROM system_logs
 		 ${whereClause}
 		 ORDER BY timestamp DESC NULLS LAST, id DESC
@@ -614,22 +614,22 @@ export async function getSystemLogsPaginated(filtre: SystemLogFilter = {}): Prom
 	);
 
 	const logs = rowsRes.rows.map((row) => {
-		let parsedDetay: Record<string, unknown> | null = null;
-		if (row.detay) {
+		let parsedDetail: Record<string, unknown> | null = null;
+		if (row.detail) {
 			try {
-				parsedDetay = typeof row.detay === 'string' ? JSON.parse(row.detay) : row.detay;
+				parsedDetail = typeof row.detail === 'string' ? JSON.parse(row.detail) : row.detail;
 			} catch {
-				parsedDetay = null;
+				parsedDetail = null;
 			}
 		}
 		return {
 			id: Number(row.id),
-			zaman: Number(row.zaman),
-			seviye: row.seviye,
-			servis: row.servis,
-			mesaj: row.mesaj,
-			detay: parsedDetay,
-			userId: row.userId ?? row.kullaniciid ?? null,
+			time: Number(row.time),
+			level: row.level,
+			service: row.service,
+			message: row.message,
+			detail: parsedDetail,
+			userId: row.userId ?? row.userId ?? null,
 			ip: row.ip,
 		};
 	});
@@ -644,7 +644,7 @@ export async function getSystemLogsPaginated(filtre: SystemLogFilter = {}): Prom
 	};
 }
 
-export async function getSystemLogs(filtre: SystemLogFilter = {}): Promise<SystemLog[]> {
-	const res = await getSystemLogsPaginated(filtre);
+export async function getSystemLogs(filter: SystemLogFilter = {}): Promise<SystemLog[]> {
+	const res = await getSystemLogsPaginated(filter);
 	return res.logs;
 }

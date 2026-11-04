@@ -56,9 +56,9 @@ export async function POST(request: Request) {
 		if (!isValid) {
 			recordFailure(key, ATTEMPT_WINDOW_MS);
 			await logSystemEvent({
-				servis: 'auth',
-				seviye: 'WARN',
-				mesaj: `Ekran kilidi açma başarısız (hatalı parola): ${user.email}`,
+				service: 'auth',
+				level: 'WARN',
+				message: `Ekran kilidi açma başarısız (hatalı parola): ${user.email}`,
 				userId: user.id,
 				ip,
 			});

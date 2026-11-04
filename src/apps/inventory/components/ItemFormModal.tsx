@@ -22,17 +22,17 @@ export function ItemFormModal({
 	onSaved: (message: string) => void;
 }) {
 	const { t } = useI18n();
-	const [kod, setKod] = useState(item?.kod ?? '');
-	const [ad, setAd] = useState(item?.ad ?? '');
-	const [kategori, setKategori] = useState(item?.kategori ?? t('kasaCatHardware'));
-	const [konum, setKonum] = useState(item?.konum ?? '');
-	const [seriNo, setSeriNo] = useState(item?.seriNo ?? '');
-	const [aciklama, setAciklama] = useState(item?.aciklama ?? '');
-	const [status, setDurum] = useState<'saglam' | 'arizali'>('saglam');
+	const [code, setCode] = useState(item?.code ?? '');
+	const [name, setName] = useState(item?.name ?? '');
+	const [category, setCategory] = useState(item?.category ?? t('kasaCatHardware'));
+	const [location, setLocation] = useState(item?.location ?? '');
+	const [seriesNo, setSeriesNo] = useState(item?.seriesNo ?? '');
+	const [description, setDescription] = useState(item?.description ?? '');
+	const [status, setStatus] = useState<'saglam' | 'arizali'>('saglam');
 	const [error, setError] = useState('');
 	const [busy, setBusy] = useState(false);
-	const normalizedCode = normalizeCode(kod);
-	const codeError = kod ? codeProblem(normalizedCode) : null;
+	const normalizedCode = normalizeCode(code);
+	const codeError = code ? codeProblem(normalizedCode) : null;
 
 	const submit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -40,17 +40,17 @@ export function ItemFormModal({
 		if (codeError) return setError(codeError);
 		setBusy(true);
 		const fields = {
-			kod: normalizedCode,
-			ad: ad.trim(),
-			kategori: kategori.trim(),
-			konum: konum.trim(),
-			seriNo: seriNo.trim(),
-			aciklama: aciklama.trim(),
+			code: normalizedCode,
+			name: name.trim(),
+			category: category.trim(),
+			location: location.trim(),
+			seriesNo: seriesNo.trim(),
+			description: description.trim(),
 		};
 		const res = item
 			? await sendJson('/api/inventory', 'POST', {
 					action: 'update',
-					envanterId: item.id,
+					inventoryId: item.id,
 					...fields,
 				})
 			: await sendJson('/api/inventory', 'POST', { action: 'create', ...fields, status });
@@ -61,7 +61,7 @@ export function ItemFormModal({
 
 	return (
 		<Sheet
-			title={<>{item ? `${item.kod} · ${t('edit')}` : t('invNewEquipment')}</>}
+			title={<>{item ? `${item.code} · ${t('edit')}` : t('invNewEquipment')}</>}
 			label={item ? t('edit') : t('invNewEquipment')}
 			icon={<Cpu size={18} color="#0a84ff" />}
 			onClose={onClose}
@@ -83,14 +83,14 @@ export function ItemFormModal({
 					<span className={ui.fieldLabel}>{t('invCodeLabel')}</span>
 					<input
 						className={ui.input}
-						value={kod}
-						onChange={(e) => setKod(e.target.value)}
+						value={code}
+						onChange={(e) => setCode(e.target.value)}
 						placeholder="LAB-RPI-006"
 						required
 						autoFocus={!item}
 						style={{ fontFamily: 'ui-monospace, monospace' }}
 					/>
-					{kod && normalizedCode !== kod && !codeError && (
+					{code && normalizedCode !== code && !codeError && (
 						<span className={ui.hint}>{fill(t('invWillBeSaved'), { code: normalizedCode })}</span>
 					)}
 					{codeError && <span className={ui.error}>{codeError}</span>}
@@ -99,9 +99,9 @@ export function ItemFormModal({
 					<span className={ui.fieldLabel}>{t('invSerialOptional')}</span>
 					<input
 						className={ui.input}
-						value={seriNo}
+						value={seriesNo}
 						maxLength={80}
-						onChange={(e) => setSeriNo(e.target.value)}
+						onChange={(e) => setSeriesNo(e.target.value)}
 						placeholder={t('invSerialPh')}
 					/>
 				</label>
@@ -110,10 +110,10 @@ export function ItemFormModal({
 				<span className={ui.fieldLabel}>{t('invNameLabel')}</span>
 				<input
 					className={ui.input}
-					value={ad}
+					value={name}
 					minLength={3}
 					maxLength={120}
-					onChange={(e) => setAd(e.target.value)}
+					onChange={(e) => setName(e.target.value)}
 					placeholder={t('invItemNamePh')}
 					required
 				/>
@@ -124,10 +124,10 @@ export function ItemFormModal({
 					<input
 						className={ui.input}
 						list="envanter-kategorileri"
-						value={kategori}
+						value={category}
 						minLength={2}
 						maxLength={60}
-						onChange={(e) => setKategori(e.target.value)}
+						onChange={(e) => setCategory(e.target.value)}
 						required
 					/>
 					<datalist id="envanter-kategorileri">
@@ -140,10 +140,10 @@ export function ItemFormModal({
 					<span className={ui.fieldLabel}>{t('invLocationLabel')}</span>
 					<input
 						className={ui.input}
-						value={konum}
+						value={location}
 						minLength={2}
 						maxLength={120}
-						onChange={(e) => setKonum(e.target.value)}
+						onChange={(e) => setLocation(e.target.value)}
 						placeholder={t('invLocationPh')}
 						required
 					/>
@@ -155,8 +155,8 @@ export function ItemFormModal({
 					className={ui.textarea}
 					rows={3}
 					maxLength={1000}
-					value={aciklama}
-					onChange={(e) => setAciklama(e.target.value)}
+					value={description}
+					onChange={(e) => setDescription(e.target.value)}
 					placeholder={t('invNotesPh')}
 				/>
 			</label>
@@ -169,7 +169,7 @@ export function ItemFormModal({
 							role="radio"
 							aria-checked={status === d}
 							className={`${ui.segment} ${status === d ? ui.segmentActive : ''}`}
-							onClick={() => setDurum(d)}
+							onClick={() => setStatus(d)}
 						>
 							{d === 'saglam' ? t('invBadgeAvailable') : t('invBadgeBroken')}
 						</button>

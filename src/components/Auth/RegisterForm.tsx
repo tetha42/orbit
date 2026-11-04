@@ -255,11 +255,11 @@ export function RegisterForm({ flow }: { flow: AuthFlow }) {
 		if (wizardStep === 'community') {
 			if (!validateCommunity()) return;
 			const res = await flow.submitRegister({
-				ad: firstName.trim(),
-				soyad: lastName.trim(),
-				ogrenciNo: memberHandle.trim(),
-				bolum: track,
-				sinif: level,
+				name: firstName.trim(),
+				surname: lastName.trim(),
+				studentNo: memberHandle.trim(),
+				department: track,
+				grade: level,
 				email: email.trim(),
 				password,
 				hp_website: hpWebsite,
@@ -285,11 +285,11 @@ export function RegisterForm({ flow }: { flow: AuthFlow }) {
 			return;
 		}
 		await flow.submitRegister({
-			ad: firstName.trim(),
-			soyad: lastName.trim(),
-			ogrenciNo: memberHandle.trim(),
-			bolum: track,
-			sinif: level,
+			name: firstName.trim(),
+			surname: lastName.trim(),
+			studentNo: memberHandle.trim(),
+			department: track,
+			grade: level,
 			email: email.trim(),
 			password,
 			verificationCode: verificationCode.trim(),

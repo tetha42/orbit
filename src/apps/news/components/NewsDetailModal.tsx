@@ -57,7 +57,7 @@ export function NewsDetailModal({
 			<div
 				role="dialog"
 				aria-modal="true"
-				aria-label={article.baslik}
+				aria-label={article.title}
 				data-focus-id={`news:${article.id}`}
 				style={{
 					width: '100%',
@@ -100,7 +100,7 @@ export function NewsDetailModal({
 								color: '#ff2d55',
 							}}
 						>
-							{categoryMap[article.kategori] || t('newsCatGenel')}
+							{categoryMap[article.category] || t('newsCatGenel')}
 						</span>
 						<span style={{ fontSize: '12px', opacity: 0.65 }}>
 							{t('newsOfficialNotice')}
@@ -214,14 +214,14 @@ export function NewsDetailModal({
 				</div>
 
 				<div style={{ flex: 1, overflowY: 'auto', padding: '32px 36px' }}>
-					{article.resimUrl && (
+					{article.imageUrl && (
 						<div
 							style={{
 								width: '100%',
 								height: '180px',
 								borderRadius: '12px',
 								marginBottom: '20px',
-								background: `linear-gradient(180deg, rgba(0,0,0,0.1), rgba(0,0,0,0.5)), url(${article.resimUrl})`,
+								background: `linear-gradient(180deg, rgba(0,0,0,0.1), rgba(0,0,0,0.5)), url(${article.imageUrl})`,
 								backgroundSize: 'contain',
 								backgroundPosition: 'center',
 								backgroundRepeat: 'no-repeat',
@@ -232,7 +232,7 @@ export function NewsDetailModal({
 					)}
 
 					<h1 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 14px 0', lineHeight: 1.35 }}>
-						{article.baslik}
+						{article.title}
 					</h1>
 
 					<div
@@ -248,17 +248,17 @@ export function NewsDetailModal({
 						}}
 					>
 						<span>
-							{t('newsPublishedBy')} <strong>{article.yazarAdSoyad || t('newsAuthorDefault')}</strong>
+							{t('newsPublishedBy')} <strong>{article.authorNameSurname || t('newsAuthorDefault')}</strong>
 						</span>
 						<span>•</span>
 						<span>
 							{t('newsDate')}{' '}
-							{new Date(article.olusturma).toLocaleDateString(
+							{new Date(article.creation).toLocaleDateString(
 								language,
 								{ day: 'numeric', month: 'long', year: 'numeric' }
 							)}
 						</span>
-						{article.onemliMi === 1 && (
+						{article.importantMi === 1 && (
 							<>
 								<span>•</span>
 								<span style={{ color: '#ff2d55', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
@@ -276,7 +276,7 @@ export function NewsDetailModal({
 							whiteSpace: 'pre-line',
 						}}
 					>
-						{article.icerik}
+						{article.content}
 					</div>
 				</div>
 			</div>

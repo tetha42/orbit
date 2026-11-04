@@ -19,7 +19,7 @@ import {
 	startOfDay,
 	recordFields,
 	retentionDays,
-	temizIp,
+	cleanIp,
 	type AuditFields,
 	type AuditContext,
 	type AuditTargetType,
@@ -53,10 +53,10 @@ export async function ensureAuditSchema(client: PoolClient): Promise<void> {
 }
 
 /** Who is acting, for the record: the signed-in member and the request's address. */
-export function auditContext(request: Request, user: { id: string; ad?: string; soyad?: string; firstName?: string; lastName?: string }): AuditContext {
-	const first = user.firstName || user.ad || '';
-	const last = user.lastName || user.soyad || '';
-	return { actorId: user.id, actorName: `${first} ${last}`.trim(), ip: temizIp(clientAddress(request)) };
+export function auditContext(request: Request, user: { id: string; name?: string; surname?: string; firstName?: string; lastName?: string }): AuditContext {
+	const first = user.firstName || user.name || '';
+	const last = user.lastName || user.surname || '';
+	return { actorId: user.id, actorName: `${first} ${last}`.trim(), ip: cleanIp(clientAddress(request)) };
 }
 
 export interface AuditEntry {
@@ -74,8 +74,8 @@ export interface AuditEntry {
  */
 export async function logAuditEvent(client: PoolClient, ctx: AuditContext, g: AuditEntry): Promise<void> {
 	const json = (v: Record<string, unknown> | null) => {
-		const alanlar = recordFields(v);
-		return alanlar ? JSON.stringify(alanlar) : null;
+		const fields = recordFields(v);
+		return fields ? JSON.stringify(fields) : null;
 	};
 	const id = `aud_${randomUUID().replace(/-/g, '').slice(0, 16)}`;
 	await client.query(
@@ -114,8 +114,8 @@ export async function writeAuditLog(entry: {
 }): Promise<void> {
 	await ensurePostgresInit();
 	const json = (v: Record<string, unknown> | null | undefined) => {
-		const alanlar = recordFields(v);
-		return alanlar ? JSON.stringify(alanlar) : null;
+		const fields = recordFields(v);
+		return fields ? JSON.stringify(fields) : null;
 	};
 	const id = `aud_${randomUUID().replace(/-/g, '').slice(0, 16)}`;
 	await getPgPool().query(
@@ -139,7 +139,7 @@ export async function writeAuditLog(entry: {
 
 /* ---------------- reading ---------------- */
 
-const likeKacis = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
+const likeEscape = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 function where(f: AuditFilter): { sql: string; params: unknown[] } {
 	const parts: string[] = [];
@@ -150,14 +150,14 @@ function where(f: AuditFilter): { sql: string; params: unknown[] } {
 	};
 	if (f.user) {
 		const exact = add(f.user);
-		const like = add(`%${likeKacis(f.user)}%`);
+		const like = add(`%${likeEscape(f.user)}%`);
 		parts.push(
 			`(actor_id = ${exact} OR (target_type = 'member' AND target_id = ${exact}) OR actor_name ILIKE ${like} OR target_name ILIKE ${like} OR before_state ILIKE ${like} OR after_state ILIKE ${like})`
 		);
 	}
 	if (f.role) {
 		const r = add(f.role);
-		const rLike = add(`%"${likeKacis(f.role)}"%`);
+		const rLike = add(`%"${likeEscape(f.role)}"%`);
 		parts.push(
 			`((target_type = 'role' AND target_id = ${r}) OR before_state LIKE ${rLike} OR after_state LIKE ${rLike})`
 		);
@@ -245,8 +245,8 @@ export async function listAuditLogs(
 /** Deletes records past the retention period — one statement, safe to repeat. */
 export async function clearAuditLogs(): Promise<number> {
 	await ensurePostgresInit();
-	const sinir = Date.now() - retentionDays(process.env.AUDIT_RETENTION_DAYS) * 24 * 3600 * 1000;
-	const r = await getPgPool().query('DELETE FROM audit_logs WHERE timestamp < $1', [sinir]);
+	const limit = Date.now() - retentionDays(process.env.AUDIT_RETENTION_DAYS) * 24 * 3600 * 1000;
+	const r = await getPgPool().query('DELETE FROM audit_logs WHERE timestamp < $1', [limit]);
 	return r.rowCount ?? 0;
 }
 
@@ -256,8 +256,8 @@ export async function resetAuditLogs(): Promise<void> {
 	await getPgPool().query('TRUNCATE TABLE audit_logs CASCADE');
 }
 
-const BAKIM_ARALIGI_MS = 24 * 3600 * 1000;
-const bakim = globalThis as { __denetimBakimi?: boolean };
+const MAINTENANCE_RANGE_MS = 24 * 3600 * 1000;
+const maintenance = globalThis as { __AuditMaintenance?: boolean };
 
 /**
  * Runs the clean-up now and then once a day, from the first database use on.
@@ -265,14 +265,14 @@ const bakim = globalThis as { __denetimBakimi?: boolean };
  * the process alive. Requests never trigger it.
  */
 export function startAuditMaintenance(): void {
-	if (bakim.__denetimBakimi) return;
-	bakim.__denetimBakimi = true;
-	const calistir = () => {
+	if (maintenance.__AuditMaintenance) return;
+	maintenance.__AuditMaintenance = true;
+	const run = () => {
 		clearAuditLogs().then(
 			(n) => n > 0 && console.log(`[Denetim] ${n} eski kayıt silindi.`),
 			(err) => console.error('[Denetim] Temizlik başarısız:', err)
 		);
 	};
-	calistir();
-	setInterval(calistir, BAKIM_ARALIGI_MS).unref?.();
+	run();
+	setInterval(run, MAINTENANCE_RANGE_MS).unref?.();
 }

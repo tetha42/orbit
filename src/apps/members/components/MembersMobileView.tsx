@@ -128,9 +128,9 @@ export function MembersMobileView({ m }: MembersMobileViewProps) {
 							>
 								<div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
 									<div className={s.avatar}>
-										{member.avatarUrl || member.profilFoto ? (
+										{member.avatarUrl || member.profilePhoto ? (
 											// eslint-disable-next-line @next/next/no-img-element
-											<img src={member.avatarUrl || member.profilFoto} alt="" className={s.avatarImg} />
+											<img src={member.avatarUrl || member.profilePhoto} alt="" className={s.avatarImg} />
 										) : (
 											initials(`${member.firstName} ${member.lastName}`)
 										)}
@@ -142,23 +142,23 @@ export function MembersMobileView({ m }: MembersMobileViewProps) {
 											{isMe && <span className={`${s.badge} ${s.badgeAccent}`} style={{ fontSize: '9.5px', padding: '1px 5px' }}>{t('you')}</span>}
 										</div>
 										<div className={s.memberSub}>
-											{member.department || member.bolum || t('membersDefaultDept')} {(member.grade || member.sinif) ? `• ${fill(t('membersClassYear'), { year: member.grade || member.sinif })}` : ''}
+											{member.department || member.department || t('membersDefaultDept')} {(member.grade || member.grade) ? `• ${fill(t('membersClassYear'), { year: member.grade || member.grade })}` : ''}
 										</div>
 									</div>
 								</div>
 
 								<div className={s.memberRight}>
 									<div className={s.memberActionRow}>
-										{(member.roleName || member.rolAd) && (
+										{(member.roleName || member.roleName) && (
 											<span
 												className={s.badge}
 												style={{
-													background: (member.roleColor || member.rolRenk) ? `${member.roleColor || member.rolRenk}25` : 'rgba(10, 132, 255, 0.15)',
-													color: (member.roleColor || member.rolRenk) || '#0a84ff',
+													background: (member.roleColor || member.roleColor) ? `${member.roleColor || member.roleColor}25` : 'rgba(10, 132, 255, 0.15)',
+													color: (member.roleColor || member.roleColor) || '#0a84ff',
 													fontSize: '10.5px',
 												}}
 											>
-												{member.roleName || member.rolAd}
+												{member.roleName || member.roleName}
 											</span>
 										)}
 										{!isMe && m.mailUser && member.status === 'aktif' && (
@@ -209,9 +209,9 @@ export function MembersMobileView({ m }: MembersMobileViewProps) {
 					<div key={member.id} className={s.pendingCard}>
 						<div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
 							<div className={s.avatar}>
-								{member.avatarUrl || member.profilFoto ? (
+								{member.avatarUrl || member.profilePhoto ? (
 									// eslint-disable-next-line @next/next/no-img-element
-									<img src={member.avatarUrl || member.profilFoto} alt="" className={s.avatarImg} />
+									<img src={member.avatarUrl || member.profilePhoto} alt="" className={s.avatarImg} />
 								) : (
 									initials(`${member.firstName} ${member.lastName}`)
 								)}
@@ -224,7 +224,7 @@ export function MembersMobileView({ m }: MembersMobileViewProps) {
 									{member.email}
 								</div>
 								<div style={{ fontSize: '11.5px', opacity: 0.55, marginTop: '2px' }}>
-									{member.department || member.bolum} {(member.grade || member.sinif) ? `• ${fill(t('membersClassYear'), { year: member.grade || member.sinif })}` : ''} {(member.handle || member.ogrenciNo) ? `• ${member.handle || member.ogrenciNo}` : ''}
+									{member.department || member.department} {(member.grade || member.grade) ? `• ${fill(t('membersClassYear'), { year: member.grade || member.grade })}` : ''} {(member.handle || member.studentNo) ? `• ${member.handle || member.studentNo}` : ''}
 								</div>
 							</div>
 						</div>
@@ -280,9 +280,9 @@ export function MembersMobileView({ m }: MembersMobileViewProps) {
 							}}
 						>
 							<div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-								<Shield size={18} color={role.renk || 'var(--accent)'} />
+								<Shield size={18} color={role.color || 'var(--accent)'} />
 								<div>
-									<div style={{ fontSize: '13.5px', fontWeight: 700, color: '#f8fafc' }}>{role.ad}</div>
+									<div style={{ fontSize: '13.5px', fontWeight: 700, color: '#f8fafc' }}>{role.name}</div>
 									<div style={{ fontSize: '11px', opacity: 0.6 }}>
 										{role.assignable ? t('membersRoleStandardDesc') : t('membersRoleSystemDesc')}
 									</div>
@@ -303,7 +303,7 @@ export function MembersMobileView({ m }: MembersMobileViewProps) {
 					{t('membersDepartmentsTitle')}
 				</div>
 				{departments.map((dept) => {
-					const count = m.members.filter((mbr) => mbr.bolum === dept.value).length;
+					const count = m.members.filter((mbr) => mbr.department === dept.value).length;
 					return (
 						<div
 							key={dept.value}
@@ -415,7 +415,7 @@ export function MembersMobileView({ m }: MembersMobileViewProps) {
 						? () =>
 								void m.handleSendPasswordResetEmail(
 									m.selectedMemberForProfile!.id,
-									`${m.selectedMemberForProfile!.ad} ${m.selectedMemberForProfile!.soyad}`.trim()
+									`${m.selectedMemberForProfile!.name} ${m.selectedMemberForProfile!.surname}`.trim()
 								)
 						: undefined
 				}

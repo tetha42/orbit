@@ -88,10 +88,10 @@ export async function GET(request: Request) {
 		return NextResponse.json(
 			setupResponse(
 				{
-					hazir: false,
+					ready: false,
 					firstRun: true,
 					step: 'database',
-					sebep: 'Could not read database status.',
+					reason: 'Could not read database status.',
 					dbStatus: { connected: false, configured: false, error: 'Database connection offline' },
 					brand,
 				},
@@ -122,10 +122,10 @@ export async function handleSetupSubmission(request: Request) {
 	const waf = inspectRequestPayload(request);
 	if (waf.matched) {
 		void logSystemEvent({
-			servis: 'security',
-			seviye: 'ERROR',
-			mesaj: `[WAF] Attack signature blocked (${waf.signature}): POST /api/setup`,
-			detay: { category: waf.category, signature: waf.signature },
+			service: 'security',
+			level: 'ERROR',
+			message: `[WAF] Attack signature blocked (${waf.signature}): POST /api/setup`,
+			detail: { category: waf.category, signature: waf.signature },
 			ip,
 		});
 		void recordSecurityStrike({
@@ -143,9 +143,9 @@ export async function handleSetupSubmission(request: Request) {
 	const rl = consumeRateLimit(`setup:${ip}`, 10, 15 * 60_000);
 	if (!rl.allowed) {
 		void logSystemEvent({
-			servis: 'security',
-			seviye: 'WARN',
-			mesaj: 'Setup wizard rate limit exceeded',
+			service: 'security',
+			level: 'WARN',
+			message: 'Setup wizard rate limit exceeded',
 			ip,
 		});
 		return NextResponse.json(
@@ -158,8 +158,8 @@ export async function handleSetupSubmission(request: Request) {
 		const body = await request.json().catch(() => ({}));
 
 		// Support nested or flat payload
-		const firstName = (body.firstName || body.ad || body.admin?.firstName || body.admin?.ad || '').trim();
-		const lastName = (body.lastName || body.soyad || body.admin?.lastName || body.admin?.soyad || '').trim();
+		const firstName = (body.firstName || body.name || body.admin?.firstName || body.admin?.name || '').trim();
+		const lastName = (body.lastName || body.surname || body.admin?.lastName || body.admin?.surname || '').trim();
 		const email = (body.email || body.admin?.email || '').trim().toLowerCase();
 		const password = body.password || body.admin?.password;
 
@@ -263,9 +263,9 @@ export async function handleSetupSubmission(request: Request) {
 			);
 
 			const dbSettings: Record<string, string> = {
-				kulup_adi: communityName,
-				kulup_domain: domain,
-				universite: studioName,
+				club_Name: communityName,
+				club_domain: domain,
+				university: studioName,
 				organization_archetype: archetype,
 				[REGISTRATION_CORE_SETTINGS_KEY]: JSON.stringify(archetypeRegistrationConfig),
 				[TEAM_CATEGORIES_SETTINGS_KEY]: JSON.stringify(archetypeTeamCategories),
@@ -298,10 +298,10 @@ export async function handleSetupSubmission(request: Request) {
 		const result = await setupFirstAdmin({ firstName, lastName, email, password });
 		if (!result.ok) {
 			void logSystemEvent({
-				servis: 'security',
-				seviye: 'WARN',
-				mesaj: `Setup wizard failed attempt: ${result.error}`,
-				detay: { email: String(email).slice(0, 120) },
+				service: 'security',
+				level: 'WARN',
+				message: `Setup wizard failed attempt: ${result.error}`,
+				detail: { email: String(email).slice(0, 120) },
 				ip,
 			});
 			return NextResponse.json({ error: result.error }, { status: 400 });
@@ -310,9 +310,9 @@ export async function handleSetupSubmission(request: Request) {
 		// 5. Seed default Orbit chat room
 		try {
 			await getPgPool().query(
-				`INSERT INTO chat_rooms (id, tur, teamId, ad, olusturma)
+				`INSERT INTO chat_rooms (id, room_type, team_id, name, created_at)
 				 VALUES ('oda_genel', 'genel', NULL, 'Orbit General Chat', $1)
-				 ON CONFLICT (id) DO UPDATE SET ad = 'Orbit General Chat'`,
+				 ON CONFLICT (id) DO UPDATE SET name = 'Orbit General Chat'`,
 				[Date.now()]
 			);
 		} catch (chatErr) {
@@ -323,9 +323,9 @@ export async function handleSetupSubmission(request: Request) {
 		resetSetupCache();
 
 		void logSystemEvent({
-			servis: 'auth',
-			seviye: 'INFO',
-			mesaj: `Orbit Community OS setup completed. Administrator: ${email} (${communityName} by ${studioName})`,
+			service: 'auth',
+			level: 'INFO',
+			message: `Orbit Community OS setup completed. Administrator: ${email} (${communityName} by ${studioName})`,
 			ip,
 		});
 

@@ -21,8 +21,8 @@ export function useInventory() {
 	const items = useMemo(() => data ?? [], [data]);
 
 	const [filter, setFilter] = useState<Filter>('hepsi');
-	const [kategori, setKategori] = useState('');
-	const [arama, setArama] = useState('');
+	const [category, setCategory] = useState('');
+	const [search, setSearch] = useState('');
 	const [detailId, setDetailId] = useState<string | null>(null);
 	const [loan, setLoan] = useState<{ id: string; mode: LoanMode } | null>(null);
 	const [form, setForm] = useState<{ id: string | null } | null>(null);
@@ -31,8 +31,8 @@ export function useInventory() {
 		ready: data !== null,
 		apply: (target) => {
 			setFilter('hepsi');
-			setKategori('');
-			setArama('');
+			setCategory('');
+			setSearch('');
 			if (target.itemId) setDetailId(target.itemId);
 		},
 		refetch,
@@ -50,7 +50,7 @@ export function useInventory() {
 	};
 
 	const overdue = (i: InventoryItem) =>
-		i.status === 'oduncte' && !!returnStatus(i.iadeTarihi, now)?.gecikti;
+		i.status === 'oduncte' && !!returnStatus(i.returnDate, now)?.gecikti;
 
 	const counts = {
 		hepsi: items.length,
@@ -59,35 +59,35 @@ export function useInventory() {
 		gecikmis: items.filter(overdue).length,
 		arizali: items.filter((i) => i.status === 'arizali').length,
 		kayip: items.filter((i) => i.status === 'kayip').length,
-		bende: items.filter((i) => i.status === 'oduncte' && i.oduncAlanId === currentUserId).length,
+		bende: items.filter((i) => i.status === 'oduncte' && i.loanFieldId === currentUserId).length,
 	};
 
 	const categories = useMemo(
-		() => [...new Set(items.map((i) => i.kategori))].sort((a, b) => a.localeCompare(b, 'tr')),
+		() => [...new Set(items.map((i) => i.category))].sort((a, b) => a.localeCompare(b, 'tr')),
 		[items]
 	);
 
-	const q = foldTr(arama.trim());
+	const q = foldTr(search.trim());
 	const visible = items
 		.filter((i) => {
 			if (filter === 'gecikmis' && !overdue(i)) return false;
-			if (filter === 'bende' && !(i.status === 'oduncte' && i.oduncAlanId === currentUserId))
+			if (filter === 'bende' && !(i.status === 'oduncte' && i.loanFieldId === currentUserId))
 				return false;
 			if (filter !== 'hepsi' && filter !== 'gecikmis' && filter !== 'bende' && i.status !== filter)
 				return false;
-			if (kategori && i.kategori !== kategori) return false;
+			if (category && i.category !== category) return false;
 			return (
 				!q ||
 				foldTr(
-					`${i.kod} ${i.ad} ${i.kategori} ${i.konum} ${i.seriNo ?? ''} ${i.oduncAlanAdSoyad ?? ''}`
+					`${i.code} ${i.name} ${i.category} ${i.location} ${i.seriesNo ?? ''} ${i.loanFieldNameSurname ?? ''}`
 				).includes(q)
 			);
 		})
 		.sort(
 			(a, b) =>
 				Number(overdue(b)) - Number(overdue(a)) ||
-				(a.iadeTarihi ?? Infinity) - (b.iadeTarihi ?? Infinity) ||
-				a.kod.localeCompare(b.kod)
+				(a.returnDate ?? Infinity) - (b.returnDate ?? Infinity) ||
+				a.code.localeCompare(b.code)
 		);
 
 	const byId = (id: string | null) => items.find((i) => i.id === id) ?? null;
@@ -101,10 +101,10 @@ export function useInventory() {
 		items,
 		filter,
 		setFilter,
-		kategori,
-		setKategori,
-		arama,
-		setArama,
+		category,
+		setCategory,
+		search,
+		setSearch,
 		detailId,
 		setDetailId,
 		loan,

@@ -200,7 +200,7 @@ async function run() {
 		// Verify penalty score and quarantine record in database
 		const banCheck = await client.query('SELECT * FROM security_blocks WHERE ip = $1', [testIp]);
 		if (banCheck.rowCount > 0 && (banCheck.rows[0].status === 'ban' || banCheck.rows[0].status === 'ban')) {
-			log.ok(`Test IP address (${testIp}) auto-quarantined. Threat score: ${banCheck.rows[0].threat_score ?? banCheck.rows[0].tehditpuani}, Reason: ${banCheck.rows[0].reason ?? banCheck.rows[0].neden}`);
+			log.ok(`Test IP address (${testIp}) auto-quarantined. Threat score: ${banCheck.rows[0].threat_score ?? banCheck.rows[0].threatScore}, Reason: ${banCheck.rows[0].reason ?? banCheck.rows[0].reason}`);
 		} else {
 			throw new Error(`Test IP was not quarantined in security_blocks table!`);
 		}
@@ -234,13 +234,13 @@ async function run() {
 		}
 
 		// 3.3 First-Run Setup Wizard
-		const bannedKurulumRes = await fetch(`${BASE_URL}/api/setup`, {
+		const bannedSetupRes = await fetch(`${BASE_URL}/api/setup`, {
 			headers: { 'CF-Connecting-IP': testIp }
 		});
-		if (bannedKurulumRes.status === 403) {
+		if (bannedSetupRes.status === 403) {
 			log.ok('Quarantined IP blocked from setup API (HTTP 403).');
 		} else {
-			throw new Error(`Quarantined IP was able to access setup! HTTP: ${bannedKurulumRes.status}`);
+			throw new Error(`Quarantined IP was able to access setup! HTTP: ${bannedSetupRes.status}`);
 		}
 
 		// 3.4 Login Endpoint
@@ -651,7 +651,7 @@ async function run() {
 				headers: { Cookie: `kulup_session_token=${adminSessionToken}` },
 			});
 			const siemNeqData = await siemNeqRes.json();
-			const hasInfoLog = (siemNeqData.siem || []).some((l) => l.seviye === 'INFO');
+			const hasInfoLog = (siemNeqData.siem || []).some((l) => l.level === 'INFO');
 			if (hasInfoLog) {
 				throw new Error('SIEM level != INFO filter returned an INFO log!');
 			}
@@ -674,7 +674,7 @@ async function run() {
 				{ headers: { Cookie: `kulup_session_token=${adminSessionToken}` } }
 			);
 			const siemNotContainsData = await siemNotContainsRes.json();
-			const hasHeartbeat = (siemNotContainsData.siem || []).some((l) => l.mesaj.includes('HEARTBEAT'));
+			const hasHeartbeat = (siemNotContainsData.siem || []).some((l) => l.message.includes('HEARTBEAT'));
 			if (hasHeartbeat) {
 				throw new Error('SIEM searchField=message & searchOp=not_contains failed to exclude HEARTBEAT log!');
 			}
@@ -828,7 +828,7 @@ async function run() {
 					Cookie: `kulup_session_token=${initialSessionToken}`,
 					'Content-Type': 'application/json',
 				},
-				body: JSON.stringify({ mevcut: initialPassword, yeni: newPassword }),
+				body: JSON.stringify({ current: initialPassword, fresh: newPassword }),
 			});
 			if (!changePassRes.ok) {
 				const errBody = await changePassRes.text();
@@ -870,7 +870,7 @@ async function run() {
 						Cookie: `kulup_session_token=${freshSessionToken}`,
 						'Content-Type': 'application/json',
 					},
-					body: JSON.stringify({ mevcut: 'YanlisSifre!', yeni: newPassword }),
+					body: JSON.stringify({ current: 'YanlisSifre!', fresh: newPassword }),
 				});
 			}
 
@@ -912,7 +912,7 @@ async function run() {
 					Cookie: `kulup_session_token=${freshSessionToken}`,
 					'Content-Type': 'application/json',
 				},
-				body: JSON.stringify({ mevcut: 'YanlisSifre!', yeni: 'BaskaSifre123!' }),
+				body: JSON.stringify({ current: 'YanlisSifre!', fresh: 'BaskaSifre123!' }),
 			});
 			if (postUnthrottleTest.status === 429) {
 				throw new Error('Rate limit was not unthrottled after reset (HTTP 429)!');
@@ -1012,8 +1012,8 @@ async function run() {
 					},
 					body: JSON.stringify({
 						id: noteAId,
-						baslik: 'User A Confidential Note',
-						icerik: 'Confidential private project plans.',
+						title: 'User A Confidential Note',
+						content: 'Confidential private project plans.',
 					}),
 				});
 				if (!createNoteRes.ok) {
@@ -1030,8 +1030,8 @@ async function run() {
 					},
 					body: JSON.stringify({
 						id: noteAId,
-						baslik: 'PWNED by User B',
-						icerik: 'Zafiyet bulundu ve ezildi.',
+						title: 'PWNED by User B',
+						content: 'Zafiyet bulundu ve ezildi.',
 					}),
 				});
 				if (idorNoteRes.status !== 403) {
@@ -1073,7 +1073,7 @@ async function run() {
 						Cookie: `kulup_session_token=${testAdminSessionToken}`,
 						'Content-Type': 'application/json',
 					},
-					body: JSON.stringify({ action: 'ban', ip: bannedIpForPasskey, neden: 'Passkey Test Ban' }),
+					body: JSON.stringify({ action: 'ban', ip: bannedIpForPasskey, reason: 'Passkey Test Ban' }),
 				});
 				if (!banRes.ok) {
 					const t = await banRes.text();
@@ -1115,7 +1115,7 @@ async function run() {
 						'Content-Type': 'application/json',
 					},
 					body: JSON.stringify({
-						ad: 'Evil App',
+						name: 'Evil App',
 						redirectUris: ['javascript:alert(1)'],
 					}),
 				});
@@ -1131,7 +1131,7 @@ async function run() {
 						'Content-Type': 'application/json',
 					},
 					body: JSON.stringify({
-						ad: 'Insecure Remote HTTP App',
+						name: 'Insecure Remote HTTP App',
 						redirectUris: ['http://evil-external-domain.com/callback'],
 					}),
 				});
@@ -1147,7 +1147,7 @@ async function run() {
 						'Content-Type': 'application/json',
 					},
 					body: JSON.stringify({
-						ad: 'Valid Local Dev App',
+						name: 'Valid Local Dev App',
 						redirectUris: ['http://localhost:8080/callback', 'https://app.example.com/oauth/callback'],
 					}),
 				});
@@ -1191,15 +1191,15 @@ async function run() {
 				'X-Forwarded-For': botIp,
 			},
 			body: JSON.stringify({
-				ad: 'Bot',
-				soyad: 'Spammer',
+				name: 'Bot',
+				surname: 'Spammer',
 				email: 'bot_spam@example.com',
 				password: 'Password123!@#',
-				ogrenciNo: '24010108899',
-				bolum: 'Computer Science & Engineering',
-				sinif: 1,
+				studentNo: '24010108899',
+				department: 'Computer Science & Engineering',
+				grade: 1,
 				acceptedDocumentIds: ['legal_terms', 'legal_privacy', 'legal_cookies'],
-				kvkkKabul: true,
+				kvkkAccept: true,
 				hp_website: 'https://malicious-spam-bot.xyz',
 			}),
 		});
@@ -1214,20 +1214,20 @@ async function run() {
 
 		// 9.2 At-Rest SHA-256 Hashed OTP Verification (Registration Step 1)
 		const regTestEmail = `e2e_reg_otp_${Date.now()}@orbit.local`;
-		const regTestOgrenciNo = String(Date.now()).slice(-11);
+		const regTestStudentNo = String(Date.now()).slice(-11);
 		const regStep1Res = await fetch(`${BASE_URL}/api/auth/register`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
-				ad: 'Guvenli',
-				soyad: 'Aday',
+				name: 'Guvenli',
+				surname: 'Aday',
 				email: regTestEmail,
 				password: 'SecureP@ssw0rd2026!',
-				ogrenciNo: regTestOgrenciNo,
-				bolum: 'Computer Science & Engineering',
-				sinif: 2,
+				studentNo: regTestStudentNo,
+				department: 'Computer Science & Engineering',
+				grade: 2,
 				acceptedDocumentIds: ['legal_terms', 'legal_privacy', 'legal_cookies'],
-				kvkkKabul: true,
+				kvkkAccept: true,
 				hp_website: '',
 			}),
 		});
@@ -1267,15 +1267,15 @@ async function run() {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
-				ad: 'Guvenli',
-				soyad: 'Aday',
+				name: 'Guvenli',
+				surname: 'Aday',
 				email: regTestEmail,
 				password: 'SecureP@ssw0rd2026!',
-				ogrenciNo: regTestOgrenciNo,
-				bolum: 'Computer Science & Engineering',
-				sinif: 2,
+				studentNo: regTestStudentNo,
+				department: 'Computer Science & Engineering',
+				grade: 2,
 				acceptedDocumentIds: ['legal_terms', 'legal_privacy', 'legal_cookies'],
-				kvkkKabul: true,
+				kvkkAccept: true,
 				verificationCode: testOtpCode,
 				hp_website: '',
 			}),
@@ -1314,15 +1314,15 @@ async function run() {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
-				ad: 'Sweep',
-				soyad: 'Test',
+				name: 'Sweep',
+				surname: 'Test',
 				email: dummyEmail,
 				password: 'SecureP@ssw0rd2026!',
-				ogrenciNo: String(Date.now() + 1).slice(-11),
-				bolum: 'Computer Science & Engineering',
-				sinif: 1,
+				studentNo: String(Date.now() + 1).slice(-11),
+				department: 'Computer Science & Engineering',
+				grade: 1,
 				acceptedDocumentIds: ['legal_terms', 'legal_privacy', 'legal_cookies'],
-				kvkkKabul: true,
+				kvkkAccept: true,
 			}),
 		});
 
@@ -1340,15 +1340,15 @@ async function run() {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
-				ad: 'Tekrar',
-				soyad: 'Aday',
+				name: 'Tekrar',
+				surname: 'Aday',
 				email: regTestEmail,
 				password: 'SecureP@ssw0rd2026!',
-				ogrenciNo: regTestOgrenciNo,
-				bolum: 'Computer Science & Engineering',
-				sinif: 2,
+				studentNo: regTestStudentNo,
+				department: 'Computer Science & Engineering',
+				grade: 2,
 				acceptedDocumentIds: ['legal_terms', 'legal_privacy', 'legal_cookies'],
-				kvkkKabul: true,
+				kvkkAccept: true,
 			}),
 		});
 		if (duplicateRegRes.status !== 409) {
@@ -1445,8 +1445,8 @@ async function run() {
 
 			try {
 				// Member A attempts to read a foreign mail thread
-				const fakeKonuId = 'konu_foreign_999999';
-				const idorReadRes = await fetch(`${BASE_URL}/api/messages/${fakeKonuId}`, {
+				const fakeTopicId = 'konu_foreign_999999';
+				const idorReadRes = await fetch(`${BASE_URL}/api/messages/${fakeTopicId}`, {
 					headers: { Cookie: `kulup_session_token=${memberASession}` },
 				});
 				if (idorReadRes.status !== 404) {
@@ -1455,13 +1455,13 @@ async function run() {
 				log.ok('Unauthorized user access to mail thread (IDOR) blocked with 404 (existence withheld).');
 
 				// Member A attempts to write reply to foreign mail thread
-				const idorReplyRes = await fetch(`${BASE_URL}/api/messages/${fakeKonuId}`, {
+				const idorReplyRes = await fetch(`${BASE_URL}/api/messages/${fakeTopicId}`, {
 					method: 'POST',
 					headers: {
 						Cookie: `kulup_session_token=${memberASession}`,
 						'Content-Type': 'application/json',
 					},
-					body: JSON.stringify({ govde: 'Unauthorized reply injection attempt' }),
+					body: JSON.stringify({ body: 'Unauthorized reply injection attempt' }),
 				});
 				if (idorReplyRes.status !== 404) {
 					throw new Error(`Unauthorized reply injection to foreign mail thread did not return 404! HTTP: ${idorReplyRes.status}`);
@@ -1469,7 +1469,7 @@ async function run() {
 				log.ok('Unauthorized reply injection to foreign mail thread (BOLA) blocked with 404.');
 
 				// Member A attempts to delete / move foreign thread
-				const idorPatchRes = await fetch(`${BASE_URL}/api/messages/${fakeKonuId}`, {
+				const idorPatchRes = await fetch(`${BASE_URL}/api/messages/${fakeTopicId}`, {
 					method: 'PATCH',
 					headers: {
 						Cookie: `kulup_session_token=${memberASession}`,
@@ -1611,7 +1611,7 @@ async function run() {
 		}
 		const canaryBanRecord = canaryBanCheck.rows[0];
 		const banStatus = canaryBanRecord.status ?? canaryBanRecord.status;
-		const threatScore = Number(canaryBanRecord.threat_score ?? canaryBanRecord.tehditpuani);
+		const threatScore = Number(canaryBanRecord.threat_score ?? canaryBanRecord.threatScore);
 		if (banStatus !== 'ban' || threatScore < 100) {
 			throw new Error(`Quarantine record does not have expected threat score (>=100): ${JSON.stringify(canaryBanRecord)}`);
 		}
@@ -1698,8 +1698,8 @@ async function run() {
 					'CF-Connecting-IP': initialIp,
 				},
 				body: JSON.stringify({
-					baslik: 'Siber Not',
-					icerik: '<script>alert("XSS in JSON")</script>',
+					title: 'Siber Not',
+					content: '<script>alert("XSS in JSON")</script>',
 				}),
 			});
 			if (wafBodyRes.status !== 403) {
@@ -1761,8 +1761,8 @@ async function run() {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					ad: 'Test',
-					soyad: 'KillSwitch',
+					name: 'Test',
+					surname: 'KillSwitch',
 					email: 'killswitch_test@orbit.local',
 					password: 'Pass1234!',
 				}),
@@ -1936,8 +1936,8 @@ async function run() {
 				const now = Date.now();
 				const fifteenMinsAgo = now - 15 * 60 * 1000 - 5000;
 				for (const item of siem15mJson.siem) {
-					if (item.zaman < fifteenMinsAgo) {
-						throw new Error(`Legacy log returned outside 15-minute time window: ${item.zaman} < ${fifteenMinsAgo}`);
+					if (item.time < fifteenMinsAgo) {
+						throw new Error(`Legacy log returned outside 15-minute time window: ${item.time} < ${fifteenMinsAgo}`);
 					}
 				}
 				log.ok(`Time window filter (Last 15 Minutes) verified: Only recent logs returned.`);

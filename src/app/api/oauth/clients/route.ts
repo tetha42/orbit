@@ -31,10 +31,10 @@ export async function POST(request: Request) {
 
 	try {
 		const body = await request.json();
-		const ad = typeof body.ad === 'string' ? body.ad.trim() : '';
-		const description = typeof body.aciklama === 'string' ? body.aciklama.trim() : '';
+		const name = typeof body.name === 'string' ? body.name.trim() : '';
+		const description = typeof body.description === 'string' ? body.description.trim() : '';
 		const logoUrl = typeof body.logoUrl === 'string' ? body.logoUrl.trim() : undefined;
-		const guvenilir = body.guvenilir === true;
+		const trusted = body.trusted === true;
 
 		let redirectUris: string[] = [];
 		if (Array.isArray(body.redirectUris)) {
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
 			allowedScopes = body.allowedScopes.map(String).map((s) => s.trim()).filter(Boolean);
 		}
 
-		if (!ad) {
+		if (!name) {
 			return NextResponse.json({ error: 'Uygulama adı zorunludur.' }, { status: 400 });
 		}
 		if (redirectUris.length === 0) {
@@ -56,15 +56,15 @@ export async function POST(request: Request) {
 		}
 
 		const result = await createOAuthClient(
-			{ ad, aciklama: description, logoUrl, redirectUris, allowedScopes, guvenilir },
+			{ name, description: description, logoUrl, redirectUris, allowedScopes, trusted },
 			auth.user.id
 		);
 
 		await logSystemEvent({
-			servis: 'oauth',
-			seviye: 'INFO',
-			mesaj: `Yeni OAuth istemcisi oluşturuldu: ${ad} (${result.client.id})`,
-			detay: { clientId: result.client.id, ad, redirectUris, guvenilir },
+			service: 'oauth',
+			level: 'INFO',
+			message: `Yeni OAuth istemcisi oluşturuldu: ${name} (${result.client.id})`,
+			detail: { clientId: result.client.id, name, redirectUris, trusted },
 			userId: auth.user.id,
 			ip,
 		});
@@ -102,10 +102,10 @@ export async function PATCH(request: Request) {
 			const regen = await regenerateOAuthClientSecret(id);
 			if (!regen) return NextResponse.json({ error: 'Uygulama bulunamadı.' }, { status: 404 });
 			await logSystemEvent({
-				servis: 'oauth',
-				seviye: 'WARN',
-				mesaj: `OAuth istemci gizli anahtarı (client_secret) yenilendi: ${id}`,
-				detay: { clientId: id },
+				service: 'oauth',
+				level: 'WARN',
+				message: `OAuth istemci gizli anahtarı (client_secret) yenilendi: ${id}`,
+				detail: { clientId: id },
 				userId: auth.user.id,
 				ip,
 			});
@@ -113,10 +113,10 @@ export async function PATCH(request: Request) {
 		}
 
 		const updateData: Parameters<typeof updateOAuthClient>[1] = {};
-		if (typeof body.ad === 'string') updateData.ad = body.ad.trim();
-		if (typeof body.aciklama === 'string') updateData.aciklama = body.aciklama.trim();
+		if (typeof body.name === 'string') updateData.name = body.name.trim();
+		if (typeof body.description === 'string') updateData.description = body.description.trim();
 		if (body.logoUrl !== undefined) updateData.logoUrl = body.logoUrl;
-		if (body.guvenilir !== undefined) updateData.guvenilir = body.guvenilir === true;
+		if (body.trusted !== undefined) updateData.trusted = body.trusted === true;
 		if (body.aktif !== undefined) updateData.aktif = body.aktif === true;
 		if (Array.isArray(body.redirectUris)) {
 			updateData.redirectUris = body.redirectUris.map(String).map((u) => u.trim()).filter(Boolean);
@@ -129,10 +129,10 @@ export async function PATCH(request: Request) {
 		if (!ok) return NextResponse.json({ error: 'Uygulama bulunamadı.' }, { status: 404 });
 
 		await logSystemEvent({
-			servis: 'oauth',
-			seviye: 'INFO',
-			mesaj: `OAuth istemcisi güncellendi: ${id}`,
-			detay: { clientId: id, degisiklikler: updateData },
+			service: 'oauth',
+			level: 'INFO',
+			message: `OAuth istemcisi güncellendi: ${id}`,
+			detail: { clientId: id, changes: updateData },
 			userId: auth.user.id,
 			ip,
 		});
@@ -166,10 +166,10 @@ export async function DELETE(request: Request) {
 		if (!ok) return NextResponse.json({ error: 'Uygulama bulunamadı.' }, { status: 404 });
 
 		await logSystemEvent({
-			servis: 'oauth',
-			seviye: 'WARN',
-			mesaj: `OAuth istemcisi silindi: ${id}`,
-			detay: { clientId: id },
+			service: 'oauth',
+			level: 'WARN',
+			message: `OAuth istemcisi silindi: ${id}`,
+			detail: { clientId: id },
 			userId: auth.user.id,
 			ip,
 		});

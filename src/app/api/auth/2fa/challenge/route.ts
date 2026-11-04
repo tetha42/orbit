@@ -33,10 +33,10 @@ export async function POST(request: Request) {
 		const waf = inspectRequestPayload(request);
 		if (waf.matched) {
 			void logSystemEvent({
-				servis: 'security',
-				seviye: 'ERROR',
-				mesaj: `[WAF] Saldırı imzası engellendi (${waf.signature}): POST /api/auth/2fa/challenge`,
-				detay: { category: waf.category, signature: waf.signature },
+				service: 'security',
+				level: 'ERROR',
+				message: `[WAF] Saldırı imzası engellendi (${waf.signature}): POST /api/auth/2fa/challenge`,
+				detail: { category: waf.category, signature: waf.signature },
 				ip,
 			});
 			void recordSecurityStrike({
@@ -55,10 +55,10 @@ export async function POST(request: Request) {
 		const ipGate = isRateLimited(ipKey, MAX_2FA_IP_ATTEMPTS);
 		if (!ipGate.allowed) {
 			await logSystemEvent({
-				servis: 'auth',
-				seviye: 'WARN',
-				mesaj: '2FA doğrulama IP hız sınırı aşıldı',
-				detay: { kilitAnahtari: ipKey, kalanSaniye: ipGate.retryAfter },
+				service: 'auth',
+				level: 'WARN',
+				message: '2FA doğrulama IP hız sınırı aşıldı',
+				detail: { lockKey: ipKey, remainingSeconds: ipGate.retryAfter },
 				ip,
 			});
 			void recordSecurityStrike({
@@ -98,10 +98,10 @@ export async function POST(request: Request) {
 		const userGate = isRateLimited(userKey, MAX_2FA_USER_ATTEMPTS);
 		if (!userGate.allowed) {
 			await logSystemEvent({
-				servis: 'auth',
-				seviye: 'WARN',
-				mesaj: '2FA verification user rate limit exceeded',
-				detay: { userId, kilitAnahtari: userKey, kalanSaniye: userGate.retryAfter },
+				service: 'auth',
+				level: 'WARN',
+				message: '2FA verification user rate limit exceeded',
+				detail: { userId, lockKey: userKey, remainingSeconds: userGate.retryAfter },
 				userId,
 				ip,
 			});
@@ -139,7 +139,7 @@ export async function POST(request: Request) {
 		const submitted = String(code ?? '').trim();
 
 		const verification = user.totpSecret
-			? await verifyTotpCodeDetailed(user.totpSecret, submitted, user.totpSonAdim)
+			? await verifyTotpCodeDetailed(user.totpSecret, submitted, user.totpLastStep)
 			: { valid: false, timeStep: null };
 
 		let authenticated = verification.valid;
@@ -166,10 +166,10 @@ export async function POST(request: Request) {
 				userId: user.id,
 			});
 			await logSystemEvent({
-				servis: 'auth',
-				seviye: 'WARN',
-				mesaj: `Failed 2FA verification attempt: ${user.email}`,
-				detay: { email: user.email },
+				service: 'auth',
+				level: 'WARN',
+				message: `Failed 2FA verification attempt: ${user.email}`,
+				detail: { email: user.email },
 				userId: user.id,
 				ip,
 			});
@@ -194,9 +194,9 @@ export async function POST(request: Request) {
 
 		const sessionToken = await establishSession(user, request, 'totp');
 		await logSystemEvent({
-			servis: 'auth',
-			seviye: 'INFO',
-			mesaj: `Kullanıcı 2FA ile giriş yaptı: ${user.ad} ${user.soyad} (${user.email})`,
+			service: 'auth',
+			level: 'INFO',
+			message: `Kullanıcı 2FA ile giriş yaptı: ${user.name} ${user.surname} (${user.email})`,
 			userId: user.id,
 			ip,
 		});

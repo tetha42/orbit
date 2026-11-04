@@ -29,7 +29,7 @@ export default function SetupPage() {
 		);
 	}
 
-	if (status?.hazir) {
+	if (status?.ready) {
 		return (
 			<main className={styles.shell}>
 				<div className={styles.workbench} style={{ maxWidth: '640px', height: 'auto', padding: '16px' }}>

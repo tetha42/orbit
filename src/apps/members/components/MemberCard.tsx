@@ -32,7 +32,7 @@ interface MemberCardProps {
 	mailUser: boolean;
 	isReachable: boolean;
 	isAuthorizedToAdd: boolean;
-	erisilebilir: boolean;
+	accessible: boolean;
 	assignableRoles: AssignableRole[];
 	onOpenProfile: (member: MemberRecord) => void;
 	onResetPassword: (memberId: string, name: string) => void;
@@ -49,7 +49,7 @@ export const MemberCard = React.memo(function MemberCard({
 	mailUser,
 	isReachable: _isReachable,
 	isAuthorizedToAdd,
-	erisilebilir,
+	accessible,
 	assignableRoles: _assignableRoles,
 	onOpenProfile,
 	onResetPassword,
@@ -64,20 +64,20 @@ export const MemberCard = React.memo(function MemberCard({
 	const { openApp } = useWindowActions();
 	const canSoc = canUseApp('soc');
 
-	const isAlumni = member.status === 'mezun' || isAlumniRole({ id: member.roleId, ad: member.rolAd });
+	const isAlumni = member.status === 'mezun' || isAlumniRole({ id: member.roleId, name: member.roleName });
 	const displayRole = isAlumni
 		? {
-				ad: isAlumniRole({ id: member.roleId, ad: member.rolAd })
-					? (member.rolAd ?? t('membersStatusAlumni', 'Mezun'))
+				name: isAlumniRole({ id: member.roleId, name: member.roleName })
+					? (member.roleName ?? t('membersStatusAlumni', 'Mezun'))
 					: t('membersStatusAlumni', 'Mezun'),
-				renk: isAlumniRole({ id: member.roleId, ad: member.rolAd }) ? (member.rolRenk ?? '#64d2ff') : '#64d2ff',
+				color: isAlumniRole({ id: member.roleId, name: member.roleName }) ? (member.roleColor ?? '#64d2ff') : '#64d2ff',
 		  }
 		: member.roleId
-		? { ad: member.rolAd ?? '—', renk: member.rolRenk ?? '#8e8e93' }
+		? { name: member.roleName ?? '—', color: member.roleColor ?? '#8e8e93' }
 		: null;
 
 	const isSelf = member.id === currentUserId;
-	const canManage = erisilebilir && isAuthorizedToAdd;
+	const canManage = accessible && isAuthorizedToAdd;
 
 	return (
 		<div
@@ -101,9 +101,9 @@ export const MemberCard = React.memo(function MemberCard({
 						style={{ position: 'relative', width: '36px', height: '36px', flexShrink: 0, cursor: 'pointer' }}
 						onClick={() => onOpenProfile(member)}
 					>
-						{member.avatarUrl || member.profilFoto ? (
+						{member.avatarUrl || member.profilePhoto ? (
 							<Image
-								src={(member.avatarUrl || member.profilFoto)!}
+								src={(member.avatarUrl || member.profilePhoto)!}
 								alt={`${member.firstName} ${member.lastName}`}
 								width={36}
 								height={36}
@@ -154,7 +154,7 @@ export const MemberCard = React.memo(function MemberCard({
 
 				{/* Role or Status Badge */}
 				<div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-					<RoleBadge role={displayRole} bosMetin={t('roleNone')} size="sm" />
+					<RoleBadge role={displayRole} emptyText={t('roleNone')} size="sm" />
 
 					<span
 						style={{
@@ -203,21 +203,21 @@ export const MemberCard = React.memo(function MemberCard({
 				<div>
 					<span style={{ opacity: 0.6, fontSize: '10.5px', display: 'block' }}>{t('membersDeptClassLabel')}</span>
 					<span style={{ fontWeight: 550 }}>
-						{member.bolum || '—'} {member.sinif ? `(${fill(t('certsGradeFormat'), { grade: member.sinif })})` : ''}
+						{member.department || '—'} {member.grade ? `(${fill(t('certsGradeFormat'), { grade: member.grade })})` : ''}
 					</span>
 				</div>
 
 				<div>
 					<span style={{ opacity: 0.6, fontSize: '10.5px', display: 'block' }}>{t('membersTeamProjectLabel')}</span>
 					<span style={{ fontWeight: 550 }}>
-						{member.takimAdi || '—'}
+						{member.teamName || '—'}
 					</span>
 				</div>
 
 				<div>
 					<span style={{ opacity: 0.6, fontSize: '10.5px', display: 'block' }}>{t('membersStudentIdLabel')}</span>
 					<span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '11px' }}>
-						{member.handle || member.ogrenciNo || '—'}
+						{member.handle || member.studentNo || '—'}
 					</span>
 				</div>
 

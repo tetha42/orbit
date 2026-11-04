@@ -4,16 +4,16 @@ import QRCode from 'qrcode';
 export type CertificateCategory = 'achievement' | 'participation' | 'service' | 'honor';
 
 export interface CertificatePDFData {
-	kullaniciAdSoyad: string;
-	baslik: string;
+	userNameSurname: string;
+	title: string;
 	verificationCode: string;
-	verilisTarihi: number;
+	issuanceDate: number;
 	/** University line, club name and the two signatories, from `/api/kulup`. */
-	universite: string;
-	kulupAdi: string;
-	imzalar: { ad: string; unvan: string }[];
+	university: string;
+	clubName: string;
+	signatures: { name: string; rank: string }[];
 	/** Absolute verification address, e.g. `https://portal.example.org/dogrula/BEU-2026-K7QM-3XRA`. */
-	dogrulamaUrl: string;
+	verificationUrl: string;
 	/** Category of certificate for specific styling and titling. */
 	category?: CertificateCategory;
 	/** Language of output PDF ('tr' | 'en'). Defaults to 'tr'. */
@@ -76,11 +76,11 @@ export async function generateCertificatePDF(data: CertificatePDFData): Promise<
 	doc.setFont(FONT, 'bold');
 	doc.setFontSize(14);
 	doc.setTextColor(184, 134, 11);
-	doc.text(tr(data.universite), center, 28, { align: 'center' });
+	doc.text(tr(data.university), center, 28, { align: 'center' });
 	doc.setFont(FONT, 'normal');
 	doc.setFontSize(11);
 	doc.setTextColor(80, 80, 80);
-	doc.text(tr(data.kulupAdi), center, 35, { align: 'center' });
+	doc.text(tr(data.clubName), center, 35, { align: 'center' });
 
 	const isEn = data.lang === 'en';
 	const category = data.category || 'achievement';
@@ -150,7 +150,7 @@ export async function generateCertificatePDF(data: CertificatePDFData): Promise<
 	doc.setFont(FONT, 'bold');
 	doc.setFontSize(24);
 	doc.setTextColor(20, 20, 20);
-	doc.text(isEn ? data.kullaniciAdSoyad.toUpperCase() : tr(data.kullaniciAdSoyad), center, 88, { align: 'center' });
+	doc.text(isEn ? data.userNameSurname.toUpperCase() : tr(data.userNameSurname), center, 88, { align: 'center' });
 	doc.setDrawColor(212, 175, 55);
 	doc.setLineWidth(0.5);
 	doc.line(80, 92, width - 80, 92);
@@ -159,7 +159,7 @@ export async function generateCertificatePDF(data: CertificatePDFData): Promise<
 	doc.setFont(FONT, 'normal');
 	doc.setFontSize(13);
 	doc.setTextColor(50, 50, 50);
-	const titleLines: string[] = doc.splitTextToSize(`“${data.baslik}”`, 200);
+	const titleLines: string[] = doc.splitTextToSize(`“${data.title}”`, 200);
 	doc.text(titleLines, center, 104, { align: 'center' });
 	const afterTitle = 104 + (titleLines.length - 1) * 6;
 	doc.setFontSize(11);
@@ -169,35 +169,35 @@ export async function generateCertificatePDF(data: CertificatePDFData): Promise<
 	doc.setFontSize(10);
 	doc.setTextColor(120, 120, 120);
 	const dateStr = isEn
-		? `Date: ${new Date(data.verilisTarihi).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}`
-		: `Veriliş tarihi: ${new Date(data.verilisTarihi).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+		? `Date: ${new Date(data.issuanceDate).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}`
+		: `Veriliş tarihi: ${new Date(data.issuanceDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
 	doc.text(dateStr, center, afterTitle + 20, {
 		align: 'center',
 	});
 
 	// Signatures
 	const ySign = 170;
-	const signature = (x: number, imza: { ad: string; unvan: string } | undefined) => {
-		if (!imza) return;
+	const signature = (x: number, signature: { name: string; rank: string } | undefined) => {
+		if (!signature) return;
 		doc.setDrawColor(180, 180, 180);
 		doc.setLineWidth(0.3);
 		doc.line(x - 28, ySign - 5, x + 28, ySign - 5);
-		if (imza.ad) {
+		if (signature.name) {
 			doc.setFont(FONT, 'bold');
 			doc.setFontSize(12);
 			doc.setTextColor(30, 30, 30);
-			doc.text(imza.ad, x, ySign, { align: 'center' });
+			doc.text(signature.name, x, ySign, { align: 'center' });
 		}
 		doc.setFont(FONT, 'normal');
 		doc.setFontSize(10);
 		doc.setTextColor(100, 100, 100);
-		doc.text(imza.unvan, x, imza.ad ? ySign + 6 : ySign, { align: 'center' });
+		doc.text(signature.rank, x, signature.name ? ySign + 6 : ySign, { align: 'center' });
 	};
-	signature(60, data.imzalar[0]);
-	signature(width - 60, data.imzalar[1]);
+	signature(60, data.signatures[0]);
+	signature(width - 60, data.signatures[1]);
 
 	// Verification: a scannable code and the human-readable one
-	const qr = await QRCode.toDataURL(data.dogrulamaUrl, { margin: 0, width: 240, errorCorrectionLevel: 'M' });
+	const qr = await QRCode.toDataURL(data.verificationUrl, { margin: 0, width: 240, errorCorrectionLevel: 'M' });
 	doc.addImage(qr, 'PNG', center - 13, ySign - 24, 26, 26);
 	doc.setFont(FONT, 'bold');
 	doc.setFontSize(9.5);
@@ -206,7 +206,7 @@ export async function generateCertificatePDF(data: CertificatePDFData): Promise<
 	doc.setFont(FONT, 'normal');
 	doc.setFontSize(7.5);
 	doc.setTextColor(120, 120, 120);
-	doc.text(data.dogrulamaUrl.replace(/^https?:\/\//, ''), center, ySign + 12, { align: 'center' });
+	doc.text(data.verificationUrl.replace(/^https?:\/\//, ''), center, ySign + 12, { align: 'center' });
 
 	doc.save(`Sertifika_${data.verificationCode}.pdf`);
 }

@@ -19,7 +19,7 @@ export interface ChatAudience {
 	/** Everyone with chat access may read (the general room). */
 	all: boolean;
 	/** Team room: admins may read without being a member. */
-	takim: boolean;
+	team: boolean;
 	memberIds: Set<string>;
 	teamId: string | null;
 	expiresAt: number;
@@ -32,7 +32,7 @@ const GENERAL_ROOM_ID = 'oda_genel';
 
 const GENERAL_AUDIENCE: ChatAudience = {
 	all: true,
-	takim: false,
+	team: false,
 	memberIds: new Set(),
 	teamId: null,
 	expiresAt: Number.POSITIVE_INFINITY,
@@ -95,7 +95,7 @@ export async function getChatAudience(roomId: string): Promise<ChatAudience | nu
 
 		const audience: ChatAudience = {
 			all: false,
-			takim: roomType === 'takim' || roomType === 'team',
+			team: roomType === 'takim' || roomType === 'team',
 			memberIds: new Set(
 				membersRes.rows.map((r) => String(r.userId ?? '')).filter(Boolean)
 			),
@@ -120,6 +120,6 @@ export function audienceIncludes(
 	isAdmin: boolean
 ): boolean {
 	if (audience.all) return true;
-	if (audience.takim && isAdmin) return true;
+	if (audience.team && isAdmin) return true;
 	return audience.memberIds.has(userId);
 }

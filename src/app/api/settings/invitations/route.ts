@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 		{
 			ok: true,
 			invitations,
-			roles: roles.map(({ id, ad, renk }) => ({ id, ad, renk })),
+			roles: roles.map(({ id, name, color }) => ({ id, name, color })),
 		},
 		{ headers: { 'Cache-Control': 'no-store' } }
 	);
@@ -74,10 +74,10 @@ export async function POST(request: Request) {
 		expiresAt: Date.now() + days * 86_400_000,
 	});
 	void logSystemEvent({
-		servis: 'settings',
-		seviye: 'INFO',
-		mesaj: `Üyelik daveti oluşturuldu${email ? `: ${email}` : ''} (${auth.user.firstName || auth.user.ad || ""} ${auth.user.lastName || auth.user.soyad || ""})`,
-		detay: { invitationId: invitation.id, roleId, days },
+		service: 'settings',
+		level: 'INFO',
+		message: `Üyelik daveti oluşturuldu${email ? `: ${email}` : ''} (${auth.user.firstName || auth.user.name || ""} ${auth.user.lastName || auth.user.surname || ""})`,
+		detail: { invitationId: invitation.id, roleId, days },
 		userId: auth.user.id,
 	});
 

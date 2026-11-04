@@ -113,10 +113,10 @@ export async function verifyAuth(request: Request): Promise<AuthResult> {
 			// Yalnızca gerçek dış saldırılar veritabanına loglanır; iç test probları DB'yi kirletmez
 			if (!isProbe) {
 				void logSystemEvent({
-					servis: 'security',
-					seviye: 'ERROR',
-					mesaj: `[WAF] Attack signature blocked (${waf.signature}): ${request.method} ${pathname}`,
-					detay: { category: waf.category, signature: waf.signature, url: request.url.slice(0, 240) },
+					service: 'security',
+					level: 'ERROR',
+					message: `[WAF] Attack signature blocked (${waf.signature}): ${request.method} ${pathname}`,
+					detail: { category: waf.category, signature: waf.signature, url: request.url.slice(0, 240) },
 					ip,
 				});
 				void recordSecurityStrike({
@@ -140,10 +140,10 @@ export async function verifyAuth(request: Request): Promise<AuthResult> {
 		const csrf = isCsrfBlocked(request);
 		if (csrf.blocked) {
 			void logSystemEvent({
-				servis: 'security',
-				seviye: 'WARN',
-				mesaj: `CSRF / Cross-Origin request blocked: ${request.method} ${pathname}`,
-				detay: { reason: csrf.reason, origin: request.headers.get('origin') },
+				service: 'security',
+				level: 'WARN',
+				message: `CSRF / Cross-Origin request blocked: ${request.method} ${pathname}`,
+				detail: { reason: csrf.reason, origin: request.headers.get('origin') },
 				ip,
 			});
 			void recordSecurityStrike({
@@ -174,9 +174,9 @@ export async function verifyAuth(request: Request): Promise<AuthResult> {
 			if (MUTATING_METHODS.has(method) || request.headers.has('x-session-token')) {
 				if (consumeRateLimit(`log:bad_session:${ip}`, 10, 60_000).allowed) {
 					void logSystemEvent({
-						servis: 'auth',
-						seviye: 'WARN',
-						mesaj: `Operation attempt with invalid or expired session token: ${method} ${pathname}`,
+						service: 'auth',
+						level: 'WARN',
+						message: `Operation attempt with invalid or expired session token: ${method} ${pathname}`,
 						ip,
 					});
 				}
@@ -220,7 +220,7 @@ export async function verifyAuth(request: Request): Promise<AuthResult> {
 		const sessionCheck = recordSessionActivity(user, ip);
 		if (sessionCheck.suspiciousJump) {
 			const reqUa = request.headers.get('user-agent') || '';
-			const matchesUa = Boolean(user.sonGirisUserAgent && reqUa && user.sonGirisUserAgent === reqUa);
+			const matchesUa = Boolean(user.lastLoginUserAgent && reqUa && user.lastLoginUserAgent === reqUa);
 			if (!matchesUa) {
 				void recordSecurityStrike({
 					ip,

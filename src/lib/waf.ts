@@ -330,8 +330,8 @@ export function inspectDatabaseSql(
 export function maskDatabaseRow(row: Record<string, unknown>): Record<string, unknown> {
 	if (!row || typeof row !== 'object') return row;
 	const clean: Record<string, unknown> = { ...row };
-	const anahtarVal = typeof clean.anahtar === 'string' ? clean.anahtar.toLowerCase() : typeof clean.key === 'string' ? clean.key.toLowerCase() : '';
-	const isSensitiveSettingRow = anahtarVal === 'smtp_pass';
+	const keyVal = typeof clean.key === 'string' ? clean.key.toLowerCase() : typeof clean.key === 'string' ? clean.key.toLowerCase() : '';
+	const isSensitiveSettingRow = keyVal === 'smtp_pass';
 
 	for (const k of Object.keys(clean)) {
 		const val = clean[k];

@@ -11,16 +11,16 @@ interface VaultCardSummaryProps {
 	teamId: string | null;
 	summary: CashTotals | null;
 	isLoading: boolean;
-	dagilimFirstCategory?: { kategori: string; oran: number };
+	distributionFirstCategory?: { category: string; ratio: number };
 }
 
-const tl = (kurus: number) => `₺${formatMinor(kurus)}`;
+const tl = (minor: number) => `₺${formatMinor(minor)}`;
 
 export function VaultCardSummary({
 	teamId,
 	summary,
 	isLoading,
-	dagilimFirstCategory,
+	distributionFirstCategory,
 }: VaultCardSummaryProps) {
 	const { t } = useI18n();
 
@@ -39,7 +39,7 @@ export function VaultCardSummary({
 					{summary ? tl(summary.netBalanceMinor) : '—'}
 				</div>
 				<div className={k.cardNote}>
-					{summary ? t('kasaEntryCount').replace('{n}', String(summary.kayitSayisi)) : isLoading ? t('loading') : ''}
+					{summary ? t('kasaEntryCount').replace('{n}', String(summary.recordCount)) : isLoading ? t('loading') : ''}
 				</div>
 			</div>
 			<div className={k.card}>
@@ -55,10 +55,10 @@ export function VaultCardSummary({
 				</div>
 				<div className={`${k.cardValue} ${k.neg}`}>{tl(summary?.totalExpenseMinor ?? 0)}</div>
 				<div className={k.cardNote}>
-					{dagilimFirstCategory
+					{distributionFirstCategory
 						? t('kasaMostSpent')
-								.replace('{cat}', dagilimFirstCategory.kategori)
-								.replace('{pct}', String(Math.round(dagilimFirstCategory.oran * 100)))
+								.replace('{cat}', distributionFirstCategory.category)
+								.replace('{pct}', String(Math.round(distributionFirstCategory.ratio * 100)))
 						: t('kasaNoSpendingYet')}
 				</div>
 			</div>

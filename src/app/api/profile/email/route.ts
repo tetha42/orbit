@@ -76,13 +76,13 @@ export async function POST(request: Request) {
 	});
 
 	void notifyEmailChangeCode(
-		{ firstName: auth.user.firstName || auth.user.ad, lastName: auth.user.lastName || auth.user.soyad, email: newEmail },
+		{ firstName: auth.user.firstName || auth.user.name, lastName: auth.user.lastName || auth.user.surname, email: newEmail },
 		code
 	);
 	await logSystemEvent({
-		servis: 'auth',
-		seviye: 'INFO',
-		mesaj: `E-posta değişikliği doğrulama kodu istendi: ${auth.user.email} → ${newEmail}`,
+		service: 'auth',
+		level: 'INFO',
+		message: `E-posta değişikliği doğrulama kodu istendi: ${auth.user.email} → ${newEmail}`,
 		userId: auth.user.id,
 		ip: clientAddress(request),
 	});

@@ -12,23 +12,23 @@ import { diffRows, formatAuditAction, type AuditRecord } from '@/lib/audit';
 import s from './Roles.module.css';
 
 interface AuditDetailModalProps {
-	detay: AuditRecord | null;
+	detail: AuditRecord | null;
 	onClose: () => void;
 }
 
-export function AuditDetailModal({ detay, onClose }: AuditDetailModalProps) {
+export function AuditDetailModal({ detail, onClose }: AuditDetailModalProps) {
 	const { t, language } = useI18n();
 
-	if (!detay) return null;
+	if (!detail) return null;
 
-	const diffs = diffRows(detay.before, detay.after);
+	const diffs = diffRows(detail.before, detail.after);
 
-	const formatAuditValue = (alan: string, val: unknown): string => {
+	const formatAuditValue = (field: string, val: unknown): string => {
 		if (val === null || val === undefined) return '—';
 		if (typeof val === 'boolean') {
 			return val ? t('auditYes') : t('auditNo');
 		}
-		if (alan === 'roleId' || alan === 'movedToRoleId') {
+		if (field === 'roleId' || field === 'movedToRoleId') {
 			if (val === 'rol_admin') return t('auditRoleAdmin', 'Yönetici (Admin)');
 			if (val === 'rol_yonetim_kurulu') return t('auditRoleBoard', 'Management Board');
 			if (val === 'rol_uye') return t('auditRoleMember', 'Member');
@@ -42,7 +42,7 @@ export function AuditDetailModal({ detay, onClose }: AuditDetailModalProps) {
 		return String(val);
 	};
 
-	const actionTitle = formatAuditAction(detay.action, t);
+	const actionTitle = formatAuditAction(detail.action, t);
 
 	return (
 		<Sheet
@@ -69,7 +69,7 @@ export function AuditDetailModal({ detay, onClose }: AuditDetailModalProps) {
 						{t('auditYapan')}
 					</span>
 					<strong style={{ color: 'var(--text-primary)', wordBreak: 'break-word' }}>
-						{detay.actorName || detay.actorId || '—'}
+						{detail.actorName || detail.actorId || '—'}
 					</strong>
 				</div>
 				<div>
@@ -77,7 +77,7 @@ export function AuditDetailModal({ detay, onClose }: AuditDetailModalProps) {
 						{t('auditHedef')}
 					</span>
 					<strong style={{ color: 'var(--text-primary)', wordBreak: 'break-word' }}>
-						{detay.targetName || detay.targetId || '—'}
+						{detail.targetName || detail.targetId || '—'}
 					</strong>
 				</div>
 				<div>
@@ -85,7 +85,7 @@ export function AuditDetailModal({ detay, onClose }: AuditDetailModalProps) {
 						{t('auditZaman')}
 					</span>
 					<span style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-						{formatDateTime(detay.timestamp, language === 'en' ? 'en-GB' : 'tr-TR')}
+						{formatDateTime(detail.timestamp, language === 'en' ? 'en-GB' : 'tr-TR')}
 					</span>
 				</div>
 				<div>
@@ -93,7 +93,7 @@ export function AuditDetailModal({ detay, onClose }: AuditDetailModalProps) {
 						{t('auditIp')}
 					</span>
 					<code style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>
-						{detay.ip || '—'}
+						{detail.ip || '—'}
 					</code>
 				</div>
 			</div>
@@ -112,13 +112,13 @@ export function AuditDetailModal({ detay, onClose }: AuditDetailModalProps) {
 
 					<div style={{ display: 'flex', flexDirection: 'column' }}>
 						{diffs.map((d) => {
-							const appKey = d.alan.startsWith('izinler.') ? d.alan.slice('izinler.'.length) : d.alan;
+							const appKey = d.field.startsWith('izinler.') ? d.field.slice('izinler.'.length) : d.field;
 							const appMeta = isPermissionApp(appKey) ? getAppMeta(appKey as AppID, language) : null;
 							const label = isPermissionApp(appKey)
-								? (appMeta?.shortTitle || appMeta?.title || PERMISSION_DESCRIPTIONS[appKey]?.ad || appKey)
-								: t(`auditField_${d.alan}`, d.alan);
+								? (appMeta?.shortTitle || appMeta?.title || PERMISSION_DESCRIPTIONS[appKey]?.name || appKey)
+								: t(`auditField_${d.field}`, d.field);
 							return (
-								<div key={d.alan} className={s.auditDiffRow}>
+								<div key={d.field} className={s.auditDiffRow}>
 									<div style={{ fontWeight: 650, color: 'var(--text-primary)' }}>
 										{label}
 									</div>
@@ -129,12 +129,12 @@ export function AuditDetailModal({ detay, onClose }: AuditDetailModalProps) {
 												textDecoration: d.before !== null && d.before !== undefined ? 'line-through' : 'none',
 											}}
 										>
-											{formatAuditValue(d.alan, d.before)}
+											{formatAuditValue(d.field, d.before)}
 										</span>
 									</div>
 									<div>
 										<span className={s.auditNew}>
-											{formatAuditValue(d.alan, d.after)}
+											{formatAuditValue(d.field, d.after)}
 										</span>
 									</div>
 								</div>

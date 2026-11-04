@@ -20,17 +20,17 @@ interface IssueCertificateModalProps {
 	issueUserId: string;
 	setIssueUserId: (id: string) => void;
 	members: MemberRankItem[];
-	issueBaslik: string;
-	setIssueBaslik: (title: string) => void;
-	issueEtkinlikId: string;
-	setIssueEtkinlikId: (id: string) => void;
+	issueTitle: string;
+	setIssueTitle: (title: string) => void;
+	issueEventId: string;
+	setIssueEventId: (id: string) => void;
 	issueCategory?: 'achievement' | 'participation' | 'service' | 'honor';
 	setIssueCategory?: (cat: 'achievement' | 'participation' | 'service' | 'honor') => void;
 	issueLang?: 'tr' | 'en';
 	setIssueLang?: (lang: 'tr' | 'en') => void;
 	issueContext?: string;
 	setIssueContext?: (ctx: string) => void;
-	events: Array<{ id: string; baslik: string; katilimciSayisi: number }>;
+	events: Array<{ id: string; title: string; participantCount: number }>;
 	isSubmitting: boolean;
 }
 
@@ -43,10 +43,10 @@ export function IssueCertificateModal({
 	issueUserId,
 	setIssueUserId,
 	members,
-	issueBaslik,
-	setIssueBaslik,
-	issueEtkinlikId,
-	setIssueEtkinlikId,
+	issueTitle,
+	setIssueTitle,
+	issueEventId,
+	setIssueEventId,
 	issueCategory = 'achievement',
 	setIssueCategory,
 	issueLang = 'tr',
@@ -85,7 +85,7 @@ export function IssueCertificateModal({
 						<option value="">{t('certsIssueSelectMember')}</option>
 						{members.map((m) => (
 							<option key={m.id} value={m.id}>
-								{m.ad} {m.soyad} ({m.bolum} - {fill(t('membersClassYear'), { year: m.sinif })})
+								{m.name} {m.surname} ({m.department} - {fill(t('membersClassYear'), { year: m.grade })})
 							</option>
 						))}
 					</select>
@@ -99,12 +99,12 @@ export function IssueCertificateModal({
 					required
 					className={ui.input}
 					placeholder={t('certsIssueTitlePh')}
-					value={issueBaslik}
-					onChange={(e) => setIssueBaslik(e.target.value)}
+					value={issueTitle}
+					onChange={(e) => setIssueTitle(e.target.value)}
 				/>
 				<CertificateTitlePresets
 					onSelect={(preset, cat) => {
-						setIssueBaslik(preset);
+						setIssueTitle(preset);
 						if (cat && setIssueCategory) {
 							setIssueCategory(cat as 'achievement' | 'participation' | 'service' | 'honor');
 						}
@@ -116,18 +116,18 @@ export function IssueCertificateModal({
 				<label className={ui.fieldLabel}>{t('certsIssueEventLabel')}</label>
 				<select
 					required={issueMode === 'bulk'}
-					value={issueEtkinlikId}
-					onChange={(e) => setIssueEtkinlikId(e.target.value)}
+					value={issueEventId}
+					onChange={(e) => setIssueEventId(e.target.value)}
 					className={ui.select}
 					style={{ maxWidth: 'none', width: '100%' }}
 				>
 					<option value="">{issueMode === 'bulk' ? t('certsIssueSelectEvent') : t('certsIssueGeneralEvent')}</option>
 					{events
-						.filter((evt) => issueMode === 'single' || evt.katilimciSayisi > 0)
+						.filter((evt) => issueMode === 'single' || evt.participantCount > 0)
 						.map((evt) => (
 							<option key={evt.id} value={evt.id}>
-								{evt.baslik}
-								{issueMode === 'bulk' ? ` · ${fill(t('crtAttendees'), { n: evt.katilimciSayisi })}` : ''}
+								{evt.title}
+								{issueMode === 'bulk' ? ` · ${fill(t('crtAttendees'), { n: evt.participantCount })}` : ''}
 							</option>
 						))}
 				</select>

@@ -40,8 +40,8 @@ export function KanbanCard({
 	onStep,
 }: KanbanCardProps) {
 	const { t } = useI18n();
-	const prio = priorityMeta(task.oncelik);
-	const due = dueStatus(task.teslimTarihi, task.status, now);
+	const prio = priorityMeta(task.priority);
+	const due = dueStatus(task.dueDate, task.status, now);
 
 	const menuItems = useMemo<MenuItem[]>(() => {
 		const items: MenuItem[] = [
@@ -56,7 +56,7 @@ export function KanbanCard({
 				label: t('ctxTeamsCopyTitle'),
 				icon: <Copy size={13} />,
 				action: () => {
-					void copyToClipboard(task.baslik);
+					void copyToClipboard(task.title);
 				},
 			},
 		];
@@ -99,7 +99,7 @@ export function KanbanCard({
 			draggable={canWork}
 			tabIndex={0}
 			role="button"
-			aria-label={task.baslik}
+			aria-label={task.title}
 			{...contextMenuProps}
 			onDragStart={(e) => onDragStart(e, task.id)}
 			onDragEnd={onDragEnd}
@@ -115,35 +115,35 @@ export function KanbanCard({
 				}
 			}}
 		>
-			{(task.etiketler?.length ?? 0) > 0 && (
+			{(task.tags?.length ?? 0) > 0 && (
 				<div className={styles.labels}>
-					{task.etiketler.map((l) => (
+					{task.tags.map((l) => (
 						<span key={l} className={styles.label} style={{ '--label-hue': labelHue(l) } as React.CSSProperties}>
 							#{l}
 						</span>
 					))}
 				</div>
 			)}
-			<p className={styles.cardTitle}>{task.baslik}</p>
-			{task.aciklama && <p className={styles.cardDesc}>{task.aciklama}</p>}
+			<p className={styles.cardTitle}>{task.title}</p>
+			{task.description && <p className={styles.cardDesc}>{task.description}</p>}
 			<div className={styles.cardFooter}>
 				<span className={`${styles.badge} ${styles.prioBadge}`}>{t(prio.key)}</span>
-				{due && task.teslimTarihi && (
-					<span className={`${styles.badge} ${styles[`due_${due}`]}`} title={new Date(task.teslimTarihi).toLocaleString()}>
+				{due && task.dueDate && (
+					<span className={`${styles.badge} ${styles[`due_${due}`]}`} title={new Date(task.dueDate).toLocaleString()}>
 						<Clock size={11} />
-						{dueText(due, task.teslimTarihi)}
+						{dueText(due, task.dueDate)}
 					</span>
 				)}
-				{(task.maddeSayisi ?? 0) > 0 && (
+				{(task.itemCount ?? 0) > 0 && (
 					<span className={styles.metaItem} title={t('kbChecklist')}>
 						<CheckSquare size={12} />
-						{task.tamamMaddeSayisi}/{task.maddeSayisi}
+						{task.doneItemCount}/{task.itemCount}
 					</span>
 				)}
-				{(task.yorumSayisi ?? 0) > 0 && (
+				{(task.commentCount ?? 0) > 0 && (
 					<span className={styles.metaItem} title={t('kbComments')}>
 						<MessageSquare size={12} />
-						{task.yorumSayisi}
+						{task.commentCount}
 					</span>
 				)}
 				{canWork && (
@@ -173,10 +173,10 @@ export function KanbanCard({
 					</span>
 				)}
 				<span
-					className={`${ui.avatar} ${task.atananUyeId ? '' : styles.avatarEmpty}`}
-					title={task.atananAdSoyad || t('kbUnassigned')}
+					className={`${ui.avatar} ${task.assigneeMemberId ? '' : styles.avatarEmpty}`}
+					title={task.assigneeNameSurname || t('kbUnassigned')}
 				>
-					{task.atananUyeId ? initials(task.atananAdSoyad) : '?'}
+					{task.assigneeMemberId ? initials(task.assigneeNameSurname) : '?'}
 				</span>
 			</div>
 		</article>

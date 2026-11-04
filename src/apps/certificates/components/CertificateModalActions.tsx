@@ -12,10 +12,10 @@ import type { Certificate } from '../types';
 interface CertificateModalActionsProps {
 	cert: Certificate;
 	recipient: string;
-	kulup: CommunityProfile | null;
+	club: CommunityProfile | null;
 	copied: boolean;
-	verifyUrl: (kod: string) => string;
-	onCopyVerification: (kod: string) => void;
+	verifyUrl: (code: string) => string;
+	onCopyVerification: (code: string) => void;
 	onAddToLinkedIn: (cert: Certificate) => void;
 	onError: (err: string) => void;
 }
@@ -23,7 +23,7 @@ interface CertificateModalActionsProps {
 export function CertificateModalActions({
 	cert,
 	recipient,
-	kulup,
+	club,
 	copied,
 	verifyUrl,
 	onCopyVerification,
@@ -34,23 +34,23 @@ export function CertificateModalActions({
 	const { playSystemSound } = useSound();
 
 	const handleDownloadPdf = async () => {
-		if (!kulup) return;
+		if (!club) return;
 		playSystemSound();
 		try {
-			const cat = inferCertificateCategory(cert.baslik, cert.kategori);
+			const cat = inferCertificateCategory(cert.title, cert.category);
 
 			await generateCertificatePDF({
-				kullaniciAdSoyad: recipient,
-				baslik: cert.baslik,
+				userNameSurname: recipient,
+				title: cert.title,
 				verificationCode: cert.verificationCode,
-				verilisTarihi: cert.verilisTarihi,
-				universite: kulup.universite,
-				kulupAdi: kulup.kulupAdi,
-				imzalar: kulup.imzalar,
-				dogrulamaUrl: verifyUrl(cert.verificationCode),
+				issuanceDate: cert.issuanceDate,
+				university: club.university,
+				clubName: club.clubName,
+				signatures: club.signatures,
+				verificationUrl: verifyUrl(cert.verificationCode),
 				category: cat,
-				lang: (cert.dil === 'en' ? 'en' : 'tr'),
-				customContext: cert.aciklama || undefined,
+				lang: (cert.language === 'en' ? 'en' : 'tr'),
+				customContext: cert.description || undefined,
 			});
 		} catch {
 			onError(t('crtPdfFailed'));
@@ -60,7 +60,7 @@ export function CertificateModalActions({
 	return (
 		<div style={{ marginTop: '28px', display: 'flex', justifyContent: 'center', gap: '12px' }}>
 			<button
-				disabled={!kulup}
+				disabled={!club}
 				onClick={handleDownloadPdf}
 				style={{
 					display: 'inline-flex',

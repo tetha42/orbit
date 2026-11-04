@@ -68,7 +68,7 @@ export async function getPublicIdentity(): Promise<PublicIdentity> {
 		]
 	);
 	const map = Object.fromEntries(res.rows.map((row) => [String(row.key), String(row.value)]));
-	const siteName = map.kulup_adi?.trim() || 'Orbit Community';
+	const siteName = map.club_Name?.trim() || 'Orbit Community';
 	const storedIcon = map.site_icon?.trim() || null;
 	const iconName = customImageNameFromUrl(storedIcon);
 	const iconUrl =
@@ -89,7 +89,7 @@ export async function getPublicIdentity(): Promise<PublicIdentity> {
 		descriptionEn:
 			map.site_description_en?.trim() ||
 			'Self-hosted community operating system engineered by tetha42.',
-		domain: map.kulup_domain?.trim() || 'orbit.local',
+		domain: map.club_domain?.trim() || 'orbit.local',
 		iconUrl,
 		brandVersion: storedBrandVersion || iconVersionFromUrl || 'default',
 	};

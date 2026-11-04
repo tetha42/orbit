@@ -29,14 +29,14 @@ export function useAuthFlow() {
 		fetch('/api/setup', { cache: 'no-store' })
 			.then((res) => (res.ok ? (res.json() as Promise<SetupResponse>) : null))
 			.then((data) => {
-				if (!cancelled && data && typeof data.hazir === 'boolean') setSetup(data);
+				if (!cancelled && data && typeof data.ready === 'boolean') setSetup(data);
 			})
 			.catch(() => {});
 		return () => {
 			cancelled = true;
 		};
 	}, []);
-	const setupIncomplete = setup?.hazir === false;
+	const setupIncomplete = setup?.ready === false;
 
 	const clearFeedback = useCallback(() => {
 		setErrorMessage(null);

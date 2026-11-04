@@ -19,9 +19,9 @@ import { useKanbanDnD } from '../hooks/useKanbanDnD';
 export interface KanbanTeam {
 	id: string;
 	leadId: string;
-	liderAdSoyad: string;
+	leaderNameSurname: string;
 	uyeler: TeamMember[];
-	gorevler: TeamTask[];
+	tasks: TeamTask[];
 }
 
 interface Props {
@@ -39,9 +39,9 @@ export type Notify = (text: string, tone?: 'success' | 'error') => void;
 export function KanbanBoard({ team, currentUserId, isManager, mutateTasks, refetch, openTaskId, setOpenTaskId }: Props) {
 	const { t, language } = useI18n();
 	const { playSystemSound } = useSound();
-	const tasks = useMemo(() => team.gorevler ?? [], [team.gorevler]);
+	const tasks = useMemo(() => team.tasks ?? [], [team.tasks]);
 	const canManage = isManager || team.leadId === currentUserId;
-	const canWork = (task: TeamTask) => canManage || task.atananUyeId === currentUserId;
+	const canWork = (task: TeamTask) => canManage || task.assigneeMemberId === currentUserId;
 
 	const [query, setQuery] = useState('');
 	const [assignee, setAssignee] = useState<AssigneeFilter>('all');
@@ -62,15 +62,15 @@ export function KanbanBoard({ team, currentUserId, isManager, mutateTasks, refet
 
 	const members = useMemo(() => {
 		const active = (team.uyeler ?? []).filter((u) => u.status === 'aktif');
-		const list = active.map((u) => ({ id: u.userId, name: u.kullaniciAdSoyad, role: u.takimRolu }));
+		const list = active.map((u) => ({ id: u.userId, name: u.userNameSurname, role: u.teamRole }));
 		if (team.leadId && !list.some((m) => m.id === team.leadId)) {
-			list.unshift({ id: team.leadId, name: team.liderAdSoyad, role: '' });
+			list.unshift({ id: team.leadId, name: team.leaderNameSurname, role: '' });
 		}
 		return list;
-	}, [team.uyeler, team.leadId, team.liderAdSoyad]);
+	}, [team.uyeler, team.leadId, team.leaderNameSurname]);
 
 	const allLabels = useMemo(
-		() => [...new Set(tasks.flatMap((g) => g.etiketler ?? []))].sort((a, b) => a.localeCompare(b, 'tr')),
+		() => [...new Set(tasks.flatMap((g) => g.tags ?? []))].sort((a, b) => a.localeCompare(b, 'tr')),
 		[tasks]
 	);
 
@@ -79,11 +79,11 @@ export function KanbanBoard({ team, currentUserId, isManager, mutateTasks, refet
 	const visible = useMemo(() => {
 		const q = foldTr(query.trim());
 		return tasks.filter((g) => {
-			if (q && !foldTr(g.baslik).includes(q) && !foldTr(g.aciklama ?? '').includes(q)) return false;
-			if (assignee === 'mine' && g.atananUyeId !== currentUserId) return false;
-			if (assignee === 'pool' && g.atananUyeId) return false;
-			if (priority && g.oncelik !== priority) return false;
-			if (label && !(g.etiketler ?? []).includes(label)) return false;
+			if (q && !foldTr(g.title).includes(q) && !foldTr(g.description ?? '').includes(q)) return false;
+			if (assignee === 'mine' && g.assigneeMemberId !== currentUserId) return false;
+			if (assignee === 'pool' && g.assigneeMemberId) return false;
+			if (priority && g.priority !== priority) return false;
+			if (label && !(g.tags ?? []).includes(label)) return false;
 			return true;
 		});
 	}, [tasks, query, assignee, currentUserId, priority, label]);
@@ -99,8 +99,8 @@ export function KanbanBoard({ team, currentUserId, isManager, mutateTasks, refet
 	const stats = useMemo(() => {
 		const total = tasks.length;
 		const done = tasks.filter((g) => g.status === 'tamamlandi').length;
-		const overdue = tasks.filter((g) => dueStatus(g.teslimTarihi, g.status, now) === 'gecikti').length;
-		const mine = tasks.filter((g) => g.atananUyeId === currentUserId && g.status !== 'tamamlandi').length;
+		const overdue = tasks.filter((g) => dueStatus(g.dueDate, g.status, now) === 'gecikti').length;
+		const mine = tasks.filter((g) => g.assigneeMemberId === currentUserId && g.status !== 'tamamlandi').length;
 		return { total, done, overdue, mine };
 	}, [tasks, currentUserId, now]);
 

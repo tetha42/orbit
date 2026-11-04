@@ -44,11 +44,11 @@ function mapMeeting(row: Record<string, unknown>): CommitteeMeeting {
 export async function listCommittees(): Promise<Team[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT t.id, t.name AS "ad", t.slug, t.description AS "aciklama", t.category AS "kategori", t.lead_id AS "leadId",
-		        t.capacity AS "kontenjan", t.repo_url AS "repoUrl", t.status, t.join_policy AS "katilimTuru",
-		        t.type, t.quorum, t.created_at AS "olusturma",
-		        k.first_name || ' ' || k.last_name AS "liderAdSoyad",
-		        (SELECT COUNT(*) FROM team_members tu WHERE tu.team_id = t.id AND tu.status = 'aktif')::int AS "aktifUyeSayisi"
+		`SELECT t.id, t.name AS "name", t.slug, t.description AS "description", t.category AS "category", t.lead_id AS "leadId",
+		        t.capacity AS "capacity", t.repo_url AS "repoUrl", t.status, t.join_policy AS "participationType",
+		        t.type, t.quorum, t.created_at AS "creation",
+		        k.first_name || ' ' || k.last_name AS "leaderNameSurname",
+		        (SELECT COUNT(*) FROM team_members tu WHERE tu.team_id = t.id AND tu.status = 'aktif')::int AS "activeMemberCount"
 		 FROM teams t LEFT JOIN users k ON k.id = t.lead_id
 		 WHERE t.type = 'committee'
 		 ORDER BY t.created_at DESC`
@@ -61,10 +61,10 @@ export async function getCommitteeDetail(id: string): Promise<CommitteeDetail | 
 	if (!committee || committee.type !== 'committee') return null;
 	const [members, meetings, decisions] = await Promise.all([
 		getPgPool().query(
-			`SELECT tu.id, tu.team_id AS "teamId", tu.user_id AS "userId", tu.role_title AS "takimRolu",
-			        tu.status, tu.application_note AS "basvuruNotu", tu.joined_at AS "katilimTarihi",
-			        k.first_name || ' ' || k.last_name AS "kullaniciAdSoyad",
-			        k.department AS "kullaniciBolum", k.avatar_url AS "kullaniciProfilFoto",
+			`SELECT tu.id, tu.team_id AS "teamId", tu.user_id AS "userId", tu.role_title AS "teamRole",
+			        tu.status, tu.application_note AS "applicationNote", tu.joined_at AS "participationDate",
+			        k.first_name || ' ' || k.last_name AS "userNameSurname",
+			        k.department AS "userDepartment", k.avatar_url AS "userProfilePhoto",
 			        tu.voting_right AS "votingRight", tu.term_start AS "termStart", tu.term_end AS "termEnd"
 			 FROM team_members tu JOIN users k ON tu.user_id = k.id
 			 WHERE tu.team_id = $1 AND tu.status = 'aktif'
@@ -77,9 +77,9 @@ export async function getCommitteeDetail(id: string): Promise<CommitteeDetail | 
 			[id]
 		),
 		getPgPool().query(
-			`SELECT d.id, d.reference_no AS "kararNo", d.record_type AS "belgeTuru", d.title AS "baslik", d.date,
-			        d.agenda AS "gundem", d.content AS "icerik", d.is_public AS "kamuyaAcikMi", d.is_locked AS "kilitliMi",
-			        d.created_by AS "olusturanId", d.created_at AS "olusturma",
+			`SELECT d.id, d.reference_no AS "decisionNo", d.record_type AS "documentType", d.title AS "title", d.date,
+			        d.agenda AS "agenda", d.content AS "content", d.is_public AS "publicOpenMi", d.is_locked AS "lockedMi",
+			        d.created_by AS "creatorId", d.created_at AS "creation",
 			        d.body_id, d.body_id AS "bodyId",
 			        d.decision_type, d.decision_type AS "decisionType",
 			        d.quorum_met, d.quorum_met AS "quorumMet",
@@ -87,7 +87,7 @@ export async function getCommitteeDetail(id: string): Promise<CommitteeDetail | 
 			        d.votes_against, d.votes_against AS "votesAgainst",
 			        d.votes_abstain, d.votes_abstain AS "votesAbstain",
 			        d.published_at, d.published_at AS "publishedAt",
-			        b.name AS "bodyAd", k.first_name || ' ' || k.last_name AS "olusturanAdSoyad"
+			        b.name AS "bodyName", k.first_name || ' ' || k.last_name AS "creatorNameSurname"
 			 FROM decisions d
 			 LEFT JOIN teams b ON b.id = d.body_id
 			 LEFT JOIN users k ON k.id = d.created_by
@@ -101,24 +101,24 @@ export async function getCommitteeDetail(id: string): Promise<CommitteeDetail | 
 		meetings: meetings.rows.map(mapMeeting),
 		decisions: decisions.rows.map((row) => ({
 			...row,
-			kamuyaAcikMi: Number(row.kamuyaAcikMi),
-			kilitliMi: Number(row.kilitliMi),
+			publicOpenMi: Number(row.publicOpenMi),
+			lockedMi: Number(row.lockedMi),
 		})) as Decision[],
 	};
 }
 
 export async function createCommittee(input: {
-	ad: string;
-	kategori: string;
-	aciklama: string;
+	name: string;
+	category: string;
+	description: string;
 	quorum?: number;
 	leadId?: string;
-	kontenjan?: number;
+	capacity?: number;
 }): Promise<Team> {
 	return createTeam({
 		...input,
 		type: 'committee',
-		katilimTuru: 'onayli',
+		participationType: 'onayli',
 	});
 }
 

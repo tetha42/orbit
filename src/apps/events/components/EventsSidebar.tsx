@@ -90,21 +90,21 @@ function EventSidebarItem({
 				<div className={styles.dateDay}>{dayStr}</div>
 			</span>
 			<span className={styles.itemBody}>
-				<span className={styles.itemTitle}>{e.baslik}</span>
+				<span className={styles.itemTitle}>{e.title}</span>
 				<span className={styles.itemMeta}>
-					{new Date(e.baslangic).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })} · {e.konum}
+					{new Date(e.start).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })} · {e.location}
 				</span>
 				<span className={styles.badges}>
 					<span className={`${styles.badge} ${styles.b_type}`}>{t(meta.key)}</span>
 					{isLive(e, now) && <span className={`${styles.badge} ${styles.b_live}`}>{t('evLive')}</span>}
 					{e.status === 'taslak' && <span className={`${styles.badge} ${styles.b_draft}`}>{t('evDraft')}</span>}
 					{e.status === 'iptal' && <span className={`${styles.badge} ${styles.b_cancelled}`}>{t('evCancelled')}</span>}
-					{e.benimYoklamam ? (
+					{e.myMyAttendance ? (
 						<span className={`${styles.badge} ${styles.b_attended}`}>
 							<CheckCircle2 size={10} /> {t('evAttended')}
 						</span>
 					) : (
-						e.benimKaydim && <span className={`${styles.badge} ${styles.b_registered}`}>{t('evRegistered')}</span>
+						e.myMyRecord && <span className={`${styles.badge} ${styles.b_registered}`}>{t('evRegistered')}</span>
 					)}
 				</span>
 			</span>
@@ -183,15 +183,15 @@ export function EventsSidebar({
 				)}
 				{data !== null && visible.length === 0 && <div className={styles.empty}>{emptyText}</div>}
 				{visible.map((e) => {
-					const meta = typeMeta(e.tur);
+					const meta = typeMeta(e.typeValue);
 					return (
 						<EventSidebarItem
 							key={e.id}
 							e={e}
 							isSelected={selectedId === e.id}
 							meta={meta}
-							monthStr={month(e.baslangic)}
-							dayStr={day(e.baslangic)}
+							monthStr={month(e.start)}
+							dayStr={day(e.start)}
 							locale={locale}
 							now={now}
 							t={t}

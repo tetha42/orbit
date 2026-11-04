@@ -7,7 +7,7 @@ import { AuditHistory } from '../Roles/AuditHistory';
 
 export function AuditCenterPanel() {
 	const { t } = useI18n();
-	const [roles, setRoles] = useState<{ id: string; ad: string }[]>([]);
+	const [roles, setRoles] = useState<{ id: string; name: string }[]>([]);
 
 	useEffect(() => {
 		let cancelled = false;

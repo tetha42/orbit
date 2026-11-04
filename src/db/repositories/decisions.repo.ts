@@ -18,9 +18,9 @@ const DECISION_SELECT_COLUMNS = `
 export async function getDecisions(): Promise<Decision[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(`
-		SELECT t.id, t.reference_no AS "kararNo", t.record_type AS "belgeTuru", t.title AS "baslik", t.date,
-		       t.agenda AS "gundem", t.content AS "icerik", t.is_public AS "kamuyaAcikMi", t.is_locked AS "kilitliMi",
-		       t.created_by AS "olusturanId", t.created_at AS "olusturma",
+		SELECT t.id, t.reference_no AS "decisionNo", t.record_type AS "documentType", t.title AS "title", t.date,
+		       t.agenda AS "agenda", t.content AS "content", t.is_public AS "publicOpenMi", t.is_locked AS "lockedMi",
+		       t.created_by AS "creatorId", t.created_at AS "creation",
 		       t.body_id, t.body_id AS "bodyId",
 		       t.decision_type, t.decision_type AS "decisionType",
 		       t.quorum_met, t.quorum_met AS "quorumMet",
@@ -28,8 +28,8 @@ export async function getDecisions(): Promise<Decision[]> {
 		       t.votes_against, t.votes_against AS "votesAgainst",
 		       t.votes_abstain, t.votes_abstain AS "votesAbstain",
 		       t.published_at, t.published_at AS "publishedAt",
-		       k.first_name || ' ' || k.last_name as "olusturanAdSoyad",
-		       b.name AS "bodyAd"
+		       k.first_name || ' ' || k.last_name as "creatorNameSurname",
+		       b.name AS "bodyName"
 		FROM decisions t
 		LEFT JOIN users k ON t.created_by = k.id
 		LEFT JOIN teams b ON b.id = t.body_id
@@ -38,19 +38,19 @@ export async function getDecisions(): Promise<Decision[]> {
 	`);
 	return res.rows.map((r) => ({
 		...r,
-		kamuyaAcikMi: Number(r.kamuyaAcikMi),
-		kilitliMi: Number(r.kilitliMi),
+		publicOpenMi: Number(r.publicOpenMi),
+		lockedMi: Number(r.lockedMi),
 	}));
 }
 
 export async function createDecision(params: {
-	baslik: string;
-	gundem: string;
-	icerik: string;
-	olusturanId: string;
-	belgeTuru?: string;
+	title: string;
+	agenda: string;
+	content: string;
+	creatorId: string;
+	documentType?: string;
 	date?: number;
-	kamuyaAcikMi?: boolean;
+	publicOpenMi?: boolean;
 	bodyId?: string | null;
 	decisionType?: string;
 	quorumMet?: boolean;
@@ -74,16 +74,16 @@ export async function createDecision(params: {
 		);
 		const decision: Decision = {
 			id: randomUUID(),
-			kararNo: Number(maxRow.rows[0].maxNo) + 1,
-			belgeTuru: params.belgeTuru || 'karar',
-			baslik: params.baslik.trim(),
+			decisionNo: Number(maxRow.rows[0].maxNo) + 1,
+			documentType: params.documentType || 'karar',
+			title: params.title.trim(),
 			date,
-			gundem: params.gundem.trim(),
-			icerik: params.icerik.trim(),
-			kamuyaAcikMi: params.kamuyaAcikMi !== false ? 1 : 0,
-			kilitliMi: 0,
-			olusturanId: params.olusturanId,
-			olusturma: now,
+			agenda: params.agenda.trim(),
+			content: params.content.trim(),
+			publicOpenMi: params.publicOpenMi !== false ? 1 : 0,
+			lockedMi: 0,
+			creatorId: params.creatorId,
+			creation: now,
 			bodyId: params.bodyId ?? null,
 			decisionType: params.decisionType || 'resolution',
 			quorumMet: params.quorumMet ? 1 : 0,
@@ -99,14 +99,14 @@ export async function createDecision(params: {
 			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0, $9, $10, $10, $11, $12, $13, $14, $15, $16, $17)`,
 			[
 				decision.id,
-				decision.kararNo,
-				decision.belgeTuru,
-				decision.baslik,
+				decision.decisionNo,
+				decision.documentType,
+				decision.title,
 				decision.date,
-				decision.gundem,
-				decision.icerik,
-				decision.kamuyaAcikMi,
-				decision.olusturanId,
+				decision.agenda,
+				decision.content,
+				decision.publicOpenMi,
+				decision.creatorId,
 				now,
 				decision.bodyId,
 				decision.decisionType,
@@ -125,14 +125,14 @@ export async function getDecisionById(id: string): Promise<Decision | null> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(`SELECT ${DECISION_SELECT_COLUMNS} FROM decisions WHERE id = $1`, [id]);
 	const r = res.rows[0];
-	return r ? { ...r, kamuyaAcikMi: Number(r.kamuyaAcikMi), kilitliMi: Number(r.kilitliMi) } : null;
+	return r ? { ...r, publicOpenMi: Number(r.publicOpenMi), lockedMi: Number(r.lockedMi) } : null;
 }
 
-export async function getDecisionByNumber(kararNo: number): Promise<Decision | null> {
+export async function getDecisionByNumber(decisionNo: number): Promise<Decision | null> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query(`SELECT ${DECISION_SELECT_COLUMNS} FROM decisions WHERE reference_no = $1`, [kararNo]);
+	const res = await getPgPool().query(`SELECT ${DECISION_SELECT_COLUMNS} FROM decisions WHERE reference_no = $1`, [decisionNo]);
 	const r = res.rows[0];
-	return r ? { ...r, kamuyaAcikMi: Number(r.kamuyaAcikMi), kilitliMi: Number(r.kilitliMi) } : null;
+	return r ? { ...r, publicOpenMi: Number(r.publicOpenMi), lockedMi: Number(r.lockedMi) } : null;
 }
 
 /**
@@ -142,11 +142,11 @@ export async function getDecisionByNumber(kararNo: number): Promise<Decision | n
 export async function updateDecision(
 	id: string,
 	patch: {
-		baslik?: string;
-		gundem?: string;
-		icerik?: string;
-		belgeTuru?: string;
-		kamuyaAcikMi?: boolean;
+		title?: string;
+		agenda?: string;
+		content?: string;
+		documentType?: string;
+		publicOpenMi?: boolean;
 		bodyId?: string | null;
 		decisionType?: string;
 		quorumMet?: boolean;
@@ -163,11 +163,11 @@ export async function updateDecision(
 		values.push(value);
 		sets.push(`${column} = $${values.length}`);
 	};
-	if (patch.baslik !== undefined) set('title', patch.baslik);
-	if (patch.gundem !== undefined) set('agenda', patch.gundem);
-	if (patch.icerik !== undefined) set('content', patch.icerik);
-	if (patch.belgeTuru !== undefined) set('record_type', patch.belgeTuru);
-	if (patch.kamuyaAcikMi !== undefined) set('is_public', patch.kamuyaAcikMi ? 1 : 0);
+	if (patch.title !== undefined) set('title', patch.title);
+	if (patch.agenda !== undefined) set('agenda', patch.agenda);
+	if (patch.content !== undefined) set('content', patch.content);
+	if (patch.documentType !== undefined) set('record_type', patch.documentType);
+	if (patch.publicOpenMi !== undefined) set('is_public', patch.publicOpenMi ? 1 : 0);
 	if (patch.bodyId !== undefined) set('body_id', patch.bodyId);
 	if (patch.decisionType !== undefined) set('decision_type', patch.decisionType);
 	if (patch.quorumMet !== undefined) set('quorum_met', patch.quorumMet ? 1 : 0);

@@ -3,7 +3,7 @@ import { jsonSuccess, jsonError } from '@/server/apiResponse';
 import {
 	InsufficientFundsError,
 	createBudgetRecord,
-	addOdenekAktarimi,
+	addAllowanceTransfer,
 	deleteBudgetRecord,
 	getBudgetRecords,
 	getBudgetRecordById,
@@ -25,7 +25,7 @@ function parseVault(value: unknown): string | null {
 /** Receipts are private uploads; anything else in this field could be a hostile link. */
 const RECEIPT_URL = /^\/api\/uploads\/[A-Za-z0-9._-]{1,120}$/;
 
-const formatTL = (kurus: number) => `${(kurus / 100).toFixed(2)} ₺`;
+const formatTL = (minor: number) => `${(minor / 100).toFixed(2)} ₺`;
 
 const bad = (error: string, status = 400, code?: string) => jsonError(error, status, code);
 
@@ -43,23 +43,23 @@ async function transfer(request: Request, body: Record<string, unknown>) {
 	if (!access.authorized) return access.response;
 	if (!access.isManagement) return bad('Kasalar arası aktarım Kasa yönetim yetkisi gerektirir.', 403);
 
-	const kaynak = parseVault(body.kaynak ?? body.sourceTeamId);
-	const target = parseVault(body.hedef ?? body.targetTeamId);
-	if (kaynak === target) return bad('Kaynak ve hedef kasa aynı olamaz.');
-	for (const id of [kaynak, target]) {
+	const source = parseVault(body.source ?? body.sourceTeamId);
+	const target = parseVault(body.target ?? body.targetTeamId);
+	if (source === target) return bad('Kaynak ve hedef kasa aynı olamaz.');
+	for (const id of [source, target]) {
 		if (id && !(await getTeamById(id))) return bad('Project bulunamadı.', 404);
 	}
 	const amountCents = Number(body.amountMinor);
 	if (!Number.isInteger(amountCents) || amountCents < 1 || amountCents > MAX_AMOUNT_CENTS) {
 		return bad(`Tutar 0,01 ₺ ile ${formatTL(MAX_AMOUNT_CENTS)} arasında olmalıdır.`);
 	}
-	const description = typeof body.aciklama === 'string' ? body.aciklama.trim() : '';
+	const description = typeof body.description === 'string' ? body.description.trim() : '';
 	if (description.length < 3 || description.length > 500) return bad('Açıklama 3-500 karakter olmalıdır.');
 	const date = parseDate(body.date);
 	if (!date.ok) return bad(date.error);
 
 	try {
-		const result = await addOdenekAktarimi({ sourceTeamId: kaynak, targetTeamId: target, amountMinor: amountCents, aciklama: description, kaydedenId: access.user.id, date: date.date });
+		const result = await addAllowanceTransfer({ sourceTeamId: source, targetTeamId: target, amountMinor: amountCents, description: description, recorderId: access.user.id, date: date.date });
 		await publishEventQuiet(getPgPool(), { k: 'budget_updated' });
 		return NextResponse.json(result, { status: 201 });
 	} catch (error) {
@@ -82,11 +82,11 @@ export async function GET(request: Request) {
 	if (!access.authorized) return access.response;
 
 	try {
-		let ad = 'Genel Kasa';
+		let name = 'Genel Kasa';
 		if (teamId) {
 			const team = await getTeamById(teamId);
 			if (!team) return NextResponse.json({ error: 'Project bulunamadı.' }, { status: 404 });
-			ad = team.ad;
+			name = team.name;
 		}
 
 		const records = await getBudgetRecords(teamId);
@@ -94,22 +94,22 @@ export async function GET(request: Request) {
 		let totalIncomeMinor = 0;
 		let totalExpenseMinor = 0;
 		for (const r of records) {
-			if (r.tur === 'gelir') totalIncomeMinor += r.amountMinor;
+			if (r.typeValue === 'gelir') totalIncomeMinor += r.amountMinor;
 			else totalExpenseMinor += r.amountMinor;
 		}
 		const netBalanceCents = totalIncomeMinor - totalExpenseMinor;
 
 		return NextResponse.json({
-			kasa: { teamId, ad, kind: teamId ? 'proje' : 'genel' },
+			vault: { teamId, name, kind: teamId ? 'proje' : 'genel' },
 			// What the caller may do here — the panel hides what the server would refuse.
-			izin: { yaz: access.erisim === 'yaz' && access.user.status !== 'mezun', yonet: access.isManagement },
-			kayitlar: records,
+			permission: { yaz: access.access === 'yaz' && access.user.status !== 'mezun', yonet: access.isManagement },
+			records: records,
 			// Amounts travel as integer kuruş only; each client formats them for its language.
-			ozet: {
+			summary: {
 				totalIncomeMinor,
 				totalExpenseMinor,
 				netBalanceMinor: netBalanceCents,
-				kayitSayisi: records.length,
+				recordCount: records.length,
 			},
 		});
 	} catch (error) {
@@ -127,21 +127,21 @@ export const POST = withAudit(async function POST(request: Request) {
 		const access = await verifyVaultAccess(request, teamId, 'yaz');
 		if (!access.authorized) return access.response;
 
-		const { tur, kategori, fisFotoUrl } = body;
-		const description = typeof body.aciklama === 'string' ? body.aciklama.trim() : '';
+		const { typeValue, category, receiptPhotoUrl } = body;
+		const description = typeof body.description === 'string' ? body.description.trim() : '';
 		const amountCents = Number(body.amountMinor);
 
-		if (!tur || !kategori || !description) {
+		if (!typeValue || !category || !description) {
 			return NextResponse.json({ error: 'Tür, kategori, tutar ve açıklama zorunludur.' }, { status: 400 });
 		}
 
-		if (tur !== 'gelir' && tur !== 'gider') {
+		if (typeValue !== 'gelir' && typeValue !== 'gider') {
 			return NextResponse.json({ error: "Tür 'gelir' veya 'gider' olmalıdır." }, { status: 400 });
 		}
 
 		// Reject unknown categories instead of storing free text the summaries
 		// cannot group — the form offers a fixed set for exactly that reason.
-		const resolvedCategory = normalizeBudgetCategory(kategori);
+		const resolvedCategory = normalizeBudgetCategory(category);
 		if (!resolvedCategory) {
 			return NextResponse.json(
 				{ error: `Geçersiz kategori. Beklenen: ${BUDGET_CATEGORIES.join(', ')}` },
@@ -162,7 +162,7 @@ export const POST = withAudit(async function POST(request: Request) {
 			return NextResponse.json({ error: 'Açıklama en fazla 500 karakter olabilir.' }, { status: 400 });
 		}
 
-		if (fisFotoUrl && !RECEIPT_URL.test(String(fisFotoUrl))) {
+		if (receiptPhotoUrl && !RECEIPT_URL.test(String(receiptPhotoUrl))) {
 			return NextResponse.json({ error: 'Geçersiz fiş dosyası.' }, { status: 400 });
 		}
 
@@ -175,12 +175,12 @@ export const POST = withAudit(async function POST(request: Request) {
 
 		try {
 			const result = await createBudgetRecord({
-				tur,
-				kategori: resolvedCategory,
+				typeValue,
+				category: resolvedCategory,
 				amountMinor: amountCents,
-				aciklama: description,
-				fisFotoUrl: fisFotoUrl || undefined,
-				kaydedenId: access.user.id,
+				description: description,
+				receiptPhotoUrl: receiptPhotoUrl || undefined,
+				recorderId: access.user.id,
 				teamId,
 				date: date.date,
 			});
@@ -217,30 +217,30 @@ export const PATCH = withAudit(async function PATCH(request: Request) {
 		if (!access.authorized) return access.response;
 		if (!registration) return bad('Kayıt bulunamadı.', 404);
 		// An allocation also touches the general kasa, which only Kasa managers may change.
-		if (registration.aktarimId && !access.isManagement) return bad('Ödenek aktarımlarını yalnızca Kasa yöneticileri değiştirebilir.', 403);
-		if (body.amountMinor !== undefined || body.tur !== undefined) {
+		if (registration.transferId && !access.isManagement) return bad('Ödenek aktarımlarını yalnızca Kasa yöneticileri değiştirebilir.', 403);
+		if (body.amountMinor !== undefined || body.typeValue !== undefined) {
 			return bad('Tutar ve tür değiştirilemez; kaydı silip doğrusunu girin.');
 		}
 
-		const changes: { aciklama?: string; kategori?: (typeof BUDGET_CATEGORIES)[number]; date?: number; fisFotoUrl?: string | null } = {};
-		if (body.aciklama !== undefined) {
-			const description = typeof body.aciklama === 'string' ? body.aciklama.trim() : '';
+		const changes: { description?: string; category?: (typeof BUDGET_CATEGORIES)[number]; date?: number; receiptPhotoUrl?: string | null } = {};
+		if (body.description !== undefined) {
+			const description = typeof body.description === 'string' ? body.description.trim() : '';
 			if (!description || description.length > 500) return bad('Açıklama 1-500 karakter olmalıdır.');
-			changes.aciklama = description;
+			changes.description = description;
 		}
-		if (body.kategori !== undefined) {
-			const resolvedCategory = normalizeBudgetCategory(body.kategori);
+		if (body.category !== undefined) {
+			const resolvedCategory = normalizeBudgetCategory(body.category);
 			if (!resolvedCategory) return bad(`Geçersiz kategori. Beklenen: ${BUDGET_CATEGORIES.join(', ')}`);
-			changes.kategori = resolvedCategory;
+			changes.category = resolvedCategory;
 		}
 		if (body.date !== undefined) {
 			const date = parseDate(body.date);
 			if (!date.ok || date.date === undefined) return bad(date.error ?? 'Geçersiz date.');
 			changes.date = date.date;
 		}
-		if (body.fisFotoUrl !== undefined) {
-			if (body.fisFotoUrl !== null && !RECEIPT_URL.test(String(body.fisFotoUrl))) return bad('Geçersiz fiş dosyası.');
-			changes.fisFotoUrl = (body.fisFotoUrl as string | null) || null;
+		if (body.receiptPhotoUrl !== undefined) {
+			if (body.receiptPhotoUrl !== null && !RECEIPT_URL.test(String(body.receiptPhotoUrl))) return bad('Geçersiz fiş dosyası.');
+			changes.receiptPhotoUrl = (body.receiptPhotoUrl as string | null) || null;
 		}
 
 		const r = await updateBudgetRecord(id, changes, access.user.id);
@@ -271,7 +271,7 @@ export const DELETE = withAudit(async function DELETE(request: Request) {
 			return NextResponse.json({ error: 'Kayıt bulunamadı veya silinemedi.' }, { status: 404 });
 		}
 		// Deleting one side of an allocation deletes both, the general kasa's included.
-		if (registration.aktarimId && !access.isManagement) {
+		if (registration.transferId && !access.isManagement) {
 			return bad('Ödenek aktarımlarını yalnızca Kasa yöneticileri geri alabilir.', 403);
 		}
 

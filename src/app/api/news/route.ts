@@ -15,12 +15,12 @@ export const dynamic = 'force-dynamic';
 
 /** What a create or edit request may carry, after checking. `undefined` means "leave as it is". */
 interface NewsInput {
-	baslik?: string;
-	ozet?: string;
-	icerik?: string;
-	kategori?: string;
-	onemliMi?: boolean;
-	resimUrl?: string | null;
+	title?: string;
+	summary?: string;
+	content?: string;
+	category?: string;
+	importantMi?: boolean;
+	imageUrl?: string | null;
 	publishStatus?: NewsVisibility;
 }
 
@@ -47,35 +47,35 @@ function text(raw: unknown, label: string, max: number, required: boolean): { va
 function parseNewsInput(body: Record<string, unknown>, partial: boolean): Parsed {
 	const out: NewsInput = {};
 
-	const title = text(body.baslik, 'Başlık', NEWS_LIMITS.baslik, !partial);
+	const title = text(body.title, 'Başlık', NEWS_LIMITS.title, !partial);
 	if (title.error) return { ok: false, error: title.error };
-	if (title.value !== undefined) out.baslik = title.value;
+	if (title.value !== undefined) out.title = title.value;
 
-	const content = text(body.icerik, 'NewsItem metni', NEWS_LIMITS.icerik, !partial);
+	const content = text(body.content, 'NewsItem metni', NEWS_LIMITS.content, !partial);
 	if (content.error) return { ok: false, error: content.error };
-	if (content.value !== undefined) out.icerik = content.value;
+	if (content.value !== undefined) out.content = content.value;
 
-	const summary = text(body.ozet, 'Özet', NEWS_LIMITS.ozet, false);
+	const summary = text(body.summary, 'Özet', NEWS_LIMITS.summary, false);
 	if (summary.error) return { ok: false, error: summary.error };
-	if (summary.value) out.ozet = summary.value;
+	if (summary.value) out.summary = summary.value;
 	// A create without a summary uses the title, as the form always did.
-	else if (!partial && out.baslik) out.ozet = out.baslik.slice(0, NEWS_LIMITS.ozet);
+	else if (!partial && out.title) out.summary = out.title.slice(0, NEWS_LIMITS.summary);
 
-	if (body.kategori !== undefined) {
-		if (!isNewsCategory(body.kategori)) return { ok: false, error: 'Geçersiz kategori.' };
-		out.kategori = body.kategori;
+	if (body.category !== undefined) {
+		if (!isNewsCategory(body.category)) return { ok: false, error: 'Geçersiz kategori.' };
+		out.category = body.category;
 	} else if (!partial) {
-		out.kategori = 'genel';
+		out.category = 'genel';
 	}
 
-	if (body.onemliMi !== undefined) out.onemliMi = Boolean(body.onemliMi);
+	if (body.importantMi !== undefined) out.importantMi = Boolean(body.importantMi);
 
-	if (body.resimUrl !== undefined) {
-		const url = typeof body.resimUrl === 'string' ? body.resimUrl.trim() : '';
+	if (body.imageUrl !== undefined) {
+		const url = typeof body.imageUrl === 'string' ? body.imageUrl.trim() : '';
 		if (url && !isSafeImageUrl(url)) {
 			return { ok: false, error: 'Görsel adresi https:// ile başlamalı veya hazır şablonlardan biri olmalıdır.' };
 		}
-		out.resimUrl = url || null;
+		out.imageUrl = url || null;
 	}
 
 	if (body.publishStatus !== undefined) {
@@ -123,22 +123,22 @@ async function handlePOST(request: Request) {
 		const input = parsed.value;
 
 		const result = await createNews({
-			baslik: input.baslik!,
-			ozet: input.ozet!,
-			icerik: input.icerik!,
-			kategori: input.kategori,
-			onemliMi: input.onemliMi,
-			resimUrl: input.resimUrl ?? undefined,
+			title: input.title!,
+			summary: input.summary!,
+			content: input.content!,
+			category: input.category,
+			importantMi: input.importantMi,
+			imageUrl: input.imageUrl ?? undefined,
 			publishStatus: input.publishStatus,
-			yazarId: auth.user.id,
+			authorId: auth.user.id,
 		});
 
 		await publishEventQuiet(getPgPool(), [{ k: 'news_updated' }, ...notificationEvents()]);
 
 		return NextResponse.json({
 			...result,
-			yazarAdSoyad: `${auth.user.firstName || auth.user.ad || ''} ${auth.user.lastName || auth.user.soyad || ''}`.trim(),
-			authorName: `${auth.user.firstName || auth.user.ad || ''} ${auth.user.lastName || auth.user.soyad || ''}`.trim(),
+			authorNameSurname: `${auth.user.firstName || auth.user.name || ''} ${auth.user.lastName || auth.user.surname || ''}`.trim(),
+			authorName: `${auth.user.firstName || auth.user.name || ''} ${auth.user.lastName || auth.user.surname || ''}`.trim(),
 		});
 	} catch (error) {
 		console.error('API /api/haberler POST error:', error);

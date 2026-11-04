@@ -10,10 +10,10 @@ interface CreatePollModalProps {
 	isOpen: boolean;
 	onClose: () => void;
 	onSubmit: (pollData: {
-		soru: string;
-		secenekler: string[];
-		cokluSecim: boolean;
-		anonim: boolean;
+		question: string;
+		options: string[];
+		multipleSelection: boolean;
+		anonymous: boolean;
 		endsAt: number | null;
 	}) => Promise<boolean>;
 }
@@ -27,26 +27,26 @@ export function CreatePollModal(props: CreatePollModalProps) {
 
 function CreatePollDialog({ onClose, onSubmit }: CreatePollModalProps) {
 	const { t } = useI18n();
-	const [soru, setSoru] = useState('');
-	const [secenekler, setSecenekler] = useState<string[]>(['', '']);
-	const [cokluSecim, setCokluSecim] = useState(false);
-	const [anonim, setAnonim] = useState(true);
+	const [question, setQuestion] = useState('');
+	const [options, setOptions] = useState<string[]>(['', '']);
+	const [multipleSelection, setMultipleSelection] = useState(false);
+	const [anonymous, setAnonymous] = useState(true);
 	const [duration, setDuration] = useState<DurationOption>('none');
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
 	const handleAddOption = () => {
-		if (secenekler.length >= 10) return;
-		setSecenekler((prev) => [...prev, '']);
+		if (options.length >= 10) return;
+		setOptions((prev) => [...prev, '']);
 	};
 
 	const handleRemoveOption = (index: number) => {
-		if (secenekler.length <= 2) return;
-		setSecenekler((prev) => prev.filter((_, i) => i !== index));
+		if (options.length <= 2) return;
+		setOptions((prev) => prev.filter((_, i) => i !== index));
 	};
 
 	const handleOptionChange = (index: number, value: string) => {
-		setSecenekler((prev) => {
+		setOptions((prev) => {
 			const updated = [...prev];
 			updated[index] = value;
 			return updated;
@@ -55,14 +55,14 @@ function CreatePollDialog({ onClose, onSubmit }: CreatePollModalProps) {
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		const cleanSoru = soru.trim();
-		if (!cleanSoru) {
+		const cleanQuestion = question.trim();
+		if (!cleanQuestion) {
 			setError(t('chatPollQuestionRequired'));
 			return;
 		}
 
-		const cleanSecenekler = secenekler.map((opt) => opt.trim()).filter(Boolean);
-		if (cleanSecenekler.length < 2) {
+		const cleanOptions = options.map((opt) => opt.trim()).filter(Boolean);
+		if (cleanOptions.length < 2) {
 			setError(t('chatPollMinOptionsError'));
 			return;
 		}
@@ -79,10 +79,10 @@ function CreatePollDialog({ onClose, onSubmit }: CreatePollModalProps) {
 
 		try {
 			const ok = await onSubmit({
-				soru: cleanSoru,
-				secenekler: cleanSecenekler,
-				cokluSecim,
-				anonim,
+				question: cleanQuestion,
+				options: cleanOptions,
+				multipleSelection,
+				anonymous,
 				endsAt,
 			});
 			if (ok) {
@@ -127,8 +127,8 @@ function CreatePollDialog({ onClose, onSubmit }: CreatePollModalProps) {
 							<textarea
 								className={s.pollQuestionInput}
 								placeholder={t('chatPollQuestionPh')}
-								value={soru}
-								onChange={(e) => setSoru(e.target.value)}
+								value={question}
+								onChange={(e) => setQuestion(e.target.value)}
 								rows={2}
 								autoFocus
 							/>
@@ -138,7 +138,7 @@ function CreatePollDialog({ onClose, onSubmit }: CreatePollModalProps) {
 						<div className={s.pollFieldGroup}>
 							<label className={s.pollFieldLabel}>{t('options') || 'Seçenekler'}</label>
 							<div className={s.pollOptionsList}>
-								{secenekler.map((opt, idx) => (
+								{options.map((opt, idx) => (
 									<div key={idx} className={s.pollOptionRow}>
 										<span className={s.pollOptionBadge}>{idx + 1}</span>
 										<input
@@ -148,7 +148,7 @@ function CreatePollDialog({ onClose, onSubmit }: CreatePollModalProps) {
 											value={opt}
 											onChange={(e) => handleOptionChange(idx, e.target.value)}
 										/>
-										{secenekler.length > 2 && (
+										{options.length > 2 && (
 											<button
 												type="button"
 												className={s.pollRemoveOptionBtn}
@@ -162,7 +162,7 @@ function CreatePollDialog({ onClose, onSubmit }: CreatePollModalProps) {
 								))}
 							</div>
 
-							{secenekler.length < 10 && (
+							{options.length < 10 && (
 								<button
 									type="button"
 									className={s.pollAddOptionBtn}
@@ -187,8 +187,8 @@ function CreatePollDialog({ onClose, onSubmit }: CreatePollModalProps) {
 								<input
 									type="checkbox"
 									className={s.pollToggle}
-									checked={anonim}
-									onChange={(e) => setAnonim(e.target.checked)}
+									checked={anonymous}
+									onChange={(e) => setAnonymous(e.target.checked)}
 								/>
 							</label>
 
@@ -203,8 +203,8 @@ function CreatePollDialog({ onClose, onSubmit }: CreatePollModalProps) {
 								<input
 									type="checkbox"
 									className={s.pollToggle}
-									checked={cokluSecim}
-									onChange={(e) => setCokluSecim(e.target.checked)}
+									checked={multipleSelection}
+									onChange={(e) => setMultipleSelection(e.target.checked)}
 								/>
 							</label>
 
@@ -253,7 +253,7 @@ function CreatePollDialog({ onClose, onSubmit }: CreatePollModalProps) {
 						<button
 							type="submit"
 							className={s.primaryActionBtn}
-							disabled={submitting || !soru.trim()}
+							disabled={submitting || !question.trim()}
 						>
 							<BarChart2 size={16} />
 							<span>{submitting ? t('chatPollSubmitting') : t('chatPollSubmit')}</span>

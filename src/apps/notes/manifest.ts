@@ -35,8 +35,8 @@ const manifest = {
 	order: 7,
 	dock: 9,
 	permission: {
-		sira: 9,
-		ad: 'Notlar',
+		order: 9,
+		name: 'Notlar',
 		kullan: 'Kişisel notlarını tutar.',
 		yonet: 'Kişisel notlarını tutar (yönetilecek ortak veri yok).',
 	},
@@ -44,7 +44,7 @@ const manifest = {
 		title: { tr: 'Notlar', en: 'Notes' },
 		about: { id: 'about-notes', label: { tr: 'Notlar Hakkında', en: 'About Notes' } },
 		defaultItems: [
-			{ id: 'new-note', label: { tr: 'Yeni Not', en: 'New Note' }, shortcut: '⌘N', permission: 'kullan', komut: 'new-note' },
+			{ id: 'new-note', label: { tr: 'Yeni Not', en: 'New Note' }, shortcut: '⌘N', permission: 'kullan', command: 'new-note' },
 		],
 	},
 } as const satisfies AppManifest;

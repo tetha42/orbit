@@ -56,7 +56,7 @@ export function MembersTable({
 						mailUser={mailUser}
 						isReachable={reachable.has(m.id)}
 						isAuthorizedToAdd={isAuthorizedToAdd}
-						erisilebilir={isMemberTouchable(m)}
+						accessible={isMemberTouchable(m)}
 						assignableRoles={assignableRoles}
 						onOpenProfile={onOpenProfile}
 						onResetPassword={onResetPassword}
@@ -108,7 +108,7 @@ export function MembersTable({
 							mailUser={mailUser}
 							isReachable={reachable.has(m.id)}
 							isAuthorizedToAdd={isAuthorizedToAdd}
-							erisilebilir={isMemberTouchable(m)}
+							accessible={isMemberTouchable(m)}
 							assignableRoles={assignableRoles}
 							onOpenProfile={onOpenProfile}
 							onResetPassword={onResetPassword}

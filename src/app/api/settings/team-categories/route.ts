@@ -29,10 +29,10 @@ export async function PATCH(request: Request) {
 	}
 	const categories = await setTeamCategories(raw);
 	void logSystemEvent({
-		servis: 'settings',
-		seviye: 'INFO',
-		mesaj: `Team categories updated (${auth.user.firstName || auth.user.ad || ""} ${auth.user.lastName || auth.user.soyad || ""})`,
-		detay: { count: categories.length, categories },
+		service: 'settings',
+		level: 'INFO',
+		message: `Team categories updated (${auth.user.firstName || auth.user.name || ""} ${auth.user.lastName || auth.user.surname || ""})`,
+		detail: { count: categories.length, categories },
 		userId: auth.user.id,
 	});
 	return NextResponse.json(

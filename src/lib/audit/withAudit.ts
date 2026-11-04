@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { clientAddress } from '@/lib/http';
-import { temizIp, recordFields } from '@/lib/audit';
+import { cleanIp, recordFields } from '@/lib/audit';
 import { writeAuditLog } from '@/db/audit';
 import { verifyAuth } from '@/lib/auth/authGuard';
 
@@ -41,7 +41,7 @@ export function withAudit<TContext = unknown, TBody = unknown>(
 
 		if (response.status >= 200 && response.status < 400) {
 			try {
-				const ip = temizIp(clientAddress(request));
+				const ip = cleanIp(clientAddress(request));
 				let actorId: string | null = null;
 				let actorName = 'anonymous';
 
@@ -50,9 +50,9 @@ export function withAudit<TContext = unknown, TBody = unknown>(
 					if (auth.authorized && auth.user) {
 						actorId = auth.user.id;
 						actorName =
-							`${auth.user.ad || ''} ${auth.user.soyad || ''}`.trim() ||
+							`${auth.user.name || ''} ${auth.user.surname || ''}`.trim() ||
 							auth.user.email ||
-							auth.user.ogrenciNo ||
+							auth.user.studentNo ||
 							actorId;
 					}
 				} catch {

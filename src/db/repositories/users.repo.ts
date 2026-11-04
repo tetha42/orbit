@@ -1,40 +1,40 @@
 import { getPgPool, ensurePostgresInit, isDatabaseConfigured } from '@/db';
 import { withTransaction } from '@/db/index';
 import { logAuditEvent, type AuditContext } from '@/db/audit';
-import { alanFarki, memberTargetName } from '@/lib/audit';
-import type { YaklasanIade } from '@/db/schema';
+import { fieldDiff, memberTargetName } from '@/lib/audit';
+import type { UpcomingReturn } from '@/db/schema';
 
 export interface UserSummary {
-	takimlar: { id: string; ad: string; role: string; kaptanMi: boolean }[];
-	katilinanEtkinlik: number;
-	kayitliEtkinlik: number;
-	tamamlananGorev: number;
-	acikGorev: number;
-	sertifika: number;
-	proje: number;
+	teams: { id: string; name: string; role: string; captainMi: boolean }[];
+	attendedEvent: number;
+	registeredEvent: number;
+	completedTask: number;
+	openTask: number;
+	certificate: number;
+	project: number;
 }
 
 const EMPTY_USER_SUMMARY: UserSummary = {
-	takimlar: [],
-	katilinanEtkinlik: 0,
-	kayitliEtkinlik: 0,
-	tamamlananGorev: 0,
-	acikGorev: 0,
-	sertifika: 0,
-	proje: 0,
+	teams: [],
+	attendedEvent: 0,
+	registeredEvent: 0,
+	completedTask: 0,
+	openTask: 0,
+	certificate: 0,
+	project: 0,
 };
 
 /** Inventory on loan to the member that is due back before until (epoch ms), soonest first. */
 export async function getUserUpcomingReturns(
 	userId: string,
 	until: number
-): Promise<YaklasanIade[]> {
+): Promise<UpcomingReturn[]> {
 	if (!userId || !isDatabaseConfigured()) return [];
 	try {
 		await ensurePostgresInit();
 		const res = await getPgPool().query(
 			`
-			SELECT id, code AS kod, name AS ad, due_at AS "iadeTarihi"
+			SELECT id, code AS code, name AS name, due_at AS "returnDate"
 			FROM inventory
 			WHERE holder_user_id = $1
 			  AND status IN ('oduncte', 'borrowed')
@@ -54,19 +54,19 @@ export async function getUserUpcomingReturns(
 
 export async function updateUserProfile(
 	id: string,
-	patch: { bio?: string | null; bolum?: string; sinif?: number; profilFoto?: string | null },
-	denetim?: AuditContext
+	patch: { bio?: string | null; department?: string; grade?: number; profilePhoto?: string | null },
+	audit?: AuditContext
 ): Promise<void> {
 	await ensurePostgresInit();
 	const sets: string[] = [];
 	const values: unknown[] = [];
 	const colMap: Record<string, string> = {
 		bio: 'bio',
-		bolum: 'department',
-		sinif: 'grade',
-		profilFoto: 'avatar_url',
+		department: 'department',
+		grade: 'grade',
+		profilePhoto: 'avatar_url',
 	};
-	for (const key of ['bio', 'bolum', 'sinif', 'profilFoto'] as const) {
+	for (const key of ['bio', 'department', 'grade', 'profilePhoto'] as const) {
 		if (patch[key] !== undefined) {
 			values.push(patch[key]);
 			sets.push(`${colMap[key]} = $${values.length}`);
@@ -74,7 +74,7 @@ export async function updateUserProfile(
 	}
 	if (!sets.length) return;
 
-	if (!denetim) {
+	if (!audit) {
 		values.push(id);
 		await getPgPool().query(`UPDATE users SET ${sets.join(', ')} WHERE id = $${values.length}`, values);
 		return;
@@ -93,33 +93,33 @@ export async function updateUserProfile(
 		await client.query(`UPDATE users SET ${sets.join(', ')} WHERE id = $${values.length}`, values);
 
 		const before = {
-			ad: `${row.first_name ?? row.firstName ?? ''} ${row.last_name ?? row.lastName ?? ''}`.trim(),
+			name: `${row.first_name ?? row.firstName ?? ''} ${row.last_name ?? row.lastName ?? ''}`.trim(),
 			email: String(row.email),
 			bio: row.bio ?? null,
-			bolum: row.department ?? null,
-			sinif: Number(row.grade) || 0,
-			profilFoto: row.avatar_url ?? row.avatarUrl ?? null,
+			department: row.department ?? null,
+			grade: Number(row.grade) || 0,
+			profilePhoto: row.avatar_url ?? row.avatarUrl ?? null,
 		};
 		const after = {
 			...before,
 			...(patch.bio !== undefined ? { bio: patch.bio } : {}),
-			...(patch.bolum !== undefined ? { bolum: patch.bolum } : {}),
-			...(patch.sinif !== undefined ? { sinif: patch.sinif } : {}),
-			...(patch.profilFoto !== undefined ? { profilFoto: patch.profilFoto } : {}),
+			...(patch.department !== undefined ? { department: patch.department } : {}),
+			...(patch.grade !== undefined ? { grade: patch.grade } : {}),
+			...(patch.profilePhoto !== undefined ? { profilePhoto: patch.profilePhoto } : {}),
 		};
-		const fark = alanFarki(before, after);
-		if (!fark) return;
-		await logAuditEvent(client, denetim, {
+		const diff = fieldDiff(before, after);
+		if (!diff) return;
+		await logAuditEvent(client, audit, {
 			action: 'member.profile',
 			targetType: 'member',
 			targetId: id,
 			targetName: memberTargetName({
-				ad: String(row.first_name ?? row.firstName ?? ''),
-				soyad: String(row.last_name ?? row.lastName ?? ''),
+				name: String(row.first_name ?? row.firstName ?? ''),
+				surname: String(row.last_name ?? row.lastName ?? ''),
 				email: String(row.email),
 			}),
-			before: fark.before,
-			after: fark.after,
+			before: diff.before,
+			after: diff.after,
 		});
 	});
 }
@@ -131,7 +131,7 @@ export async function getUserSummary(id: string): Promise<UserSummary> {
 		const db = getPgPool();
 		const [teams, counts] = await Promise.all([
 			db.query(
-				`SELECT t.id, t.name AS ad, tu.role_title AS role, (t.lead_id = $1) AS "kaptanMi"
+				`SELECT t.id, t.name AS name, tu.role_title AS role, (t.lead_id = $1) AS "captainMi"
 				 FROM team_members tu JOIN teams t ON t.id = tu.team_id
 				 WHERE tu.user_id = $1 AND tu.status IN ('aktif', 'active')
 				 ORDER BY tu.joined_at ASC`,
@@ -139,29 +139,29 @@ export async function getUserSummary(id: string): Promise<UserSummary> {
 			),
 			db.query(
 				`SELECT
-				   (SELECT COUNT(*) FROM event_participants WHERE user_id = $1 AND status = 'attended')::int AS "katilinanEtkinlik",
-				   (SELECT COUNT(*) FROM event_participants WHERE user_id = $1 AND status IN ('registered', 'attended'))::int AS "kayitliEtkinlik",
-				   (SELECT COUNT(*) FROM team_tasks WHERE assignee_id = $1 AND status IN ('tamamlandi', 'done'))::int AS "tamamlananGorev",
-				   (SELECT COUNT(*) FROM team_tasks WHERE assignee_id = $1 AND status NOT IN ('tamamlandi', 'done'))::int AS "acikGorev",
-				   (SELECT COUNT(*) FROM certificates WHERE user_id = $1)::int AS "sertifika",
-				   (SELECT COUNT(*) FROM projects WHERE created_by = $1 AND status IN ('yayinda', 'published'))::int AS "proje"`,
+				   (SELECT COUNT(*) FROM event_participants WHERE user_id = $1 AND status = 'attended')::int AS "attendedEvent",
+				   (SELECT COUNT(*) FROM event_participants WHERE user_id = $1 AND status IN ('registered', 'attended'))::int AS "registeredEvent",
+				   (SELECT COUNT(*) FROM team_tasks WHERE assignee_id = $1 AND status IN ('tamamlandi', 'done'))::int AS "completedTask",
+				   (SELECT COUNT(*) FROM team_tasks WHERE assignee_id = $1 AND status NOT IN ('tamamlandi', 'done'))::int AS "openTask",
+				   (SELECT COUNT(*) FROM certificates WHERE user_id = $1)::int AS "certificate",
+				   (SELECT COUNT(*) FROM projects WHERE created_by = $1 AND status IN ('yayinda', 'published'))::int AS "project"`,
 				[id]
 			),
 		]);
-		const row = (counts.rows[0] ?? {}) as Partial<Omit<UserSummary, 'takimlar'>>;
+		const row = (counts.rows[0] ?? {}) as Partial<Omit<UserSummary, 'teams'>>;
 		return {
-			takimlar: (teams.rows ?? []).map((r) => ({
+			teams: (teams.rows ?? []).map((r) => ({
 				id: String(r.id),
-				ad: String(r.ad ?? ''),
+				name: String(r.name ?? ''),
 				role: String(r.role ?? ''),
-				kaptanMi: Boolean(r.kaptanMi),
+				captainMi: Boolean(r.captainMi),
 			})),
-			katilinanEtkinlik: Number(row.katilinanEtkinlik ?? 0),
-			kayitliEtkinlik: Number(row.kayitliEtkinlik ?? 0),
-			tamamlananGorev: Number(row.tamamlananGorev ?? 0),
-			acikGorev: Number(row.acikGorev ?? 0),
-			sertifika: Number(row.sertifika ?? 0),
-			proje: Number(row.proje ?? 0),
+			attendedEvent: Number(row.attendedEvent ?? 0),
+			registeredEvent: Number(row.registeredEvent ?? 0),
+			completedTask: Number(row.completedTask ?? 0),
+			openTask: Number(row.openTask ?? 0),
+			certificate: Number(row.certificate ?? 0),
+			project: Number(row.project ?? 0),
 		};
 	} catch (error) {
 		console.error('getUserSummary error:', error);

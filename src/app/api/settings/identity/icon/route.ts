@@ -52,9 +52,9 @@ export async function POST(request: Request) {
 	if (previous && previous !== filename) await removeCustomImage('identity', previous);
 
 	void logSystemEvent({
-		servis: 'settings',
-		seviye: 'INFO',
-		mesaj: `Site icon updated (${auth.user.firstName || auth.user.ad || ""} ${auth.user.lastName || auth.user.soyad || ""})`,
+		service: 'settings',
+		level: 'INFO',
+		message: `Site icon updated (${auth.user.firstName || auth.user.name || ""} ${auth.user.lastName || auth.user.surname || ""})`,
 		userId: auth.user.id,
 	});
 	return NextResponse.json({ ok: true, iconUrl });

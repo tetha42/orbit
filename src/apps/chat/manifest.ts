@@ -33,11 +33,11 @@ const manifest = {
 	dock: 12,
 	notifications: { message: 'kullan' },
 	permission: {
-		sira: 10,
-		ad: 'Mesajlar',
+		order: 10,
+		name: 'Mesajlar',
 		kullan: 'Sohbet odalarını görüntüler ve mesaj yazar (herkese açık).',
 		yonet: 'Sohbet odalarını ve mesajları yönetir.',
-		herkeseAcik: true,
+		everyoneOpen: true,
 	},
 	menu: {
 		title: { tr: 'Mesajlar', en: 'Messages' },
@@ -47,7 +47,7 @@ const manifest = {
 				id: 'file',
 				title: { tr: 'Mesajlar', en: 'Messages' },
 				items: [
-					{ id: 'chat-refresh', label: { tr: 'Sohbeti Yenile', en: 'Refresh Chat' }, shortcut: '⌘R', permission: 'kullan', komut: 'chat-refresh' },
+					{ id: 'chat-refresh', label: { tr: 'Sohbeti Yenile', en: 'Refresh Chat' }, shortcut: '⌘R', permission: 'kullan', command: 'chat-refresh' },
 				],
 			},
 		],

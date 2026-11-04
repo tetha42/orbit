@@ -37,16 +37,16 @@ export function EventFormModal({ event, onClose, onSaved }: Props) {
 		d.setHours(14, 0, 0, 0);
 		return d.getTime();
 	});
-	const start0 = event?.baslangic ?? defaults;
+	const start0 = event?.start ?? defaults;
 	const end0 = event?.endTime ?? defaults + 2 * 3_600_000;
-	const [baslik, setBaslik] = useState(event?.baslik ?? '');
-	const [tur, setTur] = useState<EventType>(event?.tur ?? 'atolye');
-	const [aciklama, setAciklama] = useState(event?.aciklama ?? '');
-	const [konum, setKonum] = useState(event?.konum ?? '');
+	const [title, setTitle] = useState(event?.title ?? '');
+	const [typeValue, setType] = useState<EventType>(event?.typeValue ?? 'atolye');
+	const [description, setDescription] = useState(event?.description ?? '');
+	const [location, setLocation] = useState(event?.location ?? '');
 	const [date, setDate] = useState(toDateInput(start0));
 	const [startTime, setStartTime] = useState(hhmm(start0));
 	const [endTime, setEndTime] = useState(hhmm(end0));
-	const [kapasite, setKapasite] = useState(String(event?.kapasite ?? 50));
+	const [capacity, setCapacity] = useState(String(event?.capacity ?? 50));
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
 
@@ -57,12 +57,12 @@ export function EventFormModal({ event, onClose, onSaved }: Props) {
 		let endTimestamp = at(date, endTime);
 		// An end time earlier than the start means it runs past midnight.
 		if (endTimestamp <= start) endTimestamp += 86_400_000;
-		const fields = { baslik, tur, aciklama, konum, start, endTime: endTimestamp, kapasite: Number(kapasite) };
+		const fields = { title, typeValue, description, location, start, endTime: endTimestamp, capacity: Number(capacity) };
 		setBusy(true);
 		const res = event
 			? await sendJson('/api/events', 'POST', {
 					action: 'updateEvent',
-					etkinlikId: event.id,
+					eventId: event.id,
 					...fields,
 				})
 			: await sendJson<{ id: string }>('/api/events', 'POST', {
@@ -113,8 +113,8 @@ export function EventFormModal({ event, onClose, onSaved }: Props) {
 					required
 					minLength={3}
 					maxLength={EVENT_TITLE_MAX}
-					value={baslik}
-					onChange={(e) => setBaslik(e.target.value)}
+					value={title}
+					onChange={(e) => setTitle(e.target.value)}
 				/>
 			</label>
 			<div className={ui.field}>
@@ -125,10 +125,10 @@ export function EventFormModal({ event, onClose, onSaved }: Props) {
 							key={x}
 							type="button"
 							role="radio"
-							aria-checked={tur === x}
-							className={`${ui.prioOption} ${tur === x ? ui.prioOptionActive : ''}`}
+							aria-checked={typeValue === x}
+							className={`${ui.prioOption} ${typeValue === x ? ui.prioOptionActive : ''}`}
 							style={{ '--prio': TYPE_META[x].color } as React.CSSProperties}
-							onClick={() => setTur(x)}
+							onClick={() => setType(x)}
 						>
 							{t(TYPE_META[x].key)}
 						</button>
@@ -140,8 +140,8 @@ export function EventFormModal({ event, onClose, onSaved }: Props) {
 				<input
 					className={ui.input}
 					required
-					value={konum}
-					onChange={(e) => setKonum(e.target.value)}
+					value={location}
+					onChange={(e) => setLocation(e.target.value)}
 					placeholder="Mühendislik Fakültesi D-101"
 				/>
 			</label>
@@ -185,8 +185,8 @@ export function EventFormModal({ event, onClose, onSaved }: Props) {
 						type="number"
 						min={0}
 						max={5000}
-						value={kapasite}
-						onChange={(e) => setKapasite(e.target.value)}
+						value={capacity}
+						onChange={(e) => setCapacity(e.target.value)}
 					/>
 				</label>
 			</div>
@@ -198,8 +198,8 @@ export function EventFormModal({ event, onClose, onSaved }: Props) {
 				<textarea
 					className={ui.textarea}
 					rows={4}
-					value={aciklama}
-					onChange={(e) => setAciklama(e.target.value)}
+					value={description}
+					onChange={(e) => setDescription(e.target.value)}
 				/>
 			</label>
 			{error && (

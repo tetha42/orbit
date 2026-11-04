@@ -14,7 +14,7 @@ import styles from './Projects.module.css';
 import { initials } from '@/core/text/initials';
 
 interface Props {
-	proje: Project;
+	project: Project;
 	currentUserId: string;
 	manage: boolean;
 	onClose: () => void;
@@ -26,27 +26,27 @@ interface Props {
 	onOpenTeam: (teamId: string) => void;
 }
 
-export function ProjectDetailModal({ proje, currentUserId, manage, onClose, onEdit, onStar, onPatch, onDelete, onOpenTeam }: Props) {
+export function ProjectDetailModal({ project, currentUserId, manage, onClose, onEdit, onStar, onPatch, onDelete, onOpenTeam }: Props) {
 	const { t, language } = useI18n();
 	const dialog = useDialog();
 	const confirmOpen = useRef(false);
 	const locale = language === 'en' ? 'en-GB' : 'tr-TR';
 
-	const owner = proje.olusturanId === currentUserId;
-	const canEdit = manage || (owner && proje.status !== 'arsiv');
-	const canDelete = manage || (owner && proje.status === 'oneri');
-	const statusKey = proje.status === 'oneri' ? 'pjStatusOneri' : proje.status === 'arsiv' ? 'pjStatusArsiv' : 'pjStatusYayinda';
+	const owner = project.creatorId === currentUserId;
+	const canEdit = manage || (owner && project.status !== 'arsiv');
+	const canDelete = manage || (owner && project.status === 'oneri');
+	const statusKey = project.status === 'oneri' ? 'pjStatusOneri' : project.status === 'arsiv' ? 'pjStatusArsiv' : 'pjStatusYayinda';
 
 	const remove = async () => {
 		confirmOpen.current = true;
-		const ok = await dialog.confirm({ message: fill(t('pjDeleteConfirm'), { title: proje.baslik }), tone: 'danger' });
+		const ok = await dialog.confirm({ message: fill(t('pjDeleteConfirm'), { title: project.title }), tone: 'danger' });
 		confirmOpen.current = false;
 		if (ok) await onDelete();
 	};
 
 	return (
 		<Sheet
-			label={proje.baslik}
+			label={project.title}
 			wide
 			maxWidth={760}
 			onClose={onClose}
@@ -59,27 +59,27 @@ export function ProjectDetailModal({ proje, currentUserId, manage, onClose, onEd
 			}
 			header={
 				<div style={{ flex: 1, minWidth: 0 }}>
-					<h3 style={{ margin: 0, fontSize: 18, fontWeight: 760 }}>{proje.baslik}</h3>
+					<h3 style={{ margin: 0, fontSize: 18, fontWeight: 760 }}>{project.title}</h3>
 					<div className={styles.cardTop} style={{ marginTop: 6 }}>
-						<span className={`${styles.pill} ${styles[`pill_${proje.status}`]}`}>{t(statusKey)}</span>
-						{Number(proje.oneCikan) === 1 && (
+						<span className={`${styles.pill} ${styles[`pill_${project.status}`]}`}>{t(statusKey)}</span>
+						{Number(project.oneLeaving) === 1 && (
 							<span className={`${styles.pill} ${styles.pillFeatured}`}>
 								<Pin size={11} /> {t('pjFeatured')}
 							</span>
 						)}
-						{proje.teamId && proje.takimAdi && (
+						{project.teamId && project.teamName && (
 							<button
 								type="button"
 								className={`${styles.pill} ${styles.pillTeam}`}
-								onClick={() => onOpenTeam(proje.teamId!)}
+								onClick={() => onOpenTeam(project.teamId!)}
 								title={t('pjOpenTeam')}
 							>
-								<Users size={11} /> {proje.takimAdi}
+								<Users size={11} /> {project.teamName}
 							</button>
 						)}
-						{(proje.ownerUserAdSoyad || proje.ownerTeamAd) && (
+						{(project.ownerUserNameSurname || project.ownerTeamName) && (
 							<span className={styles.pill} title={t('pjOwner')}>
-								{t('pjOwner')}: {proje.ownerUserAdSoyad || proje.ownerTeamAd}
+								{t('pjOwner')}: {project.ownerUserNameSurname || project.ownerTeamName}
 							</span>
 						)}
 					</div>
@@ -93,20 +93,20 @@ export function ProjectDetailModal({ proje, currentUserId, manage, onClose, onEd
 								<Pencil size={14} /> {t('pjActEdit')}
 							</button>
 						)}
-						{manage && proje.status === 'oneri' && (
+						{manage && project.status === 'oneri' && (
 							<button type="button" className={ui.primaryBtn} style={{ height: 30 }} onClick={() => onPatch({ status: 'yayinda' }, t('pjPublished'))}>
 								<Send size={14} /> {t('pjActPublish')}
 							</button>
 						)}
-						{manage && proje.status === 'yayinda' && (
+						{manage && project.status === 'yayinda' && (
 							<>
 								<button
 									type="button"
 									className={ui.btn}
-									onClick={() => onPatch({ oneCikan: Number(proje.oneCikan) !== 1 }, t('pjSaved'))}
+									onClick={() => onPatch({ oneLeaving: Number(project.oneLeaving) !== 1 }, t('pjSaved'))}
 								>
-									{Number(proje.oneCikan) === 1 ? <PinOff size={14} /> : <Pin size={14} />}
-									{Number(proje.oneCikan) === 1 ? t('pjActUnpin') : t('pjActPin')}
+									{Number(project.oneLeaving) === 1 ? <PinOff size={14} /> : <Pin size={14} />}
+									{Number(project.oneLeaving) === 1 ? t('pjActUnpin') : t('pjActPin')}
 								</button>
 								<button type="button" className={ui.btn} onClick={() => onPatch({ status: 'oneri' }, t('pjSaved'))}>
 									<Undo2 size={14} /> {t('pjActUnpublish')}
@@ -116,7 +116,7 @@ export function ProjectDetailModal({ proje, currentUserId, manage, onClose, onEd
 								</button>
 							</>
 						)}
-						{manage && proje.status === 'arsiv' && (
+						{manage && project.status === 'arsiv' && (
 							<button type="button" className={ui.btn} onClick={() => onPatch({ status: 'yayinda' }, t('pjSaved'))}>
 								<ArchiveRestore size={14} /> {t('pjActRestore')}
 							</button>
@@ -130,42 +130,42 @@ export function ProjectDetailModal({ proje, currentUserId, manage, onClose, onEd
 				) : undefined
 			}
 		>
-			{proje.status === 'oneri' && <div className={styles.note}>{t('pjProposalNote')}</div>}
-			{proje.status === 'arsiv' && <div className={styles.note}>{t('pjArchiveNote')}</div>}
+			{project.status === 'oneri' && <div className={styles.note}>{t('pjProposalNote')}</div>}
+			{project.status === 'arsiv' && <div className={styles.note}>{t('pjArchiveNote')}</div>}
 
 			<div className={styles.detailHero}>
-				<p style={{ margin: 0, fontSize: 14, lineHeight: 1.55 }}>{proje.ozet}</p>
+				<p style={{ margin: 0, fontSize: 14, lineHeight: 1.55 }}>{project.summary}</p>
 				<div className={styles.linkRow}>
-					{proje.repoUrl && (
-						<a className={`${styles.linkBtn} ${styles.linkBtnPrimary}`} href={proje.repoUrl} target="_blank" rel="noreferrer noopener">
+					{project.repoUrl && (
+						<a className={`${styles.linkBtn} ${styles.linkBtnPrimary}`} href={project.repoUrl} target="_blank" rel="noreferrer noopener">
 							<FolderGit2 size={15} />
-							{shortRepo(proje.repoUrl)}
+							{shortRepo(project.repoUrl)}
 						</a>
 					)}
-					{proje.canliUrl && (
-						<a className={styles.linkBtn} href={proje.canliUrl} target="_blank" rel="noreferrer noopener">
+					{project.liveUrl && (
+						<a className={styles.linkBtn} href={project.liveUrl} target="_blank" rel="noreferrer noopener">
 							<ExternalLink size={15} />
 							{t('pjDemo')}
 						</a>
 					)}
 					<button
 						type="button"
-						className={`${styles.starBtn} ${proje.begendimMi ? styles.starBtnOn : ''}`}
+						className={`${styles.starBtn} ${project.iLikedMi ? styles.starBtnOn : ''}`}
 						style={{ height: 34 }}
-						disabled={proje.status !== 'yayinda'}
-						aria-pressed={!!proje.begendimMi}
+						disabled={project.status !== 'yayinda'}
+						aria-pressed={!!project.iLikedMi}
 						onClick={onStar}
-						title={proje.begendimMi ? t('pjUnstar') : t('pjStar')}
+						title={project.iLikedMi ? t('pjUnstar') : t('pjStar')}
 					>
-						<Star size={15} fill={proje.begendimMi ? 'currentColor' : 'none'} />
-						{proje.begeniSayisi ?? 0}
+						<Star size={15} fill={project.iLikedMi ? 'currentColor' : 'none'} />
+						{project.likeCount ?? 0}
 					</button>
 				</div>
 			</div>
 
-			{proje.teknolojiler.length > 0 && (
+			{project.technologies.length > 0 && (
 				<div className={styles.techList}>
-					{proje.teknolojiler.map((x) => (
+					{project.technologies.map((x) => (
 						<span key={x} className={styles.tech}>
 							{x}
 						</span>
@@ -173,21 +173,21 @@ export function ProjectDetailModal({ proje, currentUserId, manage, onClose, onEd
 				</div>
 			)}
 
-			{proje.aciklama && (
+			{project.description && (
 				<div className={ui.descView}>
-					<Linkified text={proje.aciklama} />
+					<Linkified text={project.description} />
 				</div>
 			)}
 
 			<div className={styles.author}>
 				<span className={ui.avatar} style={{ marginLeft: 0, width: 26, height: 26, fontSize: 10.5 }}>
-					{initials(proje.olusturanAdSoyad)}
+					{initials(project.creatorNameSurname)}
 				</span>
 				<span style={{ fontSize: 12.5 }}>
-					<strong>{proje.olusturanAdSoyad || '—'}</strong>
+					<strong>{project.creatorNameSurname || '—'}</strong>
 					<span className={ui.muted}>
 						{' · '}
-						{fill(t('pjAddedOn'), { date: new Date(proje.olusturma).toLocaleDateString(locale) })}
+						{fill(t('pjAddedOn'), { date: new Date(project.creation).toLocaleDateString(locale) })}
 					</span>
 				</span>
 			</div>

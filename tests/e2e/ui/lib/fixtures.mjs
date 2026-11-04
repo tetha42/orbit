@@ -15,8 +15,8 @@ export function readFixtures(file) {
 
 /** The sign-in details for a fixture account: `admin`, `zeynep`, `ege`, `can` or `okur`. */
 export function account(fx, key) {
-	if (key === 'admin') return { key, eposta: fx.admin.eposta, sifre: fx.admin.sifre, totp: fx.adminTotp };
+	if (key === 'admin') return { key, email: fx.admin.email, password: fx.admin.password, totp: fx.adminTotp };
 	const u = fx.users[key];
 	if (!u) throw new Error(`No fixture account "${key}" (have: admin, ${Object.keys(fx.users).join(', ')}).`);
-	return { key, id: u.id, eposta: u.eposta, sifre: u.sifre, totp: u.totp, rol: u.rol };
+	return { key, id: u.id, email: u.email, password: u.password, totp: u.totp, role: u.role };
 }

@@ -13,11 +13,11 @@ export async function GET(request: Request) {
 		.filter((member) => member.status === 'aktif')
 		.map((member) => ({
 			id: member.id,
-			ad: member.ad,
-			soyad: member.soyad,
+			name: member.name,
+			surname: member.surname,
 			email: member.email,
-			bolum: member.bolum,
+			department: member.department,
 		}))
-		.sort((a, b) => `${a.ad} ${a.soyad}`.localeCompare(`${b.ad} ${b.soyad}`));
+		.sort((a, b) => `${a.name} ${a.surname}`.localeCompare(`${b.name} ${b.surname}`));
 	return NextResponse.json({ members }, { headers: { 'Cache-Control': 'no-store' } });
 }

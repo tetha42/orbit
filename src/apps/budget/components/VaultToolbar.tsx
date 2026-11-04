@@ -8,14 +8,14 @@ import ui from '@/core/ui/ui.module.css';
 import k from './Vault.module.css';
 
 interface VaultToolbarProps {
-	arama: string;
-	onAramaChange: (val: string) => void;
-	tur: 'hepsi' | 'gelir' | 'gider';
-	onTurChange: (val: 'hepsi' | 'gelir' | 'gider') => void;
-	kategori: string;
-	onKategoriChange: (val: string) => void;
-	ay: string;
-	onAyChange: (val: string) => void;
+	search: string;
+	onSearchChange: (val: string) => void;
+	typeValue: 'hepsi' | 'gelir' | 'gider';
+	onTypeChange: (val: 'hepsi' | 'gelir' | 'gider') => void;
+	category: string;
+	onCategoryChange: (val: string) => void;
+	month: string;
+	onMonthChange: (val: string) => void;
 	monthOptions: string[];
 	canWrite: boolean;
 	canTransfer: boolean;
@@ -34,14 +34,14 @@ const monthName = (key: string, style: 'short' | 'long' = 'short', lang = 'tr') 
 };
 
 export function VaultToolbar({
-	arama,
-	onAramaChange,
-	tur,
-	onTurChange,
-	kategori,
-	onKategoriChange,
-	ay,
-	onAyChange,
+	search,
+	onSearchChange,
+	typeValue,
+	onTypeChange,
+	category,
+	onCategoryChange,
+	month,
+	onMonthChange,
 	monthOptions,
 	canWrite,
 	canTransfer,
@@ -57,8 +57,8 @@ export function VaultToolbar({
 			<input
 				className={`${ui.search} ${k.searchInput}`}
 				placeholder={t('kasaSearchPlaceholder')}
-				value={arama}
-				onChange={(e) => onAramaChange(e.target.value)}
+				value={search}
+				onChange={(e) => onSearchChange(e.target.value)}
 				aria-label={t('kasaSearchPlaceholder')}
 			/>
 			<div className={ui.segmented} role="radiogroup" aria-label={t('budgetColType')}>
@@ -67,9 +67,9 @@ export function VaultToolbar({
 						key={f}
 						type="button"
 						role="radio"
-						aria-checked={tur === f}
-						className={`${ui.segment} ${tur === f ? ui.segmentActive : ''}`}
-						onClick={() => onTurChange(f)}
+						aria-checked={typeValue === f}
+						className={`${ui.segment} ${typeValue === f ? ui.segmentActive : ''}`}
+						onClick={() => onTypeChange(f)}
 					>
 						{f === 'hepsi' ? t('all') : f === 'gelir' ? t('kasaIncome') : t('kasaExpense')}
 					</button>
@@ -78,8 +78,8 @@ export function VaultToolbar({
 			<select
 				className={ui.select}
 				style={{ width: 'auto' }}
-				value={kategori}
-				onChange={(e) => onKategoriChange(e.target.value)}
+				value={category}
+				onChange={(e) => onCategoryChange(e.target.value)}
 				aria-label={t('budgetColCategory')}
 			>
 				<option value="">{t('kasaAllCategories')}</option>
@@ -92,8 +92,8 @@ export function VaultToolbar({
 			<select
 				className={ui.select}
 				style={{ width: 'auto' }}
-				value={ay}
-				onChange={(e) => onAyChange(e.target.value)}
+				value={month}
+				onChange={(e) => onMonthChange(e.target.value)}
 				aria-label={t('budgetColDate')}
 			>
 				<option value="">{t('kasaAllMonths')}</option>

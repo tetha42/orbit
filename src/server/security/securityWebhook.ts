@@ -91,10 +91,10 @@ export async function getWebhookConfig(): Promise<WebhookConfig> {
 		await ensurePostgresInit();
 		const p = getPgPool();
 		const res = await p.query(
-			`SELECT value AS deger FROM system_settings WHERE key = 'soc_webhook_config' LIMIT 1`
+			`SELECT value AS value FROM system_settings WHERE key = 'soc_webhook_config' LIMIT 1`
 		);
-		if (res.rows.length > 0 && res.rows[0].deger) {
-			const parsed = JSON.parse(res.rows[0].deger) as Partial<WebhookConfig>;
+		if (res.rows.length > 0 && res.rows[0].value) {
+			const parsed = JSON.parse(res.rows[0].value) as Partial<WebhookConfig>;
 			const url = parsed.url || parsed.webhookUrl || DEFAULT_CONFIG.url || '';
 			return {
 				...DEFAULT_CONFIG,
@@ -134,9 +134,9 @@ export async function saveWebhookConfig(config: WebhookConfig): Promise<boolean>
 		return true;
 	} catch (err) {
 		await logSystemEvent({
-			servis: 'security',
-			seviye: 'ERROR',
-			mesaj: `Webhook ayarları kaydedilemedi: ${err instanceof Error ? err.message : String(err)}`,
+			service: 'security',
+			level: 'ERROR',
+			message: `Webhook ayarları kaydedilemedi: ${err instanceof Error ? err.message : String(err)}`,
 		}).catch(() => {});
 		return false;
 	}
@@ -199,9 +199,9 @@ async function dispatchEmailAlert(config: WebhookConfig, event: SecurityAlertEve
 		return res.success;
 	} catch (err) {
 		await logSystemEvent({
-			servis: 'security',
-			seviye: 'WARN',
-			mesaj: `⚠️ [MAIL ALARM FAILED] E-posta alarmı iletilemedi: ${err instanceof Error ? err.message : String(err)}`,
+			service: 'security',
+			level: 'WARN',
+			message: `⚠️ [MAIL ALARM FAILED] E-posta alarmı iletilemedi: ${err instanceof Error ? err.message : String(err)}`,
 		}).catch(() => {});
 		return false;
 	}
@@ -349,9 +349,9 @@ export async function sendSecurityAlert(
 		return res.ok;
 	} catch (err) {
 		await logSystemEvent({
-			servis: 'security',
-			seviye: 'WARN',
-			mesaj: `⚠️ [WEBHOOK FAILED] Alarm iletilemedi: ${err instanceof Error ? err.message : String(err)}`,
+			service: 'security',
+			level: 'WARN',
+			message: `⚠️ [WEBHOOK FAILED] Alarm iletilemedi: ${err instanceof Error ? err.message : String(err)}`,
 		}).catch(() => {});
 		return false;
 	}

@@ -1,80 +1,80 @@
-export interface ChatOdaItem {
+export interface ChatRoomItem {
 	id: string;
-	tur: 'genel' | 'takim' | 'ozel';
+	typeValue: 'genel' | 'takim' | 'ozel';
 	teamId: string | null;
-	ad: string;
-	olusturma: number;
+	name: string;
+	creation: number;
 	avatar?: string | null;
 	peerUserId?: string | null;
 	memberCount?: number;
-	sonMesaj?: ChatMessageItem | null;
-	okunmamisSayisi?: number;
+	lastMessage?: ChatMessageItem | null;
+	unreadCount?: number;
 }
 
 export interface ChatPollOptionItem {
 	id: string;
 	pollId: string;
-	sira: number;
-	metin: string;
-	oySayisi: number;
-	yuzde: number;
-	oyVerenler?: Array<{ id: string; ad: string; foto?: string | null }>;
+	order: number;
+	text: string;
+	voteCount: number;
+	percent: number;
+	voteGivers?: Array<{ id: string; name: string; photo?: string | null }>;
 }
 
 export interface ChatPollItem {
 	id: string;
-	mesajId: string;
+	messageId: string;
 	roomId: string;
-	olusturanId: string;
-	olusturanAd?: string;
-	soru: string;
-	cokluSecim: boolean;
-	anonim: boolean;
+	creatorId: string;
+	creatorName?: string;
+	question: string;
+	multipleSelection: boolean;
+	anonymous: boolean;
 	endsAt: number | null;
 	kapali: boolean;
-	olusturma: number;
-	secenekler: ChatPollOptionItem[];
-	toplamOy: number;
-	kullaniciOylari: string[];
+	creation: number;
+	options: ChatPollOptionItem[];
+	totalVote: number;
+	userVotes: string[];
 }
 
 export interface QuotedMessageSnapshot {
 	id: string;
-	gonderenAd: string;
-	icerik: string;
+	senderName: string;
+	content: string;
 }
 
 export interface ChatAttachmentItem {
-	ad: string;
+	name: string;
 	url: string;
-	boyut?: number;
+	size?: number;
 	tip?: string;
 }
 
 export interface ChatMessageItem {
 	id: string;
 	roomId: string;
-	gonderenId: string;
-	gonderenAd: string;
-	gonderenFoto: string | null;
-	icerik: string;
-	ekler: ChatAttachmentItem[];
+	senderId: string;
+	senderName: string;
+	senderPhoto: string | null;
+	content: string;
+	attachments: ChatAttachmentItem[];
 	date: number;
-	silinmeTarihi?: number | null;
-	duzenlenmeTarihi?: number | null;
-	anket?: ChatPollItem | null;
-	yanitlananMesajId?: string | null;
-	yanitlananMesaj?: QuotedMessageSnapshot | null;
-	iletildiMi?: boolean;
+	deletionDate?: number | null;
+	editDate?: number | null;
+	poll?: ChatPollItem | null;
+	repliedMessageId?: string | null;
+	repliedMessage?: QuotedMessageSnapshot | null;
+	deliveredMi?: boolean;
 }
 
 export interface ChatContactItem {
 	id: string;
-	ad: string;
-	soyad: string;
-	profilFoto: string | null;
-	rolAd: string | null;
-	bolum: string;
+	name: string;
+	surname: string;
+	profilePhoto: string | null;
+	roleName: string | null;
+	department: string;
 }
 
 export interface ChatRoomMemberItem {
@@ -84,9 +84,7 @@ export interface ChatRoomMemberItem {
 	avatarUrl?: string | null;
 	roleName?: string | null;
 	department?: string;
-	ad: string;
-	soyad: string;
-	profilFoto: string | null;
-	rolAd: string | null;
-	bolum: string;
+	name: string;
+	surname: string;
+	profilePhoto: string | null;
 }

@@ -4,15 +4,15 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useI18n } from '@/core/i18n';
 import { fill } from '@/lib/text';
 import { X, Search, Forward, Users, MessageSquare, Check } from 'lucide-react';
-import type { ChatOdaItem, ChatMessageItem } from '../types';
+import type { ChatRoomItem, ChatMessageItem } from '../types';
 import s from '../Chat.module.css';
 
 interface ForwardMessageModalProps {
 	isOpen: boolean;
 	onClose: () => void;
 	message: ChatMessageItem | null;
-	rooms: ChatOdaItem[];
-	onForward: (mesajId: string, targetRoomIds: string[]) => Promise<{ ok: boolean; count?: number }>;
+	rooms: ChatRoomItem[];
+	onForward: (messageId: string, targetRoomIds: string[]) => Promise<{ ok: boolean; count?: number }>;
 }
 
 export function ForwardMessageModal({
@@ -39,7 +39,7 @@ export function ForwardMessageModal({
 		const q = searchQuery.trim().toLocaleLowerCase(language);
 		if (!q) return rooms;
 		return rooms.filter((r) =>
-			r.ad.toLocaleLowerCase(language).includes(q)
+			r.name.toLocaleLowerCase(language).includes(q)
 		);
 	}, [rooms, searchQuery, language]);
 
@@ -93,11 +93,11 @@ export function ForwardMessageModal({
 					<div className={s.forwardPreviewCard}>
 						<div className={s.forwardPreviewSender}>
 							<Forward size={12} />
-							<span>{message.gonderenAd}</span>
+							<span>{message.senderName}</span>
 						</div>
 						<div className={s.forwardPreviewText}>
-							{message.icerik ? message.icerik.slice(0, 160) : ''}
-							{message.icerik && message.icerik.length > 160 ? '…' : ''}
+							{message.content ? message.content.slice(0, 160) : ''}
+							{message.content && message.content.length > 160 ? '…' : ''}
 						</div>
 					</div>
 
@@ -127,7 +127,7 @@ export function ForwardMessageModal({
 						) : (
 							filteredRooms.map((room) => {
 								const isSelected = selectedRoomIds.includes(room.id);
-								const isGroup = room.tur === 'takim' || (room.tur === 'ozel' && (room.memberCount || 0) > 2);
+								const isGroup = room.typeValue === 'takim' || (room.typeValue === 'ozel' && (room.memberCount || 0) > 2);
 
 								return (
 									<button
@@ -141,24 +141,24 @@ export function ForwardMessageModal({
 												// eslint-disable-next-line @next/next/no-img-element
 												<img
 													src={room.avatar}
-													alt={room.ad}
+													alt={room.name}
 													style={{ width: '100%', height: '100%', objectFit: 'cover' }}
 												/>
 											) : isGroup ? (
 												<Users size={16} />
-											) : room.tur === 'ozel' ? (
-												<span>{(room.ad || '?').slice(0, 1).toUpperCase()}</span>
+											) : room.typeValue === 'ozel' ? (
+												<span>{(room.name || '?').slice(0, 1).toUpperCase()}</span>
 											) : (
 												<MessageSquare size={16} />
 											)}
 										</div>
 
 										<div className={s.forwardRoomInfo}>
-											<span className={s.forwardRoomName}>{room.ad}</span>
+											<span className={s.forwardRoomName}>{room.name}</span>
 											<span className={s.forwardRoomType}>
-												{room.tur === 'genel'
+												{room.typeValue === 'genel'
 													? t('chatPublicSub')
-													: room.tur === 'takim'
+													: room.typeValue === 'takim'
 													? t('chatTeamSub')
 													: t('chatPrivateSub')}
 											</span>

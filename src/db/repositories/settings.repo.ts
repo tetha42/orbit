@@ -1,25 +1,25 @@
 import { ensurePostgresInit, getPgPool, withTransaction } from '@/db/index';
 import { SYSTEM_SETTINGS_DEFAULTS, type WebauthnCredential } from '@/db/schema';
 import { logAuditEvent, type AuditContext, type AuditEntry } from '@/db/audit';
-import type { Fark } from '@/lib/audit';
+import type { Diff } from '@/lib/audit';
 
 export async function getSystemSettings(): Promise<Record<string, string>> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query('SELECT key AS anahtar, value AS deger FROM system_settings');
+	const res = await getPgPool().query('SELECT key AS key, value AS value FROM system_settings');
 	const map: Record<string, string> = { ...SYSTEM_SETTINGS_DEFAULTS };
 	for (const row of res.rows) {
-		map[row.anahtar] = row.deger;
+		map[row.key] = row.value;
 	}
 	return map;
 }
 
-export async function getSystemSetting(anahtar: string, varsayilan: string = ''): Promise<string> {
+export async function getSystemSetting(key: string, defaultValue: string = ''): Promise<string> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query('SELECT value AS deger FROM system_settings WHERE key = $1', [anahtar]);
-	return res.rows[0]?.deger ?? SYSTEM_SETTINGS_DEFAULTS[anahtar] ?? varsayilan;
+	const res = await getPgPool().query('SELECT value AS value FROM system_settings WHERE key = $1', [key]);
+	return res.rows[0]?.value ?? SYSTEM_SETTINGS_DEFAULTS[key] ?? defaultValue;
 }
 
-export async function setSystemSetting(anahtar: string, deger: string): Promise<void> {
+export async function setSystemSetting(key: string, value: string): Promise<void> {
 	await ensurePostgresInit();
 	const now = Date.now();
 	await getPgPool().query(
@@ -28,7 +28,7 @@ export async function setSystemSetting(anahtar: string, deger: string): Promise<
 		 ON CONFLICT (key) DO UPDATE SET 
 		   value = EXCLUDED.value,
 		   updated_at = EXCLUDED.updated_at`,
-		[anahtar, deger, now]
+		[key, value, now]
 	);
 }
 
@@ -37,32 +37,32 @@ export async function setSystemSetting(anahtar: string, deger: string): Promise<
  * and a record is written (when `fark` finds a change) in the same transaction.
  */
 export async function setSystemSettings(
-	ayarlar: Record<string, string>,
-	denetim?: {
+	settings: Record<string, string>,
+	audit?: {
 		ctx: AuditContext;
 		registration: Omit<AuditEntry, 'before' | 'after'>;
-		fark: (before: Record<string, string | undefined>, yeni: Record<string, string>) => Fark | null;
+		diff: (before: Record<string, string | undefined>, fresh: Record<string, string>) => Diff | null;
 	}
 ): Promise<void> {
 	const now = Date.now();
 	await withTransaction(async (client) => {
 		let previous: Record<string, string | undefined> = {};
-		if (denetim) {
-			const res = await client.query('SELECT key AS anahtar, value AS deger FROM system_settings WHERE key = ANY($1) FOR UPDATE', [Object.keys(ayarlar)]);
-			previous = Object.fromEntries(res.rows.map((r) => [r.anahtar as string, r.deger as string]));
+		if (audit) {
+			const res = await client.query('SELECT key AS key, value AS value FROM system_settings WHERE key = ANY($1) FOR UPDATE', [Object.keys(settings)]);
+			previous = Object.fromEntries(res.rows.map((r) => [r.key as string, r.value as string]));
 		}
-		for (const [anahtar, deger] of Object.entries(ayarlar)) {
+		for (const [key, value] of Object.entries(settings)) {
 			await client.query(
 				`INSERT INTO system_settings (key, value, updated_at)
 				 VALUES ($1, $2, $3)
 				 ON CONFLICT (key) DO UPDATE SET 
 				   value = EXCLUDED.value,
 				   updated_at = EXCLUDED.updated_at`,
-				[anahtar, deger, now]
+				[key, value, now]
 			);
 		}
-		const fark = denetim?.fark(previous, ayarlar);
-		if (denetim && fark) await logAuditEvent(client, denetim.ctx, { ...denetim.registration, before: fark.before, after: fark.after });
+		const diff = audit?.diff(previous, settings);
+		if (audit && diff) await logAuditEvent(client, audit.ctx, { ...audit.registration, before: diff.before, after: diff.after });
 	});
 }
 
@@ -71,33 +71,34 @@ export async function setSystemSettings(
 const CHALLENGE_TTL_MS = 5 * 60 * 1000;
 
 async function pruneWebauthnChallenges(): Promise<void> {
-	await getPgPool().query('DELETE FROM webauthn_challenges WHERE olusturma < $1', [
-		Date.now() - CHALLENGE_TTL_MS,
-	]);
+	await getPgPool().query(`DELETE FROM verification_tokens WHERE token_type LIKE 'webauthn_%' AND expires_at < $1`, [Date.now()]);
 }
 
 export async function createWebauthnChallenge(data: {
 	id: string;
 	userId?: string | null;
 	challenge: string;
-	tur: 'registration' | 'giris';
+	typeValue: 'registration' | 'login';
 }): Promise<void> {
 	await ensurePostgresInit();
 	await pruneWebauthnChallenges();
+	const now = Date.now();
 	await getPgPool().query(
-		'INSERT INTO webauthn_challenges (id, userId, challenge, tur, olusturma) VALUES ($1, $2, $3, $4, $5)',
-		[data.id, data.userId ?? null, data.challenge, data.tur, Date.now()]
+		`INSERT INTO verification_tokens (id, user_id, token_type, token_hash, payload, expires_at, created_at)
+		 VALUES ($1, $2, $3, $1, $4::jsonb, $5, $6)`,
+		[data.id, data.userId ?? null, `webauthn_${data.typeValue}`, JSON.stringify({ challenge: data.challenge }), now + CHALLENGE_TTL_MS, now]
 	);
 }
 
 export async function consumeWebauthnChallenge(
 	id: string,
-	tur: 'registration' | 'giris'
+	typeValue: 'registration' | 'login'
 ): Promise<{ challenge: string; userId: string | null } | null> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		'DELETE FROM webauthn_challenges WHERE id = $1 AND tur = $2 AND olusturma >= $3 RETURNING challenge, userId AS "userId"',
-		[id, tur, Date.now() - CHALLENGE_TTL_MS]
+		`DELETE FROM verification_tokens WHERE id = $1 AND token_type = $2 AND expires_at >= $3
+		 RETURNING payload->>'challenge' AS challenge, user_id AS "userId"`,
+		[id, `webauthn_${typeValue}`, Date.now()]
 	);
 	const row = res.rows[0];
 	return row ? { challenge: row.challenge, userId: row.userId ?? null } : null;
@@ -105,21 +106,21 @@ export async function consumeWebauthnChallenge(
 
 const WEBAUTHN_CREDENTIAL_COLUMNS = `
 	id,
-	userId AS "userId",
-	publicKey AS "publicKey",
+	user_id AS "userId",
+	public_key AS "publicKey",
 	counter,
 	transports,
-	deviceType AS "deviceType",
-	backedUp AS "backedUp",
+	device_type AS "deviceType",
+	backed_up AS "backedUp",
 	nickname,
-	sonKullanma AS "sonKullanma",
-	olusturma
+	last_used_at AS "lastUsed",
+	created_at AS creation
 `;
 
 export async function getWebauthnCredentials(userId: string): Promise<WebauthnCredential[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT ${WEBAUTHN_CREDENTIAL_COLUMNS} FROM webauthn_credentials WHERE userId = $1 ORDER BY olusturma ASC`,
+		`SELECT ${WEBAUTHN_CREDENTIAL_COLUMNS} FROM webauthn_credentials WHERE user_id = $1 ORDER BY created_at ASC`,
 		[userId]
 	);
 	return res.rows;
@@ -154,11 +155,11 @@ export async function saveWebauthnCredential(data: {
 		deviceType: data.deviceType ?? null,
 		backedUp: data.backedUp ? 1 : 0,
 		nickname: data.nickname ?? null,
-		olusturma: Date.now(),
+		creation: Date.now(),
 	};
 	await getPgPool().query(
 		`INSERT INTO webauthn_credentials
-			(id, userId, publicKey, counter, transports, deviceType, backedUp, nickname, olusturma)
+			(id, user_id, public_key, counter, transports, device_type, backed_up, nickname, created_at)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
 		[
 			row.id,
@@ -169,7 +170,7 @@ export async function saveWebauthnCredential(data: {
 			row.deviceType,
 			row.backedUp,
 			row.nickname,
-			row.olusturma,
+			row.creation,
 		]
 	);
 	return row;
@@ -178,7 +179,7 @@ export async function saveWebauthnCredential(data: {
 export async function updateWebauthnCounter(id: string, counter: number): Promise<void> {
 	await ensurePostgresInit();
 	await getPgPool().query(
-		'UPDATE webauthn_credentials SET counter = $1, sonKullanma = $2 WHERE id = $3',
+		'UPDATE webauthn_credentials SET counter = $1, last_used_at = $2 WHERE id = $3',
 		[counter, Date.now(), id]
 	);
 }
@@ -186,7 +187,7 @@ export async function updateWebauthnCounter(id: string, counter: number): Promis
 export async function deleteWebauthnCredential(id: string, userId: string): Promise<boolean> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		'DELETE FROM webauthn_credentials WHERE id = $1 AND userId = $2',
+		'DELETE FROM webauthn_credentials WHERE id = $1 AND user_id = $2',
 		[id, userId]
 	);
 	return (res.rowCount ?? 0) > 0;

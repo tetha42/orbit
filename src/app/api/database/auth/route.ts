@@ -67,10 +67,10 @@ export async function POST(request: Request) {
 			}
 			const token = await createDatabaseSessionToken(auth.user.id);
 			await logSystemEvent({
-				servis: 'database',
-				seviye: 'INFO',
-				mesaj: 'Veritabanı Yöneticisi passkey oturumu ile açıldı',
-				detay: { email: auth.user.email },
+				service: 'database',
+				level: 'INFO',
+				message: 'Veritabanı Yöneticisi passkey oturumu ile açıldı',
+				detail: { email: auth.user.email },
 				userId: auth.user.id,
 				ip,
 			});
@@ -96,7 +96,7 @@ export async function POST(request: Request) {
 			);
 		}
 
-		const verification = await verifyTotpCodeDetailed(user.totpSecret, code, user.totpSonAdim);
+		const verification = await verifyTotpCodeDetailed(user.totpSecret, code, user.totpLastStep);
 
 		if (!verification.valid) {
 			recordFailure(rateKey, WINDOW_MS);
@@ -107,10 +107,10 @@ export async function POST(request: Request) {
 				userId: user.id,
 			});
 			await logSystemEvent({
-				servis: 'database',
-				seviye: 'WARN',
-				mesaj: 'Geçersiz 2FA kodu ile veritabanı erişim denemesi',
-				detay: { email: user.email },
+				service: 'database',
+				level: 'WARN',
+				message: 'Geçersiz 2FA kodu ile veritabanı erişim denemesi',
+				detail: { email: user.email },
 				userId: user.id,
 				ip,
 			});
@@ -129,10 +129,10 @@ export async function POST(request: Request) {
 		const token = await createDatabaseSessionToken(user.id);
 
 		await logSystemEvent({
-			servis: 'database',
-			seviye: 'INFO',
-			mesaj: 'Veritabanı Yöneticisi 2FA oturumu başlatıldı',
-			detay: { email: user.email },
+			service: 'database',
+			level: 'INFO',
+			message: 'Veritabanı Yöneticisi 2FA oturumu başlatıldı',
+			detail: { email: user.email },
 			userId: user.id,
 			ip,
 		});

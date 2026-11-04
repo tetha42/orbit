@@ -49,10 +49,10 @@ export async function GET(request: Request) {
 		if (!hasAccess) {
 			const ip = clientAddress(request);
 			void logSystemEvent({
-				servis: 'security',
-				seviye: 'WARN',
-				mesaj: `Unauthorized chat room read attempt (IDOR: ${roomId}): ${auth.user.email}`,
-				detay: { roomId },
+				service: 'security',
+				level: 'WARN',
+				message: `Unauthorized chat room read attempt (IDOR: ${roomId}): ${auth.user.email}`,
+				detail: { roomId },
 				userId: auth.user.id,
 				ip,
 			});
@@ -89,11 +89,11 @@ export async function GET(request: Request) {
  * target room, so forwarded media is exactly as private as its new message.
  */
 async function cloneAttachmentsForRoom(
-	attachments: Array<{ ad: string; url: string; boyut?: number; tip?: string }>,
+	attachments: Array<{ name: string; url: string; size?: number; tip?: string }>,
 	roomId: string,
 	userId: string
-): Promise<Array<{ ad: string; url: string; boyut?: number; tip?: string }>> {
-	const cloned: Array<{ ad: string; url: string; boyut?: number; tip?: string }> = [];
+): Promise<Array<{ name: string; url: string; size?: number; tip?: string }>> {
+	const cloned: Array<{ name: string; url: string; size?: number; tip?: string }> = [];
 	const dir = uploadDir();
 	await mkdir(dir, { recursive: true });
 	for (const attachment of attachments) {
@@ -106,16 +106,16 @@ async function cloneAttachmentsForRoom(
 			await writeFile(path.join(dir, name), buffer, { flag: 'wx' });
 			const mime = attachment.tip || mimeForName(name);
 			await addStoredFile({
-				ad: name,
-				yukleyenId: userId,
+				name: name,
+				uploaderId: userId,
 				mime,
-				boyut: buffer.length,
+				size: buffer.length,
 				chatRoomId: roomId,
 			});
 			cloned.push({
-				ad: attachment.ad,
+				name: attachment.name,
 				url: `/api/uploads/${name}`,
-				boyut: buffer.length,
+				size: buffer.length,
 				tip: mime,
 			});
 		} catch {
@@ -143,8 +143,8 @@ export async function POST(request: Request) {
 
 		// Handle forward action
 		if (body.action === 'forward') {
-			const { mesajId, targetRoomIds } = body;
-			if (!mesajId || !Array.isArray(targetRoomIds) || targetRoomIds.length === 0) {
+			const { messageId, targetRoomIds } = body;
+			if (!messageId || !Array.isArray(targetRoomIds) || targetRoomIds.length === 0) {
 				return NextResponse.json(
 					{ error: 'İletilecek mesaj ve hedef odalar belirtilmelidir.' },
 					{ status: 400, headers: NO_CACHE }
@@ -158,7 +158,7 @@ export async function POST(request: Request) {
 				);
 			}
 
-			const sourceMsg = await getChatMessageById(String(mesajId));
+			const sourceMsg = await getChatMessageById(String(messageId));
 			if (!sourceMsg) {
 				return NextResponse.json({ error: 'İletilecek mesaj bulunamadı.' }, { status: 404, headers: NO_CACHE });
 			}
@@ -173,7 +173,7 @@ export async function POST(request: Request) {
 				const canSend = await canUserAccessChatRoom(String(targetRoomId), auth.user.id, isAdmin);
 				if (canSend) {
 					const copiedAttachments = await cloneAttachmentsForRoom(
-						sourceMsg.ekler,
+						sourceMsg.attachments,
 						String(targetRoomId),
 						auth.user.id
 					);
@@ -181,23 +181,23 @@ export async function POST(request: Request) {
 						String(targetRoomId),
 						{
 							id: auth.user.id,
-							ad: auth.user.ad,
-							soyad: auth.user.soyad,
-							profilFoto: auth.user.profilFoto,
+							name: auth.user.name,
+							surname: auth.user.surname,
+							profilePhoto: auth.user.profilePhoto,
 						},
-						sourceMsg.icerik,
+						sourceMsg.content,
 						copiedAttachments,
-						{ iletildiMi: true }
+						{ deliveredMi: true }
 					);
 					forwardedMessages.push(fMsg);
 				}
 			}
 
 			void logSystemEvent({
-				servis: 'chat',
-				seviye: 'INFO',
-				mesaj: `Sohbet mesajı iletildi: ${mesajId} -> ${forwardedMessages.length} oda`,
-				detay: { sourceMessageId: mesajId, targetRoomIds, forwardedCount: forwardedMessages.length },
+				service: 'chat',
+				level: 'INFO',
+				message: `Sohbet mesajı iletildi: ${messageId} -> ${forwardedMessages.length} oda`,
+				detail: { sourceMessageId: messageId, targetRoomIds, forwardedCount: forwardedMessages.length },
 				userId: auth.user.id,
 				ip: clientAddress(request),
 			});
@@ -208,33 +208,33 @@ export async function POST(request: Request) {
 			);
 		}
 
-		const { roomId, icerik, ekler, yanitlananMesajId, yanitlananMesaj, iletildiMi } = body;
+		const { roomId, content, attachments: rawAttachments, repliedMessageId, repliedMessage, deliveredMi } = body;
 
 		// Attachments-only messages are valid; the text may be empty.
-		const attachments = (Array.isArray(ekler) ? ekler : [])
+		const attachments = (Array.isArray(rawAttachments) ? rawAttachments : [])
 			.slice(0, 10)
 			.filter(
-				(item): item is { ad: unknown; url: string; boyut?: unknown; tip?: unknown } =>
+				(item): item is { name: unknown; url: string; size?: unknown; tip?: unknown } =>
 					Boolean(item) &&
 					typeof item === 'object' &&
 					typeof (item as { url?: unknown }).url === 'string' &&
 					String((item as { url?: unknown }).url).startsWith('/api/uploads/')
 			)
 			.map((item) => ({
-				ad: String(item.ad ?? 'attachment').slice(0, 140),
+				name: String(item.name ?? 'attachment').slice(0, 140),
 				url: String(item.url),
-				...(typeof item.boyut === 'number' ? { boyut: item.boyut } : {}),
+				...(typeof item.size === 'number' ? { size: item.size } : {}),
 				...(typeof item.tip === 'string' ? { tip: item.tip.slice(0, 120) } : {}),
 			}));
 
-		if (typeof icerik !== 'string' || (!icerik.trim() && attachments.length === 0)) {
+		if (typeof content !== 'string' || (!content.trim() && attachments.length === 0)) {
 			return NextResponse.json({ error: 'Mesaj içeriği boş olamaz.' }, { status: 400, headers: NO_CACHE });
 		}
 		if (!roomId) {
 			return NextResponse.json({ error: 'Oda ID belirtilmedi.' }, { status: 400, headers: NO_CACHE });
 		}
 
-		const trimmedContent = icerik.trim();
+		const trimmedContent = content.trim();
 		if (trimmedContent.length > MAX_CHAT_MESSAGE_LENGTH) {
 			return NextResponse.json(
 				{ error: `Mesaj içeriği en fazla ${MAX_CHAT_MESSAGE_LENGTH} karakter olabilir.` },
@@ -246,10 +246,10 @@ export async function POST(request: Request) {
 		if (!hasAccess) {
 			const ip = clientAddress(request);
 			void logSystemEvent({
-				servis: 'security',
-				seviye: 'WARN',
-				mesaj: `Unauthorized chat room send attempt (IDOR: ${roomId}): ${auth.user.email}`,
-				detay: { roomId },
+				service: 'security',
+				level: 'WARN',
+				message: `Unauthorized chat room send attempt (IDOR: ${roomId}): ${auth.user.email}`,
+				detail: { roomId },
 				userId: auth.user.id,
 				ip,
 			});
@@ -313,18 +313,18 @@ export async function POST(request: Request) {
 				roomId,
 				{
 					id: 'sistem',
-					ad: 'Sistem',
-					soyad: '',
-					profilFoto: null,
+					name: 'Sistem',
+					surname: '',
+					profilePhoto: null,
 				},
 				`🧹 ${clearRes.count} adet mesaj temizlendi.`
 			);
 
 			void logSystemEvent({
-				servis: 'chat',
-				seviye: 'WARN',
-				mesaj: `/clear komutu çalıştırıldı: ${roomId} (${clearRes.count} mesaj)`,
-				detay: { roomId, count: clearRes.count, deletedIds: clearRes.deletedIds },
+				service: 'chat',
+				level: 'WARN',
+				message: `/clear komutu çalıştırıldı: ${roomId} (${clearRes.count} mesaj)`,
+				detail: { roomId, count: clearRes.count, deletedIds: clearRes.deletedIds },
 				userId: auth.user.id,
 				ip: clientAddress(request),
 			});
@@ -345,16 +345,16 @@ export async function POST(request: Request) {
 			roomId,
 			{
 				id: auth.user.id,
-				ad: auth.user.ad,
-				soyad: auth.user.soyad,
-				profilFoto: auth.user.profilFoto,
+				name: auth.user.name,
+				surname: auth.user.surname,
+				profilePhoto: auth.user.profilePhoto,
 			},
 			trimmedContent,
 			safeAttachments,
 			{
-				yanitlananMesajId: yanitlananMesajId ? String(yanitlananMesajId) : null,
-				yanitlananMesaj: yanitlananMesaj && typeof yanitlananMesaj === 'object' ? yanitlananMesaj : null,
-				iletildiMi: Boolean(iletildiMi),
+				repliedMessageId: repliedMessageId ? String(repliedMessageId) : null,
+				repliedMessage: repliedMessage && typeof repliedMessage === 'object' ? repliedMessage : null,
+				deliveredMi: Boolean(deliveredMi),
 			}
 		);
 
@@ -363,10 +363,10 @@ export async function POST(request: Request) {
 		// already persisted in sohbet_mesajlari.
 		if (consumeRateLimit(`chat:log:${roomId}`, 1, 60_000).allowed) {
 			void logSystemEvent({
-				servis: 'chat',
-				seviye: 'INFO',
-				mesaj: `Sohbet mesajı gönderildi: ${roomId}`,
-				detay: { roomId, messageId: message.id },
+				service: 'chat',
+				level: 'INFO',
+				message: `Sohbet mesajı gönderildi: ${roomId}`,
+				detail: { roomId, messageId: message.id },
 				userId: auth.user.id,
 				ip: clientAddress(request),
 			});
@@ -385,14 +385,14 @@ export async function PATCH(request: Request) {
 
 	try {
 		const body = await request.json();
-		const { id, mesajId, icerik } = body;
-		const targetId = String(id || mesajId || '');
+		const { id, messageId, content } = body;
+		const targetId = String(id || messageId || '');
 
-		if (!targetId || typeof icerik !== 'string' || !icerik.trim()) {
+		if (!targetId || typeof content !== 'string' || !content.trim()) {
 			return NextResponse.json({ error: 'Geçersiz mesaj düzenleme verisi.' }, { status: 400, headers: NO_CACHE });
 		}
 
-		const res = await editChatMessage(targetId, icerik.trim(), auth.user.id);
+		const res = await editChatMessage(targetId, content.trim(), auth.user.id);
 		if (!res.ok || !res.message) {
 			return NextResponse.json(
 				{ error: 'Mesaj düzenlenemedi veya bu işlem için yetkiniz yok.' },
@@ -401,10 +401,10 @@ export async function PATCH(request: Request) {
 		}
 
 		void logSystemEvent({
-			servis: 'chat',
-			seviye: 'INFO',
-			mesaj: `Sohbet mesajı düzenlendi: ${targetId}`,
-			detay: { messageId: targetId },
+			service: 'chat',
+			level: 'INFO',
+			message: `Sohbet mesajı düzenlendi: ${targetId}`,
+			detail: { messageId: targetId },
 			userId: auth.user.id,
 			ip: clientAddress(request),
 		});
@@ -422,12 +422,12 @@ export async function DELETE(request: Request) {
 
 	try {
 		const { searchParams } = new URL(request.url);
-		let targetId = searchParams.get('id') || searchParams.get('mesajId');
+		let targetId = searchParams.get('id') || searchParams.get('messageId');
 
 		if (!targetId) {
 			try {
 				const body = await request.json();
-				targetId = body.id || body.mesajId;
+				targetId = body.id || body.messageId;
 			} catch {}
 		}
 
@@ -446,15 +446,15 @@ export async function DELETE(request: Request) {
 		}
 
 		void logSystemEvent({
-			servis: 'chat',
-			seviye: 'WARN',
-			mesaj: `Sohbet mesajı silindi: ${targetId}`,
-			detay: { messageId: targetId, roomId: res.roomId },
+			service: 'chat',
+			level: 'WARN',
+			message: `Sohbet mesajı silindi: ${targetId}`,
+			detail: { messageId: targetId, roomId: res.roomId },
 			userId: auth.user.id,
 			ip: clientAddress(request),
 		});
 
-		return NextResponse.json({ ok: true, messageId: targetId, silinmeTarihi: res.silinmeTarihi }, { headers: NO_CACHE });
+		return NextResponse.json({ ok: true, messageId: targetId, deletionDate: res.deletionDate }, { headers: NO_CACHE });
 	} catch (err) {
 		console.error('[Chat messages DELETE error]:', err);
 		return NextResponse.json({ error: 'Mesaj silinemedi.' }, { status: 500, headers: NO_CACHE });

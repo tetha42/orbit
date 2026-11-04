@@ -16,8 +16,6 @@ export const PROJECT_SUMMARY_MAX = 280;
 export const PROJECT_DESCRIPTION_MAX = 6000;
 export const TECHNOLOGY_MAX = 24;
 export const TECHNOLOGY_COUNT_MAX = 12;
-export const TEKNOLOJI_MAX = TECHNOLOGY_MAX;
-export const TEKNOLOJI_SAYISI_MAX = TECHNOLOGY_COUNT_MAX;
 
 export function isProjectStatus(value: unknown): value is ProjectStatus {
 	return typeof value === 'string' && (PROJECT_STATUSES as readonly string[]).includes(value);
@@ -64,7 +62,6 @@ export function normalizeTechnologies(value: unknown): string[] | null {
 	}
 	return out;
 }
-export const normalizeTeknolojiler = normalizeTechnologies;
 
 /** "github.com/beuteknoloji/portal" — a repo URL without the noise, for display. */
 export function shortRepo(url: string | null | undefined): string {

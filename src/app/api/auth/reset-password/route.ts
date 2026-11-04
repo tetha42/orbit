@@ -27,10 +27,10 @@ export async function POST(request: Request) {
 	const waf = inspectRequestPayload(request);
 	if (waf.matched) {
 		void logSystemEvent({
-			servis: 'security',
-			seviye: 'ERROR',
-			mesaj: `[WAF] Saldırı imzası engellendi (${waf.signature}): POST /api/auth/reset-password`,
-			detay: { category: waf.category, signature: waf.signature },
+			service: 'security',
+			level: 'ERROR',
+			message: `[WAF] Saldırı imzası engellendi (${waf.signature}): POST /api/auth/reset-password`,
+			detail: { category: waf.category, signature: waf.signature },
 			ip,
 		});
 		void recordSecurityStrike({
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
 
 	try {
 		const body = await request.json().catch(() => ({}));
-		const { action, email, kod, yeniSifre } = body;
+		const { action, email, code, newPassword } = body;
 		const normalizedEmail = String(email || '').trim().toLowerCase();
 
 		if (!normalizedEmail || !isValidEmail(normalizedEmail)) {
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
 			}
 
 			const code = String(crypto.randomInt(100000, 1000000));
-			const sonGecerlilik = Date.now() + 15 * 60 * 1000; // 15 dakika
+			const lastValidity = Date.now() + 15 * 60 * 1000; // 15 dakika
 			const hashedCode = hashOtpCode(code);
 
 			// Süresi dolmuş eski OTP kayıtlarını temizle
@@ -106,15 +106,15 @@ export async function POST(request: Request) {
 			await pool.query(
 				`INSERT INTO verification_tokens (id, user_id, token_type, target, token_hash, expires_at, created_at)
 				 VALUES ($1, $2, 'sifre_sifirlama', $3, $4, $5, $6)`,
-				[`otp_${crypto.randomUUID()}`, user.id, normalizedEmail, hashedCode, sonGecerlilik, Date.now()]
+				[`otp_${crypto.randomUUID()}`, user.id, normalizedEmail, hashedCode, lastValidity, Date.now()]
 			);
 
 			clearRateLimit(`pwd_reset:verify:${normalizedEmail}`);
 
 			void notifyPasswordResetCode(
 				{
-					ad: user.ad,
-					soyad: user.soyad,
+					name: user.name,
+					surname: user.surname,
 					email: user.email,
 					preferredLanguage: user.preferredLanguage,
 				},
@@ -123,9 +123,9 @@ export async function POST(request: Request) {
 			);
 
 			await logSystemEvent({
-				servis: 'auth',
-				seviye: 'INFO',
-				mesaj: `Şifre sıfırlama kodu gönderildi: ${normalizedEmail}`,
+				service: 'auth',
+				level: 'INFO',
+				message: `Şifre sıfırlama kodu gönderildi: ${normalizedEmail}`,
 				userId: user.id,
 				ip,
 			});
@@ -151,24 +151,24 @@ export async function POST(request: Request) {
 				);
 			}
 
-			if (!kod || String(kod).trim().length !== 6) {
+			if (!code || String(code).trim().length !== 6) {
 				return NextResponse.json({ error: '6 haneli şifre sıfırlama kodunu giriniz.' }, { status: 400 });
 			}
 
-			const cleanPass = String(yeniSifre || '').trim();
+			const cleanPass = String(newPassword || '').trim();
 			const passProblem = passwordProblem(cleanPass, { email: normalizedEmail });
 			if (passProblem) {
 				return NextResponse.json({ error: passProblem }, { status: 400 });
 			}
 
 			const codeRes = await pool.query(
-				'SELECT token_hash AS kod, expires_at AS songecerlilik FROM verification_tokens WHERE lower(target) = lower($1) AND token_type = $2 ORDER BY created_at DESC LIMIT 1',
+				'SELECT token_hash AS code, expires_at AS lastValidity FROM verification_tokens WHERE lower(target) = lower($1) AND token_type = $2 ORDER BY created_at DESC LIMIT 1',
 				[normalizedEmail, 'sifre_sifirlama']
 			);
 
 			const record = codeRes.rows[0];
-			const expectedCode = record ? String(record.kod ?? record.tokenHash ?? record.token_hash ?? '').trim() : '';
-			const submittedCode = String(kod).trim();
+			const expectedCode = record ? String(record.code ?? record.tokenHash ?? record.token_hash ?? '').trim() : '';
+			const submittedCode = String(code).trim();
 			if (!record || !verifyOtpCode(expectedCode, submittedCode)) {
 				const attempts = recordFailure(verifyKey, OTP_WINDOW_MS);
 				if (attempts >= MAX_OTP_ATTEMPTS) {
@@ -178,17 +178,17 @@ export async function POST(request: Request) {
 					]);
 				}
 				await logSystemEvent({
-					servis: 'auth',
-					seviye: 'WARN',
-					mesaj: `Şifre sıfırlama hatalı OTP denemesi: ${normalizedEmail}`,
-					detay: { email: normalizedEmail, denemeSayisi: attempts },
+					service: 'auth',
+					level: 'WARN',
+					message: `Şifre sıfırlama hatalı OTP denemesi: ${normalizedEmail}`,
+					detail: { email: normalizedEmail, attemptCount: attempts },
 					ip,
 				});
 				return NextResponse.json({ error: 'Şifre sıfırlama kodu hatalıdır.' }, { status: 400 });
 			}
 
-			const sonGecerlilik = Number(record.songecerlilik ?? record.expiresAt ?? record.expires_at ?? 0);
-			if (sonGecerlilik < Date.now()) {
+			const lastValidity = Number(record.lastValidity ?? record.expiresAt ?? record.expires_at ?? 0);
+			if (lastValidity < Date.now()) {
 				return NextResponse.json({ error: 'Sıfırlama kodunun süresi dolmuş. Lütfen yeni kod talep edin.' }, { status: 400 });
 			}
 
@@ -211,12 +211,12 @@ export async function POST(request: Request) {
 			]);
 			clearRateLimit(verifyKey);
 
-			void notifyPasswordReset({ ad: user.ad, soyad: user.soyad, email: user.email });
+			void notifyPasswordReset({ name: user.name, surname: user.surname, email: user.email });
 
 			await logSystemEvent({
-				servis: 'auth',
-				seviye: 'INFO',
-				mesaj: `Kullanıcı şifresi e-posta doğrulamasıyla güncellendi (eski oturumlar sonlandırıldı): ${user.ad} ${user.soyad} (${user.email})`,
+				service: 'auth',
+				level: 'INFO',
+				message: `Kullanıcı şifresi e-posta doğrulamasıyla güncellendi (eski oturumlar sonlandırıldı): ${user.name} ${user.surname} (${user.email})`,
 				userId: user.id,
 				ip,
 			});

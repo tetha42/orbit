@@ -11,8 +11,8 @@ import { startServer } from '../lib/server.mjs';
 
 export const meta = { title: 'Canlı olaylar (SSE + NOTIFY): anında yetki/bildirim, iki süreç, 401, bağlantı sınırı, yoklamaya düşüş' };
 
-const UYE_DOCK = ['teams', 'events', 'projects', 'decisions', 'news', 'certificates', 'inventory', 'members', 'notes', 'settings', 'mail'];
-const HABER_DOCK = ['news', 'settings'];
+const MEMBER_DOCK = ['teams', 'events', 'projects', 'decisions', 'news', 'certificates', 'inventory', 'members', 'notes', 'settings', 'mail'];
+const NEWS_DOCK = ['news', 'settings'];
 /** SSE ile güncelleme: olay + /api/auth/me + çizim; yoklamanın 15 sn'sinden çok uzakta. */
 const SSE_LIMIT_MS = 3_000;
 /** Yoklamaya düşüş: en çok 15 sn + yanıt/çizim payı. */
@@ -57,8 +57,8 @@ export default async function suite(t) {
 	const { fx } = t;
 	const admin = await t.api('admin');
 	const canId = fx.users.can.id;
-	const setRole = (rolId) => admin.patch('/api/uyeler', { id: canId, rolId });
-	t.cleanup(() => setRole(fx.roles.uye));
+	const setRole = (roleId) => admin.patch('/api/uyeler', { id: canId, roleId });
+	t.cleanup(() => setRole(fx.roles.member));
 	const stamp = Date.now().toString(36);
 
 	// ---- (a) rol değişimi ≤ ~3 sn içinde açık oturuma yansır -----------------------------------
@@ -69,21 +69,21 @@ export default async function suite(t) {
 		await page.reload({ waitUntil: 'domcontentloaded' });
 		await waitDesktop(page);
 		await openApp(page, 'events');
-		t.sameSet(await dockApps(page), UYE_DOCK, 'başlangıç: Dock Üye rolünün uygulamaları');
+		t.sameSet(await dockApps(page), MEMBER_DOCK, 'başlangıç: Dock Üye rolünün uygulamaları');
 		t.check(await t.waitFor(() => opened.length > 0, { timeout: 8000 }) >= 0, 'sayfa /api/olaylar akışını açtı');
 		// Akışın açılması (ilk bayt) için kısa bir pay; ardından değişiklik.
 		await t.sleep(1000);
 
-		t.eq((await setRole(fx.roles.haber)).status, 200, 'PATCH /api/uyeler {rolId: Sadece Haberler} 200');
+		t.eq((await setRole(fx.roles.news)).status, 200, 'PATCH /api/uyeler {rolId: Sadece Haberler} 200');
 		const ms = await t.waitFor(async () => !(await dockApps(page)).includes('events'), { timeout: 25_000, every: 100 });
 		t.check(ms >= 0 && ms <= SSE_LIMIT_MS, `Dock'tan Etkinlikler kayboldu (${ms} ms ≤ ${SSE_LIMIT_MS}; yoklama olsaydı ~15 sn)`);
-		t.sameSet(await dockApps(page), HABER_DOCK, 'Dock yalnız Haberler ve Ayarlar');
+		t.sameSet(await dockApps(page), NEWS_DOCK, 'Dock yalnız Haberler ve Ayarlar');
 		t.excludes(await openWindows(page), 'events', 'açık Etkinlikler penceresi kapandı');
 		await t.shot(page, 'sse-rol-degisti');
 
-		await setRole(fx.roles.uye);
-		const geri = await t.waitFor(async () => (await dockApps(page)).includes('events'), { timeout: 25_000, every: 100 });
-		t.check(geri >= 0 && geri <= SSE_LIMIT_MS, `rol geri verilince Dock güncellendi (${geri} ms)`);
+		await setRole(fx.roles.member);
+		const back = await t.waitFor(async () => (await dockApps(page)).includes('events'), { timeout: 25_000, every: 100 });
+		t.check(back >= 0 && back <= SSE_LIMIT_MS, `rol geri verilince Dock güncellendi (${back} ms)`);
 	});
 
 	// ---- oturum-sonlandi: başka cihazda giriş ---------------------------------------------------
@@ -121,11 +121,11 @@ export default async function suite(t) {
 		t.check(streams.slice(0, 2).every((s) => s.ended), 'en eski 2 akış sunucu tarafından kapatıldı');
 		t.check(streams.slice(2).every((s) => !s.ended && s.res.status === 200), 'son 8 akış açık');
 		// Açık kalanlar hâlâ olay alıyor (kapatılan eskiler yüzünden hub bozulmadı).
-		await setRole(fx.roles.haber);
+		await setRole(fx.roles.news);
 		await t.sleep(800);
 		t.check(streams.slice(2).every((s) => s.events.includes('yetki-degisti')), 'açık 8 akışın hepsi yetki-degisti aldı');
 		t.check(!streams.slice(0, 2).some((s) => s.events.length), 'kapatılanlar olay almadı');
-		await setRole(fx.roles.uye);
+		await setRole(fx.roles.member);
 		for (const s of streams) s.close();
 		await t.sleep(300);
 		// Sınır, kapatılan akışları sayar: yeni bir akış yine açılabiliyor.
@@ -140,13 +140,13 @@ export default async function suite(t) {
 		const sCan = await openStream(t.base, canTok);
 		const sEge = await openStream(t.base, egeTok);
 		await t.sleep(500);
-		await setRole(fx.roles.haber);
+		await setRole(fx.roles.news);
 		await t.sleep(800);
 		t.includes(sCan.events, 'yetki-degisti', 'rolü değişen üye yetki-degisti aldı');
 		t.eq(sEge.events, [], 'rolü değişmeyen üye olay almadı');
 		const payloads = [...sCan.text.matchAll(/^data: (.*)$/gm)].map((m) => m[1]);
 		t.check(payloads.length > 0 && payloads.every((p) => p === '{}'), 'olay verisi boş ({}) — sızan alan yok');
-		await setRole(fx.roles.uye);
+		await setRole(fx.roles.member);
 		sCan.close();
 		sEge.close();
 	});
@@ -157,8 +157,8 @@ export default async function suite(t) {
 		await page.locator('[data-notification-toggle]').waitFor();
 		await t.sleep(1500);
 		const before = await badge(page);
-		const haber = must(await admin.post('/api/haberler', { baslik: `SSE bildirim haberi ${stamp}`, icerik: 'Canlı bildirim.', kategori: 'genel', yayinDurumu: 'yayinda' }), 'haber');
-		t.cleanup(() => admin.del(`/api/haberler?id=${haber.id}`));
+		const news = must(await admin.post('/api/haberler', { title: `SSE bildirim haberi ${stamp}`, content: 'Canlı bildirim.', category: 'genel', publishStatus: 'yayinda' }), 'haber');
+		t.cleanup(() => admin.del(`/api/haberler?id=${news.id}`));
 		const ms = await t.waitFor(async () => (await badge(page)) > before, { timeout: 20_000, every: 100 });
 		t.check(ms >= 0 && ms <= SSE_LIMIT_MS, `zil sayacı ${before} → ${await badge(page)} (${ms} ms; yoklama 60 sn'de bir)`);
 		await t.shot(page, 'sse-zil-artti');
@@ -177,13 +177,13 @@ export default async function suite(t) {
 		const page = await context.newPage();
 		await page.goto(t.base, { waitUntil: 'domcontentloaded' });
 		await waitDesktop(page);
-		t.sameSet(await dockApps(page), UYE_DOCK, 'akış engelli: masaüstü yine de açıldı');
+		t.sameSet(await dockApps(page), MEMBER_DOCK, 'akış engelli: masaüstü yine de açıldı');
 		t.check(await t.waitFor(() => blocked > 0, { timeout: 8000 }) >= 0, '/api/olaylar denemesi engellendi');
 		await t.sleep(500);
-		await setRole(fx.roles.haber);
+		await setRole(fx.roles.news);
 		const ms = await t.waitFor(async () => !(await dockApps(page)).includes('events'), { timeout: 30_000, every: 250 });
 		t.check(ms >= 0 && ms <= POLL_LIMIT_MS, `yoklamayla Dock güncellendi (${ms} ms ≤ ${POLL_LIMIT_MS})`);
-		await setRole(fx.roles.uye);
+		await setRole(fx.roles.member);
 	});
 
 	await t.step('SSE yok (EventSource tanımsız) → yoklama çalışır', async () => {
@@ -197,10 +197,10 @@ export default async function suite(t) {
 		await page.goto(t.base, { waitUntil: 'domcontentloaded' });
 		await waitDesktop(page);
 		await t.sleep(500);
-		await setRole(fx.roles.haber);
+		await setRole(fx.roles.news);
 		const ms = await t.waitFor(async () => !(await dockApps(page)).includes('events'), { timeout: 30_000, every: 250 });
 		t.check(ms >= 0 && ms <= POLL_LIMIT_MS, `EventSource olmadan yoklamayla Dock güncellendi (${ms} ms)`);
-		await setRole(fx.roles.uye);
+		await setRole(fx.roles.member);
 	});
 
 	// ---- (b) iki sunucu süreci, aynı veritabanı -------------------------------------------------
@@ -223,8 +223,8 @@ export default async function suite(t) {
 			name: 'server-sse-b',
 			env: {
 				DATABASE_URL: databaseUrl,
-				BOOTSTRAP_ADMIN_EMAIL: fx.admin.eposta,
-				BOOTSTRAP_ADMIN_PASSWORD: fx.admin.sifre,
+				BOOTSTRAP_ADMIN_EMAIL: fx.admin.email,
+				BOOTSTRAP_ADMIN_PASSWORD: fx.admin.password,
 				NEXT_TELEMETRY_DISABLED: '1',
 				BEU_DIST_DIR: '.next-b',
 			},
@@ -237,25 +237,25 @@ export default async function suite(t) {
 		// (1) B'ye bağlı oturumun ekranı, A'da yapılan rol değişimiyle güncellenir.
 		const { context, page } = await openSession(t.browser, baseB, canA.token);
 		t.track(context);
-		t.sameSet(await dockApps(page), UYE_DOCK, 'B sürecine bağlı oturum: başlangıç Dock');
+		t.sameSet(await dockApps(page), MEMBER_DOCK, 'B sürecine bağlı oturum: başlangıç Dock');
 		await t.sleep(1500); // B'nin akışı ve LISTEN bağlantısı hazır
-		t.eq((await setRole(fx.roles.haber)).status, 200, 'A sürecinde rol değişti');
+		t.eq((await setRole(fx.roles.news)).status, 200, 'A sürecinde rol değişti');
 		const ms = await t.waitFor(async () => !(await dockApps(page)).includes('events'), { timeout: 25_000, every: 100 });
 		t.check(ms >= 0 && ms <= SSE_LIMIT_MS + 1000, `B sürecindeki ekran NOTIFY ile güncellendi (${ms} ms; yoklama ~15 sn)`);
-		await setRole(fx.roles.uye);
+		await setRole(fx.roles.member);
 		await t.waitFor(async () => (await dockApps(page)).includes('events'), { timeout: 25_000, every: 100 });
 
 		// (2) B'nin 5 sn'lik izin önbelleği, A'daki rol düzenlemesiyle hemen geçersiz kalır.
-		const rolAd = `E2E SSE ${stamp}`;
-		const rol = must(await admin.post('/api/roller', { ad: rolAd, renk: '#8e8e93', aciklama: 'SSE önbellek', ikiAdimZorunlu: false, izinler: { news: 'kullan', events: 'kullan', settings: 'kullan' } }), 'rol');
-		t.cleanup(() => admin.del('/api/roller', { id: rol.id, tasi: fx.roles.uye }));
-		must(await setRole(rol.id), 'üyeye rol');
+		const roleName = `E2E SSE ${stamp}`;
+		const role = must(await admin.post('/api/roller', { name: roleName, color: '#8e8e93', description: 'SSE önbellek', twoStepRequired: false, permissions: { news: 'kullan', events: 'kullan', settings: 'kullan' } }), 'rol');
+		t.cleanup(() => admin.del('/api/roller', { id: role.id, move: fx.roles.member }));
+		must(await setRole(role.id), 'üyeye rol');
 		t.eq((await canB.get('/api/etkinlikler')).status, 200, 'B: Etkinlikler izinli (izin önbelleğe alındı)');
 		t.eq((await canB.get('/api/etkinlikler')).status, 200, 'B: ikinci istek önbellekten 200');
-		const edit = await admin.patch('/api/roller', { id: rol.id, ad: rolAd, renk: '#8e8e93', aciklama: 'SSE önbellek', ikiAdimZorunlu: false, izinler: { news: 'kullan', settings: 'kullan' } });
+		const edit = await admin.patch('/api/roller', { id: role.id, name: roleName, color: '#8e8e93', description: 'SSE önbellek', twoStepRequired: false, permissions: { news: 'kullan', settings: 'kullan' } });
 		t.eq(edit.status, 200, 'A: rolden Etkinlikler izni kaldırıldı');
 		const cacheMs = await t.waitFor(async () => (await canB.get('/api/etkinlikler')).status === 403, { timeout: 8000, every: 100 });
 		t.check(cacheMs >= 0 && cacheMs < 2500, `B'nin önbelleği NOTIFY ile geçersiz kaldı (${cacheMs} ms; TTL olsaydı ~5000 ms'ye kadar 200 dönerdi)`);
-		await setRole(fx.roles.uye);
+		await setRole(fx.roles.member);
 	});
 }

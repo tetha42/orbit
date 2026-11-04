@@ -76,7 +76,7 @@ async function handlePOST(request: Request) {
 		}
 
 		if (action === 'create_baseline') {
-			const isManager = canManage(auth.user.permission?.izinler, 'soc') || auth.user.roleId === 'rol_admin';
+			const isManager = canManage(auth.user.permission?.permissions, 'soc') || auth.user.roleId === 'rol_admin';
 			if (!isManager) {
 				return NextResponse.json(
 					{ error: 'Bütünlük başlangıç profili (baseline) oluşturmak için yönetici yetkisi gereklidir.' },

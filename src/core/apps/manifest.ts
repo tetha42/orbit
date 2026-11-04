@@ -31,7 +31,7 @@ export interface AppMenuItem {
 	/** The role must hold this level in the app, otherwise the item is not shown at all. */
 	permission?: MenuLevel;
 	/** Opens the app, then sends it this command — the app receives it with `useAppCommand`. */
-	komut?: string;
+	command?: string;
 	/** Just opens the app. */
 	ac?: true;
 }
@@ -59,14 +59,14 @@ export interface AppMenu {
 
 /** What the role editor shows for the app: its name and what each level allows. */
 export interface AppPermission {
-	ad: string;
+	name: string;
 	kullan: string;
 	yonet: string;
-	uyari?: string;
+	warning?: string;
 	/** Everyone gets at least `kullan` (Settings: password, 2FA, theme…). */
-	herkeseAcik?: true;
+	everyoneOpen?: true;
 	/** Position in the role editor; apps without one come last, by id. */
-	sira?: number;
+	order?: number;
 }
 
 /** The component an app opens in its window, loaded the first time the window opens. */

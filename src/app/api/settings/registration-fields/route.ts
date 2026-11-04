@@ -28,10 +28,10 @@ export async function PATCH(request: Request) {
 	}
 	const config = await setRegistrationCoreConfig(body);
 	void logSystemEvent({
-		servis: 'settings',
-		seviye: 'INFO',
-		mesaj: `Registration core fields updated (${auth.user.firstName || auth.user.ad || ""} ${auth.user.lastName || auth.user.soyad || ""})`,
-		detay: {
+		service: 'settings',
+		level: 'INFO',
+		message: `Registration core fields updated (${auth.user.firstName || auth.user.name || ""} ${auth.user.lastName || auth.user.surname || ""})`,
+		detail: {
 			trackVisible: config.track.visible,
 			levelVisible: config.level.visible,
 			trackOptions: config.track.options.length,

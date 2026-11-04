@@ -104,9 +104,9 @@ export async function showLauncherApps(page) {
 }
 
 /** Step one of the sign-in screen: e-mail and password. */
-export async function submitCredentials(page, eposta, sifre) {
-	await page.locator('input[type=email]').fill(eposta);
-	await page.locator('input[type=password]').fill(sifre);
+export async function submitCredentials(page, email, password) {
+	await page.locator('input[type=email]').fill(email);
+	await page.locator('input[type=password]').fill(password);
 	await page.locator('form button[type=submit]').click();
 }
 
@@ -121,8 +121,8 @@ export async function submitSecondFactor(page, code) {
  * Signs in through the form and waits for the desktop. For an account with a second
  * factor pass `{ totp: secret }` (a code is made for it) or `{ code }` (a recovery code).
  */
-export async function loginUi(page, eposta, sifre, { totp, code } = {}) {
-	await submitCredentials(page, eposta, sifre);
+export async function loginUi(page, email, password, { totp, code } = {}) {
+	await submitCredentials(page, email, password);
 	if (totp || code) {
 		await page.locator('input[autocomplete=one-time-code]').waitFor();
 		await submitSecondFactor(page, code ?? (await totpCode(totp)));

@@ -82,11 +82,10 @@ export interface UserSessionInfo {
 		lastName?: string;
 		handle?: string;
 		roleName?: string;
-		ad: string;
-		soyad: string;
+		name: string;
+		surname: string;
 		email: string;
-		ogrenciNo: string;
-		rolAd: string;
+		studentNo: string;
 		admin: boolean;
 		totpEnabled: boolean;
 		status: string;
@@ -96,8 +95,8 @@ export interface UserSessionInfo {
 
 export interface OAuthClientOption {
 	id: string;
-	ad: string;
+	name: string;
 	redirectUris: string[];
 	allowedScopes: string[];
-	guvenilir: boolean;
+	trusted: boolean;
 }

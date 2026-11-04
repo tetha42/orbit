@@ -29,14 +29,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
 			data: {
 				id: article.id,
 				slug: article.slug,
-				title: article.baslik,
-				summary: article.ozet,
-				content: article.icerik,
-				category: { id: article.kategori, label: NEWS_CATEGORY_LABELS[article.kategori as keyof typeof NEWS_CATEGORY_LABELS] ?? NEWS_CATEGORY_LABELS.genel },
-				featured: article.onemliMi === 1,
-				imageUrl: publicImageUrl(article.resimUrl),
-				publishedAt: isoDate(article.yayinTarihi),
-				updatedAt: isoDate(article.guncellenme),
+				title: article.title,
+				summary: article.summary,
+				content: article.content,
+				category: { id: article.category, label: NEWS_CATEGORY_LABELS[article.category as keyof typeof NEWS_CATEGORY_LABELS] ?? NEWS_CATEGORY_LABELS.genel },
+				featured: article.importantMi === 1,
+				imageUrl: publicImageUrl(article.imageUrl),
+				publishedAt: isoDate(article.publishDate),
+				updatedAt: isoDate(article.update),
 			},
 		});
 	} catch (error) {

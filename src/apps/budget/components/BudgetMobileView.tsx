@@ -39,7 +39,7 @@ export interface BudgetMobileViewProps {
 
 type BudgetMobileTab = 'transactions' | 'wallets' | 'insights' | 'add';
 
-const tl = (kurus: number) => `₺${formatMinor(kurus)}`;
+const tl = (minor: number) => `₺${formatMinor(minor)}`;
 
 export function BudgetMobileView({
 	vaults,
@@ -93,7 +93,7 @@ export function BudgetMobileView({
 					<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 						<Landmark size={18} color="var(--accent)" />
 						<span style={{ fontSize: '13px', fontWeight: 700, color: '#f8fafc' }}>
-							{active?.ad ?? t('kasaGeneralTitle')}
+							{active?.name ?? t('kasaGeneralTitle')}
 						</span>
 					</div>
 					<span className={`${s.badge} ${s.badgeOk}`}>
@@ -122,8 +122,8 @@ export function BudgetMobileView({
 					type="text"
 					className={s.searchInput}
 					placeholder={t('kasaSearchPlaceholder')}
-					value={ledger.arama}
-					onChange={(e) => ledger.setArama(e.target.value)}
+					value={ledger.search}
+					onChange={(e) => ledger.setSearch(e.target.value)}
 				/>
 			</div>
 
@@ -131,23 +131,23 @@ export function BudgetMobileView({
 			<div className={s.chipRow}>
 				<button
 					type="button"
-					className={`${s.chip} ${ledger.tur === 'hepsi' ? s.chipActive : ''}`}
-					onClick={() => ledger.setTur('hepsi')}
+					className={`${s.chip} ${ledger.typeValue === 'hepsi' ? s.chipActive : ''}`}
+					onClick={() => ledger.setType('hepsi')}
 				>
 					{t('kasaFilterAll')} ({ledger.records.length})
 				</button>
 				<button
 					type="button"
-					className={`${s.chip} ${ledger.tur === 'gelir' ? s.chipActive : ''}`}
-					onClick={() => ledger.setTur('gelir')}
+					className={`${s.chip} ${ledger.typeValue === 'gelir' ? s.chipActive : ''}`}
+					onClick={() => ledger.setType('gelir')}
 				>
 					<TrendingUp size={13} color="#34c759" />
 					<span>{t('kasaFilterIncome')}</span>
 				</button>
 				<button
 					type="button"
-					className={`${s.chip} ${ledger.tur === 'gider' ? s.chipActive : ''}`}
-					onClick={() => ledger.setTur('gider')}
+					className={`${s.chip} ${ledger.typeValue === 'gider' ? s.chipActive : ''}`}
+					onClick={() => ledger.setType('gider')}
 				>
 					<TrendingDown size={13} color="#ff453a" />
 					<span>{t('kasaFilterExpense')}</span>
@@ -166,7 +166,7 @@ export function BudgetMobileView({
 					</div>
 				) : (
 					ledger.filtered.map((r) => {
-						const isIncome = r.tur === 'gelir';
+						const isIncome = r.typeValue === 'gelir';
 						return (
 							<div
 								key={r.id}
@@ -178,12 +178,12 @@ export function BudgetMobileView({
 										{isIncome ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
 									</div>
 									<div className={s.txDetails}>
-										<div className={s.txDesc}>{r.aciklama}</div>
+										<div className={s.txDesc}>{r.description}</div>
 										<div className={s.txSub}>
 											<span>{formatDate(r.date)}</span>
 											<span>•</span>
-											<span>{r.kategori}</span>
-											{r.fisFotoUrl && (
+											<span>{r.category}</span>
+											{r.receiptPhotoUrl && (
 												<>
 													<span>•</span>
 													<span title={t('kasaReceiptAttached')} style={{ display: 'inline-flex', alignItems: 'center' }}>
@@ -199,10 +199,10 @@ export function BudgetMobileView({
 									<span className={`${s.txAmount} ${isIncome ? s.txAmountIncome : s.txAmountExpense}`}>
 										{isIncome ? '+' : '-'}{tl(r.amountMinor)}
 									</span>
-									{r.karsiKasaAd && (
+									{r.counterpartVaultName && (
 										<span style={{ fontSize: '10px', opacity: 0.55, display: 'flex', alignItems: 'center', gap: '3px' }}>
 											<ArrowLeftRight size={10} />
-											<span>{r.karsiKasaAd}</span>
+											<span>{r.counterpartVaultName}</span>
 										</span>
 									)}
 								</div>
@@ -266,7 +266,7 @@ export function BudgetMobileView({
 									<Landmark size={20} />
 								</div>
 								<div>
-									<div style={{ fontSize: '14px', fontWeight: 700, color: '#f8fafc' }}>{k.ad}</div>
+									<div style={{ fontSize: '14px', fontWeight: 700, color: '#f8fafc' }}>{k.name}</div>
 									<div style={{ fontSize: '11.5px', opacity: 0.6 }}>
 										{t('kasaGeneralDesc')}
 									</div>
@@ -318,7 +318,7 @@ export function BudgetMobileView({
 										<Wallet size={20} />
 									</div>
 									<div>
-										<div style={{ fontSize: '14px', fontWeight: 700, color: '#f8fafc' }}>{k.ad}</div>
+										<div style={{ fontSize: '14px', fontWeight: 700, color: '#f8fafc' }}>{k.name}</div>
 										<div style={{ fontSize: '11.5px', opacity: 0.6 }}>
 											{t('kasaProjectDesc')}
 										</div>
@@ -349,15 +349,15 @@ export function BudgetMobileView({
 			<div className={s.card}>
 				<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
 					<span style={{ fontSize: '13px', fontWeight: 700 }}>{t('kasaInsightsTitle')}</span>
-					<span style={{ fontSize: '11.5px', opacity: 0.6 }}>{active?.ad}</span>
+					<span style={{ fontSize: '11.5px', opacity: 0.6 }}>{active?.name}</span>
 				</div>
 				<VaultInsights
-					dagilim={ledger.dagilim}
-					kategori={ledger.kategori}
-					onSelectKategori={(c) => ledger.setKategori(c)}
-					aylar={ledger.aylar}
-					ay={ledger.ay}
-					onSelectAy={(a) => ledger.setAy(a)}
+					distribution={ledger.distribution}
+					category={ledger.category}
+					onSelectCategory={(c) => ledger.setCategory(c)}
+					months={ledger.months}
+					month={ledger.month}
+					onSelectMonth={(a) => ledger.setMonth(a)}
 					maxMonth={ledger.maxMonth}
 				/>
 			</div>
@@ -439,19 +439,19 @@ export function BudgetMobileView({
 
 						<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'rgba(255, 255, 255, 0.04)', borderRadius: '12px' }}>
 							<div>
-								<div style={{ fontSize: '15px', fontWeight: 700 }}>{selectedRecord.aciklama}</div>
-								<div style={{ fontSize: '12px', opacity: 0.6 }}>{selectedRecord.kategori} • {formatDate(selectedRecord.date)}</div>
+								<div style={{ fontSize: '15px', fontWeight: 700 }}>{selectedRecord.description}</div>
+								<div style={{ fontSize: '12px', opacity: 0.6 }}>{selectedRecord.category} • {formatDate(selectedRecord.date)}</div>
 							</div>
-							<div style={{ fontSize: '18px', fontWeight: 800, color: selectedRecord.tur === 'gelir' ? '#34c759' : '#ffffff' }}>
-								{selectedRecord.tur === 'gelir' ? '+' : '-'}{tl(selectedRecord.amountMinor)}
+							<div style={{ fontSize: '18px', fontWeight: 800, color: selectedRecord.typeValue === 'gelir' ? '#34c759' : '#ffffff' }}>
+								{selectedRecord.typeValue === 'gelir' ? '+' : '-'}{tl(selectedRecord.amountMinor)}
 							</div>
 						</div>
 
-						{selectedRecord.fisFotoUrl && (
+						{selectedRecord.receiptPhotoUrl && (
 							<div>
 								<span style={{ fontSize: '11.5px', opacity: 0.65, display: 'block', marginBottom: '6px' }}>{t('kasaReceiptAttached')}</span>
 								<a
-									href={selectedRecord.fisFotoUrl}
+									href={selectedRecord.receiptPhotoUrl}
 									target="_blank"
 									rel="noreferrer noopener"
 									style={{

@@ -25,24 +25,24 @@ export function AccountPasswordForm({
 	note,
 }: AccountPasswordFormProps) {
 	const { t } = useI18n();
-	const [mevcut, setMevcut] = useState('');
-	const [yeni, setYeni] = useState('');
-	const [tekrar, setTekrar] = useState('');
+	const [current, setCurrent] = useState('');
+	const [fresh, setNew] = useState('');
+	const [repeat, setRepeat] = useState('');
 
-	const passwordIssue = yeni ? passwordProblem(yeni, { mevcut: mevcut || undefined, email: userEmail }) : null;
+	const passwordIssue = fresh ? passwordProblem(fresh, { current: current || undefined, email: userEmail }) : null;
 
 	const changePassword = async (e: React.FormEvent) => {
 		e.preventDefault();
-		if (yeni !== tekrar) {
+		if (fresh !== repeat) {
 			onPasswordDone(false, t('acMismatch'));
 			return;
 		}
 		onSetBusy('password');
-		const res = await sendJson('/api/profile/password', 'POST', { mevcut, yeni });
+		const res = await sendJson('/api/profile/password', 'POST', { current, fresh });
 		if (res.ok) {
-			setMevcut('');
-			setYeni('');
-			setTekrar('');
+			setCurrent('');
+			setNew('');
+			setRepeat('');
 		}
 		onPasswordDone(res.ok, res.ok ? t('acPasswordChanged') : res.error || t('kbActionFailed'));
 	};
@@ -55,23 +55,23 @@ export function AccountPasswordForm({
 			<input type="text" name="username" autoComplete="username" value={userEmail} readOnly hidden />
 			<label className={ui.field}>
 				<span className={ui.fieldLabel}>{t('acCurrent')}</span>
-				<input className={ui.input} type="password" autoComplete="current-password" value={mevcut} onChange={(e) => setMevcut(e.target.value)} required />
+				<input className={ui.input} type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} required />
 			</label>
 			<div className={styles.grid2}>
 				<label className={ui.field}>
 					<span className={ui.fieldLabel}>{t('acNew')}</span>
-					<input className={ui.input} type="password" autoComplete="new-password" value={yeni} onChange={(e) => setYeni(e.target.value)} required />
+					<input className={ui.input} type="password" autoComplete="new-password" value={fresh} onChange={(e) => setNew(e.target.value)} required />
 				</label>
 				<label className={ui.field}>
 					<span className={ui.fieldLabel}>{t('acRepeat')}</span>
-					<input className={ui.input} type="password" autoComplete="new-password" value={tekrar} onChange={(e) => setTekrar(e.target.value)} required />
+					<input className={ui.input} type="password" autoComplete="new-password" value={repeat} onChange={(e) => setRepeat(e.target.value)} required />
 				</label>
 			</div>
-			{yeni && <PasswordStrengthMeter password={yeni} />}
+			{fresh && <PasswordStrengthMeter password={fresh} />}
 			<div className={passwordIssue ? ui.error : ui.hint}>{passwordIssue ?? t('acPasswordRules')}</div>
-			{tekrar && yeni !== tekrar && <div className={ui.error}>{t('acMismatch')}</div>}
+			{repeat && fresh !== repeat && <div className={ui.error}>{t('acMismatch')}</div>}
 			<div className={ui.btnRow}>
-				<button type="submit" className={ui.primaryBtn} disabled={busy === 'password' || !mevcut || !!passwordIssue || !yeni || yeni !== tekrar}>
+				<button type="submit" className={ui.primaryBtn} disabled={busy === 'password' || !current || !!passwordIssue || !fresh || fresh !== repeat}>
 					{t('acChangePassword')}
 				</button>
 			</div>

@@ -31,5 +31,5 @@ export const EXPERIENCE_LEVELS: ExperienceLevelItem[] = [
 	{ value: 6, label: 'Alumni / Fellow' },
 ];
 
-export const BOLUMLER: string[] = DEPARTMENTS.map((d) => d.name);
-export const SINIFLAR: ExperienceLevelItem[] = EXPERIENCE_LEVELS;
+export const DEPARTMENT_NAMES: string[] = DEPARTMENTS.map((d) => d.name);
+export const GRADES: ExperienceLevelItem[] = EXPERIENCE_LEVELS;

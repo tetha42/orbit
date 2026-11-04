@@ -37,19 +37,19 @@ export async function executeSoarPlaybook(
 			// 1. Quarantine IP for 24 hours with max threat score
 			await banIp({
 				ip: target.ip,
-				neden: 'SOAR Automated Playbook: Brute-Force & Credential Stuffing Containment',
+				reason: 'SOAR Automated Playbook: Brute-Force & Credential Stuffing Containment',
 				durationMs: 24 * 60 * 60 * 1000,
-				tehditPuani: 100,
-				olusturanId: target.analystId,
+				threatScore: 100,
+				creatorId: target.analystId,
 			});
 			actionsTaken.push(`Quarantined IP ${target.ip} for 24h with 100pt threat score`);
 
 			// 2. Write audit log
 			await logSystemEvent({
-				servis: 'soar',
-				seviye: 'WARN',
-				mesaj: `SOAR Brute-Force Playbook executed against IP ${target.ip}`,
-				detay: { playbookId, ip: target.ip, analystId: target.analystId },
+				service: 'soar',
+				level: 'WARN',
+				message: `SOAR Brute-Force Playbook executed against IP ${target.ip}`,
+				detail: { playbookId, ip: target.ip, analystId: target.analystId },
 				userId: target.analystId,
 				ip: target.ip,
 			});
@@ -100,12 +100,12 @@ export async function executeSoarPlaybook(
 
 			// 4. Dispatch security notification email
 			try {
-				const userRes = await pool.query<{ email: string; ad: string }>('SELECT email, first_name AS ad FROM users WHERE id = $1', [target.userId]);
+				const userRes = await pool.query<{ email: string; name: string }>('SELECT email, first_name AS name FROM users WHERE id = $1', [target.userId]);
 				if (userRes.rows.length > 0 && userRes.rows[0].email) {
 					await sendMail({
 						to: userRes.rows[0].email,
 						subject: '[Security Alert] Account Quarantined - Unusual Activity Detected',
-						html: `<p>Hello ${userRes.rows[0].ad},</p><p>Your account was quarantined by the Security Operations Center due to suspected credential compromise. All active sessions and shell access have been terminated. Please contact your community administrator immediately.</p>`,
+						html: `<p>Hello ${userRes.rows[0].name},</p><p>Your account was quarantined by the Security Operations Center due to suspected credential compromise. All active sessions and shell access have been terminated. Please contact your community administrator immediately.</p>`,
 						text: `Security Alert: Your account #${target.userId} was quarantined by SOC. Contact administrator.`,
 					});
 					actionsTaken.push(`Dispatched security notification email to ${userRes.rows[0].email}`);
@@ -116,10 +116,10 @@ export async function executeSoarPlaybook(
 
 			// 5. Audit log
 			await logSystemEvent({
-				servis: 'soar',
-				seviye: 'CRITICAL',
-				mesaj: `SOAR Compromised Account Isolation executed for user #${target.userId}`,
-				detay: { playbookId, userId: target.userId, analystId: target.analystId, closedShells },
+				service: 'soar',
+				level: 'CRITICAL',
+				message: `SOAR Compromised Account Isolation executed for user #${target.userId}`,
+				detail: { playbookId, userId: target.userId, analystId: target.analystId, closedShells },
 				userId: target.analystId,
 				ip: target.ip || undefined,
 			});
@@ -133,10 +133,10 @@ export async function executeSoarPlaybook(
 			if (target.ip) {
 				await banIp({
 					ip: target.ip,
-					neden: 'SOAR Automated Playbook: Web Shell & File Tamper Isolation',
+					reason: 'SOAR Automated Playbook: Web Shell & File Tamper Isolation',
 					durationMs: null, // permanent
-					tehditPuani: 100,
-					olusturanId: target.analystId,
+					threatScore: 100,
+					creatorId: target.analystId,
 				});
 				actionsTaken.push(`Quarantined source IP ${target.ip} permanently`);
 			}

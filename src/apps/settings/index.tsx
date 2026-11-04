@@ -30,7 +30,7 @@ export function SettingsApp() {
 		return <SettingsMobileView nav={nav} />;
 	}
 
-	const { visibleSections, activeTab, setActiveTab, isAdmin, yonetici } = nav;
+	const { visibleSections, activeTab, setActiveTab, isAdmin, admin } = nav;
 
 	return (
 		<div style={{ display: 'flex', height: '100%', minHeight: '100%', flex: 1, color: 'var(--text-primary)' }}>
@@ -58,11 +58,11 @@ export function SettingsApp() {
 				{(activeTab === 'appearance' || (activeTab as string) === 'dock' || (activeTab as string) === 'display' || (activeTab as string) === 'sound') && <AppearancePanel />}
 				{activeTab === 'language' && <LanguageSettingsPanel />}
 				{activeTab === 'security' && <SecurityPanel />}
-				{activeTab === 'community' && yonetici && <CommunitySettingsPanel />}
-				{activeTab === 'membership' && yonetici && <MembershipPolicyPanel />}
-				{activeTab === 'legal' && yonetici && <LegalSettingsPanel />}
-				{activeTab === 'forms' && yonetici && <FormDesignerPanel />}
-				{activeTab === 'teams' && yonetici && <TeamCategoriesPanel />}
+				{activeTab === 'community' && admin && <CommunitySettingsPanel />}
+				{activeTab === 'membership' && admin && <MembershipPolicyPanel />}
+				{activeTab === 'legal' && admin && <LegalSettingsPanel />}
+				{activeTab === 'forms' && admin && <FormDesignerPanel />}
+				{activeTab === 'teams' && admin && <TeamCategoriesPanel />}
 				{activeTab === 'roles' && isAdmin && <RolesPanel />}
 				{activeTab === 'privacy' && isAdmin && <PrivacyDataPanel />}
 				{activeTab === 'smtp' && <SmtpSettingsPanel />}

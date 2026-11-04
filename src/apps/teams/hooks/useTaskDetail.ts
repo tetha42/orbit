@@ -12,9 +12,9 @@ import type { TeamTask } from '../types';
 
 interface Detail {
 	task: TeamTask;
-	maddeler: TeamTaskItem[];
-	yorumlar: TeamTaskComment[];
-	izinler: { manage: boolean; work: boolean; comment: boolean };
+	items: TeamTaskItem[];
+	comments: TeamTaskComment[];
+	permissions: { manage: boolean; work: boolean; comment: boolean };
 }
 
 interface UseTaskDetailParams {
@@ -73,41 +73,41 @@ export function useTaskDetail({
 	const saveTitle = async () => {
 		const next = titleDraft?.trim();
 		setTitleDraft(null);
-		if (data && next && next !== data.task.baslik) await patch({ baslik: next });
+		if (data && next && next !== data.task.title) await patch({ title: next });
 	};
 
 	const saveDesc = async () => {
 		if (descDraft === null) return;
 		const next = descDraft;
-		const ok = await patch({ aciklama: next });
+		const ok = await patch({ description: next });
 		if (ok) setDescDraft(null);
 	};
 
 	const setStatus = async (status: TaskStatus) => {
 		if (!data) return;
-		const res = await sendJson<{ xpVerildi?: boolean }>('/api/teams', 'POST', {
+		const res = await sendJson<{ xpGiven?: boolean }>('/api/teams', 'POST', {
 			action: 'updateTask',
-			gorevId: data.task.id,
+			taskId: data.task.id,
 			status,
 		});
 		if (res.ok) playSystemSound();
-		await after(res, res.ok && res.data?.xpVerildi ? t('kbXpEarned') : undefined);
+		await after(res, res.ok && res.data?.xpGiven ? t('kbXpEarned') : undefined);
 	};
 
 	const toggleItem = async (m: TeamTaskItem) => {
-		const tamamMi = Number(m.tamamMi) !== 1;
+		const doneMi = Number(m.doneMi) !== 1;
 		setData((d) =>
-			d ? { ...d, maddeler: d.maddeler.map((x) => (x.id === m.id ? { ...x, tamamMi: tamamMi ? 1 : 0 } : x)) } : d
+			d ? { ...d, items: d.items.map((x) => (x.id === m.id ? { ...x, doneMi: doneMi ? 1 : 0 } : x)) } : d
 		);
-		await action({ action: 'updateItem', maddeId: m.id, tamamMi });
+		await action({ action: 'updateItem', itemId: m.id, doneMi });
 	};
 
 	const addItem = async (e: React.FormEvent) => {
 		e.preventDefault();
-		const metin = itemDraft.trim();
-		if (!metin) return;
+		const text = itemDraft.trim();
+		if (!text) return;
 		setItemDraft('');
-		await action({ action: 'addItem', metin });
+		await action({ action: 'addItem', text });
 	};
 
 	const sendComment = async () => {
@@ -121,12 +121,12 @@ export function useTaskDetail({
 
 	const deleteComment = async (y: TeamTaskComment) => {
 		if (!(await ask(t('kbDeleteCommentConfirm')))) return;
-		await action({ action: 'deleteComment', yorumId: y.id });
+		await action({ action: 'deleteComment', commentId: y.id });
 	};
 
 	const deleteTask = async () => {
-		if (!data || !(await ask(fill(t('kbDeleteConfirm'), { title: data.task.baslik })))) return;
-		const res = await sendJson('/api/teams', 'POST', { action: 'deleteTask', gorevId: data.task.id });
+		if (!data || !(await ask(fill(t('kbDeleteConfirm'), { title: data.task.title })))) return;
+		const res = await sendJson('/api/teams', 'POST', { action: 'deleteTask', taskId: data.task.id });
 		if (!res.ok) {
 			notify(res.error || t('kbActionFailed'), 'error');
 			return;

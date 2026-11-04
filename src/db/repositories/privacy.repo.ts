@@ -108,7 +108,7 @@ export async function exportCommunityData(): Promise<CommunityExport> {
  */
 export async function anonymizeMember(
 	userId: string,
-	denetim: AuditContext
+	audit: AuditContext
 ): Promise<'ok' | 'yok' | 'admin'> {
 	await ensurePostgresInit();
 	return withTransaction(async (client) => {
@@ -163,18 +163,18 @@ export async function anonymizeMember(
 		await client.query('DELETE FROM webauthn_credentials WHERE user_id = $1', [userId]);
 		await client.query('UPDATE teams SET lead_id = NULL WHERE lead_id = $1', [userId]);
 
-		await logAuditEvent(client, denetim, {
+		await logAuditEvent(client, audit, {
 			action: 'member.anonymize',
 			targetType: 'member',
 			targetId: userId,
 			targetName: 'Anonim üye',
 			before: {
-				ad: `${user.first_name ?? user.firstName ?? ''} ${user.last_name ?? user.lastName ?? ''}`.trim(),
+				name: `${user.first_name ?? user.firstName ?? ''} ${user.last_name ?? user.lastName ?? ''}`.trim(),
 				email: String(user.email),
 				handle: user.handle ? String(user.handle) : null,
 				status: String(user.status),
 			},
-			after: { ad: 'Anonim Üye', status: 'reddedildi', anonymizedAt: now },
+			after: { name: 'Anonim Üye', status: 'reddedildi', anonymizedAt: now },
 		});
 		return 'ok';
 	});

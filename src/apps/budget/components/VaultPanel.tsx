@@ -34,14 +34,14 @@ export function VaultPanel({ teamId, onChanged, embedded = false, vaults }: Vaul
 		canWrite,
 		isManagement,
 		canTransfer,
-		tur,
-		setTur,
-		kategori,
-		setKategori,
-		ay,
-		setAy,
-		arama,
-		setArama,
+		typeValue,
+		setType,
+		category,
+		setCategory,
+		month,
+		setMonth,
+		search,
+		setSearch,
 		modal,
 		setModal,
 		changed,
@@ -49,8 +49,8 @@ export function VaultPanel({ teamId, onChanged, embedded = false, vaults }: Vaul
 		exportCsv,
 		clearFilter,
 		balances,
-		dagilim,
-		aylar,
+		distribution,
+		months,
 		monthOptions,
 		filtered,
 		filteredIn,
@@ -89,30 +89,30 @@ export function VaultPanel({ teamId, onChanged, embedded = false, vaults }: Vaul
 				teamId={teamId}
 				summary={summary}
 				isLoading={isLoading}
-				dagilimFirstCategory={dagilim[0]}
+				distributionFirstCategory={distribution[0]}
 			/>
 
 			{records.length > 0 && (
 				<VaultInsights
-					dagilim={dagilim}
-					kategori={kategori}
-					onSelectKategori={(c) => setKategori(c)}
-					aylar={aylar}
-					ay={ay}
-					onSelectAy={(m) => setAy(m)}
+					distribution={distribution}
+					category={category}
+					onSelectCategory={(c) => setCategory(c)}
+					months={months}
+					month={month}
+					onSelectMonth={(m) => setMonth(m)}
 					maxMonth={maxMonth}
 				/>
 			)}
 
 			<VaultToolbar
-				arama={arama}
-				onAramaChange={setArama}
-				tur={tur}
-				onTurChange={setTur}
-				kategori={kategori}
-				onKategoriChange={setKategori}
-				ay={ay}
-				onAyChange={setAy}
+				search={search}
+				onSearchChange={setSearch}
+				typeValue={typeValue}
+				onTypeChange={setType}
+				category={category}
+				onCategoryChange={setCategory}
+				month={month}
+				onMonthChange={setMonth}
 				monthOptions={monthOptions}
 				canWrite={canWrite}
 				canTransfer={canTransfer}

@@ -4,22 +4,22 @@ import type { UserNote, UserNoteFolder } from '@/db/schema';
 export async function getUserNotes(userId: string): Promise<UserNote[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT id, user_id AS "userId", title AS baslik, content AS icerik, color AS renk,
-		        is_pinned AS "sabitliMi", folder_id AS "klasorId", is_trashed AS "copteMi",
-		        updated_at AS guncellenme, created_at AS olusturma
+		`SELECT id, user_id AS "userId", title AS title, content AS content, color AS color,
+		        is_pinned AS "pinnedMi", folder_id AS "folderId", is_trashed AS "trashedMi",
+		        updated_at AS update, created_at AS creation
 		 FROM user_notes
 		 WHERE user_id = $1 AND folder_id <> '__folder__'
 		 ORDER BY is_pinned DESC, updated_at DESC`,
 		[userId]
 	);
 	return res.rows.map((r) => {
-		let body = (r.icerik as string) || '';
-		let folderId = (r.klasorId as string) || (r.renk as string) || 'quick';
-		let isDeleted = Boolean(r.copteMi);
+		let body = (r.content as string) || '';
+		let folderId = (r.folderId as string) || (r.color as string) || 'quick';
+		let isDeleted = Boolean(r.trashedMi);
 
-		if (typeof r.icerik === 'string' && r.icerik.startsWith('{') && r.icerik.includes('"body"')) {
+		if (typeof r.content === 'string' && r.content.startsWith('{') && r.content.includes('"body"')) {
 			try {
-				const obj = JSON.parse(r.icerik);
+				const obj = JSON.parse(r.content);
 				if (obj.body !== undefined) {
 					body = obj.body;
 					if (obj.folderId) folderId = obj.folderId;
@@ -33,14 +33,14 @@ export async function getUserNotes(userId: string): Promise<UserNote[]> {
 		return {
 			id: r.id as string,
 			userId: r.userId as string,
-			baslik: (r.baslik as string) || 'Başlıksız Not',
-			icerik: body,
-			renk: (r.renk as string) || 'sari',
-			sabitliMi: Boolean(r.sabitliMi),
-			klasorId: folderId,
-			copteMi: isDeleted,
-			guncellenme: Number(r.guncellenme) || Date.now(),
-			olusturma: Number(r.olusturma) || Date.now(),
+			title: (r.title as string) || 'Başlıksız Not',
+			content: body,
+			color: (r.color as string) || 'sari',
+			pinnedMi: Boolean(r.pinnedMi),
+			folderId: folderId,
+			trashedMi: isDeleted,
+			update: Number(r.update) || Date.now(),
+			creation: Number(r.creation) || Date.now(),
 		};
 	});
 }
@@ -48,22 +48,22 @@ export async function getUserNotes(userId: string): Promise<UserNote[]> {
 export async function saveUserNote(params: {
 	id?: string;
 	userId: string;
-	baslik: string;
-	icerik: string;
-	renk?: string;
-	sabitliMi?: boolean;
-	klasorId?: string;
-	copteMi?: boolean;
+	title: string;
+	content: string;
+	color?: string;
+	pinnedMi?: boolean;
+	folderId?: string;
+	trashedMi?: boolean;
 }): Promise<UserNote> {
 	await ensurePostgresInit();
 	const pool = getPgPool();
 	const now = Date.now();
 	const noteId = params.id || `not_${now}_${Math.random().toString(36).substring(2, 6)}`;
-	const renk = params.renk || 'sari';
-	const sabitliMi = params.sabitliMi ? 1 : 0;
-	const rawFolder = params.klasorId || params.renk || 'quick';
+	const color = params.color || 'sari';
+	const pinnedMi = params.pinnedMi ? 1 : 0;
+	const rawFolder = params.folderId || params.color || 'quick';
 	const folderId = rawFolder === '__folder__' ? 'quick' : rawFolder;
-	const copteMi = params.copteMi ? 1 : 0;
+	const trashedMi = params.trashedMi ? 1 : 0;
 
 	// IDOR Protection: verify note ownership if existing id is provided
 	if (params.id) {
@@ -72,7 +72,7 @@ export async function saveUserNote(params: {
 			[params.id]
 		);
 		if (existing.rows.length > 0) {
-			const owner = String(existing.rows[0].kullaniciid ?? existing.rows[0].userid ?? existing.rows[0].userId);
+			const owner = String(existing.rows[0].userId ?? existing.rows[0].userid ?? existing.rows[0].userId);
 			if (owner !== params.userId) {
 				throw new Error('Yetkisiz işlem: Bu not başka bir kullanıcıya aittir.');
 			}
@@ -92,7 +92,7 @@ export async function saveUserNote(params: {
 		   updated_at = EXCLUDED.updated_at
 		 WHERE user_notes.user_id = EXCLUDED.user_id
 		 RETURNING id`,
-		[noteId, params.userId, params.baslik, params.icerik, renk, sabitliMi, folderId, copteMi, now]
+		[noteId, params.userId, params.title, params.content, color, pinnedMi, folderId, trashedMi, now]
 	);
 
 	if (params.id && (res.rowCount ?? 0) === 0) {
@@ -102,14 +102,14 @@ export async function saveUserNote(params: {
 	return {
 		id: noteId,
 		userId: params.userId,
-		baslik: params.baslik,
-		icerik: params.icerik,
-		renk,
-		sabitliMi: Boolean(sabitliMi),
-		klasorId: folderId,
-		copteMi: Boolean(copteMi),
-		guncellenme: now,
-		olusturma: now,
+		title: params.title,
+		content: params.content,
+		color,
+		pinnedMi: Boolean(pinnedMi),
+		folderId: folderId,
+		trashedMi: Boolean(trashedMi),
+		update: now,
+		creation: now,
 	};
 }
 
@@ -134,7 +134,7 @@ export async function emptyUserNotesTrash(userId: string): Promise<number> {
 export async function getUserNoteFolders(userId: string): Promise<UserNoteFolder[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT id, user_id AS "userId", title AS ad, color AS renk, is_pinned AS sira, created_at AS olusturma
+		`SELECT id, user_id AS "userId", title AS name, color AS color, is_pinned AS "order", created_at AS creation
 		 FROM user_notes
 		 WHERE user_id = $1 AND folder_id = '__folder__'
 		 ORDER BY is_pinned ASC, created_at ASC`,
@@ -143,26 +143,26 @@ export async function getUserNoteFolders(userId: string): Promise<UserNoteFolder
 	return res.rows.map((r) => ({
 		id: r.id as string,
 		userId: r.userId as string,
-		ad: r.ad as string,
-		renk: (r.renk as string) || undefined,
-		sira: Number(r.sira) || 0,
-		olusturma: Number(r.olusturma) || Date.now(),
+		name: r.name as string,
+		color: (r.color as string) || undefined,
+		order: Number(r.order) || 0,
+		creation: Number(r.creation) || Date.now(),
 	}));
 }
 
 export async function saveUserNoteFolder(params: {
 	id?: string;
 	userId: string;
-	ad: string;
-	renk?: string;
-	sira?: number;
+	name: string;
+	color?: string;
+	order?: number;
 }): Promise<UserNoteFolder> {
 	await ensurePostgresInit();
 	const pool = getPgPool();
 	const now = Date.now();
 	const folderId = params.id || `fld_${now}_${Math.random().toString(36).substring(2, 6)}`;
-	const sira = params.sira ?? 0;
-	const renk = params.renk || null;
+	const order = params.order ?? 0;
+	const color = params.color || null;
 
 	// IDOR Protection: verify folder ownership if existing id is provided
 	if (params.id) {
@@ -171,7 +171,7 @@ export async function saveUserNoteFolder(params: {
 			[params.id]
 		);
 		if (existing.rows.length > 0) {
-			const owner = String(existing.rows[0].kullaniciid ?? existing.rows[0].userid ?? existing.rows[0].userId);
+			const owner = String(existing.rows[0].userId ?? existing.rows[0].userid ?? existing.rows[0].userId);
 			if (owner !== params.userId) {
 				throw new Error('Yetkisiz işlem: Bu klasör başka bir kullanıcıya aittir.');
 			}
@@ -188,7 +188,7 @@ export async function saveUserNoteFolder(params: {
 		   updated_at = EXCLUDED.updated_at
 		 WHERE user_notes.user_id = EXCLUDED.user_id AND user_notes.folder_id = '__folder__'
 		 RETURNING id`,
-		[folderId, params.userId, params.ad, renk, sira, now]
+		[folderId, params.userId, params.name, color, order, now]
 	);
 
 	if (params.id && (res.rowCount ?? 0) === 0) {
@@ -198,10 +198,10 @@ export async function saveUserNoteFolder(params: {
 	return {
 		id: folderId,
 		userId: params.userId,
-		ad: params.ad,
-		renk: renk || undefined,
-		sira,
-		olusturma: now,
+		name: params.name,
+		color: color || undefined,
+		order,
+		creation: now,
 	};
 }
 

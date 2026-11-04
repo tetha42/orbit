@@ -31,9 +31,9 @@ export function CertificateCard({
 }: CertificateCardProps) {
 	const { t, language } = useI18n();
 
-	const catId = inferCertificateCategory(cert.baslik, cert.kategori);
+	const catId = inferCertificateCategory(cert.title, cert.category);
 	const theme = CERTIFICATE_THEMES[catId];
-	const lang = (cert.dil === 'en' || language === 'en') ? 'en' : 'tr';
+	const lang = (cert.language === 'en' || language === 'en') ? 'en' : 'tr';
 	const IconBadge = catId === 'honor' ? Crown : catId === 'service' ? Medal : catId === 'achievement' ? Trophy : Award;
 
 	const menuItems = useMemo<MenuItem[]>(() => {
@@ -132,19 +132,19 @@ export function CertificateCard({
 					</div>
 				</div>
 
-				{showRecipient && cert.kullaniciAdSoyad && (
+				{showRecipient && cert.userNameSurname && (
 					<div style={{ fontSize: '12px', fontWeight: 600, color: theme.accentColor, marginBottom: '4px' }}>
-						{t('certsStudentLabel')} {cert.kullaniciAdSoyad}
+						{t('certsStudentLabel')} {cert.userNameSurname}
 					</div>
 				)}
 
 				<h4 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 6px 0', lineHeight: 1.4 }}>
-					{cert.baslik}
+					{cert.title}
 				</h4>
 
 				<div style={{ fontSize: '12px', opacity: 0.7, display: 'flex', alignItems: 'center', gap: '6px' }}>
 					<Calendar size={13} />
-					<span>{t('certsIssueDateLabel')} {new Date(cert.verilisTarihi).toLocaleDateString(language)}</span>
+					<span>{t('certsIssueDateLabel')} {new Date(cert.issuanceDate).toLocaleDateString(language)}</span>
 				</div>
 			</div>
 

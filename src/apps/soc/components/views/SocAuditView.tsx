@@ -50,10 +50,10 @@ import { useSoc } from '../../context/SocContext';
 import s from './SocAuditView.module.css';
 
 interface AuditResponse {
-	kayitlar: AuditRecord[];
-	toplam: number;
-	sayfa: number;
-	boyut: number;
+	records: AuditRecord[];
+	total: number;
+	page: number;
+	size: number;
 }
 
 type CategoryType = 'all' | 'roles' | 'members' | 'security';
@@ -113,19 +113,19 @@ function getDiffSummary(record: AuditRecord, t: (k: string, f?: string) => strin
 	const diffs = diffRows(record.before, record.after);
 	if (!diffs || diffs.length === 0) return null;
 
-	const roleDiff = diffs.find((d) => d.alan === 'roleId' || d.alan === 'roleName');
+	const roleDiff = diffs.find((d) => d.field === 'roleId' || d.field === 'roleName');
 	if (roleDiff) {
 		const newVal = String(roleDiff.after || '—');
 		return isEn ? `Role: ${newVal}` : `Rol: ${newVal}`;
 	}
 
-	const permDiffs = diffs.filter((d) => d.alan.startsWith('izinler.'));
+	const permDiffs = diffs.filter((d) => d.field.startsWith('izinler.'));
 	if (permDiffs.length > 0) {
 		return isEn ? `${permDiffs.length} perm changes` : `${permDiffs.length} yetki değişti`;
 	}
 
 	if (diffs.length === 1) {
-		const fieldName = t(`auditField_${diffs[0].alan}`, diffs[0].alan);
+		const fieldName = t(`auditField_${diffs[0].field}`, diffs[0].field);
 		return isEn ? `${fieldName} updated` : `${fieldName} güncellendi`;
 	}
 
@@ -142,7 +142,7 @@ export function SocAuditView() {
 	const { canManage, setSiemIp, setSiemIpOp, setActiveTab } = useSoc();
 
 	// Roles list
-	const [roles, setRoles] = useState<{ id: string; ad: string }[]>([]);
+	const [roles, setRoles] = useState<{ id: string; name: string }[]>([]);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -233,14 +233,14 @@ export function SocAuditView() {
 	// Construct query URL
 	const queryUrl = useMemo(() => {
 		const p = new URLSearchParams();
-		if (debouncedSearch) p.set('kisi', debouncedSearch);
+		if (debouncedSearch) p.set('user', debouncedSearch);
 		if (selectedRole) p.set('role', selectedRole);
 		if (selectedAction) {
 			p.set('action', selectedAction);
 		}
 		if (fromDate) p.set('from', fromDate);
 		if (toDate) p.set('to', toDate);
-		if (currentPage > 1) p.set('sayfa', String(currentPage));
+		if (currentPage > 1) p.set('page', String(currentPage));
 		return `/api/audit?${p.toString()}`;
 	}, [debouncedSearch, selectedRole, selectedAction, fromDate, toDate, currentPage]);
 
@@ -249,12 +249,12 @@ export function SocAuditView() {
 
 	// Filter by Category locally if specific action not selected
 	const filteredRecords = useMemo(() => {
-		const list = data?.kayitlar ?? [];
+		const list = data?.records ?? [];
 		if (activeCategory === 'all' || selectedAction) return list;
 		return list.filter((r) => getActionCategory(r.action) === activeCategory);
-	}, [data?.kayitlar, activeCategory, selectedAction]);
+	}, [data?.records, activeCategory, selectedAction]);
 
-	const totalRecords = data?.toplam ?? 0;
+	const totalRecords = data?.total ?? 0;
 	const totalPages = Math.max(1, Math.ceil(totalRecords / AUDIT_PAGE_SIZE));
 
 	// Action states
@@ -267,7 +267,7 @@ export function SocAuditView() {
 		setExporting(true);
 		try {
 			const p = new URLSearchParams();
-			if (debouncedSearch) p.set('kisi', debouncedSearch);
+			if (debouncedSearch) p.set('user', debouncedSearch);
 			if (selectedRole) p.set('role', selectedRole);
 			if (selectedAction) p.set('action', selectedAction);
 			if (fromDate) p.set('from', fromDate);
@@ -277,7 +277,7 @@ export function SocAuditView() {
 			const res = await fetch(`/api/audit?${p.toString()}`);
 			if (!res.ok) throw new Error();
 			const json = (await res.json()) as AuditResponse;
-			const rows = auditCsvRows(json.kayitlar);
+			const rows = auditCsvRows(json.records);
 			downloadCsv(`soc-audit-log-${new Date().toISOString().slice(0, 10)}`, AUDIT_CSV_HEADERS, rows);
 			notify(isEn ? 'Audit log exported as CSV.' : 'Denetim günlüğü CSV olarak indirildi.', 'success');
 		} catch {
@@ -469,7 +469,7 @@ export function SocAuditView() {
 							<option value="">{t('auditFiltreRolHepsi')}</option>
 							{roles.map((r) => (
 								<option key={r.id} value={r.id}>
-									{r.ad}
+									{r.name}
 								</option>
 							))}
 						</select>
@@ -838,12 +838,12 @@ function SocAuditDetailSheet({
 		setTimeout(() => setCopiedField(null), 1400);
 	};
 
-	const formatAuditValue = (alan: string, val: unknown): string => {
+	const formatAuditValue = (field: string, val: unknown): string => {
 		if (val === null || val === undefined) return '—';
 		if (typeof val === 'boolean') {
 			return val ? t('auditYes') : t('auditNo');
 		}
-		if (alan === 'roleId' || alan === 'movedToRoleId') {
+		if (field === 'roleId' || field === 'movedToRoleId') {
 			if (val === 'rol_admin') return t('auditRoleAdmin', 'Yönetici (Admin)');
 			if (val === 'rol_yonetim_kurulu') return t('auditRoleBoard', 'Board Member');
 			if (val === 'rol_uye') return t('auditRoleMember', 'Member');
@@ -987,24 +987,24 @@ function SocAuditDetailSheet({
 									</thead>
 									<tbody>
 										{diffs.map((d: DiffRow) => {
-											const appKey = d.alan.startsWith('izinler.')
-												? d.alan.slice('izinler.'.length)
-												: d.alan;
+											const appKey = d.field.startsWith('izinler.')
+												? d.field.slice('izinler.'.length)
+												: d.field;
 											const appMeta = isPermissionApp(appKey)
 												? getAppMeta(appKey as AppID, language)
 												: null;
 											const label = isPermissionApp(appKey)
 												? appMeta?.shortTitle ||
 												  appMeta?.title ||
-												  PERMISSION_DESCRIPTIONS[appKey]?.ad ||
+												  PERMISSION_DESCRIPTIONS[appKey]?.name ||
 												  appKey
-												: t(`auditField_${d.alan}`, d.alan);
+												: t(`auditField_${d.field}`, d.field);
 
 											return (
-												<tr key={d.alan}>
+												<tr key={d.field}>
 													<td>
 														<strong style={{ color: 'var(--text-primary)' }}>{label}</strong>
-														{d.alan.includes('.') && (
+														{d.field.includes('.') && (
 															<span
 																style={{
 																	display: 'block',
@@ -1013,18 +1013,18 @@ function SocAuditDetailSheet({
 																	opacity: 0.7,
 																}}
 															>
-																{d.alan}
+																{d.field}
 															</span>
 														)}
 													</td>
 													<td>
 														<span className={s.diffOldVal}>
-															{formatAuditValue(d.alan, d.before)}
+															{formatAuditValue(d.field, d.before)}
 														</span>
 													</td>
 													<td>
 														<span className={s.diffNewVal}>
-															{formatAuditValue(d.alan, d.after)}
+															{formatAuditValue(d.field, d.after)}
 														</span>
 													</td>
 												</tr>
@@ -1037,33 +1037,33 @@ function SocAuditDetailSheet({
 							{/* Mobile Diff Cards */}
 							<div className={s.diffCardsMobile}>
 								{diffs.map((d: DiffRow) => {
-									const appKey = d.alan.startsWith('izinler.')
-										? d.alan.slice('izinler.'.length)
-										: d.alan;
+									const appKey = d.field.startsWith('izinler.')
+										? d.field.slice('izinler.'.length)
+										: d.field;
 									const appMeta = isPermissionApp(appKey)
 										? getAppMeta(appKey as AppID, language)
 										: null;
 									const label = isPermissionApp(appKey)
 										? appMeta?.shortTitle ||
 										  appMeta?.title ||
-										  PERMISSION_DESCRIPTIONS[appKey]?.ad ||
+										  PERMISSION_DESCRIPTIONS[appKey]?.name ||
 										  appKey
-										: t(`auditField_${d.alan}`, d.alan);
+										: t(`auditField_${d.field}`, d.field);
 
 									return (
-										<div key={`mobile-diff-${d.alan}`} className={s.diffFieldCard}>
+										<div key={`mobile-diff-${d.field}`} className={s.diffFieldCard}>
 											<span className={s.diffFieldName}>{label}</span>
 											<div className={s.diffComparison}>
 												<div className={s.diffCol}>
 													<span className={s.diffColLabel}>{t('auditOnceki')}</span>
 													<span className={s.diffOldVal}>
-														{formatAuditValue(d.alan, d.before)}
+														{formatAuditValue(d.field, d.before)}
 													</span>
 												</div>
 												<div className={s.diffCol}>
 													<span className={s.diffColLabel}>{t('auditSonraki')}</span>
 													<span className={s.diffNewVal}>
-														{formatAuditValue(d.alan, d.after)}
+														{formatAuditValue(d.field, d.after)}
 													</span>
 												</div>
 											</div>

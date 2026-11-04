@@ -51,7 +51,7 @@ export function NewsCard({
 			id: 'copy-title',
 			label: t('ctxNewsCopyTitle'),
 			icon: <Copy size={13} />,
-			action: () => copyToClipboard(article.baslik),
+			action: () => copyToClipboard(article.title),
 		},
 		{
 			id: 'copy-link',
@@ -96,7 +96,7 @@ export function NewsCard({
 		resmi: { label: t('newsCatResmi'), color: '#ff2d55', icon: ShieldAlert },
 	};
 
-	const cat = categoryMap[article.kategori] || categoryMap.genel;
+	const cat = categoryMap[article.category] || categoryMap.genel;
 	const CategoryIcon = cat.icon;
 
 	return (
@@ -106,7 +106,7 @@ export function NewsCard({
 			style={{
 				background: 'rgba(255, 255, 255, 0.04)',
 				border:
-					article.onemliMi === 1
+					article.importantMi === 1
 						? '1px solid rgba(255, 45, 85, 0.35)'
 						: '1px solid rgba(255, 255, 255, 0.08)',
 				borderRadius: '14px',
@@ -120,13 +120,13 @@ export function NewsCard({
 				overflow: 'hidden',
 			}}
 		>
-			{article.resimUrl && (
+			{article.imageUrl && (
 				<div
 					style={{
 						width: 'calc(100% + 40px)',
 						margin: '-20px -20px 14px -20px',
 						height: '110px',
-						background: `linear-gradient(180deg, rgba(0,0,0,0.1), rgba(0,0,0,0.7)), url(${article.resimUrl})`,
+						background: `linear-gradient(180deg, rgba(0,0,0,0.1), rgba(0,0,0,0.7)), url(${article.imageUrl})`,
 						backgroundSize: 'contain',
 						backgroundPosition: 'center',
 						backgroundRepeat: 'no-repeat',
@@ -164,7 +164,7 @@ export function NewsCard({
 
 					<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 						{isAdmin && <VisibilityBadge visibility={article.publishStatus} />}
-						{article.onemliMi === 1 && (
+						{article.importantMi === 1 && (
 							<span
 								style={{
 									fontSize: '9.5px',
@@ -188,7 +188,7 @@ export function NewsCard({
 							}}
 						>
 							<Clock size={11} />
-							{new Date(article.olusturma).toLocaleDateString(
+							{new Date(article.creation).toLocaleDateString(
 								language,
 								{ day: 'numeric', month: 'short' }
 							)}
@@ -204,7 +204,7 @@ export function NewsCard({
 						lineHeight: 1.35,
 					}}
 				>
-					{article.baslik}
+					{article.title}
 				</h4>
 
 				<p
@@ -219,7 +219,7 @@ export function NewsCard({
 						overflow: 'hidden',
 					}}
 				>
-					{article.ozet}
+					{article.summary}
 				</p>
 			</div>
 
@@ -234,7 +234,7 @@ export function NewsCard({
 				}}
 			>
 				<span style={{ fontSize: '11.5px', opacity: 0.6 }}>
-					{article.yazarAdSoyad || t('newsAuthorDefault')}
+					{article.authorNameSurname || t('newsAuthorDefault')}
 				</span>
 
 				<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

@@ -7,14 +7,14 @@ import ui from '@/core/ui/ui.module.css';
 import k from './Vault.module.css';
 
 interface ReceiptUploadFieldProps {
-	fisFotoUrl: string | null;
+	receiptPhotoUrl: string | null;
 	uploading: boolean;
 	onUpload: (file: File | undefined) => void;
 	onRemove: () => void;
 }
 
 export function ReceiptUploadField({
-	fisFotoUrl,
+	receiptPhotoUrl,
 	uploading,
 	onUpload,
 	onRemove,
@@ -26,7 +26,7 @@ export function ReceiptUploadField({
 			<span className={ui.fieldLabel}>{t('kasaReceiptLabel')}</span>
 			<div className={k.fileRow}>
 				<label className={ui.btn} style={{ cursor: uploading ? 'wait' : 'pointer' }}>
-					<Paperclip size={14} /> {fisFotoUrl ? t('kasaChangeFile') : t('kasaChooseFile')}
+					<Paperclip size={14} /> {receiptPhotoUrl ? t('kasaChangeFile') : t('kasaChooseFile')}
 					<input
 						type="file"
 						hidden
@@ -36,11 +36,11 @@ export function ReceiptUploadField({
 					/>
 				</label>
 				{uploading && <span className={ui.muted}>{t('loading')}</span>}
-				{fisFotoUrl && !uploading && (
+				{receiptPhotoUrl && !uploading && (
 					<>
 						<a
 							className={k.receipt}
-							href={fisFotoUrl}
+							href={receiptPhotoUrl}
 							target="_blank"
 							rel="noopener noreferrer"
 						>

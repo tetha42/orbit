@@ -64,9 +64,9 @@ async function handlePOST(request: Request) {
 
 		return NextResponse.json({
 			ok: true,
-			alreadyInitialized: status.hazir === true,
+			alreadyInitialized: status.ready === true,
 			databaseName: status.dbStatus?.databaseName,
-			message: status.hazir
+			message: status.ready
 				? 'Existing Orbit workspace with an administrator account detected! Redirecting to sign in...'
 				: 'PostgreSQL connection verified!',
 		});

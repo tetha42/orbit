@@ -41,7 +41,6 @@ export const EXPERTISE_MAX_LENGTH = 30;
 
 export const isCategory = (v: unknown): v is TeamCategory =>
 	typeof v === 'string' && (TEAM_CATEGORIES as readonly string[]).includes(v);
-export const isKategori = isCategory;
 export const isParticipationType = (v: unknown): v is ParticipationType =>
 	typeof v === 'string' && (PARTICIPATION_TYPES as readonly string[]).includes(v);
 export const isTeamStatus = (v: unknown): v is TeamStatus =>
@@ -55,12 +54,12 @@ export function normalizeRole(value: unknown): string | null {
 }
 
 /** A quota the team can live with: within bounds and not below the members it already has. */
-export function capacityProblem(kontenjan: unknown, aktifUye: number): string | null {
-	const n = Number(kontenjan);
+export function capacityProblem(capacity: unknown, activeMember: number): string | null {
+	const n = Number(capacity);
 	if (!Number.isInteger(n) || n < CAPACITY_MIN || n > CAPACITY_MAX) {
 		return `Kontenjan ${CAPACITY_MIN} ile ${CAPACITY_MAX} arasında olmalıdır.`;
 	}
-	if (n < aktifUye) return `Takımda ${aktifUye} aktif üye var; kontenjan bundan az olamaz.`;
+	if (n < activeMember) return `Takımda ${activeMember} aktif üye var; kontenjan bundan az olamaz.`;
 	return null;
 }
 
@@ -69,10 +68,10 @@ export function capacityProblem(kontenjan: unknown, aktifUye: number): string | 
  * line, then their free text, capped at `BASVURU_NOTU_MAX`. Skills are trimmed,
  * de-duplicated (case-insensitively), and anything that is not text is dropped.
  */
-export function buildApplicationNote(uzmanliklar: unknown, not: unknown): string | null {
+export function buildApplicationNote(expertise: unknown, not: unknown): string | null {
 	const seen = new Set<string>();
 	const skills: string[] = [];
-	for (const raw of Array.isArray(uzmanliklar) ? uzmanliklar : []) {
+	for (const raw of Array.isArray(expertise) ? expertise : []) {
 		if (typeof raw !== 'string') continue;
 		const skill = raw.trim().replace(/\s+/g, ' ').slice(0, EXPERTISE_MAX_LENGTH);
 		const key = skill.toLocaleLowerCase('tr');

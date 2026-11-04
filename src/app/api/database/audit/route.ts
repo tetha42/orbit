@@ -118,10 +118,10 @@ export async function POST(request: Request) {
 		await pool.query(revertSql, params);
 
 		await logSystemEvent({
-			servis: 'database',
-			seviye: 'WARN',
-			mesaj: `Denetim kaydı geri alındı (#${auditId} on ${table})`,
-			detay: { auditId, tablo: table, pkVal },
+			service: 'database',
+			level: 'WARN',
+			message: `Denetim kaydı geri alındı (#${auditId} on ${table})`,
+			detail: { auditId, table: table, pkVal },
 			userId: auth.user.id,
 			ip,
 		});

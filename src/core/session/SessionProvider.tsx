@@ -2,18 +2,18 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { SessionUser } from '@/types/session';
-import { canManage as izinYonet, canUse as izinKullan } from '@/core/permissions';
+import { canManage as permissionYonet, canUse as permissionKullan } from '@/core/permissions';
 import { errorMessage } from '@/lib/errors';
 import { probeSession, startSessionPolling } from './probe';
 import { emitSessionEvent } from './events';
 
 /** Fields the registration form submits. */
 export interface RegisterPayload {
-	ad: string;
-	soyad: string;
-	ogrenciNo: string;
-	bolum: string;
-	sinif: number;
+	name: string;
+	surname: string;
+	studentNo: string;
+	department: string;
+	grade: number;
 	email: string;
 	password: string;
 	verificationCode?: string;
@@ -111,11 +111,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 	// Nothing is open before the session says what the role allows. While a
 	// required second factor is missing only Settings opens (to enrol it).
 	const canUseApp = useCallback(
-		(id: string) => !!currentUser && (currentUser.mustSetup2fa ? id === 'settings' : izinKullan(currentUser.izinler, id)),
+		(id: string) => !!currentUser && (currentUser.mustSetup2fa ? id === 'settings' : permissionKullan(currentUser.permissions, id)),
 		[currentUser]
 	);
 	const canManageApp = useCallback(
-		(id: string) => !!currentUser && !currentUser.mustSetup2fa && izinYonet(currentUser.izinler, id),
+		(id: string) => !!currentUser && !currentUser.mustSetup2fa && permissionYonet(currentUser.permissions, id),
 		[currentUser]
 	);
 	const isAdmin = !!currentUser?.admin && !currentUser.mustSetup2fa;

@@ -24,8 +24,8 @@ export type LoanMode = 'borrow' | 'lend' | 'extend' | 'return';
 
 interface Member {
 	id: string;
-	ad: string;
-	soyad: string;
+	name: string;
+	surname: string;
 	status?: string;
 }
 
@@ -53,16 +53,16 @@ export function LoanModal({
 	const { t } = useI18n();
 	// Dates for the picker's bounds; taken once so rendering stays pure.
 	const [now] = useState(() => Date.now());
-	const start = mode === 'extend' ? (item.oduncTarihi ?? now) : now;
+	const start = mode === 'extend' ? (item.loanDate ?? now) : now;
 	const maxDays = isManager ? MANAGEMENT_MAX_LOAN_DAYS : MAX_LOAN_DAYS;
 	const maxDate = toDateInput(start + maxDays * DAY);
 	const initial =
 		mode === 'extend'
-			? Math.min((item.iadeTarihi ?? now) + 7 * DAY, start + maxDays * DAY)
+			? Math.min((item.returnDate ?? now) + 7 * DAY, start + maxDays * DAY)
 			: now + DEFAULT_LOAN_DAYS * DAY;
-	const [date, setTarih] = useState(() => toDateInput(initial));
+	const [date, setDate] = useState(() => toDateInput(initial));
 	const [userId, setUserId] = useState('');
-	const [ariza, setAriza] = useState(false);
+	const [failure, setFailure] = useState(false);
 	const [not, setNot] = useState('');
 	const [error, setError] = useState('');
 	const [busy, setBusy] = useState(false);
@@ -86,15 +86,15 @@ export function LoanModal({
 		setError('');
 		let body: Record<string, unknown>;
 		if (mode === 'return') {
-			body = { action: 'iadeEt', envanterId: item.id, ariza, not: not.trim() };
+			body = { action: 'return', inventoryId: item.id, failure, not: not.trim() };
 		} else {
 			const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
 			if (!m) return setError(t('invSelectDate'));
 			const returnDate = endOfDay(new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getTime());
 			if (mode === 'lend' && !userId) return setError(t('invSelectMemberPrompt'));
 			body = {
-				action: mode === 'extend' ? 'uzat' : 'oduncAl',
-				envanterId: item.id,
+				action: mode === 'extend' ? 'extend' : 'borrow',
+				inventoryId: item.id,
 				returnDate,
 				...(mode === 'lend' ? { userId } : {}),
 			};
@@ -113,7 +113,7 @@ export function LoanModal({
 					<div style={{ flex: 1, minWidth: 0 }}>
 						<h3 style={{ margin: 0, fontSize: 16, fontWeight: 750 }}>{title}</h3>
 						<div className={ui.muted} style={{ fontSize: 12 }}>
-							<span className={s.code}>{item.kod}</span> {item.ad}
+							<span className={s.code}>{item.code}</span> {item.name}
 						</div>
 					</div>
 				</>
@@ -148,7 +148,7 @@ export function LoanModal({
 						<option value="">{members ? t('invSelectMember') : t('loading')}</option>
 						{activeMembers.map((m) => (
 							<option key={m.id} value={m.id}>
-								{m.ad} {m.soyad}
+								{m.name} {m.surname}
 							</option>
 						))}
 					</select>
@@ -166,13 +166,13 @@ export function LoanModal({
 							value={date}
 							min={toDateInput(now)}
 							max={maxDate}
-							onChange={(e) => setTarih(e.target.value)}
+							onChange={(e) => setDate(e.target.value)}
 							required
 						/>
 					</label>
 					<div className={ui.hint}>
-						{mode === 'extend' && item.iadeTarihi
-							? `${fill(t('invCurrentDue'), { date: trDate(item.iadeTarihi) })} `
+						{mode === 'extend' && item.returnDate
+							? `${fill(t('invCurrentDue'), { date: trDate(item.returnDate) })} `
 							: ''}
 						{isManager
 							? fill(t('invManagerMaxDays'), { days: MANAGEMENT_MAX_LOAN_DAYS })
@@ -182,20 +182,20 @@ export function LoanModal({
 			) : (
 				<>
 					<label className={s.check}>
-						<input type="checkbox" checked={ariza} onChange={(e) => setAriza(e.target.checked)} />
+						<input type="checkbox" checked={failure} onChange={(e) => setFailure(e.target.checked)} />
 						{t('invDefectCheckbox')}
 					</label>
 					<label className={ui.field}>
-						<span className={ui.fieldLabel}>{ariza ? t('invDefectNoteLabel') : t('invOptionalNoteLabel')}</span>
+						<span className={ui.fieldLabel}>{failure ? t('invDefectNoteLabel') : t('invOptionalNoteLabel')}</span>
 						<textarea
 							className={ui.textarea}
 							rows={3}
 							maxLength={500}
 							value={not}
 							onChange={(e) => setNot(e.target.value)}
-							required={ariza}
+							required={failure}
 							placeholder={
-								ariza
+								failure
 									? t('invDefectNotePh')
 									: t('invReturnNotePh')
 							}

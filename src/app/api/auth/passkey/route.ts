@@ -19,8 +19,8 @@ export async function GET(request: Request) {
 				nickname: c.nickname,
 				deviceType: c.deviceType,
 				backedUp: Number(c.backedUp) === 1,
-				olusturma: c.olusturma,
-				sonKullanma: c.sonKullanma,
+				creation: c.creation,
+				lastUsage: c.lastUsage,
 			})),
 		});
 	} catch (error) {

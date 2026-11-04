@@ -89,7 +89,7 @@ export async function POST(request: Request) {
 	try {
 		await withTransaction(async (client) => {
 			const now = Date.now();
-			const actorName = `${auth.user.ad} ${auth.user.soyad}`.trim();
+			const actorName = `${auth.user.name} ${auth.user.surname}`.trim();
 
 			// 1. Process Updates
 			for (const u of updates) {
@@ -182,16 +182,16 @@ export async function POST(request: Request) {
 
 		// 4. Log the mutation to audit trail
 		await logSystemEvent({
-			servis: 'database',
-			seviye: 'WARN',
-			mesaj: `"${table}" tablosunda toplu veri değişikliği yapıldı`,
-			detay: {
-				tablo: table,
-				guncellenenSayisi: updates.length,
-				guncellenenIds: updates.map((u) => u.pk.val).slice(0, 50),
-				eklenenSayisi: inserts.length,
-				silinenSayisi: deletes.length,
-				silinenIds: deletes.map((d) => d.val).slice(0, 50),
+			service: 'database',
+			level: 'WARN',
+			message: `"${table}" tablosunda toplu veri değişikliği yapıldı`,
+			detail: {
+				table: table,
+				updatedCount: updates.length,
+				updatedIds: updates.map((u) => u.pk.val).slice(0, 50),
+				addedCount: inserts.length,
+				deletedCount: deletes.length,
+				deletedIds: deletes.map((d) => d.val).slice(0, 50),
 			},
 			userId: auth.user.id,
 			ip,

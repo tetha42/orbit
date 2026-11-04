@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { Camera, Trash2 } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
 import { fill } from '@/lib/text';
-import { PROFIL_FOTO_PX } from '@/lib/profile';
+import { PROFILE_PHOTO_PX } from '@/lib/profile';
 import { RoleBadge } from '@/core/ui/RoleBadge';
 import { initials } from '@/core/text/initials';
 import ui from '@/core/ui/ui.module.css';
@@ -18,15 +18,15 @@ interface AccountProfileHeroProps {
 		lastName?: string;
 		avatarUrl?: string | null;
 		createdAt?: number;
-		ad: string;
-		soyad: string;
+		name: string;
+		surname: string;
 		email: string;
-		rolBilgi: { id: string; ad: string; renk: string } | null;
-		profilFoto?: string | null;
+		roleInfo: { id: string; name: string; color: string } | null;
+		profilePhoto?: string | null;
 		xp: number;
-		olusturma: number;
+		creation: number;
 	};
-	seviye: { seviye: number; ilerleme: number; sonraki: number };
+	level: { level: number; progress: number; next: number };
 	busy: string;
 	onPhotoDone: (ok: boolean, text: string) => void;
 	onSetBusy: (busy: '' | 'photo') => void;
@@ -37,10 +37,10 @@ async function squareImage(file: File): Promise<Blob> {
 	const bitmap = await createImageBitmap(file);
 	const side = Math.min(bitmap.width, bitmap.height);
 	const canvas = document.createElement('canvas');
-	canvas.width = canvas.height = PROFIL_FOTO_PX;
+	canvas.width = canvas.height = PROFILE_PHOTO_PX;
 	const ctx = canvas.getContext('2d');
 	if (!ctx) throw new Error('canvas');
-	ctx.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, PROFIL_FOTO_PX, PROFIL_FOTO_PX);
+	ctx.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, PROFILE_PHOTO_PX, PROFILE_PHOTO_PX);
 	const blob = (type: string) => new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.88));
 	const webp = await blob('image/webp');
 	if (webp && webp.type === 'image/webp') return webp;
@@ -51,7 +51,7 @@ async function squareImage(file: File): Promise<Blob> {
 
 export function AccountProfileHero({
 	user,
-	seviye,
+	level,
 	busy,
 	onPhotoDone,
 	onSetBusy,
@@ -86,10 +86,10 @@ export function AccountProfileHero({
 	return (
 		<section className={styles.hero}>
 			<div className={styles.avatarWrap}>
-				{user.avatarUrl || user.profilFoto ? (
-					<Image src={(user.avatarUrl || user.profilFoto)!} alt="" width={96} height={96} unoptimized className={styles.avatar} />
+				{user.avatarUrl || user.profilePhoto ? (
+					<Image src={(user.avatarUrl || user.profilePhoto)!} alt="" width={96} height={96} unoptimized className={styles.avatar} />
 				) : (
-					<span className={`${styles.avatar} ${styles.avatarInitials}`}>{initials(`${user.firstName || user.ad || ''} ${user.lastName || user.soyad || ''}`)}</span>
+					<span className={`${styles.avatar} ${styles.avatarInitials}`}>{initials(`${user.firstName || user.name || ''} ${user.lastName || user.surname || ''}`)}</span>
 				)}
 				<button
 					type="button"
@@ -105,26 +105,26 @@ export function AccountProfileHero({
 			</div>
 			<div className={styles.heroBody}>
 				<h3 className={styles.name}>
-					{user.firstName || user.ad} {user.lastName || user.soyad}
+					{user.firstName || user.name} {user.lastName || user.surname}
 				</h3>
 				<div className={styles.meta}>
-					<RoleBadge role={user.rolBilgi} bosMetin={t('roleNone')} />{' '}
-					{user.email} · {fill(t('acMemberSince'), { date: new Date(user.createdAt || user.olusturma || 0).toLocaleDateString(locale, { month: 'long', year: 'numeric' }) })}
+					<RoleBadge role={user.roleInfo} emptyText={t('roleNone')} />{' '}
+					{user.email} · {fill(t('acMemberSince'), { date: new Date(user.createdAt || user.creation || 0).toLocaleDateString(locale, { month: 'long', year: 'numeric' }) })}
 				</div>
 				<div className={styles.level}>
-					<strong>{fill(t('acLevel'), { n: seviye.seviye })}</strong>
+					<strong>{fill(t('acLevel'), { n: level.level })}</strong>
 					<div className={styles.levelTrack} aria-hidden>
-						<span style={{ width: `${Math.round(seviye.ilerleme * 100)}%` }} />
+						<span style={{ width: `${Math.round(level.progress * 100)}%` }} />
 					</div>
 					<span className={ui.muted}>
-						{user.xp} XP · {fill(t('acXpToNext'), { n: seviye.sonraki - user.xp })}
+						{user.xp} XP · {fill(t('acXpToNext'), { n: level.next - user.xp })}
 					</span>
 				</div>
 				<div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
 					<button type="button" className={ui.btn} onClick={() => fileRef.current?.click()} disabled={busy === 'photo'}>
 						<Camera size={14} /> {t('acChangePhoto')}
 					</button>
-					{user.profilFoto && (
+					{user.profilePhoto && (
 						<button type="button" className={`${ui.btn} ${ui.btnDanger}`} onClick={removePhoto} disabled={busy === 'photo'}>
 							<Trash2 size={14} /> {t('acRemovePhoto')}
 						</button>

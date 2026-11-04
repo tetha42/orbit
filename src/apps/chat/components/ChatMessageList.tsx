@@ -25,7 +25,7 @@ interface ChatMessageListProps {
 	onDelete?: (messageId: string) => void;
 	onReply?: (message: ChatMessageItem) => void;
 	onForward?: (message: ChatMessageItem) => void;
-	onVotePoll?: (pollId: string, secenekId: string) => Promise<boolean>;
+	onVotePoll?: (pollId: string, optionId: string) => Promise<boolean>;
 	onClosePoll?: (pollId: string) => Promise<boolean>;
 	focusedMessageId?: string | null;
 	onFocusMessageHandled?: () => void;
@@ -39,7 +39,7 @@ interface ChatMessageRowProps {
 	onDelete?: (messageId: string) => void;
 	onReply?: (message: ChatMessageItem) => void;
 	onForward?: (message: ChatMessageItem) => void;
-	onVotePoll?: (pollId: string, secenekId: string) => Promise<boolean>;
+	onVotePoll?: (pollId: string, optionId: string) => Promise<boolean>;
 	onClosePoll?: (pollId: string) => Promise<boolean>;
 	formatTime: (timestamp: number) => string;
 	formatDateTime: (timestamp: number) => string;
@@ -61,9 +61,9 @@ function ChatMessageRow({
 	const { t } = useI18n();
 	const dialog = useDialog();
 
-	const isMine = msg.gonderenId === currentUserId;
-	const isDeleted = Boolean(msg.silinmeTarihi);
-	const isEdited = Boolean(msg.duzenlenmeTarihi) && !isDeleted;
+	const isMine = msg.senderId === currentUserId;
+	const isDeleted = Boolean(msg.deletionDate);
+	const isEdited = Boolean(msg.editDate) && !isDeleted;
 
 	const menuItems = React.useMemo<MenuItem[]>(() => {
 		if (isDeleted) return [];
@@ -74,12 +74,12 @@ function ChatMessageRow({
 				label: t('ctxChatCopy'),
 				icon: <Copy size={13} />,
 				action: () => {
-					void copyToClipboard(msg.icerik);
+					void copyToClipboard(msg.content);
 				},
 			},
 		];
 
-		if (onReply && !msg.anket) {
+		if (onReply && !msg.poll) {
 			items.push({
 				id: `reply-${msg.id}`,
 				label: t('ctxChatReply'),
@@ -88,7 +88,7 @@ function ChatMessageRow({
 			});
 		}
 
-		if (onForward && !msg.anket) {
+		if (onForward && !msg.poll) {
 			items.push({
 				id: `forward-${msg.id}`,
 				label: t('ctxChatForward'),
@@ -97,7 +97,7 @@ function ChatMessageRow({
 			});
 		}
 
-		if (isMine && !msg.anket && onStartEdit) {
+		if (isMine && !msg.poll && onStartEdit) {
 			items.push({
 				id: `edit-${msg.id}`,
 				label: t('ctxChatEdit'),
@@ -135,15 +135,15 @@ function ChatMessageRow({
 		>
 			{!isMine && (
 				<div className={s.messageAvatar}>
-					{msg.gonderenFoto ? (
+					{msg.senderPhoto ? (
 						// eslint-disable-next-line @next/next/no-img-element
 						<img
-							src={msg.gonderenFoto}
-							alt={msg.gonderenAd || t('spotKindMember')}
+							src={msg.senderPhoto}
+							alt={msg.senderName || t('spotKindMember')}
 							style={{ width: '100%', height: '100%', objectFit: 'cover' }}
 						/>
 					) : (
-						(msg.gonderenAd || '?').slice(0, 1).toUpperCase()
+						(msg.senderName || '?').slice(0, 1).toUpperCase()
 					)}
 				</div>
 			)}
@@ -151,15 +151,15 @@ function ChatMessageRow({
 			<div className={s.messageBody}>
 				{!isMine && (
 					<div className={s.messageHeader}>
-						<span className={s.messageSender}>{msg.gonderenAd || t('spotKindMember')}</span>
+						<span className={s.messageSender}>{msg.senderName || t('spotKindMember')}</span>
 						<span>{formatTime(msg.date)}</span>
 					</div>
 				)}
 
 				<div className={s.bubbleContainer} {...contextMenuProps}>
-					{msg.anket ? (
+					{msg.poll ? (
 						<PollMessageCard
-							poll={msg.anket}
+							poll={msg.poll}
 							currentUserId={currentUserId}
 							isAdmin={isAdmin}
 							onVote={onVotePoll || (async () => false)}
@@ -168,11 +168,11 @@ function ChatMessageRow({
 					) : (
 						<div
 							className={`${s.messageBubble} ${
-								!isDeleted && (msg.ekler?.length ?? 0) > 0 ? s.messageBubbleMedia : ''
+								!isDeleted && (msg.attachments?.length ?? 0) > 0 ? s.messageBubbleMedia : ''
 							} ${isDeleted ? s.messageBubbleDeleted : ''}`}
 						>
 							{/* Forwarded Header */}
-							{msg.iletildiMi && !isDeleted && (
+							{msg.deliveredMi && !isDeleted && (
 								<div className={`${s.forwardedTag} ${isMine ? s.forwardedTagMine : ''}`}>
 									<Forward size={11} />
 									<span>{t('chatForwarded')}</span>
@@ -180,12 +180,12 @@ function ChatMessageRow({
 							)}
 
 							{/* Quoted Reply Bubble */}
-							{msg.yanitlananMesaj && !isDeleted && (
+							{msg.repliedMessage && !isDeleted && (
 								<div className={`${s.quotedBubble} ${isMine ? s.quotedBubbleMine : ''}`}>
 									<div className={s.quotedBar} />
 									<div className={s.quotedContent}>
-										<span className={s.quotedAuthor}>{msg.yanitlananMesaj.gonderenAd}</span>
-										<span className={s.quotedSnippet}>{msg.yanitlananMesaj.icerik}</span>
+										<span className={s.quotedAuthor}>{msg.repliedMessage.senderName}</span>
+										<span className={s.quotedSnippet}>{msg.repliedMessage.content}</span>
 									</div>
 								</div>
 							)}
@@ -193,8 +193,8 @@ function ChatMessageRow({
 							{isDeleted && (
 								<span className={s.deletedInlineNotice}>[{t('chatDelete').toUpperCase()}] </span>
 							)}
-							{msg.icerik && <div className={s.messageTextContent}>{msg.icerik}</div>}
-							{!isDeleted && msg.ekler?.length > 0 && <ChatAttachments attachments={msg.ekler} />}
+							{msg.content && <div className={s.messageTextContent}>{msg.content}</div>}
+							{!isDeleted && msg.attachments?.length > 0 && <ChatAttachments attachments={msg.attachments} />}
 							{isMine && !isDeleted && (
 								<div
 									style={{
@@ -213,7 +213,7 @@ function ChatMessageRow({
 					{/* Hover Action Menu */}
 					{!isDeleted && (
 						<div className={s.messageActions}>
-							{onReply && !msg.anket && (
+							{onReply && !msg.poll && (
 								<button
 									type="button"
 									className={s.actionBtn}
@@ -223,7 +223,7 @@ function ChatMessageRow({
 									<Reply size={12} />
 								</button>
 							)}
-							{onForward && !msg.anket && (
+							{onForward && !msg.poll && (
 								<button
 									type="button"
 									className={s.actionBtn}
@@ -233,7 +233,7 @@ function ChatMessageRow({
 									<Forward size={12} />
 								</button>
 							)}
-							{isMine && !msg.anket && onStartEdit && (
+							{isMine && !msg.poll && onStartEdit && (
 								<button
 									type="button"
 									className={s.actionBtn}
@@ -262,16 +262,16 @@ function ChatMessageRow({
 				</div>
 
 				{/* Status Badges */}
-				{isDeleted && msg.silinmeTarihi && (
+				{isDeleted && msg.deletionDate && (
 					<div className={s.deletedBadge}>
-						<span>🗑️ {fill(t('chatDeletedAt'), { time: formatDateTime(msg.silinmeTarihi) })}</span>
+						<span>🗑️ {fill(t('chatDeletedAt'), { time: formatDateTime(msg.deletionDate) })}</span>
 						<span className={s.adminOnlyTag}>{t('chatAdminDeletedBadge')}</span>
 					</div>
 				)}
 
-				{isEdited && msg.duzenlenmeTarihi && (
+				{isEdited && msg.editDate && (
 					<div className={s.editedBadge}>
-						<span>✏️ {fill(t('chatEditedAt'), { time: formatTime(msg.duzenlenmeTarihi) })}</span>
+						<span>✏️ {fill(t('chatEditedAt'), { time: formatTime(msg.editDate) })}</span>
 					</div>
 				)}
 			</div>
@@ -404,7 +404,7 @@ export function ChatMessageList({
 			)}
 			{messages.map((msg) => {
 				// 1. WhatsApp style centered system notifications (e.g. "X created group", "Y added Z", "/clear" bot message)
-				if (msg.gonderenId === 'sistem') {
+				if (msg.senderId === 'sistem') {
 					return (
 						<div
 							key={msg.id}
@@ -428,7 +428,7 @@ export function ChatMessageList({
 									backdropFilter: 'blur(4px)',
 								}}
 							>
-								{msg.icerik}
+								{msg.content}
 							</span>
 						</div>
 					);

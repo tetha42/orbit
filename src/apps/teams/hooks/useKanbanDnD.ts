@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { SIRA_ADIMI, siraBetween, siraFits, type TaskStatus } from '@/lib/kanban';
+import { ORDER_STEP, orderBetween, orderFits, type TaskStatus } from '@/lib/kanban';
 import { COLUMNS, type TeamTask } from '../types';
 import { sendJson } from '@/core/data/http';
 
@@ -42,42 +42,42 @@ export function useKanbanDnD({
 
 		const before = reorder ? shown[i - 1] : undefined;
 		const after = reorder ? shown[i] : shown[0];
-		let sira: number | undefined = siraBetween(before?.sira, after?.sira, -now);
-		let sirala: string[] | undefined;
+		let order: number | undefined = orderBetween(before?.order, after?.order, -now);
+		let columnOrder: string[] | undefined;
 
-		if (!siraFits(before?.sira, sira, after?.sira)) {
+		if (!orderFits(before?.order, order, after?.order)) {
 			const column = tasks
 				.filter((g) => g.status === to && g.id !== task.id)
-				.sort((a, b) => a.sira - b.sira || b.olusturma - a.olusturma)
+				.sort((a, b) => a.order - b.order || b.creation - a.creation)
 				.map((g) => g.id);
 			const at = after ? column.indexOf(after.id) : before ? column.indexOf(before.id) + 1 : column.length;
 			column.splice(at < 0 ? column.length : at, 0, task.id);
-			sirala = column;
-			sira = undefined;
+			columnOrder = column;
+			order = undefined;
 		}
 
-		if (to === task.status && sira === task.sira) return;
+		if (to === task.status && order === task.order) return;
 
 		mutateTasks((list) =>
 			list.map((g) => {
-				if (g.id === task.id) return { ...g, status: to, sira: sira ?? (sirala!.indexOf(g.id) + 1) * SIRA_ADIMI };
-				if (sirala?.includes(g.id)) return { ...g, sira: (sirala.indexOf(g.id) + 1) * SIRA_ADIMI };
+				if (g.id === task.id) return { ...g, status: to, order: order ?? (columnOrder!.indexOf(g.id) + 1) * ORDER_STEP };
+				if (columnOrder?.includes(g.id)) return { ...g, order: (columnOrder.indexOf(g.id) + 1) * ORDER_STEP };
 				return g;
 			})
 		);
 
-		const res = await sendJson<{ ok: boolean; xpVerildi?: boolean; error?: string }>('/api/teams', 'POST', {
+		const res = await sendJson<{ ok: boolean; xpGiven?: boolean; error?: string }>('/api/teams', 'POST', {
 			action: 'updateTask',
-			gorevId: task.id,
+			taskId: task.id,
 			status: to,
-			sira,
-			sirala,
+			order,
+			sort: columnOrder,
 		});
 
 		if (!res.ok) {
 			notify(res.error || t('kbMoveFailed'), 'error');
 			await refetch();
-		} else if (res.data?.xpVerildi) {
+		} else if (res.data?.xpGiven) {
 			playSystemSound('hero');
 			notify(t('kbRewardXp'));
 		}

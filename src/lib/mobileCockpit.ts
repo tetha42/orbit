@@ -7,16 +7,16 @@
 export interface CockpitTask {
 	id: string;
 	teamId: string;
-	baslik: string;
+	title: string;
 	status: string;
-	atananUyeId: string | null;
-	teslimTarihi: number | null;
+	assigneeMemberId: string | null;
+	dueDate: number | null;
 }
 
 export interface CockpitEvent {
 	id: string;
 	status: string;
-	baslangic: number;
+	start: number;
 	endTime: number;
 }
 
@@ -24,16 +24,16 @@ export interface CockpitEvent {
  * Open tasks assigned to `userId` across the given teams: earliest deadline first,
  * tasks without a deadline last (in board order).
  */
-export function myOpenTasks<T extends CockpitTask>(teams: { ad: string; gorevler: T[] }[], userId: string): (T & { takimAdi: string })[] {
-	const mine: (T & { takimAdi: string })[] = [];
+export function myOpenTasks<T extends CockpitTask>(teams: { name: string; tasks: T[] }[], userId: string): (T & { teamName: string })[] {
+	const mine: (T & { teamName: string })[] = [];
 	for (const team of teams) {
-		for (const task of team.gorevler) {
-			if (task.atananUyeId === userId && task.status !== 'tamamlandi') mine.push({ ...task, takimAdi: team.ad });
+		for (const task of team.tasks) {
+			if (task.assigneeMemberId === userId && task.status !== 'tamamlandi') mine.push({ ...task, teamName: team.name });
 		}
 	}
 	return mine
 		.map((task, index) => ({ task, index }))
-		.sort((a, b) => (a.task.teslimTarihi ?? Infinity) - (b.task.teslimTarihi ?? Infinity) || a.index - b.index)
+		.sort((a, b) => (a.task.dueDate ?? Infinity) - (b.task.dueDate ?? Infinity) || a.index - b.index)
 		.map(({ task }) => task);
 }
 
@@ -43,7 +43,7 @@ export function myOpenTasks<T extends CockpitTask>(teams: { ad: string; gorevler
  */
 export function nextEvent<T extends CockpitEvent>(events: T[], now: number): T | null {
 	const candidates = events.filter((e) => e.status === 'yayinda' && e.endTime >= now);
-	const live = candidates.filter((e) => e.baslangic <= now).sort((a, b) => a.endTime - b.endTime);
+	const live = candidates.filter((e) => e.start <= now).sort((a, b) => a.endTime - b.endTime);
 	if (live.length) return live[0];
-	return candidates.sort((a, b) => a.baslangic - b.baslangic)[0] ?? null;
+	return candidates.sort((a, b) => a.start - b.start)[0] ?? null;
 }

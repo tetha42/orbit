@@ -4,49 +4,49 @@ import { notificationEvents, publishEventQuiet } from '@/db/events';
 import { getChatAudience, invalidateChatAudience } from '@/server/chat/chatAudience';
 import type { ChatPollItem, ChatPollOptionItem } from '@/apps/chat/types';
 
-export interface ChatOda {
+export interface ChatRoom {
 	id: string;
-	tur: 'genel' | 'takim' | 'ozel';
+	typeValue: 'genel' | 'takim' | 'ozel';
 	teamId: string | null;
-	ad: string;
-	olusturma: number;
+	name: string;
+	creation: number;
 	avatar?: string | null;
 	peerUserId?: string | null;
 	memberCount?: number;
-	sonMesaj?: ChatMessageRecord | null;
-	okunmamisSayisi?: number;
+	lastMessage?: ChatMessageRecord | null;
+	unreadCount?: number;
 }
 
 export interface QuotedMessageSnapshot {
 	id: string;
-	gonderenAd: string;
-	icerik: string;
+	senderName: string;
+	content: string;
 }
 
 export interface ChatMessageRecord {
 	id: string;
 	roomId: string;
-	gonderenId: string;
-	gonderenAd: string;
-	gonderenFoto: string | null;
-	icerik: string;
-	ekler: Array<{ ad: string; url: string; boyut?: number; tip?: string; pollId?: string }>;
+	senderId: string;
+	senderName: string;
+	senderPhoto: string | null;
+	content: string;
+	attachments: Array<{ name: string; url: string; size?: number; tip?: string; pollId?: string }>;
 	date: number;
-	silinmeTarihi?: number | null;
-	duzenlenmeTarihi?: number | null;
-	anket?: ChatPollItem | null;
-	yanitlananMesajId?: string | null;
-	yanitlananMesaj?: QuotedMessageSnapshot | null;
-	iletildiMi?: boolean;
+	deletionDate?: number | null;
+	editDate?: number | null;
+	poll?: ChatPollItem | null;
+	repliedMessageId?: string | null;
+	repliedMessage?: QuotedMessageSnapshot | null;
+	deliveredMi?: boolean;
 }
 
 export interface UnreadChatRoomSummary {
 	id: string;
-	konu: string;
+	topic: string;
 	at: number;
-	okunmamis: number;
+	unread: number;
 	messageId: string;
-	gonderen: { ad: string; soyad: string };
+	sender: { name: string; surname: string };
 }
 
 /**
@@ -105,39 +105,39 @@ export async function canUserAccessChatRoom(
 	return res.rows.length > 0;
 }
 
-export async function getChatRooms(userId: string, isAdmin = false): Promise<ChatOda[]> {
+export async function getChatRooms(userId: string, isAdmin = false): Promise<ChatRoom[]> {
 	await ensurePostgresInit();
 	const p = getPgPool();
 
 	// Return public/general rooms + team rooms the user belongs to (or all if admin), excluding internal mail_thread rooms
 	const res = await p.query(
-		`SELECT o.id, o.room_type AS tur, o.team_id AS "teamId", o.name AS ad, o.created_at AS olusturma,
+		`SELECT o.id, o.room_type AS typeValue, o.team_id AS "teamId", o.name AS name, o.created_at AS creation,
 		        (SELECT COUNT(*)::int FROM chat_members su_count WHERE su_count.room_id = o.id) as "memberCount",
 		        (SELECT json_build_object(
 		            'id', k.id,
-		            'ad', (k.first_name || ' ' || k.last_name),
-		            'profilFoto', k.avatar_url
+		            'name', (k.first_name || ' ' || k.last_name),
+		            'profilePhoto', k.avatar_url
 		         )
 		         FROM chat_members su2
 		         JOIN users k ON k.id = su2.user_id
 		         WHERE su2.room_id = o.id AND su2.user_id <> $1
 		         LIMIT 1
-		        ) as "karsiKullanici",
+		        ) as "counterpartUser",
 		        (SELECT json_build_object(
-		            'id', m.id, 'roomId', m.room_id, 'gonderenId', m.sender_id,
-		            'gonderenAd', m.sender_name, 'gonderenFoto', m.sender_avatar,
-		            'icerik', m.content, 'ekler', m.attachments, 'date', m.date,
-		            'silinmeTarihi', m.deleted_at, 'duzenlenmeTarihi', m.edited_at,
-		            'yanitlananMesajId', m.reply_to_id, 'yanitlananMesaj', m.reply_snapshot,
-		            'iletildiMi', m.is_delivered
-		         ) FROM chat_messages m WHERE m.room_id = o.id AND ($2 = true OR m.deleted_at IS NULL) ORDER BY m.date DESC LIMIT 1) as "sonMesaj",
+		            'id', m.id, 'roomId', m.room_id, 'senderId', m.sender_id,
+		            'senderName', m.sender_name, 'senderPhoto', m.sender_avatar,
+		            'content', m.content, 'attachments', m.attachments, 'date', m.date,
+		            'deletionDate', m.deleted_at, 'editDate', m.edited_at,
+		            'repliedMessageId', m.reply_to_id, 'repliedMessage', m.reply_snapshot,
+		            'deliveredMi', m.is_delivered
+		         ) FROM chat_messages m WHERE m.room_id = o.id AND ($2 = true OR m.deleted_at IS NULL) ORDER BY m.date DESC LIMIT 1) as "lastMessage",
 		        (SELECT COUNT(*)::int FROM chat_messages m2
 		         WHERE m2.room_id = o.id
 		           AND m2.sender_id <> $1
 		           AND m2.deleted_at IS NULL
 		           AND m2.date > COALESCE(
 		             (SELECT u.last_read_at FROM chat_members u WHERE u.room_id = o.id AND u.user_id = $1), 0
-		         )) as "okunmamisSayisi"
+		         )) as "unreadCount"
 		 FROM chat_rooms o
 		 WHERE o.room_type <> 'mail_thread'
 		   AND (
@@ -152,60 +152,60 @@ export async function getChatRooms(userId: string, isAdmin = false): Promise<Cha
 
 	return res.rows.map((row) => {
 		const memberCount = Number(row.memberCount || 0);
-		let ad = String(row.ad || 'Sohbet');
+		let name = String(row.name || 'Sohbet');
 		let avatar: string | null = null;
 		let peerUserId: string | null = null;
 
-		if (row.tur === 'ozel' && memberCount === 2 && row.karsiKullanici) {
-			const k = typeof row.karsiKullanici === 'string' ? JSON.parse(row.karsiKullanici) : row.karsiKullanici;
-			if (k && k.ad) {
-				ad = String(k.ad);
-				avatar = k.profilFoto || null;
+		if (row.typeValue === 'ozel' && memberCount === 2 && row.counterpartUser) {
+			const k = typeof row.counterpartUser === 'string' ? JSON.parse(row.counterpartUser) : row.counterpartUser;
+			if (k && k.name) {
+				name = String(k.name);
+				avatar = k.profilePhoto || null;
 				peerUserId = k.id || null;
 			}
 		}
 
-		const rawSon = row.sonMesaj
-			? typeof row.sonMesaj === 'string'
-				? JSON.parse(row.sonMesaj)
-				: row.sonMesaj
+		const rawLast = row.lastMessage
+			? typeof row.lastMessage === 'string'
+				? JSON.parse(row.lastMessage)
+				: row.lastMessage
 			: null;
 
 		return {
 			id: String(row.id),
-			tur: row.tur,
+			typeValue: row.typeValue,
 			teamId: row.teamId ? String(row.teamId) : null,
-			ad,
+			name,
 			avatar,
 			peerUserId,
 			memberCount,
-			olusturma: Number(row.olusturma),
-			sonMesaj: rawSon
+			creation: Number(row.creation),
+			lastMessage: rawLast
 				? {
-						id: String(rawSon.id ?? ''),
-						roomId: String(rawSon.roomId ?? rawSon.odaid ?? row.id),
-						gonderenId: String(rawSon.gonderenId ?? rawSon.gonderenid ?? ''),
-						gonderenAd: String(rawSon.gonderenAd ?? rawSon.gonderenad ?? 'Üye'),
-						gonderenFoto: rawSon.gonderenFoto ?? rawSon.gonderenfoto ?? null,
-						icerik: String(rawSon.icerik ?? ''),
-						ekler: Array.isArray(rawSon.ekler)
-							? rawSon.ekler
-							: typeof rawSon.ekler === 'string'
-							? JSON.parse(rawSon.ekler)
+						id: String(rawLast.id ?? ''),
+						roomId: String(rawLast.roomId ?? rawLast.roomId ?? row.id),
+						senderId: String(rawLast.senderId ?? rawLast.senderId ?? ''),
+						senderName: String(rawLast.senderName ?? rawLast.senderName ?? 'Üye'),
+						senderPhoto: rawLast.senderPhoto ?? rawLast.senderPhoto ?? null,
+						content: String(rawLast.content ?? ''),
+						attachments: Array.isArray(rawLast.attachments)
+							? rawLast.attachments
+							: typeof rawLast.attachments === 'string'
+							? JSON.parse(rawLast.attachments)
 							: [],
-						date: Number(rawSon.date ?? 0),
-						silinmeTarihi: rawSon.silinmeTarihi ? Number(rawSon.silinmeTarihi) : null,
-						duzenlenmeTarihi: rawSon.duzenlenmeTarihi ? Number(rawSon.duzenlenmeTarihi) : null,
-						yanitlananMesajId: rawSon.yanitlananMesajId ? String(rawSon.yanitlananMesajId) : null,
-						yanitlananMesaj: rawSon.yanitlananMesaj
-							? typeof rawSon.yanitlananMesaj === 'string'
-								? JSON.parse(rawSon.yanitlananMesaj)
-								: rawSon.yanitlananMesaj
+						date: Number(rawLast.date ?? 0),
+						deletionDate: rawLast.deletionDate ? Number(rawLast.deletionDate) : null,
+						editDate: rawLast.editDate ? Number(rawLast.editDate) : null,
+						repliedMessageId: rawLast.repliedMessageId ? String(rawLast.repliedMessageId) : null,
+						repliedMessage: rawLast.repliedMessage
+							? typeof rawLast.repliedMessage === 'string'
+								? JSON.parse(rawLast.repliedMessage)
+								: rawLast.repliedMessage
 							: null,
-						iletildiMi: Boolean(rawSon.iletildiMi && Number(rawSon.iletildiMi) > 0),
+						deliveredMi: Boolean(rawLast.deliveredMi && Number(rawLast.deliveredMi) > 0),
 				  }
 				: null,
-			okunmamisSayisi: Number(row.okunmamisSayisi || 0),
+			unreadCount: Number(row.unreadCount || 0),
 		};
 	});
 }
@@ -229,8 +229,8 @@ export async function getPollDetails(pollId: string, currentUserId?: string): Pr
 	const p = getPgPool();
 
 	const pollRes = await p.query(
-		`SELECT id, room_id AS "roomId", created_by AS "olusturanId", question AS soru,
-		        allow_multiple AS "cokluSecim", options, votes, ends_at AS "endsAt", created_at AS olusturma
+		`SELECT id, room_id AS "roomId", created_by AS "creatorId", question AS question,
+		        allow_multiple AS "multipleSelection", options, votes, ends_at AS "endsAt", created_at AS creation
 		 FROM chat_polls
 		 WHERE id = $1`,
 		[pollId]
@@ -239,20 +239,20 @@ export async function getPollDetails(pollId: string, currentUserId?: string): Pr
 	if (pollRes.rows.length === 0) return null;
 	const row = pollRes.rows[0];
 	const roomId = String(row.roomId ?? '');
-	const creatorId = String(row.olusturanId ?? '');
+	const creatorId = String(row.creatorId ?? '');
 
 	let creatorName = 'Yönetici';
 	try {
 		const uRes = await p.query(
-			`SELECT first_name AS ad, last_name AS soyad FROM users WHERE id = $1`,
+			`SELECT first_name AS name, last_name AS surname FROM users WHERE id = $1`,
 			[creatorId]
 		);
 		if (uRes.rows.length > 0) {
-			creatorName = `${uRes.rows[0].ad} ${uRes.rows[0].soyad}`.trim();
+			creatorName = `${uRes.rows[0].name} ${uRes.rows[0].surname}`.trim();
 		}
 	} catch {}
 
-	let mesajId = '';
+	let messageId = '';
 	let isAnon = true;
 	try {
 		const msgRes = await p.query(
@@ -260,7 +260,7 @@ export async function getPollDetails(pollId: string, currentUserId?: string): Pr
 			[roomId, `%${pollId}%`]
 		);
 		if (msgRes.rows.length > 0) {
-			mesajId = String(msgRes.rows[0].id ?? '');
+			messageId = String(msgRes.rows[0].id ?? '');
 			const rawAtt = msgRes.rows[0].attachments;
 			const parsedAtt = Array.isArray(rawAtt)
 				? rawAtt
@@ -270,8 +270,8 @@ export async function getPollDetails(pollId: string, currentUserId?: string): Pr
 			const pollAtt = Array.isArray(parsedAtt)
 				? parsedAtt.find((a: Record<string, unknown>) => a && (a.pollId === pollId || a.tip === 'anket'))
 				: null;
-			if (pollAtt && typeof pollAtt.anonim === 'boolean') {
-				isAnon = pollAtt.anonim;
+			if (pollAtt && typeof pollAtt.anonymous === 'boolean') {
+				isAnon = pollAtt.anonymous;
 			}
 		}
 	} catch {}
@@ -296,7 +296,7 @@ export async function getPollDetails(pollId: string, currentUserId?: string): Pr
 		const optId = String(opt.id);
 		const optVotes = rawVotes.filter((v) => String(v.optionId) === optId);
 		const count = optVotes.length;
-		const yuzde = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
+		const percent = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
 
 		const hasUserVoted = currentUserId
 			? optVotes.some((v) => String(v.userId) === currentUserId)
@@ -308,15 +308,15 @@ export async function getPollDetails(pollId: string, currentUserId?: string): Pr
 		return {
 			id: optId,
 			pollId,
-			sira: Number(opt.sortOrder ?? idx),
-			metin: String(opt.text ?? ''),
-			oySayisi: count,
-			yuzde,
-			oyVerenler: !isAnon
+			order: Number(opt.sortOrder ?? idx),
+			text: String(opt.text ?? ''),
+			voteCount: count,
+			percent,
+			voteGivers: !isAnon
 				? optVotes.map((v) => ({
 						id: String(v.userId),
-						ad: String(v.userName ?? 'Üye'),
-						foto: (v.userAvatar ?? null) as string | null,
+						name: String(v.userName ?? 'Üye'),
+						photo: (v.userAvatar ?? null) as string | null,
 				  }))
 				: undefined,
 		};
@@ -327,19 +327,19 @@ export async function getPollDetails(pollId: string, currentUserId?: string): Pr
 
 	return {
 		id: String(row.id),
-		mesajId,
+		messageId,
 		roomId,
-		olusturanId: creatorId,
-		olusturanAd: creatorName,
-		soru: String(row.soru ?? ''),
-		cokluSecim: Boolean(row.cokluSecim),
-		anonim: isAnon,
+		creatorId: creatorId,
+		creatorName: creatorName,
+		question: String(row.question ?? ''),
+		multipleSelection: Boolean(row.multipleSelection),
+		anonymous: isAnon,
 		endsAt,
 		kapali: isExpired,
-		olusturma: Number(row.olusturma ?? 0),
-		secenekler: options,
-		toplamOy: totalVotes,
-		kullaniciOylari: userVotes,
+		creation: Number(row.creation ?? 0),
+		options: options,
+		totalVote: totalVotes,
+		userVotes: userVotes,
 	};
 }
 
@@ -348,8 +348,8 @@ async function enrichMessagesWithPolls(messages: ChatMessageRecord[], currentUse
 
 	const pollMessageMap = new Map<string, string>(); // mesajId -> pollId
 	for (const m of messages) {
-		if (Array.isArray(m.ekler)) {
-			const addPoll = m.ekler.find((e) => e && (e.tip === 'anket' || (e as { pollId?: string }).pollId));
+		if (Array.isArray(m.attachments)) {
+			const addPoll = m.attachments.find((e) => e && (e.tip === 'anket' || (e as { pollId?: string }).pollId));
 			if (addPoll) {
 				const aId = (addPoll as { pollId?: string }).pollId || (addPoll as { id?: string }).id;
 				if (aId) pollMessageMap.set(m.id, aId);
@@ -361,17 +361,17 @@ async function enrichMessagesWithPolls(messages: ChatMessageRecord[], currentUse
 
 	const pollDetailsMap = new Map<string, ChatPollItem>();
 	await Promise.all(
-		Array.from(pollMessageMap.entries()).map(async ([mesajId, pollId]) => {
+		Array.from(pollMessageMap.entries()).map(async ([messageId, pollId]) => {
 			const poll = await getPollDetails(pollId, currentUserId);
 			if (poll) {
-				pollDetailsMap.set(mesajId, { ...poll, mesajId: poll.mesajId || mesajId });
+				pollDetailsMap.set(messageId, { ...poll, messageId: poll.messageId || messageId });
 			}
 		})
 	);
 
 	return messages.map((m) => {
 		const poll = pollDetailsMap.get(m.id);
-		return poll ? { ...m, anket: poll } : m;
+		return poll ? { ...m, poll: poll } : m;
 	});
 }
 
@@ -400,17 +400,17 @@ export async function getChatRoomMessages(
 		 FROM (
 		   SELECT id,
 		          room_id AS "roomId",
-		          sender_id AS "gonderenId",
-		          sender_name AS "gonderenAd",
-		          sender_avatar AS "gonderenFoto",
-		          content AS icerik,
-		          attachments AS ekler,
+		          sender_id AS "senderId",
+		          sender_name AS "senderName",
+		          sender_avatar AS "senderPhoto",
+		          content AS content,
+		          attachments AS attachments,
 		          date,
-		          deleted_at AS "silinmeTarihi",
-		          edited_at AS "duzenlenmeTarihi",
-		          reply_to_id AS "yanitlananMesajId",
-		          reply_snapshot AS "yanitlananMesaj",
-		          COALESCE(is_delivered, 0) AS "iletildiMi"
+		          deleted_at AS "deletionDate",
+		          edited_at AS "editDate",
+		          reply_to_id AS "repliedMessageId",
+		          reply_snapshot AS "repliedMessage",
+		          COALESCE(is_delivered, 0) AS "deliveredMi"
 		   FROM chat_messages
 		   WHERE room_id = $1
 		     AND ($3 = true OR deleted_at IS NULL)
@@ -424,135 +424,135 @@ export async function getChatRoomMessages(
 
 	const rawMessages: ChatMessageRecord[] = res.rows.map((row) => {
 		const r = row as Record<string, unknown>;
-		let yanitlananMesaj: QuotedMessageSnapshot | null = null;
-		if (r.yanitlananMesaj) {
-			if (typeof r.yanitlananMesaj === 'string') {
+		let repliedMessage: QuotedMessageSnapshot | null = null;
+		if (r.repliedMessage) {
+			if (typeof r.repliedMessage === 'string') {
 				try {
-					yanitlananMesaj = JSON.parse(r.yanitlananMesaj);
+					repliedMessage = JSON.parse(r.repliedMessage);
 				} catch {}
-			} else if (typeof r.yanitlananMesaj === 'object') {
-				yanitlananMesaj = r.yanitlananMesaj as QuotedMessageSnapshot;
+			} else if (typeof r.repliedMessage === 'object') {
+				repliedMessage = r.repliedMessage as QuotedMessageSnapshot;
 			}
 		}
 
 		return {
 			id: String(r.id ?? ''),
-			roomId: String(r.roomId ?? r.odaid ?? roomId),
-			gonderenId: String(r.gonderenId ?? r.gonderenid ?? ''),
-			gonderenAd: String(r.gonderenAd ?? r.gonderenad ?? 'Üye'),
-			gonderenFoto: (r.gonderenFoto ?? r.gonderenfoto ?? null) as string | null,
-			icerik: String(r.icerik ?? ''),
-			ekler: Array.isArray(r.ekler)
-				? r.ekler
-				: typeof r.ekler === 'string'
-				? JSON.parse(r.ekler)
+			roomId: String(r.roomId ?? r.roomId ?? roomId),
+			senderId: String(r.senderId ?? r.senderId ?? ''),
+			senderName: String(r.senderName ?? r.senderName ?? 'Üye'),
+			senderPhoto: (r.senderPhoto ?? r.senderPhoto ?? null) as string | null,
+			content: String(r.content ?? ''),
+			attachments: Array.isArray(r.attachments)
+				? r.attachments
+				: typeof r.attachments === 'string'
+				? JSON.parse(r.attachments)
 				: [],
 			date: Number(r.date ?? 0),
-			silinmeTarihi: r.silinmeTarihi ? Number(r.silinmeTarihi) : null,
-			duzenlenmeTarihi: r.duzenlenmeTarihi ? Number(r.duzenlenmeTarihi) : null,
-			yanitlananMesajId: r.yanitlananMesajId ? String(r.yanitlananMesajId) : null,
-			yanitlananMesaj,
-			iletildiMi: Boolean(r.iletildiMi && Number(r.iletildiMi) > 0),
+			deletionDate: r.deletionDate ? Number(r.deletionDate) : null,
+			editDate: r.editDate ? Number(r.editDate) : null,
+			repliedMessageId: r.repliedMessageId ? String(r.repliedMessageId) : null,
+			repliedMessage,
+			deliveredMi: Boolean(r.deliveredMi && Number(r.deliveredMi) > 0),
 		};
 	});
 
 	return await enrichMessagesWithPolls(rawMessages, currentUserId);
 }
 
-export async function getChatMessageById(mesajId: string): Promise<ChatMessageRecord | null> {
+export async function getChatMessageById(messageId: string): Promise<ChatMessageRecord | null> {
 	await ensurePostgresInit();
 	const p = getPgPool();
 	const res = await p.query(
 		`SELECT id,
 		        room_id AS "roomId",
-		        sender_id AS "gonderenId",
-		        sender_name AS "gonderenAd",
-		        sender_avatar AS "gonderenFoto",
-		        content AS icerik,
-		        attachments AS ekler,
+		        sender_id AS "senderId",
+		        sender_name AS "senderName",
+		        sender_avatar AS "senderPhoto",
+		        content AS content,
+		        attachments AS attachments,
 		        date,
-		        deleted_at AS "silinmeTarihi",
-		        edited_at AS "duzenlenmeTarihi",
-		        reply_to_id AS "yanitlananMesajId",
-		        reply_snapshot AS "yanitlananMesaj",
-		        COALESCE(is_delivered, 0) AS "iletildiMi"
+		        deleted_at AS "deletionDate",
+		        edited_at AS "editDate",
+		        reply_to_id AS "repliedMessageId",
+		        reply_snapshot AS "repliedMessage",
+		        COALESCE(is_delivered, 0) AS "deliveredMi"
 		 FROM chat_messages
 		 WHERE id = $1
 		 LIMIT 1`,
-		[mesajId]
+		[messageId]
 	);
 
 	if (res.rows.length === 0) return null;
 	const r = res.rows[0] as Record<string, unknown>;
 
-	let yanitlananMesaj: QuotedMessageSnapshot | null = null;
-	if (r.yanitlananMesaj) {
-		if (typeof r.yanitlananMesaj === 'string') {
+	let repliedMessage: QuotedMessageSnapshot | null = null;
+	if (r.repliedMessage) {
+		if (typeof r.repliedMessage === 'string') {
 			try {
-				yanitlananMesaj = JSON.parse(r.yanitlananMesaj);
+				repliedMessage = JSON.parse(r.repliedMessage);
 			} catch {}
-		} else if (typeof r.yanitlananMesaj === 'object') {
-			yanitlananMesaj = r.yanitlananMesaj as QuotedMessageSnapshot;
+		} else if (typeof r.repliedMessage === 'object') {
+			repliedMessage = r.repliedMessage as QuotedMessageSnapshot;
 		}
 	}
 
 	return {
 		id: String(r.id ?? ''),
-		roomId: String(r.roomId ?? r.odaid ?? ''),
-		gonderenId: String(r.gonderenId ?? r.gonderenid ?? ''),
-		gonderenAd: String(r.gonderenAd ?? r.gonderenad ?? 'Üye'),
-		gonderenFoto: (r.gonderenFoto ?? r.gonderenfoto ?? null) as string | null,
-		icerik: String(r.icerik ?? ''),
-		ekler: Array.isArray(r.ekler)
-			? r.ekler
-			: typeof r.ekler === 'string'
-			? JSON.parse(r.ekler)
+		roomId: String(r.roomId ?? r.roomId ?? ''),
+		senderId: String(r.senderId ?? r.senderId ?? ''),
+		senderName: String(r.senderName ?? r.senderName ?? 'Üye'),
+		senderPhoto: (r.senderPhoto ?? r.senderPhoto ?? null) as string | null,
+		content: String(r.content ?? ''),
+		attachments: Array.isArray(r.attachments)
+			? r.attachments
+			: typeof r.attachments === 'string'
+			? JSON.parse(r.attachments)
 			: [],
 		date: Number(r.date ?? 0),
-		silinmeTarihi: r.silinmeTarihi ? Number(r.silinmeTarihi) : null,
-		duzenlenmeTarihi: r.duzenlenmeTarihi ? Number(r.duzenlenmeTarihi) : null,
-		yanitlananMesajId: r.yanitlananMesajId ? String(r.yanitlananMesajId) : null,
-		yanitlananMesaj,
-		iletildiMi: Boolean(r.iletildiMi && Number(r.iletildiMi) > 0),
+		deletionDate: r.deletionDate ? Number(r.deletionDate) : null,
+		editDate: r.editDate ? Number(r.editDate) : null,
+		repliedMessageId: r.repliedMessageId ? String(r.repliedMessageId) : null,
+		repliedMessage,
+		deliveredMi: Boolean(r.deliveredMi && Number(r.deliveredMi) > 0),
 	};
 }
 
 export async function createChatMessage(
 	roomId: string,
-	gonderen: { id: string; ad: string; soyad: string; profilFoto?: string | null },
-	icerik: string,
-	ekler: Array<{ ad: string; url: string; boyut?: number; tip?: string }> = [],
+	sender: { id: string; name: string; surname: string; profilePhoto?: string | null },
+	content: string,
+	attachments: Array<{ name: string; url: string; size?: number; tip?: string }> = [],
 	options?: {
-		yanitlananMesajId?: string | null;
-		yanitlananMesaj?: QuotedMessageSnapshot | null;
-		iletildiMi?: boolean;
+		repliedMessageId?: string | null;
+		repliedMessage?: QuotedMessageSnapshot | null;
+		deliveredMi?: boolean;
 	}
 ): Promise<ChatMessageRecord> {
 	await ensurePostgresInit();
 	const p = getPgPool();
 	const id = randomUUID();
 	const date = Date.now();
-	const senderName = `${gonderen.ad} ${gonderen.soyad}`.trim() || 'Üye';
-	const gonderenFoto = gonderen.profilFoto || null;
-	const eklerJson = JSON.stringify(ekler);
+	const senderName = `${sender.name} ${sender.surname}`.trim() || 'Üye';
+	const senderPhoto = sender.profilePhoto || null;
+	const attachmentsJson = JSON.stringify(attachments);
 
-	const yanitlananMesajId = options?.yanitlananMesajId || null;
-	let yanitlananMesaj = options?.yanitlananMesaj || null;
-	const iletildiMi = Boolean(options?.iletildiMi);
+	const repliedMessageId = options?.repliedMessageId || null;
+	let repliedMessage = options?.repliedMessage || null;
+	const deliveredMi = Boolean(options?.deliveredMi);
 
 	// If yanitlananMesajId is provided but snapshot isn't, fetch snapshot
-	if (yanitlananMesajId && !yanitlananMesaj) {
-		const targetMsg = await getChatMessageById(yanitlananMesajId);
+	if (repliedMessageId && !repliedMessage) {
+		const targetMsg = await getChatMessageById(repliedMessageId);
 		if (targetMsg) {
-			yanitlananMesaj = {
+			repliedMessage = {
 				id: targetMsg.id,
-				gonderenAd: targetMsg.gonderenAd,
-				icerik: targetMsg.icerik.slice(0, 200),
+				senderName: targetMsg.senderName,
+				content: targetMsg.content.slice(0, 200),
 			};
 		}
 	}
 
-	const yanitlananMesajJson = yanitlananMesaj ? JSON.stringify(yanitlananMesaj) : null;
+	const repliedMessageJson = repliedMessage ? JSON.stringify(repliedMessage) : null;
 
 	await p.query(
 		`INSERT INTO chat_messages (id, room_id, sender_id, sender_name, sender_avatar, content, attachments, date, reply_to_id, reply_snapshot, is_delivered)
@@ -560,15 +560,15 @@ export async function createChatMessage(
 		[
 			id,
 			roomId,
-			gonderen.id,
+			sender.id,
 			senderName,
-			gonderenFoto,
-			icerik.trim(),
-			eklerJson,
+			senderPhoto,
+			content.trim(),
+			attachmentsJson,
 			date,
-			yanitlananMesajId,
-			yanitlananMesajJson,
-			iletildiMi ? 1 : 0,
+			repliedMessageId,
+			repliedMessageJson,
+			deliveredMi ? 1 : 0,
 		]
 	);
 
@@ -577,21 +577,21 @@ export async function createChatMessage(
 		`INSERT INTO chat_members (room_id, user_id, last_read_at)
 		 VALUES ($1, $2, $3)
 		 ON CONFLICT (room_id, user_id) DO UPDATE SET last_read_at = $3`,
-		[roomId, gonderen.id, date]
+		[roomId, sender.id, date]
 	);
 
 	const createdMsg: ChatMessageRecord = {
 		id,
 		roomId,
-		gonderenId: gonderen.id,
-		gonderenAd: senderName,
-		gonderenFoto,
-		icerik: icerik.trim(),
-		ekler,
+		senderId: sender.id,
+		senderName: senderName,
+		senderPhoto,
+		content: content.trim(),
+		attachments,
 		date,
-		yanitlananMesajId,
-		yanitlananMesaj,
-		iletildiMi,
+		repliedMessageId,
+		repliedMessage,
+		deliveredMi,
 	};
 
 	// 1. Notify real-time Chat SSE stream
@@ -605,35 +605,35 @@ export async function createChatMessage(
 	}
 
 	// 2. Notify global Notification Center & Dock Badge SSE stream (`orbit_events`)
-	void notifyChatRoomParticipants(roomId, gonderen.id);
+	void notifyChatRoomParticipants(roomId, sender.id);
 
 	return createdMsg;
 }
 
 export async function softDeleteChatMessage(
-	mesajId: string,
+	messageId: string,
 	userId: string,
 	isAdmin = false
-): Promise<{ ok: boolean; roomId?: string; messageId?: string; silinmeTarihi?: number }> {
+): Promise<{ ok: boolean; roomId?: string; messageId?: string; deletionDate?: number }> {
 	await ensurePostgresInit();
 	const p = getPgPool();
 
 	const checkRes = await p.query(
-		`SELECT id, room_id AS "roomId", sender_id AS "gonderenId" FROM chat_messages WHERE id = $1 LIMIT 1`,
-		[mesajId]
+		`SELECT id, room_id AS "roomId", sender_id AS "senderId" FROM chat_messages WHERE id = $1 LIMIT 1`,
+		[messageId]
 	);
 	const msg = checkRes.rows[0];
 	if (!msg) return { ok: false };
 
 	// Authorization check: must be admin OR original sender
-	if (!isAdmin && msg.gonderenId !== userId) {
+	if (!isAdmin && msg.senderId !== userId) {
 		return { ok: false };
 	}
 
 	const now = Date.now();
 	await p.query(
 		`UPDATE chat_messages SET deleted_at = $1 WHERE id = $2`,
-		[now, mesajId]
+		[now, messageId]
 	);
 
 	try {
@@ -643,8 +643,8 @@ export async function softDeleteChatMessage(
 				JSON.stringify({
 					type: 'message_deleted',
 					roomId: msg.roomId,
-					messageId: mesajId,
-					silinmeTarihi: now,
+					messageId: messageId,
+					deletionDate: now,
 				}),
 			]
 		);
@@ -652,19 +652,19 @@ export async function softDeleteChatMessage(
 		console.warn('[Chat notify delete error]:', e);
 	}
 
-	return { ok: true, roomId: msg.roomId, messageId: mesajId, silinmeTarihi: now };
+	return { ok: true, roomId: msg.roomId, messageId: messageId, deletionDate: now };
 }
 
 export async function softDeleteChatMessagesBatch(
 	roomId: string,
 	count = 50,
 	isAdmin = false
-): Promise<{ ok: boolean; count: number; deletedIds: string[]; silinmeTarihi: number }> {
+): Promise<{ ok: boolean; count: number; deletedIds: string[]; deletionDate: number }> {
 	await ensurePostgresInit();
 	const p = getPgPool();
 
 	if (!isAdmin) {
-		return { ok: false, count: 0, deletedIds: [], silinmeTarihi: 0 };
+		return { ok: false, count: 0, deletedIds: [], deletionDate: 0 };
 	}
 
 	const limit = Math.max(1, Math.min(count, 200));
@@ -681,7 +681,7 @@ export async function softDeleteChatMessagesBatch(
 
 	const deletedIds = selectRes.rows.map((r) => String(r.id));
 	if (deletedIds.length === 0) {
-		return { ok: true, count: 0, deletedIds: [], silinmeTarihi: now };
+		return { ok: true, count: 0, deletedIds: [], deletionDate: now };
 	}
 
 	await p.query(
@@ -700,7 +700,7 @@ export async function softDeleteChatMessagesBatch(
 					type: 'messages_cleared',
 					roomId,
 					deletedIds,
-					silinmeTarihi: now,
+					deletionDate: now,
 					count: deletedIds.length,
 				}),
 			]
@@ -709,54 +709,54 @@ export async function softDeleteChatMessagesBatch(
 		console.warn('[Chat notify clear error]:', e);
 	}
 
-	return { ok: true, count: deletedIds.length, deletedIds, silinmeTarihi: now };
+	return { ok: true, count: deletedIds.length, deletedIds, deletionDate: now };
 }
 
 export async function editChatMessage(
-	mesajId: string,
-	yeniIcerik: string,
+	messageId: string,
+	newContent: string,
 	userId: string
 ): Promise<{ ok: boolean; message?: ChatMessageRecord }> {
 	await ensurePostgresInit();
 	const p = getPgPool();
 
 	const checkRes = await p.query(
-		`SELECT id, room_id AS "roomId", sender_id AS "gonderenId", sender_name AS "gonderenAd", sender_avatar AS "gonderenFoto", attachments AS ekler, date, deleted_at AS "silinmeTarihi"
+		`SELECT id, room_id AS "roomId", sender_id AS "senderId", sender_name AS "senderName", sender_avatar AS "senderPhoto", attachments AS attachments, date, deleted_at AS "deletionDate"
 		 FROM chat_messages WHERE id = $1 LIMIT 1`,
-		[mesajId]
+		[messageId]
 	);
 	const existing = checkRes.rows[0];
 	if (!existing) return { ok: false };
 
 	// Only original sender can edit, and cannot edit if already soft-deleted
-	if (existing.gonderenId !== userId || existing.silinmeTarihi) {
+	if (existing.senderId !== userId || existing.deletionDate) {
 		return { ok: false };
 	}
 
-	const trimmed = yeniIcerik.trim();
+	const trimmed = newContent.trim();
 	if (!trimmed) return { ok: false };
 
 	const now = Date.now();
 	await p.query(
 		`UPDATE chat_messages SET content = $1, edited_at = $2 WHERE id = $3`,
-		[trimmed, now, mesajId]
+		[trimmed, now, messageId]
 	);
 
 	const updatedMsg: ChatMessageRecord = {
 		id: String(existing.id),
 		roomId: String(existing.roomId),
-		gonderenId: String(existing.gonderenId),
-		gonderenAd: String(existing.gonderenAd),
-		gonderenFoto: existing.gonderenFoto || null,
-		icerik: trimmed,
-		ekler: Array.isArray(existing.ekler)
-			? existing.ekler
-			: typeof existing.ekler === 'string'
-			? JSON.parse(existing.ekler)
+		senderId: String(existing.senderId),
+		senderName: String(existing.senderName),
+		senderPhoto: existing.senderPhoto || null,
+		content: trimmed,
+		attachments: Array.isArray(existing.attachments)
+			? existing.attachments
+			: typeof existing.attachments === 'string'
+			? JSON.parse(existing.attachments)
 			: [],
 		date: Number(existing.date),
-		silinmeTarihi: null,
-		duzenlenmeTarihi: now,
+		deletionDate: null,
+		editDate: now,
 	};
 
 	try {
@@ -791,7 +791,7 @@ export async function markRoomAsRead(roomId: string, userId: string): Promise<vo
 	void publishEventQuiet(p, { k: 'notification', userId });
 }
 
-export async function ensureTeamChatRoom(teamId: string, takimAd: string): Promise<string> {
+export async function ensureTeamChatRoom(teamId: string, teamName: string): Promise<string> {
 	await ensurePostgresInit();
 	const p = getPgPool();
 	const roomId = `oda_takim_${teamId}`;
@@ -799,18 +799,18 @@ export async function ensureTeamChatRoom(teamId: string, takimAd: string): Promi
 		`INSERT INTO chat_rooms (id, room_type, team_id, name, created_at)
 		 VALUES ($1, 'takim', $2, $3, $4)
 		 ON CONFLICT (id) DO UPDATE SET name = $3`,
-		[roomId, teamId, `${takimAd} Takım Sohbeti`, Date.now()]
+		[roomId, teamId, `${teamName} Takım Sohbeti`, Date.now()]
 	);
 	return roomId;
 }
 
 export interface ChatContactItem {
 	id: string;
-	ad: string;
-	soyad: string;
-	profilFoto: string | null;
-	rolAd: string | null;
-	bolum: string;
+	name: string;
+	surname: string;
+	profilePhoto: string | null;
+	roleName: string | null;
+	department: string;
 }
 
 export interface ChatRoomMemberItem {
@@ -820,11 +820,9 @@ export interface ChatRoomMemberItem {
 	avatarUrl?: string | null;
 	roleName?: string | null;
 	department?: string;
-	ad: string;
-	soyad: string;
-	profilFoto: string | null;
-	rolAd: string | null;
-	bolum: string;
+	name: string;
+	surname: string;
+	profilePhoto: string | null;
 }
 
 /**
@@ -832,13 +830,13 @@ export interface ChatRoomMemberItem {
  * or creates a new one.
  */
 export async function getOrCreateDmRoom(
-	kullanici1Id: string,
-	kullanici2Id: string
+	user1Id: string,
+	user2Id: string
 ): Promise<{ roomId: string; isNew: boolean }> {
 	await ensurePostgresInit();
 	// Serialize the check-then-create sequence for the same pair. Without this,
 	// two quick clicks can both observe "no room" and create duplicate DMs.
-	const lockKey = [kullanici1Id, kullanici2Id].sort().join(':');
+	const lockKey = [user1Id, user2Id].sort().join(':');
 	return withTransaction(async (client) => {
 		await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [lockKey]);
 		const existing = await client.query(
@@ -848,7 +846,7 @@ export async function getOrCreateDmRoom(
 			   AND EXISTS (SELECT 1 FROM chat_members WHERE room_id = o.id AND user_id = $1)
 			   AND EXISTS (SELECT 1 FROM chat_members WHERE room_id = o.id AND user_id = $2)
 			 LIMIT 1`,
-			[kullanici1Id, kullanici2Id]
+			[user1Id, user2Id]
 		);
 		if (existing.rows.length > 0) {
 			return { roomId: String(existing.rows[0].id), isNew: false };
@@ -857,22 +855,22 @@ export async function getOrCreateDmRoom(
 		const roomId = `dm_${randomUUID()}`;
 		const now = Date.now();
 		const usersRes = await client.query(
-			`SELECT id, first_name AS ad, last_name AS soyad FROM users WHERE id IN ($1, $2)`,
-			[kullanici1Id, kullanici2Id]
+			`SELECT id, first_name AS name, last_name AS surname FROM users WHERE id IN ($1, $2)`,
+			[user1Id, user2Id]
 		);
-		const names = usersRes.rows.map((u) => `${u.ad} ${u.soyad}`.trim()).join(' & ');
+		const names = usersRes.rows.map((u) => `${u.name} ${u.surname}`.trim()).join(' & ');
 		const roomName = names || 'Özel Sohbet';
 
 		await client.query(
 			`INSERT INTO chat_rooms (id, room_type, name, created_by, created_at)
 			 VALUES ($1, 'ozel', $2, $3, $4)`,
-			[roomId, roomName, kullanici1Id, now]
+			[roomId, roomName, user1Id, now]
 		);
 		await client.query(
 			`INSERT INTO chat_members (room_id, user_id, last_read_at, joined_at)
 			 VALUES ($1, $2, $3, $3), ($1, $4, $3, $3)
 			 ON CONFLICT (room_id, user_id) DO NOTHING`,
-			[roomId, kullanici1Id, now, kullanici2Id]
+			[roomId, user1Id, now, user2Id]
 		);
 		return { roomId, isNew: true };
 	});
@@ -883,24 +881,24 @@ export async function getOrCreateDmRoom(
  * If title is empty, auto-names with first few participant names like WhatsApp.
  */
 export async function createGroupDm(
-	olusturan: { id: string; ad: string; soyad: string },
-	uyeIdleri: string[],
-	baslik?: string
-): Promise<{ roomId: string; ad: string }> {
+	creator: { id: string; name: string; surname: string },
+	memberIds: string[],
+	title?: string
+): Promise<{ roomId: string; name: string }> {
 	await ensurePostgresInit();
 	const p = getPgPool();
 	const now = Date.now();
 	const roomId = `grp_${randomUUID()}`;
 
-	const allMemberIds = Array.from(new Set([olusturan.id, ...uyeIdleri]));
+	const allMemberIds = Array.from(new Set([creator.id, ...memberIds]));
 
-	let groupTitle = (baslik || '').trim();
+	let groupTitle = (title || '').trim();
 	if (!groupTitle) {
 		const namesRes = await p.query(
-			`SELECT first_name AS ad FROM users WHERE id = ANY($1) ORDER BY created_at ASC LIMIT 4`,
+			`SELECT first_name AS name FROM users WHERE id = ANY($1) ORDER BY created_at ASC LIMIT 4`,
 			[allMemberIds]
 		);
-		const names = namesRes.rows.map((r) => r.ad);
+		const names = namesRes.rows.map((r) => r.name);
 		groupTitle = names.join(', ') + (allMemberIds.length > 4 ? ` (+${allMemberIds.length - 4})` : '');
 		if (!groupTitle) groupTitle = 'Yeni Grup';
 	}
@@ -908,12 +906,12 @@ export async function createGroupDm(
 	await p.query(
 		`INSERT INTO chat_rooms (id, room_type, name, created_by, created_at)
 		 VALUES ($1, 'ozel', $2, $3, $4)`,
-		[roomId, groupTitle, olusturan.id, now]
+		[roomId, groupTitle, creator.id, now]
 	);
 
 	for (const uid of allMemberIds) {
 		// Creator has read up to `now`; invited members get `now - 1` so the creation message is unread for them
-		const initialRead = uid === olusturan.id ? now : now - 1;
+		const initialRead = uid === creator.id ? now : now - 1;
 		await p.query(
 			`INSERT INTO chat_members (room_id, user_id, last_read_at, joined_at)
 			 VALUES ($1, $2, $3, $4)
@@ -924,7 +922,7 @@ export async function createGroupDm(
 
 	// Insert system message about group creation
 	const sysMsgId = randomUUID();
-	const creatorName = `${olusturan.ad} ${olusturan.soyad}`.trim();
+	const creatorName = `${creator.name} ${creator.surname}`.trim();
 	const sysContent = `${creatorName} grubu oluşturdu.`;
 	await p.query(
 		`INSERT INTO chat_messages (id, room_id, sender_id, sender_name, sender_avatar, content, attachments, date)
@@ -942,11 +940,11 @@ export async function createGroupDm(
 					message: {
 						id: sysMsgId,
 						roomId,
-						gonderenId: 'sistem',
-						gonderenAd: 'Sistem',
-						gonderenFoto: null,
-						icerik: sysContent,
-						ekler: [],
+						senderId: 'sistem',
+						senderName: 'Sistem',
+						senderPhoto: null,
+						content: sysContent,
+						attachments: [],
 						date: now,
 					},
 				}),
@@ -956,9 +954,9 @@ export async function createGroupDm(
 		console.warn('[Chat notify warning]:', e);
 	}
 
-	void notifyChatRoomParticipants(roomId, olusturan.id);
+	void notifyChatRoomParticipants(roomId, creator.id);
 
-	return { roomId, ad: groupTitle };
+	return { roomId, name: groupTitle };
 }
 
 /**
@@ -966,20 +964,20 @@ export async function createGroupDm(
  */
 export async function addMembersToRoom(
 	roomId: string,
-	actor: { id: string; ad: string; soyad: string },
-	yeniUyeIdleri: string[]
+	actor: { id: string; name: string; surname: string },
+	newMemberIds: string[]
 ): Promise<{ addedCount: number }> {
 	await ensurePostgresInit();
 	const p = getPgPool();
 	const now = Date.now();
 
-	if (yeniUyeIdleri.length === 0) return { addedCount: 0 };
+	if (newMemberIds.length === 0) return { addedCount: 0 };
 
 	const toAddRes = await p.query(
-		`SELECT id, first_name AS ad, last_name AS soyad FROM users
+		`SELECT id, first_name AS name, last_name AS surname FROM users
 		 WHERE id = ANY($1)
 		   AND id NOT IN (SELECT user_id FROM chat_members WHERE room_id = $2)`,
-		[yeniUyeIdleri, roomId]
+		[newMemberIds, roomId]
 	);
 
 	if (toAddRes.rows.length === 0) return { addedCount: 0 };
@@ -994,8 +992,8 @@ export async function addMembersToRoom(
 	}
 	invalidateChatAudience(roomId);
 
-	const addedNames = toAddRes.rows.map((r) => `${r.ad} ${r.soyad}`.trim()).join(', ');
-	const actorName = `${actor.ad} ${actor.soyad}`.trim();
+	const addedNames = toAddRes.rows.map((r) => `${r.name} ${r.surname}`.trim()).join(', ');
+	const actorName = `${actor.name} ${actor.surname}`.trim();
 	const sysContent = `${actorName}, ${addedNames} üyesini gruba ekledi.`;
 	const sysMsgId = randomUUID();
 
@@ -1015,11 +1013,11 @@ export async function addMembersToRoom(
 					message: {
 						id: sysMsgId,
 						roomId,
-						gonderenId: 'sistem',
-						gonderenAd: 'Sistem',
-						gonderenFoto: null,
-						icerik: sysContent,
-						ekler: [],
+						senderId: 'sistem',
+						senderName: 'Sistem',
+						senderPhoto: null,
+						content: sysContent,
+						attachments: [],
 						date: now,
 					},
 				}),
@@ -1041,7 +1039,7 @@ export async function getRoomMembers(roomId: string): Promise<ChatRoomMemberItem
 	await ensurePostgresInit();
 	const p = getPgPool();
 	const res = await p.query(
-		`SELECT k.id, k.first_name AS ad, k.last_name AS soyad, k.avatar_url as "profilFoto", k.department as bolum, r.name as "rolAd"
+		`SELECT k.id, k.first_name AS name, k.last_name AS surname, k.avatar_url as "profilePhoto", k.department AS department, r.name as "roleName"
 		 FROM chat_members su
 		 JOIN users k ON k.id = su.user_id
 		 LEFT JOIN roles r ON r.id = k.role_id
@@ -1051,11 +1049,11 @@ export async function getRoomMembers(roomId: string): Promise<ChatRoomMemberItem
 	);
 
 	return res.rows.map((r) => {
-		const firstName = String(r.ad ?? '');
-		const lastName = String(r.soyad ?? '');
-		const avatarUrl = r.profilFoto ? String(r.profilFoto) : null;
-		const roleName = r.rolAd ? String(r.rolAd) : null;
-		const department = r.bolum ? String(r.bolum) : '';
+		const firstName = String(r.name ?? '');
+		const lastName = String(r.surname ?? '');
+		const avatarUrl = r.profilePhoto ? String(r.profilePhoto) : null;
+		const roleName = r.roleName ? String(r.roleName) : null;
+		const department = r.department ? String(r.department) : '';
 		return {
 			id: String(r.id),
 			firstName,
@@ -1063,11 +1061,9 @@ export async function getRoomMembers(roomId: string): Promise<ChatRoomMemberItem
 			avatarUrl,
 			roleName,
 			department,
-			ad: firstName,
-			soyad: lastName,
-			profilFoto: avatarUrl,
-			rolAd: roleName,
-			bolum: department,
+			name: firstName,
+			surname: lastName,
+			profilePhoto: avatarUrl,
 		};
 	});
 }
@@ -1079,7 +1075,7 @@ export async function getChatContacts(excludeUserId: string): Promise<ChatContac
 	await ensurePostgresInit();
 	const p = getPgPool();
 	const res = await p.query(
-		`SELECT k.id, k.first_name AS ad, k.last_name AS soyad, k.avatar_url as "profilFoto", k.department as bolum, r.name as "rolAd"
+		`SELECT k.id, k.first_name AS name, k.last_name AS surname, k.avatar_url as "profilePhoto", k.department AS department, r.name as "roleName"
 		 FROM users k
 		 LEFT JOIN roles r ON r.id = k.role_id
 		 WHERE k.status = 'aktif' AND k.id <> $1
@@ -1089,11 +1085,11 @@ export async function getChatContacts(excludeUserId: string): Promise<ChatContac
 
 	return res.rows.map((r) => ({
 		id: String(r.id),
-		ad: String(r.ad),
-		soyad: String(r.soyad),
-		profilFoto: r.profilFoto ? String(r.profilFoto) : null,
-		rolAd: r.rolAd ? String(r.rolAd) : null,
-		bolum: r.bolum ? String(r.bolum) : '',
+		name: String(r.name),
+		surname: String(r.surname),
+		profilePhoto: r.profilePhoto ? String(r.profilePhoto) : null,
+		roleName: r.roleName ? String(r.roleName) : null,
+		department: r.department ? String(r.department) : '',
 	}));
 }
 
@@ -1107,22 +1103,22 @@ export async function getUnreadChatRooms(
 ): Promise<UnreadChatRoomSummary[]> {
 	const rooms = await getChatRooms(userId, isAdmin);
 	return rooms
-		.filter((r) => (r.okunmamisSayisi || 0) > 0 && r.sonMesaj)
-		.sort((a, b) => (b.sonMesaj?.date || 0) - (a.sonMesaj?.date || 0))
+		.filter((r) => (r.unreadCount || 0) > 0 && r.lastMessage)
+		.sort((a, b) => (b.lastMessage?.date || 0) - (a.lastMessage?.date || 0))
 		.slice(0, limit)
 		.map((r) => {
-			const son = r.sonMesaj!;
-			const preview = son.icerik.length > 72 ? `${son.icerik.slice(0, 72)}…` : son.icerik;
-			const isDirect = r.tur === 'ozel' && (r.memberCount || 0) === 2;
+			const last = r.lastMessage!;
+			const preview = last.content.length > 72 ? `${last.content.slice(0, 72)}…` : last.content;
+			const isDirect = r.typeValue === 'ozel' && (r.memberCount || 0) === 2;
 			return {
 				id: r.id,
-				konu: isDirect ? preview : `${r.ad}: ${preview}`,
-				at: son.date,
-				okunmamis: r.okunmamisSayisi || 1,
-				messageId: String(son.id),
-				gonderen: {
-					ad: son.gonderenAd || r.ad,
-					soyad: '',
+				topic: isDirect ? preview : `${r.name}: ${preview}`,
+				at: last.date,
+				unread: r.unreadCount || 1,
+				messageId: String(last.id),
+				sender: {
+					name: last.senderName || r.name,
+					surname: '',
 				},
 			};
 		});
@@ -1133,31 +1129,31 @@ export async function getUnreadChatRooms(
  */
 export async function getUnreadChatCount(userId: string, isAdmin = false): Promise<number> {
 	const rooms = await getChatRooms(userId, isAdmin);
-	return rooms.reduce((sum, r) => sum + (r.okunmamisSayisi || 0), 0);
+	return rooms.reduce((sum, r) => sum + (r.unreadCount || 0), 0);
 }
 
 export async function createPollInRoom(
 	roomId: string,
-	olusturan: { id: string; ad: string; soyad: string; profilFoto?: string | null },
+	creator: { id: string; name: string; surname: string; profilePhoto?: string | null },
 	data: {
-		soru: string;
-		secenekler: string[];
-		cokluSecim?: boolean;
-		anonim?: boolean;
-		sureSaniye?: number | null;
+		question: string;
+		options: string[];
+		multipleSelection?: boolean;
+		anonymous?: boolean;
+		sureSeconds?: number | null;
 		endsAt?: number | null;
 	}
 ): Promise<{ ok: boolean; message?: ChatMessageRecord; error?: string }> {
 	await ensurePostgresInit();
 	const p = getPgPool();
 
-	const soru = (data.soru || '').trim();
-	const cleanSecenekler = (data.secenekler || []).map((s) => s.trim()).filter(Boolean);
+	const question = (data.question || '').trim();
+	const cleanOptions = (data.options || []).map((s) => s.trim()).filter(Boolean);
 
-	if (!soru) {
+	if (!question) {
 		return { ok: false, error: 'Lütfen anket sorusunu yazın.' };
 	}
-	if (cleanSecenekler.length < 2) {
+	if (cleanOptions.length < 2) {
 		return { ok: false, error: 'En az 2 seçenek girmelisiniz.' };
 	}
 
@@ -1166,23 +1162,23 @@ export async function createPollInRoom(
 	const now = Date.now();
 	const endsAt = typeof data.endsAt === 'number'
 		? data.endsAt
-		: data.sureSaniye
-		? now + Number(data.sureSaniye) * 1000
+		: data.sureSeconds
+		? now + Number(data.sureSeconds) * 1000
 		: null;
-	const senderName = `${olusturan.ad} ${olusturan.soyad}`.trim() || 'Yönetici';
-	const gonderenFoto = olusturan.profilFoto || null;
-	const isAnon = data.anonim !== false;
-	const eklerJson = JSON.stringify([{ tip: 'anket', pollId, soru, anonim: isAnon }]);
+	const senderName = `${creator.name} ${creator.surname}`.trim() || 'Yönetici';
+	const senderPhoto = creator.profilePhoto || null;
+	const isAnon = data.anonymous !== false;
+	const attachmentsJson = JSON.stringify([{ tip: 'anket', pollId, question, anonymous: isAnon }]);
 
 	// 1. Insert chat message
 	await p.query(
 		`INSERT INTO chat_messages (id, room_id, sender_id, sender_name, sender_avatar, content, attachments, date)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-		[messageId, roomId, olusturan.id, senderName, gonderenFoto, soru, eklerJson, now]
+		[messageId, roomId, creator.id, senderName, senderPhoto, question, attachmentsJson, now]
 	);
 
 	// 2. Build options JSONB and insert poll
-	const optionsList: RawPollOption[] = cleanSecenekler.map((text, idx) => ({
+	const optionsList: RawPollOption[] = cleanOptions.map((text, idx) => ({
 		id: `opt_${randomUUID()}`,
 		text,
 		sortOrder: idx,
@@ -1194,9 +1190,9 @@ export async function createPollInRoom(
 		[
 			pollId,
 			roomId,
-			olusturan.id,
-			soru,
-			Boolean(data.cokluSecim),
+			creator.id,
+			question,
+			Boolean(data.multipleSelection),
 			JSON.stringify(optionsList),
 			endsAt,
 			now,
@@ -1208,22 +1204,22 @@ export async function createPollInRoom(
 		`INSERT INTO chat_members (room_id, user_id, last_read_at)
 		 VALUES ($1, $2, $3)
 		 ON CONFLICT (room_id, user_id) DO UPDATE SET last_read_at = EXCLUDED.last_read_at`,
-		[roomId, olusturan.id, now]
+		[roomId, creator.id, now]
 	);
 
 	// 4. Fetch complete poll details
-	const pollDetails = await getPollDetails(pollId, olusturan.id);
+	const pollDetails = await getPollDetails(pollId, creator.id);
 
 	const createdMsg: ChatMessageRecord = {
 		id: messageId,
 		roomId,
-		gonderenId: olusturan.id,
-		gonderenAd: senderName,
-		gonderenFoto,
-		icerik: soru,
-		ekler: [{ tip: 'anket', pollId, ad: 'Anket', url: '' }],
+		senderId: creator.id,
+		senderName: senderName,
+		senderPhoto,
+		content: question,
+		attachments: [{ tip: 'anket', pollId, name: 'Anket', url: '' }],
 		date: now,
-		anket: pollDetails ? { ...pollDetails, mesajId: messageId } : null,
+		poll: pollDetails ? { ...pollDetails, messageId: messageId } : null,
 	};
 
 	// 5. Real-time broadcast
@@ -1241,8 +1237,8 @@ export async function createPollInRoom(
 
 export async function castPollVote(
 	pollId: string,
-	secenekId: string,
-	kullanici: { id: string; ad: string; soyad: string; profilFoto?: string | null },
+	optionId: string,
+	user: { id: string; name: string; surname: string; profilePhoto?: string | null },
 	isAdmin = false
 ): Promise<{ ok: boolean; poll?: ChatPollItem; error?: string }> {
 	await ensurePostgresInit();
@@ -1250,7 +1246,7 @@ export async function castPollVote(
 
 	// 1. Fetch poll
 	const pollRes = await p.query(
-		`SELECT id, room_id AS "roomId", allow_multiple AS "cokluSecim", options, votes, ends_at AS "endsAt"
+		`SELECT id, room_id AS "roomId", allow_multiple AS "multipleSelection", options, votes, ends_at AS "endsAt"
 		 FROM chat_polls
 		 WHERE id = $1`,
 		[pollId]
@@ -1262,7 +1258,7 @@ export async function castPollVote(
 
 	const pollRow = pollRes.rows[0];
 	const pollRoomId = String(pollRow.roomId ?? '');
-	const hasAccess = await canUserAccessChatRoom(pollRoomId, kullanici.id, isAdmin);
+	const hasAccess = await canUserAccessChatRoom(pollRoomId, user.id, isAdmin);
 	if (!hasAccess) {
 		return { ok: false, error: 'Bu odadaki ankete erişim yetkiniz yok.' };
 	}
@@ -1277,13 +1273,13 @@ export async function castPollVote(
 		: typeof pollRow.options === 'string'
 		? JSON.parse(pollRow.options)
 		: [];
-	if (!rawOptions.some((o) => String(o.id) === secenekId)) {
+	if (!rawOptions.some((o) => String(o.id) === optionId)) {
 		return { ok: false, error: 'Geçersiz anket seçeneği.' };
 	}
 
-	const isMulti = Boolean(pollRow.cokluSecim);
-	const userFirstName = `${kullanici.ad} ${kullanici.soyad}`.trim() || 'Üye';
-	const userAvatar = kullanici.profilFoto || null;
+	const isMulti = Boolean(pollRow.multipleSelection);
+	const userFirstName = `${user.name} ${user.surname}`.trim() || 'Üye';
+	const userAvatar = user.profilePhoto || null;
 
 	const rawVotes: RawPollVote[] = Array.isArray(pollRow.votes)
 		? pollRow.votes
@@ -1292,23 +1288,23 @@ export async function castPollVote(
 		: [];
 
 	const alreadyVoted = rawVotes.some(
-		(v) => String(v.optionId) === secenekId && String(v.userId) === kullanici.id
+		(v) => String(v.optionId) === optionId && String(v.userId) === user.id
 	);
 
 	let nextVotes: RawPollVote[];
 	if (alreadyVoted) {
 		nextVotes = rawVotes.filter(
-			(v) => !(String(v.optionId) === secenekId && String(v.userId) === kullanici.id)
+			(v) => !(String(v.optionId) === optionId && String(v.userId) === user.id)
 		);
 	} else {
 		const baseVotes = isMulti
 			? rawVotes
-			: rawVotes.filter((v) => String(v.userId) !== kullanici.id);
+			: rawVotes.filter((v) => String(v.userId) !== user.id);
 		nextVotes = [
 			...baseVotes,
 			{
-				optionId: secenekId,
-				userId: kullanici.id,
+				optionId: optionId,
+				userId: user.id,
 				userName: userFirstName,
 				userAvatar,
 				votedAt: Date.now(),
@@ -1322,7 +1318,7 @@ export async function castPollVote(
 	);
 
 	// 3. Get updated poll details
-	const updatedPoll = await getPollDetails(pollId, kullanici.id);
+	const updatedPoll = await getPollDetails(pollId, user.id);
 	if (!updatedPoll) {
 		return { ok: false, error: 'Anket bilgileri alınamadı.' };
 	}
@@ -1356,7 +1352,7 @@ export async function closePoll(
 	const p = getPgPool();
 
 	const pollRes = await p.query(
-		`SELECT id, room_id AS "roomId", created_by AS "olusturanId" FROM chat_polls WHERE id = $1`,
+		`SELECT id, room_id AS "roomId", created_by AS "creatorId" FROM chat_polls WHERE id = $1`,
 		[pollId]
 	);
 
@@ -1365,7 +1361,7 @@ export async function closePoll(
 	}
 
 	const pollRow = pollRes.rows[0];
-	const creatorId = String(pollRow.olusturanId ?? '');
+	const creatorId = String(pollRow.creatorId ?? '');
 
 	if (!isAdmin && creatorId !== userId) {
 		return { ok: false, error: 'Bu anketi kapatma yetkiniz yok.' };

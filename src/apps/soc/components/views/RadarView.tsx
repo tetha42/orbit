@@ -61,8 +61,8 @@ export const RadarView = React.memo(function RadarView() {
 			if (!query) return true;
 			return (
 				att.ip.toLowerCase().includes(query) ||
-				att.sonMesaj.toLowerCase().includes(query) ||
-				formatSocAlertMessage(att.sonMesaj, isEn).toLowerCase().includes(query) ||
+				att.lastMessage.toLowerCase().includes(query) ||
+				formatSocAlertMessage(att.lastMessage, isEn).toLowerCase().includes(query) ||
 				att.status.toLowerCase().includes(query)
 			);
 		});
@@ -108,16 +108,16 @@ export const RadarView = React.memo(function RadarView() {
 	const filteredLiveEvents = useMemo(() => {
 		return siemLogs.filter((ev) => {
 			if (selectedHourFilter) {
-				if (ev.zaman < selectedHourFilter.start || ev.zaman > selectedHourFilter.end) {
+				if (ev.time < selectedHourFilter.start || ev.time > selectedHourFilter.end) {
 					return false;
 				}
 			}
 			if (!query) return true;
 			return (
 				(ev.ip && ev.ip.toLowerCase().includes(query)) ||
-				ev.mesaj.toLowerCase().includes(query) ||
-				ev.servis.toLowerCase().includes(query) ||
-				ev.seviye.toLowerCase().includes(query)
+				ev.message.toLowerCase().includes(query) ||
+				ev.service.toLowerCase().includes(query) ||
+				ev.level.toLowerCase().includes(query)
 			);
 		});
 	}, [siemLogs, query, selectedHourFilter]);
@@ -821,7 +821,7 @@ export const RadarView = React.memo(function RadarView() {
 								</thead>
 								<tbody>
 									{filteredAttackers.map((att) => {
-										const pct = Math.min(100, Math.max(5, att.tehditPuani));
+										const pct = Math.min(100, Math.max(5, att.threatScore));
 										const barColor =
 											pct >= 80 ? 'var(--danger, #d70015)' : pct >= 50 ? 'var(--warning, #c45500)' : 'var(--accent, #0071e3)';
 										return (
@@ -873,7 +873,7 @@ export const RadarView = React.memo(function RadarView() {
 															<div className={s.scoreBarFill} style={{ width: `${pct}%`, background: barColor }} />
 														</div>
 														<span className={s.mono}>
-															{att.tehditPuani} ({att.eventCount})
+															{att.threatScore} ({att.eventCount})
 														</span>
 													</div>
 												</td>
@@ -890,8 +890,8 @@ export const RadarView = React.memo(function RadarView() {
 														</span>
 													)}
 												</td>
-												<td style={{ maxWidth: 210, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={formatSocAlertMessage(att.sonMesaj, isEn)}>
-													{formatSocAlertMessage(att.sonMesaj, isEn)}
+												<td style={{ maxWidth: 210, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={formatSocAlertMessage(att.lastMessage, isEn)}>
+													{formatSocAlertMessage(att.lastMessage, isEn)}
 												</td>
 												{canManage && (
 													<td onClick={(e) => e.stopPropagation()}>
@@ -1090,9 +1090,9 @@ export const RadarView = React.memo(function RadarView() {
 							<tbody>
 								{filteredLiveEvents.slice(0, 8).map((ev) => {
 									const sevBadge =
-										ev.seviye === 'CRITICAL' || ev.seviye === 'ERROR'
+										ev.level === 'CRITICAL' || ev.level === 'ERROR'
 											? s.badgeDanger
-											: ev.seviye === 'WARN'
+											: ev.level === 'WARN'
 											? s.badgeWarn
 											: s.badgeInfo;
 									return (
@@ -1108,7 +1108,7 @@ export const RadarView = React.memo(function RadarView() {
 													onDoubleClick={handleSelectDataOnDoubleClick}
 													title={isEn ? 'Double-click to select timestamp' : 'Zaman damgasını seçmek için çift tıklayın'}
 												>
-													{formatDateTime(ev.zaman, language)}
+													{formatDateTime(ev.time, language)}
 												</span>
 											</td>
 											<td>
@@ -1118,18 +1118,18 @@ export const RadarView = React.memo(function RadarView() {
 													onDoubleClick={handleSelectDataOnDoubleClick}
 													title={isEn ? 'Double-click to select level' : 'Seviyeyi seçmek için çift tıklayın'}
 												>
-													{ev.seviye}
+													{ev.level}
 												</span>
 											</td>
 											<td>
 												<span
 													data-type="service"
-													data-value={ev.servis}
+													data-value={ev.service}
 													className={`${s.badge} ${s.badgeNeutral} ${s.selectableData}`}
 													onDoubleClick={handleSelectDataOnDoubleClick}
 													title={isEn ? 'Double-click to select service' : 'Servisi seçmek için çift tıklayın'}
 												>
-													{ev.servis}
+													{ev.service}
 												</span>
 											</td>
 											<td>
@@ -1139,7 +1139,7 @@ export const RadarView = React.memo(function RadarView() {
 													onDoubleClick={handleSelectDataOnDoubleClick}
 													title={isEn ? 'Double-click to select message' : 'Mesajı seçmek için çift tıklayın'}
 												>
-													{ev.mesaj}
+													{ev.message}
 												</span>
 											</td>
 											<td className={s.mono}>

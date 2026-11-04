@@ -7,14 +7,14 @@ import type { CommunityEvent, Attendance } from '@/db/schema';
 
 export interface PublicEventRow {
 	id: string;
-	baslik: string;
-	tur: string;
-	aciklama: string;
-	konum: string;
-	baslangic: number;
+	title: string;
+	typeValue: string;
+	description: string;
+	location: string;
+	start: number;
 	endTime: number;
-	kapasite: number;
-	katilimciSayisi: number;
+	capacity: number;
+	participantCount: number;
 }
 
 /**
@@ -24,13 +24,13 @@ export interface PublicEventRow {
 export async function getEvents(opts: { includeDrafts?: boolean } = {}): Promise<CommunityEvent[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT e.id, e.slug, e.title AS "baslik", e.category AS "tur", e.description AS "aciklama",
-		        e.location AS "konum", e.starts_at AS "baslangic", e.ends_at AS "endTime",
-		        e.capacity AS "kapasite", e.status, e.created_by AS "olusturanId",
-		        e.checkin_open AS "yoklamaAcik", e.created_at AS "guncellenme", e.created_at AS "olusturma",
+		`SELECT e.id, e.slug, e.title AS "title", e.category AS "typeValue", e.description AS "description",
+		        e.location AS "location", e.starts_at AS "start", e.ends_at AS "endTime",
+		        e.capacity AS "capacity", e.status, e.created_by AS "creatorId",
+		        e.checkin_open AS "attendanceOpen", e.created_at AS "update", e.created_at AS "creation",
 		        e.owner_team_id, e.owner_user_id, e.created_by,
-		        (SELECT COUNT(*) FROM event_participants r WHERE r.event_id = e.id AND r.registered_at > 0 AND r.status <> 'iptal')::int AS "kayitliSayisi",
-		        (SELECT COUNT(*) FROM event_participants y WHERE y.event_id = e.id AND (y.status = 'attended' OR y.attended_at IS NOT NULL))::int AS "katilimciSayisi"
+		        (SELECT COUNT(*) FROM event_participants r WHERE r.event_id = e.id AND r.registered_at > 0 AND r.status <> 'iptal')::int AS "registeredCount",
+		        (SELECT COUNT(*) FROM event_participants y WHERE y.event_id = e.id AND (y.status = 'attended' OR y.attended_at IS NOT NULL))::int AS "participantCount"
 		 FROM events e
 		 WHERE $1::boolean OR e.status <> 'taslak'
 		 ORDER BY e.starts_at ASC`,
@@ -43,39 +43,39 @@ export async function getEvents(opts: { includeDrafts?: boolean } = {}): Promise
 export async function getUserEventRegistrationIds(userId: string): Promise<string[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT event_id AS "etkinlikId" FROM event_participants WHERE user_id = $1 AND status <> 'iptal'`,
+		`SELECT event_id AS "eventId" FROM event_participants WHERE user_id = $1 AND status <> 'iptal'`,
 		[userId]
 	);
-	return res.rows.map((r) => r.etkinlikId as string);
+	return res.rows.map((r) => r.eventId as string);
 }
 
-export async function getAttendancesByEvent(etkinlikId: string): Promise<Attendance[]> {
+export async function getAttendancesByEvent(eventId: string): Promise<Attendance[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT y.id, y.event_id AS "etkinlikId", y.user_id AS "userId", y.checkin_method AS "yontem",
-		        y.attended_at AS "katilimZamani", y.recorded_by AS "kaydedenId",
-		        k.first_name || ' ' || k.last_name AS "kullaniciAdSoyad",
-		        k.handle AS "kullaniciOgrenciNo",
-		        k.department AS "kullaniciBolum",
-		        k.avatar_url AS "kullaniciProfilFoto"
+		`SELECT y.id, y.event_id AS "eventId", y.user_id AS "userId", y.checkin_method AS "method",
+		        y.attended_at AS "participationTime", y.recorded_by AS "recorderId",
+		        k.first_name || ' ' || k.last_name AS "userNameSurname",
+		        k.handle AS "userStudentNo",
+		        k.department AS "userDepartment",
+		        k.avatar_url AS "userProfilePhoto"
 		 FROM event_participants y
 		 LEFT JOIN users k ON y.user_id = k.id
 		 WHERE y.event_id = $1 AND (y.status = 'attended' OR y.attended_at IS NOT NULL)
 		 ORDER BY y.attended_at DESC`,
-		[etkinlikId]
+		[eventId]
 	);
 	return res.rows;
 }
 
 export async function createEvent(params: {
-	baslik: string;
-	tur?: string;
-	aciklama?: string;
-	konum?: string;
-	baslangic: number;
+	title: string;
+	typeValue?: string;
+	description?: string;
+	location?: string;
+	start: number;
 	endTime: number;
-	kapasite?: number;
-	olusturanId?: string;
+	capacity?: number;
+	creatorId?: string;
 	status?: 'taslak' | 'yayinda';
 	ownerTeamId?: string | null;
 	ownerUserId?: string | null;
@@ -83,7 +83,7 @@ export async function createEvent(params: {
 	await ensurePostgresInit();
 	const id = `evt_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
 	const slug = await uniqueSlug(
-		slugify(params.baslik),
+		slugify(params.title),
 		async (candidate) => ((await getPgPool().query('SELECT 1 FROM events WHERE slug = $1', [candidate])).rowCount ?? 0) > 0,
 		'etkinlik'
 	);
@@ -97,18 +97,18 @@ export async function createEvent(params: {
 		[
 			id,
 			slug,
-			params.baslik,
-			params.tur || 'atolye',
-			params.aciklama || '',
-			params.konum || 'Mühendislik D-101',
-			params.baslangic,
+			params.title,
+			params.typeValue || 'atolye',
+			params.description || '',
+			params.location || 'Mühendislik D-101',
+			params.start,
 			params.endTime,
-			params.kapasite || 50,
+			params.capacity || 50,
 			params.status ?? 'yayinda',
 			PARTICIPATION_XP,
 			params.ownerTeamId ?? null,
-			params.ownerUserId ?? params.olusturanId ?? null,
-			params.olusturanId || null,
+			params.ownerUserId ?? params.creatorId ?? null,
+			params.creatorId || null,
 			now,
 		]
 	);
@@ -121,9 +121,9 @@ export async function createEvent(params: {
 export async function getPublicEvents(limit = 24): Promise<PublicEventRow[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT e.id, e.title AS "baslik", e.category AS "tur", e.description AS "aciklama",
-		        e.location AS "konum", e.starts_at AS "baslangic", e.ends_at AS "endTime", e.capacity AS "kapasite",
-		        (SELECT COUNT(*) FROM event_participants r WHERE r.event_id = e.id AND r.registered_at > 0 AND r.status <> 'iptal')::int AS "katilimciSayisi"
+		`SELECT e.id, e.title AS "title", e.category AS "typeValue", e.description AS "description",
+		        e.location AS "location", e.starts_at AS "start", e.ends_at AS "endTime", e.capacity AS "capacity",
+		        (SELECT COUNT(*) FROM event_participants r WHERE r.event_id = e.id AND r.registered_at > 0 AND r.status <> 'iptal')::int AS "participantCount"
 		 FROM events e
 		 WHERE e.status = 'yayinda' AND e.ends_at >= $1
 		 ORDER BY e.starts_at ASC
@@ -135,27 +135,27 @@ export async function getPublicEvents(limit = 24): Promise<PublicEventRow[]> {
 
 /** An event as one member sees it: counts, plus their own registration and check-in. */
 export interface EventView extends CommunityEvent {
-	kayitliSayisi: number;
-	katilimciSayisi: number;
-	yoklamaAcik: number;
-	guncellenme: number | null;
-	benimKaydim: boolean;
-	benimYoklamam: { yontem: AttendanceMethod; katilimZamani: number } | null;
+	registeredCount: number;
+	participantCount: number;
+	attendanceOpen: number;
+	update: number | null;
+	myMyRecord: boolean;
+	myMyAttendance: { method: AttendanceMethod; participationTime: number } | null;
 }
 
 export async function getEventViews(viewerId: string, includeDrafts: boolean): Promise<EventView[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT e.id, e.slug, e.title AS "baslik", e.category AS "tur", e.description AS "aciklama",
-		        e.location AS "konum", e.starts_at AS "baslangic", e.ends_at AS "endTime",
-		        e.capacity AS "kapasite", e.status, e.created_by AS "olusturanId",
-		        e.checkin_open AS "yoklamaAcik", e.created_at AS "guncellenme", e.created_at AS "olusturma",
+		`SELECT e.id, e.slug, e.title AS "title", e.category AS "typeValue", e.description AS "description",
+		        e.location AS "location", e.starts_at AS "start", e.ends_at AS "endTime",
+		        e.capacity AS "capacity", e.status, e.created_by AS "creatorId",
+		        e.checkin_open AS "attendanceOpen", e.created_at AS "update", e.created_at AS "creation",
 		        e.owner_team_id, e.owner_user_id, e.created_by,
-		        (SELECT COUNT(*) FROM event_participants r WHERE r.event_id = e.id AND r.registered_at > 0 AND r.status <> 'iptal')::int AS "kayitliSayisi",
-		        (SELECT COUNT(*) FROM event_participants y WHERE y.event_id = e.id AND (y.status = 'attended' OR y.attended_at IS NOT NULL))::int AS "katilimciSayisi",
-		        (my.id IS NOT NULL AND my.registered_at > 0 AND my.status <> 'iptal') AS "benimKaydim",
-		        CASE WHEN my.status = 'attended' OR my.attended_at IS NOT NULL THEN my.checkin_method ELSE NULL END AS "benimYontem",
-		        CASE WHEN my.status = 'attended' OR my.attended_at IS NOT NULL THEN my.attended_at ELSE NULL END AS "benimKatilimZamani"
+		        (SELECT COUNT(*) FROM event_participants r WHERE r.event_id = e.id AND r.registered_at > 0 AND r.status <> 'iptal')::int AS "registeredCount",
+		        (SELECT COUNT(*) FROM event_participants y WHERE y.event_id = e.id AND (y.status = 'attended' OR y.attended_at IS NOT NULL))::int AS "participantCount",
+		        (my.id IS NOT NULL AND my.registered_at > 0 AND my.status <> 'iptal') AS "myMyRecord",
+		        CASE WHEN my.status = 'attended' OR my.attended_at IS NOT NULL THEN my.checkin_method ELSE NULL END AS "myMethod",
+		        CASE WHEN my.status = 'attended' OR my.attended_at IS NOT NULL THEN my.attended_at ELSE NULL END AS "myParticipationTime"
 		 FROM events e
 		 LEFT JOIN event_participants my ON my.event_id = e.id AND my.user_id = $1
 		 WHERE $2::boolean OR e.status <> 'taslak'
@@ -163,24 +163,24 @@ export async function getEventViews(viewerId: string, includeDrafts: boolean): P
 		[viewerId, includeDrafts]
 	);
 	return res.rows.map((r) => {
-		const { benimYontem, benimKatilimZamani, ...rest } = r as Record<string, unknown>;
+		const { myMethod, myParticipationTime, ...rest } = r as Record<string, unknown>;
 		return {
 			...(rest as unknown as EventView),
-			benimKaydim: Boolean(r.benimKaydim),
-			benimYoklamam: benimYontem
-				? { yontem: benimYontem as AttendanceMethod, katilimZamani: Number(benimKatilimZamani) }
+			myMyRecord: Boolean(r.myMyRecord),
+			myMyAttendance: myMethod
+				? { method: myMethod as AttendanceMethod, participationTime: Number(myParticipationTime) }
 				: null,
 		};
 	});
 }
 
-export async function getEventById(id: string): Promise<(CommunityEvent & { yoklamaAcik: number }) | null> {
+export async function getEventById(id: string): Promise<(CommunityEvent & { attendanceOpen: number }) | null> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT id, slug, title AS "baslik", category AS "tur", description AS "aciklama",
-		        location AS "konum", starts_at AS "baslangic", ends_at AS "endTime",
-		        capacity AS "kapasite", status, created_by AS "olusturanId", checkin_open AS "yoklamaAcik",
-		        created_at AS "guncellenme", created_at AS "olusturma", owner_team_id, owner_user_id, created_by
+		`SELECT id, slug, title AS "title", category AS "typeValue", description AS "description",
+		        location AS "location", starts_at AS "start", ends_at AS "endTime",
+		        capacity AS "capacity", status, created_by AS "creatorId", checkin_open AS "attendanceOpen",
+		        created_at AS "update", created_at AS "creation", owner_team_id, owner_user_id, created_by
 		 FROM events WHERE id = $1`,
 		[id]
 	);
@@ -217,33 +217,33 @@ export async function getOpenAttendanceEvents(): Promise<string[]> {
 /** One line of the organisers' list: a registration, a check-in, or both. */
 export interface AttendeeRow {
 	userId: string;
-	adSoyad: string;
-	ogrenciNo: string | null;
-	bolum: string | null;
-	kayitZamani: number | null;
-	katilimZamani: number | null;
-	yontem: AttendanceMethod | null;
-	kaydedenAdSoyad: string | null;
+	nameSurname: string;
+	studentNo: string | null;
+	department: string | null;
+	recordTime: number | null;
+	participationTime: number | null;
+	method: AttendanceMethod | null;
+	recorderNameSurname: string | null;
 }
 
 /** Everyone registered or checked in (walk-ins included), registered first then by name. */
-export async function getEventAttendeeList(etkinlikId: string): Promise<AttendeeRow[]> {
+export async function getEventAttendeeList(eventId: string): Promise<AttendeeRow[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`SELECT k.id AS "userId",
-		        k.first_name || ' ' || k.last_name AS "adSoyad",
-		        k.handle AS "ogrenciNo",
-		        k.department AS "bolum",
-		        NULLIF(ep.registered_at, 0) AS "kayitZamani",
-		        ep.attended_at AS "katilimZamani",
-		        ep.checkin_method AS "yontem",
-		        kd.first_name || ' ' || kd.last_name AS "kaydedenAdSoyad"
+		        k.first_name || ' ' || k.last_name AS "nameSurname",
+		        k.handle AS "studentNo",
+		        k.department AS "department",
+		        NULLIF(ep.registered_at, 0) AS "recordTime",
+		        ep.attended_at AS "participationTime",
+		        ep.checkin_method AS "method",
+		        kd.first_name || ' ' || kd.last_name AS "recorderNameSurname"
 		 FROM event_participants ep
 		 JOIN users k ON k.id = ep.user_id
 		 LEFT JOIN users kd ON kd.id = ep.recorded_by
 		 WHERE ep.event_id = $1 AND ep.status <> 'iptal'
 		 ORDER BY (ep.attended_at IS NULL), k.first_name, k.last_name`,
-		[etkinlikId]
+		[eventId]
 	);
 	return res.rows as AttendeeRow[];
 }
@@ -254,34 +254,34 @@ export type RegistrationResult = 'ok' | 'zaten' | 'dolu' | 'kapali' | 'bulunamad
  * Registers a member. The event row is locked, so two members racing for the
  * last seat cannot both get it — capacity used to be checked only in the browser.
  */
-export async function registerForEvent(etkinlikId: string, userId: string): Promise<RegistrationResult> {
+export async function registerForEvent(eventId: string, userId: string): Promise<RegistrationResult> {
 	await ensurePostgresInit();
 	return withTransaction(async (client) => {
-		const ev = await client.query('SELECT status, ends_at AS "endTime", capacity AS "kapasite" FROM events WHERE id = $1 FOR UPDATE', [etkinlikId]);
+		const ev = await client.query('SELECT status, ends_at AS "endTime", capacity AS "capacity" FROM events WHERE id = $1 FOR UPDATE', [eventId]);
 		const row = ev.rows[0];
 		if (!row) return 'bulunamadi';
 		if (row.status !== 'yayinda' || Number(row.endTime) < Date.now()) return 'kapali';
 		const mine = await client.query('SELECT id, registered_at, status FROM event_participants WHERE event_id = $1 AND user_id = $2', [
-			etkinlikId,
+			eventId,
 			userId,
 		]);
 		const existing = mine.rows[0];
 		if (existing && Number(existing.registered_at) > 0 && existing.status !== 'iptal') return 'zaten';
 		const count = await client.query(
 			"SELECT COUNT(*)::int AS n FROM event_participants WHERE event_id = $1 AND registered_at > 0 AND status <> 'iptal'",
-			[etkinlikId]
+			[eventId]
 		);
-		if (Number(row.kapasite) > 0 && Number(count.rows[0].n) >= Number(row.kapasite)) return 'dolu';
+		if (Number(row.capacity) > 0 && Number(count.rows[0].n) >= Number(row.capacity)) return 'dolu';
 		const now = Date.now();
 		if (existing) {
 			await client.query(
 				"UPDATE event_participants SET registered_at = $3, status = CASE WHEN status = 'attended' THEN 'attended' ELSE 'kayitli' END WHERE event_id = $1 AND user_id = $2",
-				[etkinlikId, userId, now]
+				[eventId, userId, now]
 			);
 		} else {
 			await client.query(
 				"INSERT INTO event_participants (id, event_id, user_id, status, registered_at) VALUES ($1, $2, $3, 'kayitli', $4)",
-				[randomUUID(), etkinlikId, userId, now]
+				[randomUUID(), eventId, userId, now]
 			);
 		}
 		return 'ok';
@@ -289,34 +289,34 @@ export async function registerForEvent(etkinlikId: string, userId: string): Prom
 }
 
 /** Withdraws a registration, until the event starts. */
-export async function cancelEventRegistration(etkinlikId: string, userId: string): Promise<'ok' | 'yok' | 'basladi'> {
+export async function cancelEventRegistration(eventId: string, userId: string): Promise<'ok' | 'yok' | 'basladi'> {
 	await ensurePostgresInit();
-	const ev = await getEventById(etkinlikId);
+	const ev = await getEventById(eventId);
 	if (!ev) return 'yok';
-	if (Number(ev.baslangic) <= Date.now()) return 'basladi';
+	if (Number(ev.start) <= Date.now()) return 'basladi';
 	const res = await getPgPool().query(
 		"DELETE FROM event_participants WHERE event_id = $1 AND user_id = $2 AND status <> 'attended' AND attended_at IS NULL",
-		[etkinlikId, userId]
+		[eventId, userId]
 	);
 	return (res.rowCount ?? 0) > 0 ? 'ok' : 'yok';
 }
 
 /** Organiser removal of a registration (independent of event start time). */
-export async function deleteEventRegistration(etkinlikId: string, userId: string): Promise<boolean> {
+export async function deleteEventRegistration(eventId: string, userId: string): Promise<boolean> {
 	await ensurePostgresInit();
 	return withTransaction(async (client) => {
 		const row = (
 			await client.query('SELECT status, attended_at, registered_at FROM event_participants WHERE event_id = $1 AND user_id = $2 FOR UPDATE', [
-				etkinlikId,
+				eventId,
 				userId,
 			])
 		).rows[0];
 		if (!row || Number(row.registered_at) <= 0) return false;
 		if (row.status === 'attended' || row.attended_at !== null) {
-			await client.query('UPDATE event_participants SET registered_at = 0 WHERE event_id = $1 AND user_id = $2', [etkinlikId, userId]);
+			await client.query('UPDATE event_participants SET registered_at = 0 WHERE event_id = $1 AND user_id = $2', [eventId, userId]);
 			return true;
 		}
-		const del = await client.query('DELETE FROM event_participants WHERE event_id = $1 AND user_id = $2', [etkinlikId, userId]);
+		const del = await client.query('DELETE FROM event_participants WHERE event_id = $1 AND user_id = $2', [eventId, userId]);
 		return (del.rowCount ?? 0) > 0;
 	});
 }
@@ -326,17 +326,17 @@ export async function deleteEventRegistration(etkinlikId: string, userId: string
  * for the same member and event changes nothing and pays nothing.
  */
 export async function saveAttendance(params: {
-	etkinlikId: string;
+	eventId: string;
 	userId: string;
-	yontem: AttendanceMethod;
-	kaydedenId?: string | null;
+	method: AttendanceMethod;
+	recorderId?: string | null;
 }): Promise<'ok' | 'zaten'> {
 	await ensurePostgresInit();
 	return withTransaction(async (client) => {
 		const now = Date.now();
 		const existing = (
 			await client.query('SELECT status, attended_at FROM event_participants WHERE event_id = $1 AND user_id = $2 FOR UPDATE', [
-				params.etkinlikId,
+				params.eventId,
 				params.userId,
 			])
 		).rows[0];
@@ -346,13 +346,13 @@ export async function saveAttendance(params: {
 		if (existing) {
 			await client.query(
 				"UPDATE event_participants SET status = 'attended', checkin_method = $3, attended_at = $4, recorded_by = $5 WHERE event_id = $1 AND user_id = $2",
-				[params.etkinlikId, params.userId, params.yontem, now, params.kaydedenId ?? null]
+				[params.eventId, params.userId, params.method, now, params.recorderId ?? null]
 			);
 		} else {
 			await client.query(
 				`INSERT INTO event_participants (id, event_id, user_id, status, checkin_method, registered_at, attended_at, recorded_by)
 				 VALUES ($1, $2, $3, 'attended', $4, 0, $5, $6)`,
-				[randomUUID(), params.etkinlikId, params.userId, params.yontem, now, params.kaydedenId ?? null]
+				[randomUUID(), params.eventId, params.userId, params.method, now, params.recorderId ?? null]
 			);
 		}
 		await client.query('UPDATE users SET xp = COALESCE(xp, 0) + $1 WHERE id = $2', [PARTICIPATION_XP, params.userId]);
@@ -361,12 +361,12 @@ export async function saveAttendance(params: {
 }
 
 /** Removes a check-in recorded by mistake, and takes back the XP it paid. */
-export async function deleteAttendance(etkinlikId: string, userId: string): Promise<boolean> {
+export async function deleteAttendance(eventId: string, userId: string): Promise<boolean> {
 	await ensurePostgresInit();
 	return withTransaction(async (client) => {
 		const existing = (
 			await client.query('SELECT status, attended_at, registered_at FROM event_participants WHERE event_id = $1 AND user_id = $2 FOR UPDATE', [
-				etkinlikId,
+				eventId,
 				userId,
 			])
 		).rows[0];
@@ -375,10 +375,10 @@ export async function deleteAttendance(etkinlikId: string, userId: string): Prom
 		if (Number(existing.registered_at) > 0) {
 			await client.query(
 				"UPDATE event_participants SET status = 'kayitli', checkin_method = NULL, attended_at = NULL, recorded_by = NULL WHERE event_id = $1 AND user_id = $2",
-				[etkinlikId, userId]
+				[eventId, userId]
 			);
 		} else {
-			await client.query('DELETE FROM event_participants WHERE event_id = $1 AND user_id = $2', [etkinlikId, userId]);
+			await client.query('DELETE FROM event_participants WHERE event_id = $1 AND user_id = $2', [eventId, userId]);
 		}
 		await client.query('UPDATE users SET xp = GREATEST(0, COALESCE(xp, 0) - $1) WHERE id = $2', [
 			PARTICIPATION_XP,
@@ -389,27 +389,27 @@ export async function deleteAttendance(etkinlikId: string, userId: string): Prom
 }
 
 export interface EventPatch {
-	baslik?: string;
-	tur?: EventType;
-	aciklama?: string;
-	konum?: string;
-	baslangic?: number;
+	title?: string;
+	typeValue?: EventType;
+	description?: string;
+	location?: string;
+	start?: number;
 	endTime?: number;
-	kapasite?: number;
+	capacity?: number;
 	status?: EventStatus;
-	yoklamaAcik?: boolean;
+	attendanceOpen?: boolean;
 	ownerTeamId?: string | null;
 	ownerUserId?: string | null;
 }
 
 const EVENT_PATCH_COLUMNS: Record<string, string> = {
-	baslik: 'title',
-	tur: 'category',
-	aciklama: 'description',
-	konum: 'location',
-	baslangic: 'starts_at',
+	title: 'title',
+	typeValue: 'category',
+	description: 'description',
+	location: 'location',
+	start: 'starts_at',
 	endTime: 'ends_at',
-	kapasite: 'capacity',
+	capacity: 'capacity',
 	status: 'status',
 };
 
@@ -421,10 +421,10 @@ export async function updateEvent(id: string, patch: EventPatch): Promise<boolea
 		values.push(value);
 		sets.push(`${column} = $${values.length}`);
 	};
-	for (const key of ['baslik', 'tur', 'aciklama', 'konum', 'baslangic', 'endTime', 'kapasite', 'status'] as const) {
+	for (const key of ['title', 'typeValue', 'description', 'location', 'start', 'endTime', 'capacity', 'status'] as const) {
 		if (patch[key] !== undefined) set(EVENT_PATCH_COLUMNS[key], patch[key]);
 	}
-	if (patch.yoklamaAcik !== undefined) set('checkin_open', patch.yoklamaAcik ? 1 : 0);
+	if (patch.attendanceOpen !== undefined) set('checkin_open', patch.attendanceOpen ? 1 : 0);
 	if (patch.ownerTeamId !== undefined) set('owner_team_id', patch.ownerTeamId);
 	if (patch.ownerUserId !== undefined) set('owner_user_id', patch.ownerUserId);
 	if (!sets.length) return true;

@@ -162,7 +162,7 @@ function toMenuItem(appId: AppID, item: AppMenuItem, lang: Language): MenuItem {
 		label: item.label[lang],
 		...(item.shortcut ? { shortcut: item.shortcut } : {}),
 		...(item.permission ? { needs: { appId, level: item.permission } } : {}),
-		...(item.komut ? { command: { appId, name: item.komut } } : {}),
+		...(item.command ? { command: { appId, name: item.command } } : {}),
 		...(item.ac ? { opens: appId } : {}),
 	};
 }

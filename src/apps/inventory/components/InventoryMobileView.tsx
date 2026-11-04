@@ -38,7 +38,7 @@ export function InventoryMobileView({ inv }: InventoryMobileViewProps) {
 	);
 
 	const myItems = useMemo(
-		() => inv.items.filter((i) => i.status === 'oduncte' && i.oduncAlanId === inv.currentUserId),
+		() => inv.items.filter((i) => i.status === 'oduncte' && i.loanFieldId === inv.currentUserId),
 		[inv.items, inv.currentUserId]
 	);
 
@@ -88,7 +88,7 @@ export function InventoryMobileView({ inv }: InventoryMobileViewProps) {
 			case 'saglam':
 				return <span className={`${s.badge} ${s.badgeOk}`}>{t('invStatusAvailable')}</span>;
 			case 'oduncte': {
-				const info = returnStatus(item.iadeTarihi, inv.now);
+				const info = returnStatus(item.returnDate, inv.now);
 				if (info?.gecikti) {
 					return <span className={`${s.badge} ${s.badgeDanger}`}>{t('invStatusOverdue')}</span>;
 				}
@@ -113,8 +113,8 @@ export function InventoryMobileView({ inv }: InventoryMobileViewProps) {
 					type="text"
 					className={s.searchInput}
 					placeholder={t('invSearchPlaceholder')}
-					value={inv.arama}
-					onChange={(e) => inv.setArama(e.target.value)}
+					value={inv.search}
+					onChange={(e) => inv.setSearch(e.target.value)}
 				/>
 			</div>
 
@@ -122,8 +122,8 @@ export function InventoryMobileView({ inv }: InventoryMobileViewProps) {
 			<div className={s.chipRow}>
 				<button
 					type="button"
-					className={`${s.chip} ${inv.kategori === '' ? s.chipActive : ''}`}
-					onClick={() => inv.setKategori('')}
+					className={`${s.chip} ${inv.category === '' ? s.chipActive : ''}`}
+					onClick={() => inv.setCategory('')}
 				>
 					{t('invFilterAll')} ({inv.items.length})
 				</button>
@@ -131,8 +131,8 @@ export function InventoryMobileView({ inv }: InventoryMobileViewProps) {
 					<button
 						key={cat}
 						type="button"
-						className={`${s.chip} ${inv.kategori === cat ? s.chipActive : ''}`}
-						onClick={() => inv.setKategori(inv.kategori === cat ? '' : cat)}
+						className={`${s.chip} ${inv.category === cat ? s.chipActive : ''}`}
+						onClick={() => inv.setCategory(inv.category === cat ? '' : cat)}
 					>
 						<span>{cat}</span>
 					</button>
@@ -161,15 +161,15 @@ export function InventoryMobileView({ inv }: InventoryMobileViewProps) {
 									<Package size={20} />
 								</div>
 								<div className={s.itemDetails}>
-									<div className={s.itemName}>{item.ad}</div>
+									<div className={s.itemName}>{item.name}</div>
 									<div className={s.itemSub}>
-										<span style={{ fontFamily: 'ui-monospace, monospace' }}>{item.kod}</span>
+										<span style={{ fontFamily: 'ui-monospace, monospace' }}>{item.code}</span>
 										<span>•</span>
-										<span>{item.kategori}</span>
-										{item.konum && (
+										<span>{item.category}</span>
+										{item.location && (
 											<>
 												<span>•</span>
-												<span>{item.konum}</span>
+												<span>{item.location}</span>
 											</>
 										)}
 									</div>
@@ -208,7 +208,7 @@ export function InventoryMobileView({ inv }: InventoryMobileViewProps) {
 				</div>
 			) : (
 				loanedItems.map((item) => {
-					const info = returnStatus(item.iadeTarihi, inv.now);
+					const info = returnStatus(item.returnDate, inv.now);
 					return (
 						<div
 							key={item.id}
@@ -217,25 +217,25 @@ export function InventoryMobileView({ inv }: InventoryMobileViewProps) {
 						>
 							<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
 								<div style={{ fontSize: '14.5px', fontWeight: 700, color: '#f8fafc' }}>
-									{item.ad}
+									{item.name}
 								</div>
 								<span style={{ fontSize: '11px', fontFamily: 'ui-monospace, monospace', opacity: 0.6 }}>
-									{item.kod}
+									{item.code}
 								</span>
 							</div>
 
 							<div style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '12px', opacity: 0.8 }}>
 								<div>
-									<strong>{t('invBorrower')}:</strong> {item.oduncAlanAdSoyad || '—'}
+									<strong>{t('invBorrower')}:</strong> {item.loanFieldNameSurname || '—'}
 								</div>
-								{item.oduncTarihi && (
+								{item.loanDate && (
 									<div>
-										<strong>{t('invLoanDate')}:</strong> {formatDate(item.oduncTarihi)}
+										<strong>{t('invLoanDate')}:</strong> {formatDate(item.loanDate)}
 									</div>
 								)}
-								{item.iadeTarihi && (
+								{item.returnDate && (
 									<div>
-										<strong>{t('invReturnDate')}:</strong> {formatDate(item.iadeTarihi)}
+										<strong>{t('invReturnDate')}:</strong> {formatDate(item.returnDate)}
 									</div>
 								)}
 							</div>
@@ -243,11 +243,11 @@ export function InventoryMobileView({ inv }: InventoryMobileViewProps) {
 							<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '6px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
 								{info?.gecikti ? (
 									<span className={`${s.badge} ${s.badgeDanger}`}>
-										<AlertTriangle size={12} /> {info.gun} {t('invDaysOverdue')}
+										<AlertTriangle size={12} /> {info.day} {t('invDaysOverdue')}
 									</span>
 								) : info ? (
 									<span className={`${s.badge} ${s.badgeWarn}`}>
-										<Clock size={12} /> {info.gun} {t('invDaysLeft')}
+										<Clock size={12} /> {info.day} {t('invDaysLeft')}
 									</span>
 								) : (
 									<span className={`${s.badge} ${s.badgeOk}`}>{t('invStatusOnLoan')}</span>
@@ -285,30 +285,30 @@ export function InventoryMobileView({ inv }: InventoryMobileViewProps) {
 				</div>
 			) : (
 				myItems.map((item) => {
-					const info = returnStatus(item.iadeTarihi, inv.now);
+					const info = returnStatus(item.returnDate, inv.now);
 					return (
 						<div key={item.id} className={s.loanCard}>
 							<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
 								<div style={{ fontSize: '14.5px', fontWeight: 700, color: '#f8fafc' }}>
-									{item.ad}
+									{item.name}
 								</div>
 								<span style={{ fontSize: '11px', fontFamily: 'ui-monospace, monospace', opacity: 0.6 }}>
-									{item.kod}
+									{item.code}
 								</span>
 							</div>
 
 							<div style={{ fontSize: '12px', opacity: 0.75 }}>
-								{item.iadeTarihi ? `${t('invReturnDate')}: ${formatDate(item.iadeTarihi)}` : ''}
+								{item.returnDate ? `${t('invReturnDate')}: ${formatDate(item.returnDate)}` : ''}
 							</div>
 
 							<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
 								{info?.gecikti ? (
 									<span className={`${s.badge} ${s.badgeDanger}`}>
-										{info.gun} {t('invDaysOverdue')}
+										{info.day} {t('invDaysOverdue')}
 									</span>
 								) : info ? (
 									<span className={`${s.badge} ${s.badgeWarn}`}>
-										{info.gun} {t('invDaysLeft')}
+										{info.day} {t('invDaysLeft')}
 									</span>
 								) : null}
 

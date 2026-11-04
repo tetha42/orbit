@@ -31,11 +31,11 @@ export async function GET(request: Request) {
 				totalIncomeMinor: income,
 				totalExpenseMinor: expense,
 				netBalanceMinor: income - expense,
-				kayitSayisi: t?.kayitSayisi ?? 0,
+				recordCount: t?.recordCount ?? 0,
 			};
 		});
 
-		return NextResponse.json({ vaults, kasalar: vaults });
+		return NextResponse.json({ vaults,});
 	} catch (error) {
 		console.error('API /api/budget/vaults GET error:', error);
 		return NextResponse.json({ error: 'İşlem tamamlanamadı.' }, { status: 500 });

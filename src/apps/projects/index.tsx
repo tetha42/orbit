@@ -42,8 +42,8 @@ export function ProjectsApp() {
 		<div className={styles.root}>
 			<ProjectsHeader
 				manage={p.manage}
-				countYayinda={p.counts.yayinda}
-				onOpenForm={() => p.setForm({ proje: null })}
+				countPublished={p.counts.yayinda}
+				onOpenForm={() => p.setForm({ project: null })}
 			/>
 
 			<ProjectsToolbar
@@ -103,11 +103,11 @@ export function ProjectsApp() {
 
 			{p.open && (
 				<ProjectDetailModal
-					proje={p.open}
+					project={p.open}
 					currentUserId={p.currentUserId}
 					manage={p.manage}
 					onClose={() => p.setOpenId(null)}
-					onEdit={() => p.setForm({ proje: p.open })}
+					onEdit={() => p.setForm({ project: p.open })}
 					onStar={() => p.star(p.open!)}
 					onPatch={(body, success) => p.patch(p.open!, body, success)}
 					onDelete={() => p.remove(p.open!)}
@@ -117,7 +117,7 @@ export function ProjectsApp() {
 
 			{p.form && (
 				<ProjectFormModal
-					proje={p.form.proje}
+					project={p.form.project}
 					teams={p.teamOptions}
 					manage={p.manage}
 					onClose={() => p.setForm(null)}

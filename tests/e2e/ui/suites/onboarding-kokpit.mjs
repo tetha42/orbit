@@ -1,7 +1,7 @@
 // Öğrenci öncelikli akış: telefon kokpiti (alt gezinme, hızlı eylemler) ve rolsüz üyenin
 // takım vitrini (başvuru + kaptan yanıtı sayfa yenilenmeden gelir).
-import { makeTeam } from '../lib/takim.mjs';
-import { makeEvent } from '../lib/etkinlik.mjs';
+import { makeTeam } from '../lib/team.mjs';
+import { makeEvent } from '../lib/event.mjs';
 
 export const meta = { title: 'Mobil kokpit ve rolsüz üye takım başvurusu' };
 
@@ -12,10 +12,10 @@ export default async function suite(t) {
 	const admin = await t.api('admin');
 	const ege = await t.api('ege');
 	const can = await t.api('can');
-	const okur = await t.api('okur');
+	const reader = await t.api('okur');
 
 	// A team of our own, open to everyone: the showcase must still turn a join into an application.
-	const team = await makeTeam(t, admin, { label: 'Kokpit', leadId: fx.users.ege.id, katilimTuru: 'acik' });
+	const team = await makeTeam(t, admin, { label: 'Kokpit', leadId: fx.users.ege.id, participationType: 'acik' });
 	const event = await makeEvent(t, admin, { label: 'Kokpit', startMin: -10, lengthMin: 90 });
 
 	await t.step('kokpit: alt gezinme ve dört sekme (can, 390×844)', async () => {
@@ -57,21 +57,21 @@ export default async function suite(t) {
 
 	await t.step('kokpit: görevlerim ve yaklaşan etkinlik gerçek veriden geliyor', async () => {
 		t.eq((await can.post('/api/takimlar', { action: 'join', teamId: team.id })).status, 200, 'can açık takıma katıldı');
-		const task = await ege.post('/api/takimlar', { action: 'addTask', teamId: team.id, baslik: 'Kokpit test görevi', atananUyeId: fx.users.can.id });
+		const task = await ege.post('/api/takimlar', { action: 'addTask', teamId: team.id, title: 'Kokpit test görevi', assigneeMemberId: fx.users.can.id });
 		t.eq(task.status, 200, 'kaptan görevi can’a atadı', JSON.stringify(task.json));
 
 		const { page } = await t.open('can', { mobile: true });
 		const card = page.locator('[data-cockpit=tasks]');
 		await card.getByText('Kokpit test görevi').waitFor();
-		t.check((await card.innerText()).includes(team.ad), 'görev kartında takım adı yazıyor');
+		t.check((await card.innerText()).includes(team.name), 'görev kartında takım adı yazıyor');
 		const ev = page.locator('[data-cockpit=event]');
-		await ev.getByText(event.baslik).waitFor();
+		await ev.getByText(event.title).waitFor();
 		t.check(/devam ediyor/i.test(await ev.innerText()), 'başlamış etkinlik "Şu an devam ediyor" diyor');
 		await t.shot(page, 'kokpit-veri');
 
 		// Canlı: kaptan görevi tamamlandı yapınca kart sayfa yenilenmeden güncellenir.
-		const gorev = (await can.get(`/api/takimlar?teamId=${team.id}`)).json.gorevler.find((g) => g.baslik === 'Kokpit test görevi');
-		t.eq((await ege.post('/api/takimlar', { action: 'updateTask', gorevId: gorev.id, durum: 'tamamlandi' })).status, 200, 'görev tamamlandı');
+		const doneTask = (await can.get(`/api/takimlar?teamId=${team.id}`)).json.tasks.find((g) => g.title === 'Kokpit test görevi');
+		t.eq((await ege.post('/api/takimlar', { action: 'updateTask', taskId: doneTask.id, status: 'tamamlandi' })).status, 200, 'görev tamamlandı');
 		const ms = await t.waitFor(async () => (await card.getByText('Kokpit test görevi').count()) === 0, { timeout: 15_000 });
 		t.check(ms >= 0, `tamamlanan görev kartan canlı düştü (${ms} ms)`);
 
@@ -83,8 +83,8 @@ export default async function suite(t) {
 	});
 
 	await t.step('rolsüz üye (mobil): vitrinden başvuru → kaptan onayı canlı gelir', async () => {
-		t.cleanup(() => admin.patch('/api/uyeler', { id: fx.users.okur.id, rolId: fx.roles.haber }));
-		t.eq((await admin.patch('/api/uyeler', { id: fx.users.okur.id, rolId: null })).status, 200, 'okur’un rolü kaldırıldı');
+		t.cleanup(() => admin.patch('/api/uyeler', { id: fx.users.reader.id, roleId: fx.roles.news }));
+		t.eq((await admin.patch('/api/uyeler', { id: fx.users.reader.id, roleId: null })).status, 200, 'okur’un rolü kaldırıldı');
 
 		const { page } = await t.open('okur', { mobile: true });
 		const notice = page.locator('[data-no-role-notice]');
@@ -107,18 +107,18 @@ export default async function suite(t) {
 		t.check(true, 'başvuru gitti, kart "kaptanda" diyor');
 
 		const board = (await ege.get(`/api/takimlar?teamId=${team.id}`)).json;
-		const app = board.basvurular.find((b) => b.userId === fx.users.okur.id);
+		const app = board.applications.find((b) => b.userId === fx.users.reader.id);
 		t.check(!!app, 'açık takıma bile başvuru olarak düştü (üye olmadı)');
-		t.eq(app?.basvuruNotu, 'Uzmanlık: C++, ROS2\nRoket aviyoniği ile ilgileniyorum.', 'kaptan not ve uzmanlıkları görüyor');
-		t.check(!board.uyeler.some((u) => u.userId === fx.users.okur.id), 'başvuran henüz üye değil');
+		t.eq(app?.applicationNote, 'Uzmanlık: C++, ROS2\nRoket aviyoniği ile ilgileniyorum.', 'kaptan not ve uzmanlıkları görüyor');
+		t.check(!board.uyeler.some((u) => u.userId === fx.users.reader.id), 'başvuran henüz üye değil');
 
 		// Başvuruyu geri çek, sonra yeniden başvur → kaptan onaylar → kart canlı güncellenir.
 		await card.getByRole('button', { name: 'Başvuruyu geri çek' }).click();
 		await card.getByRole('button', { name: 'Başvur' }).waitFor();
 		t.check(true, 'geri çekince "Başvur" düğmesi döndü');
-		t.eq((await okur.post('/api/takimlar/kesfet', { action: 'apply', teamId: team.id })).status, 200, 'yeniden başvuru');
+		t.eq((await reader.post('/api/takimlar/kesfet', { action: 'apply', teamId: team.id })).status, 200, 'yeniden başvuru');
 		await card.getByText('Başvurun kaptanda').waitFor();
-		t.eq((await ege.post('/api/takimlar', { action: 'approve', teamId: team.id, userId: fx.users.okur.id })).status, 200, 'kaptan onayladı');
+		t.eq((await ege.post('/api/takimlar', { action: 'approve', teamId: team.id, userId: fx.users.reader.id })).status, 200, 'kaptan onayladı');
 		const ms = await t.waitFor(async () => (await card.getByText('Başvurun kabul edildi').count()) === 1, { timeout: 15_000 });
 		t.check(ms >= 0, `onay sayfa yenilenmeden kartta göründü (${ms} ms)`);
 		await t.shot(page, 'rolsuz-kabul');

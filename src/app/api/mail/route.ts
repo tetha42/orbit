@@ -120,10 +120,10 @@ export async function POST(request: Request) {
 
 		if (!result.success) {
 			await logSystemEvent({
-				servis: 'mail',
-				seviye: 'WARN',
-				mesaj: `E-posta gönderimi başarısız: ${cleanTo}`,
-				detay: { alici: cleanTo, konu: cleanSubject, hata: result.error },
+				service: 'mail',
+				level: 'WARN',
+				message: `E-posta gönderimi başarısız: ${cleanTo}`,
+				detail: { recipient: cleanTo, topic: cleanSubject, error: result.error },
 				userId: auth.user.id,
 				ip,
 			});
@@ -134,10 +134,10 @@ export async function POST(request: Request) {
 		}
 
 		await logSystemEvent({
-			servis: 'mail',
-			seviye: 'INFO',
-			mesaj: `E-posta gönderildi: ${cleanTo} (${cleanSubject})`,
-			detay: { alici: cleanTo, konu: cleanSubject, messageId: result.messageId, simulated: result.simulated },
+			service: 'mail',
+			level: 'INFO',
+			message: `E-posta gönderildi: ${cleanTo} (${cleanSubject})`,
+			detail: { recipient: cleanTo, topic: cleanSubject, messageId: result.messageId, simulated: result.simulated },
 			userId: auth.user.id,
 			ip,
 		});

@@ -17,8 +17,8 @@ export function useEvents() {
 	const dialog = useDialog();
 	const locale = language === 'en' ? 'en-GB' : 'tr-TR';
 	const { data, setData, refetch, error, httpStatus } = useJsonResource<EventsResponse>('/api/events');
-	const events = useMemo(() => data?.etkinlikler ?? [], [data]);
-	const manage = data?.izinler.manage ?? false;
+	const events = useMemo(() => data?.events ?? [], [data]);
+	const manage = data?.permissions.manage ?? false;
 	const now = useNow(30_000);
 
 	const [tab, setTab] = useState<Tab>('upcoming');
@@ -40,7 +40,7 @@ export function useEvents() {
 		else if (command === 'projector') {
 			const candidates = events
 				.filter((e) => e.status === 'yayinda' && e.endTime > Date.now())
-				.sort((a, b) => a.baslangic - b.baslangic);
+				.sort((a, b) => a.start - b.start);
 			if (candidates[0]) setProjectorFor(candidates[0]);
 			else notify(t('evNoUpcomingToast'), 'error');
 		}
@@ -69,9 +69,9 @@ export function useEvents() {
 		const list = events.filter(
 			(e) =>
 				(e.status === 'taslak' ? 'drafts' : e.endTime >= now ? 'upcoming' : 'past') === tab &&
-				(!q || foldTr(`${e.baslik} ${e.konum} ${e.aciklama}`).includes(q))
+				(!q || foldTr(`${e.title} ${e.location} ${e.description}`).includes(q))
 		);
-		return tab === 'past' ? [...list].sort((a, b) => b.baslangic - a.baslangic) : list;
+		return tab === 'past' ? [...list].sort((a, b) => b.start - a.start) : list;
 	}, [events, tab, query, now]);
 
 	const selected = visible.find((e) => e.id === selectedId) ?? visible[0] ?? null;
@@ -94,25 +94,25 @@ export function useEvents() {
 			d
 				? {
 						...d,
-						etkinlikler: d.etkinlikler.map((x) =>
-							x.id === e.id ? { ...x, benimKaydim: true, kayitliSayisi: x.kayitliSayisi + 1 } : x
+						events: d.events.map((x) =>
+							x.id === e.id ? { ...x, myMyRecord: true, registeredCount: x.registeredCount + 1 } : x
 						),
 				  }
 				: d
 		);
-		await act({ action: 'kaydol', etkinlikId: e.id });
+		await act({ action: 'register', eventId: e.id });
 	};
 
 	const unregister = async (e: EventView) => {
-		if (!(await dialog.confirm({ message: fill(t('evCancelConfirm'), { title: e.baslik }), tone: 'warning' }))) return;
-		await act({ action: 'kaydiIptal', etkinlikId: e.id });
+		if (!(await dialog.confirm({ message: fill(t('evCancelConfirm'), { title: e.title }), tone: 'warning' }))) return;
+		await act({ action: 'cancelRegistration', eventId: e.id });
 	};
 
 	// Camera scan and typed entry both send the 6-character code shown on the projector.
 	// The member's identity comes from the session; the code only says which window is live.
-	const checkIn = async (kod: string) => {
-		const shortCode = kod.trim().toUpperCase();
-		const res = await sendJson<{ message: string; zaten: boolean }>('/api/events', 'POST', { action: 'yoklama', shortCode });
+	const checkIn = async (code: string) => {
+		const shortCode = code.trim().toUpperCase();
+		const res = await sendJson<{ message: string; zaten: boolean }>('/api/events', 'POST', { action: 'attend', shortCode });
 		if (!res.ok) notify(res.error || t('kbActionFailed'), 'error');
 		else {
 			playSystemSound();

@@ -87,41 +87,39 @@ async function loginAdmin() {
 }
 
 const ROLES = {
-	yonetim: { ad: 'Yönetim Kurulu', renk: '#ff9f0a', aciklama: 'Topluluk yönetim kurulu ve icra', ikiAdimZorunlu: true, izinler: { news: 'yonet', events: 'yonet', teams: 'yonet', projects: 'yonet', certificates: 'yonet', inventory: 'yonet', members: 'yonet', budget: 'yonet', notes: 'kullan', chat: 'yonet', mail: 'yonet', settings: 'kullan' } },
-	uye: { ad: 'Üye', renk: '#0a84ff', aciklama: 'Aktif topluluk üyesi', ikiAdimZorunlu: false, izinler: { news: 'kullan', events: 'kullan', teams: 'kullan', projects: 'kullan', certificates: 'kullan', inventory: 'kullan', members: 'kullan', notes: 'kullan', chat: 'kullan', mail: 'kullan', settings: 'kullan' } },
-	haber: { ad: 'Sadece Haberler', renk: '#8e8e93', aciklama: 'Salt okunur duyuru ve haber erişimi', ikiAdimZorunlu: false, izinler: { news: 'kullan' } },
+	management: { name: 'Yönetim Kurulu', color: '#ff9f0a', description: 'Topluluk yönetim kurulu ve icra', twoStepRequired: true, permissions: { news: 'yonet', events: 'yonet', teams: 'yonet', projects: 'yonet', certificates: 'yonet', inventory: 'yonet', members: 'yonet', budget: 'yonet', notes: 'kullan', chat: 'yonet', mail: 'yonet', settings: 'kullan' } },
+	member: { name: 'Üye', color: '#0a84ff', description: 'Aktif topluluk üyesi', twoStepRequired: false, permissions: { news: 'kullan', events: 'kullan', teams: 'kullan', projects: 'kullan', certificates: 'kullan', inventory: 'kullan', members: 'kullan', notes: 'kullan', chat: 'kullan', mail: 'kullan', settings: 'kullan' } },
+	news: { name: 'Sadece Haberler', color: '#8e8e93', description: 'Salt okunur duyuru ve haber erişimi', twoStepRequired: false, permissions: { news: 'kullan' } },
 };
 
 const MEMBERS = [
-	{ key: 'zeynep', alias: 'alex', ad: 'Zeynep', soyad: 'Kaya', email: 'zeynep@kulup.test', role: 'yonetim', bolum: 'Bilgisayar Mühendisliği', sinif: 3 },
-	{ key: 'ege', alias: 'jordan', ad: 'Ege', soyad: 'Kılıç', email: 'ege@kulup.test', role: 'uye', bolum: 'Yazılım Mühendisliği', sinif: 3 },
-	{ key: 'can', alias: 'taylor', ad: 'Can', soyad: 'Demir', email: 'can@kulup.test', role: 'uye', bolum: 'Bilgisayar Mühendisliği', sinif: 2 },
-	{ key: 'okur', alias: 'sam', ad: 'Okur', soyad: 'Haber', email: 'okur@kulup.test', role: 'haber', bolum: 'Endüstri Mühendisliği', sinif: 1 },
+	{ key: 'zeynep', alias: 'alex', name: 'Zeynep', surname: 'Kaya', email: 'zeynep@kulup.test', role: 'yonetim', department: 'Bilgisayar Mühendisliği', grade: 3 },
+	{ key: 'ege', alias: 'jordan', name: 'Ege', surname: 'Kılıç', email: 'ege@kulup.test', role: 'uye', department: 'Yazılım Mühendisliği', grade: 3 },
+	{ key: 'can', alias: 'taylor', name: 'Can', surname: 'Demir', email: 'can@kulup.test', role: 'uye', department: 'Bilgisayar Mühendisliği', grade: 2 },
+	{ key: 'okur', alias: 'sam', name: 'Okur', surname: 'Haber', email: 'okur@kulup.test', role: 'haber', department: 'Endüstri Mühendisliği', grade: 1 },
 ];
 const PASSWORD = 'Orbit-Test-2026!';
 
 const admin = await loginAdmin();
 state.admin = {
 	email: ADMIN_EMAIL,
-	eposta: ADMIN_EMAIL,
 	password: ADMIN_PASSWORD,
-	sifre: ADMIN_PASSWORD,
 };
 
 // Roles (idempotent by name)
 const rolesRes = must(await admin.call('GET', '/api/roles'), 'list roles');
-const existing = rolesRes.roles ?? rolesRes.roller;
+const existing = rolesRes.roles ?? rolesRes.roles;
 state.roles = {};
 for (const [key, role] of Object.entries(ROLES)) {
-	const found = existing.find((r) => r.ad === role.ad || r.name === role.ad);
+	const found = existing.find((r) => r.name === role.name || r.name === role.name);
 	if (found) {
-		await admin.call('PATCH', '/api/roles', { id: found.id, ad: role.ad, renk: role.renk, aciklama: role.aciklama, ikiAdimZorunlu: role.ikiAdimZorunlu, izinler: role.izinler });
+		await admin.call('PATCH', '/api/roles', { id: found.id, name: role.name, color: role.color, description: role.description, twoStepRequired: role.twoStepRequired, permissions: role.permissions });
 		state.roles[key] = found.id;
 	} else {
-		state.roles[key] = must(await admin.call('POST', '/api/roles', role), `create role ${role.ad}`).id;
+		state.roles[key] = must(await admin.call('POST', '/api/roles', role), `create role ${role.name}`).id;
 	}
 }
-must(await admin.call('POST', '/api/roles', { action: 'varsayilan', roleId: state.roles.uye }), 'default role');
+must(await admin.call('POST', '/api/roles', { action: 'setDefault', roleId: state.roles.member }), 'default role');
 must(await admin.call('PATCH', '/api/settings/membership-policy', { emailVerification: false }), 'membership policy');
 
 const dbUrl = process.env.DATABASE_URL || (() => {
@@ -149,30 +147,27 @@ if (dbUrl) {
 state.users = state.users ?? {};
 const roster = must(await admin.call('GET', '/api/members'), 'roster').members;
 for (const m of MEMBERS) {
-	const inRoster = roster.find((r) => r.email === m.email || r.eposta === m.email);
+	const inRoster = roster.find((r) => r.email === m.email || r.email === m.email);
 	if (state.users[m.key] && inRoster) {
 		await admin.call('PATCH', '/api/members', { id: inRoster.id, roleId: state.roles[m.role], status: 'aktif' });
 		continue;
 	}
-	const created = must(await admin.call('POST', '/api/members', { ad: m.ad, soyad: m.soyad, email: m.email, bolum: m.bolum, sinif: m.sinif, roleId: state.roles[m.role] }), `create ${m.email}`);
+	const created = must(await admin.call('POST', '/api/members', { name: m.name, surname: m.surname, email: m.email, department: m.department, grade: m.grade, roleId: state.roles[m.role] }), `create ${m.email}`);
 	const u = client();
-	const initialPw = created.geciciSifre || created.temporaryPassword;
+	const initialPw = created.temporaryPassword || created.temporaryPassword;
 	must(await u.call('POST', '/api/auth/login', { email: m.email, password: initialPw }), `first login ${m.email}`);
-	must(await u.call('POST', '/api/profile/password', { mevcut: initialPw, yeni: PASSWORD, currentPassword: initialPw, newPassword: PASSWORD }), `password ${m.email}`);
+	must(await u.call('POST', '/api/profile/password', { current: initialPw, fresh: PASSWORD, currentPassword: initialPw, newPassword: PASSWORD }), `password ${m.email}`);
 	let totpSecret = null;
 	// Roles that require a second factor: enrol it now, as the first sign-in would demand.
-	if (ROLES[m.role].ikiAdimZorunlu) {
+	if (ROLES[m.role].twoStepRequired) {
 		const setup = must(await u.call('POST', '/api/auth/2fa/setup', {}), `2FA setup ${m.email}`);
 		must(await u.call('POST', '/api/auth/2fa/enable', { code: await freshCode(setup.secret) }), `2FA enable ${m.email}`);
 		totpSecret = setup.secret;
 	}
 	const userRecord = {
 		id: created.member.id,
-		eposta: m.email,
 		email: m.email,
-		sifre: PASSWORD,
 		password: PASSWORD,
-		rol: m.role,
 		role: m.role,
 		...(totpSecret ? { totp: totpSecret } : {}),
 	};
@@ -188,23 +183,23 @@ const once = async (key, fn) => {
 	save();
 };
 await once('team', async () => {
-	const res = await admin.call('POST', '/api/teams', { action: 'createTeam', ad: 'Core Architecture & Web Platform', kategori: 'Web & Mobile', aciklama: 'Core platform development and client suites', kontenjan: 6, leadId: state.users.ege.id });
+	const res = await admin.call('POST', '/api/teams', { action: 'createTeam', name: 'Core Architecture & Web Platform', category: 'Web & Mobile', description: 'Core platform development and client suites', capacity: 6, leadId: state.users.ege.id });
 	if (res.status === 409) {
 		const all = await admin.call('GET', '/api/teams');
-		const found = (all.json?.teams ?? all.json ?? []).find?.((t) => t.ad === 'Core Architecture & Web Platform');
+		const found = (all.json?.teams ?? all.json ?? []).find?.((t) => t.name === 'Core Architecture & Web Platform');
 		if (found) return { team: found };
 	}
 	return must(res, 'team');
 });
-await once('news', async () => must(await admin.call('POST', '/api/news', { baslik: 'Güz Dönemi Tanışma Toplantısı', icerik: 'Orbit topluluğu yeni dönem tanışma toplantısı ve platform tanıtımı.', kategori: 'genel', publishStatus: 'yayinda' }), 'news'));
-await once('event', async () => must(await admin.call('POST', '/api/events', { action: 'createEvent', baslik: 'Modern Web ve Git Atölyesi', aciklama: 'Sürüm kontrolü ve açık kaynak işbirliği atölye çalışması', tur: 'atolye', konum: 'Virtual Lab Stage A', baslangic: Date.now() + 3 * 86400000, endTime: Date.now() + 3 * 86400000 + 2 * 3600000, kapasite: 30, status: 'yayinda' }), 'event'));
-await once('income', async () => must(await admin.call('POST', '/api/budget', { tur: 'gelir', kategori: 'Sponsorluk', amountMinor: 2500000, aciklama: 'Açık Kaynak Ekosistem Sponsorluk Hibesi' }), 'income'));
+await once('news', async () => must(await admin.call('POST', '/api/news', { title: 'Güz Dönemi Tanışma Toplantısı', content: 'Orbit topluluğu yeni dönem tanışma toplantısı ve platform tanıtımı.', category: 'genel', publishStatus: 'yayinda' }), 'news'));
+await once('event', async () => must(await admin.call('POST', '/api/events', { action: 'createEvent', title: 'Modern Web ve Git Atölyesi', description: 'Sürüm kontrolü ve açık kaynak işbirliği atölye çalışması', typeValue: 'atolye', location: 'Virtual Lab Stage A', start: Date.now() + 3 * 86400000, endTime: Date.now() + 3 * 86400000 + 2 * 3600000, capacity: 30, status: 'yayinda' }), 'event'));
+await once('income', async () => must(await admin.call('POST', '/api/budget', { typeValue: 'gelir', category: 'Sponsorluk', amountMinor: 2500000, description: 'Açık Kaynak Ekosistem Sponsorluk Hibesi' }), 'income'));
 await once('item', async () => {
-	const res = await admin.call('POST', '/api/inventory', { action: 'create', kod: 'LAB-RPI-001', ad: 'Raspberry Pi 5 (8GB)', kategori: 'Development Board', konum: 'Hardware Lab Rack B-1' });
+	const res = await admin.call('POST', '/api/inventory', { action: 'create', code: 'LAB-RPI-001', name: 'Raspberry Pi 5 (8GB)', category: 'Development Board', location: 'Hardware Lab Rack B-1' });
 	if (res.status === 409) {
 		const all = await admin.call('GET', '/api/inventory');
 		const list = Array.isArray(all.json) ? all.json : (all.json?.items ?? []);
-		const found = list.find((i) => i.seriNo === 'LAB-RPI-001' || i.kod === 'LAB-RPI-001');
+		const found = list.find((i) => i.seriesNo === 'LAB-RPI-001' || i.code === 'LAB-RPI-001');
 		if (found) return found;
 	}
 	return must(res, 'item');

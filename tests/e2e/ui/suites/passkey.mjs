@@ -26,8 +26,8 @@ async function addPasskey(page) {
 	await settings.getByText(NICK, { exact: true }).waitFor();
 }
 
-async function signInWithPasskey(page, eposta) {
-	await page.locator('input[type=email]').fill(eposta);
+async function signInWithPasskey(page, email) {
+	await page.locator('input[type=email]').fill(email);
 	await page.getByRole('button', { name: 'Passkey ile giriş yap' }).click();
 }
 
@@ -50,7 +50,7 @@ export default async function suite(t) {
 
 		// Çıkış → yalnız e-posta + passkey → TOTP adımı istenmeli
 		await logoutUi(page);
-		await signInWithPasskey(page, fx.admin.eposta);
+		await signInWithPasskey(page, fx.admin.email);
 		const otp = page.locator('input[autocomplete=one-time-code]');
 		const reached = await Promise.race([
 			otp.waitFor({ timeout: 15_000 }).then(() => 'totp'),
@@ -74,7 +74,7 @@ export default async function suite(t) {
 		await virtualAuthenticator(context, page);
 		await addPasskey(page);
 		await logoutUi(page);
-		await signInWithPasskey(page, fx.users.ege.eposta);
+		await signInWithPasskey(page, fx.users.ege.email);
 		await page.locator('[data-dock-app]').first().waitFor();
 		t.check((await dockApps(page)).length > 0, 'passkey ile doğrudan masaüstü açıldı (TOTP istenmedi)');
 		t.eq(await page.locator('input[autocomplete=one-time-code]').count(), 0, 'TOTP adımı yok');
@@ -82,6 +82,6 @@ export default async function suite(t) {
 		await t.adopt('ege', context);
 		// Kayıt satırı camelCase kolonlarını (deviceType, sonKullanma) doğru okuyor.
 		const mine = ((await (await t.api('ege')).get('/api/auth/passkey')).json?.passkeys ?? []).find((p) => p.nickname === NICK);
-		t.check(mine && mine.deviceType && Number(mine.sonKullanma) > 0, 'passkey listesinde cihaz türü ve son kullanım dolu', JSON.stringify(mine));
+		t.check(mine && mine.deviceType && Number(mine.lastUsage) > 0, 'passkey listesinde cihaz türü ve son kullanım dolu', JSON.stringify(mine));
 	});
 }

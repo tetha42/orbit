@@ -95,7 +95,7 @@ export function OAuthSimulatorTab({
 						>
 							{clients.map((c) => (
 								<option key={c.id} value={c.id}>
-									{c.ad} ({c.id.slice(0, 16)}…)
+									{c.name} ({c.id.slice(0, 16)}…)
 								</option>
 							))}
 							{clients.length === 0 && <option value="client_test">{t('tbOAuthDemoClient')}</option>}

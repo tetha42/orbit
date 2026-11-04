@@ -16,10 +16,10 @@ export function normalizeCode(value: unknown): string {
 }
 
 /** Why an inventory code is not acceptable, or null. Codes go on printed labels, so: short, upper case, no spaces. */
-export function codeProblem(kod: string): string | null {
-	if (!/^[A-Z0-9]+(-[A-Z0-9]+)*$/.test(kod))
+export function codeProblem(code: string): string | null {
+	if (!/^[A-Z0-9]+(-[A-Z0-9]+)*$/.test(code))
 		return 'Kod yalnızca büyük harf, rakam ve tire içerebilir (örn. LAB-RPI-006).';
-	if (kod.length < 3 || kod.length > 24) return 'Kod 3-24 karakter olmalıdır.';
+	if (code.length < 3 || code.length > 24) return 'Kod 3-24 karakter olmalıdır.';
 	return null;
 }
 
@@ -28,14 +28,14 @@ export function codeProblem(kod: string): string | null {
  * calendar days, so "due today" is 0 days left until the moment passes.
  */
 export function returnStatus(
-	iadeTarihi: number | null | undefined,
+	returnDate: number | null | undefined,
 	now: number,
-): { gecikti: boolean; gun: number } | null {
-	if (!iadeTarihi) return null;
-	const diff = iadeTarihi - now;
-	if (diff >= 0) return { gecikti: false, gun: Math.floor(diff / DAY) };
+): { gecikti: boolean; day: number } | null {
+	if (!returnDate) return null;
+	const diff = returnDate - now;
+	if (diff >= 0) return { gecikti: false, day: Math.floor(diff / DAY) };
 	// Whole days late, but never "0 days late": a minute past due is already late.
-	return { gecikti: true, gun: Math.max(1, Math.floor(-diff / DAY)) };
+	return { gecikti: true, day: Math.max(1, Math.floor(-diff / DAY)) };
 }
 
 /**
@@ -45,12 +45,12 @@ export function returnStatus(
  */
 export function returnDateProblem(
 	iade: number,
-	opts: { now: number; baslangic?: number; yonetim: boolean },
+	opts: { now: number; start?: number; management: boolean },
 ): string | null {
 	if (!Number.isFinite(iade)) return 'Geçerli bir iade tarihi seçin.';
 	if (iade < opts.now + 60 * 60 * 1000) return 'İade tarihi en az bir saat sonrası olmalıdır.';
-	const limitDays = opts.yonetim ? MANAGEMENT_MAX_LOAN_DAYS : MAX_LOAN_DAYS;
-	const from = opts.baslangic ?? opts.now;
+	const limitDays = opts.management ? MANAGEMENT_MAX_LOAN_DAYS : MAX_LOAN_DAYS;
+	const from = opts.start ?? opts.now;
 	if (iade > from + limitDays * DAY + DAY) return `Ödünç süresi en fazla ${limitDays} gün olabilir.`;
 	return null;
 }
@@ -63,11 +63,11 @@ export function endOfDay(ms: number): number {
 }
 
 /** Text for a loan's state, e.g. "3 gün gecikti", "Bugün iade", "5 gün kaldı". */
-export function returnText(iadeTarihi: number | null | undefined, now: number): string {
-	const d = returnStatus(iadeTarihi, now);
+export function returnText(returnDate: number | null | undefined, now: number): string {
+	const d = returnStatus(returnDate, now);
 	if (!d) return '';
-	if (d.gecikti) return `${d.gun} gün gecikti`;
-	if (d.gun === 0) return 'Bugün iade';
-	if (d.gun === 1) return 'Yarın iade';
-	return `${d.gun} gün kaldı`;
+	if (d.gecikti) return `${d.day} gün gecikti`;
+	if (d.day === 0) return 'Bugün iade';
+	if (d.day === 1) return 'Yarın iade';
+	return `${d.day} gün kaldı`;
 }

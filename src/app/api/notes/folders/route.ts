@@ -26,18 +26,18 @@ async function handlePOST(request: Request) {
 		}
 
 		const body = await request.json();
-		const { id, ad, renk, sira } = body;
+		const { id, name, color, order } = body;
 
-		if (!ad || typeof ad !== 'string' || !ad.trim()) {
+		if (!name || typeof name !== 'string' || !name.trim()) {
 			return NextResponse.json({ error: 'Klasör adı zorunludur.' }, { status: 400 });
 		}
 
 		const saved = await saveUserNoteFolder({
 			id,
 			userId: auth.user.id,
-			ad: ad.trim(),
-			renk,
-			sira,
+			name: name.trim(),
+			color,
+			order,
 		});
 
 		return NextResponse.json(saved);

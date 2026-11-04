@@ -26,9 +26,9 @@ export async function POST(request: Request) {
 				);
 			}
 
-			const { roomId, soru, secenekler, cokluSecim, anonim, endsAt } = body;
+			const { roomId, question, options, multipleSelection, anonymous, endsAt } = body;
 
-			if (!roomId || !soru || typeof soru !== 'string' || !soru.trim()) {
+			if (!roomId || !question || typeof question !== 'string' || !question.trim()) {
 				return NextResponse.json(
 					{ error: 'Anket sorusu boş olamaz.' },
 					{ status: 400, headers: NO_CACHE }
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
 				);
 			}
 
-			if (!Array.isArray(secenekler) || secenekler.length < 2 || secenekler.length > 12) {
+			if (!Array.isArray(options) || options.length < 2 || options.length > 12) {
 				return NextResponse.json(
 					{ error: 'Ankette en az 2, en fazla 12 seçenek belirtilmelidir.' },
 					{ status: 400, headers: NO_CACHE }
@@ -54,15 +54,15 @@ export async function POST(request: Request) {
 				roomId,
 				{
 					id: auth.user.id,
-					ad: auth.user.ad,
-					soyad: auth.user.soyad,
-					profilFoto: auth.user.profilFoto || null,
+					name: auth.user.name,
+					surname: auth.user.surname,
+					profilePhoto: auth.user.profilePhoto || null,
 				},
 				{
-					soru: soru.trim().slice(0, 500),
-					secenekler: secenekler.map((s: unknown) => String(s ?? '').slice(0, 200)),
-					cokluSecim: Boolean(cokluSecim),
-					anonim: anonim !== false,
+					question: question.trim().slice(0, 500),
+					options: options.map((s: unknown) => String(s ?? '').slice(0, 200)),
+					multipleSelection: Boolean(multipleSelection),
+					anonymous: anonymous !== false,
 					endsAt: typeof endsAt === 'number' ? endsAt : null,
 				}
 			);
@@ -72,10 +72,10 @@ export async function POST(request: Request) {
 			}
 
 			void logSystemEvent({
-				servis: 'chat',
-				seviye: 'INFO',
-				mesaj: `Yeni anket oluşturuldu: "${soru.trim().slice(0, 50)}" (${roomId})`,
-				detay: { roomId, pollId: res.message?.anket?.id, soru: soru.trim().slice(0, 120) },
+				service: 'chat',
+				level: 'INFO',
+				message: `Yeni anket oluşturuldu: "${question.trim().slice(0, 50)}" (${roomId})`,
+				detail: { roomId, pollId: res.message?.poll?.id, question: question.trim().slice(0, 120) },
 				userId: auth.user.id,
 				ip: clientAddress(request),
 			});
@@ -84,8 +84,8 @@ export async function POST(request: Request) {
 		}
 
 		if (action === 'vote') {
-			const { pollId, secenekId } = body;
-			if (!pollId || !secenekId) {
+			const { pollId, optionId } = body;
+			if (!pollId || !optionId) {
 				return NextResponse.json(
 					{ error: 'Anket veya seçenek kimliği belirtilmedi.' },
 					{ status: 400, headers: NO_CACHE }
@@ -94,12 +94,12 @@ export async function POST(request: Request) {
 
 			const res = await castPollVote(
 				String(pollId),
-				String(secenekId),
+				String(optionId),
 				{
 					id: auth.user.id,
-					ad: auth.user.ad,
-					soyad: auth.user.soyad,
-					profilFoto: auth.user.profilFoto || null,
+					name: auth.user.name,
+					surname: auth.user.surname,
+					profilePhoto: auth.user.profilePhoto || null,
 				},
 				isAdmin
 			);
@@ -126,10 +126,10 @@ export async function POST(request: Request) {
 			}
 
 			void logSystemEvent({
-				servis: 'chat',
-				seviye: 'INFO',
-				mesaj: `Anket sonlandırıldı: ${pollId}`,
-				detay: { pollId },
+				service: 'chat',
+				level: 'INFO',
+				message: `Anket sonlandırıldı: ${pollId}`,
+				detail: { pollId },
 				userId: auth.user.id,
 				ip: clientAddress(request),
 			});

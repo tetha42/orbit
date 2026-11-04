@@ -18,7 +18,6 @@ export const BUDGET_CATEGORIES = [
 export type BudgetCategory = (typeof BUDGET_CATEGORIES)[number];
 
 export const BUDGET_CATEGORY_ALIASES: Record<string, BudgetCategory> = {
-	ikram: 'İkram',
 	catering: 'İkram',
 	refreshments: 'İkram',
 	food: 'İkram',
@@ -75,10 +74,10 @@ export const MAX_AMOUNT_CENTS = 2_000_000_000;
 export interface VaultSummary {
 	/** `null` is the general kasa. */
 	teamId: string | null;
-	ad: string;
+	name: string;
 	kind: 'genel' | 'proje';
 	totalIncomeMinor: number;
 	totalExpenseMinor: number;
 	netBalanceMinor: number;
-	kayitSayisi: number;
+	recordCount: number;
 }

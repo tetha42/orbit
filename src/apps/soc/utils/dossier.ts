@@ -105,8 +105,8 @@ export function formatDossierMarkdown(dossier: ForensicCaseDossier): string {
 		md += `| ID | Timestamp | Level | Service | IP | Log Message |\n`;
 		md += `|---|---|---|---|---|---|\n`;
 		for (const l of dossier.relatedSiemLogs) {
-			const timeStr = new Date(l.zaman).toISOString().replace('T', ' ').slice(0, 19);
-			md += `| #${l.id} | ${timeStr} | \`${l.seviye}\` | \`${l.servis}\` | \`${l.ip}\` | ${l.mesaj.replace(/\|/g, '\\|')} |\n`;
+			const timeStr = new Date(l.time).toISOString().replace('T', ' ').slice(0, 19);
+			md += `| #${l.id} | ${timeStr} | \`${l.level}\` | \`${l.service}\` | \`${l.ip}\` | ${l.message.replace(/\|/g, '\\|')} |\n`;
 		}
 		md += `\n`;
 	}

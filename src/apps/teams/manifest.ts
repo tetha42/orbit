@@ -35,8 +35,8 @@ const manifest = {
 	dock: 0,
 	notifications: { teamApplication: 'kullan', teamDecision: 'kullan', task: 'kullan', assigned: 'kullan' },
 	permission: {
-		sira: 2,
-		ad: 'Takımlar',
+		order: 2,
+		name: 'Takımlar',
 		kullan: 'Takımlara katılır/başvurur, üyesi olduğu takımın görev panosunu kullanır.',
 		yonet: 'Takım kurar, kaptan atar, tüm takımların üyelerini ve görevlerini yönetir.',
 	},
@@ -48,16 +48,16 @@ const manifest = {
 				id: 'file',
 				title: { tr: 'İşlemler', en: 'Actions' },
 				items: [
-					{ id: 'new-team', label: { tr: 'Yeni Takım Oluştur...', en: 'Create New Team...' }, shortcut: '⇧⌘N', permission: 'yonet', komut: 'new-team' },
-					{ id: 'new-task', label: { tr: 'Yeni Görev Ekle', en: 'Add New Task' }, shortcut: '⌘N', permission: 'kullan', komut: 'new-task' },
-					{ id: 'kanban-refresh', label: { tr: 'Panoyu ve Listeyi Yenile', en: 'Refresh Board & Catalog' }, shortcut: '⌘R', permission: 'kullan', komut: 'kanban-refresh' },
+					{ id: 'new-team', label: { tr: 'Yeni Takım Oluştur...', en: 'Create New Team...' }, shortcut: '⇧⌘N', permission: 'yonet', command: 'new-team' },
+					{ id: 'new-task', label: { tr: 'Yeni Görev Ekle', en: 'Add New Task' }, shortcut: '⌘N', permission: 'kullan', command: 'new-task' },
+					{ id: 'kanban-refresh', label: { tr: 'Panoyu ve Listeyi Yenile', en: 'Refresh Board & Catalog' }, shortcut: '⌘R', permission: 'kullan', command: 'kanban-refresh' },
 				],
 			},
 			{
 				id: 'view',
 				title: { tr: 'Görünüm', en: 'View' },
 				items: [
-					{ id: 'view-teams', label: { tr: 'Ar-Ge Takımları Paneli', en: 'R&D Teams' }, shortcut: '⌥1', permission: 'kullan', komut: 'view-teams' },
+					{ id: 'view-teams', label: { tr: 'Ar-Ge Takımları Paneli', en: 'R&D Teams' }, shortcut: '⌥1', permission: 'kullan', command: 'view-teams' },
 				],
 			},
 		],

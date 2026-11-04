@@ -8,7 +8,7 @@ import { useDialog } from '@/components/Common/DialogProvider';
 import { useJsonResource } from '@/core/data/useJsonResource';
 import { useFocusTarget } from '@/lib/client/useFocusTarget';
 import { fill } from '@/lib/text';
-import { seviye } from '@/lib/profile';
+import { level } from '@/lib/profile';
 import type { CommunityProfile } from '@/db';
 import type { Certificate, MemberRankItem } from '../types';
 
@@ -28,24 +28,24 @@ export function useCertificates() {
 
 	const [isIssuing, setIsIssuing] = useState(false);
 	const [issueUserId, setIssueUserId] = useState('');
-	const [issueBaslik, setIssueBaslik] = useState(t('certsPresetTeknofest'));
-	const [issueEtkinlikId, setIssueEtkinlikId] = useState('');
+	const [issueTitle, setIssueTitle] = useState(t('certsPresetTeknofest'));
+	const [issueEventId, setIssueEventId] = useState('');
 	const [issueCategory, setIssueCategory] = useState<'achievement' | 'participation' | 'service' | 'honor'>('achievement');
 	const [issueLang, setIssueLang] = useState<'tr' | 'en'>('tr');
 	const [issueContext, setIssueContext] = useState('');
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
-	const { data: eventsData } = useJsonResource<{ etkinlikler: Array<{ id: string; baslik: string; katilimciSayisi: number }> }>('/api/events');
-	const events = eventsData?.etkinlikler ?? [];
-	const { data: kulup, refetch: refetchKulup } = useJsonResource<CommunityProfile>('/api/community');
+	const { data: eventsData } = useJsonResource<{ events: Array<{ id: string; title: string; participantCount: number }> }>('/api/events');
+	const events = eventsData?.events ?? [];
+	const { data: club, refetch: refetchClub } = useJsonResource<CommunityProfile>('/api/community');
 	const [editingSignatories, setEditingSignatories] = useState(false);
 	const [issueMode, setIssueMode] = useState<'single' | 'bulk'>('single');
-	const verifyUrl = (kod: string) => (typeof window === 'undefined' ? `/verify/${kod}` : `${window.location.origin}/verify/${kod}`);
+	const verifyUrl = (code: string) => (typeof window === 'undefined' ? `/verify/${code}` : `${window.location.origin}/verify/${code}`);
 
-	const { data: uyelerData } = useJsonResource<{
+	const { data: membersData } = useJsonResource<{
 		members: MemberRankItem[];
 	}>(canUseApp('members') ? '/api/members' : null);
-	const members = uyelerData?.members ?? [];
+	const members = membersData?.members ?? [];
 	const topMembers = [...members].sort((a, b) => (b.xp || 0) - (a.xp || 0)).slice(0, 10);
 
 	const myCerts = certificates.filter((c) => c.userId === currentUserId);
@@ -57,8 +57,8 @@ export function useCertificates() {
 		refetch: fetchCerts,
 	});
 
-	const handleCopyVerification = (kod: string) => {
-		const url = `${window.location.origin}/verify/${kod}`;
+	const handleCopyVerification = (code: string) => {
+		const url = `${window.location.origin}/verify/${code}`;
 		navigator.clipboard.writeText(url);
 		setCopied(true);
 		playSystemSound();
@@ -66,18 +66,18 @@ export function useCertificates() {
 	};
 
 	const handleAddToLinkedIn = (cert: Certificate) => {
-		const certDate = new Date(cert.verilisTarihi);
+		const certDate = new Date(cert.issuanceDate);
 		const year = certDate.getFullYear();
 		const month = certDate.getMonth() + 1;
 		const certUrl = `${window.location.origin}/verify/${cert.verificationCode}`;
-		const linkedInUrl = `https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=${encodeURIComponent(cert.baslik)}&organizationName=${encodeURIComponent(t('newsShareClubSuffix'))}&issueYear=${year}&issueMonth=${month}&certUrl=${encodeURIComponent(certUrl)}&certId=${encodeURIComponent(cert.verificationCode)}`;
+		const linkedInUrl = `https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=${encodeURIComponent(cert.title)}&organizationName=${encodeURIComponent(t('newsShareClubSuffix'))}&issueYear=${year}&issueMonth=${month}&certUrl=${encodeURIComponent(certUrl)}&certId=${encodeURIComponent(cert.verificationCode)}`;
 		window.open(linkedInUrl, '_blank', 'noopener,noreferrer');
 	};
 
 	const handleIssueCertificate = async (e: React.FormEvent) => {
 		e.preventDefault();
-		if (!issueBaslik.trim()) return;
-		if (issueMode === 'single' ? !issueUserId : !issueEtkinlikId) return;
+		if (!issueTitle.trim()) return;
+		if (issueMode === 'single' ? !issueUserId : !issueEventId) return;
 
 		try {
 			setIsSubmitting(true);
@@ -88,19 +88,19 @@ export function useCertificates() {
 					issueMode === 'bulk'
 						? {
 								action: 'bulk',
-								etkinlikId: issueEtkinlikId,
-								baslik: issueBaslik.trim(),
-								kategori: issueCategory,
-								dil: issueLang,
-								aciklama: issueContext.trim() || undefined,
+								eventId: issueEventId,
+								title: issueTitle.trim(),
+								category: issueCategory,
+								language: issueLang,
+								description: issueContext.trim() || undefined,
 						  }
 						: {
 								userId: issueUserId,
-								baslik: issueBaslik.trim(),
-								etkinlikId: issueEtkinlikId || undefined,
-								kategori: issueCategory,
-								dil: issueLang,
-								aciklama: issueContext.trim() || undefined,
+								title: issueTitle.trim(),
+								eventId: issueEventId || undefined,
+								category: issueCategory,
+								language: issueLang,
+								description: issueContext.trim() || undefined,
 						  }
 				),
 			});
@@ -125,7 +125,7 @@ export function useCertificates() {
 
 	const handleRevokeCertificate = async (cert: Certificate) => {
 		const confirmed = await dialog.confirm({
-			message: fill(t('certsRevokeConfirmMsg'), { title: cert.baslik, code: cert.verificationCode }),
+			message: fill(t('certsRevokeConfirmMsg'), { title: cert.title, code: cert.verificationCode }),
 			tone: 'danger',
 			confirmLabel: t('dlgRevoke'),
 		});
@@ -149,8 +149,8 @@ export function useCertificates() {
 	};
 
 	const userXP = Number(currentUser?.xp) || 0;
-	const level = seviye(userXP);
-	const userLevel = level.seviye;
+	const levelInfo = level(userXP);
+	const userLevel = levelInfo.level;
 
 	return {
 		currentUserId,
@@ -169,10 +169,10 @@ export function useCertificates() {
 		setIsIssuing,
 		issueUserId,
 		setIssueUserId,
-		issueBaslik,
-		setIssueBaslik,
-		issueEtkinlikId,
-		setIssueEtkinlikId,
+		issueTitle,
+		setIssueTitle,
+		issueEventId,
+		setIssueEventId,
 		issueCategory,
 		setIssueCategory,
 		issueLang,
@@ -181,8 +181,8 @@ export function useCertificates() {
 		setIssueContext,
 		isSubmitting,
 		events,
-		kulup: kulup ?? null,
-		refetchKulup,
+		club: club ?? null,
+		refetchClub,
 		editingSignatories,
 		setEditingSignatories,
 		issueMode,
@@ -192,7 +192,7 @@ export function useCertificates() {
 		topMembers,
 		userXP,
 		userLevel,
-		level,
+		level: levelInfo,
 		handleCopyVerification,
 		handleAddToLinkedIn,
 		handleIssueCertificate,

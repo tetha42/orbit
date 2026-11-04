@@ -36,7 +36,7 @@ export interface SettingsSection {
 	/** Sidebar group; a divider separates groups. */
 	group: 'kisisel' | 'hesap' | 'sistem';
 	/** Requires Settings at the manage level. */
-	sistem?: boolean;
+	system?: boolean;
 }
 
 export const SETTINGS_SECTIONS: SettingsSection[] = [
@@ -45,13 +45,13 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
 	{ id: 'appearance', tr: 'Görünüm ve Tema', en: 'Appearance & Theme', keywords: ['tema', 'theme', 'karanlık', 'dark', 'aydınlık', 'light', 'parlaklık', 'brightness', 'ekran', 'display', 'ses', 'sound', 'ses seviyesi', 'volume', 'sessiz', 'mute', 'efekt', 'dock', 'rıhtım', 'otomatik gizle', 'auto hide', 'shift tab', 'pencere değiştir', 'switch windows'], labelKey: 'tabAppearance', group: 'kisisel' },
 	{ id: 'language', tr: 'Dil', en: 'Language', keywords: ['türkçe', 'english', 'lang'], labelKey: 'tabLanguage', group: 'hesap' },
 	{ id: 'security', tr: 'Güvenlik', en: 'Security', keywords: ['iki adımlı', '2fa', 'passkey', 'şifre', 'parola', 'doğrulama'], labelKey: 'tabSecurity', group: 'hesap' },
-	{ id: 'community', tr: 'Kimlik ve Marka', en: 'Identity & Branding', keywords: ['topluluk', 'community', 'site', 'isim', 'name', 'ikon', 'icon', 'logo', 'stüdyo', 'studio', 'tetha42', 'domain', 'imza', 'başkan', 'danışman'], labelKey: 'tabCommunity', group: 'sistem', sistem: true },
-	{ id: 'membership', tr: 'Üyelik Politikası', en: 'Membership Policy', keywords: ['üyelik', 'membership', 'kayıt', 'registration', 'onay', 'approval', 'davet', 'invite', 'domain', 'allowlist', 'yeniden başvuru', 'reapply'], labelKey: 'tabMembership', group: 'sistem', sistem: true },
-	{ id: 'legal', tr: 'Yasal Metinler', en: 'Legal Agreements', keywords: ['sözleşme', 'terms', 'gizlilik', 'privacy', 'çerez', 'cookie', 'kvkk', 'gdpr', 'onay', 'consent'], labelKey: 'tabLegal', group: 'sistem', sistem: true },
-	{ id: 'forms', tr: 'Kayıt ve Üye Formu', en: 'Registration & Member Form', keywords: ['form', 'alan', 'field', 'kayıt formu', 'registration', 'custom field', 'topluluk alanı', 'deneyim seviyesi', 'track', 'experience', 'seçim', 'selection'], labelKey: 'tabForms', group: 'sistem', sistem: true },
-	{ id: 'teams', tr: 'Takımlar', en: 'Teams', keywords: ['takım', 'team', 'kategori', 'category', 'takım kategorileri', 'team categories'], labelKey: 'tabTeams', group: 'sistem', sistem: true },
-	{ id: 'roles', tr: 'Roller ve Yetkiler', en: 'Roles & Permissions', keywords: ['role', 'role', 'permission', 'permission', 'izin', 'admin', 'erişim'], labelKey: 'tabRoles', group: 'sistem', sistem: true },
-	{ id: 'privacy', tr: 'Veri ve Gizlilik', en: 'Data & Privacy', keywords: ['veri', 'data', 'gizlilik', 'privacy', 'export', 'dışa aktar', 'anonim', 'anonymize', 'gdpr', 'kvkk'], labelKey: 'tabPrivacy', group: 'sistem', sistem: true },
-	{ id: 'smtp', tr: 'E-posta Hesabı', en: 'Email Account', keywords: ['mail', 'posta', 'smtp', 'gmail', 'uygulama şifresi', 'app password', 'bildirim e-postası'], labelKey: 'tabSmtp', group: 'sistem', sistem: true },
-	{ id: 'integrations', tr: 'Entegre Uygulamalar', en: 'Connected Apps', keywords: ['oauth', 'api', 'sso', 'client', 'secret', 'entegrasyon', 'harici uygulama', 'account centre'], labelKey: 'tabIntegrations', group: 'sistem', sistem: true },
+	{ id: 'community', tr: 'Kimlik ve Marka', en: 'Identity & Branding', keywords: ['topluluk', 'community', 'site', 'isim', 'name', 'ikon', 'icon', 'logo', 'stüdyo', 'studio', 'tetha42', 'domain', 'imza', 'başkan', 'danışman'], labelKey: 'tabCommunity', group: 'sistem', system: true },
+	{ id: 'membership', tr: 'Üyelik Politikası', en: 'Membership Policy', keywords: ['üyelik', 'membership', 'kayıt', 'registration', 'onay', 'approval', 'davet', 'invite', 'domain', 'allowlist', 'yeniden başvuru', 'reapply'], labelKey: 'tabMembership', group: 'sistem', system: true },
+	{ id: 'legal', tr: 'Yasal Metinler', en: 'Legal Agreements', keywords: ['sözleşme', 'terms', 'gizlilik', 'privacy', 'çerez', 'cookie', 'kvkk', 'gdpr', 'onay', 'consent'], labelKey: 'tabLegal', group: 'sistem', system: true },
+	{ id: 'forms', tr: 'Kayıt ve Üye Formu', en: 'Registration & Member Form', keywords: ['form', 'alan', 'field', 'kayıt formu', 'registration', 'custom field', 'topluluk alanı', 'deneyim seviyesi', 'track', 'experience', 'seçim', 'selection'], labelKey: 'tabForms', group: 'sistem', system: true },
+	{ id: 'teams', tr: 'Takımlar', en: 'Teams', keywords: ['takım', 'team', 'kategori', 'category', 'takım kategorileri', 'team categories'], labelKey: 'tabTeams', group: 'sistem', system: true },
+	{ id: 'roles', tr: 'Roller ve Yetkiler', en: 'Roles & Permissions', keywords: ['role', 'role', 'permission', 'permission', 'izin', 'admin', 'erişim'], labelKey: 'tabRoles', group: 'sistem', system: true },
+	{ id: 'privacy', tr: 'Veri ve Gizlilik', en: 'Data & Privacy', keywords: ['veri', 'data', 'gizlilik', 'privacy', 'export', 'dışa aktar', 'anonim', 'anonymize', 'gdpr', 'kvkk'], labelKey: 'tabPrivacy', group: 'sistem', system: true },
+	{ id: 'smtp', tr: 'E-posta Hesabı', en: 'Email Account', keywords: ['mail', 'posta', 'smtp', 'gmail', 'uygulama şifresi', 'app password', 'bildirim e-postası'], labelKey: 'tabSmtp', group: 'sistem', system: true },
+	{ id: 'integrations', tr: 'Entegre Uygulamalar', en: 'Connected Apps', keywords: ['oauth', 'api', 'sso', 'client', 'secret', 'entegrasyon', 'harici uygulama', 'account centre'], labelKey: 'tabIntegrations', group: 'sistem', system: true },
 ];

@@ -171,13 +171,13 @@ export function useMembers() {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
-						ad: newFirstName.trim(),
-						soyad: newLastName.trim(),
+						name: newFirstName.trim(),
+						surname: newLastName.trim(),
 						email: newEmail.trim(),
-						bolum: newTrack,
-						sinif: newGrade,
+						department: newTrack,
+						grade: newGrade,
 						...(newRoleId ? { roleId: newRoleId } : {}),
-						ogrenciNo: newMemberHandle.trim(),
+						studentNo: newMemberHandle.trim(),
 						...(newPassword ? { password: newPassword } : {}),
 						customFields: customValues,
 					}),
@@ -206,7 +206,7 @@ export function useMembers() {
 					void dialog.alert({
 						title: t('membersCreatedTitle'),
 						message: fill(t('membersTempPasswordNotice'), {
-							name: `${data.member?.ad ?? ''} ${data.member?.soyad ?? ''}`.trim(),
+							name: `${data.member?.name ?? ''} ${data.member?.surname ?? ''}`.trim(),
 							password: data.temporaryPassword,
 						}),
 						tone: 'success',
@@ -318,7 +318,7 @@ export function useMembers() {
 				const res = await fetch('/api/members', {
 					method: 'PATCH',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ id, sifreSifirla: true }),
+					body: JSON.stringify({ id, passwordReset: true }),
 				});
 				const data = await res.json();
 				if (res.ok && data.temporaryPassword) {
@@ -394,15 +394,15 @@ export function useMembers() {
 
 	const filteredMembers = useMemo(() => {
 		return members.filter((m) => {
-			const fullName = `${m.ad} ${m.soyad}`.toLowerCase();
+			const fullName = `${m.name} ${m.surname}`.toLowerCase();
 			const matchesSearch =
 				fullName.includes(searchQuery.toLowerCase()) ||
 				m.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-				m.bolum.toLowerCase().includes(searchQuery.toLowerCase()) ||
-				(m.takimAdi && m.takimAdi.toLowerCase().includes(searchQuery.toLowerCase()));
+				m.department.toLowerCase().includes(searchQuery.toLowerCase()) ||
+				(m.teamName && m.teamName.toLowerCase().includes(searchQuery.toLowerCase()));
 
-			if (selectedDepartment && selectedDepartment !== '' && m.bolum !== selectedDepartment) return false;
-			if (selectedGrade !== 0 && String(m.sinif) !== String(selectedGrade)) return false;
+			if (selectedDepartment && selectedDepartment !== '' && m.department !== selectedDepartment) return false;
+			if (selectedGrade !== 0 && String(m.grade) !== String(selectedGrade)) return false;
 			if (roleFilter && (m.roleId ?? '') !== (roleFilter === '-' ? '' : roleFilter)) return false;
 
 			if (activeFilter === 'aktif') return matchesSearch && m.status === 'aktif';
@@ -415,8 +415,8 @@ export function useMembers() {
 	const roleOptions = useMemo(() => {
 		return [
 			...new Map([
-				...roles.map((r) => [r.id, r.ad] as [string, string]),
-				...members.filter((m) => m.roleId).map((m) => [m.roleId!, m.rolAd ?? m.roleId!] as [string, string]),
+				...roles.map((r) => [r.id, r.name] as [string, string]),
+				...members.filter((m) => m.roleId).map((m) => [m.roleId!, m.roleName ?? m.roleId!] as [string, string]),
 			]).entries(),
 		];
 	}, [roles, members]);
@@ -428,11 +428,11 @@ export function useMembers() {
 		const options = new Map<string, FormFieldOption>();
 		for (const option of coreConfig.track.options) options.set(option.value, option);
 		for (const member of membersData?.members ?? []) {
-			if (member.bolum && !options.has(member.bolum)) {
-				options.set(member.bolum, {
-					value: member.bolum,
-					labelTr: member.bolum,
-					labelEn: member.bolum,
+			if (member.department && !options.has(member.department)) {
+				options.set(member.department, {
+					value: member.department,
+					labelTr: member.department,
+					labelEn: member.department,
 				});
 			}
 		}

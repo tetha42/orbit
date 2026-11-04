@@ -10,8 +10,8 @@ export interface PasskeySummary {
 	nickname: string | null;
 	deviceType: string | null;
 	backedUp: boolean;
-	olusturma: number;
-	sonKullanma: number | null;
+	creation: number;
+	lastUsage: number | null;
 }
 
 interface PasskeyListProps {
@@ -66,8 +66,8 @@ export function PasskeyList({ passkeys, isBusy, onRemove }: PasskeyListProps) {
 								{pk.nickname || (pk.deviceType === 'multiDevice' ? t('passkeySynced') : t('passkeyThisDevice'))}
 							</div>
 							<div style={{ fontSize: '11.5px', opacity: 0.65 }}>
-								{fill(t('passkeyAddedDate'), { date: formatDate(pk.olusturma, loc) })}
-								{pk.sonKullanma ? ` · ${fill(t('passkeyLastUsedDate'), { date: formatDate(pk.sonKullanma, loc) })}` : ''}
+								{fill(t('passkeyAddedDate'), { date: formatDate(pk.creation, loc) })}
+								{pk.lastUsage ? ` · ${fill(t('passkeyLastUsedDate'), { date: formatDate(pk.lastUsage, loc) })}` : ''}
 								{pk.backedUp ? ` · ${t('passkeyBackedUp')}` : ''}
 							</div>
 						</div>

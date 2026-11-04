@@ -27,11 +27,11 @@ export function SocContextMenu() {
 		setActiveTab,
 		setSiemIp,
 		setSiemIpOp,
-		setSiemServis,
-		setSiemServisOp,
-		setSiemArama,
-		setSiemAramaAlani,
-		setSiemAramaOp,
+		setSiemService,
+		setSiemServiceOp,
+		setSiemSearch,
+		setSiemSearchField,
+		setSiemSearchOp,
 		handleQuickBan,
 		handleKillUserTerminals,
 		bans,
@@ -131,9 +131,9 @@ export function SocContextMenu() {
 						if (session) {
 							openInspector({ type: 'session', data: session });
 						} else {
-							setSiemArama(value);
-							setSiemAramaAlani('userId');
-							setSiemAramaOp('equals');
+							setSiemSearch(value);
+							setSiemSearchField('userId');
+							setSiemSearchOp('equals');
 							setActiveTab('siem');
 						}
 					},
@@ -151,9 +151,9 @@ export function SocContextMenu() {
 					label: t('ctxSocFilterUserSiem'),
 					icon: <FileSearch size={13} />,
 					action: () => {
-						setSiemArama(value);
-						setSiemAramaAlani('userId');
-						setSiemAramaOp('equals');
+						setSiemSearch(value);
+						setSiemSearchField('userId');
+						setSiemSearchOp('equals');
 						setActiveTab('siem');
 					},
 				}
@@ -180,8 +180,8 @@ export function SocContextMenu() {
 					label: t('ctxSocFilterServiceSiem'),
 					icon: <FileSearch size={13} />,
 					action: () => {
-						setSiemServis(value);
-						setSiemServisOp('eq');
+						setSiemService(value);
+						setSiemServiceOp('eq');
 						setActiveTab('siem');
 					},
 				},
@@ -211,13 +211,13 @@ export function SocContextMenu() {
 		canManage,
 		handleQuickBan,
 		sessions,
-		setSiemArama,
-		setSiemAramaAlani,
-		setSiemAramaOp,
+		setSiemSearch,
+		setSiemSearchField,
+		setSiemSearchOp,
 		openApp,
 		handleKillUserTerminals,
-		setSiemServis,
-		setSiemServisOp,
+		setSiemService,
+		setSiemServiceOp,
 	]);
 
 	if (!contextMenu) return null;

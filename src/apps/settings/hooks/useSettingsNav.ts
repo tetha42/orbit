@@ -15,10 +15,10 @@ export function useSettingsNav() {
 	const { t } = useI18n();
 
 	const [selectedTab, setActiveTab] = useState<SettingsTabId>('account');
-	const yonetici = canManageApp('settings');
+	const admin = canManageApp('settings');
 	const visibleSections = SETTINGS_SECTIONS.filter((sec) => {
 		if (sec.id === 'integrations' || sec.id === 'roles' || sec.id === 'privacy') return isAdmin;
-		return !sec.sistem || yonetici;
+		return !sec.system || admin;
 	});
 	const activeTab: SettingsTabId = visibleSections.some((sec) => sec.id === selectedTab) ? selectedTab : 'account';
 	const [resetMessage, setResetMessage] = useState<string | null>(null);
@@ -56,7 +56,7 @@ export function useSettingsNav() {
 		setActiveTab,
 		resetMessage,
 		handleReset,
-		yonetici,
+		admin,
 		isAdmin,
 	};
 }

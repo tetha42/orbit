@@ -5,7 +5,7 @@ import type { User, MemberRosterRow } from '@/db/schema';
 import { MEMBER_ROSTER_SQL } from '@/db/schema';
 import { logAuditEvent, type AuditContext } from '@/db/audit';
 import { notificationEvents, publishEvent, publishEventQuiet } from '@/db/events';
-import { temizIp, memberTargetName } from '@/lib/audit';
+import { cleanIp, memberTargetName } from '@/lib/audit';
 import { decryptSecret } from '@/lib/auth/secretBox';
 import { getUsersDiskUsage } from './files.repo';
 
@@ -17,53 +17,51 @@ export async function normalizeUserRow(
 	const skip = Boolean(options && typeof options === 'object' && 'skipTotpDecryption' in options && (options as { skipTotpDecryption?: boolean }).skipTotpDecryption);
 	const rawTotpSecret = (row.totpsecret ?? row.totpSecret ?? row.totp_secret) ? String(row.totpsecret ?? row.totpSecret ?? row.totp_secret) : null;
 	const totpSecret = skip ? null : (rawTotpSecret ? await decryptSecret(rawTotpSecret) : null);
-	const firstName = String(row.firstName ?? row.first_name ?? row.ad ?? '');
-	const lastName = String(row.lastName ?? row.last_name ?? row.soyad ?? '');
-	const handle = String(row.handle ?? row.ogrenciNo ?? row.ogrencino ?? '');
-	const department = String(row.department ?? row.bolum ?? '');
-	const grade = Number(row.grade ?? row.sinif ?? 1);
-	const avatarUrl = (row.avatarUrl ?? row.avatar_url ?? row.profilFoto ?? row.profilfoto) ? String(row.avatarUrl ?? row.avatar_url ?? row.profilFoto ?? row.profilfoto) : undefined;
-	const createdAt = Number(row.createdAt ?? row.created_at ?? row.olusturma ?? 0);
-	const lastLoginAt = row.lastLoginAt ? Number(row.lastLoginAt) : (row.last_login_at ? Number(row.last_login_at) : (row.sonGirisTarihi ? Number(row.sonGirisTarihi) : (row.songiristarihi ? Number(row.songiristarihi) : undefined)));
+	const firstName = String(row.firstName ?? row.first_name ?? row.name ?? '');
+	const lastName = String(row.lastName ?? row.last_name ?? row.surname ?? '');
+	const handle = String(row.handle ?? row.studentNo ?? row.studentNo ?? '');
+	const department = String(row.department ?? row.department ?? '');
+	const grade = Number(row.grade ?? row.grade ?? 1);
+	const avatarUrl = (row.avatarUrl ?? row.avatar_url ?? row.profilePhoto ?? row.profilePhoto) ? String(row.avatarUrl ?? row.avatar_url ?? row.profilePhoto ?? row.profilePhoto) : undefined;
+	const createdAt = Number(row.createdAt ?? row.created_at ?? row.creation ?? 0);
+	const lastLoginAt = row.lastLoginAt ? Number(row.lastLoginAt) : (row.last_login_at ? Number(row.last_login_at) : (row.lastLoginDate ? Number(row.lastLoginDate) : (row.lastLoginDate ? Number(row.lastLoginDate) : undefined)));
 	return {
 		id: String(row.id),
 		firstName,
 		lastName,
-		ad: firstName,
-		soyad: lastName,
+		name: firstName,
+		surname: lastName,
 		email: String(row.email ?? ''),
-		passwordHash: String(row.passwordHash ?? row.password_hash ?? row.sifrehash ?? ''),
+		passwordHash: String(row.passwordHash ?? row.password_hash ?? row.passwordHash ?? ''),
 		handle,
-		ogrenciNo: handle,
+		studentNo: handle,
 		department,
-		bolum: department,
 		grade,
-		sinif: grade,
-		roleId: (row.roleId ?? row.role_id ?? row.rolId ?? row.rolid ?? null) as string | null,
+		roleId: (row.roleId ?? row.role_id ?? row.roleId ?? row.roleId ?? null) as string | null,
 		avatarUrl,
-		profilFoto: avatarUrl,
+		profilePhoto: avatarUrl,
 		bio: (row.bio ?? '') ? String(row.bio) : undefined,
 		xp: Number(row.xp ?? 0),
-		status: ((row.status ?? row.durum) as User['status']) || 'aktif',
+		status: ((row.status ?? row.status) as User['status']) || 'aktif',
 		authMethod: (['password', 'totp', 'passkey'].includes(String(row.authMethod ?? ''))
 			? String(row.authMethod)
 			: 'password') as User['authMethod'],
-		aktifOturumToken: (row.sessionToken ?? row.session_token ?? row.aktifOturumToken ?? row.aktivoturumtoken) ? String(row.sessionToken ?? row.session_token ?? row.aktifOturumToken ?? row.aktivoturumtoken) : undefined,
+		activeSessionToken: (row.sessionToken ?? row.session_token ?? row.activeSessionToken ?? row.activeSessionToken) ? String(row.sessionToken ?? row.session_token ?? row.activeSessionToken ?? row.activeSessionToken) : undefined,
 		lastLoginAt,
-		sonGirisTarihi: lastLoginAt,
-		sonGirisIp: (row.lastLoginIp ?? row.last_login_ip ?? row.sonGirisIp ?? row.songirisip) ? String(row.lastLoginIp ?? row.last_login_ip ?? row.sonGirisIp ?? row.songirisip) : null,
-		sonGirisUserAgent: (row.lastLoginUserAgent ?? row.last_login_user_agent ?? row.sonGirisUserAgent ?? row.songirisuseragent) ? String(row.lastLoginUserAgent ?? row.last_login_user_agent ?? row.sonGirisUserAgent ?? row.songirisuseragent) : null,
-		sonAktifIp: (row.lastActiveIp ?? row.last_active_ip ?? row.sonAktifIp ?? row.sonaktifip) ? String(row.lastActiveIp ?? row.last_active_ip ?? row.sonAktifIp ?? row.sonaktifip) : null,
-		sonAktifTarihi: row.lastActiveAt ? Number(row.lastActiveAt) : (row.last_active_at ? Number(row.last_active_at) : (row.sonAktifTarihi ? Number(row.sonAktifTarihi) : (row.sonaktiftarihi ? Number(row.sonaktiftarihi) : null))),
-		oturumBitis: row.sessionExpiresAt ? Number(row.sessionExpiresAt) : (row.session_expires_at ? Number(row.session_expires_at) : (row.oturumBitis ? Number(row.oturumBitis) : (row.oturumbitis ? Number(row.oturumbitis) : null))),
+		lastLoginDate: lastLoginAt,
+		lastLoginIp: (row.lastLoginIp ?? row.last_login_ip ?? row.lastLoginIp ?? row.lastLoginIp) ? String(row.lastLoginIp ?? row.last_login_ip ?? row.lastLoginIp ?? row.lastLoginIp) : null,
+		lastLoginUserAgent: (row.lastLoginUserAgent ?? row.last_login_user_agent ?? row.lastLoginUserAgent ?? row.lastLoginUserAgent) ? String(row.lastLoginUserAgent ?? row.last_login_user_agent ?? row.lastLoginUserAgent ?? row.lastLoginUserAgent) : null,
+		lastActiveIp: (row.lastActiveIp ?? row.last_active_ip ?? row.lastActiveIp ?? row.lastActiveIp) ? String(row.lastActiveIp ?? row.last_active_ip ?? row.lastActiveIp ?? row.lastActiveIp) : null,
+		lastActiveDate: row.lastActiveAt ? Number(row.lastActiveAt) : (row.last_active_at ? Number(row.last_active_at) : (row.lastActiveDate ? Number(row.lastActiveDate) : (row.lastActiveDate ? Number(row.lastActiveDate) : null))),
+		sessionEnd: row.sessionExpiresAt ? Number(row.sessionExpiresAt) : (row.session_expires_at ? Number(row.session_expires_at) : (row.sessionEnd ? Number(row.sessionEnd) : (row.sessionEnd ? Number(row.sessionEnd) : null))),
 		preferredLanguage: (row.preferredLanguage ?? row.preferred_language ?? row.preferredlanguage ?? 'tr') === 'en' ? 'en' : 'tr',
 		totpSecret,
 		totpEnabled: Number(row.totpEnabled ?? row.totp_enabled ?? row.totpenabled ?? 0),
 		totpRecoveryCodes: (row.totpRecoveryCodes ?? row.totp_recovery_codes ?? row.totprecoverycodes) ? String(row.totpRecoveryCodes ?? row.totp_recovery_codes ?? row.totprecoverycodes) : null,
 		totpConfirmedAt: row.totpConfirmedAt ? Number(row.totpConfirmedAt) : (row.totp_confirmed_at ? Number(row.totp_confirmed_at) : (row.totpconfirmedat ? Number(row.totpconfirmedat) : null)),
-		totpSonAdim: row.totpLastStep ? Number(row.totpLastStep) : (row.totp_last_step ? Number(row.totp_last_step) : (row.totpSonAdim ? Number(row.totpSonAdim) : (row.totpsonadim ? Number(row.totpsonadim) : null))),
+		totpLastStep: row.totpLastStep ? Number(row.totpLastStep) : (row.totp_last_step ? Number(row.totp_last_step) : (row.totpLastStep ? Number(row.totpLastStep) : (row.totpLastStep ? Number(row.totpLastStep) : null))),
 		createdAt,
-		olusturma: createdAt,
+		creation: createdAt,
 	};
 }
 
@@ -81,7 +79,7 @@ export async function getUsers(): Promise<User[]> {
 	}
 }
 
-function parseRosterTeams(raw: unknown): MemberRosterRow['takimlar'] {
+function parseRosterTeams(raw: unknown): MemberRosterRow['teams'] {
 	let parsed: unknown = raw;
 	if (typeof raw === 'string' && raw.trim()) {
 		try {
@@ -92,10 +90,10 @@ function parseRosterTeams(raw: unknown): MemberRosterRow['takimlar'] {
 	}
 	if (!Array.isArray(parsed)) return [];
 	// Legacy/foreign rows may contain the same team twice (leader + member).
-	const byId = new Map<string, NonNullable<MemberRosterRow['takimlar']>[number]>();
+	const byId = new Map<string, NonNullable<MemberRosterRow['teams']>[number]>();
 	for (const item of parsed) {
 		if (!item || typeof item !== 'object' || !(item as { id?: unknown }).id) continue;
-		const team = item as NonNullable<MemberRosterRow['takimlar']>[number];
+		const team = item as NonNullable<MemberRosterRow['teams']>[number];
 		const id = String(team.id);
 		if (!byId.has(id)) byId.set(id, team);
 	}
@@ -117,49 +115,43 @@ export interface PaginatedMemberRoster {
 }
 
 function mapRosterRow(r: Record<string, unknown>): MemberRosterRow {
-	const email = String(r.email ?? r.eposta ?? '');
+	const email = String(r.email ?? r.email ?? '');
 	const roleId = (r.roleId ?? r.role_id ?? null) as string | null;
-	const status = ((r.status ?? r.durum) as User['status']) || 'aktif';
-	const firstName = String(r.firstName ?? r.first_name ?? r.ad ?? '');
-	const lastName = String(r.lastName ?? r.last_name ?? r.soyad ?? '');
-	const handle = String(r.handle ?? r.ogrenciNo ?? '');
-	const department = String(r.department ?? r.bolum ?? '');
-	const grade = Number(r.grade ?? r.sinif ?? 1);
-	const avatarUrl = (r.avatarUrl ?? r.avatar_url ?? r.profilFoto ?? undefined) as string | undefined;
-	const createdAt = Number(r.createdAt ?? r.created_at ?? r.olusturma ?? 0);
-	const roleName = (r.roleName ?? r.rolAd ?? null) as string | null;
-	const roleColor = (r.roleColor ?? r.rolRenk ?? null) as string | null;
+	const status = ((r.status ?? r.status) as User['status']) || 'aktif';
+	const firstName = String(r.firstName ?? r.first_name ?? r.name ?? '');
+	const lastName = String(r.lastName ?? r.last_name ?? r.surname ?? '');
+	const handle = String(r.handle ?? r.studentNo ?? '');
+	const department = String(r.department ?? r.department ?? '');
+	const grade = Number(r.grade ?? r.grade ?? 1);
+	const avatarUrl = (r.avatarUrl ?? r.avatar_url ?? r.profilePhoto ?? undefined) as string | undefined;
+	const createdAt = Number(r.createdAt ?? r.created_at ?? r.creation ?? 0);
+	const roleName = (r.roleName ?? r.roleName ?? null) as string | null;
+	const roleColor = (r.roleColor ?? r.roleColor ?? null) as string | null;
 	return {
 		id: String(r.id ?? ''),
 		firstName,
 		lastName,
-		ad: firstName,
-		soyad: lastName,
+		name: firstName,
+		surname: lastName,
 		email,
 		passwordHash: String(r.passwordHash ?? r.password_hash ?? ''),
 		handle,
-		ogrenciNo: handle,
+		studentNo: handle,
 		department,
-		bolum: department,
 		grade,
-		sinif: grade,
 		roleId,
-		rolId: roleId,
 		roleName,
-		rolAd: roleName,
 		roleColor,
-		rolRenk: roleColor,
 		avatarUrl,
-		profilFoto: avatarUrl,
+		profilePhoto: avatarUrl,
 		bio: (r.bio ?? undefined) as string | undefined,
 		xp: Number(r.xp ?? 0),
 		status,
-		durum: status,
 		createdAt,
-		olusturma: createdAt,
-		takimAdi: (r.takimAdi ?? undefined) as string | undefined,
-		takimlar: parseRosterTeams(r.takimlar),
-		yoklamaSayisi: Number(r.yoklamaSayisi ?? 0),
+		creation: createdAt,
+		teamName: (r.teamName ?? undefined) as string | undefined,
+		teams: parseRosterTeams(r.teams),
+		attendanceCount: Number(r.attendanceCount ?? 0),
 	};
 }
 
@@ -330,12 +322,12 @@ export async function getUserByEmail(email: string): Promise<User | null> {
 	}
 }
 
-export async function getUserByHandle(ogrenciNo: string): Promise<User | null> {
-	if (!ogrenciNo || !isDatabaseConfigured()) return null;
+export async function getUserByHandle(studentNo: string): Promise<User | null> {
+	if (!studentNo || !isDatabaseConfigured()) return null;
 	try {
 		await ensurePostgresInit();
 		const res = await getPgPool().query('SELECT * FROM users WHERE handle = $1', [
-			ogrenciNo.trim(),
+			studentNo.trim(),
 		]);
 		return await normalizeUserRow(res.rows[0]);
 	} catch (err) {
@@ -367,7 +359,7 @@ export async function getUserBySessionToken(token: string): Promise<User | null>
 			void getPgPool().query('UPDATE users SET session_token = $1 WHERE id = $2', [tokenHash, user.id]).catch(() => {});
 		}
 
-		const expiresAt = user.oturumBitis ? Number(user.oturumBitis) : null;
+		const expiresAt = user.sessionEnd ? Number(user.sessionEnd) : null;
 		if (expiresAt === null || expiresAt <= Date.now()) {
 			await updateUserSession(user.id, null);
 			return null;
@@ -390,13 +382,13 @@ export async function updateUserSession(
 	if (!isDatabaseConfigured()) return;
 	await ensurePostgresInit();
 	const now = Date.now();
-	const cleanIp = telemetry?.ip ? temizIp(telemetry.ip) : null;
+	const cleanedIp = telemetry?.ip ? cleanIp(telemetry.ip) : null;
 	const cleanUa = telemetry?.userAgent
 		? String(telemetry.userAgent).replace(/[\r\n\0]+/g, ' ').trim().slice(0, 240)
 		: null;
 	const storedToken = token ? hashSessionToken(token) : null;
 
-	if (token && (cleanIp || cleanUa)) {
+	if (token && (cleanedIp || cleanUa)) {
 		await getPgPool().query(
 			`UPDATE users
 			 SET session_token = $1,
@@ -408,7 +400,7 @@ export async function updateUserSession(
 			     last_active_at = $2,
 			     auth_method = $6
 			 WHERE id = $7`,
-			[storedToken, now, expiresAt, cleanIp, cleanUa, authMethod, userId]
+			[storedToken, now, expiresAt, cleanedIp, cleanUa, authMethod, userId]
 		);
 	} else {
 		await getPgPool().query(
@@ -422,53 +414,49 @@ export async function updateUserSession(
 export async function createUser(
 	data: {
 		firstName?: string;
-		ad?: string;
+		name?: string;
 		lastName?: string;
-		soyad?: string;
+		surname?: string;
 		email: string;
 		passwordHash: string;
 		handle?: string;
-		ogrenciNo?: string;
+		studentNo?: string;
 		department?: string;
-		bolum?: string;
 		grade?: number;
-		sinif?: number;
 		roleId?: string | null;
 		status?: 'aktif' | 'beklemede' | 'reddedildi' | 'mezun';
 		bio?: string;
 		preferredLanguage?: 'tr' | 'en';
 	},
-	denetim?: AuditContext
+	audit?: AuditContext
 ): Promise<User> {
 	await ensurePostgresInit();
 	const id = `usr_${randomUUID().replace(/-/g, '').slice(0, 16)}`;
-	const firstName = (data.firstName ?? data.ad ?? '').trim();
-	const lastName = (data.lastName ?? data.soyad ?? '').trim();
-	const handle = (data.handle ?? data.ogrenciNo ?? '').trim();
-	const department = (data.department ?? data.bolum ?? '').trim();
-	const grade = Number(data.grade ?? data.sinif) || 1;
+	const firstName = (data.firstName ?? data.name ?? '').trim();
+	const lastName = (data.lastName ?? data.surname ?? '').trim();
+	const handle = (data.handle ?? data.studentNo ?? '').trim();
+	const department = (data.department ?? data.department ?? '').trim();
+	const grade = Number(data.grade ?? data.grade) || 1;
 	const createdAt = Date.now();
 	const newUser: User = {
 		id,
 		firstName,
 		lastName,
-		ad: firstName,
-		soyad: lastName,
+		name: firstName,
+		surname: lastName,
 		email: data.email.trim().toLowerCase(),
 		passwordHash: data.passwordHash,
 		handle,
-		ogrenciNo: handle,
+		studentNo: handle,
 		department,
-		bolum: department,
 		grade,
-		sinif: grade,
 		roleId: data.roleId ?? null,
 		bio: data.bio || '',
 		xp: 50,
 		status: data.status || 'beklemede',
 		preferredLanguage: data.preferredLanguage === 'en' ? 'en' : 'tr',
 		createdAt,
-		olusturma: createdAt,
+		creation: createdAt,
 	};
 
 	await withTransaction(async (client) => {
@@ -493,10 +481,10 @@ export async function createUser(
 			]
 		);
 		if (newUser.status === 'beklemede') await publishEvent(client, notificationEvents());
-		if (denetim && newUser.roleId) {
+		if (audit && newUser.roleId) {
 			const role = await client.query('SELECT name FROM roles WHERE id = $1', [newUser.roleId]);
 			const roleNameVal = role.rows[0]?.name ?? null;
-			await logAuditEvent(client, denetim, {
+			await logAuditEvent(client, audit, {
 				action: 'member.role_grant',
 				targetType: 'member',
 				targetId: id,
@@ -551,26 +539,26 @@ export async function addUserXp(
 	await getPgPool().query('UPDATE users SET xp = COALESCE(xp, 0) + $1 WHERE id = $2', [amount, userId]);
 }
 
-export async function deleteUser(id: string, denetim: AuditContext): Promise<boolean> {
+export async function deleteUser(id: string, audit: AuditContext): Promise<boolean> {
 	return withTransaction(async (client) => {
 		const res = await client.query(
 			`DELETE FROM users u WHERE u.id = $1
-			 RETURNING u.first_name AS "firstName", u.first_name AS ad, u.last_name AS "lastName", u.last_name AS soyad, u.email AS email, u.status AS status, u.role_id AS "roleId", (SELECT r.name FROM roles r WHERE r.id = u.role_id) AS "roleName", (SELECT r.name FROM roles r WHERE r.id = u.role_id) AS "rolAd"`,
+			 RETURNING u.first_name AS "firstName", u.first_name AS name, u.last_name AS "lastName", u.last_name AS surname, u.email AS email, u.status AS status, u.role_id AS "roleId", (SELECT r.name FROM roles r WHERE r.id = u.role_id) AS "roleName", (SELECT r.name FROM roles r WHERE r.id = u.role_id) AS "roleName"`,
 			[id]
 		);
 		const u = res.rows[0];
 		if (!u) return false;
-		await logAuditEvent(client, denetim, {
+		await logAuditEvent(client, audit, {
 			action: 'member.delete',
 			targetType: 'member',
 			targetId: id,
 			targetName: memberTargetName(u),
 			before: {
-				ad: `${u.ad} ${u.soyad}`.trim(),
+				name: `${u.name} ${u.surname}`.trim(),
 				email: u.email,
 				status: u.status,
 				roleId: u.roleId ?? null,
-				roleName: u.rolAd ?? null,
+				roleName: u.roleName ?? null,
 			},
 			after: null,
 		});

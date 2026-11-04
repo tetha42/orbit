@@ -66,12 +66,12 @@ export function EventDetail({
 	const { t } = useI18n();
 	const dialog = useDialog();
 
-	const meta = typeMeta(e.tur);
+	const meta = typeMeta(e.typeValue);
 	const live = isLive(e, now);
 	const ended = e.endTime < now;
-	const full = e.kapasite > 0 && e.kayitliSayisi >= e.kapasite;
-	const canRegister = e.status === 'yayinda' && !ended && !e.benimKaydim;
-	const canCheckIn = e.status === 'yayinda' && Number(e.yoklamaAcik) === 1 && !e.benimYoklamam && !ended;
+	const full = e.capacity > 0 && e.registeredCount >= e.capacity;
+	const canRegister = e.status === 'yayinda' && !ended && !e.myMyRecord;
+	const canCheckIn = e.status === 'yayinda' && Number(e.attendanceOpen) === 1 && !e.myMyAttendance && !ended;
 
 	return (
 		<div style={{ '--type-color': meta.color } as React.CSSProperties} data-event-id={e.id}>
@@ -81,15 +81,15 @@ export function EventDetail({
 					{live && <span className={`${styles.badge} ${styles.b_live}`}>{t('evLive')}</span>}
 					{e.status === 'taslak' && <span className={`${styles.badge} ${styles.b_draft}`}>{t('evDraft')}</span>}
 					{e.status === 'iptal' && <span className={`${styles.badge} ${styles.b_cancelled}`}>{t('evCancelled')}</span>}
-					{e.benimYoklamam ? (
+					{e.myMyAttendance ? (
 						<span className={`${styles.badge} ${styles.b_attended}`}>
 							<CheckCircle2 size={10} /> {t('evAttended')}
 						</span>
 					) : (
-						e.benimKaydim && <span className={`${styles.badge} ${styles.b_registered}`}>{t('evRegistered')}</span>
+						e.myMyRecord && <span className={`${styles.badge} ${styles.b_registered}`}>{t('evRegistered')}</span>
 					)}
 				</div>
-				<h2 className={styles.heroTitle}>{e.baslik}</h2>
+				<h2 className={styles.heroTitle}>{e.title}</h2>
 			</header>
 			<div className={styles.content}>
 				<div className={styles.facts}>
@@ -99,7 +99,7 @@ export function EventDetail({
 						</span>
 						<div>
 							<div className={styles.factLabel}>{t('evWhen')}</div>
-							<div className={styles.factValue}>{formatRange(e.baslangic, e.endTime, locale)}</div>
+							<div className={styles.factValue}>{formatRange(e.start, e.endTime, locale)}</div>
 						</div>
 					</div>
 					<div className={styles.fact}>
@@ -108,7 +108,7 @@ export function EventDetail({
 						</span>
 						<div>
 							<div className={styles.factLabel}>{t('evWhere')}</div>
-							<div className={styles.factValue}>{e.konum}</div>
+							<div className={styles.factValue}>{e.location}</div>
 						</div>
 					</div>
 					<div className={styles.fact}>
@@ -118,31 +118,31 @@ export function EventDetail({
 						<div style={{ flex: 1 }}>
 							<div className={styles.factLabel}>{t('evCapacity')}</div>
 							<div className={styles.factValue}>
-								{e.kapasite > 0 ? `${e.kayitliSayisi} / ${e.kapasite}` : `${e.kayitliSayisi} · ${t('evUnlimited')}`}
+								{e.capacity > 0 ? `${e.registeredCount} / ${e.capacity}` : `${e.registeredCount} · ${t('evUnlimited')}`}
 							</div>
-							{e.kapasite > 0 && (
+							{e.capacity > 0 && (
 								<div className={styles.meter}>
-									<span style={{ width: `${Math.min(100, (e.kayitliSayisi / e.kapasite) * 100)}%` }} />
+									<span style={{ width: `${Math.min(100, (e.registeredCount / e.capacity) * 100)}%` }} />
 								</div>
 							)}
 							<div className={styles.factLabel} style={{ marginTop: 4 }}>
 								{ended || live
-									? fill(t('evAttendedCount'), { n: e.katilimciSayisi })
+									? fill(t('evAttendedCount'), { n: e.participantCount })
 									: full
 									? t('evFull')
-									: e.kapasite > 0
-									? fill(t('evSeatsLeft'), { n: e.kapasite - e.kayitliSayisi })
+									: e.capacity > 0
+									? fill(t('evSeatsLeft'), { n: e.capacity - e.registeredCount })
 									: ''}
 							</div>
 						</div>
 					</div>
 				</div>
 
-				{e.benimYoklamam && (
+				{e.myMyAttendance && (
 					<div className={styles.attendedBanner}>
 						<CheckCircle2 size={18} />
 						{fill(t('evAttendedAt'), {
-							when: new Date(e.benimYoklamam.katilimZamani).toLocaleString(locale, {
+							when: new Date(e.myMyAttendance.participationTime).toLocaleString(locale, {
 								hour: '2-digit',
 								minute: '2-digit',
 								day: 'numeric',
@@ -163,7 +163,7 @@ export function EventDetail({
 							<Plus size={16} /> {full ? t('evFull') : t('evRegister')}
 						</button>
 					)}
-					{e.benimKaydim && e.biletKodu && (
+					{e.myMyRecord && e.ticketCode && (
 						<button type="button" className={`${ui.btn} ${styles.bigBtn}`} onClick={() => onOpenTicket(e)}>
 							<Ticket size={16} /> {t('evMyTicket')}
 						</button>
@@ -178,27 +178,27 @@ export function EventDetail({
 							<QrCode size={16} /> {t('evCheckIn')}
 						</button>
 					)}
-					{e.benimKaydim && e.baslangic > now && e.status === 'yayinda' && (
+					{e.myMyRecord && e.start > now && e.status === 'yayinda' && (
 						<button type="button" className={`${ui.btn} ${styles.bigBtn}`} disabled={busy} onClick={() => onUnregister(e)}>
 							<X size={15} /> {t('evCancelRegistration')}
 						</button>
 					)}
-					{e.benimKaydim && e.baslangic <= now && !ended && e.status === 'yayinda' && (
+					{e.myMyRecord && e.start <= now && !ended && e.status === 'yayinda' && (
 						<span className={ui.muted} style={{ fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
 							<Info size={14} /> {t('evRegistrationLockedStarted')}
 						</span>
 					)}
-					{!canRegister && !e.benimKaydim && !ended && e.status !== 'taslak' && (
+					{!canRegister && !e.myMyRecord && !ended && e.status !== 'taslak' && (
 						<span className={ui.muted}>{t('evRegisterClosed')}</span>
 					)}
 				</div>
 				{canCheckIn && <div className={ui.hint}>{t('evCheckInHint')}</div>}
 
-				{e.aciklama && (
+				{e.description && (
 					<section>
 						<h3 className={ui.sectionTitle}>{t('evAbout')}</h3>
 						<div className={ui.descView}>
-							<Linkified text={e.aciklama} />
+							<Linkified text={e.description} />
 						</div>
 					</section>
 				)}
@@ -215,7 +215,7 @@ export function EventDetail({
 									className={ui.primaryBtn}
 									style={{ height: 30 }}
 									onClick={() =>
-										onAct({ action: 'updateEvent', etkinlikId: e.id, status: 'yayinda' }).then(
+										onAct({ action: 'updateEvent', eventId: e.id, status: 'yayinda' }).then(
 											(ok) => ok && setTab(tabOf({ ...e, status: 'yayinda' }))
 										)
 									}
@@ -228,8 +228,8 @@ export function EventDetail({
 									type="button"
 									className={ui.btn}
 									onClick={async () => {
-										if (await dialog.confirm({ message: fill(t('evCancelEventConfirm'), { title: e.baslik }), tone: 'danger' })) {
-											await onAct({ action: 'updateEvent', etkinlikId: e.id, status: 'iptal' });
+										if (await dialog.confirm({ message: fill(t('evCancelEventConfirm'), { title: e.title }), tone: 'danger' })) {
+											await onAct({ action: 'updateEvent', eventId: e.id, status: 'iptal' });
 										}
 									}}
 								>
@@ -237,18 +237,18 @@ export function EventDetail({
 								</button>
 							)}
 							{e.status === 'iptal' && (
-								<button type="button" className={ui.btn} onClick={() => onAct({ action: 'updateEvent', etkinlikId: e.id, status: 'yayinda' })}>
+								<button type="button" className={ui.btn} onClick={() => onAct({ action: 'updateEvent', eventId: e.id, status: 'yayinda' })}>
 									<Send size={14} /> {t('evRestore')}
 								</button>
 							)}
-							{e.katilimciSayisi === 0 && (
+							{e.participantCount === 0 && (
 								<button
 									type="button"
 									className={`${ui.btn} ${ui.btnDanger}`}
 									style={{ marginLeft: 'auto' }}
 									onClick={async () => {
-										if (await dialog.confirm({ message: fill(t('evDeleteConfirm'), { title: e.baslik }), tone: 'danger' })) {
-											if (await onAct({ action: 'deleteEvent', etkinlikId: e.id })) onDeleted();
+										if (await dialog.confirm({ message: fill(t('evDeleteConfirm'), { title: e.title }), tone: 'danger' })) {
+											if (await onAct({ action: 'deleteEvent', eventId: e.id })) onDeleted();
 										}
 									}}
 								>

@@ -19,19 +19,19 @@ interface NewsFormModalProps {
 	isSubmitting: boolean;
 	newVisibility: NewsVisibility;
 	newCategory: string;
-	newOnemliMi: boolean;
+	newImportantMi: boolean;
 	newTitle: string;
 	newSummary: string;
-	newResimUrl: string;
+	newImageUrl: string;
 	newContent: string;
 	onClose: () => void;
 	onSubmit: (e: React.FormEvent) => void;
 	onChangeVisibility: (v: NewsVisibility) => void;
 	onChangeCategory: (c: string) => void;
-	onChangeOnemliMi: (val: boolean) => void;
+	onChangeImportantMi: (val: boolean) => void;
 	onChangeTitle: (val: string) => void;
 	onChangeSummary: (val: string) => void;
-	onChangeResimUrl: (val: string) => void;
+	onChangeImageUrl: (val: string) => void;
 	onChangeContent: (val: string) => void;
 }
 
@@ -41,19 +41,19 @@ export function NewsFormModal({
 	isSubmitting,
 	newVisibility,
 	newCategory,
-	newOnemliMi,
+	newImportantMi,
 	newTitle,
 	newSummary,
-	newResimUrl,
+	newImageUrl,
 	newContent,
 	onClose,
 	onSubmit,
 	onChangeVisibility,
 	onChangeCategory,
-	onChangeOnemliMi,
+	onChangeImportantMi,
 	onChangeTitle,
 	onChangeSummary,
-	onChangeResimUrl,
+	onChangeImageUrl,
 	onChangeContent,
 }: NewsFormModalProps) {
 	const { t } = useI18n();
@@ -252,13 +252,13 @@ export function NewsFormModal({
 								fontSize: '12.5px',
 								fontWeight: 600,
 								cursor: 'pointer',
-								color: newOnemliMi ? '#ff375f' : 'inherit',
+								color: newImportantMi ? '#ff375f' : 'inherit',
 							}}
 						>
 							<input
 								type="checkbox"
-								checked={newOnemliMi}
-								onChange={(e) => onChangeOnemliMi(e.target.checked)}
+								checked={newImportantMi}
+								onChange={(e) => onChangeImportantMi(e.target.checked)}
 								style={{ width: '16px', height: '16px' }}
 							/>
 							<span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
@@ -285,7 +285,7 @@ export function NewsFormModal({
 						placeholder={t('newsTitlePh')}
 						value={newTitle}
 						onChange={(e) => onChangeTitle(e.target.value)}
-						maxLength={NEWS_LIMITS.baslik}
+						maxLength={NEWS_LIMITS.title}
 						required
 						style={{
 							width: '100%',
@@ -316,7 +316,7 @@ export function NewsFormModal({
 						placeholder="..."
 						value={newSummary}
 						onChange={(e) => onChangeSummary(e.target.value)}
-						maxLength={NEWS_LIMITS.ozet}
+						maxLength={NEWS_LIMITS.summary}
 						style={{
 							width: '100%',
 							padding: '9px 12px',
@@ -349,19 +349,19 @@ export function NewsFormModal({
 							<button
 								key={preset.url}
 								type="button"
-								onClick={() => onChangeResimUrl(preset.url)}
+								onClick={() => onChangeImageUrl(preset.url)}
 								style={{
 									padding: '4px 10px',
 									borderRadius: '6px',
 									border:
-										newResimUrl === preset.url
+										newImageUrl === preset.url
 											? '1px solid #0a84ff'
 											: '1px solid rgba(255, 255, 255, 0.1)',
 									background:
-										newResimUrl === preset.url
+										newImageUrl === preset.url
 											? 'rgba(10, 132, 255, 0.2)'
 											: 'rgba(255, 255, 255, 0.05)',
-									color: newResimUrl === preset.url ? '#0a84ff' : 'inherit',
+									color: newImageUrl === preset.url ? '#0a84ff' : 'inherit',
 									fontSize: '11px',
 									cursor: 'pointer',
 								}}
@@ -374,8 +374,8 @@ export function NewsFormModal({
 					<input
 						type="text"
 						placeholder={t('newsIconUrlPh')}
-						value={newResimUrl}
-						onChange={(e) => onChangeResimUrl(e.target.value)}
+						value={newImageUrl}
+						onChange={(e) => onChangeImageUrl(e.target.value)}
 						style={{
 							width: '100%',
 							padding: '8px 12px',
@@ -405,7 +405,7 @@ export function NewsFormModal({
 						placeholder="..."
 						value={newContent}
 						onChange={(e) => onChangeContent(e.target.value)}
-						maxLength={NEWS_LIMITS.icerik}
+						maxLength={NEWS_LIMITS.content}
 						required
 						style={{
 							width: '100%',

@@ -26,13 +26,13 @@ export const SYSTEM_SETTINGS_DEFAULTS: Record<string, string> = {
 	signatory_2_name: process.env.CLUB_ADVISOR_NAME || '',
 	signatory_2_title: process.env.CLUB_ADVISOR_TITLE || 'Studio Coordinator',
 	// Fallback mappings for legacy callers
-	kulup_adi: process.env.CLUB_NAME || process.env.COMMUNITY_NAME || 'Orbit Community',
-	kulup_domain: process.env.CLUB_DOMAIN || process.env.COMMUNITY_DOMAIN || 'orbit.local',
-	universite: process.env.CLUB_UNIVERSITY || process.env.COMMUNITY_PARENT || 'tetha42',
-	imza1_ad: process.env.CLUB_PRESIDENT_NAME || '',
-	imza1_unvan: process.env.CLUB_PRESIDENT_TITLE || 'Community Leader',
-	imza2_ad: process.env.CLUB_ADVISOR_NAME || '',
-	imza2_unvan: process.env.CLUB_ADVISOR_TITLE || 'Studio Coordinator',
+	club_Name: process.env.CLUB_NAME || process.env.COMMUNITY_NAME || 'Orbit Community',
+	club_domain: process.env.CLUB_DOMAIN || process.env.COMMUNITY_DOMAIN || 'orbit.local',
+	university: process.env.CLUB_UNIVERSITY || process.env.COMMUNITY_PARENT || 'tetha42',
+	signature1_Name: process.env.CLUB_PRESIDENT_NAME || '',
+	signature1_Rank: process.env.CLUB_PRESIDENT_TITLE || 'Community Leader',
+	signature2_Name: process.env.CLUB_ADVISOR_NAME || '',
+	signature2_Rank: process.env.CLUB_ADVISOR_TITLE || 'Studio Coordinator',
 };
 
 /**
@@ -44,37 +44,37 @@ export const MEMBER_ROSTER_SQL = `
 	SELECT
 		k.id,
 		k.first_name AS "firstName",
-		k.first_name AS "ad",
+		k.first_name AS "name",
 		k.last_name AS "lastName",
-		k.last_name AS "soyad",
+		k.last_name AS "surname",
 		k.email AS "email",
 		k.handle AS "handle",
-		k.handle AS "ogrenciNo",
+		k.handle AS "studentNo",
 		k.department AS "department",
-		k.department AS "bolum",
+		k.department AS "department",
 		k.grade AS "grade",
-		k.grade AS "sinif",
+		k.grade AS "grade",
 		k.role_id AS "roleId",
-		k.role_id AS "rolId",
+		k.role_id AS "roleId",
 		r.name AS "roleName",
-		r.name AS "rolAd",
+		r.name AS "roleName",
 		r.color AS "roleColor",
-		r.color AS "rolRenk",
+		r.color AS "roleColor",
 		k.avatar_url AS "avatarUrl",
-		k.avatar_url AS "profilFoto",
+		k.avatar_url AS "profilePhoto",
 		k.bio,
 		k.xp,
 		k.status AS "status",
-		k.status AS "durum",
+		k.status AS "status",
 		k.custom_fields AS "customFields",
 		k.created_at AS "createdAt",
-		k.created_at AS "olusturma",
+		k.created_at AS "creation",
 		(
 			SELECT STRING_AGG(DISTINCT t.name, ', ' ORDER BY t.name)
 			FROM teams t
 			LEFT JOIN team_members tu ON tu.team_id = t.id AND (tu.status = 'aktif' OR tu.status = 'active' OR tu.status IS NULL)
 			WHERE tu.user_id = k.id OR t.lead_id = k.id
-		) AS "takimAdi",
+		) AS "teamName",
 		(
 			SELECT STRING_AGG(DISTINCT t.name, ', ' ORDER BY t.name)
 			FROM teams t
@@ -88,11 +88,11 @@ export const MEMBER_ROSTER_SQL = `
 				JSON_AGG(
 					JSONB_BUILD_OBJECT(
 						'id', x.id,
-						'ad', x.name,
 						'name', x.name,
-						'kategori', x.category,
+						'name', x.name,
 						'category', x.category,
-						'liderMi', (x.lead_id = k.id),
+						'category', x.category,
+						'leaderMi', (x.lead_id = k.id),
 						'isLeader', (x.lead_id = k.id),
 						'role', x.role
 					)
@@ -110,7 +110,7 @@ export const MEMBER_ROSTER_SQL = `
 				WHERE tu.user_id = k.id OR t.lead_id = k.id
 				ORDER BY t.id, (t.lead_id = k.id) DESC, tu.joined_at ASC NULLS LAST
 			) x
-		) AS "takimlar",
+		) AS "teams",
 		(
 			SELECT COALESCE(
 				JSON_AGG(
@@ -140,7 +140,7 @@ export const MEMBER_ROSTER_SQL = `
 			SELECT COUNT(*)::int
 			FROM event_participants ep
 			WHERE ep.user_id = k.id AND (ep.status = 'attended' OR ep.status = 'katildi')
-		) AS "yoklamaSayisi",
+		) AS "attendanceCount",
 		(
 			SELECT COUNT(*)::int
 			FROM event_participants ep
@@ -159,15 +159,10 @@ export interface MemberRosterRow extends User {
 	/** Community-defined extra fields, with password values masked. */
 	customFields?: Record<string, string>;
 	roleName?: string | null;
-	rolAd?: string | null;
 	roleColor?: string | null;
-	rolRenk?: string | null;
 	teamName?: string | null;
-	takimAdi?: string | null;
 	teams?: Array<{ id: string; name: string; category?: string; isLeader?: boolean; role?: string }> | null;
-	takimlar?: Array<{ id: string; ad: string; kategori?: string; liderMi?: boolean; role?: string }> | null;
 	attendanceCount?: number;
-	yoklamaSayisi?: number;
 	diskUsageBytes?: number;
 	fileCount?: number;
 }
@@ -176,43 +171,36 @@ export interface User {
 	id: string;
 	firstName: string;
 	lastName: string;
-	ad?: string;
-	soyad?: string;
+	name?: string;
+	surname?: string;
 	email: string;
 	passwordHash: string;
 	handle: string;
-	ogrenciNo?: string;
+	studentNo?: string;
 	department: string;
-	bolum?: string;
 	grade: number;
-	sinif?: number;
 	/** Role from the `roles` table; null = no role yet (personal settings only). */
 	roleId?: string | null;
-	rolId?: string | null;
 	avatarUrl?: string;
-	profilFoto?: string;
+	profilePhoto?: string;
 	bio?: string;
 	xp: number;
 	status: 'active' | 'pending' | 'suspended' | 'alumni' | 'rejected' | 'aktif' | 'beklemede' | 'reddedildi' | 'mezun';
-	durum?: 'active' | 'pending' | 'suspended' | 'alumni' | 'rejected' | 'aktif' | 'beklemede' | 'reddedildi' | 'mezun';
 	createdAt?: number;
-	olusturma?: number;
+	creation?: number;
 	preferredLanguage?: 'tr' | 'en';
 	archetype?: string;
 	/** How the current session authenticated: password only, password+TOTP, or a passkey. */
 	authMethod?: 'password' | 'totp' | 'passkey';
 	sessionToken?: string;
-	aktifOturumToken?: string;
+	activeSessionToken?: string;
 	lastLoginAt?: number;
-	sonGirisTarihi?: number;
+	lastLoginDate?: number;
 	lastLoginIp?: string | null;
-	sonGirisIp?: string | null;
 	lastLoginUserAgent?: string | null;
-	sonGirisUserAgent?: string | null;
 	lastActiveIp?: string | null;
-	sonAktifIp?: string | null;
 	lastActiveAt?: number | null;
-	sonAktifTarihi?: number | null;
+	lastActiveDate?: number | null;
 	/** Base32 TOTP secret. Only trusted once `totpEnabled` is 1 — before that it is a pending setup. */
 	totpSecret?: string | null;
 	/** 1 when the member has confirmed a code from their authenticator app. */
@@ -221,44 +209,43 @@ export interface User {
 	totpRecoveryCodes?: string | null;
 	totpConfirmedAt?: number | null;
 	totpLastStep?: number | null;
-	totpSonAdim?: number | null;
 	sessionExpiresAt?: number | null;
-	oturumBitis?: number | null;
+	sessionEnd?: number | null;
 }
 
 export interface Team {
 	id: string;
-	ad: string;
+	name: string;
 	slug: string;
-	aciklama: string;
+	description: string;
 	/** One of TAKIM_KATEGORILERI; older rows may hold a free-form value. */
-	kategori: string;
+	category: string;
 	leadId: string;
-	liderAdSoyad?: string;
-	kontenjan: number;
-	aktifUyeSayisi?: number;
+	leaderNameSurname?: string;
+	capacity: number;
+	activeMemberCount?: number;
 	repoUrl?: string;
 	status: 'aktif' | 'tamamlandi' | 'askida';
 	/** `acik`: join at once; `onayli`: apply, and the captain decides. */
-	katilimTuru?: 'acik' | 'onayli';
+	participationType?: 'acik' | 'onayli';
 	/** `working_group` (default) or the decision body `committee`. */
 	type?: 'working_group' | 'committee';
 	/** Quorum for a committee, 0 when unspecified. */
 	quorum?: number;
-	olusturma: number;
+	creation: number;
 }
 
 export interface TeamMember {
 	id: string;
 	teamId: string;
 	userId: string;
-	kullaniciAdSoyad?: string;
-	kullaniciBolum?: string;
-	takimRolu: string;
+	userNameSurname?: string;
+	userDepartment?: string;
+	teamRole: string;
 	status: 'aktif' | 'basvurdu';
 	/** What the applicant wrote with an application. */
-	basvuruNotu?: string | null;
-	katilimTarihi: number;
+	applicationNote?: string | null;
+	participationDate: number;
 	/** Committee members only. */
 	votingRight?: number;
 	termStart?: number | null;
@@ -271,47 +258,47 @@ export type { TaskStatus, TaskPriority } from '@/lib/kanban';
 export interface TeamTask {
 	id: string;
 	teamId: string;
-	baslik: string;
-	aciklama?: string;
+	title: string;
+	description?: string;
 	status: TaskStatus;
-	oncelik: TaskPriority;
-	atananUyeId?: string;
-	atananAdSoyad?: string;
-	teslimTarihi?: number;
+	priority: TaskPriority;
+	assigneeMemberId?: string;
+	assigneeNameSurname?: string;
+	dueDate?: number;
 	/** Position within its column; smaller sorts higher. */
-	sira?: number;
+	order?: number;
 	/** Free-form labels ("frontend", "donanım"); stored as a JSON array. */
-	etiketler?: string[];
-	olusturanId?: string | null;
-	olusturanAdSoyad?: string | null;
-	guncellenme?: number;
+	tags?: string[];
+	creatorId?: string | null;
+	creatorNameSurname?: string | null;
+	update?: number;
 	/** When it last reached `tamamlandi`; null while it is open. */
-	tamamlanma?: number | null;
+	completion?: number | null;
 	/** Checklist progress and discussion size, for the card face. */
-	maddeSayisi?: number;
-	tamamMaddeSayisi?: number;
-	yorumSayisi?: number;
-	olusturma: number;
+	itemCount?: number;
+	doneItemCount?: number;
+	commentCount?: number;
+	creation: number;
 }
 
 /** One checklist line of a task. */
 export interface TeamTaskItem {
 	id: string;
-	gorevId: string;
-	metin: string;
-	tamamMi: number;
-	sira: number;
-	olusturma: number;
+	taskId: string;
+	text: string;
+	doneMi: number;
+	order: number;
+	creation: number;
 }
 
 /** A comment in a task's discussion. */
 export interface TeamTaskComment {
 	id: string;
-	gorevId: string;
+	taskId: string;
 	userId: string | null;
-	kullaniciAdSoyad?: string | null;
-	icerik: string;
-	olusturma: number;
+	userNameSurname?: string | null;
+	content: string;
+	creation: number;
 }
 
 /**
@@ -329,121 +316,121 @@ export type TaskActivityType =
 
 export interface TeamTaskActivity {
 	id: string;
-	gorevId: string;
-	aktorId: string | null;
-	aktorAdSoyad?: string | null;
-	tur: TaskActivityType;
-	detay: Record<string, string | number | null> | null;
-	olusturma: number;
+	taskId: string;
+	actorId: string | null;
+	actorNameSurname?: string | null;
+	typeValue: TaskActivityType;
+	detail: Record<string, string | number | null> | null;
+	creation: number;
 }
 
 /** Everything the task detail sheet shows. */
 export interface TeamTaskDetail {
 	task: TeamTask;
-	maddeler: TeamTaskItem[];
-	yorumlar: TeamTaskComment[];
-	aktivite: TeamTaskActivity[];
+	items: TeamTaskItem[];
+	comments: TeamTaskComment[];
+	activity: TeamTaskActivity[];
 }
 
 /** An open task assigned to a member, with the project it belongs to. */
 export interface UpcomingTask {
 	id: string;
 	teamId: string;
-	takimAdi: string;
-	baslik: string;
-	oncelik: TeamTask['oncelik'];
-	teslimTarihi: number;
+	teamName: string;
+	title: string;
+	priority: TeamTask['priority'];
+	dueDate: number;
 }
 
 /** An inventory item on loan to a member, with the date it is due back. */
-export interface YaklasanIade {
+export interface UpcomingReturn {
 	id: string;
-	kod: string;
-	ad: string;
-	iadeTarihi: number;
+	code: string;
+	name: string;
+	returnDate: number;
 }
 
 export interface CommunityEvent {
 	id: string;
 	slug: string;
-	baslik: string;
-	tur: 'atolye' | 'seminer' | 'yarisma' | 'toplanti';
-	aciklama: string;
-	konum: string;
-	baslangic: number;
+	title: string;
+	typeValue: 'atolye' | 'seminer' | 'yarisma' | 'toplanti';
+	description: string;
+	location: string;
+	start: number;
 	endTime: number;
-	kapasite: number;
-	kayitliSayisi?: number;
+	capacity: number;
+	registeredCount?: number;
 	status: 'taslak' | 'yayinda' | 'tamamlandi' | 'iptal';
-	olusturanId: string;
+	creatorId: string;
 	ownerTeamId?: string | null;
 	ownerUserId?: string | null;
 	createdBy?: string | null;
-	ownerTeamAd?: string | null;
-	ownerUserAdSoyad?: string | null;
-	olusturma: number;
+	ownerTeamName?: string | null;
+	ownerUserNameSurname?: string | null;
+	creation: number;
 }
 
 export interface Attendance {
 	id: string;
-	etkinlikId: string;
+	eventId: string;
 	userId: string;
-	yontem: 'qr' | 'manuel';
-	katilimZamani: number;
+	method: 'qr' | 'manuel';
+	participationTime: number;
 }
 
 export interface BudgetRecord {
 	id: string;
 	date: number;
-	tur: 'gelir' | 'gider';
-	kategori: BudgetRecordCategory;
+	typeValue: 'gelir' | 'gider';
+	category: BudgetRecordCategory;
 	amountMinor: number; // Kuruş cinsinden (150000 = 1.500,00 TL)
-	aciklama: string;
-	fisFotoUrl?: string;
-	kaydedenId: string;
-	kaydedenAdSoyad?: string;
+	description: string;
+	receiptPhotoUrl?: string;
+	recorderId: string;
+	recorderNameSurname?: string;
 	/** The project (takım) whose kasa this row belongs to; null/absent = the general kasa. */
 	teamId?: string | null;
-	olusturma: number;
+	creation: number;
 	/** Shared by the two rows of an allocation between kasas; they are deleted together. */
-	aktarimId?: string | null;
+	transferId?: string | null;
 	/** The other kasa of an allocation (`null` = general kasa), filled in on read. */
-	karsiKasaAd?: string | null;
+	counterpartVaultName?: string | null;
 	/** Last correction of the description, category, date or receipt. */
-	guncelleyenId?: string | null;
-	guncelleyenAdSoyad?: string | null;
-	guncellenme?: number | null;
+	updaterId?: string | null;
+	updaterNameSurname?: string | null;
+	update?: number | null;
 }
 
 /** Ownership record for an uploaded receipt; the bytes live under UPLOAD_DIR. */
 export interface StoredFile {
-	ad: string;
-	yukleyenId: string | null;
+	name: string;
+	uploaderId: string | null;
 	mime: string;
-	boyut: number;
+	size: number;
 	/** 1 for files every signed-in member may read (profile photos). */
-	herkeseAcik?: number;
+	everyoneOpen?: number;
 	/** Set for chat attachments; read access follows the room. */
 	chatRoomId?: string | null;
-	olusturma: number;
+	creation: number;
 }
 
 export interface Decision {
 	id: string;
-	kararNo: number; // Örn: 2026001
-	belgeTuru?: string; // 'karar' | 'salon_tahsisi' | 'etkinlik_izni' | 'malzeme_talep' | 'ust_yazi'
-	baslik: string;
+	decisionNo: number; // Örn: 2026001
+	documentType?: string; // 'karar' | 'salon_tahsisi' | 'etkinlik_izni' | 'malzeme_talep' | 'ust_yazi'
+	title: string;
 	date: number;
-	gundem: string;
-	icerik: string; // Markdown destekli karar metni
-	kamuyaAcikMi: number; // 1: Üyeler görebilir, 0: Sadece YK
-	kilitliMi: number;
-	olusturanId: string;
-	olusturanAdSoyad?: string;
-	olusturma: number;
+	agenda: string;
+	content: string; // Markdown destekli karar metni
+	publicOpenMi: number; // 1: Üyeler görebilir, 0: Sadece YK
+	lockedMi: number;
+	creatorId: string;
+	creatorNameSurname?: string;
+	creation: number;
 	/** Committee that issued the decision, if any. */
 	bodyId?: string | null;
-	bodyAd?: string | null;
+	bodyName?: string | null;
 	decisionType?: string;
 	quorumMet?: number;
 	votesFor?: number;
@@ -456,80 +443,80 @@ export interface NewsItem {
 	id: string;
 	/** Stable, human-readable address of the article in the public API: `/news?s=<slug>`. */
 	slug: string;
-	baslik: string;
-	ozet: string;
-	icerik: string;
-	kategori: string;
-	onemliMi: number;
-	resimUrl?: string;
+	title: string;
+	summary: string;
+	content: string;
+	category: string;
+	importantMi: number;
+	imageUrl?: string;
 	/** Who can read it: `taslak` (management), `uyeler` (signed-in members), `yayinda` (everyone). */
 	publishStatus: NewsVisibility;
 	/** When it first became visible beyond management; null while it is still a draft. */
-	yayinTarihi: number | null;
-	yazarId?: string;
-	yazarAdSoyad?: string;
-	olusturma: number;
-	guncellenme: number;
+	publishDate: number | null;
+	authorId?: string;
+	authorNameSurname?: string;
+	creation: number;
+	update: number;
 }
 
 export interface Certificate {
 	id: string;
 	verificationCode: string; // Örn: "BEU-2026-NXT-9042"
 	userId: string;
-	kullaniciAdSoyad?: string;
-	etkinlikId?: string;
-	baslik: string;
-	kategori?: string | null;
-	dil?: string | null;
-	aciklama?: string | null;
-	verilisTarihi: number;
+	userNameSurname?: string;
+	eventId?: string;
+	title: string;
+	category?: string | null;
+	language?: string | null;
+	description?: string | null;
+	issuanceDate: number;
 	pdfUrl?: string;
-	olusturma: number;
+	creation: number;
 }
 
 export interface InventoryItem {
 	id: string;
-	kod: string; // Örn: "LAB-RPI-004"
-	ad: string;
-	kategori: 'Gömülü Sistem' | 'Sensör' | 'Geliştirme Kartı' | 'Test Ekipmanı' | string;
+	code: string; // Örn: "LAB-RPI-004"
+	name: string;
+	category: 'Gömülü Sistem' | 'Sensör' | 'Geliştirme Kartı' | 'Test Ekipmanı' | string;
 	/** Canonical status vocabulary — see src/types/inventory.ts. */
 	status: InventoryStatus;
-	konum: string;
-	oduncAlanId?: string;
-	oduncAlanAdSoyad?: string;
-	iadeTarihi?: number;
+	location: string;
+	loanFieldId?: string;
+	loanFieldNameSurname?: string;
+	returnDate?: number;
 	/** When the current loan started; extensions are limited from here. */
-	oduncTarihi?: number | null;
-	aciklama?: string | null;
-	seriNo?: string | null;
+	loanDate?: number | null;
+	description?: string | null;
+	seriesNo?: string | null;
 }
 
 export interface UserNote {
 	id: string;
 	userId: string;
-	baslik: string;
-	icerik: string;
-	renk?: string;
-	sabitliMi?: boolean;
-	klasorId?: string;
-	copteMi?: boolean;
-	guncellenme: number;
-	olusturma: number;
+	title: string;
+	content: string;
+	color?: string;
+	pinnedMi?: boolean;
+	folderId?: string;
+	trashedMi?: boolean;
+	update: number;
+	creation: number;
 }
 
 export interface UserNoteFolder {
 	id: string;
 	userId: string;
-	ad: string;
-	renk?: string;
-	sira?: number;
-	olusturma: number;
+	name: string;
+	color?: string;
+	order?: number;
+	creation: number;
 }
 
 export interface SystemSetting {
-	anahtar: string;
-	deger: string;
-	guncellenme: number;
+	key: string;
+	value: string;
+	update: number;
 }
 
 export interface WebauthnCredential {
@@ -546,8 +533,8 @@ export interface WebauthnCredential {
 	backedUp?: number;
 	/** Member-supplied label, e.g. "iPhone" or "YubiKey". */
 	nickname?: string | null;
-	olusturma: number;
-	sonKullanma?: number | null;
+	creation: number;
+	lastUsage?: number | null;
 }
 
 export interface WebauthnChallenge {
@@ -555,8 +542,8 @@ export interface WebauthnChallenge {
 	/** Null for a sign-in challenge, which happens before the member is identified. */
 	userId?: string | null;
 	challenge: string;
-	tur: 'registration' | 'giris';
-	olusturma: number;
+	typeValue: 'registration' | 'login';
+	creation: number;
 }
 
 
@@ -565,32 +552,32 @@ export interface WebauthnChallenge {
 export interface Project {
 	id: string;
 	slug: string;
-	baslik: string;
+	title: string;
 	/** One or two sentences for the card. */
-	ozet: string;
+	summary: string;
 	/** The long write-up shown in the detail view. */
-	aciklama: string;
+	description: string;
 	repoUrl: string | null;
-	canliUrl: string | null;
-	teknolojiler: string[];
+	liveUrl: string | null;
+	technologies: string[];
 	/** The R&D team behind it, if any. */
 	teamId: string | null;
-	takimAdi?: string | null;
-	olusturanId: string | null;
-	olusturanAdSoyad?: string | null;
+	teamName?: string | null;
+	creatorId: string | null;
+	creatorNameSurname?: string | null;
 	ownerTeamId?: string | null;
 	ownerUserId?: string | null;
 	createdBy?: string | null;
-	ownerTeamAd?: string | null;
-	ownerUserAdSoyad?: string | null;
+	ownerTeamName?: string | null;
+	ownerUserNameSurname?: string | null;
 	status: ProjectStatus;
 	/** Pinned to the top of the showcase by management. */
-	oneCikan: number;
-	begeniSayisi?: number;
+	oneLeaving: number;
+	likeCount?: number;
 	/** Whether the member asking has starred it. */
-	begendimMi?: boolean;
-	olusturma: number;
-	guncellenme: number;
+	iLikedMi?: boolean;
+	creation: number;
+	update: number;
 }
 
 export type {

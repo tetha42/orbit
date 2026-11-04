@@ -33,10 +33,10 @@ export async function POST(request: Request) {
 	const waf = inspectRequestPayload(request);
 	if (waf.matched) {
 		void logSystemEvent({
-			servis: 'security',
-			seviye: 'ERROR',
-			mesaj: `[WAF] OAuth token saldırı imzası engellendi (${waf.signature}): POST /api/oauth/token`,
-			detay: { category: waf.category, signature: waf.signature },
+			service: 'security',
+			level: 'ERROR',
+			message: `[WAF] OAuth token saldırı imzası engellendi (${waf.signature}): POST /api/oauth/token`,
+			detail: { category: waf.category, signature: waf.signature },
 			ip,
 		});
 		void recordSecurityStrike({
@@ -91,10 +91,10 @@ export async function POST(request: Request) {
 			const bodyWaf = inspectRequestPayload(request, rawBody);
 			if (bodyWaf.matched) {
 				void logSystemEvent({
-					servis: 'security',
-					seviye: 'ERROR',
-					mesaj: `[WAF] OAuth token gövde saldırı imzası engellendi (${bodyWaf.signature}): POST /api/oauth/token`,
-					detay: { category: bodyWaf.category, signature: bodyWaf.signature },
+					service: 'security',
+					level: 'ERROR',
+					message: `[WAF] OAuth token gövde saldırı imzası engellendi (${bodyWaf.signature}): POST /api/oauth/token`,
+					detail: { category: bodyWaf.category, signature: bodyWaf.signature },
 					ip,
 				});
 				void recordSecurityStrike({
@@ -149,10 +149,10 @@ export async function POST(request: Request) {
 			recordFailure(clientKey, WINDOW_MS);
 			recordFailure(ipKey, WINDOW_MS);
 			await logSystemEvent({
-				servis: 'oauth',
-				seviye: 'WARN',
-				mesaj: `OAuth geçersiz istemci kimlik bilgisi denemesi (${clientId})`,
-				detay: { clientId },
+				service: 'oauth',
+				level: 'WARN',
+				message: `OAuth geçersiz istemci kimlik bilgisi denemesi (${clientId})`,
+				detail: { clientId },
 				ip,
 			});
 			return NextResponse.json(
@@ -186,10 +186,10 @@ export async function POST(request: Request) {
 		if (!codeResult.ok || !codeResult.userId) {
 			recordFailure(ipKey, WINDOW_MS);
 			await logSystemEvent({
-				servis: 'oauth',
-				seviye: 'WARN',
-				mesaj: `OAuth geçersiz yetkilendirme kodu takas denemesi (${client.ad})`,
-				detay: { clientId, redirectUri, hata: codeResult.error },
+				service: 'oauth',
+				level: 'WARN',
+				message: `OAuth geçersiz yetkilendirme kodu takas denemesi (${client.name})`,
+				detail: { clientId, redirectUri, error: codeResult.error },
 				ip,
 			});
 			return NextResponse.json(
@@ -239,12 +239,12 @@ export async function POST(request: Request) {
 		};
 
 		if (scopes.includes('profile')) {
-			const first = user.firstName || user.ad || '';
-			const last = user.lastName || user.soyad || '';
+			const first = user.firstName || user.name || '';
+			const last = user.lastName || user.surname || '';
 			idTokenClaims.name = `${first} ${last}`.trim();
 			idTokenClaims.given_name = first;
 			idTokenClaims.family_name = last;
-			idTokenClaims.picture = user.avatarUrl || user.profilFoto || null;
+			idTokenClaims.picture = user.avatarUrl || user.profilePhoto || null;
 		}
 
 		if (scopes.includes('email')) {
@@ -253,23 +253,23 @@ export async function POST(request: Request) {
 		}
 
 		if (scopes.includes('academic')) {
-			idTokenClaims.student_no = user.ogrenciNo || null;
-			idTokenClaims.department = user.bolum || null;
-			idTokenClaims.grade = user.sinif ?? null;
+			idTokenClaims.student_no = user.studentNo || null;
+			idTokenClaims.department = user.department || null;
+			idTokenClaims.grade = user.grade ?? null;
 		}
 
 		if (scopes.includes('roles')) {
-			idTokenClaims.role = permission.role?.ad || null;
+			idTokenClaims.role = permission.role?.name || null;
 			idTokenClaims.is_admin = permission.admin;
 		}
 
 		const idToken = await signOAuthJwt(idTokenClaims);
 
 		await logSystemEvent({
-			servis: 'oauth',
-			seviye: 'INFO',
-			mesaj: `OAuth jetonu (token) üretildi: ${client.ad} -> ${user.email}`,
-			detay: { clientId: client.id, scope },
+			service: 'oauth',
+			level: 'INFO',
+			message: `OAuth jetonu (token) üretildi: ${client.name} -> ${user.email}`,
+			detail: { clientId: client.id, scope },
 			userId: user.id,
 			ip,
 		});

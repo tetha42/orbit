@@ -79,11 +79,11 @@ export function CertificatesMobileView({
 			<div className={s.certCardAccentLine} />
 			<div className={s.certHeader}>
 				<div style={{ flex: 1, minWidth: 0 }}>
-					<div className={s.certTitle}>{cert.baslik}</div>
+					<div className={s.certTitle}>{cert.title}</div>
 					<div className={s.certSub}>
-						<span>{cert.kullaniciAdSoyad}</span>
+						<span>{cert.userNameSurname}</span>
 						<span>•</span>
-						<span>{formatDate(cert.verilisTarihi)}</span>
+						<span>{formatDate(cert.issuanceDate)}</span>
 					</div>
 				</div>
 				<span className={`${s.badge} ${s.badgeGold}`}>
@@ -94,7 +94,7 @@ export function CertificatesMobileView({
 
 			<div style={{ fontSize: '11.5px', opacity: 0.65, display: 'flex', alignItems: 'center', gap: '6px' }}>
 				<Zap size={12} color="var(--accent)" />
-				<span>{cert.kategori || t('certDefaultCategory')}</span>
+				<span>{cert.category || t('certDefaultCategory')}</span>
 			</div>
 
 			<div className={s.certActionsRow} onClick={(e) => e.stopPropagation()}>
@@ -128,8 +128,8 @@ export function CertificatesMobileView({
 						<LevelXpBanner
 							userLevel={c.userLevel}
 							userXP={c.userXP}
-							nextLevelXP={c.level.sonraki}
-							progressPercent={Math.round(c.level.ilerleme * 100)}
+							nextLevelXP={c.level.next}
+							progressPercent={Math.round(c.level.progress * 100)}
 						/>
 
 						<div style={{ padding: '0 4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -221,7 +221,7 @@ export function CertificatesMobileView({
 				<CertificateDetailModal
 					cert={c.selectedCert}
 					currentUserName={currentUserName}
-					kulup={c.kulup}
+					club={c.club}
 					copied={c.copied}
 					verifyUrl={c.verifyUrl}
 					onClose={() => c.setSelectedCert(null)}
@@ -231,13 +231,13 @@ export function CertificatesMobileView({
 				/>
 			)}
 
-			{c.editingSignatories && c.kulup && (
+			{c.editingSignatories && c.club && (
 				<SignatoriesModal
-					initial={c.kulup}
+					initial={c.club}
 					onClose={() => c.setEditingSignatories(false)}
 					onSaved={() => {
 						c.setEditingSignatories(false);
-						void c.refetchKulup();
+						void c.refetchClub();
 					}}
 				/>
 			)}
@@ -251,10 +251,10 @@ export function CertificatesMobileView({
 				issueUserId={c.issueUserId}
 				setIssueUserId={c.setIssueUserId}
 				members={c.members}
-				issueBaslik={c.issueBaslik}
-				setIssueBaslik={c.setIssueBaslik}
-				issueEtkinlikId={c.issueEtkinlikId}
-				setIssueEtkinlikId={c.setIssueEtkinlikId}
+				issueTitle={c.issueTitle}
+				setIssueTitle={c.setIssueTitle}
+				issueEventId={c.issueEventId}
+				setIssueEventId={c.setIssueEventId}
 				issueCategory={c.issueCategory}
 				setIssueCategory={c.setIssueCategory}
 				issueLang={c.issueLang}

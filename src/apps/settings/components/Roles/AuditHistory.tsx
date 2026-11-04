@@ -25,7 +25,7 @@ interface AuditResponse {
 	pageSize: number;
 }
 
-const BOS: AuditQuery = { user: '', role: '', action: '', from: '', to: '', page: 1 };
+const EMPTY: AuditQuery = { user: '', role: '', action: '', from: '', to: '', page: 1 };
 
 function query(f: AuditQuery, extra: Record<string, string> = {}): string {
 	const p = new URLSearchParams();
@@ -90,30 +90,30 @@ function AuditHistoryRow({ record, language, onSelect }: AuditHistoryRowProps) {
 	);
 }
 
-export function AuditHistory({ roles, variant = 'settings' }: { roles: { id: string; ad: string }[]; variant?: 'settings' | 'soc' }) {
+export function AuditHistory({ roles, variant = 'settings' }: { roles: { id: string; name: string }[]; variant?: 'settings' | 'soc' }) {
 	const { t, language } = useI18n();
 	const notify = useToast();
 	const dialog = useDialog();
-	const [filtre, setFiltre] = useState<AuditQuery>(BOS);
+	const [filter, setFilter] = useState<AuditQuery>(EMPTY);
 	const [userDraft, setUserDraft] = useState('');
 	const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-	const [detay, setDetay] = useState<AuditRecord | null>(null);
-	const [indiriliyor, setIndiriliyor] = useState(false);
-	const [temizleniyor, setTemizleniyor] = useState(false);
-	const { data, refetch, error, httpStatus } = useJsonResource<AuditResponse>(query(filtre));
+	const [detail, setDetail] = useState<AuditRecord | null>(null);
+	const [downloading, setDownloading] = useState(false);
+	const [clearing, setClearing] = useState(false);
+	const { data, refetch, error, httpStatus } = useJsonResource<AuditResponse>(query(filter));
 
 	if (httpStatus === 403) return null;
 
-	const onKisiDegisti = (deger: string) => {
-		setUserDraft(deger);
+	const onPersonChanged = (value: string) => {
+		setUserDraft(value);
 		if (timer.current) clearTimeout(timer.current);
-		timer.current = setTimeout(() => setFiltre((cur) => ({ ...cur, user: deger.trim(), page: 1 })), 300);
+		timer.current = setTimeout(() => setFilter((cur) => ({ ...cur, user: value.trim(), page: 1 })), 300);
 	};
 
 	const exportCsv = async () => {
-		setIndiriliyor(true);
+		setDownloading(true);
 		try {
-			const res = await fetch(query(filtre, { all: '1' }));
+			const res = await fetch(query(filter, { all: '1' }));
 			if (!res.ok) throw new Error();
 			const json = (await res.json()) as AuditResponse;
 			const rows = auditCsvRows(json.records);
@@ -121,11 +121,11 @@ export function AuditHistory({ roles, variant = 'settings' }: { roles: { id: str
 		} catch {
 			notify(t('auditCsvHata'), 'error');
 		} finally {
-			setIndiriliyor(false);
+			setDownloading(false);
 		}
 	};
 
-	const gecmisiTemizle = async () => {
+	const historyClear = async () => {
 		const approval = await dialog.confirm({
 			title: t('auditTemizle'),
 			message: t('auditTemizleOnay'),
@@ -134,7 +134,7 @@ export function AuditHistory({ roles, variant = 'settings' }: { roles: { id: str
 		});
 		if (!approval) return;
 
-		setTemizleniyor(true);
+		setClearing(true);
 		try {
 			const res = await fetch('/api/audit', { method: 'DELETE' });
 			if (!res.ok) throw new Error();
@@ -143,13 +143,13 @@ export function AuditHistory({ roles, variant = 'settings' }: { roles: { id: str
 		} catch {
 			notify(t('auditHata'), 'error');
 		} finally {
-			setTemizleniyor(false);
+			setClearing(false);
 		}
 	};
 
 	const records = data?.records ?? [];
 	const total = data?.total ?? 0;
-	const toplamSayfa = Math.max(1, Math.ceil(total / AUDIT_PAGE_SIZE));
+	const totalPage = Math.max(1, Math.ceil(total / AUDIT_PAGE_SIZE));
 
 	return (
 		<section className={`${s.audit} ${variant === 'soc' ? s.auditSoc : ''}`} aria-label={t('auditTitle')}>
@@ -167,16 +167,16 @@ export function AuditHistory({ roles, variant = 'settings' }: { roles: { id: str
 						type="button"
 						className={ui.btn}
 						onClick={exportCsv}
-						disabled={indiriliyor || total === 0}
+						disabled={downloading || total === 0}
 						title={t('auditCsvIndir')}
 					>
-						<Download size={14} /> {indiriliyor ? t('auditCsvIndiriliyor') : 'CSV'}
+						<Download size={14} /> {downloading ? t('auditCsvIndiriliyor') : 'CSV'}
 					</button>
 					<button
 						type="button"
 						className={`${ui.btn} ${ui.btnDanger}`}
-						onClick={gecmisiTemizle}
-						disabled={temizleniyor || total === 0}
+						onClick={historyClear}
+						disabled={clearing || total === 0}
 						title={t('auditTemizle')}
 					>
 						<Trash2 size={14} /> {t('auditTemizle')}
@@ -185,17 +185,17 @@ export function AuditHistory({ roles, variant = 'settings' }: { roles: { id: str
 			</div>
 
 			<AuditFilterBar
-				filtre={filtre}
+				filter={filter}
 				userDraft={userDraft}
 				roles={roles}
-				onKisiChange={onKisiDegisti}
-				onRolChange={(val) => setFiltre((c) => ({ ...c, role: val, page: 1 }))}
-				onIslemChange={(val) => setFiltre((c) => ({ ...c, action: val, page: 1 }))}
-				onFromChange={(val) => setFiltre((c) => ({ ...c, from: val, page: 1 }))}
-				onToChange={(val) => setFiltre((c) => ({ ...c, to: val, page: 1 }))}
+				onPersonChange={onPersonChanged}
+				onRoleChange={(val) => setFilter((c) => ({ ...c, role: val, page: 1 }))}
+				onActionChange={(val) => setFilter((c) => ({ ...c, action: val, page: 1 }))}
+				onFromChange={(val) => setFilter((c) => ({ ...c, from: val, page: 1 }))}
+				onToChange={(val) => setFilter((c) => ({ ...c, to: val, page: 1 }))}
 				onResetFilters={() => {
 					setUserDraft('');
-					setFiltre(BOS);
+					setFilter(EMPTY);
 				}}
 			/>
 
@@ -210,24 +210,24 @@ export function AuditHistory({ roles, variant = 'settings' }: { roles: { id: str
 						key={k.id}
 						record={k}
 						language={language}
-						onSelect={setDetay}
+						onSelect={setDetail}
 					/>
 				))}
 			</div>
 
-			{toplamSayfa > 1 && (
+			{totalPage > 1 && (
 				<div className={s.pager}>
-					<button type="button" className={ui.btn} disabled={filtre.page <= 1} onClick={() => setFiltre((c) => ({ ...c, page: c.page - 1 }))} title={t('previous')}>
+					<button type="button" className={ui.btn} disabled={filter.page <= 1} onClick={() => setFilter((c) => ({ ...c, page: c.page - 1 }))} title={t('previous')}>
 						<ChevronLeft size={14} />
 					</button>
-					<span style={{ fontSize: 12 }}>{fill(t('auditSayfa'), { current: filtre.page, total: toplamSayfa })}</span>
-					<button type="button" className={ui.btn} disabled={filtre.page >= toplamSayfa} onClick={() => setFiltre((c) => ({ ...c, page: c.page + 1 }))} title={t('next')}>
+					<span style={{ fontSize: 12 }}>{fill(t('auditSayfa'), { current: filter.page, total: totalPage })}</span>
+					<button type="button" className={ui.btn} disabled={filter.page >= totalPage} onClick={() => setFilter((c) => ({ ...c, page: c.page + 1 }))} title={t('next')}>
 						<ChevronRight size={14} />
 					</button>
 				</div>
 			)}
 
-			<AuditDetailModal detay={detay} onClose={() => setDetay(null)} />
+			<AuditDetailModal detail={detail} onClose={() => setDetail(null)} />
 		</section>
 	);
 }

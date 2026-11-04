@@ -37,13 +37,13 @@ export function RolesPanel() {
 			.then((r) => (r.ok ? (r.json() as Promise<RolesResponse>) : null))
 			.catch(() => null);
 		const role = fresh?.roles.find((r) => r.id === shown.id) ?? shown;
-		if (role.kullaniciSayisi > 0) return setDeleting(role);
-		if (!(await dialog.confirm({ message: fill(t('rolesDeleteConfirm'), { name: role.ad }), tone: 'danger' }))) return;
+		if (role.userCount > 0) return setDeleting(role);
+		if (!(await dialog.confirm({ message: fill(t('rolesDeleteConfirm'), { name: role.name }), tone: 'danger' }))) return;
 		await deleteRole(role, null);
 	};
 
-	const deleteRole = async (role: RoleView, tasi: string | null) => {
-		const res = await sendJson('/api/roles', 'DELETE', { id: role.id, tasi });
+	const deleteRole = async (role: RoleView, move: string | null) => {
+		const res = await sendJson('/api/roles', 'DELETE', { id: role.id, move });
 		if (res.ok) {
 			notify(t('rolesDeleted'));
 			invalidateResource('/api/roles');
@@ -55,7 +55,7 @@ export function RolesPanel() {
 	};
 
 	const setDefault = async (roleId: string) => {
-		const res = await sendJson('/api/roles', 'POST', { action: 'varsayilan', roleId: roleId || null });
+		const res = await sendJson('/api/roles', 'POST', { action: 'setDefault', roleId: roleId || null });
 		if (res.ok) {
 			notify(t('rolesUpdatedDefault'));
 			invalidateResource('/api/roles');
@@ -92,10 +92,10 @@ export function RolesPanel() {
 				>
 					<option value="">{t('rolesOnlyPersonal')}</option>
 					{data.roles
-						.filter((r) => !r.sistem && !isAlumniRole(r))
+						.filter((r) => !r.system && !isAlumniRole(r))
 						.map((r) => (
 							<option key={r.id} value={r.id}>
-								{r.ad}
+								{r.name}
 							</option>
 						))}
 				</select>
@@ -107,10 +107,10 @@ export function RolesPanel() {
 			{deleting && (
 				<DeleteRoleSheet
 					role={deleting}
-					hedefler={data.roles.filter((r) => !r.sistem && r.id !== deleting.id)}
-					varsayilan={data.defaultRoleId}
+					targets={data.roles.filter((r) => !r.system && r.id !== deleting.id)}
+					defaultValue={data.defaultRoleId}
 					onClose={() => setDeleting(null)}
-					onDelete={(tasi) => deleteRole(deleting, tasi)}
+					onDelete={(move) => deleteRole(deleting, move)}
 				/>
 			)}
 

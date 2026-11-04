@@ -29,8 +29,8 @@ export function InventoryCard({
 	onLoan,
 }: InventoryCardProps) {
 	const { t } = useI18n();
-	const due = item.status === 'oduncte' ? returnStatus(item.iadeTarihi, now) : null;
-	const mine = item.oduncAlanId === currentUserId;
+	const due = item.status === 'oduncte' ? returnStatus(item.returnDate, now) : null;
+	const mine = item.loanFieldId === currentUserId;
 
 	const menuItems = useMemo<MenuItem[]>(() => {
 		const items: MenuItem[] = [
@@ -45,7 +45,7 @@ export function InventoryCard({
 				label: t('ctxInvCopyBarcode'),
 				icon: <Copy size={13} />,
 				action: () => {
-					void copyToClipboard(item.kod);
+					void copyToClipboard(item.code);
 				},
 			},
 		];
@@ -84,37 +84,37 @@ export function InventoryCard({
 		<article
 			className={`${s.card} ${due?.gecikti ? s.cardOverdue : ''}`}
 			data-focus-id={`item:${item.id}`}
-			data-item-kod={item.kod}
+			data-item-Code={item.code}
 			{...contextMenuProps}
 		>
 			<div className={s.cardTop}>
-				<span className={s.code}>{item.kod}</span>
+				<span className={s.code}>{item.code}</span>
 				<span className={`${s.badge} ${s[`b_${item.status}`]}`}>
 					{statusBadgeText(item.status)}
 				</span>
 			</div>
 			<button type="button" className={s.name} onClick={() => onDetail(item.id)}>
-				{item.ad}
+				{item.name}
 			</button>
 			<div className={s.meta}>
 				<span>
-					<Tag size={12} /> {item.kategori}
+					<Tag size={12} /> {item.category}
 				</span>
 				<span>
-					<MapPin size={12} /> {item.konum}
+					<MapPin size={12} /> {item.location}
 				</span>
 			</div>
 			{item.status === 'oduncte' && (
 				<div className={`${s.loan} ${due?.gecikti ? s.loanOverdue : ''}`}>
 					<span>
-						<User size={12} /> <strong>{mine ? t('invWithYou') : item.oduncAlanAdSoyad}</strong>
+						<User size={12} /> <strong>{mine ? t('invWithYou') : item.loanFieldNameSurname}</strong>
 					</span>
 					<span>
-						{t('invDueReturnPrefix')} {item.iadeTarihi ? trDate(item.iadeTarihi) : '—'}{' '}
+						{t('invDueReturnPrefix')} {item.returnDate ? trDate(item.returnDate) : '—'}{' '}
 						<span
-							className={`${s.due} ${due?.gecikti ? s.dueLate : due && due.gun <= 2 ? s.dueSoon : ''}`}
+							className={`${s.due} ${due?.gecikti ? s.dueLate : due && due.day <= 2 ? s.dueSoon : ''}`}
 						>
-							· {returnText(item.iadeTarihi, now)}
+							· {returnText(item.returnDate, now)}
 						</span>
 					</span>
 				</div>

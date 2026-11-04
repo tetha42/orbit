@@ -18,7 +18,7 @@ export function CertificatesApp() {
 	const { currentUser, currentUserId } = useSession();
 	const c = useCertificates();
 
-	const currentUserName = currentUser ? `${currentUser.ad} ${currentUser.soyad}`.trim() : undefined;
+	const currentUserName = currentUser ? `${currentUser.name} ${currentUser.surname}`.trim() : undefined;
 
 	if (isMobile) {
 		return (
@@ -45,10 +45,10 @@ export function CertificatesApp() {
 		setIsIssuing,
 		issueUserId,
 		setIssueUserId,
-		issueBaslik,
-		setIssueBaslik,
-		issueEtkinlikId,
-		setIssueEtkinlikId,
+		issueTitle,
+		setIssueTitle,
+		issueEventId,
+		setIssueEventId,
 		issueCategory,
 		setIssueCategory,
 		issueLang,
@@ -57,8 +57,8 @@ export function CertificatesApp() {
 		setIssueContext,
 		isSubmitting,
 		events,
-		kulup,
-		refetchKulup,
+		club,
+		refetchClub,
 		editingSignatories,
 		setEditingSignatories,
 		issueMode,
@@ -80,14 +80,14 @@ export function CertificatesApp() {
 			<CertificatesToolbar
 				userLevel={userLevel}
 				userXP={userXP}
-				nextLevelXP={level.sonraki}
-				progressPercent={Math.round(level.ilerleme * 100)}
+				nextLevelXP={level.next}
+				progressPercent={Math.round(level.progress * 100)}
 				activeTab={activeTab}
 				onSelectTab={setActiveTab}
 				isManager={isManager}
 				myCertsCount={myCerts.length}
 				allCertsCount={certificates.length}
-				kulup={kulup}
+				club={club}
 				onEditSignatories={() => setEditingSignatories(true)}
 				onOpenIssue={() => setIsIssuing(true)}
 				message={message}
@@ -115,7 +115,7 @@ export function CertificatesApp() {
 				<CertificateDetailModal
 					cert={selectedCert}
 					currentUserName={currentUserName}
-					kulup={kulup}
+					club={club}
 					copied={copied}
 					verifyUrl={verifyUrl}
 					onClose={() => setSelectedCert(null)}
@@ -125,13 +125,13 @@ export function CertificatesApp() {
 				/>
 			)}
 
-			{editingSignatories && kulup && (
+			{editingSignatories && club && (
 				<SignatoriesModal
-					initial={kulup}
+					initial={club}
 					onClose={() => setEditingSignatories(false)}
 					onSaved={() => {
 						setEditingSignatories(false);
-						void refetchKulup();
+						void refetchClub();
 					}}
 				/>
 			)}
@@ -145,10 +145,10 @@ export function CertificatesApp() {
 				issueUserId={issueUserId}
 				setIssueUserId={setIssueUserId}
 				members={members}
-				issueBaslik={issueBaslik}
-				setIssueBaslik={setIssueBaslik}
-				issueEtkinlikId={issueEtkinlikId}
-				setIssueEtkinlikId={setIssueEtkinlikId}
+				issueTitle={issueTitle}
+				setIssueTitle={setIssueTitle}
+				issueEventId={issueEventId}
+				setIssueEventId={setIssueEventId}
 				issueCategory={issueCategory}
 				setIssueCategory={setIssueCategory}
 				issueLang={issueLang}

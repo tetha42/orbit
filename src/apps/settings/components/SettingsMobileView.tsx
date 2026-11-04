@@ -125,7 +125,7 @@ export function SettingsMobileView({ nav }: SettingsMobileViewProps) {
 				return t(key, info.title);
 			}
 			case 'roles':
-				return currentUser?.rolBilgi?.ad || (nav.isAdmin ? 'Admin' : '');
+				return currentUser?.roleInfo?.name || (nav.isAdmin ? 'Admin' : '');
 			default:
 				return '';
 		}
@@ -182,11 +182,11 @@ export function SettingsMobileView({ nav }: SettingsMobileViewProps) {
 					{(activeSubTab as string) === 'storage' && <AccountPanel />}
 					{activeSubTab === 'language' && <LanguageSettingsPanel />}
 					{activeSubTab === 'security' && <SecurityPanel />}
-					{activeSubTab === 'community' && nav.yonetici && <CommunitySettingsPanel />}
-					{activeSubTab === 'membership' && nav.yonetici && <MembershipPolicyPanel />}
-					{activeSubTab === 'legal' && nav.yonetici && <LegalSettingsPanel />}
-					{activeSubTab === 'forms' && nav.yonetici && <FormDesignerPanel />}
-					{activeSubTab === 'teams' && nav.yonetici && <TeamCategoriesPanel />}
+					{activeSubTab === 'community' && nav.admin && <CommunitySettingsPanel />}
+					{activeSubTab === 'membership' && nav.admin && <MembershipPolicyPanel />}
+					{activeSubTab === 'legal' && nav.admin && <LegalSettingsPanel />}
+					{activeSubTab === 'forms' && nav.admin && <FormDesignerPanel />}
+					{activeSubTab === 'teams' && nav.admin && <TeamCategoriesPanel />}
 					{activeSubTab === 'roles' && nav.isAdmin && <RolesPanel />}
 					{activeSubTab === 'privacy' && nav.isAdmin && <PrivacyDataPanel />}
 					{activeSubTab === 'smtp' && <SmtpSettingsPanel />}
@@ -197,9 +197,9 @@ export function SettingsMobileView({ nav }: SettingsMobileViewProps) {
 	}
 
 	// Root Screen (iOS Settings Overview)
-	const fullName = currentUser ? `${currentUser.ad} ${currentUser.soyad}`.trim() : t('defaultUser');
+	const fullName = currentUser ? `${currentUser.name} ${currentUser.surname}`.trim() : t('defaultUser');
 	const userInitials = currentUser
-		? `${currentUser.ad?.[0] || ''}${currentUser.soyad?.[0] || ''}`.toUpperCase()
+		? `${currentUser.name?.[0] || ''}${currentUser.surname?.[0] || ''}`.toUpperCase()
 		: 'U';
 
 	const groups: Array<{ key: 'kisisel' | 'hesap' | 'sistem'; title: string }> = [
@@ -246,10 +246,10 @@ export function SettingsMobileView({ nav }: SettingsMobileViewProps) {
 						onClick={() => handleOpenTab('account')}
 					>
 						<div className={s.profileAvatarWrap}>
-							{currentUser?.profilFoto ? (
+							{currentUser?.profilePhoto ? (
 								/* eslint-disable-next-line @next/next/no-img-element */
 								<img
-									src={currentUser.profilFoto}
+									src={currentUser.profilePhoto}
 									alt={fullName}
 									className={s.profileAvatarImg}
 								/>
@@ -263,8 +263,8 @@ export function SettingsMobileView({ nav }: SettingsMobileViewProps) {
 						<div className={s.profileInfo}>
 							<div className={s.profileName}>{fullName}</div>
 							<div className={s.profileSubtitle}>
-								{currentUser?.bolum
-									? `${currentUser.bolum}${currentUser.sinif ? ` • ${fill(t('membersClassYear'), { year: currentUser.sinif })}` : ''}`
+								{currentUser?.department
+									? `${currentUser.department}${currentUser.grade ? ` • ${fill(t('membersClassYear'), { year: currentUser.grade })}` : ''}`
 									: currentUser?.email || t('settingsProfileCardFallback')}
 							</div>
 						</div>

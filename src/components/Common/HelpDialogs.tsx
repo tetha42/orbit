@@ -128,9 +128,9 @@ export function SupportCard() {
 			.then((d) => {
 				if (d) {
 					setInfo({
-						studio: d.universite || 'tetha42',
-						community: d.kulupAdi || 'Orbit Community',
-						domain: d.kulupDomain || 'orbit.local',
+						studio: d.university || 'tetha42',
+						community: d.clubName || 'Orbit Community',
+						domain: d.clubDomain || 'orbit.local',
 					});
 				}
 			})

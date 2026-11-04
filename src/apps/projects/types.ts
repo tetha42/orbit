@@ -1,13 +1,13 @@
 import type { Project } from '@/db/schema';
 
 export interface ProjectsResponse {
-	projeler: Project[];
-	izinler: { manage: boolean };
+	projects: Project[];
+	permissions: { manage: boolean };
 }
 
 export interface TeamOption {
 	id: string;
-	ad: string;
+	name: string;
 	leadId: string;
 	uyeler?: { userId: string; status: string }[];
 }

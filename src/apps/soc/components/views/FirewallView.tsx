@@ -50,7 +50,7 @@ export const FirewallView = React.memo(function FirewallView() {
 			if (query) {
 				return (
 					b.ip.toLowerCase().includes(query) ||
-					(b.neden && b.neden.toLowerCase().includes(query)) ||
+					(b.reason && b.reason.toLowerCase().includes(query)) ||
 					(b.status && b.status.toLowerCase().includes(query))
 				);
 			}
@@ -260,7 +260,7 @@ export const FirewallView = React.memo(function FirewallView() {
 											)}
 										</td>
 										<td className={s.mono}>
-											{row.status === 'ban' ? `${row.tehditPuani}p (${row.ihlaller}x)` : '0p'}
+											{row.status === 'ban' ? `${row.threatScore}p (${row.violations}x)` : '0p'}
 										</td>
 										<td>
 											<span
@@ -269,7 +269,7 @@ export const FirewallView = React.memo(function FirewallView() {
 												onDoubleClick={handleSelectDataOnDoubleClick}
 												title={isEn ? 'Double-click to select reason' : 'Gerekçeyi seçmek için çift tıklayın'}
 											>
-												{formatSocAlertMessage(row.neden, isEn)}
+												{formatSocAlertMessage(row.reason, isEn)}
 											</span>
 										</td>
 										<td>
@@ -283,7 +283,7 @@ export const FirewallView = React.memo(function FirewallView() {
 												? 'Permanent'
 												: 'Kalıcı'}
 										</td>
-										<td>{formatDateTime(row.guncellenme, language)}</td>
+										<td>{formatDateTime(row.update, language)}</td>
 										{canManage && (
 											<td>
 												<button

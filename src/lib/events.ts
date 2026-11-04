@@ -73,7 +73,7 @@ export const ATTENDANCE_TOLERANCE_MS = 30 * 60_000;
 
 export const EVENT_TITLE_MAX = 140;
 export const EVENT_DESCRIPTION_MAX = 4000;
-export const KAPASITE_MAX = 5000;
+export const CAPACITY_MAX = 5000;
 
 export function attendanceWindow(now: number): number {
 	return Math.floor(now / ATTENDANCE_WINDOW_MS);
@@ -85,22 +85,22 @@ export function windowRemainingMs(now: number): number {
 }
 
 /** Whether check-in can happen at `now` for an event running from `baslangic` to `endTime`. */
-export function isAttendanceTime(baslangic: number, endTime: number, now: number): boolean {
-	return now >= baslangic - ATTENDANCE_TOLERANCE_MS && now <= endTime + ATTENDANCE_TOLERANCE_MS;
+export function isAttendanceTime(start: number, endTime: number, now: number): boolean {
+	return now >= start - ATTENDANCE_TOLERANCE_MS && now <= endTime + ATTENDANCE_TOLERANCE_MS;
 }
 
 /** A projector code: which event, which time window, and the server's signature over both. */
 export interface AttendanceCode {
-	etkinlikId: string;
-	pencere: number;
-	imza: string;
+	eventId: string;
+	window: number;
+	signature: string;
 }
 
 /** A member's ticket: which event, whose, and the server's signature over both. */
 export interface TicketCode {
-	etkinlikId: string;
+	eventId: string;
 	userId: string;
-	imza: string;
+	signature: string;
 }
 
 const ID = '[A-Za-z0-9_-]{1,80}';
@@ -116,23 +116,23 @@ function tokenOf(text: string): string {
 }
 
 export function attendanceCodeText(k: AttendanceCode): string {
-	return `BY1.${k.etkinlikId}.${k.pencere}.${k.imza}`;
+	return `BY1.${k.eventId}.${k.window}.${k.signature}`;
 }
 
 export function ticketCodeText(k: TicketCode): string {
-	return `BB1.${k.etkinlikId}.${k.userId}.${k.imza}`;
+	return `BB1.${k.eventId}.${k.userId}.${k.signature}`;
 }
 
 export function parseAttendanceCode(text: unknown): AttendanceCode | null {
 	if (typeof text !== 'string') return null;
 	const m = ATTENDANCE_RE.exec(tokenOf(text));
-	return m ? { etkinlikId: m[1], pencere: Number(m[2]), imza: m[3] } : null;
+	return m ? { eventId: m[1], window: Number(m[2]), signature: m[3] } : null;
 }
 
 export function parseTicketCode(text: unknown): TicketCode | null {
 	if (typeof text !== 'string') return null;
 	const m = TICKET_RE.exec(text.trim());
-	return m ? { etkinlikId: m[1], userId: m[2], imza: m[3] } : null;
+	return m ? { eventId: m[1], userId: m[2], signature: m[3] } : null;
 }
 
 /**

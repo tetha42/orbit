@@ -33,11 +33,11 @@ const manifest = {
 	},
 	component: { module: './index', export: 'MediaViewerApp' },
 	permission: {
-		sira: 999,
-		ad: 'Media Preview',
+		order: 999,
+		name: 'Media Preview',
 		kullan: 'Preview media attachments in a managed window.',
 		yonet: 'Internal window-only app; no management actions.',
-		herkeseAcik: true,
+		everyoneOpen: true,
 	},
 } as const satisfies AppManifest;
 

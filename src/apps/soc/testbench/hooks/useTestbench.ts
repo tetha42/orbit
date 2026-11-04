@@ -6,7 +6,7 @@ import { sendJson } from '@/core/data/http';
 import { useToast } from '@/core/ui/Toast';
 import { useI18n } from '@/core/i18n';
 import { useSession } from '@/core/session';
-import { seviyeOf } from '@/core/permissions';
+import { levelOf } from '@/core/permissions';
 import { fill } from '@/lib/text';
 import type {
 	SystemDiagnostics,
@@ -78,7 +78,7 @@ export function useTestbench(canManage: boolean) {
 			const results: ApiTestItem[] = await Promise.all(
 				SUITE_ENDPOINTS.map(async (item) => {
 					let expectedStatus = 200;
-					const userPerm = seviyeOf(currentUser?.izinler, item.appId);
+					const userPerm = levelOf(currentUser?.permissions, item.appId);
 
 					if (item.requiredLevel === 'admin') {
 						expectedStatus = admin ? 200 : 403;

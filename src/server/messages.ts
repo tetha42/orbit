@@ -6,16 +6,16 @@ import type { MailRecipient, MailSkipped } from '@/lib/messages';
 
 export interface RecipientDecision {
 	/** Who the message goes to. */
-	gidecek: MailMember[];
+	outgoing: MailMember[];
 	/** Who it does not reach, and why — told to the sender. */
-	atlananlar: MailSkipped[];
+	skipped: MailSkipped[];
 	/** Set when the message must not be sent at all (strict mode: an unknown or inactive recipient). */
-	hata?: string;
+	error?: string;
 }
 
-const fullName = (u: { ad?: string; soyad?: string; firstName?: string; lastName?: string }) => {
-	const first = u.firstName || u.ad || '';
-	const last = u.lastName || u.soyad || '';
+const fullName = (u: { name?: string; surname?: string; firstName?: string; lastName?: string }) => {
+	const first = u.firstName || u.name || '';
+	const last = u.lastName || u.surname || '';
 	return `${first} ${last}`.trim();
 };
 
@@ -35,33 +35,33 @@ export async function recipientDecision(
 	const unique = [...new Set(ids)].filter((id) => id !== senderId);
 	const members = await getMailMembers(unique);
 	const byId = new Map(members.map((u) => [u.id, u]));
-	const gidecek: MailMember[] = [];
-	const atlananlar: MailSkipped[] = [];
+	const outgoing: MailMember[] = [];
+	const skipped: MailSkipped[] = [];
 	for (const id of unique) {
 		const u = byId.get(id);
 		if (!u || u.status !== 'aktif') {
-			if (strict) return { gidecek: [], atlananlar: [], hata: 'Alıcılar yalnızca aktif üyeler olabilir.' };
-			if (u) atlananlar.push({ id, ad: fullName(u), neden: 'pasif' });
+			if (strict) return { outgoing: [], skipped: [], error: 'Alıcılar yalnızca aktif üyeler olabilir.' };
+			if (u) skipped.push({ id, name: fullName(u), reason: 'pasif' });
 			continue;
 		}
 		const permission = await getRolePermission(u.roleId);
-		if (!canUse(permission.izinler, 'mail')) atlananlar.push({ id, ad: fullName(u), neden: 'role' });
-		else gidecek.push(u);
+		if (!canUse(permission.permissions, 'mail')) skipped.push({ id, name: fullName(u), reason: 'role' });
+		else outgoing.push(u);
 	}
-	return { gidecek, atlananlar };
+	return { outgoing, skipped };
 }
 
 /** Whether each role opens Mail, asked once per role however many members hold it. */
 async function roleCanUseMail(roleIds: (string | null)[]): Promise<Map<string | null, boolean>> {
 	const out = new Map<string | null, boolean>();
-	for (const roleId of new Set(roleIds)) out.set(roleId, canUse((await getRolePermission(roleId)).izinler, 'mail'));
+	for (const roleId of new Set(roleIds)) out.set(roleId, canUse((await getRolePermission(roleId)).permissions, 'mail'));
 	return out;
 }
 
 /** The recipient picker's rows: a name, an id and whether a message would reach them. Nothing else about the member. */
 export async function recipientList(candidates: MailCandidate[]): Promise<MailRecipient[]> {
 	const open = await roleCanUseMail(candidates.map((a) => a.roleId));
-	return candidates.map((a) => ({ id: a.id, ad: a.ad, soyad: a.soyad, ulasilabilir: open.get(a.roleId) === true }));
+	return candidates.map((a) => ({ id: a.id, name: a.name, surname: a.surname, reachable: open.get(a.roleId) === true }));
 }
 
 /** Ids of the active members a message would reach, for screens that only need to know whether to offer "send a message". */
@@ -71,9 +71,9 @@ export async function reachableIds(candidates: { id: string; roleId: string | nu
 }
 
 /** The e-mail heads-up for recipients who asked for it. Never awaited by the request: a mail failure must not fail the message. */
-export function notifyByEmail(recipients: MailMember[], sender: { ad?: string; soyad?: string; firstName?: string; lastName?: string }, subject: string): void {
+export function notifyByEmail(recipients: MailMember[], sender: { name?: string; surname?: string; firstName?: string; lastName?: string }, subject: string): void {
 	for (const u of recipients) {
-		if (Number(u.postaEposta) !== 1) continue;
+		if (Number(u.mailEmail) !== 1) continue;
 		void notifyPortalMessage(u, fullName(sender), subject).catch(() => {});
 	}
 }

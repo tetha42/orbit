@@ -10,23 +10,23 @@ import { errorMessage } from '@/lib/errors';
 
 interface Committee {
 	id: string;
-	ad: string;
+	name: string;
 	slug: string;
-	aciklama: string;
-	kategori: string;
+	description: string;
+	category: string;
 	leadId?: string | null;
-	liderAdSoyad?: string | null;
-	aktifUyeSayisi?: number;
+	leaderNameSurname?: string | null;
+	activeMemberCount?: number;
 	quorum?: number;
-	olusturma: number;
+	creation: number;
 }
 
 interface CommitteeMember {
 	id: string;
 	userId: string;
-	kullaniciAdSoyad?: string;
-	kullaniciBolum?: string;
-	takimRolu: string;
+	userNameSurname?: string;
+	userDepartment?: string;
+	teamRole: string;
 	votingRight?: number;
 	termStart?: number | null;
 	termEnd?: number | null;
@@ -43,19 +43,19 @@ interface Meeting {
 
 interface Decision {
 	id: string;
-	kararNo: number;
-	baslik: string;
+	decisionNo: number;
+	title: string;
 	date: number;
-	gundem: string;
-	icerik: string;
+	agenda: string;
+	content: string;
 	bodyId?: string | null;
-	bodyAd?: string | null;
+	bodyName?: string | null;
 	decisionType?: string;
 	quorumMet?: number;
 	votesFor?: number;
 	votesAgainst?: number;
 	votesAbstain?: number;
-	kamuyaAcikMi: number;
+	publicOpenMi: number;
 }
 
 interface CommitteeDetail {
@@ -67,10 +67,10 @@ interface CommitteeDetail {
 
 interface MemberOption {
 	id: string;
-	ad: string;
-	soyad: string;
+	name: string;
+	surname: string;
 	email: string;
-	bolum?: string;
+	department?: string;
 }
 
 const input: React.CSSProperties = {
@@ -196,8 +196,8 @@ export function DecisionsApp() {
 	const createCommittee = async () => {
 		const ok = await post('/api/committees', {
 			action: 'createCommittee',
-			ad: name,
-			aciklama: description,
+			name: name,
+			description: description,
 			quorum: Number(quorum) || 0,
 			leadId: leaderId || undefined,
 		});
@@ -243,9 +243,9 @@ export function DecisionsApp() {
 	const createDecision = async () => {
 		if (!detail) return;
 		const ok = await post('/api/decisions', {
-			baslik: decisionTitle,
-			icerik: decisionContent,
-			gundem: '',
+			title: decisionTitle,
+			content: decisionContent,
+			agenda: '',
 			bodyId: detail.committee.id,
 			decisionType,
 			quorumMet,
@@ -324,7 +324,7 @@ export function DecisionsApp() {
 								<select style={input} value={leaderId} onChange={(e) => setLeaderId(e.target.value)}>
 									<option value="">{t('gvNoLeader')}</option>
 									{members.map((m) => (
-										<option key={m.id} value={m.id}>{m.ad} {m.soyad}</option>
+										<option key={m.id} value={m.id}>{m.name} {m.surname}</option>
 									))}
 								</select>
 							</div>
@@ -342,15 +342,15 @@ export function DecisionsApp() {
 					<div style={card}>
 						<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 							<Scale size={18} style={{ color: 'var(--accent)' }} />
-							<h2 style={{ margin: 0, fontSize: '17px' }}>{detail.committee.ad}</h2>
+							<h2 style={{ margin: 0, fontSize: '17px' }}>{detail.committee.name}</h2>
 							<span style={{ fontSize: '11px', opacity: 0.6 }}>
 								{t('gvQuorum')}: {detail.committee.quorum ?? 0}
 							</span>
 						</div>
-						<p style={{ margin: '6px 0 0', fontSize: '12px', opacity: 0.7 }}>{detail.committee.aciklama}</p>
+						<p style={{ margin: '6px 0 0', fontSize: '12px', opacity: 0.7 }}>{detail.committee.description}</p>
 						<div style={{ display: 'flex', gap: '12px', marginTop: '8px', fontSize: '11.5px', opacity: 0.7 }}>
 							<span><Users size={12} /> {detail.members.length} {t('gvMembers')}</span>
-							{detail.committee.liderAdSoyad && <span>{t('gvLeader')}: {detail.committee.liderAdSoyad}</span>}
+							{detail.committee.leaderNameSurname && <span>{t('gvLeader')}: {detail.committee.leaderNameSurname}</span>}
 						</div>
 					</div>
 
@@ -370,7 +370,7 @@ export function DecisionsApp() {
 									<select style={input} value={memberId} onChange={(e) => setMemberId(e.target.value)}>
 										<option value="">—</option>
 										{members.map((m) => (
-											<option key={m.id} value={m.id}>{m.ad} {m.soyad}</option>
+											<option key={m.id} value={m.id}>{m.name} {m.surname}</option>
 										))}
 									</select>
 								</div>
@@ -391,8 +391,8 @@ export function DecisionsApp() {
 							) : (
 								detail.members.map((member) => (
 									<div key={member.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', padding: '5px 0', borderTop: '1px solid var(--window-border)' }}>
-										<span style={{ flex: 1 }}>{member.kullaniciAdSoyad ?? member.userId}</span>
-										<span style={{ opacity: 0.6 }}>{member.takimRolu}</span>
+										<span style={{ flex: 1 }}>{member.userNameSurname ?? member.userId}</span>
+										<span style={{ opacity: 0.6 }}>{member.teamRole}</span>
 										<span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '999px', background: member.votingRight ? 'rgba(48,209,88,0.16)' : 'rgba(255,255,255,0.08)' }}>
 											{member.votingRight ? t('gvVoting') : t('gvNonVoting')}
 										</span>
@@ -503,7 +503,7 @@ export function DecisionsApp() {
 								detail.decisions.map((decision) => (
 									<div key={decision.id} style={{ fontSize: '12px', padding: '6px 0', borderTop: '1px solid var(--window-border)' }}>
 										<div style={{ display: 'flex', gap: '8px' }}>
-											<strong style={{ flex: 1 }}>{decision.kararNo} · {decision.baslik}</strong>
+											<strong style={{ flex: 1 }}>{decision.decisionNo} · {decision.title}</strong>
 											<span style={{ opacity: 0.6 }}>{formatDate(decision.date)}</span>
 										</div>
 										<div style={{ opacity: 0.65 }}>
@@ -529,11 +529,11 @@ export function DecisionsApp() {
 							>
 								<div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
 									<Scale size={16} style={{ color: 'var(--accent)' }} />
-									<strong style={{ fontSize: '13px' }}>{committee.ad}</strong>
+									<strong style={{ fontSize: '13px' }}>{committee.name}</strong>
 								</div>
-								<p style={{ margin: '6px 0', fontSize: '11.5px', opacity: 0.7, minHeight: 30 }}>{committee.aciklama}</p>
+								<p style={{ margin: '6px 0', fontSize: '11.5px', opacity: 0.7, minHeight: 30 }}>{committee.description}</p>
 								<div style={{ display: 'flex', gap: '10px', fontSize: '10.5px', opacity: 0.65 }}>
-									<span><Users size={11} /> {committee.aktifUyeSayisi ?? 0}</span>
+									<span><Users size={11} /> {committee.activeMemberCount ?? 0}</span>
 									<span>{t('gvQuorum')}: {committee.quorum ?? 0}</span>
 								</div>
 							</button>
@@ -549,11 +549,11 @@ export function DecisionsApp() {
 							<div key={decision.id} style={card}>
 								<div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
 									<Vote size={14} style={{ color: 'var(--accent)' }} />
-									<strong style={{ fontSize: '12.5px', flex: 1 }}>{decision.kararNo} · {decision.baslik}</strong>
+									<strong style={{ fontSize: '12.5px', flex: 1 }}>{decision.decisionNo} · {decision.title}</strong>
 									<span style={{ fontSize: '11px', opacity: 0.6 }}>{formatDate(decision.date)}</span>
 								</div>
 								<div style={{ fontSize: '11px', opacity: 0.65, marginTop: '4px' }}>
-									{decision.bodyAd || '—'} · {decision.decisionType ?? 'resolution'} · {t('gvVotesFor')}: {decision.votesFor ?? 0} / {t('gvVotesAgainst')}: {decision.votesAgainst ?? 0}
+									{decision.bodyName || '—'} · {decision.decisionType ?? 'resolution'} · {t('gvVotesFor')}: {decision.votesFor ?? 0} / {t('gvVotesAgainst')}: {decision.votesAgainst ?? 0}
 								</div>
 							</div>
 						))

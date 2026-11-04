@@ -28,8 +28,8 @@ interface Invitation {
 
 interface RoleOption {
 	id: string;
-	ad: string;
-	renk: string;
+	name: string;
+	color: string;
 }
 
 const cardStyle: React.CSSProperties = {
@@ -193,7 +193,7 @@ export function MembershipPolicyPanel() {
 	};
 
 	const roleName = (roleId: string | null) =>
-		roles.find((role) => role.id === roleId)?.ad ?? t('membershipNoRole');
+		roles.find((role) => role.id === roleId)?.name ?? t('membershipNoRole');
 
 	if (isLoading) {
 		return <div className={ui.muted}>{t('loading')}</div>;
@@ -377,7 +377,7 @@ export function MembershipPolicyPanel() {
 							<option value="">{t('membershipNoRole')}</option>
 							{roles.map((role) => (
 								<option key={role.id} value={role.id}>
-									{role.ad}
+									{role.name}
 								</option>
 							))}
 						</select>

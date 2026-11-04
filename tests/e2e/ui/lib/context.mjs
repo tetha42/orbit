@@ -115,13 +115,13 @@ export function createContext({ suite, base, fx, bootstrap, browser, report }) {
 				for (const c of [sessions.get(slot), saved && client(base, saved)]) {
 					if (!c) continue;
 					const me = await c.get('/api/auth/me');
-					if (me.status === 200 && me.json?.user?.eposta === acc.eposta) {
+					if (me.status === 200 && me.json?.user?.email === acc.email) {
 						sessions.set(slot, c);
 						return c;
 					}
 				}
 			}
-			const c = await loginApi(base, acc.eposta, acc.sifre, acc.totp);
+			const c = await loginApi(base, acc.email, acc.password, acc.totp);
 			sessions.set(slot, c);
 			saveToken(slot, c.token);
 			return c;

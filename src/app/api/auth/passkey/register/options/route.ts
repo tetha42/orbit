@@ -37,7 +37,7 @@ async function handlePOST(request: Request) {
 			rpID,
 			rpName,
 			userName: user.email,
-			userDisplayName: `${user.ad} ${user.soyad}`,
+			userDisplayName: `${user.name} ${user.surname}`,
 			userID: new TextEncoder().encode(user.id),
 			attestationType: 'none',
 			timeout: 120_000,
@@ -62,7 +62,7 @@ async function handlePOST(request: Request) {
 			id: challengeId,
 			userId: user.id,
 			challenge: options.challenge,
-			tur: 'registration',
+			typeValue: 'registration',
 		});
 
 		return NextResponse.json({ success: true, challengeId, options });

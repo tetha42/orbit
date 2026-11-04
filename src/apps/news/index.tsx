@@ -104,19 +104,19 @@ export function NewsApp() {
 					isSubmitting={newsHook.isSubmitting}
 					newVisibility={newsHook.newVisibility}
 					newCategory={newsHook.newCategory}
-					newOnemliMi={newsHook.newOnemliMi}
+					newImportantMi={newsHook.newImportantMi}
 					newTitle={newsHook.newTitle}
 					newSummary={newsHook.newSummary}
-					newResimUrl={newsHook.newResimUrl}
+					newImageUrl={newsHook.newImageUrl}
 					newContent={newsHook.newContent}
 					onClose={() => newsHook.setIsCreateModalOpen(false)}
 					onSubmit={newsHook.handleSaveNews}
 					onChangeVisibility={newsHook.setNewVisibility}
 					onChangeCategory={newsHook.setNewCategory}
-					onChangeOnemliMi={newsHook.setNewOnemliMi}
+					onChangeImportantMi={newsHook.setNewImportantMi}
 					onChangeTitle={newsHook.setNewTitle}
 					onChangeSummary={newsHook.setNewSummary}
-					onChangeResimUrl={newsHook.setNewResimUrl}
+					onChangeImageUrl={newsHook.setNewImageUrl}
 					onChangeContent={newsHook.setNewContent}
 				/>
 			)}

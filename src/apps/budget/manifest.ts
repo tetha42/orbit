@@ -33,8 +33,8 @@ const manifest = {
 	order: 2,
 	dock: 3,
 	permission: {
-		sira: 8,
-		ad: 'Finans',
+		order: 8,
+		name: 'Finans',
 		kullan: 'Kasaları ve hareketleri salt okunur görür.',
 		yonet: 'Gelir/gider girer, düzeltir, siler, kasalar arası ödenek aktarır.',
 	},
@@ -46,8 +46,8 @@ const manifest = {
 				id: 'file',
 				title: { tr: 'Kayıtlar', en: 'Records' },
 				items: [
-					{ id: 'new-entry', label: { tr: 'Gelir / Gider Ekle...', en: 'Add Ledger Entry...' }, shortcut: '⌘N', permission: 'yonet', komut: 'new-entry' },
-					{ id: 'export-pdf', label: { tr: 'Mali Denetim Raporu Yazdır', en: 'Print Audit Report' }, shortcut: '⌘P', permission: 'kullan', komut: 'print-report' },
+					{ id: 'new-entry', label: { tr: 'Gelir / Gider Ekle...', en: 'Add Ledger Entry...' }, shortcut: '⌘N', permission: 'yonet', command: 'new-entry' },
+					{ id: 'export-pdf', label: { tr: 'Mali Denetim Raporu Yazdır', en: 'Print Audit Report' }, shortcut: '⌘P', permission: 'kullan', command: 'print-report' },
 				],
 			},
 		],

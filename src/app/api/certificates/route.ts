@@ -32,26 +32,26 @@ async function handlePOST(request: Request) {
 
 	try {
 		const body = await request.json();
-		const { userId, etkinlikId, pdfUrl, kategori, dil, aciklama } = body;
-		const title = typeof body.baslik === 'string' ? body.baslik.trim() : '';
+		const { userId, eventId, pdfUrl, category, language, description } = body;
+		const title = typeof body.title === 'string' ? body.title.trim() : '';
 		if (!title || title.length > 160) {
 			return NextResponse.json({ error: 'Başlık zorunludur (en fazla 160 karakter).' }, { status: 400 });
 		}
 
 		// Everyone who attended an event, in one go; those who already hold one are skipped.
 		if (body.action === 'bulk') {
-			const ev = typeof etkinlikId === 'string' ? await getEventById(etkinlikId) : null;
+			const ev = typeof eventId === 'string' ? await getEventById(eventId) : null;
 			if (!ev) return NextResponse.json({ error: 'CommunityEvent bulunamadı.' }, { status: 404 });
 			const r = await createEventCertificates(ev.id, title, {
-				kategori: typeof kategori === 'string' ? kategori : undefined,
-				dil: typeof dil === 'string' ? dil : undefined,
-				aciklama: typeof aciklama === 'string' ? aciklama.trim() : undefined,
+				category: typeof category === 'string' ? category : undefined,
+				language: typeof language === 'string' ? language : undefined,
+				description: typeof description === 'string' ? description.trim() : undefined,
 			});
 			return NextResponse.json({
 				success: true,
 				...r,
-				message: r.verilen
-					? `${r.verilen} katılımcıya sertifika verildi${r.zatenVar ? `, ${r.zatenVar} kişide zaten vardı` : ''}.`
+				message: r.given
+					? `${r.given} katılımcıya sertifika verildi${r.alreadyVar ? `, ${r.alreadyVar} kişide zaten vardı` : ''}.`
 					: 'Yeni sertifika verilecek katılımcı yok.',
 			});
 		}
@@ -63,12 +63,12 @@ async function handlePOST(request: Request) {
 
 		const result = await createCertificate({
 			userId,
-			baslik: title,
-			etkinlikId: etkinlikId || undefined,
+			title: title,
+			eventId: eventId || undefined,
 			pdfUrl: pdfUrl || undefined,
-			kategori: typeof kategori === 'string' ? kategori : undefined,
-			dil: typeof dil === 'string' ? dil : undefined,
-			aciklama: typeof aciklama === 'string' ? aciklama.trim() : undefined,
+			category: typeof category === 'string' ? category : undefined,
+			language: typeof language === 'string' ? language : undefined,
+			description: typeof description === 'string' ? description.trim() : undefined,
 		});
 
 		return NextResponse.json({ success: true, id: result.id, verificationCode: result.verificationCode });

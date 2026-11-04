@@ -19,8 +19,8 @@ import type {
 	TimeRangePreset,
 	HistogramBucket,
 	SiemFilterSnapshot,
-	SiemAramaOp,
-	SiemAramaAlani,
+	SiemSearchOp,
+	SiemSearchField,
 	EmergencyKillSwitches,
 	FimScanResult,
 	AppSecSummary,
@@ -85,24 +85,24 @@ interface SocContextType {
 	handleSuspendUser: (session: ActiveSessionInfo) => Promise<void>;
 
 	// SIEM states
-	siemServis: string;
-	setSiemServis: (v: string) => void;
-	siemServisOp: 'eq' | 'neq';
-	setSiemServisOp: (v: 'eq' | 'neq') => void;
-	siemSeviye: string;
-	setSiemSeviye: (v: string) => void;
-	siemSeviyeOp: 'eq' | 'neq';
-	setSiemSeviyeOp: (v: 'eq' | 'neq') => void;
+	siemService: string;
+	setSiemService: (v: string) => void;
+	siemServiceOp: 'eq' | 'neq';
+	setSiemServiceOp: (v: 'eq' | 'neq') => void;
+	siemLevel: string;
+	setSiemLevel: (v: string) => void;
+	siemLevelOp: 'eq' | 'neq';
+	setSiemLevelOp: (v: 'eq' | 'neq') => void;
 	siemIp: string;
 	setSiemIp: (v: string) => void;
 	siemIpOp: 'eq' | 'neq' | 'contains' | 'not_contains';
 	setSiemIpOp: (v: 'eq' | 'neq' | 'contains' | 'not_contains') => void;
-	siemArama: string;
-	setSiemArama: (v: string) => void;
-	siemAramaOp: SiemAramaOp;
-	setSiemAramaOp: (v: SiemAramaOp) => void;
-	siemAramaAlani: SiemAramaAlani;
-	setSiemAramaAlani: (v: SiemAramaAlani) => void;
+	siemSearch: string;
+	setSiemSearch: (v: string) => void;
+	siemSearchOp: SiemSearchOp;
+	setSiemSearchOp: (v: SiemSearchOp) => void;
+	siemSearchField: SiemSearchField;
+	setSiemSearchField: (v: SiemSearchField) => void;
 	expandedLogIds: Set<number>;
 	setExpandedLogIds: React.Dispatch<React.SetStateAction<Set<number>>>;
 	toggleLogDetail: (id: number) => void;
@@ -124,8 +124,8 @@ interface SocContextType {
 	selectedBucket: number | null;
 	setSelectedBucket: (v: number | null) => void;
 	fetchSiemFiltered: (overrides?: Partial<SiemFilterSnapshot>, silent?: boolean) => Promise<void>;
-	handleQuickExcludeSeviye: (level: string) => void;
-	handleQuickExcludeServis: (service: string) => void;
+	handleQuickExcludeLevel: (level: string) => void;
+	handleQuickExcludeService: (service: string) => void;
 	handleQuickExcludeIp: (ipVal: string) => void;
 	handleResetAllFilters: () => void;
 	handleSelectTimeRange: (range: TimeRangePreset) => void;
@@ -299,15 +299,15 @@ export function SocProvider({ children }: { children: ReactNode }) {
 	const [fwFilter, setFwFilter] = useState<'all' | 'ban' | 'whitelist'>('all');
 
 	// SIEM Filter State
-	const [siemServis, setSiemServis] = useState<string>('all');
-	const [siemServisOp, setSiemServisOp] = useState<'eq' | 'neq'>('eq');
-	const [siemSeviye, setSiemSeviye] = useState<string>('all');
-	const [siemSeviyeOp, setSiemSeviyeOp] = useState<'eq' | 'neq'>('eq');
+	const [siemService, setSiemService] = useState<string>('all');
+	const [siemServiceOp, setSiemServiceOp] = useState<'eq' | 'neq'>('eq');
+	const [siemLevel, setSiemLevel] = useState<string>('all');
+	const [siemLevelOp, setSiemLevelOp] = useState<'eq' | 'neq'>('eq');
 	const [siemIp, setSiemIp] = useState<string>('');
 	const [siemIpOp, setSiemIpOp] = useState<'eq' | 'neq' | 'contains' | 'not_contains'>('eq');
-	const [siemArama, setSiemArama] = useState<string>('');
-	const [siemAramaOp, setSiemAramaOp] = useState<SiemAramaOp>('contains');
-	const [siemAramaAlani, setSiemAramaAlani] = useState<SiemAramaAlani>('all');
+	const [siemSearch, setSiemSearch] = useState<string>('');
+	const [siemSearchOp, setSiemSearchOp] = useState<SiemSearchOp>('contains');
+	const [siemSearchField, setSiemSearchField] = useState<SiemSearchField>('all');
 	const [expandedLogIds, setExpandedLogIds] = useState<Set<number>>(new Set());
 
 	// SIEM Time Range & Pagination State
@@ -364,15 +364,15 @@ export function SocProvider({ children }: { children: ReactNode }) {
 	}, []);
 
 	const siemFilterRef = useRef<SiemFilterSnapshot>({
-		servis: 'all',
-		servisOp: 'eq',
-		seviye: 'all',
-		seviyeOp: 'eq',
+		service: 'all',
+		serviceOp: 'eq',
+		level: 'all',
+		levelOp: 'eq',
 		ip: '',
 		ipOp: 'eq',
-		arama: '',
-		aramaOp: 'contains',
-		aramaAlani: 'all',
+		search: '',
+		searchOp: 'contains',
+		searchField: 'all',
 		timeRange: '24h',
 		page: 1,
 		limit: 50,
@@ -396,15 +396,15 @@ export function SocProvider({ children }: { children: ReactNode }) {
 
 	useEffect(() => {
 		siemFilterRef.current = {
-			servis: siemServis,
-			servisOp: siemServisOp,
-			seviye: siemSeviye,
-			seviyeOp: siemSeviyeOp,
+			service: siemService,
+			serviceOp: siemServiceOp,
+			level: siemLevel,
+			levelOp: siemLevelOp,
 			ip: siemIp,
 			ipOp: siemIpOp,
-			arama: siemArama,
-			aramaOp: siemAramaOp,
-			aramaAlani: siemAramaAlani,
+			search: siemSearch,
+			searchOp: siemSearchOp,
+			searchField: siemSearchField,
 			timeRange: siemTimeRange,
 			startTime: siemStartTime ?? undefined,
 			endTime: siemEndTime ?? undefined,
@@ -412,15 +412,15 @@ export function SocProvider({ children }: { children: ReactNode }) {
 			limit: siemLimit,
 		};
 	}, [
-		siemServis,
-		siemServisOp,
-		siemSeviye,
-		siemSeviyeOp,
+		siemService,
+		siemServiceOp,
+		siemLevel,
+		siemLevelOp,
 		siemIp,
 		siemIpOp,
-		siemArama,
-		siemAramaOp,
-		siemAramaAlani,
+		siemSearch,
+		siemSearchOp,
+		siemSearchField,
 		siemTimeRange,
 		siemStartTime,
 		siemEndTime,
@@ -441,22 +441,22 @@ export function SocProvider({ children }: { children: ReactNode }) {
 			const current: SiemFilterSnapshot = { ...siemFilterRef.current, ...overrides };
 			const params = new URLSearchParams();
 
-			if (current.servis && current.servis !== 'all') {
-				params.set('servis', current.servis);
-				if (current.servisOp === 'neq') params.set('servisOp', 'neq');
+			if (current.service && current.service !== 'all') {
+				params.set('service', current.service);
+				if (current.serviceOp === 'neq') params.set('serviceOp', 'neq');
 			}
-			if (current.seviye && current.seviye !== 'all') {
-				params.set('seviye', current.seviye);
-				if (current.seviyeOp === 'neq') params.set('seviyeOp', 'neq');
+			if (current.level && current.level !== 'all') {
+				params.set('level', current.level);
+				if (current.levelOp === 'neq') params.set('levelOp', 'neq');
 			}
 			if (current.ip && current.ip.trim()) {
 				params.set('ip', current.ip.trim());
 				if (current.ipOp !== 'eq') params.set('ipOp', current.ipOp);
 			}
-			if (current.arama && current.arama.trim()) {
-				params.set('arama', current.arama.trim());
-				if (current.aramaOp !== 'contains') params.set('aramaOp', current.aramaOp);
-				if (current.aramaAlani !== 'all') params.set('aramaAlani', current.aramaAlani);
+			if (current.search && current.search.trim()) {
+				params.set('search', current.search.trim());
+				if (current.searchOp !== 'contains') params.set('searchOp', current.searchOp);
+				if (current.searchField !== 'all') params.set('searchField', current.searchField);
 			}
 			if (current.timeRange && current.timeRange !== 'all') {
 				params.set('timeRange', current.timeRange);
@@ -612,20 +612,20 @@ export function SocProvider({ children }: { children: ReactNode }) {
 		[buildSiemQueryParams]
 	);
 
-	const handleQuickExcludeSeviye = useCallback(
+	const handleQuickExcludeLevel = useCallback(
 		(level: string) => {
-			setSiemSeviye(level);
-			setSiemSeviyeOp('neq');
-			void fetchSiemFiltered({ seviye: level, seviyeOp: 'neq' });
+			setSiemLevel(level);
+			setSiemLevelOp('neq');
+			void fetchSiemFiltered({ level: level, levelOp: 'neq' });
 		},
 		[fetchSiemFiltered]
 	);
 
-	const handleQuickExcludeServis = useCallback(
+	const handleQuickExcludeService = useCallback(
 		(service: string) => {
-			setSiemServis(service);
-			setSiemServisOp('neq');
-			void fetchSiemFiltered({ servis: service, servisOp: 'neq' });
+			setSiemService(service);
+			setSiemServiceOp('neq');
+			void fetchSiemFiltered({ service: service, serviceOp: 'neq' });
 		},
 		[fetchSiemFiltered]
 	);
@@ -640,30 +640,30 @@ export function SocProvider({ children }: { children: ReactNode }) {
 	);
 
 	const handleResetAllFilters = useCallback(() => {
-		setSiemServis('all');
-		setSiemServisOp('eq');
-		setSiemSeviye('all');
-		setSiemSeviyeOp('eq');
+		setSiemService('all');
+		setSiemServiceOp('eq');
+		setSiemLevel('all');
+		setSiemLevelOp('eq');
 		setSiemIp('');
 		setSiemIpOp('eq');
-		setSiemArama('');
-		setSiemAramaOp('contains');
-		setSiemAramaAlani('all');
+		setSiemSearch('');
+		setSiemSearchOp('contains');
+		setSiemSearchField('all');
 		setSiemTimeRange('24h');
 		setSiemStartTime(null);
 		setSiemEndTime(null);
 		setSelectedBucket(null);
 		setSiemPage(1);
 		void fetchSiemFiltered({
-			servis: 'all',
-			servisOp: 'eq',
-			seviye: 'all',
-			seviyeOp: 'eq',
+			service: 'all',
+			serviceOp: 'eq',
+			level: 'all',
+			levelOp: 'eq',
 			ip: '',
 			ipOp: 'eq',
-			arama: '',
-			aramaOp: 'contains',
-			aramaAlani: 'all',
+			search: '',
+			searchOp: 'contains',
+			searchField: 'all',
 			timeRange: '24h',
 			startTime: undefined,
 			endTime: undefined,
@@ -754,31 +754,31 @@ export function SocProvider({ children }: { children: ReactNode }) {
 				setSiemIpOp(op);
 				setSiemPage(1);
 				void fetchSiemFiltered({ ip: value, ipOp: op, page: 1 });
-			} else if (field === 'servis') {
-				setSiemServis(value);
-				setSiemServisOp(op);
+			} else if (field === 'service') {
+				setSiemService(value);
+				setSiemServiceOp(op);
 				setSiemPage(1);
-				void fetchSiemFiltered({ servis: value, servisOp: op, page: 1 });
-			} else if (field === 'seviye') {
-				setSiemSeviye(value);
-				setSiemSeviyeOp(op);
+				void fetchSiemFiltered({ service: value, serviceOp: op, page: 1 });
+			} else if (field === 'level') {
+				setSiemLevel(value);
+				setSiemLevelOp(op);
 				setSiemPage(1);
-				void fetchSiemFiltered({ seviye: value, seviyeOp: op, page: 1 });
+				void fetchSiemFiltered({ level: value, levelOp: op, page: 1 });
 			} else if (field === 'userId') {
-				setSiemAramaAlani('userId');
-				setSiemArama(value);
-				const aramaOp = op === 'eq' ? 'equals' : 'not_equals';
-				setSiemAramaOp(aramaOp);
+				setSiemSearchField('userId');
+				setSiemSearch(value);
+				const searchOp = op === 'eq' ? 'equals' : 'not_equals';
+				setSiemSearchOp(searchOp);
 				setSiemPage(1);
-				void fetchSiemFiltered({ aramaAlani: 'userId', arama: value, aramaOp, page: 1 });
+				void fetchSiemFiltered({ searchField: 'userId', search: value, searchOp, page: 1 });
 			} else {
 				const searchTerm = `"${field}":`;
-				setSiemAramaAlani('detay');
-				setSiemArama(searchTerm);
-				const aramaOp = op === 'eq' ? 'contains' : 'not_contains';
-				setSiemAramaOp(aramaOp);
+				setSiemSearchField('detail');
+				setSiemSearch(searchTerm);
+				const searchOp = op === 'eq' ? 'contains' : 'not_contains';
+				setSiemSearchOp(searchOp);
 				setSiemPage(1);
-				void fetchSiemFiltered({ aramaAlani: 'detay', arama: searchTerm, aramaOp, page: 1 });
+				void fetchSiemFiltered({ searchField: 'detail', search: searchTerm, searchOp, page: 1 });
 			}
 			showNotice('ok', `${op === 'eq' ? '+' : '≠'} ${field}=${value}`);
 		},
@@ -831,7 +831,7 @@ export function SocProvider({ children }: { children: ReactNode }) {
 
 	useEffect(() => {
 		setExpandedLogIds(new Set());
-	}, [siemPage, siemServis, siemSeviye, siemIp, siemArama, siemTimeRange]);
+	}, [siemPage, siemService, siemLevel, siemIp, siemSearch, siemTimeRange]);
 
 	const fetchInspectionData = useCallback(
 		async (target = 'repo', force = false) => {
@@ -1243,7 +1243,7 @@ export function SocProvider({ children }: { children: ReactNode }) {
 					{
 						action: 'ban_ip',
 						ip: targetIp,
-						neden:
+						reason:
 							fwReason.trim() ||
 							(isEn ? 'Manual quarantine by SoC Administrator' : 'SoC Yöneticisi tarafından manuel karantina'),
 						durationMinutes,
@@ -1259,7 +1259,7 @@ export function SocProvider({ children }: { children: ReactNode }) {
 					{
 						action: 'whitelist_ip',
 						ip: targetIp,
-						neden:
+						reason:
 							fwReason.trim() || (isEn ? 'Trusted IP (Whitelist)' : 'Güvenilir IP (Whitelist)'),
 					},
 					isEn ? `IP ${targetIp} added to whitelist.` : `${targetIp} adresi güvenilir listeye eklendi.`
@@ -1290,7 +1290,7 @@ export function SocProvider({ children }: { children: ReactNode }) {
 				{
 					action: 'ban_ip',
 					ip,
-					neden: reason,
+					reason: reason,
 					durationMinutes: 120,
 				},
 				isEn ? `IP ${ip} quarantined for 2 hours.` : `${ip} adresi 2 saat süreyle karantinaya alındı.`
@@ -1334,8 +1334,8 @@ export function SocProvider({ children }: { children: ReactNode }) {
 			const confirmed = await dialog.confirm({
 				title: isEn ? 'Terminate User Session?' : 'Oturum Sonlandırılsın mı?',
 				message: isEn
-					? `Session and active terminal connections for ${session.ad} ${session.soyad} (${session.email}) will be immediately revoked.`
-					: `${session.ad} ${session.soyad} (${session.email}) kullanıcısının aktif oturumu ve açık terminal bağlantıları anında sonlandırılacak.`,
+					? `Session and active terminal connections for ${session.name} ${session.surname} (${session.email}) will be immediately revoked.`
+					: `${session.name} ${session.surname} (${session.email}) kullanıcısının aktif oturumu ve açık terminal bağlantıları anında sonlandırılacak.`,
 				tone: 'warning',
 				confirmLabel: isEn ? 'Drop Session' : 'Oturumu Düşür',
 				cancelLabel: isEn ? 'Cancel' : 'Vazgeç',
@@ -1388,8 +1388,8 @@ export function SocProvider({ children }: { children: ReactNode }) {
 			const confirmed = await dialog.confirm({
 				title: isEn ? 'Suspend User Account?' : 'Kullanıcı Hesabı Askıya Alınsın mı?',
 				message: isEn
-					? `${session.ad} ${session.soyad} (${session.email}) will be set to pending status and their active session/terminals will be terminated.`
-					: `${session.ad} ${session.soyad} (${session.email}) hesabı askıya alınacak ve tüm aktif oturum/terminalleri kapatılacaktır.`,
+					? `${session.name} ${session.surname} (${session.email}) will be set to pending status and their active session/terminals will be terminated.`
+					: `${session.name} ${session.surname} (${session.email}) hesabı askıya alınacak ve tüm aktif oturum/terminalleri kapatılacaktır.`,
 				tone: 'danger',
 				confirmLabel: isEn ? 'Suspend Account' : 'Hesabı Askıya Al',
 				cancelLabel: isEn ? 'Cancel' : 'Vazgeç',
@@ -1540,7 +1540,7 @@ export function SocProvider({ children }: { children: ReactNode }) {
 			setIsSubmitting(true);
 			try {
 				const matchingLogs = siemLogs.filter(
-					(l) => (inc.sourceIp && l.ip === inc.sourceIp) || (inc.service && l.servis === inc.service)
+					(l) => (inc.sourceIp && l.ip === inc.sourceIp) || (inc.service && l.service === inc.service)
 				);
 				const dossier = await compileForensicDossier(inc, matchingLogs, currentUserId || 'SOC Analyst');
 				downloadDossierFile(dossier);
@@ -1561,9 +1561,9 @@ export function SocProvider({ children }: { children: ReactNode }) {
 		if (focusTarget.section === 'siem') {
 			setActiveTabState('siem');
 			if (focusTarget.kind === 'user' && focusTarget.itemId) {
-				setSiemArama(focusTarget.itemId);
-				setSiemAramaAlani('userId');
-				setSiemAramaOp('equals');
+				setSiemSearch(focusTarget.itemId);
+				setSiemSearchField('userId');
+				setSiemSearchOp('equals');
 			} else if (focusTarget.kind === 'ip' && focusTarget.itemId) {
 				setSiemIp(focusTarget.itemId);
 				setSiemIpOp('eq');
@@ -1896,24 +1896,24 @@ export function SocProvider({ children }: { children: ReactNode }) {
 			handleRevokeAnomalousSessions,
 			handleSuspendUser,
 
-			siemServis,
-			setSiemServis,
-			siemServisOp,
-			setSiemServisOp,
-			siemSeviye,
-			setSiemSeviye,
-			siemSeviyeOp,
-			setSiemSeviyeOp,
+			siemService,
+			setSiemService,
+			siemServiceOp,
+			setSiemServiceOp,
+			siemLevel,
+			setSiemLevel,
+			siemLevelOp,
+			setSiemLevelOp,
 			siemIp,
 			setSiemIp,
 			siemIpOp,
 			setSiemIpOp,
-			siemArama,
-			setSiemArama,
-			siemAramaOp,
-			setSiemAramaOp,
-			siemAramaAlani,
-			setSiemAramaAlani,
+			siemSearch,
+			setSiemSearch,
+			siemSearchOp,
+			setSiemSearchOp,
+			siemSearchField,
+			setSiemSearchField,
 			expandedLogIds,
 			setExpandedLogIds,
 			toggleLogDetail,
@@ -1935,8 +1935,8 @@ export function SocProvider({ children }: { children: ReactNode }) {
 			selectedBucket,
 			setSelectedBucket,
 			fetchSiemFiltered,
-			handleQuickExcludeSeviye,
-			handleQuickExcludeServis,
+			handleQuickExcludeLevel,
+			handleQuickExcludeService,
 			handleQuickExcludeIp,
 			handleResetAllFilters,
 			handleSelectTimeRange,
@@ -2071,15 +2071,15 @@ export function SocProvider({ children }: { children: ReactNode }) {
 			handleKillAllOtherSessions,
 			handleRevokeAnomalousSessions,
 			handleSuspendUser,
-			siemServis,
-			siemServisOp,
-			siemSeviye,
-			siemSeviyeOp,
+			siemService,
+			siemServiceOp,
+			siemLevel,
+			siemLevelOp,
 			siemIp,
 			siemIpOp,
-			siemArama,
-			siemAramaOp,
-			siemAramaAlani,
+			siemSearch,
+			siemSearchOp,
+			siemSearchField,
 			expandedLogIds,
 			toggleLogDetail,
 			siemTimeRange,
@@ -2093,8 +2093,8 @@ export function SocProvider({ children }: { children: ReactNode }) {
 			pageJump,
 			selectedBucket,
 			fetchSiemFiltered,
-			handleQuickExcludeSeviye,
-			handleQuickExcludeServis,
+			handleQuickExcludeLevel,
+			handleQuickExcludeService,
 			handleQuickExcludeIp,
 			handleResetAllFilters,
 			handleSelectTimeRange,

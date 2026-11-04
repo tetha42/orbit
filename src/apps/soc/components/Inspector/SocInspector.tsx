@@ -108,14 +108,14 @@ export function SocInspector() {
 						<span>{isEn ? 'Event Metadata' : 'AppEvent Üstverisi'}</span>
 						<span
 							className={`${s.badge} ${
-								ev.seviye === 'CRITICAL' || ev.seviye === 'ERROR'
+								ev.level === 'CRITICAL' || ev.level === 'ERROR'
 									? s.badgeDanger
-									: ev.seviye === 'WARN'
+									: ev.level === 'WARN'
 									? s.badgeWarn
 									: s.badgeNeutral
 							}`}
 						>
-							{ev.seviye}
+							{ev.level}
 						</span>
 					</div>
 
@@ -124,10 +124,10 @@ export function SocInspector() {
 						<span className={`${s.propValue} ${s.mono}`}>#{ev.id}</span>
 
 						<span className={s.propLabel}>{isEn ? 'Timestamp' : 'Zaman'}</span>
-						<span className={s.propValue}>{formatDateTime(ev.zaman, isEn ? 'en' : 'tr')}</span>
+						<span className={s.propValue}>{formatDateTime(ev.time, isEn ? 'en' : 'tr')}</span>
 
 						<span className={s.propLabel}>{isEn ? 'Service' : 'Servis'}</span>
-						<span className={`${s.propValue} ${s.mono}`}>{ev.servis}</span>
+						<span className={`${s.propValue} ${s.mono}`}>{ev.service}</span>
 
 						<span className={s.propLabel}>{isEn ? 'Source IP' : 'Kaynak IP'}</span>
 						<span className={`${s.propValue} ${s.mono}`} data-type="ip" data-value={ev.ip}>
@@ -150,24 +150,24 @@ export function SocInspector() {
 						<span>{isEn ? 'Log Message' : 'AppEvent Mesajı'}</span>
 					</div>
 					<div className={s.propValue} style={{ fontSize: 12, lineHeight: 1.4 }}>
-						{formatSocAlertMessage(ev.mesaj, isEn)}
+						{formatSocAlertMessage(ev.message, isEn)}
 					</div>
 				</div>
 
-				{ev.detay && (
+				{ev.detail && (
 					<div className={s.sectionCard}>
 						<div className={s.sectionHeader}>
 							<span>{isEn ? 'Payload Details' : 'Yük & Parametre Detayları'}</span>
 							<button
 								type="button"
 								className={s.iconBtn}
-								onClick={() => handleCopyJson(ev.detay)}
+								onClick={() => handleCopyJson(ev.detail)}
 								title={isEn ? 'Copy Payload JSON' : 'JSON Yükünü Kopyala'}
 							>
 								{copied ? <Check size={13} color="var(--success)" /> : <Copy size={13} />}
 							</button>
 						</div>
-						<pre className={s.codeViewer}>{JSON.stringify(ev.detay, null, 2)}</pre>
+						<pre className={s.codeViewer}>{JSON.stringify(ev.detail, null, 2)}</pre>
 					</div>
 				)}
 
@@ -208,7 +208,7 @@ export function SocInspector() {
 	const renderIpView = () => {
 		if (inspectorEntity.type !== 'ip') return null;
 		const { ip, threatIntel, banInfo, attackerInfo } = inspectorEntity.data;
-		const threatScore = banInfo?.tehditPuani ?? attackerInfo?.tehditPuani ?? 0;
+		const threatScore = banInfo?.threatScore ?? attackerInfo?.threatScore ?? 0;
 		const isBanned = banInfo?.status === 'ban' || attackerInfo?.status === 'ban';
 
 		return (
@@ -284,7 +284,7 @@ export function SocInspector() {
 								<span className={s.propValue}>{attackerInfo.eventCount}</span>
 
 								<span className={s.propLabel}>{isEn ? 'Last Seen' : 'Son Görülme'}</span>
-								<span className={s.propValue}>{formatDateTime(attackerInfo.sonGorulme, isEn ? 'en' : 'tr')}</span>
+								<span className={s.propValue}>{formatDateTime(attackerInfo.lastSeen, isEn ? 'en' : 'tr')}</span>
 							</>
 						)}
 					</div>
@@ -300,7 +300,7 @@ export function SocInspector() {
 						</div>
 						<div className={s.gridProps}>
 							<span className={s.propLabel}>{isEn ? 'Reason' : 'Neden'}</span>
-							<span className={s.propValue}>{formatSocAlertMessage(banInfo.neden, isEn)}</span>
+							<span className={s.propValue}>{formatSocAlertMessage(banInfo.reason, isEn)}</span>
 
 							<span className={s.propLabel}>{isEn ? 'Expires At' : 'Bitiş'}</span>
 							<span className={s.propValue}>
@@ -501,12 +501,12 @@ export function SocInspector() {
 					<div className={s.sectionHeader}>
 						<span>{isEn ? 'User Identity' : 'Kullanıcı Kimliği'}</span>
 						<span className={`${s.badge} ${sess.admin ? s.badgeDanger : s.badgeNeutral}`}>
-							{sess.admin ? 'ADMIN' : sess.rolAd || 'MEMBER'}
+							{sess.admin ? 'ADMIN' : sess.roleName || 'MEMBER'}
 						</span>
 					</div>
 					<div className={s.gridProps}>
 						<span className={s.propLabel}>{isEn ? 'Name' : 'Ad Soyad'}</span>
-						<span className={s.propValue}>{sess.ad} {sess.soyad}</span>
+						<span className={s.propValue}>{sess.name} {sess.surname}</span>
 
 						<span className={s.propLabel}>{isEn ? 'Email' : 'E-posta'}</span>
 						<span className={s.propValue}>{sess.email}</span>
@@ -529,17 +529,17 @@ export function SocInspector() {
 					</div>
 					<div className={s.gridProps}>
 						<span className={s.propLabel}>{isEn ? 'Client IP' : 'İstemci IP'}</span>
-						<span className={`${s.propValue} ${s.mono}`} data-type="ip" data-value={sess.sonAktifIp || sess.sonGirisIp || ''}>
-							{sess.sonAktifIp || sess.sonGirisIp || '—'}
+						<span className={`${s.propValue} ${s.mono}`} data-type="ip" data-value={sess.lastActiveIp || sess.lastLoginIp || ''}>
+							{sess.lastActiveIp || sess.lastLoginIp || '—'}
 						</span>
 
 						<span className={s.propLabel}>{isEn ? 'User Agent' : 'Tarayıcı'}</span>
-						<span className={s.propValue} title={sess.sonGirisUserAgent || ''}>
-							{summarizeUa(sess.sonGirisUserAgent)}
+						<span className={s.propValue} title={sess.lastLoginUserAgent || ''}>
+							{summarizeUa(sess.lastLoginUserAgent)}
 						</span>
 
 						<span className={s.propLabel}>{isEn ? 'Last Active' : 'Son İşlem'}</span>
-						<span className={s.propValue}>{formatDateTime(sess.sonAktifTarihi, isEn ? 'en' : 'tr')}</span>
+						<span className={s.propValue}>{formatDateTime(sess.lastActiveDate, isEn ? 'en' : 'tr')}</span>
 					</div>
 				</div>
 
@@ -667,7 +667,7 @@ export function SocInspector() {
 
 	if (inspectorEntity.type === 'event') {
 		typeTag = isEn ? 'SIEM Log Event' : 'SIEM AppEvent Kaydı';
-		title = `Log #${inspectorEntity.data.id} · ${inspectorEntity.data.servis}`;
+		title = `Log #${inspectorEntity.data.id} · ${inspectorEntity.data.service}`;
 		IconComp = FileText;
 	} else if (inspectorEntity.type === 'ip') {
 		typeTag = isEn ? 'IP Threat Profile' : 'IP Tehdit Profili';
@@ -679,7 +679,7 @@ export function SocInspector() {
 		IconComp = ShieldAlert;
 	} else if (inspectorEntity.type === 'session') {
 		typeTag = isEn ? 'Active Session' : 'Aktif Oturum';
-		title = `${inspectorEntity.data.ad} ${inspectorEntity.data.soyad}`;
+		title = `${inspectorEntity.data.name} ${inspectorEntity.data.surname}`;
 		IconComp = User;
 	} else if (inspectorEntity.type === 'fim') {
 		typeTag = isEn ? 'File Integrity' : 'Dosya Bütünlüğü';

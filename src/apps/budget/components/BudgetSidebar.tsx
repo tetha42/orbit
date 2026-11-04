@@ -13,8 +13,8 @@ interface BudgetSidebarProps {
 	onSelect: (teamId: string | null) => void;
 }
 
-const formatTL = (kurus: number) =>
-	(kurus / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const formatTL = (minor: number) =>
+	(minor / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const sectionLabel: React.CSSProperties = {
 	fontSize: '10.5px',
@@ -28,15 +28,15 @@ const sectionLabel: React.CSSProperties = {
 export function BudgetSidebar({ active, general, projects, onSelect }: BudgetSidebarProps) {
 	const { t } = useI18n();
 
-	const renderItem = (kasa: VaultSummary) => {
-		const isActive = active && kasa.teamId === active.teamId;
-		const Icon = kasa.kind === 'genel' ? Landmark : FolderGit2;
+	const renderItem = (vault: VaultSummary) => {
+		const isActive = active && vault.teamId === active.teamId;
+		const Icon = vault.kind === 'genel' ? Landmark : FolderGit2;
 		return (
 			<button
-				key={kasa.teamId ?? 'genel'}
+				key={vault.teamId ?? 'genel'}
 				className="kasa-item"
-				data-focus-id={`kasa-item:${kasa.teamId ?? 'genel'}`}
-				onClick={() => onSelect(kasa.teamId)}
+				data-focus-id={`kasa-item:${vault.teamId ?? 'genel'}`}
+				onClick={() => onSelect(vault.teamId)}
 				style={{
 					display: 'flex',
 					alignItems: 'center',
@@ -67,22 +67,22 @@ export function BudgetSidebar({ active, general, projects, onSelect }: BudgetSid
 							whiteSpace: 'nowrap',
 						}}
 					>
-						{kasa.ad}
+						{vault.name}
 					</span>
 					<span style={{ display: 'block', fontSize: '11px', opacity: isActive ? 0.85 : 0.6 }}>
-						{t('kasaEntryCount').replace('{n}', String(kasa.kayitSayisi))}
+						{t('kasaEntryCount').replace('{n}', String(vault.recordCount))}
 					</span>
 				</span>
 				<span
 					style={{
 						fontSize: '12px',
 						fontWeight: 700,
-						color: isActive ? '#ffffff' : (kasa.netBalanceMinor > 0 ? '#34c759' : 'inherit'),
-						opacity: isActive ? 1 : (kasa.netBalanceMinor > 0 ? 1 : 0.55),
+						color: isActive ? '#ffffff' : (vault.netBalanceMinor > 0 ? '#34c759' : 'inherit'),
+						opacity: isActive ? 1 : (vault.netBalanceMinor > 0 ? 1 : 0.55),
 						whiteSpace: 'nowrap',
 					}}
 				>
-					₺{formatTL(kasa.netBalanceMinor)}
+					₺{formatTL(vault.netBalanceMinor)}
 				</span>
 			</button>
 		);

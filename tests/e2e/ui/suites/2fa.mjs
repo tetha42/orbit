@@ -29,7 +29,7 @@ export default async function suite(t) {
 
 	// ---- 1. .env admini ilk giriş: zorunlu modal ------------------------------------------
 	await t.step('.env admini girişte zorunlu 2FA modalı açılıyor, kapatılamıyor', async () => {
-		await submitCredentials(page, bootstrap.eposta, bootstrap.sifre);
+		await submitCredentials(page, bootstrap.email, bootstrap.password);
 		const modal = page.locator(MODAL);
 		await modal.waitFor();
 		t.check(await modal.isVisible(), 'zorunlu 2FA modalı açıldı');
@@ -112,7 +112,7 @@ export default async function suite(t) {
 	// ---- 4. Çıkış → yeniden giriş → TOTP adımı -------------------------------------------
 	await t.step('çıkış, yeniden giriş: şifreden sonra TOTP adımı isteniyor', async () => {
 		await logoutUi(page);
-		await submitCredentials(page, bootstrap.eposta, bootstrap.sifre);
+		await submitCredentials(page, bootstrap.email, bootstrap.password);
 		await page.locator('input[autocomplete=one-time-code]').waitFor();
 		t.check(await page.getByText('İki adımlı doğrulama', { exact: true }).first().isVisible(), 'TwoFactorForm başlığı görünüyor');
 		t.eq(await page.locator('input[type=password]').count(), 0, 'parola alanı yok, yalnız kod adımı');
@@ -132,14 +132,14 @@ export default async function suite(t) {
 	// ---- 5. Kurtarma kodu: giriş yapar, tek kullanımlık -----------------------------------
 	await t.step('kurtarma koduyla giriş çalışıyor ve kod tek kullanımlık', async () => {
 		await logoutUi(page);
-		await submitCredentials(page, bootstrap.eposta, bootstrap.sifre);
+		await submitCredentials(page, bootstrap.email, bootstrap.password);
 		await page.locator('input[autocomplete=one-time-code]').waitFor();
 		await submitSecondFactor(page, recovery[0]);
 		await page.locator('[data-dock-app=budget]').waitFor();
 		t.check(true, 'kurtarma kodu #1 ile giriş yapıldı');
 
 		await logoutUi(page);
-		await submitCredentials(page, bootstrap.eposta, bootstrap.sifre);
+		await submitCredentials(page, bootstrap.email, bootstrap.password);
 		await page.locator('input[autocomplete=one-time-code]').waitFor();
 		await submitSecondFactor(page, recovery[0]);
 		await page.getByText(/geçersiz|hatalı|yanlış/i).first().waitFor();
@@ -154,17 +154,17 @@ export default async function suite(t) {
 	const admin = client(base, await sessionToken(context, base));
 
 	// ---- 6. Rol bazlı zorunluluk ---------------------------------------------------------
-	const rolYonetim = await createRole(admin, { ad: 'Yönetim Kurulu', renk: '#ff9f0a', aciklama: '', ikiAdimZorunlu: true, izinler: { news: 'yonet', events: 'yonet', members: 'kullan', settings: 'kullan' } });
-	const rolUye = await createRole(admin, { ad: 'Üye', renk: '#0a84ff', aciklama: '', ikiAdimZorunlu: false, izinler: { news: 'kullan', events: 'kullan', settings: 'kullan' } });
-	const rolTakip = await createRole(admin, { ad: 'Takip', renk: '#30d158', aciklama: '', ikiAdimZorunlu: false, izinler: { news: 'kullan', settings: 'kullan' } });
-	const yk = await createMember(admin, base, { ad: 'Yasemin', soyad: 'Kurul', eposta: 'yasemin@e2e.test', rolId: rolYonetim });
-	const uye = await createMember(admin, base, { ad: 'Ugur', soyad: 'Uye', eposta: 'ugur@e2e.test', rolId: rolUye });
-	const takip = await createMember(admin, base, { ad: 'Tuna', soyad: 'Takip', eposta: 'tuna@e2e.test', rolId: rolTakip });
+	const roleManagement = await createRole(admin, { name: 'Yönetim Kurulu', color: '#ff9f0a', description: '', twoStepRequired: true, permissions: { news: 'yonet', events: 'yonet', members: 'kullan', settings: 'kullan' } });
+	const roleMember = await createRole(admin, { name: 'Üye', color: '#0a84ff', description: '', twoStepRequired: false, permissions: { news: 'kullan', events: 'kullan', settings: 'kullan' } });
+	const roleFollow = await createRole(admin, { name: 'Takip', color: '#30d158', description: '', twoStepRequired: false, permissions: { news: 'kullan', settings: 'kullan' } });
+	const yk = await createMember(admin, base, { name: 'Yasemin', surname: 'Kurul', email: 'yasemin@e2e.test', roleId: roleManagement });
+	const member = await createMember(admin, base, { name: 'Ugur', surname: 'Uye', email: 'ugur@e2e.test', roleId: roleMember });
+	const follow = await createMember(admin, base, { name: 'Tuna', surname: 'Takip', email: 'tuna@e2e.test', roleId: roleFollow });
 
 	await t.step('"Yönetim Kurulu" rolündeki yeni üye: ilk girişte aynı modal açılıyor', async () => {
 		const o = await openAnonymous(t.browser, base);
 		t.track(o.context);
-		await submitCredentials(o.page, yk.eposta, yk.sifre);
+		await submitCredentials(o.page, yk.email, yk.password);
 		await o.page.locator(MODAL).waitFor();
 		t.check(await o.page.locator(MODAL).isVisible(), 'Yönetim Kurulu üyesine zorunlu 2FA modalı açıldı');
 		t.eq(await dockApps(o.page), ['settings'], 'Dock\'ta yalnız Ayarlar');
@@ -176,7 +176,7 @@ export default async function suite(t) {
 	await t.step('"Üye" rolündeki (zorunlu değil) kullanıcıda modal açılmıyor', async () => {
 		const o = await openAnonymous(t.browser, base);
 		t.track(o.context);
-		await loginUi(o.page, uye.eposta, uye.sifre);
+		await loginUi(o.page, member.email, member.password);
 		t.eq(await o.page.locator(MODAL).count(), 0, 'modal yok');
 		t.sameSet(await dockApps(o.page), ['news', 'events', 'settings'], 'Dock rolün uygulamalarını gösteriyor');
 		await t.shot(o.page, 'uye-modal-yok');
@@ -185,10 +185,10 @@ export default async function suite(t) {
 	await t.step('admin rolün "2FA zorunlu" anahtarını açınca açık oturumda ≤15 sn içinde modal beliriyor', async () => {
 		const o = await openAnonymous(t.browser, base);
 		t.track(o.context);
-		await loginUi(o.page, takip.eposta, takip.sifre);
+		await loginUi(o.page, follow.email, follow.password);
 		t.eq(await o.page.locator(MODAL).count(), 0, 'başlangıçta modal yok');
-		const rol = (await admin.get('/api/roller')).json.roller.find((r) => r.id === rolTakip);
-		const patch = (zorunlu) => admin.patch('/api/roller', { id: rolTakip, ad: rol.ad, renk: rol.renk, aciklama: rol.aciklama, izinler: rol.izinler, ikiAdimZorunlu: zorunlu });
+		const role = (await admin.get('/api/roller')).json.roles.find((r) => r.id === roleFollow);
+		const patch = (required) => admin.patch('/api/roller', { id: roleFollow, name: role.name, color: role.color, description: role.description, permissions: role.permissions, twoStepRequired: required });
 		t.eq((await patch(true)).status, 200, 'PATCH /api/roller {ikiAdimZorunlu: true} 200');
 		const ms = await t.waitFor(async () => (await o.page.locator(MODAL).count()) === 1, { timeout: 25_000 });
 		t.check(ms >= 0 && ms <= 20_000, `modal sayfa yenilenmeden belirdi (${ms} ms)`);

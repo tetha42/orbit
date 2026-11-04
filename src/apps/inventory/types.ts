@@ -3,17 +3,17 @@ export type { InventoryStatus };
 
 export interface InventoryItem {
 	id: string;
-	kod: string;
-	ad: string;
-	kategori: string;
+	code: string;
+	name: string;
+	category: string;
 	status: InventoryStatus;
-	konum: string;
-	oduncAlanId: string | null;
-	oduncAlanAdSoyad: string | null;
-	iadeTarihi: number | null;
-	oduncTarihi: number | null;
-	aciklama: string | null;
-	seriNo: string | null;
+	location: string;
+	loanFieldId: string | null;
+	loanFieldNameSurname: string | null;
+	returnDate: number | null;
+	loanDate: number | null;
+	description: string | null;
+	seriesNo: string | null;
 }
 
 export type Filter = 'hepsi' | InventoryStatus | 'gecikmis' | 'bende';

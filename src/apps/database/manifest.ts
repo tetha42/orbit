@@ -34,11 +34,11 @@ const manifest = {
 	order: 14,
 	dock: 14,
 	permission: {
-		sira: 14,
-		ad: 'Veritabanı',
+		order: 14,
+		name: 'Veritabanı',
 		kullan: 'Veritabanı tablolarını görüntüler.',
 		yonet: 'Veritabanı tablolarını ve kayıtlarını doğrudan düzenler.',
-		uyari: 'Veritabanına doğrudan tam erişim verir; yalnızca sistem yöneticilerine açılmalıdır.',
+		warning: 'Veritabanına doğrudan tam erişim verir; yalnızca sistem yöneticilerine açılmalıdır.',
 	},
 	menu: {
 		title: { tr: 'Veritabanı', en: 'Database' },

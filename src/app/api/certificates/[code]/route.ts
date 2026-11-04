@@ -7,13 +7,13 @@ import { isIpBanned, recordSecurityStrike } from '@/db/repositories/security.rep
 
 export async function GET(
 	request: Request,
-	{ params }: { params: Promise<{ code?: string; kod?: string }> }
+	{ params }: { params: Promise<{ code?: string;}> }
 ) {
 	const ip = clientAddress(request);
 	const ban = await isIpBanned(ip);
 	if (ban.banned) {
 		return NextResponse.json(
-			{ gecerliMi: false, error: 'IP adresiniz siber güvenlik politikası gereği karantinaya alınmıştır.' },
+			{ validMi: false, error: 'IP adresiniz siber güvenlik politikası gereği karantinaya alınmıştır.' },
 			{ status: 403 }
 		);
 	}
@@ -24,10 +24,10 @@ export async function GET(
 			ip,
 			points: waf.points,
 			reason: `WAF: ${waf.signature}`,
-			path: '/api/sertifikalar/[kod]',
+			path: '/api/sertifikalar/[code]',
 		});
 		return NextResponse.json(
-			{ gecerliMi: false, error: 'Güvenlik duvarı (WAF) tarafından şüpheli istek engellendi.' },
+			{ validMi: false, error: 'Güvenlik duvarı (WAF) tarafından şüpheli istek engellendi.' },
 			{ status: 403 }
 		);
 	}
@@ -35,29 +35,29 @@ export async function GET(
 	const rl = consumeRateLimit(`cert_verify:${ip}`, 30, 60_000);
 	if (!rl.allowed) {
 		return NextResponse.json(
-			{ gecerliMi: false, error: 'Çok fazla sorgu yaptınız. Lütfen biraz bekleyin.' },
+			{ validMi: false, error: 'Çok fazla sorgu yaptınız. Lütfen biraz bekleyin.' },
 			{ status: 429, headers: { 'Retry-After': String(rl.retryAfter) } }
 		);
 	}
 
 	try {
-		const { code, kod } = await params;
-		const cert = await getCertificateByCode((code || kod)!);
+		const { code } = await params;
+		const cert = await getCertificateByCode(code!);
 
 		if (!cert) {
-			return NextResponse.json({ gecerliMi: false, error: 'Certificate bulunamadı veya geçersiz.' }, { status: 404 });
+			return NextResponse.json({ validMi: false, error: 'Certificate bulunamadı veya geçersiz.' }, { status: 404 });
 		}
 
 		// Strip internal user ID and 11-digit student number from public verification response
 		const {
-			ogrenciNo: _ogrenciNo,
-			userId: _kullaniciId,
+			studentNo: _StudentNo,
+			userId: _UserId,
 			...publicCert
-		} = cert as typeof cert & { ogrenciNo?: string };
+		} = cert as typeof cert & { studentNo?: string };
 
 		return NextResponse.json({
-			gecerliMi: true,
-			sertifika: publicCert,
+			validMi: true,
+			certificate: publicCert,
 		});
 	} catch (error) {
 		console.error('API error:', error);

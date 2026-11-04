@@ -17,7 +17,7 @@ interface CertificatesToolbarProps {
 	isManager: boolean;
 	myCertsCount: number;
 	allCertsCount: number;
-	kulup: CommunityProfile | null;
+	club: CommunityProfile | null;
 	onEditSignatories: () => void;
 	onOpenIssue: () => void;
 	message: { text: string; type: 'success' | 'error' } | null;
@@ -33,7 +33,7 @@ export function CertificatesToolbar({
 	isManager,
 	myCertsCount,
 	allCertsCount,
-	kulup,
+	club,
 	onEditSignatories,
 	onOpenIssue,
 	message,
@@ -131,7 +131,7 @@ export function CertificatesToolbar({
 				</div>
 
 				<div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-					{isManager && kulup && (
+					{isManager && club && (
 						<button
 							type="button"
 							onClick={onEditSignatories}

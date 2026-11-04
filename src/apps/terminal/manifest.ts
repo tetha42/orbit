@@ -34,11 +34,11 @@ const manifest = {
 	order: 10,
 	dock: 11,
 	permission: {
-		sira: 11,
-		ad: 'Terminal',
+		order: 11,
+		name: 'Terminal',
 		kullan: 'Sunucuda kabuk (shell) açar.',
 		yonet: 'Sunucuda kabuk (shell) açar.',
-		uyari: 'Terminal sunucuya tam erişim verir; yalnızca güvendiğiniz kişilere açın.',
+		warning: 'Terminal sunucuya tam erişim verir; yalnızca güvendiğiniz kişilere açın.',
 	},
 	menu: {
 		title: { tr: 'Terminal', en: 'Terminal' },

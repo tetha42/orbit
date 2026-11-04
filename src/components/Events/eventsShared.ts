@@ -4,26 +4,26 @@ import type { EventStatus, EventType, AttendanceMethod } from '@/lib/events';
 export interface EventView {
 	id: string;
 	slug: string;
-	baslik: string;
-	tur: EventType;
-	aciklama: string;
-	konum: string;
-	baslangic: number;
+	title: string;
+	typeValue: EventType;
+	description: string;
+	location: string;
+	start: number;
 	endTime: number;
-	kapasite: number;
+	capacity: number;
 	status: EventStatus;
-	yoklamaAcik: number;
-	kayitliSayisi: number;
-	katilimciSayisi: number;
-	benimKaydim: boolean;
-	benimYoklamam: { yontem: AttendanceMethod; katilimZamani: number } | null;
-	biletKodu: string | null;
+	attendanceOpen: number;
+	registeredCount: number;
+	participantCount: number;
+	myMyRecord: boolean;
+	myMyAttendance: { method: AttendanceMethod; participationTime: number } | null;
+	ticketCode: string | null;
 }
 
 export interface EventsResponse {
-	etkinlikler: EventView[];
-	izinler: { manage: boolean };
-	sunucuZamani: number;
+	events: EventView[];
+	permissions: { manage: boolean };
+	serverTime: number;
 }
 
 export const TYPE_META: Record<EventType, { color: string; key: string }> = {
@@ -33,10 +33,10 @@ export const TYPE_META: Record<EventType, { color: string; key: string }> = {
 	toplanti: { color: 'var(--ev-toplanti)', key: 'evTypeToplanti' },
 };
 
-export const typeMeta = (tur: string) => TYPE_META[tur as EventType] ?? TYPE_META.atolye;
+export const typeMeta = (typeValue: string) => TYPE_META[typeValue as EventType] ?? TYPE_META.atolye;
 
-export function isLive(e: Pick<EventView, 'baslangic' | 'endTime' | 'status'>, now: number): boolean {
-	return e.status === 'yayinda' && now >= e.baslangic && now <= e.endTime;
+export function isLive(e: Pick<EventView, 'start' | 'endTime' | 'status'>, now: number): boolean {
+	return e.status === 'yayinda' && now >= e.start && now <= e.endTime;
 }
 
 /** "12 Eki Pzt · 14:00–17:00", or with both dates when it spans days. */

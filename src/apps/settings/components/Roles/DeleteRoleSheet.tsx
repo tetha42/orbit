@@ -9,44 +9,44 @@ import ui from '@/core/ui/ui.module.css';
 
 export interface RoleSummaryView {
 	id: string;
-	ad: string;
-	kullaniciSayisi: number;
+	name: string;
+	userCount: number;
 }
 
 interface DeleteRoleSheetProps {
 	role: RoleSummaryView;
-	hedefler: { id: string; ad: string }[];
-	varsayilan: string | null;
+	targets: { id: string; name: string }[];
+	defaultValue: string | null;
 	onClose: () => void;
-	onDelete: (tasi: string | null) => Promise<void>;
+	onDelete: (move: string | null) => Promise<void>;
 }
 
 export function DeleteRoleSheet({
 	role,
-	hedefler,
-	varsayilan,
+	targets,
+	defaultValue,
 	onClose,
 	onDelete,
 }: DeleteRoleSheetProps) {
 	const { t } = useI18n();
-	const [tasi, setTasi] = useState<string>(
-		varsayilan && varsayilan !== role.id && hedefler.some((r) => r.id === varsayilan)
-			? varsayilan
+	const [move, setMove] = useState<string>(
+		defaultValue && defaultValue !== role.id && targets.some((r) => r.id === defaultValue)
+			? defaultValue
 			: ''
 	);
 	const [busy, setBusy] = useState(false);
 
 	return (
 		<Sheet
-			title={fill(t('rolesDeleteTitle'), { name: role.ad })}
-			label={fill(t('rolesDeleteTitle'), { name: role.ad })}
+			title={fill(t('rolesDeleteTitle'), { name: role.name })}
+			label={fill(t('rolesDeleteTitle'), { name: role.name })}
 			icon={<Trash2 size={18} color="#ff453a" />}
 			tone="danger"
 			onClose={onClose}
 			onSubmit={async (e) => {
 				e.preventDefault();
 				setBusy(true);
-				await onDelete(tasi || null);
+				await onDelete(move || null);
 				setBusy(false);
 			}}
 			maxWidth={460}
@@ -62,15 +62,15 @@ export function DeleteRoleSheet({
 			}
 		>
 			<p style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>
-				{fill(t('rolesMembersInRole'), { n: role.kullaniciSayisi })}
+				{fill(t('rolesMembersInRole'), { n: role.userCount })}
 			</p>
 			<label className={ui.field}>
 				<span className={ui.fieldLabel}>{t('rolesTargetRole')}</span>
-				<select className={ui.select} value={tasi} onChange={(e) => setTasi(e.target.value)} aria-label={t('rolesTargetRoleAria')}>
-					{hedefler.map((r) => (
+				<select className={ui.select} value={move} onChange={(e) => setMove(e.target.value)} aria-label={t('rolesTargetRoleAria')}>
+					{targets.map((r) => (
 						<option key={r.id} value={r.id}>
-							{r.ad}
-							{r.id === varsayilan ? ` (${t('defaultLabel')})` : ''}
+							{r.name}
+							{r.id === defaultValue ? ` (${t('defaultLabel')})` : ''}
 						</option>
 					))}
 					<option value="">{t('rolesOnlyPersonal')}</option>

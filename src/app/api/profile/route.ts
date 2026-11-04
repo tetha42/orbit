@@ -7,7 +7,7 @@ import {
 import { auditContext } from '@/db/audit';
 import { verifyAuth } from '@/lib/auth/authGuard';
 import { sessionUserOf } from '@/lib/auth/session';
-import { seviye } from '@/lib/profile';
+import { level } from '@/lib/profile';
 import { updateSelfProfile } from '@/server/members/service';
 import { getUserDiskUsage } from '@/db/repositories/files.repo';
 
@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
 	const auth = await verifyAuth(request);
 	if (!auth.authorized) return auth.response;
-	const [ozet, fields, allValues, diskUsage] = await Promise.all([
+	const [summary, fields, allValues, diskUsage] = await Promise.all([
 		getUserSummary(auth.user.id),
 		getFormFields({ scope: 'profile' }),
 		getMemberFieldValues(auth.user.id),
@@ -30,9 +30,9 @@ export async function GET(request: Request) {
 	}
 	return NextResponse.json(
 		{
-			user: { ...(await sessionUserOf(auth.user)), olusturma: auth.user.olusturma },
-			seviye: seviye(Number(auth.user.xp) || 0),
-			ozet,
+			user: { ...(await sessionUserOf(auth.user)), creation: auth.user.creation },
+			level: level(Number(auth.user.xp) || 0),
+			summary,
 			fields,
 			customFields,
 			diskUsage,

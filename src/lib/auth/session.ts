@@ -76,45 +76,41 @@ export function clearSessionCookie(response: NextResponse): NextResponse {
  */
 export function toSessionUser(user: User, permission: Permission): SessionUser {
 	const twoFactorEnabled = Number(user.totpEnabled) === 1;
-	const twoFactorRequired = permission.ikiAdimZorunlu;
+	const twoFactorRequired = permission.twoStepRequired;
 	const passkeySession = (user.authMethod ?? 'password') === 'passkey';
 
-	const firstName = user.firstName ?? user.ad;
-	const lastName = user.lastName ?? user.soyad;
-	const handle = user.handle ?? user.ogrenciNo;
-	const department = user.department ?? user.bolum;
-	const grade = user.grade ?? user.sinif;
-	const avatarUrl = user.avatarUrl ?? user.profilFoto;
-	const lastLoginAt = user.lastLoginAt ?? user.sonGirisTarihi;
+	const firstName = user.firstName ?? user.name;
+	const lastName = user.lastName ?? user.surname;
+	const handle = user.handle ?? user.studentNo;
+	const department = user.department ?? user.department;
+	const grade = user.grade ?? user.grade;
+	const avatarUrl = user.avatarUrl ?? user.profilePhoto;
+	const lastLoginAt = user.lastLoginAt ?? user.lastLoginDate;
 
 	return {
 		id: user.id,
 		firstName,
 		lastName,
-		ad: firstName,
-		soyad: lastName,
+		name: firstName,
+		surname: lastName,
 		email: user.email,
 		handle,
-		ogrenciNo: handle,
+		studentNo: handle,
 		department,
-		bolum: department,
 		grade,
-		sinif: grade,
 		avatarUrl,
-		profilFoto: avatarUrl,
+		profilePhoto: avatarUrl,
 		bio: user.bio,
 		xp: user.xp,
 		status: user.status,
 		lastLoginAt,
-		sonGirisTarihi: lastLoginAt,
+		lastLoginDate: lastLoginAt,
 		twoFactorEnabled,
 		twoFactorRequired,
 		authMethod: user.authMethod ?? 'password',
 		mustSetup2fa: twoFactorRequired && !twoFactorEnabled && !passkeySession,
-		roleInfo: permission.role ? { id: permission.role.id, name: permission.role.name ?? permission.role.ad, color: permission.role.color ?? permission.role.renk } : null,
-		rolBilgi: permission.role ? { id: permission.role.id, ad: permission.role.name ?? permission.role.ad, renk: permission.role.color ?? permission.role.renk } : null,
-		permissions: permission.permissions ?? permission.izinler,
-		izinler: permission.permissions ?? permission.izinler,
+		roleInfo: permission.role ? { id: permission.role.id, name: permission.role.name ?? permission.role.name, color: permission.role.color ?? permission.role.color } : null,
+		permissions: permission.permissions ?? permission.permissions,
 		admin: permission.admin,
 	};
 }

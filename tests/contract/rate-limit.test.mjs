@@ -12,7 +12,7 @@ test('contract: auth rate limiter triggers 429 upon excessive requests', async (
 			const res = await request('/api/auth/login', {
 				method: 'POST',
 				headers: testHeaders,
-				body: { eposta: `rate-${i}@orbit.local`, sifre: 'Random123456!' },
+				body: { email: `rate-${i}@orbit.local`, password: 'Random123456!' },
 			});
 			if (res.status === 429) {
 				got429 = true;

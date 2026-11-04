@@ -29,10 +29,10 @@ const SYSTEM_TEMPLATES = [
 		title: 'Disk Kullanımı: En Büyük Tablolar & İndeksler',
 		desc: 'PostgreSQL tablolarının ve indekslerinin kapladığı gerçek disk alanını listeler.',
 		sql: `SELECT
-  relname AS tablo_adi,
-  pg_size_pretty(pg_total_relation_size(relid)) AS toplam_boyut,
-  pg_size_pretty(pg_relation_size(relid)) AS tablo_boyutu,
-  pg_size_pretty(pg_indexes_size(relid)) AS indeks_boyutu
+  relname AS table_Name,
+  pg_size_pretty(pg_total_relation_size(relid)) AS total_Size,
+  pg_size_pretty(pg_relation_size(relid)) AS table_Size,
+  pg_size_pretty(pg_indexes_size(relid)) AS indeks_Size
 FROM pg_catalog.pg_statio_user_tables
 ORDER BY pg_total_relation_size(relid) DESC
 LIMIT 50;`,
@@ -42,11 +42,11 @@ LIMIT 50;`,
 		desc: 'Şu anda çalışan bağlantıları, durumlarını ve aktif sorguları listeler.',
 		sql: `SELECT
   pid,
-  usename AS kullanici,
+  usename AS "user",
   client_addr AS ip_adresi,
   state AS status,
   NOW() - query_start AS calisma_suresi,
-  query AS sorgu
+  query AS query
 FROM pg_stat_activity
 WHERE datname = current_database()
 ORDER BY query_start DESC;`,
@@ -55,10 +55,10 @@ ORDER BY query_start DESC;`,
 		title: 'Tablo İstatistikleri & Ölü Satırlar (Dead Tuples)',
 		desc: 'Canlı satırlar, silinen ama temizlenmemiş (dead) satırlar ve VACUUM geçmişi.',
 		sql: `SELECT
-  relname AS tablo_adi,
-  n_live_tup AS canli_satirlar,
-  n_dead_tup AS olu_satirlar,
-  ROUND(100.0 * n_dead_tup / NULLIF(n_live_tup + n_dead_tup, 0), 1) AS olu_oran_yuzde,
+  relname AS table_Name,
+  n_live_tup AS live_Rows,
+  n_dead_tup AS olu_Rows,
+  ROUND(100.0 * n_dead_tup / NULLIF(n_live_tup + n_dead_tup, 0), 1) AS olu_Ratio_Percent,
   last_vacuum,
   last_autovacuum
 FROM pg_stat_user_tables
@@ -68,8 +68,8 @@ ORDER BY n_dead_tup DESC;`,
 		title: 'İndeks Kullanım Verimliliği',
 		desc: 'Tabloların Sequential Scan yerine ne sıklıkla Index Scan kullandığını gösterir.',
 		sql: `SELECT
-  relname AS tablo_adi,
-  seq_scan AS sira_tarama,
+  relname AS table_Name,
+  seq_scan AS order_tarama,
   idx_scan AS indeks_tarama,
   ROUND(100.0 * idx_scan / NULLIF(seq_scan + idx_scan, 0), 1) AS indeks_kullanim_yuzdesi
 FROM pg_stat_user_tables

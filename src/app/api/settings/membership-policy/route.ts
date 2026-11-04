@@ -26,10 +26,10 @@ export async function PATCH(request: Request) {
 	}
 	const policy = await setMembershipPolicy(body);
 	void logSystemEvent({
-		servis: 'settings',
-		seviye: 'INFO',
-		mesaj: `Üyelik politikası güncellendi (${auth.user.firstName || auth.user.ad || ""} ${auth.user.lastName || auth.user.soyad || ""})`,
-		detay: {
+		service: 'settings',
+		level: 'INFO',
+		message: `Üyelik politikası güncellendi (${auth.user.firstName || auth.user.name || ""} ${auth.user.lastName || auth.user.surname || ""})`,
+		detail: {
 			selfRegistration: policy.selfRegistration,
 			adminCreate: policy.adminCreate,
 			inviteEnabled: policy.inviteEnabled,

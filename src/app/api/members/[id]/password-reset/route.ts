@@ -66,14 +66,14 @@ export async function POST(request: Request, { params }: Params) {
 			action: 'member.password_reset',
 			targetType: 'member',
 			targetId: target.id,
-			targetName: `${target.ad} ${target.soyad}`.trim(),
+			targetName: `${target.name} ${target.surname}`.trim(),
 			before: null,
 			after: { email: target.email, expiresAt },
 		});
 	});
 
 	const delivery = await notifyPasswordResetCode(
-		{ ad: target.ad, soyad: target.soyad, email: target.email },
+		{ name: target.name, surname: target.surname, email: target.email },
 		code
 	);
 	let mailQueued = false;
@@ -85,7 +85,7 @@ export async function POST(request: Request, { params }: Params) {
 		await enqueueMail({
 			kind: 'password_reset',
 			recipient: target.email,
-			subject: `Şifre Sıfırlama Kodu — ${target.ad} ${target.soyad}`.trim(),
+			subject: `Şifre Sıfırlama Kodu — ${target.name} ${target.surname}`.trim(),
 			payload: { code },
 			targetUserId: target.id,
 			requestedBy: auth.user.id,
@@ -93,10 +93,10 @@ export async function POST(request: Request, { params }: Params) {
 		mailQueued = true;
 	}
 	await logSystemEvent({
-		servis: 'auth',
-		seviye: 'INFO',
-		mesaj: `Yönetici şifre sıfırlama e-postası gönderdi: ${target.email}`,
-		detay: { actorId: auth.user.id, targetId: target.id },
+		service: 'auth',
+		level: 'INFO',
+		message: `Yönetici şifre sıfırlama e-postası gönderdi: ${target.email}`,
+		detail: { actorId: auth.user.id, targetId: target.id },
 		userId: auth.user.id,
 		ip,
 	});

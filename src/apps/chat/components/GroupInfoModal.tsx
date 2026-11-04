@@ -4,13 +4,13 @@ import React, { useState, useEffect } from 'react';
 import { useI18n } from '@/core/i18n';
 import { fill } from '@/lib/text';
 import { X, Users, UserPlus } from 'lucide-react';
-import type { ChatOdaItem, ChatRoomMemberItem } from '../types';
+import type { ChatRoomItem, ChatRoomMemberItem } from '../types';
 import s from '../Chat.module.css';
 
 interface GroupInfoModalProps {
 	isOpen: boolean;
 	onClose: () => void;
-	room: ChatOdaItem;
+	room: ChatRoomItem;
 	onOpenAddMembers: () => void;
 }
 
@@ -102,7 +102,7 @@ export function GroupInfoModal({
 								// eslint-disable-next-line @next/next/no-img-element
 								<img
 									src={room.avatar}
-									alt={room.ad}
+									alt={room.name}
 									style={{ width: '100%', height: '100%', objectFit: 'cover' }}
 								/>
 							) : (
@@ -112,7 +112,7 @@ export function GroupInfoModal({
 
 						<div>
 							<div style={{ fontSize: '16px', fontWeight: 700, color: '#fff' }}>
-								{room.ad}
+								{room.name}
 							</div>
 							<div style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.5)', marginTop: '2px' }}>
 								{fill(t('chatTotalMembers'), { n: members.length || room.memberCount || 0 })}
@@ -121,7 +121,7 @@ export function GroupInfoModal({
 					</div>
 
 					{/* Action: Add member to this group */}
-					{room.tur !== 'genel' && (
+					{room.typeValue !== 'genel' && (
 						<button
 							type="button"
 							className={s.newGroupToggleBtn}
@@ -163,27 +163,27 @@ export function GroupInfoModal({
 								members.map((member) => (
 									<div key={member.id} className={s.contactItem} style={{ cursor: 'default' }}>
 										<div className={s.contactAvatar}>
-											{member.avatarUrl || member.profilFoto ? (
+											{member.avatarUrl || member.profilePhoto ? (
 												// eslint-disable-next-line @next/next/no-img-element
 												<img
-													src={member.avatarUrl || member.profilFoto}
-													alt={member.firstName || member.ad}
+													src={member.avatarUrl || member.profilePhoto}
+													alt={member.firstName || member.name}
 													style={{ width: '100%', height: '100%', objectFit: 'cover' }}
 												/>
 											) : (
-												(member.firstName || member.ad || '').slice(0, 1).toUpperCase()
+												(member.firstName || member.name || '').slice(0, 1).toUpperCase()
 											)}
 										</div>
 
 										<div className={s.contactInfo}>
 											<div className={s.contactName}>
-												{member.firstName || member.ad} {member.lastName || member.soyad}
+												{member.firstName || member.name} {member.lastName || member.surname}
 											</div>
 											<div className={s.contactMeta}>
-												{(member.roleName || member.rolAd) && (
-													<span className={s.contactRoleBadge}>{member.roleName || member.rolAd}</span>
+												{(member.roleName || member.roleName) && (
+													<span className={s.contactRoleBadge}>{member.roleName || member.roleName}</span>
 												)}
-												{member.bolum && <span>{member.bolum}</span>}
+												{member.department && <span>{member.department}</span>}
 											</div>
 										</div>
 									</div>

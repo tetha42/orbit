@@ -6,5 +6,5 @@ export interface SettingsSection {
 	id: SettingsTabId;
 	labelKey: string;
 	group: 'kisisel' | 'hesap' | 'sistem';
-	sistem?: boolean;
+	system?: boolean;
 }

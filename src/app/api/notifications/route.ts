@@ -57,9 +57,9 @@ export async function GET(request: Request) {
 	const auth = await authenticate(request);
 	if (!auth.authorized) return auth.response;
 	const user = auth.user;
-	const izinli = (kind: NotificationKind) => can(user, NOTIFICATION_KINDS[kind].appId, NOTIFICATION_KINDS[kind].seviye);
+	const permitted = (kind: NotificationKind) => can(user, NOTIFICATION_KINDS[kind].appId, NOTIFICATION_KINDS[kind].level);
 	/** Reads a source only when its kind may be shown. */
-	const when = <T,>(kind: NotificationKind, load: () => Promise<T[]>): Promise<T[]> => (izinli(kind) ? load() : Promise.resolve([]));
+	const when = <T,>(kind: NotificationKind, load: () => Promise<T[]>): Promise<T[]> => (permitted(kind) ? load() : Promise.resolve([]));
 
 	try {
 		const now = Date.now();
@@ -83,7 +83,7 @@ export async function GET(request: Request) {
 			when('certificate', () => getCertificates(user.id)),
 			when('message', () => getUnreadMailThreads(user.id, MAX_MESSAGES)),
 		]);
-		const unreadMessages = await (izinli('message') ? getUnreadMailCount(user.id) : Promise.resolve(0));
+		const unreadMessages = await (permitted('message') ? getUnreadMailCount(user.id) : Promise.resolve(0));
 
 		const items: NotificationItem[] = [];
 
@@ -93,12 +93,12 @@ export async function GET(request: Request) {
 				id: `approval:${applicant.id}`,
 				kind: 'approval',
 				priority: 'action',
-				at: applicant.olusturma,
+				at: applicant.creation,
 				data: {
-					title: `${applicant.ad} ${applicant.soyad}`,
+					title: `${applicant.name} ${applicant.surname}`,
 					userId: applicant.id,
-					department: applicant.bolum,
-					year: applicant.sinif,
+					department: applicant.department,
+					year: applicant.grade,
 				},
 				target: { appId: 'members', kind: 'member', itemId: applicant.id },
 			});
@@ -109,9 +109,9 @@ export async function GET(request: Request) {
 				id: `task:${task.id}`,
 				kind: 'task',
 				priority: 'action',
-				at: task.teslimTarihi,
-				dueAt: task.teslimTarihi,
-				data: { title: task.baslik, teamName: task.takimAdi, taskPriority: task.oncelik },
+				at: task.dueDate,
+				dueAt: task.dueDate,
+				data: { title: task.title, teamName: task.teamName, taskPriority: task.priority },
 				target: { appId: 'teams', kind: 'task', itemId: task.id, parentId: task.teamId },
 			});
 		}
@@ -121,9 +121,9 @@ export async function GET(request: Request) {
 				id: `loan:${loan.id}`,
 				kind: 'loan',
 				priority: 'action',
-				at: loan.iadeTarihi,
-				dueAt: loan.iadeTarihi,
-				data: { title: loan.ad, code: loan.kod },
+				at: loan.returnDate,
+				dueAt: loan.returnDate,
+				data: { title: loan.name, code: loan.code },
 				target: { appId: 'inventory', kind: 'item', itemId: loan.id },
 			});
 		}
@@ -134,9 +134,9 @@ export async function GET(request: Request) {
 				id: `checkin:${e.id}`,
 				kind: 'checkin',
 				priority: 'action',
-				at: e.baslangic,
+				at: e.start,
 				dueAt: e.endTime,
-				data: { title: e.baslik, location: e.konum },
+				data: { title: e.title, location: e.location },
 				target: { appId: 'events', kind: 'event', itemId: e.id },
 			});
 		}
@@ -146,8 +146,8 @@ export async function GET(request: Request) {
 				id: `teamApplication:${a.teamId}:${a.userId}`,
 				kind: 'teamApplication',
 				priority: 'action',
-				at: a.olusturma,
-				data: { title: a.adSoyad, teamName: a.takimAdi, department: a.bolum },
+				at: a.creation,
+				data: { title: a.nameSurname, teamName: a.teamName, department: a.department },
 				target: { appId: 'teams', kind: 'team', itemId: a.teamId, section: 'members' },
 			});
 		}
@@ -157,8 +157,8 @@ export async function GET(request: Request) {
 				id: `projectProposal:${p.id}`,
 				kind: 'projectProposal',
 				priority: 'action',
-				at: p.olusturma,
-				data: { title: p.baslik, author: p.olusturanAdSoyad },
+				at: p.creation,
+				data: { title: p.title, author: p.creatorNameSurname },
 				target: { appId: 'projects', kind: 'project', itemId: p.id, section: 'oneri' },
 			});
 		}
@@ -167,40 +167,40 @@ export async function GET(request: Request) {
 		// `getNews('uye')` leaves drafts out and lists "önemli" first, so the first recent
 		// one is the pinned headline.
 		const recentNews = news.filter((n) => {
-			const published = n.yayinTarihi ?? n.olusturma;
+			const published = n.publishDate ?? n.creation;
 			return published <= now && published >= now - FEED_WINDOW;
 		});
 		let pinnedTaken = false;
 		for (const article of recentNews.slice(0, MAX_NEWS)) {
-			const urgent = article.onemliMi === 1 && !pinnedTaken;
+			const urgent = article.importantMi === 1 && !pinnedTaken;
 			if (urgent) pinnedTaken = true;
 			items.push({
 				id: `news:${article.id}`,
 				kind: 'news',
 				priority: 'info',
 				urgent: urgent || undefined,
-				at: article.yayinTarihi ?? article.olusturma,
-				data: { title: article.baslik, category: article.kategori },
+				at: article.publishDate ?? article.creation,
+				data: { title: article.title, category: article.category },
 				target: { appId: 'news', kind: 'news', itemId: article.id },
 			});
 		}
 
 		const upcoming = events
-			.filter((e) => e.status === 'yayinda' && Number(e.endTime ?? (e as { endtime?: number }).endtime) >= now && e.baslangic <= now + EVENT_WINDOW)
+			.filter((e) => e.status === 'yayinda' && Number(e.endTime ?? (e as { endtime?: number }).endtime) >= now && e.start <= now + EVENT_WINDOW)
 			.slice(0, MAX_EVENTS);
 		for (const event of upcoming) {
 			items.push({
 				id: `event:${event.id}`,
 				kind: 'event',
 				priority: 'info',
-				at: event.olusturma,
-				dueAt: event.baslangic,
+				at: event.creation,
+				dueAt: event.start,
 				data: {
-					title: event.baslik,
-					location: event.konum,
-					eventType: event.tur,
+					title: event.title,
+					location: event.location,
+					eventType: event.typeValue,
 					registered: myEventIds.includes(event.id),
-					ongoing: event.baslangic <= now,
+					ongoing: event.start <= now,
 				},
 				target: { appId: 'events', kind: 'event', itemId: event.id },
 			});
@@ -214,7 +214,7 @@ export async function GET(request: Request) {
 				kind: 'assigned',
 				priority: 'info',
 				at: a.at,
-				data: { title: a.baslik, teamName: a.takimAdi, by: a.atayan },
+				data: { title: a.title, teamName: a.teamName, by: a.assigner },
 				target: { appId: 'teams', kind: 'task', itemId: a.id, parentId: a.teamId },
 			});
 		}
@@ -226,20 +226,20 @@ export async function GET(request: Request) {
 				kind: 'teamDecision',
 				priority: 'info',
 				at: d.date,
-				data: { title: d.takimAdi, accepted: d.karar === 'kabul' },
+				data: { title: d.teamName, accepted: d.decision === 'kabul' },
 				target: { appId: 'teams', kind: 'team', itemId: d.teamId },
 			});
 		}
 
 		for (const certificate of certificates
-			.filter((c) => c.olusturma >= now - FEED_WINDOW)
+			.filter((c) => c.creation >= now - FEED_WINDOW)
 			.slice(0, MAX_CERTIFICATES)) {
 			items.push({
 				id: `certificate:${certificate.id}`,
 				kind: 'certificate',
 				priority: 'info',
-				at: certificate.olusturma,
-				data: { title: certificate.baslik, code: certificate.verificationCode },
+				at: certificate.creation,
+				data: { title: certificate.title, code: certificate.verificationCode },
 				target: { appId: 'certificates', kind: 'cert', itemId: certificate.id, section: 'certificates' },
 			});
 		}
@@ -251,14 +251,14 @@ export async function GET(request: Request) {
 				kind: 'message',
 				priority: 'info',
 				at: m.at,
-				data: { title: m.konu, from: `${m.gonderen.ad} ${m.gonderen.soyad}`.trim() },
+				data: { title: m.topic, from: `${m.sender.name} ${m.sender.surname}`.trim() },
 				target: { appId: 'mail', kind: 'thread', itemId: m.id },
 			});
 		}
 
 		// The sources above are already gated; this keeps the table the single
 		// rule even if a source is added without its check.
-		const visible = items.filter((i) => izinli(i.kind));
+		const visible = items.filter((i) => permitted(i.kind));
 		const body: NotificationsResponse = {
 			generatedAt: now,
 			counts: {

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { User } from '@/db/schema';
 import { getRolePermission, type Permission } from '@/db/roles';
-import { canManage, canUse, seviyeOf, type PermissionLevel, PERMISSION_DESCRIPTIONS, isPermissionApp } from '@/core/permissions';
+import { canManage, canUse, levelOf, type PermissionLevel, PERMISSION_DESCRIPTIONS, isPermissionApp } from '@/core/permissions';
 import { clientAddress } from '@/lib/http';
 import { consumeRateLimit } from '@/lib/rateLimit';
 import { logSystemEvent } from '@/db/repositories/logs.repo';
@@ -27,11 +27,11 @@ export type AccessResult =
 	| { authorized: false; user?: never; response: NextResponse };
 
 /** Whether this member still has to enrol a second factor before using any app. */
-export function ikiAdimBekliyor(user: AuthorizedUser): boolean {
+export function twoStepPending(user: AuthorizedUser): boolean {
 	// A passkey assertion is itself multi-factor, so a passkey session satisfies
 	// the role's two-factor rule even when no TOTP authenticator is enrolled.
 	if (user.authMethod === 'passkey') return false;
-	return user.permission.ikiAdimZorunlu && Number(user.totpEnabled) !== 1;
+	return user.permission.twoStepRequired && Number(user.totpEnabled) !== 1;
 }
 
 export function twoFactorSetupResponse(): NextResponse {
@@ -55,14 +55,14 @@ export async function authenticate(request: Request): Promise<AccessResult> {
  */
 export async function authenticateEnrolled(request: Request): Promise<AccessResult> {
 	const auth = await authenticate(request);
-	if (auth.authorized && ikiAdimBekliyor(auth.user)) return { authorized: false, response: twoFactorSetupResponse() };
+	if (auth.authorized && twoStepPending(auth.user)) return { authorized: false, response: twoFactorSetupResponse() };
 	return auth;
 }
 
 /** `can(user, 'events', 'manage')` — the role's level, and the second factor where required. */
 export function can(user: AuthorizedUser, appId: string, level: PermissionLevel | 'kullan' | 'yonet' = 'use'): boolean {
-	if (ikiAdimBekliyor(user)) return false;
-	const permissions = user.permission.permissions ?? user.permission.izinler;
+	if (twoStepPending(user)) return false;
+	const permissions = user.permission.permissions ?? user.permission.permissions;
 	return level === 'manage' || level === 'yonet' ? canManage(permissions, appId) : canUse(permissions, appId);
 }
 
@@ -70,24 +70,24 @@ export async function requireApp(request: Request, appId: string, level: Permiss
 	const auth = await authenticateEnrolled(request);
 	if (!auth.authorized) return auth;
 	const user = auth.user;
-	const permissions = user.permission.permissions ?? user.permission.izinler;
+	const permissions = user.permission.permissions ?? user.permission.permissions;
 	const isManage = level === 'manage' || level === 'yonet';
 	const ok = isManage ? canManage(permissions, appId) : canUse(permissions, appId);
 	if (!ok) {
-		const name = isPermissionApp(appId) ? PERMISSION_DESCRIPTIONS[appId].ad : appId;
-		const has = seviyeOf(permissions, appId);
+		const name = isPermissionApp(appId) ? PERMISSION_DESCRIPTIONS[appId].name : appId;
+		const has = levelOf(permissions, appId);
 		const ip = clientAddress(request);
 		const pathname = new URL(request.url).pathname;
 		if (consumeRateLimit(`log:403:${user.id}:${appId}`, 15, 60_000).allowed) {
 			void logSystemEvent({
-				servis: 'security',
-				seviye: 'WARN',
-				mesaj: `Unauthorized app access attempt (${request.method} ${pathname}): ${user.email}`,
-				detay: {
+				service: 'security',
+				level: 'WARN',
+				message: `Unauthorized app access attempt (${request.method} ${pathname}): ${user.email}`,
+				detail: {
 					appId,
 					requiredLevel: isManage ? 'manage' : 'use',
 					currentLevel: has,
-					role: user.permission.role?.name ?? user.permission.role?.ad ?? null,
+					role: user.permission.role?.name ?? user.permission.role?.name ?? null,
 				},
 				userId: user.id,
 				ip,
@@ -122,13 +122,13 @@ export async function requireAdmin(request: Request): Promise<AccessResult> {
 		const pathname = new URL(request.url).pathname;
 		if (consumeRateLimit(`log:403:admin:${user.id}`, 15, 60_000).allowed) {
 			void logSystemEvent({
-				servis: 'security',
-				seviye: 'WARN',
-				mesaj: `Unauthorized admin endpoint access attempt (${request.method} ${pathname}): ${user.email}`,
-				detay: {
+				service: 'security',
+				level: 'WARN',
+				message: `Unauthorized admin endpoint access attempt (${request.method} ${pathname}): ${user.email}`,
+				detail: {
 					path: pathname,
 					method: request.method,
-					role: user.permission.role?.ad ?? null,
+					role: user.permission.role?.name ?? null,
 				},
 				userId: user.id,
 				ip,

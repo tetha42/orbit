@@ -32,11 +32,11 @@ const manifest = {
 	order: 15,
 	dock: 15,
 	permission: {
-		sira: 15,
-		ad: 'Posta',
+		order: 15,
+		name: 'Posta',
 		kullan: 'Topluluk gelen/giden e-postalarını görüntüler.',
 		yonet: 'E-posta gönderir, siler ve kutuları yönetir.',
-		uyari: 'E-posta kutusuna doğrudan tam erişim verir; yalnızca sistem yöneticilerine açılmalıdır.',
+		warning: 'E-posta kutusuna doğrudan tam erişim verir; yalnızca sistem yöneticilerine açılmalıdır.',
 	},
 	menu: {
 		title: { tr: 'Posta', en: 'Mail' },
@@ -46,8 +46,8 @@ const manifest = {
 				id: 'mailbox',
 				title: { tr: 'Posta Kutusu', en: 'Mailbox' },
 				items: [
-					{ id: 'mail-compose', label: { tr: 'Yeni İleti', en: 'New Message' }, shortcut: '⌘N', permission: 'yonet', komut: 'mail-compose' },
-					{ id: 'mail-refresh', label: { tr: 'Postayı Yenile', en: 'Refresh Mail' }, shortcut: '⌘R', permission: 'kullan', komut: 'mail-refresh' },
+					{ id: 'mail-compose', label: { tr: 'Yeni İleti', en: 'New Message' }, shortcut: '⌘N', permission: 'yonet', command: 'mail-compose' },
+					{ id: 'mail-refresh', label: { tr: 'Postayı Yenile', en: 'Refresh Mail' }, shortcut: '⌘R', permission: 'kullan', command: 'mail-refresh' },
 				],
 			},
 		],

@@ -5,17 +5,17 @@ import type { Project } from '@/db/schema';
 import type { ProjectStatus } from '@/lib/projects';
 
 const PROJECT_SELECT = `
-	SELECT p.id, p.slug, p.title AS baslik, p.summary AS ozet, p.description AS aciklama,
-	       p.repo_url AS "repoUrl", p.live_url AS "canliUrl", p.tech_stack AS teknolojiler,
-	       p.team_id AS "teamId", p.created_by AS "olusturanId", p.status,
-	       p.is_featured AS "oneCikan", p.created_at AS olusturma, p.updated_at AS guncellenme,
+	SELECT p.id, p.slug, p.title AS title, p.summary AS summary, p.description AS description,
+	       p.repo_url AS "repoUrl", p.live_url AS "liveUrl", p.tech_stack AS technologies,
+	       p.team_id AS "teamId", p.created_by AS "creatorId", p.status,
+	       p.is_featured AS "oneLeaving", p.created_at AS creation, p.updated_at AS update,
 	       p.owner_team_id, p.owner_user_id, p.created_by,
-	       t.name AS "takimAdi",
-	       k.first_name || ' ' || k.last_name AS "olusturanAdSoyad",
-	       ot.name AS "ownerTeamAd",
-	       ou.first_name || ' ' || ou.last_name AS "ownerUserAdSoyad",
-	       jsonb_array_length(COALESCE(p.starred_by, '[]'::jsonb)) AS "begeniSayisi",
-	       (COALESCE(p.starred_by, '[]'::jsonb) ? $1::text) AS "begendimMi"
+	       t.name AS "teamName",
+	       k.first_name || ' ' || k.last_name AS "creatorNameSurname",
+	       ot.name AS "ownerTeamName",
+	       ou.first_name || ' ' || ou.last_name AS "ownerUserNameSurname",
+	       jsonb_array_length(COALESCE(p.starred_by, '[]'::jsonb)) AS "likeCount",
+	       (COALESCE(p.starred_by, '[]'::jsonb) ? $1::text) AS "iLikedMi"
 	FROM projects p
 	LEFT JOIN teams t ON t.id = p.team_id
 	LEFT JOIN users k ON k.id = p.created_by
@@ -24,15 +24,15 @@ const PROJECT_SELECT = `
 `;
 
 function toProject(row: Record<string, unknown>): Project {
-	let teknolojiler: string[] = [];
+	let technologies: string[] = [];
 	try {
-		const raw = row.teknolojiler;
+		const raw = row.technologies;
 		const parsed = Array.isArray(raw) ? raw : JSON.parse(String(raw ?? '[]'));
-		if (Array.isArray(parsed)) teknolojiler = parsed.filter((x): x is string => typeof x === 'string');
+		if (Array.isArray(parsed)) technologies = parsed.filter((x): x is string => typeof x === 'string');
 	} catch {
-		teknolojiler = [];
+		technologies = [];
 	}
-	return { ...(row as unknown as Project), teknolojiler, begendimMi: Boolean(row.begendimMi) };
+	return { ...(row as unknown as Project), technologies, iLikedMi: Boolean(row.iLikedMi) };
 }
 
 /**
@@ -57,24 +57,24 @@ export async function getProjectById(id: string, viewerId: string): Promise<Proj
 }
 
 export interface ProjectInput {
-	baslik: string;
-	ozet: string;
-	aciklama: string;
+	title: string;
+	summary: string;
+	description: string;
 	repoUrl: string | null;
-	canliUrl: string | null;
-	teknolojiler: string[];
+	liveUrl: string | null;
+	technologies: string[];
 	teamId: string | null;
 	ownerTeamId?: string | null;
 	ownerUserId?: string | null;
 }
 
-export async function createProject(input: ProjectInput & { olusturanId: string; status: ProjectStatus }): Promise<Project> {
+export async function createProject(input: ProjectInput & { creatorId: string; status: ProjectStatus }): Promise<Project> {
 	await ensurePostgresInit();
 	const db = getPgPool();
 	const id = randomUUID();
 	const now = Date.now();
 	const slug = await uniqueSlug(
-		slugify(input.baslik),
+		slugify(input.title),
 		async (candidate) => ((await db.query('SELECT 1 FROM projects WHERE slug = $1', [candidate])).rowCount ?? 0) > 0,
 		'proje'
 	);
@@ -86,27 +86,27 @@ export async function createProject(input: ProjectInput & { olusturanId: string;
 		[
 			id,
 			slug,
-			input.baslik,
-			input.ozet,
-			input.aciklama,
+			input.title,
+			input.summary,
+			input.description,
 			input.repoUrl,
-			input.canliUrl,
-			JSON.stringify(input.teknolojiler),
+			input.liveUrl,
+			JSON.stringify(input.technologies),
 			input.teamId,
 			input.status,
 			now,
 			input.ownerTeamId ?? input.teamId,
-			input.ownerUserId ?? input.olusturanId,
-			input.olusturanId,
+			input.ownerUserId ?? input.creatorId,
+			input.creatorId,
 		]
 	);
-	return (await getProjectById(id, input.olusturanId)) as Project;
+	return (await getProjectById(id, input.creatorId)) as Project;
 }
 
 /** Applies the given fields; omitted ones stay. Returns false when the project is gone. */
 export async function updateProject(
 	id: string,
-	patch: Partial<ProjectInput> & { status?: ProjectStatus; oneCikan?: boolean }
+	patch: Partial<ProjectInput> & { status?: ProjectStatus; oneLeaving?: boolean }
 ): Promise<boolean> {
 	await ensurePostgresInit();
 	const sets: string[] = [];
@@ -115,17 +115,17 @@ export async function updateProject(
 		values.push(value);
 		sets.push(`${column} = $${values.length}`);
 	};
-	if (patch.baslik !== undefined) set('title', patch.baslik);
-	if (patch.ozet !== undefined) set('summary', patch.ozet);
-	if (patch.aciklama !== undefined) set('description', patch.aciklama);
+	if (patch.title !== undefined) set('title', patch.title);
+	if (patch.summary !== undefined) set('summary', patch.summary);
+	if (patch.description !== undefined) set('description', patch.description);
 	if (patch.repoUrl !== undefined) set('repo_url', patch.repoUrl);
-	if (patch.canliUrl !== undefined) set('live_url', patch.canliUrl);
-	if (patch.teknolojiler !== undefined) set('tech_stack', JSON.stringify(patch.teknolojiler));
+	if (patch.liveUrl !== undefined) set('live_url', patch.liveUrl);
+	if (patch.technologies !== undefined) set('tech_stack', JSON.stringify(patch.technologies));
 	if (patch.teamId !== undefined) set('team_id', patch.teamId);
 	if (patch.ownerTeamId !== undefined) set('owner_team_id', patch.ownerTeamId);
 	if (patch.ownerUserId !== undefined) set('owner_user_id', patch.ownerUserId);
 	if (patch.status !== undefined) set('status', patch.status);
-	if (patch.oneCikan !== undefined) set('is_featured', patch.oneCikan ? 1 : 0);
+	if (patch.oneLeaving !== undefined) set('is_featured', patch.oneLeaving ? 1 : 0);
 	set('updated_at', Date.now());
 	values.push(id);
 	const res = await getPgPool().query(`UPDATE projects SET ${sets.join(', ')} WHERE id = $${values.length}`, values);
@@ -140,13 +140,13 @@ export async function deleteProject(id: string): Promise<boolean> {
 
 /** Stars or un-stars a project for one member; returns the new state and count. */
 export async function toggleProjectLike(
-	projeId: string,
+	projectId: string,
 	userId: string
-): Promise<{ begendimMi: boolean; begeniSayisi: number }> {
+): Promise<{ iLikedMi: boolean; likeCount: number }> {
 	return withTransaction(async (client) => {
 		const cur = await client.query(
 			`SELECT COALESCE(starred_by, '[]'::jsonb) AS starred_by FROM projects WHERE id = $1 FOR UPDATE`,
-			[projeId]
+			[projectId]
 		);
 		const rawList = cur.rows[0]?.starredBy ?? cur.rows[0]?.starred_by;
 		const currentList: string[] = Array.isArray(rawList) ? rawList.map(String) : [];
@@ -156,8 +156,8 @@ export async function toggleProjectLike(
 			: [...currentList, userId];
 		await client.query(
 			`UPDATE projects SET starred_by = $2::jsonb WHERE id = $1`,
-			[projeId, JSON.stringify(nextList)]
+			[projectId, JSON.stringify(nextList)]
 		);
-		return { begendimMi: !alreadyStarred, begeniSayisi: nextList.length };
+		return { iLikedMi: !alreadyStarred, likeCount: nextList.length };
 	});
 }

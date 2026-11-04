@@ -37,10 +37,10 @@ export async function POST(request: Request) {
 			const ip = clientAddress(request);
 			for (const cmd of executedCommands) {
 				void logSystemEvent({
-					servis: 'terminal',
-					seviye: 'INFO',
-					mesaj: `Terminal komutu çalıştırıldı (${auth.user.email}): ${cmd.slice(0, 120)}`,
-					detay: { komut: cmd, sessionId },
+					service: 'terminal',
+					level: 'INFO',
+					message: `Terminal komutu çalıştırıldı (${auth.user.email}): ${cmd.slice(0, 120)}`,
+					detail: { command: cmd, sessionId },
 					userId: auth.user.id,
 					ip,
 				});

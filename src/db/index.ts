@@ -232,19 +232,19 @@ async function bootstrapFirstAdmin(client: PoolClient): Promise<void> {
 }
 
 export async function getSetupStatus(): Promise<{
-	hazir: boolean;
+	ready: boolean;
 	firstRun?: boolean;
 	step?: 'database' | 'identity' | 'admin' | 'ready';
-	sebep?: string;
+	reason?: string;
 	dbStatus?: { connected: boolean; configured: boolean; databaseName?: string; error?: string };
 }> {
 	const dbStatus = await checkDatabaseStatus();
 	if (!dbStatus.connected) {
 		return {
-			hazir: false,
+			ready: false,
 			firstRun: true,
 			step: 'database',
-			sebep: dbStatus.error ?? 'Database is unreachable or not configured.',
+			reason: dbStatus.error ?? 'Database is unreachable or not configured.',
 			dbStatus,
 		};
 	}
@@ -252,29 +252,29 @@ export async function getSetupStatus(): Promise<{
 	try {
 		await ensurePostgresInit();
 		const r = await getPgPool().query(`SELECT COUNT(*)::int AS n FROM users WHERE role_id = $1`, [ADMIN_ROLE_ID]);
-		if (Number(r.rows[0].n) > 0) return { hazir: true, step: 'ready', dbStatus };
+		if (Number(r.rows[0].n) > 0) return { ready: true, step: 'ready', dbStatus };
 		return {
-			hazir: false,
+			ready: false,
 			firstRun: true,
 			step: 'admin',
-			sebep: 'No root administrator account found. Initial setup required.',
+			reason: 'No root administrator account found. Initial setup required.',
 			dbStatus,
 		};
 	} catch (err: unknown) {
 		const msg = err instanceof Error ? err.message : String(err);
 		return {
-			hazir: false,
+			ready: false,
 			firstRun: true,
 			step: 'database',
-			sebep: msg,
+			reason: msg,
 			dbStatus: { connected: false, configured: true, error: msg },
 		};
 	}
 }
 
 export async function setupFirstAdmin(params: {
-	ad?: string;
-	soyad?: string;
+	name?: string;
+	surname?: string;
 	firstName?: string;
 	lastName?: string;
 	email: string;
@@ -305,8 +305,8 @@ export async function setupFirstAdmin(params: {
 		const passwordHash = await bcrypt.hash(params.password, 12);
 		const id = randomUUID();
 		const now = Date.now();
-		const fName = (params.firstName ?? params.ad ?? '').trim();
-		const lName = (params.lastName ?? params.soyad ?? '').trim();
+		const fName = (params.firstName ?? params.name ?? '').trim();
+		const lName = (params.lastName ?? params.surname ?? '').trim();
 		await client.query(
 			`INSERT INTO users (id, first_name, last_name, email, password_hash, handle, department, grade, role_id, avatar_url, bio, xp, status, created_at)
 			 VALUES ($1, $2, $3, $4, $5, NULL, 'Management', 1, $6, NULL, '', 0, 'aktif', $7)`,
@@ -345,7 +345,7 @@ export async function ensurePostgresInit(): Promise<void> {
 			await ensureAuditSchema(client);
 			await ensureMailSchema(client);
 			await ensureOAuthSchema(client);
-			const countRes = await client.query('SELECT count(*)::int as count FROM users');
+			const countRes = await client.query('SELECT count(*)::int AS count FROM users');
 			if (countRes.rows[0].count === 0) await bootstrapFirstAdmin(client);
 			await client.query('COMMIT');
 
@@ -360,8 +360,8 @@ export async function ensurePostgresInit(): Promise<void> {
 				const identity = Object.fromEntries(
 					identityRes.rows.map((row) => [String(row.key), String(row.value ?? '').trim()])
 				);
-				const name = identity.kulup_adi || CONFIG.clubPreset.name;
-				const domain = identity.kulup_domain || CONFIG.clubPreset.domain;
+				const name = identity.club_Name || CONFIG.clubPreset.name;
+				const domain = identity.club_domain || CONFIG.clubPreset.domain;
 				if (name !== CONFIG.clubPreset.name || domain !== CONFIG.clubPreset.domain) {
 					CONFIG.clubPreset.name = name;
 					CONFIG.clubPreset.domain = domain;

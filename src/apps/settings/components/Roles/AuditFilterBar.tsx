@@ -17,12 +17,12 @@ export interface AuditQuery {
 }
 
 interface AuditFilterBarProps {
-	filtre: AuditQuery;
+	filter: AuditQuery;
 	userDraft: string;
-	roles: { id: string; ad: string }[];
-	onKisiChange: (val: string) => void;
-	onRolChange: (val: string) => void;
-	onIslemChange: (val: string) => void;
+	roles: { id: string; name: string }[];
+	onPersonChange: (val: string) => void;
+	onRoleChange: (val: string) => void;
+	onActionChange: (val: string) => void;
 	onFromChange: (val: string) => void;
 	onToChange: (val: string) => void;
 	onResetFilters: () => void;
@@ -31,18 +31,18 @@ interface AuditFilterBarProps {
 const opKey = (action: string) => `auditOp_${action.replace(/\./g, '_')}`;
 
 export function AuditFilterBar({
-	filtre,
+	filter,
 	userDraft,
 	roles,
-	onKisiChange,
-	onRolChange,
-	onIslemChange,
+	onPersonChange,
+	onRoleChange,
+	onActionChange,
 	onFromChange,
 	onToChange,
 	onResetFilters,
 }: AuditFilterBarProps) {
 	const { t } = useI18n();
-	const hasFilter = Boolean(filtre.user || filtre.role || filtre.action || filtre.from || filtre.to);
+	const hasFilter = Boolean(filter.user || filter.role || filter.action || filter.from || filter.to);
 
 	return (
 		<div className={s.auditFilters}>
@@ -51,28 +51,28 @@ export function AuditFilterBar({
 				style={{ flex: '1 1 170px', minWidth: 140 }}
 				placeholder={t('auditFiltreKisi')}
 				value={userDraft}
-				onChange={(e) => onKisiChange(e.target.value)}
+				onChange={(e) => onPersonChange(e.target.value)}
 				aria-label={t('auditFiltreKisi')}
 			/>
 			<select
 				className={ui.select}
 				style={{ flex: '0 1 150px', minWidth: 125 }}
-				value={filtre.role}
-				onChange={(e) => onRolChange(e.target.value)}
+				value={filter.role}
+				onChange={(e) => onRoleChange(e.target.value)}
 				aria-label={t('auditFiltreRol')}
 			>
 				<option value="">{t('auditFiltreRolHepsi')}</option>
 				{roles.map((r) => (
 					<option key={r.id} value={r.id}>
-						{r.ad}
+						{r.name}
 					</option>
 				))}
 			</select>
 			<select
 				className={ui.select}
 				style={{ flex: '0 1 170px', minWidth: 135 }}
-				value={filtre.action}
-				onChange={(e) => onIslemChange(e.target.value)}
+				value={filter.action}
+				onChange={(e) => onActionChange(e.target.value)}
 				aria-label={t('auditFiltreIslem')}
 			>
 				<option value="">{t('auditFiltreIslemHepsi')}</option>
@@ -87,7 +87,7 @@ export function AuditFilterBar({
 					type="date"
 					className={ui.input}
 					style={{ flex: '1 1 125px', minWidth: 105, maxWidth: 140 }}
-					value={filtre.from}
+					value={filter.from}
 					onChange={(e) => onFromChange(e.target.value)}
 					aria-label={t('auditFiltreBaslangic')}
 					title={t('auditFiltreBaslangic')}
@@ -97,7 +97,7 @@ export function AuditFilterBar({
 					type="date"
 					className={ui.input}
 					style={{ flex: '1 1 125px', minWidth: 105, maxWidth: 140 }}
-					value={filtre.to}
+					value={filter.to}
 					onChange={(e) => onToChange(e.target.value)}
 					aria-label={t('auditFiltreBitis')}
 					title={t('auditFiltreBitis')}

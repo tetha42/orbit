@@ -21,10 +21,10 @@ import { useTaskDetail } from '../hooks/useTaskDetail';
 
 interface Detail {
 	task: TeamTask;
-	maddeler: TeamTaskItem[];
-	yorumlar: TeamTaskComment[];
-	aktivite: TeamTaskActivity[];
-	izinler: { manage: boolean; work: boolean; comment: boolean };
+	items: TeamTaskItem[];
+	comments: TeamTaskComment[];
+	activity: TeamTaskActivity[];
+	permissions: { manage: boolean; work: boolean; comment: boolean };
 }
 
 interface Props {
@@ -97,11 +97,11 @@ export function TaskDetailModal({ taskId, currentUserId, members, allLabels, not
 		);
 	}
 
-	const { task, maddeler, yorumlar, aktivite, izinler } = data;
+	const { task, items, comments, activity, permissions } = data;
 	const col = columnMeta(task.status);
-	const due = dueStatus(task.teslimTarihi, task.status, now);
-	const doneItems = maddeler.filter((m) => Number(m.tamamMi) === 1).length;
-	const canClaim = !task.atananUyeId && !izinler.manage && members.some((m) => m.id === currentUserId);
+	const due = dueStatus(task.dueDate, task.status, now);
+	const doneItems = items.filter((m) => Number(m.doneMi) === 1).length;
+	const canClaim = !task.assigneeMemberId && !permissions.manage && members.some((m) => m.id === currentUserId);
 	const when = (ts: number) => relativeTime(ts, now, language === 'en' ? 'en' : 'tr');
 
 	return (
@@ -110,7 +110,7 @@ export function TaskDetailModal({ taskId, currentUserId, members, allLabels, not
 				className={ui.sheet}
 				role="dialog"
 				aria-modal="true"
-				aria-label={task.baslik}
+				aria-label={task.title}
 				style={
 					offset.x !== 0 || offset.y !== 0
 						? { transform: `translate3d(${offset.x}px, ${offset.y}px, 0)` }
@@ -128,11 +128,11 @@ export function TaskDetailModal({ taskId, currentUserId, members, allLabels, not
 					/>
 					<input
 						className={styles.sheetTitleInput}
-						value={titleDraft ?? task.baslik}
-						disabled={!izinler.manage}
+						value={titleDraft ?? task.title}
+						disabled={!permissions.manage}
 						maxLength={TITLE_MAX}
 						aria-label={t('kbTitle')}
-						onFocus={() => setTitleDraft(task.baslik)}
+						onFocus={() => setTitleDraft(task.title)}
 						onChange={(e) => setTitleDraft(e.target.value)}
 						onBlur={saveTitle}
 						onKeyDown={(e) => {
@@ -146,32 +146,32 @@ export function TaskDetailModal({ taskId, currentUserId, members, allLabels, not
 
 				<div className={styles.sheetBody}>
 					<div className={ui.sheetMain}>
-						{!izinler.work && !canClaim && <div className={ui.hint}>{t('kbReadOnly')}</div>}
+						{!permissions.work && !canClaim && <div className={ui.hint}>{t('kbReadOnly')}</div>}
 
 						<TaskDescription
-							aciklama={task.aciklama}
-							canWork={izinler.work}
+							description={task.description}
+							canWork={permissions.work}
 							descDraft={descDraft}
 							setDescDraft={setDescDraft}
 							onSaveDesc={saveDesc}
 						/>
 
 						<TaskChecklist
-							maddeler={maddeler}
+							items={items}
 							doneItems={doneItems}
-							canWork={izinler.work}
+							canWork={permissions.work}
 							itemDraft={itemDraft}
 							setItemDraft={setItemDraft}
 							onToggleItem={toggleItem}
-							onDeleteItem={(id) => action({ action: 'deleteItem', maddeId: id })}
+							onDeleteItem={(id) => action({ action: 'deleteItem', itemId: id })}
 							onAddItem={addItem}
 						/>
 
 						<TaskComments
-							yorumlar={yorumlar}
+							comments={comments}
 							currentUserId={currentUserId}
-							canManage={izinler.manage}
-							canComment={izinler.comment}
+							canManage={permissions.manage}
+							canComment={permissions.comment}
 							commentDraft={commentDraft}
 							setCommentDraft={setCommentDraft}
 							busy={busy}
@@ -180,7 +180,7 @@ export function TaskDetailModal({ taskId, currentUserId, members, allLabels, not
 							onDeleteComment={deleteComment}
 						/>
 
-						<TaskActivityHistory aktivite={aktivite} members={members} when={when} />
+						<TaskActivityHistory activity={activity} members={members} when={when} />
 					</div>
 
 					<TaskMetaSidebar
@@ -188,7 +188,7 @@ export function TaskDetailModal({ taskId, currentUserId, members, allLabels, not
 						members={members}
 						allLabels={allLabels}
 						currentUserId={currentUserId}
-						izinler={izinler}
+						permissions={permissions}
 						canClaim={canClaim}
 						due={due}
 						locale={locale}

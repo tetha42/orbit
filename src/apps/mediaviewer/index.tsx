@@ -112,7 +112,7 @@ export function MediaViewerApp() {
 		setInfoOpen(false);
 		setExif([]);
 		setExifLoading(false);
-		setBytes(item?.boyut);
+		setBytes(item?.size);
 		setDimensions(null);
 		pendingZoomFocus.current = null;
 	}, [item]);
@@ -303,7 +303,7 @@ export function MediaViewerApp() {
 						<img
 							className={s.image}
 							src={item.url}
-							alt={item.ad}
+							alt={item.name}
 							onLoad={(event) =>
 								setDimensions({
 									width: event.currentTarget.naturalWidth,
@@ -341,7 +341,7 @@ export function MediaViewerApp() {
 					<div className={s.audioIcon}>
 						<Music size={30} />
 					</div>
-					<div className={s.audioName}>{item.ad}</div>
+					<div className={s.audioName}>{item.name}</div>
 					<audio className={s.audio} controls preload="metadata" onError={() => setMediaError(true)}>
 						<source src={item.url} type={item.tip || undefined} />
 					</audio>
@@ -349,7 +349,7 @@ export function MediaViewerApp() {
 			);
 		}
 		if (kind === 'pdf') {
-			return <iframe className={s.pdfFrame} src={item.url} title={item.ad} loading="eager" />;
+			return <iframe className={s.pdfFrame} src={item.url} title={item.name} loading="eager" />;
 		}
 		if (kind === 'text') {
 			if (textError) return fallback;
@@ -375,9 +375,9 @@ export function MediaViewerApp() {
 			<div className={`${s.stage} ${kind === 'image' ? s.stageImage : ''}`}>{content}</div>
 
 			<div className={s.actions}>
-				<span className={s.fileLabel} title={item.ad}>
+				<span className={s.fileLabel} title={item.name}>
 					{kindIcon(kind)}
-					<span>{item.ad}</span>
+					<span>{item.name}</span>
 					{bytes ? <span className={s.fileMeta}>{formatBytes(bytes)}</span> : null}
 				</span>
 
@@ -429,7 +429,7 @@ export function MediaViewerApp() {
 				<a
 					className={s.actionButton}
 					href={item.url}
-					download={item.ad}
+					download={item.name}
 					title={t('chatAttachmentDownload', 'Download')}
 				>
 					<Download size={14} />
@@ -461,7 +461,7 @@ export function MediaViewerApp() {
 
 					<div className={s.infoSection}>
 						<div className={s.infoSectionTitle}>{t('mediaViewerBasicInfo', 'Basic information')}</div>
-						<InfoRow label={t('mediaViewerFileName', 'File name')} value={item.ad} />
+						<InfoRow label={t('mediaViewerFileName', 'File name')} value={item.name} />
 						<InfoRow label={t('mediaViewerFileType', 'Type')} value={item.tip || '—'} />
 						<InfoRow label={t('mediaViewerFileSize', 'Size')} value={formatBytes(bytes) || '—'} />
 						{kind === 'image' && (

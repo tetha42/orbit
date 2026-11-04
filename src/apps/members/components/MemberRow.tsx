@@ -36,7 +36,7 @@ interface MemberRowProps {
 	mailUser: boolean;
 	isReachable: boolean;
 	isAuthorizedToAdd: boolean;
-	erisilebilir: boolean;
+	accessible: boolean;
 	assignableRoles: AssignableRole[];
 	onOpenProfile: (member: MemberRecord) => void;
 	onResetPassword: (memberId: string, name: string) => void;
@@ -53,7 +53,7 @@ export const MemberRow = React.memo(function MemberRow({
 	mailUser,
 	isReachable,
 	isAuthorizedToAdd,
-	erisilebilir,
+	accessible,
 	assignableRoles,
 	onOpenProfile,
 	onResetPassword,
@@ -69,21 +69,21 @@ export const MemberRow = React.memo(function MemberRow({
 	const { openApp } = useWindowActions();
 	const canSoc = canUseApp('soc');
 
-	const isAlumni = member.status === 'mezun' || isAlumniRole({ id: member.roleId, ad: member.rolAd });
+	const isAlumni = member.status === 'mezun' || isAlumniRole({ id: member.roleId, name: member.roleName });
 	const displayRole = isAlumni
 		? {
-				ad: isAlumniRole({ id: member.roleId, ad: member.rolAd })
-					? (member.rolAd ?? t('membersStatusAlumni', 'Mezun'))
+				name: isAlumniRole({ id: member.roleId, name: member.roleName })
+					? (member.roleName ?? t('membersStatusAlumni', 'Mezun'))
 					: t('membersStatusAlumni', 'Mezun'),
-				renk: isAlumniRole({ id: member.roleId, ad: member.rolAd }) ? (member.rolRenk ?? '#64d2ff') : '#64d2ff',
+				color: isAlumniRole({ id: member.roleId, name: member.roleName }) ? (member.roleColor ?? '#64d2ff') : '#64d2ff',
 		  }
 		: member.roleId
-		? { ad: member.rolAd ?? '—', renk: member.rolRenk ?? '#8e8e93' }
+		? { name: member.roleName ?? '—', color: member.roleColor ?? '#8e8e93' }
 		: null;
 
 	const buildMenuItems = (): MenuItem[] => {
 		const isSelf = member.id === currentUserId;
-		const canManage = erisilebilir && isAuthorizedToAdd;
+		const canManage = accessible && isAuthorizedToAdd;
 
 		const items: MenuItem[] = [
 			{
@@ -136,7 +136,7 @@ export const MemberRow = React.memo(function MemberRow({
 						},
 						...assignableRoles.map((r) => ({
 							id: `role-${r.id}-${member.id}`,
-							label: isAlumniRole(r) ? t('membersStatusAlumni', r.ad) : r.ad,
+							label: isAlumniRole(r) ? t('membersStatusAlumni', r.name) : r.name,
 							checked: isAlumni ? isAlumniRole(r) : member.roleId === r.id,
 							action: () => onUpdateRole(member.id, r.id),
 						})),
@@ -220,9 +220,9 @@ export const MemberRow = React.memo(function MemberRow({
 			{/* Name & Avatar */}
 			<td style={{ padding: '10px' }}>
 				<div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-					{member.avatarUrl || member.profilFoto ? (
+					{member.avatarUrl || member.profilePhoto ? (
 						<Image
-							src={(member.avatarUrl || member.profilFoto)!}
+							src={(member.avatarUrl || member.profilePhoto)!}
 							alt={`${member.firstName} ${member.lastName}`}
 							width={34}
 							height={34}
@@ -257,21 +257,21 @@ export const MemberRow = React.memo(function MemberRow({
 
 			{/* Role badge */}
 			<td style={{ padding: '10px' }}>
-				<RoleBadge role={displayRole} bosMetin={t('roleNone')} />
+				<RoleBadge role={displayRole} emptyText={t('roleNone')} />
 			</td>
 
 			{/* Major & Year */}
 			<td style={{ padding: '10px' }}>
-				<div>{member.department || member.bolum}</div>
+				<div>{member.department || member.department}</div>
 				<div style={{ fontSize: '11px', opacity: 0.6 }}>
-					{fill(t('membersClassAndNo'), { year: member.grade || member.sinif, no: member.handle || member.ogrenciNo || '-' })}
+					{fill(t('membersClassAndNo'), { year: member.grade || member.grade, no: member.handle || member.studentNo || '-' })}
 				</div>
 			</td>
 
 			{/* Team */}
 			<td style={{ padding: '10px' }}>
 				<div style={{ fontSize: '12.5px', fontWeight: 500 }}>
-					{member.takimAdi || <span style={{ opacity: 0.4 }}>{t('membersNotAssigned')}</span>}
+					{member.teamName || <span style={{ opacity: 0.4 }}>{t('membersNotAssigned')}</span>}
 				</div>
 			</td>
 

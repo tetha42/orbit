@@ -12,10 +12,10 @@ import type { TeamShowcaseRecord } from '@/db/repositories/teams.repo';
 import ui from '@/core/ui/ui.module.css';
 
 interface ShowcaseResponse {
-	takimlar: TeamShowcaseRecord[];
-	benimTakimSayim: number;
-	limitler: { takim: number; bekleyenBasvuru: number };
-	saltOkunur: boolean;
+	teams: TeamShowcaseRecord[];
+	myTeamCount: number;
+	limits: { team: number; pendingApplication: number };
+	saltReadable: boolean;
 }
 
 async function post(body: Record<string, unknown>): Promise<void> {
@@ -83,20 +83,20 @@ export function OnboardingTeamExplorer({ compact = false }: { compact?: boolean 
 		<section aria-label={t('obTitle')} data-onboarding-teams style={{ width: '100%', textAlign: 'left' }}>
 			<div style={{ fontSize: '13.5px', fontWeight: 700 }}>{t('obTitle')}</div>
 			<div style={{ fontSize: '12px', opacity: 0.7, margin: '2px 0 10px' }}>{t('obSubtitle')}</div>
-			{data.saltOkunur && <div style={{ fontSize: '12px', opacity: 0.8, marginBottom: 8 }}>{t('obReadOnly')}</div>}
+			{data.saltReadable && <div style={{ fontSize: '12px', opacity: 0.8, marginBottom: 8 }}>{t('obReadOnly')}</div>}
 			{formError && formFor === null && (
 				<div role="alert" style={{ fontSize: '12px', color: '#ff453a', marginBottom: 8 }}>
 					{formError}
 				</div>
 			)}
 
-			{data.takimlar.length === 0 ? (
+			{data.teams.length === 0 ? (
 				<div style={state}>{t('obEmpty')}</div>
 			) : (
 				<ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-					{data.takimlar.map((team) => {
-						const full = team.kalanKontenjan === 0;
-						const atLimit = data.benimTakimSayim >= data.limitler.takim;
+					{data.teams.map((team) => {
+						const full = team.remainingCapacity === 0;
+						const atLimit = data.myTeamCount >= data.limits.team;
 						const formOpen = formFor === team.id;
 						return (
 							<li
@@ -111,15 +111,15 @@ export function OnboardingTeamExplorer({ compact = false }: { compact?: boolean 
 							>
 								<div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'flex-start' }}>
 									<div style={{ minWidth: 0 }}>
-										<div style={{ fontSize: '13.5px', fontWeight: 700 }}>{team.ad}</div>
+										<div style={{ fontSize: '13.5px', fontWeight: 700 }}>{team.name}</div>
 										<div style={{ fontSize: '11.5px', opacity: 0.7 }}>
-											{team.kategori}
-											{team.liderAdSoyad ? ` · ${t('tmCaptain')}: ${team.liderAdSoyad}` : ''}
+											{team.category}
+											{team.leaderNameSurname ? ` · ${t('tmCaptain')}: ${team.leaderNameSurname}` : ''}
 										</div>
 									</div>
 									<div style={{ fontSize: '11.5px', opacity: 0.75, whiteSpace: 'nowrap', display: 'inline-flex', gap: 4, alignItems: 'center' }}>
 										<Users size={12} aria-hidden="true" />
-										{fill(t('obSeats'), { free: team.kalanKontenjan, total: team.kontenjan })}
+										{fill(t('obSeats'), { free: team.remainingCapacity, total: team.capacity })}
 									</div>
 								</div>
 								<p
@@ -134,19 +134,19 @@ export function OnboardingTeamExplorer({ compact = false }: { compact?: boolean 
 										overflow: 'hidden',
 									}}
 								>
-									{team.aciklama}
+									{team.description}
 								</p>
 
-								{team.benimDurumum === 'aktif' ? (
+								{team.myMyStatus === 'aktif' ? (
 									<div style={{ fontSize: '12px', color: '#30d158', display: 'inline-flex', gap: 5, alignItems: 'center' }}>
-										<Check size={13} aria-hidden="true" /> {team.benimKararim === 'kabul' ? t('obAccepted') : t('tmMember')}
+										<Check size={13} aria-hidden="true" /> {team.myMyDecision === 'kabul' ? t('obAccepted') : t('tmMember')}
 									</div>
-								) : team.benimDurumum === 'basvurdu' ? (
+								) : team.myMyStatus === 'basvurdu' ? (
 									<div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
 										<span style={{ fontSize: '12px', color: '#ff9f0a', display: 'inline-flex', gap: 5, alignItems: 'center' }}>
 											<Clock size={13} aria-hidden="true" /> {t('obApplied')}
 										</span>
-										{!data.saltOkunur && (
+										{!data.saltReadable && (
 											<button type="button" className={ui.btn} disabled={busy} onClick={() => void run({ action: 'withdraw', teamId: team.id })}>
 												{t('tmWithdraw')}
 											</button>
@@ -156,7 +156,7 @@ export function OnboardingTeamExplorer({ compact = false }: { compact?: boolean 
 									<form
 										onSubmit={(e) => {
 											e.preventDefault();
-											void run({ action: 'apply', teamId: team.id, uzmanliklar: skills, basvuruNotu: note }, () => setFormFor(null));
+											void run({ action: 'apply', teamId: team.id, expertise: skills, applicationNote: note }, () => setFormFor(null));
 										}}
 										style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
 									>
@@ -225,14 +225,14 @@ export function OnboardingTeamExplorer({ compact = false }: { compact?: boolean 
 									</form>
 								) : (
 									<div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-										<span style={{ fontSize: '12px', opacity: 0.85, color: team.benimKararim === 'red' ? '#ff9f0a' : undefined }}>
-											{team.benimKararim === 'red' ? t('obRejected') : ''}
+										<span style={{ fontSize: '12px', opacity: 0.85, color: team.myMyDecision === 'red' ? '#ff9f0a' : undefined }}>
+											{team.myMyDecision === 'red' ? t('obRejected') : ''}
 										</span>
 										<button
 											type="button"
 											className={ui.primaryBtn}
-											disabled={busy || data.saltOkunur || full || atLimit}
-											title={atLimit ? fill(t('tmLimitReached'), { n: data.limitler.takim }) : undefined}
+											disabled={busy || data.saltReadable || full || atLimit}
+											title={atLimit ? fill(t('tmLimitReached'), { n: data.limits.team }) : undefined}
 											onClick={() => openForm(team.id)}
 										>
 											{full ? t('tmFull') : t('tmApply')}

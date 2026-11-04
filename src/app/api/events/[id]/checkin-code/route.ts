@@ -17,23 +17,21 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 	const { id } = await params;
 	const ev = await getEventById(id);
 	if (!ev) return NextResponse.json({ error: 'CommunityEvent bulunamadı.' }, { status: 404 });
-	if (ev.status !== 'yayinda' || !Number(ev.yoklamaAcik)) {
+	if (ev.status !== 'yayinda' || !Number(ev.attendanceOpen)) {
 		return NextResponse.json({ error: 'Önce yoklamayı açın.', code: 'YOKLAMA_KAPALI' }, { status: 409 });
 	}
 	const now = Date.now();
-	if (!isAttendanceTime(Number(ev.baslangic), Number(ev.endTime), now)) {
+	if (!isAttendanceTime(Number(ev.start), Number(ev.endTime), now)) {
 		return NextResponse.json({ error: 'Attendance yalnızca etkinlik sırasında alınabilir.', code: 'ZAMAN_DISI' }, { status: 409 });
 	}
 	const code = await createAttendanceCode(id, now);
-	const participant = (await getEventAttendeeList(id)).filter((r) => r.katilimZamani).length;
+	const participant = (await getEventAttendeeList(id)).filter((r) => r.participationTime).length;
 	return NextResponse.json(
 		{
 			// The projector shows and encodes only this short code.
-			kisaKod: code.kisaKod,
-			shortCode: code.kisaKod,
-			kalanMs: windowRemainingMs(now),
+			shortCode: code.shortCode,
 			remainingMs: windowRemainingMs(now),
-			katilimciSayisi: participant,
+			participantCount: participant,
 			attendeeCount: participant,
 		},
 		{ headers: { 'Cache-Control': 'no-store' } }

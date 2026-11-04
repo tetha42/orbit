@@ -82,13 +82,13 @@ async function code(secret) {
 	usedWindows.set(secret, Math.floor(Date.now() / 30000));
 	return generate({ secret });
 }
-async function login(eposta, sifre, totp) {
+async function login(email, password, totp) {
 	const c = client();
-	const r = await c.call('POST', '/api/auth/login', { eposta, sifre });
+	const r = await c.call('POST', '/api/auth/login', { email, password });
 	if (r.json?.require2fa) {
 		const v = await c.call('POST', '/api/auth/2fa/challenge', { challengeToken: r.json.challengeToken, code: await code(totp) });
-		if (v.status !== 200) throw new Error(`2FA ${eposta}: ${v.status}`);
-	} else if (r.status !== 200) throw new Error(`login ${eposta}: ${r.status} ${JSON.stringify(r.json)}`);
+		if (v.status !== 200) throw new Error(`2FA ${email}: ${v.status}`);
+	} else if (r.status !== 200) throw new Error(`login ${email}: ${r.status} ${JSON.stringify(r.json)}`);
 	return c;
 }
 const until = async (fn, ms = 4000) => {
@@ -102,21 +102,21 @@ const until = async (fn, ms = 4000) => {
 
 const U = FX.users;
 const teamId = FX.content.team.team.id; // open team, captain: ege
-const admin = await login(FX.admin.eposta, FX.admin.sifre, FX.adminTotp);
-const ege = await login(U.ege.eposta, U.ege.sifre);
-const can = await login(U.can.eposta, U.can.sifre);
+const admin = await login(FX.admin.email, FX.admin.password, FX.adminTotp);
+const ege = await login(U.ege.email, U.ege.password);
+const can = await login(U.can.email, U.can.password);
 const anon = client();
 
 // A fresh member nobody has given a role.
 const suffix = Date.now().toString(36);
-const created = (await admin.call('POST', '/api/uyeler', { ad: 'Yeni', soyad: 'Öğrenci', eposta: `ob-${suffix}@kulup.test`, bolum: 'Bilgisayar Mühendisliği', sinif: 1, rolId: FX.roles.uye })).json;
+const created = (await admin.call('POST', '/api/uyeler', { name: 'Yeni', surname: 'Öğrenci', email: `ob-${suffix}@kulup.test`, department: 'Bilgisayar Mühendisliği', grade: 1, roleId: FX.roles.member })).json;
 const newId = created.member.id;
 const newUser = client();
-await newUser.call('POST', '/api/auth/login', { eposta: `ob-${suffix}@kulup.test`, sifre: created.geciciSifre });
-await newUser.call('POST', '/api/profil/sifre', { mevcut: created.geciciSifre, yeni: 'Kulup-Test-2026!' });
+await newUser.call('POST', '/api/auth/login', { email: `ob-${suffix}@kulup.test`, password: created.temporaryPassword });
+await newUser.call('POST', '/api/profil/sifre', { current: created.temporaryPassword, fresh: 'Kulup-Test-2026!' });
 await db.query(`UPDATE ${userTable} SET ${roleCol} = NULL WHERE id = $1`, [newId]);
 const me = (await newUser.call('GET', '/api/auth/me')).json?.user;
-ok(me && me.rolBilgi === null, 'fixture: the new member has no role');
+ok(me && me.roleInfo === null, 'fixture: the new member has no role');
 
 const teamsToDelete = [];
 try {
@@ -127,12 +127,12 @@ try {
 
 	const showcase = await newUser.call('GET', '/api/takimlar/kesfet');
 	ok(showcase.status === 200, 'showcase: role-less member may read it', `status ${showcase.status}`);
-	const card = showcase.json?.takimlar?.find((t) => t.id === teamId);
-	ok(!!card && card.benimDurumum === null && card.benimKararim === null, 'showcase: fixture team listed, no standing yet');
-	ok(card && card.liderAdSoyad && card.kalanKontenjan === card.kontenjan - card.aktifUyeSayisi, 'showcase: captain name and free seats');
+	const card = showcase.json?.teams?.find((t) => t.id === teamId);
+	ok(!!card && card.myMyStatus === null && card.myMyDecision === null, 'showcase: fixture team listed, no standing yet');
+	ok(card && card.leaderNameSurname && card.remainingCapacity === card.capacity - card.activeMemberCount, 'showcase: captain name and free seats');
 	const leaked = JSON.stringify(showcase.json);
 	ok(!/"uyeler"|"gorevler"|"basvurular"|basvuruNotu/.test(leaked), 'showcase: no roster, tasks or notes in the payload');
-	ok(showcase.json.saltOkunur === false && showcase.json.limitler.takim === 3, 'showcase: limits and read-only flag');
+	ok(showcase.json.saltReadable === false && showcase.json.limits.team === 3, 'showcase: limits and read-only flag');
 
 	// ---- validation ----------------------------------------------------------------
 	ok((await newUser.call('POST', '/api/takimlar/kesfet', { action: 'apply' })).status === 400, 'apply: missing team → 400');
@@ -144,17 +144,17 @@ try {
 	const live = await newUser.listen();
 	ok(live.status === 200, 'live stream opens for the applicant');
 	const note = 'Gömülü sistemlerde çalışıyorum. ' + 'x'.repeat(800);
-	const applied = await newUser.call('POST', '/api/takimlar/kesfet', { action: 'apply', teamId: teamId, uzmanliklar: ['C++', 'ROS2', 'c++', 7], basvuruNotu: note });
-	ok(applied.status === 200 && applied.json.durum === 'basvurdu', 'apply: open team still takes it as an application', JSON.stringify(applied.json));
+	const applied = await newUser.call('POST', '/api/takimlar/kesfet', { action: 'apply', teamId: teamId, expertise: ['C++', 'ROS2', 'c++', 7], applicationNote: note });
+	ok(applied.status === 200 && applied.json.status === 'basvurdu', 'apply: open team still takes it as an application', JSON.stringify(applied.json));
 	ok((await newUser.call('POST', '/api/takimlar/kesfet', { action: 'apply', teamId: teamId })).status === 409, 'apply: a second time → 409');
-	const after = (await newUser.call('GET', '/api/takimlar/kesfet')).json.takimlar.find((t) => t.id === teamId);
-	ok(after.benimDurumum === 'basvurdu', 'showcase: shows the application as waiting');
+	const after = (await newUser.call('GET', '/api/takimlar/kesfet')).json.teams.find((t) => t.id === teamId);
+	ok(after.myMyStatus === 'basvurdu', 'showcase: shows the application as waiting');
 
 	const board = (await ege.call('GET', `/api/takimlar?teamId=${teamId}`)).json;
 	ok(!board.uyeler.some((u) => u.userId === newId), 'captain: applicant is not on the roster yet');
-	const app = board.basvurular.find((b) => b.userId === newId);
+	const app = board.applications.find((b) => b.userId === newId);
 	ok(!!app, 'captain: sees the application');
-	ok(app?.basvuruNotu?.startsWith('Uzmanlık: C++, ROS2\nGömülü sistemlerde') && app.basvuruNotu.length <= 500, 'captain: note = skills line + text, de-duplicated and capped', app?.basvuruNotu?.slice(0, 60));
+	ok(app?.applicationNote?.startsWith('Uzmanlık: C++, ROS2\nGömülü sistemlerde') && app.applicationNote.length <= 500, 'captain: note = skills line + text, de-duplicated and capped', app?.applicationNote?.slice(0, 60));
 
 	// ---- the captain accepts: the applicant hears it live ---------------------------------
 	live.heard.length = 0;
@@ -162,41 +162,41 @@ try {
 	ok(accepted.status === 200, 'captain: approves', JSON.stringify(accepted.json));
 	ok(await until(() => live.heard.includes('takim_guncellendi') && live.heard.includes('bildirim')), 'applicant: live stream gets takim_guncellendi + bildirim', live.heard.join(','));
 	live.stop();
-	const member = (await newUser.call('GET', '/api/takimlar/kesfet')).json.takimlar.find((t) => t.id === teamId);
-	ok(member.benimDurumum === 'aktif' && member.benimKararim === 'kabul', 'showcase: member, application accepted');
+	const member = (await newUser.call('GET', '/api/takimlar/kesfet')).json.teams.find((t) => t.id === teamId);
+	ok(member.myMyStatus === 'aktif' && member.myMyDecision === 'kabul', 'showcase: member, application accepted');
 	ok((await newUser.call('POST', '/api/takimlar/kesfet', { action: 'withdraw', teamId: teamId })).status === 404, 'withdraw: cannot leave an active team through the showcase');
 
 	// ---- reject → feed item for a member who has the Teams app ------------------------------
 	const canLive = await can.listen();
-	ok((await can.call('POST', '/api/takimlar/kesfet', { action: 'apply', teamId: teamId, basvuruNotu: 'Merhaba' })).status === 200, 'apply: member with the Teams app');
+	ok((await can.call('POST', '/api/takimlar/kesfet', { action: 'apply', teamId: teamId, applicationNote: 'Merhaba' })).status === 200, 'apply: member with the Teams app');
 	const canBefore = (await can.call('GET', '/api/bildirimler')).json.items.filter((i) => i.kind === 'teamDecision');
 	ok(canBefore.length === 0, 'feed: no decision yet');
 	ok((await ege.call('POST', '/api/takimlar', { action: 'reject', teamId: teamId, userId: U.can.id })).status === 200, 'captain: rejects');
 	ok(await until(() => canLive.heard.includes('bildirim')), 'rejected member: live bildirim');
 	canLive.stop();
 	const feed = (await can.call('GET', '/api/bildirimler')).json.items.find((i) => i.kind === 'teamDecision');
-	ok(feed && feed.data.accepted === false && feed.data.title === FX.content.team.team.ad && feed.priority === 'info', 'feed: teamDecision (rejected) with the team name', JSON.stringify(feed));
+	ok(feed && feed.data.accepted === false && feed.data.title === FX.content.team.team.name && feed.priority === 'info', 'feed: teamDecision (rejected) with the team name', JSON.stringify(feed));
 	ok(feed?.target?.appId === 'teams' && feed.target.itemId === teamId, 'feed: opens the team');
-	const rejected = (await can.call('GET', '/api/takimlar/kesfet')).json.takimlar.find((t) => t.id === teamId);
-	ok(rejected.benimDurumum === null && rejected.benimKararim === 'red', 'showcase: not a member, last answer "red"');
+	const rejected = (await can.call('GET', '/api/takimlar/kesfet')).json.teams.find((t) => t.id === teamId);
+	ok(rejected.myMyStatus === null && rejected.myMyDecision === 'red', 'showcase: not a member, last answer "red"');
 	// A new try wipes the old answer.
 	ok((await can.call('POST', '/api/takimlar/kesfet', { action: 'apply', teamId: teamId })).status === 200, 'apply again after a rejection');
-	const retried = (await can.call('GET', '/api/takimlar/kesfet')).json.takimlar.find((t) => t.id === teamId);
-	ok(retried.benimDurumum === 'basvurdu' && retried.benimKararim === null, 'showcase: old answer cleared by the new application');
+	const retried = (await can.call('GET', '/api/takimlar/kesfet')).json.teams.find((t) => t.id === teamId);
+	ok(retried.myMyStatus === 'basvurdu' && retried.myMyDecision === null, 'showcase: old answer cleared by the new application');
 	ok((await can.call('GET', '/api/bildirimler')).json.items.every((i) => i.kind !== 'teamDecision'), 'feed: old answer gone with it');
 	ok((await can.call('POST', '/api/takimlar/kesfet', { action: 'withdraw', teamId: teamId })).status === 200, 'withdraw: own application');
-	ok((await can.call('GET', '/api/takimlar/kesfet')).json.takimlar.find((t) => t.id === teamId).benimDurumum === null, 'showcase: back to no standing');
+	ok((await can.call('GET', '/api/takimlar/kesfet')).json.teams.find((t) => t.id === teamId).myMyStatus === null, 'showcase: back to no standing');
 
 	// ---- a full team refuses at the door; the pending cap ----------------------------------------------
-	const mk = async (name, kontenjan) => {
-		const r = await admin.call('POST', '/api/takimlar', { action: 'createTeam', ad: name, kategori: 'Web & Mobil', aciklama: 'Onboarding test takımı', kontenjan, leadId: U.ege.id });
+	const mk = async (name, capacity) => {
+		const r = await admin.call('POST', '/api/takimlar', { action: 'createTeam', name: name, category: 'Web & Mobil', description: 'Onboarding test takımı', capacity, leadId: U.ege.id });
 		teamsToDelete.push(r.json.team.id);
 		return r.json.team.id;
 	};
 	const tiny = await mk(`ob-test-${suffix}-dolu`, 1); // the captain fills the only seat
 	const fullTry = await can.call('POST', '/api/takimlar/kesfet', { action: 'apply', teamId: tiny });
 	ok(fullTry.status === 409 && /kontenjan/i.test(fullTry.json.error), 'apply: full team → 409', JSON.stringify(fullTry.json));
-	ok((await can.call('GET', '/api/takimlar/kesfet')).json.takimlar.find((t) => t.id === tiny).kalanKontenjan === 0, 'showcase: shows 0 free seats');
+	ok((await can.call('GET', '/api/takimlar/kesfet')).json.teams.find((t) => t.id === tiny).remainingCapacity === 0, 'showcase: shows 0 free seats');
 
 	const many = [];
 	for (let i = 0; i < 6; i++) many.push(await mk(`ob-test-${suffix}-${i}`, 6));
@@ -209,13 +209,13 @@ try {
 	// ---- a paused team takes no applications ------------------------------------------------------------
 	const paused = many[0];
 	await db.query(`UPDATE ${teamsTable} SET status = 'askida' WHERE id = $1`, [paused]);
-	ok(!(await newUser.call('GET', '/api/takimlar/kesfet')).json.takimlar.some((t) => t.id === paused), 'showcase: paused teams are not listed');
+	ok(!(await newUser.call('GET', '/api/takimlar/kesfet')).json.teams.some((t) => t.id === paused), 'showcase: paused teams are not listed');
 	ok((await newUser.call('POST', '/api/takimlar/kesfet', { action: 'apply', teamId: paused })).status === 409, 'apply: paused team → 409');
 
 	// ---- graduates are read-only ----------------------------------------------------------------------------
 	await db.query(`UPDATE ${userTable} SET ${statusCol} = 'mezun' WHERE id = $1`, [newId]);
 	const grad = await newUser.call('GET', '/api/takimlar/kesfet');
-	ok(grad.status === 200 && grad.json.saltOkunur === true, 'graduate: may look (read-only flag set)');
+	ok(grad.status === 200 && grad.json.saltReadable === true, 'graduate: may look (read-only flag set)');
 	ok((await newUser.call('POST', '/api/takimlar/kesfet', { action: 'apply', teamId: many[1] })).status === 403, 'graduate: apply → 403');
 } finally {
 	for (const id of teamsToDelete) await admin.call('POST', '/api/takimlar', { action: 'deleteTeam', teamId: id });

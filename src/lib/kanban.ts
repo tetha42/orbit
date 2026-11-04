@@ -13,7 +13,6 @@ export type TaskPriority = (typeof TASK_PRIORITIES)[number];
 
 /** Higher means more urgent; used for sorting. */
 export const PRIORITY_WEIGHT: Record<TaskPriority, number> = { dusuk: 0, orta: 1, yuksek: 2, kritik: 3 };
-export const ONCELIK_AGIRLIGI = PRIORITY_WEIGHT;
 
 export const TITLE_MAX = 160;
 export const DESCRIPTION_MAX = 4000;
@@ -21,10 +20,8 @@ export const LABEL_MAX = 24;
 export const LABEL_COUNT_MAX = 6;
 export const ITEM_MAX = 200;
 export const COMMENT_MAX = 2000;
-export const ETIKET_MAX = LABEL_MAX;
-export const ETIKET_SAYISI_MAX = LABEL_COUNT_MAX;
-export const MADDE_MAX = ITEM_MAX;
-export const YORUM_MAX = COMMENT_MAX;
+export const TAG_MAX = LABEL_MAX;
+export const TAG_COUNT_MAX = LABEL_COUNT_MAX;
 
 /**
  * Older clients sent `'bitti'` for "done" while the column stores `'tamamlandi'`.
@@ -32,9 +29,8 @@ export const YORUM_MAX = COMMENT_MAX;
  */
 const STATUS_ALIASES: Record<string, TaskStatus> = {
 	bitti: 'tamamlandi',
-	tamam: 'tamamlandi',
 	done: 'tamamlandi',
-	devam: 'suruyor',
+	ongoing: 'suruyor',
 	bekliyor: 'yapilacak',
 	review: 'inceleme',
 };
@@ -51,7 +47,6 @@ export function normalizePriority(value: unknown): TaskPriority | null {
 	const key = value.trim().toLowerCase();
 	return (TASK_PRIORITIES as readonly string[]).includes(key) ? (key as TaskPriority) : null;
 }
-export const normalizeOncelik = normalizePriority;
 
 /**
  * Labels: trimmed, lower-cased (Turkish-aware), inner whitespace turned into `-`,
@@ -74,7 +69,7 @@ export function normalizeLabels(value: unknown): string[] | null {
 	}
 	return out;
 }
-export const normalizeEtiketler = normalizeLabels;
+export const normalizeTags = normalizeLabels;
 
 /**
  * A due date as epoch millis, `null` for "none", or `undefined` when the input
@@ -114,7 +109,6 @@ export function orderBetween(before: number | undefined, after: number | undefin
 	if (after === undefined) return before + 1024;
 	return (before + after) / 2;
 }
-export const siraBetween = orderBetween;
 
 /**
  * Whether `mid` still sorts strictly between its neighbours. Halving a gap runs
@@ -124,14 +118,12 @@ export const siraBetween = orderBetween;
 export function orderFits(before: number | undefined, mid: number, after: number | undefined): boolean {
 	return (before === undefined || before < mid) && (after === undefined || mid < after);
 }
-export const siraFits = orderFits;
 
 /** Spacing used when a column is renumbered from scratch. */
 export const ORDER_STEP = 1024;
-export const SIRA_ADIMI = ORDER_STEP;
 /** Most cards a renumbering request may list. */
 export const ORDER_MAX = 500;
-export const SIRALAMA_MAX = ORDER_MAX;
+export const RANKING_MAX = ORDER_MAX;
 
 export type DueStatus = 'gecikti' | 'bugun' | 'yakin' | 'ileri';
 
@@ -139,16 +131,16 @@ const DAY = 86_400_000;
 
 /** How pressing a due date is, relative to `now`. Done tasks are never late. */
 export function dueStatus(
-	teslimTarihi: number | null | undefined,
+	dueDate: number | null | undefined,
 	status: TaskStatus,
 	now: number
 ): DueStatus | null {
-	if (!teslimTarihi || status === 'tamamlandi') return null;
-	if (teslimTarihi < now) return 'gecikti';
+	if (!dueDate || status === 'tamamlandi') return null;
+	if (dueDate < now) return 'gecikti';
 	const start = new Date(now);
 	start.setHours(0, 0, 0, 0);
 	const endOfToday = start.getTime() + DAY;
-	if (teslimTarihi < endOfToday) return 'bugun';
-	if (teslimTarihi < endOfToday + 2 * DAY) return 'yakin';
+	if (dueDate < endOfToday) return 'bugun';
+	if (dueDate < endOfToday + 2 * DAY) return 'yakin';
 	return 'ileri';
 }

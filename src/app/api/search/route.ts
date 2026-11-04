@@ -35,8 +35,8 @@ const KIND_ORDER: SearchKind[] = [
 	'message',
 ];
 
-const formatTL = (kurus: number) =>
-	`₺${(kurus / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const formatTL = (minor: number) =>
+	`₺${(minor / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const formatDate = (ms: number) => new Date(Number(ms)).toLocaleDateString('tr-TR');
 
 /**
@@ -89,7 +89,7 @@ export async function GET(request: Request) {
 	}
 
 	try {
-		const [roster, teams, events, news, items, certificates, memberTeamIds, kasas, threads, people] =
+		const [roster, teams, events, news, items, certificates, memberTeamIds, vaults, threads, people] =
 			await Promise.all([
 				when(uses('members'), () => getMemberRoster()),
 				when(uses('teams'), () => getTeams()),
@@ -100,7 +100,7 @@ export async function GET(request: Request) {
 				when(uses('teams') && !manages('teams'), () => getUserTeamIds(user.id)),
 				listAccessibleVaults(user),
 				when(uses('mail'), () => getMailSearchThreads(user.id)),
-				when(uses('mail'), async () => (await recipientList(await searchMailCandidates(user.id, q, MAX_HITS_PER_KIND))).filter((p) => p.ulasilabilir)),
+				when(uses('mail'), async () => (await recipientList(await searchMailCandidates(user.id, q, MAX_HITS_PER_KIND))).filter((p) => p.reachable)),
 			]);
 
 		const byKind = new Map<SearchKind, SearchHit[]>();
@@ -120,18 +120,18 @@ export async function GET(request: Request) {
 					id: `member:${m.id}`,
 					kind: 'member',
 					appId: 'members',
-					title: `${m.ad} ${m.soyad}`,
-					subtitle: [m.bolum, m.takimAdi].filter(Boolean).join(' · '),
+					title: `${m.name} ${m.surname}`,
+					subtitle: [m.department, m.teamName].filter(Boolean).join(' · '),
 					target: { kind: 'member', itemId: m.id },
 				},
 				[
-					{ text: `${m.ad} ${m.soyad}`, weight: 4 },
-					{ text: m.bolum, weight: 1 },
-					{ text: m.takimAdi, weight: 1 },
+					{ text: `${m.name} ${m.surname}`, weight: 4 },
+					{ text: m.department, weight: 1 },
+					{ text: m.teamName, weight: 1 },
 					...(memberManager
 						? [
 								{ text: m.email, weight: 2 },
-								{ text: m.ogrenciNo, weight: 2 },
+								{ text: m.studentNo, weight: 2 },
 							]
 						: []),
 				]
@@ -147,14 +147,14 @@ export async function GET(request: Request) {
 					id: `team:${team.id}`,
 					kind: 'team',
 					appId: 'teams',
-					title: team.ad,
-					subtitle: [team.kategori, team.liderAdSoyad && `Kaptan: ${team.liderAdSoyad}`].filter(Boolean).join(' · '),
+					title: team.name,
+					subtitle: [team.category, team.leaderNameSurname && `Kaptan: ${team.leaderNameSurname}`].filter(Boolean).join(' · '),
 					target: { kind: 'team', itemId: team.id },
 				},
 				[
-					{ text: team.ad, weight: 4 },
-					{ text: team.kategori, weight: 2 },
-					{ text: team.aciklama, weight: 1 },
+					{ text: team.name, weight: 4 },
+					{ text: team.category, weight: 2 },
+					{ text: team.description, weight: 1 },
 				]
 			);
 		}
@@ -171,14 +171,14 @@ export async function GET(request: Request) {
 						id: `task:${task.id}`,
 						kind: 'task',
 						appId: 'teams',
-						title: task.baslik,
-						subtitle: team.ad,
+						title: task.title,
+						subtitle: team.name,
 						target: { kind: 'task', itemId: task.id, parentId: team.id },
 					},
 					[
-						{ text: task.baslik, weight: 4 },
-						{ text: task.aciklama, weight: 1 },
-						{ text: task.atananAdSoyad, weight: 1 },
+						{ text: task.title, weight: 4 },
+						{ text: task.description, weight: 1 },
+						{ text: task.assigneeNameSurname, weight: 1 },
 					]
 				);
 			}
@@ -191,14 +191,14 @@ export async function GET(request: Request) {
 					id: `event:${e.id}`,
 					kind: 'event',
 					appId: 'events',
-					title: e.baslik,
-					subtitle: [formatDate(e.baslangic), e.konum].filter(Boolean).join(' · '),
+					title: e.title,
+					subtitle: [formatDate(e.start), e.location].filter(Boolean).join(' · '),
 					target: { kind: 'event', itemId: e.id },
 				},
 				[
-					{ text: e.baslik, weight: 4 },
-					{ text: e.konum, weight: 1 },
-					{ text: e.aciklama, weight: 1 },
+					{ text: e.title, weight: 4 },
+					{ text: e.location, weight: 1 },
+					{ text: e.description, weight: 1 },
 				]
 			);
 		}
@@ -210,14 +210,14 @@ export async function GET(request: Request) {
 					id: `news:${n.id}`,
 					kind: 'news',
 					appId: 'news',
-					title: n.baslik,
-					subtitle: n.ozet,
+					title: n.title,
+					subtitle: n.summary,
 					target: { kind: 'news', itemId: n.id },
 				},
 				[
-					{ text: n.baslik, weight: 4 },
-					{ text: n.ozet, weight: 2 },
-					{ text: n.icerik, weight: 1 },
+					{ text: n.title, weight: 4 },
+					{ text: n.summary, weight: 2 },
+					{ text: n.content, weight: 1 },
 				]
 			);
 		}
@@ -230,15 +230,15 @@ export async function GET(request: Request) {
 					id: `item:${item.id}`,
 					kind: 'item',
 					appId: 'inventory',
-					title: item.ad,
-					subtitle: [item.kod, item.konum].filter(Boolean).join(' · '),
+					title: item.name,
+					subtitle: [item.code, item.location].filter(Boolean).join(' · '),
 					target: { kind: 'item', itemId: item.id },
 				},
 				[
-					{ text: item.ad, weight: 4 },
-					{ text: item.kod, weight: 4 },
-					{ text: item.kategori, weight: 1 },
-					{ text: item.konum, weight: 1 },
+					{ text: item.name, weight: 4 },
+					{ text: item.code, weight: 4 },
+					{ text: item.category, weight: 1 },
+					{ text: item.location, weight: 1 },
 				]
 			);
 		}
@@ -250,14 +250,14 @@ export async function GET(request: Request) {
 					id: `certificate:${c.id}`,
 					kind: 'certificate',
 					appId: 'certificates',
-					title: c.baslik,
-					subtitle: [c.verificationCode, !mine && c.kullaniciAdSoyad].filter(Boolean).join(' · '),
+					title: c.title,
+					subtitle: [c.verificationCode, !mine && c.userNameSurname].filter(Boolean).join(' · '),
 					target: { kind: 'cert', itemId: c.id, section: mine ? 'certificates' : 'all' },
 				},
 				[
-					{ text: c.baslik, weight: 4 },
+					{ text: c.title, weight: 4 },
 					{ text: c.verificationCode, weight: 3 },
-					...(manages('certificates') ? [{ text: c.kullaniciAdSoyad, weight: 2 }] : []),
+					...(manages('certificates') ? [{ text: c.userNameSurname, weight: 2 }] : []),
 				]
 			);
 		}
@@ -265,9 +265,9 @@ export async function GET(request: Request) {
 		// Kasa entries. Only kasas this caller may open are read at all.
 		const vaultApp = uses('budget');
 		const vaultEntries = await Promise.all(
-			kasas.map(async (kasa) => ({ kasa, records: await getBudgetRecords(kasa.teamId) }))
+			vaults.map(async (vault) => ({ vault, records: await getBudgetRecords(vault.teamId) }))
 		);
-		for (const { kasa, records } of vaultEntries) {
+		for (const { vault, records } of vaultEntries) {
 			for (const r of records) {
 				add(
 					{
@@ -275,15 +275,15 @@ export async function GET(request: Request) {
 						kind: 'ledger',
 						// The Kasa app if the role opens it; otherwise a captain reaches their kasa through the team.
 						appId: vaultApp ? 'budget' : 'teams',
-						title: r.aciklama,
-						subtitle: [formatTL(r.amountMinor), r.kategori, kasa.ad].join(' · '),
+						title: r.description,
+						subtitle: [formatTL(r.amountMinor), r.category, vault.name].join(' · '),
 						target: vaultApp
-							? { kind: 'ledger', itemId: r.id, parentId: kasa.teamId ?? 'genel' }
-							: { section: 'kasa', kind: 'ledger', itemId: r.id, parentId: kasa.teamId ?? undefined },
+							? { kind: 'ledger', itemId: r.id, parentId: vault.teamId ?? 'genel' }
+							: { section: 'kasa', kind: 'ledger', itemId: r.id, parentId: vault.teamId ?? undefined },
 					},
 					[
-						{ text: r.aciklama, weight: 4 },
-						{ text: r.kategori, weight: 2 },
+						{ text: r.description, weight: 4 },
+						{ text: r.category, weight: 2 },
 						{ text: (r.amountMinor / 100).toFixed(2), weight: 1 },
 					]
 				);
@@ -296,14 +296,14 @@ export async function GET(request: Request) {
 					id: `message:${th.id}`,
 					kind: 'message',
 					appId: 'mail',
-					title: th.konu,
-					subtitle: [th.kisiler, formatDate(th.son)].filter(Boolean).join(' · '),
+					title: th.topic,
+					subtitle: [th.people, formatDate(th.last)].filter(Boolean).join(' · '),
 					target: { kind: 'thread', itemId: th.id },
 				},
 				[
-					{ text: th.konu, weight: 4 },
-					{ text: th.kisiler, weight: 2 },
-					{ text: th.metin, weight: 1 },
+					{ text: th.topic, weight: 4 },
+					{ text: th.people, weight: 2 },
+					{ text: th.text, weight: 1 },
 				]
 			);
 		}
@@ -316,10 +316,10 @@ export async function GET(request: Request) {
 					id: `compose:${p.id}`,
 					kind: 'message',
 					appId: 'mail',
-					title: `${p.ad} ${p.soyad}`,
+					title: `${p.name} ${p.surname}`,
 					target: { section: 'compose', itemId: p.id },
 				},
-				[{ text: `${p.ad} ${p.soyad}`, weight: 2 }, { text: q, weight: 1 }]
+				[{ text: `${p.name} ${p.surname}`, weight: 2 }, { text: q, weight: 1 }]
 			);
 		}
 

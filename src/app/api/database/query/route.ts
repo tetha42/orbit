@@ -74,10 +74,10 @@ export async function POST(request: Request) {
 	const sqlGuard = inspectDatabaseSql(query, { isExplain });
 	if (!sqlGuard.allowed) {
 		await logSystemEvent({
-			servis: 'security',
-			seviye: 'ERROR',
-			mesaj: `Engellenen SQL sorgusu (${sqlGuard.reason || 'Güvenlik politikası'}): ${auth.user.email}`,
-			detay: { sorguOzeti: query.slice(0, 200), isExplain },
+			service: 'security',
+			level: 'ERROR',
+			message: `Engellenen SQL sorgusu (${sqlGuard.reason || 'Güvenlik politikası'}): ${auth.user.email}`,
+			detail: { querySummary: query.slice(0, 200), isExplain },
 			userId: auth.user.id,
 			ip,
 		});
@@ -173,14 +173,14 @@ export async function POST(request: Request) {
 		});
 
 		await logSystemEvent({
-			servis: 'database',
-			seviye: 'INFO',
-			mesaj: 'Özel SQL sorgusu çalıştırıldı',
-			detay: {
-				komut: result.command,
-				etkilenenSatir: result.rowCount,
+			service: 'database',
+			level: 'INFO',
+			message: 'Özel SQL sorgusu çalıştırıldı',
+			detail: {
+				command: result.command,
+				affectedRow: result.rowCount,
 				sureMs: durationMs,
-				sorguOzeti: query.slice(0, 200),
+				querySummary: query.slice(0, 200),
 				safeModeBypassed: bypassSafeMode,
 			},
 			userId: auth.user.id,
@@ -200,12 +200,12 @@ export async function POST(request: Request) {
 		const err = error as Error;
 
 		await logSystemEvent({
-			servis: 'database',
-			seviye: 'WARN',
-			mesaj: 'Özel SQL sorgusu hatayla sonuçlandı',
-			detay: {
-				hata: err.message,
-				sorguOzeti: query.slice(0, 200),
+			service: 'database',
+			level: 'WARN',
+			message: 'Özel SQL sorgusu hatayla sonuçlandı',
+			detail: {
+				error: err.message,
+				querySummary: query.slice(0, 200),
 				sureMs: durationMs,
 			},
 			userId: auth.user.id,

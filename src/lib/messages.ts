@@ -28,60 +28,60 @@ export type MailAction = (typeof MAIL_ACTIONS)[number];
 
 export interface MailPerson {
 	id: string;
-	ad: string;
-	soyad: string;
+	name: string;
+	surname: string;
 }
 
 export interface MailThreadSummary {
 	id: string;
-	konu: string;
+	topic: string;
 	/** The newest message's time. */
-	sonMesaj: number;
+	lastMessage: number;
 	/** The newest message, cut to a line. */
-	onizleme: string;
-	sonGonderen: MailPerson;
+	preview: string;
+	lastSender: MailPerson;
 	/** Everyone but the member. */
 	attendees: MailPerson[];
-	mesajSayisi: number;
+	messageCount: number;
 	/** Messages in it the member has not read. */
-	okunmamis: number;
+	unread: number;
 }
 
 export interface MailConversationList {
-	klasor: MailFolder;
-	konular: MailThreadSummary[];
-	toplam: number;
-	sayfa: number;
-	sayfaBoyutu: number;
+	folder: MailFolder;
+	topics: MailThreadSummary[];
+	total: number;
+	page: number;
+	pageSize: number;
 	/** The server's clock when the list was built; "today" in the list is measured against it. */
-	simdi: number;
+	now: number;
 	/** Conversations in the inbox with something unread, whatever folder is shown. */
-	okunmamis: number;
+	unread: number;
 }
 
 export interface MailMessage {
 	id: string;
-	gonderen: MailPerson;
-	govde: string;
-	olusturma: number;
+	sender: MailPerson;
+	body: string;
+	creation: number;
 	okundu: boolean;
-	benimMi: boolean;
+	myMi: boolean;
 }
 
 export interface MailConversation {
 	id: string;
-	konu: string;
-	klasor: MailStorage;
+	topic: string;
+	folder: MailStorage;
 	attendees: MailPerson[];
-	mesajlar: MailMessage[];
+	messages: MailMessage[];
 }
 
 /** A recipient the message did not reach, and why. */
 export interface MailSkipped {
 	id: string;
-	ad: string;
+	name: string;
 	/** `role`: the member's role does not open Mail. `pasif`: no longer an active member. */
-	neden: 'role' | 'pasif';
+	reason: 'role' | 'pasif';
 }
 
 export interface MailSendResult {
@@ -93,7 +93,7 @@ export interface MailSendResult {
 /** What the recipient picker gets: a name and an id, nothing else about the member (no e-mail address, department or student number). */
 export interface MailRecipient extends MailPerson {
 	/** False when the member's role does not open Mail: a message to them would not arrive. */
-	ulasilabilir: boolean;
+	reachable: boolean;
 }
 
 /** The recipient lookup's answer. `suggestion`: no search text was given, these are the people written with most recently. */
@@ -106,7 +106,7 @@ export interface MailRecipientList {
 
 /** What the sender is told about a recipient the message did not reach. */
 export function skippedReason(a: MailSkipped): string {
-	return a.neden === 'role' ? `${a.ad} kişisinin roleü Posta'yı açmıyor.` : `${a.ad} artık aktif üye değil.`;
+	return a.reason === 'role' ? `${a.name} kişisinin roleü Posta'yı açmıyor.` : `${a.name} artık aktif üye değil.`;
 }
 
 /** The first line of a message body, for lists and notifications. */
@@ -115,4 +115,4 @@ export function previewLine(body: string, max = 120): string {
 	return line.length > max ? `${line.slice(0, max - 1)}…` : line;
 }
 
-export { previewLine as onizlemeSatiri };
+export { previewLine as previewRow };

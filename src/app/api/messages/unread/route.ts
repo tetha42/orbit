@@ -10,7 +10,7 @@ export async function GET(request: Request) {
 	if (!auth.authorized) return auth.response;
 	try {
 		const count = await getUnreadMailCount(auth.user.id);
-		return NextResponse.json({ count, sayi: count }, { headers: { 'Cache-Control': 'no-store' } });
+		return NextResponse.json({ count,}, { headers: { 'Cache-Control': 'no-store' } });
 	} catch (error) {
 		console.error('API /api/messages/unread error:', error);
 		return NextResponse.json({ error: 'Okunmamış sayısı okunamadı.' }, { status: 500 });

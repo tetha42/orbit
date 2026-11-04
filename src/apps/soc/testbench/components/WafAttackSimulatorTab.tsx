@@ -45,7 +45,7 @@ const ATTACK_SCENARIOS: AttackScenario[] = [
 		category: 'XSS',
 		endpoint: '/api/notes',
 		method: 'POST',
-		payload: { baslik: "<script>alert('XSS_POC')</script>", icerik: 'test' },
+		payload: { title: "<script>alert('XSS_POC')</script>", content: 'test' },
 		expectedBlocked: true,
 	},
 	{
@@ -54,7 +54,7 @@ const ATTACK_SCENARIOS: AttackScenario[] = [
 		category: 'XSS',
 		endpoint: '/api/notes',
 		method: 'POST',
-		payload: { baslik: '<svg onload=alert(1)>', icerik: 'payload' },
+		payload: { title: '<svg onload=alert(1)>', content: 'payload' },
 		expectedBlocked: true,
 	},
 	{

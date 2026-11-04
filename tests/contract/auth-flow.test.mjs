@@ -11,7 +11,7 @@ test('contract: auth flow (invalid login, logout, me unauthenticated)', async (t
 		// 2. Invalid credentials login should return 401 or 400, never 500
 		const loginRes = await request('/api/auth/login', {
 			method: 'POST',
-			body: { eposta: 'nonexistent@orbit.local', sifre: 'WrongPassword123!' },
+			body: { email: 'nonexistent@orbit.local', password: 'WrongPassword123!' },
 		});
 		assert.notStrictEqual(loginRes.status, 500, 'Login failed with 500');
 		assert.ok(

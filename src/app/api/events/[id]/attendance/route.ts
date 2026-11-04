@@ -11,6 +11,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 	const { id } = await params;
 	const ev = await getEventById(id);
 	if (!ev) return NextResponse.json({ error: 'CommunityEvent bulunamadı.' }, { status: 404 });
-	const liste = await getEventAttendeeList(id);
-	return NextResponse.json({ liste }, { headers: { 'Cache-Control': 'no-store' } });
+	const list = await getEventAttendeeList(id);
+	return NextResponse.json({ list }, { headers: { 'Cache-Control': 'no-store' } });
 }

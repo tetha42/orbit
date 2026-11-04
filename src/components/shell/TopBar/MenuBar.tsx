@@ -84,7 +84,7 @@ export function MenuBar() {
 	};
 
 	/** An item that needs a level in some app is shown only to roles that hold it (the dock and search follow the same rule). */
-	const izinli = (item: MenuItem) => {
+	const permitted = (item: MenuItem) => {
 		if (!item.needs) return true;
 		return item.needs.level === 'yonet' ? canManageApp(item.needs.appId) : canUseApp(item.needs.appId);
 	};
@@ -92,7 +92,7 @@ export function MenuBar() {
 	/** Drops items the role does not allow, then any separator left leading, trailing or doubled. */
 	const allowedItems = (items: MenuItem[]): MenuItem[] =>
 		items
-			.filter(izinli)
+			.filter(permitted)
 			.filter((item, i, arr) => !item.separator || (i > 0 && i < arr.length - 1 && !arr[i - 1].separator));
 
 	const bindActions = (items: MenuItem[]): MenuItem[] => {
@@ -174,14 +174,14 @@ export function MenuBar() {
 					action = async () => {
 						try {
 							const res = await fetch('/api/members');
-							const data = (await res.json()) as { members?: { ad: string; soyad: string; bolum: string; sinif: number; rolAd?: string | null; status: string; xp?: number }[] };
+							const data = (await res.json()) as { members?: { name: string; surname: string; department: string; grade: number; roleName?: string | null; status: string; xp?: number }[] };
 							if (!res.ok || !data.members) throw new Error();
 							// toCsv quotes commas and neutralises cells Excel would run as formulas;
 							// the old hand-joined line broke on "Bilgisayar Mühendisliği, Çift Anadal".
 							downloadCsv(
 								'uye_listesi',
 								['Ad', 'Soyad', 'Bölüm', 'Sınıf', 'Role', 'Durum', 'XP'],
-								data.members.map((m) => [m.ad, m.soyad, m.bolum, m.sinif, m.rolAd ?? '—', m.status, m.xp ?? 0])
+								data.members.map((m) => [m.name, m.surname, m.department, m.grade, m.roleName ?? '—', m.status, m.xp ?? 0])
 							);
 						} catch {
 							void dialog.alert({ message: 'Üye listesi indirilemedi.', tone: 'danger' });

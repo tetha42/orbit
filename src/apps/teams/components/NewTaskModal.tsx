@@ -26,31 +26,31 @@ interface Props {
 
 export function NewTaskModal({ teamId, column, members, labels, onClose, onCreated }: Props) {
 	const { t } = useI18n();
-	const [baslik, setBaslik] = useState('');
-	const [aciklama, setAciklama] = useState('');
-	const [status, setDurum] = useState<TaskStatus>(column);
-	const [oncelik, setOncelik] = useState<TaskPriority>('orta');
-	const [atanan, setAtanan] = useState('');
-	const [teslim, setTeslim] = useState('');
-	const [etiketler, setEtiketler] = useState<string[]>([]);
+	const [title, setTitle] = useState('');
+	const [description, setDescription] = useState('');
+	const [status, setStatus] = useState<TaskStatus>(column);
+	const [priority, setPriority] = useState<TaskPriority>('orta');
+	const [assignee, setAssignee] = useState('');
+	const [due, setDue] = useState('');
+	const [tags, setTags] = useState<string[]>([]);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
 
 	const submit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		if (!baslik.trim() || busy) return;
+		if (!title.trim() || busy) return;
 		setBusy(true);
 		setError('');
 		const res = await sendJson('/api/teams', 'POST', {
 			action: 'addTask',
 			teamId: teamId,
-			baslik: baslik.trim(),
-			aciklama,
+			title: title.trim(),
+			description,
 			status,
-			oncelik,
-			atananUyeId: atanan || undefined,
-			teslimTarihi: teslim ? normalizeDueDate(teslim) : undefined,
-			etiketler,
+			priority,
+			assigneeMemberId: assignee || undefined,
+			dueDate: due ? normalizeDueDate(due) : undefined,
+			tags,
 		});
 		setBusy(false);
 		if (!res.ok) {
@@ -72,7 +72,7 @@ export function NewTaskModal({ teamId, column, members, labels, onClose, onCreat
 					<button type="button" className={styles.btn} onClick={onClose}>
 						{t('kbCancel')}
 					</button>
-					<button type="submit" className={styles.primaryBtn} disabled={busy || !baslik.trim()}>
+					<button type="submit" className={styles.primaryBtn} disabled={busy || !title.trim()}>
 						{t('kbCreate')}
 					</button>
 				</>
@@ -83,9 +83,9 @@ export function NewTaskModal({ teamId, column, members, labels, onClose, onCreat
 				<input
 					autoFocus
 					className={styles.input}
-					value={baslik}
+					value={title}
 					maxLength={TITLE_MAX}
-					onChange={(e) => setBaslik(e.target.value)}
+					onChange={(e) => setTitle(e.target.value)}
 					placeholder={t('kbTitlePh')}
 					required
 				/>
@@ -94,8 +94,8 @@ export function NewTaskModal({ teamId, column, members, labels, onClose, onCreat
 				<span className={styles.fieldLabel}>{t('kbDesc')}</span>
 				<textarea
 					className={styles.textarea}
-					value={aciklama}
-					onChange={(e) => setAciklama(e.target.value)}
+					value={description}
+					onChange={(e) => setDescription(e.target.value)}
 					placeholder={t('kbDescPh')}
 					rows={3}
 				/>
@@ -113,7 +113,7 @@ export function NewTaskModal({ teamId, column, members, labels, onClose, onCreat
 						className={styles.select}
 						style={{ maxWidth: 'none' }}
 						value={status}
-						onChange={(e) => setDurum(e.target.value as TaskStatus)}
+						onChange={(e) => setStatus(e.target.value as TaskStatus)}
 					>
 						{COLUMNS.map((c) => (
 							<option key={c.id} value={c.id}>
@@ -127,8 +127,8 @@ export function NewTaskModal({ teamId, column, members, labels, onClose, onCreat
 					<select
 						className={styles.select}
 						style={{ maxWidth: 'none' }}
-						value={atanan}
-						onChange={(e) => setAtanan(e.target.value)}
+						value={assignee}
+						onChange={(e) => setAssignee(e.target.value)}
 					>
 						<option value="">{t('kbUnassigned')}</option>
 						{members.map((m) => (
@@ -144,8 +144,8 @@ export function NewTaskModal({ teamId, column, members, labels, onClose, onCreat
 					<input
 						className={styles.input}
 						type="date"
-						value={teslim}
-						onChange={(e) => setTeslim(e.target.value)}
+						value={due}
+						onChange={(e) => setDue(e.target.value)}
 					/>
 				</label>
 			</div>
@@ -157,10 +157,10 @@ export function NewTaskModal({ teamId, column, members, labels, onClose, onCreat
 							key={p.id}
 							type="button"
 							role="radio"
-							aria-checked={oncelik === p.id}
-							className={`${styles.prioOption} ${oncelik === p.id ? styles.prioOptionActive : ''}`}
+							aria-checked={priority === p.id}
+							className={`${styles.prioOption} ${priority === p.id ? styles.prioOptionActive : ''}`}
 							style={{ '--prio': p.color } as React.CSSProperties}
-							onClick={() => setOncelik(p.id)}
+							onClick={() => setPriority(p.id)}
 						>
 							{t(p.key)}
 						</button>
@@ -169,9 +169,9 @@ export function NewTaskModal({ teamId, column, members, labels, onClose, onCreat
 			</div>
 			<div className={styles.field}>
 				<span className={styles.fieldLabel}>{t('kbLabels')}</span>
-				<LabelEditor labels={etiketler} allLabels={labels} onChange={setEtiketler} />
+				<LabelEditor labels={tags} allLabels={labels} onChange={setTags} />
 			</div>
-			{!atanan && <div className={styles.hint}>{t('kbPoolHint')}</div>}
+			{!assignee && <div className={styles.hint}>{t('kbPoolHint')}</div>}
 			{error && <div className={styles.error}>{error}</div>}
 		</Sheet>
 	);

@@ -60,7 +60,7 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 	const myTeamsList = useMemo(
 		() =>
 			state.visibleTeams.filter(
-				(tm) => tm.benimDurumum === 'aktif' || tm.leadId === state.currentUserId
+				(tm) => tm.myMyStatus === 'aktif' || tm.leadId === state.currentUserId
 			),
 		[state.visibleTeams, state.currentUserId]
 	);
@@ -74,8 +74,8 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 	}, [state.selectedTeam, myTeamsList, state.teams]);
 
 	const teamTasks = useMemo(
-		() => activeBoardTeam?.gorevler ?? [],
-		[activeBoardTeam?.gorevler]
+		() => activeBoardTeam?.tasks ?? [],
+		[activeBoardTeam?.tasks]
 	);
 
 	const tasksByCol = useMemo(() => {
@@ -91,11 +91,11 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 
 	const canManageTeam = Boolean(
 		activeBoardTeam &&
-			(activeBoardTeam.izinler?.editAll || activeBoardTeam.leadId === state.currentUserId)
+			(activeBoardTeam.permissions?.editAll || activeBoardTeam.leadId === state.currentUserId)
 	);
 
 	const canWorkOnTask = (task: TeamTask) =>
-		canManageTeam || task.atananUyeId === state.currentUserId;
+		canManageTeam || task.assigneeMemberId === state.currentUserId;
 
 	const handleStepTask = async (task: TeamTask, delta: -1 | 1) => {
 		const currentIndex = COLUMNS.findIndex((c) => c.id === task.status);
@@ -111,7 +111,7 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 						tm.id === task.teamId
 							? {
 									...tm,
-									gorevler: (tm.gorevler ?? []).map((g) =>
+									tasks: (tm.tasks ?? []).map((g) =>
 										g.id === task.id ? { ...g, status: nextStatus } : g
 									),
 							  }
@@ -120,12 +120,12 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 				: prev
 		);
 
-		const res = await sendJson<{ ok: boolean; xpVerildi?: boolean; error?: string }>(
+		const res = await sendJson<{ ok: boolean; xpGiven?: boolean; error?: string }>(
 			'/api/teams',
 			'POST',
 			{
 				action: 'updateTask',
-				gorevId: task.id,
+				taskId: task.id,
 				status: nextStatus,
 			}
 		);
@@ -135,7 +135,7 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 			await state.fetchTeams();
 		} else {
 			playSystemSound();
-			if (res.data?.xpVerildi) {
+			if (res.data?.xpGiven) {
 				notify(t('kbRewardXp'));
 			}
 		}
@@ -145,15 +145,15 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 		() =>
 			(activeBoardTeam?.uyeler ?? []).map((u) => ({
 				id: u.userId,
-				name: u.kullaniciAdSoyad,
-				role: u.takimRolu,
+				name: u.userNameSurname,
+				role: u.teamRole,
 			})),
 		[activeBoardTeam?.uyeler]
 	);
 
 	const allLabels = useMemo(() => {
 		const set = new Set<string>();
-		for (const g of teamTasks) for (const l of g.etiketler ?? []) set.add(l);
+		for (const g of teamTasks) for (const l of g.tags ?? []) set.add(l);
 		return Array.from(set).sort();
 	}, [teamTasks]);
 
@@ -213,8 +213,8 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 	];
 
 	const renderTeamCard = (team: (typeof state.visibleTeams)[number]) => {
-		const isMember = team.benimDurumum === 'aktif';
-		const hasApplied = team.benimDurumum === 'basvurdu';
+		const isMember = team.myMyStatus === 'aktif';
+		const hasApplied = team.myMyStatus === 'basvurdu';
 		const canEnter = state.canEnter(team);
 
 		return (
@@ -231,22 +231,22 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 			>
 				<div className={s.teamCardHeader}>
 					<div style={{ flex: 1, minWidth: 0 }}>
-						<div className={s.teamName}>{team.ad}</div>
+						<div className={s.teamName}>{team.name}</div>
 						<div className={s.teamLeaderRow} style={{ marginTop: '4px' }}>
 							<User size={12} />
-							<span>{team.liderAdSoyad || t('tmNoCaptain')}</span>
+							<span>{team.leaderNameSurname || t('tmNoCaptain')}</span>
 						</div>
 					</div>
-					<span className={s.categoryBadge}>{team.kategori}</span>
+					<span className={s.categoryBadge}>{team.category}</span>
 				</div>
 
-				{team.aciklama && <div className={s.teamDesc}>{team.aciklama}</div>}
+				{team.description && <div className={s.teamDesc}>{team.description}</div>}
 
 				<div className={s.teamMetaRow}>
 					<span className={s.quotaPill}>
 						<Users size={12} />
 						<span>
-							{team.doluKontenjan}/{team.kontenjan} {t('tmQuota')}
+							{team.fullCapacity}/{team.capacity} {t('tmQuota')}
 						</span>
 					</span>
 
@@ -483,7 +483,7 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 													onClick={() => state.showTeam(tm.id)}
 												>
 													<Users size={12} />
-													<span>{tm.ad}</span>
+													<span>{tm.name}</span>
 												</button>
 											);
 										})}
@@ -493,11 +493,11 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 								{/* Sub-Header */}
 								<div className={s.subHeader}>
 									<div className={s.subTeamInfo}>
-										<div className={s.subTeamTitle}>{activeBoardTeam.ad}</div>
+										<div className={s.subTeamTitle}>{activeBoardTeam.name}</div>
 										<div className={s.subTeamMeta}>
-											<span>{activeBoardTeam.kategori}</span>
+											<span>{activeBoardTeam.category}</span>
 											<span>•</span>
-											<span>{activeBoardTeam.liderAdSoyad || t('tmNoCaptain')}</span>
+											<span>{activeBoardTeam.leaderNameSurname || t('tmNoCaptain')}</span>
 										</div>
 									</div>
 
@@ -628,9 +628,9 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 														<div className={s.emptyCard}>{t('kbNoTasksInCol')}</div>
 													) : (
 														(tasksByCol.get(selectedKanbanCol) || []).map((task) => {
-															const prio = priorityMeta(task.oncelik);
-															const due = task.teslimTarihi
-																? dueStatus(task.teslimTarihi, task.status, now)
+															const prio = priorityMeta(task.priority);
+															const due = task.dueDate
+																? dueStatus(task.dueDate, task.status, now)
 																: null;
 															const colIdx = COLUMNS.findIndex((c) => c.id === task.status);
 															const canWork = canWorkOnTask(task);
@@ -642,7 +642,7 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 																	onClick={() => state.setOpenTaskId(task.id)}
 																>
 																	<div className={s.taskHeader}>
-																		<span className={s.taskTitle}>{task.baslik}</span>
+																		<span className={s.taskTitle}>{task.title}</span>
 																		<span
 																			className={s.prioPill}
 																			style={{
@@ -654,7 +654,7 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 																		</span>
 																	</div>
 
-																	{task.aciklama && (
+																	{task.description && (
 																		<p
 																			style={{
 																				margin: 0,
@@ -663,12 +663,12 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 																				lineHeight: 1.4,
 																			}}
 																		>
-																			{task.aciklama}
+																			{task.description}
 																		</p>
 																	)}
 
 																	<div className={s.taskMeta}>
-																		<span>{task.atananAdSoyad || t('kbUnassigned')}</span>
+																		<span>{task.assigneeNameSurname || t('kbUnassigned')}</span>
 																		<div
 																			style={{
 																				display: 'flex',
@@ -676,7 +676,7 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 																				gap: '8px',
 																			}}
 																		>
-																			{task.teslimTarihi && due && (
+																			{task.dueDate && due && (
 																				<span
 																					style={{
 																						display: 'flex',
@@ -685,10 +685,10 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 																					}}
 																				>
 																					<Clock size={11} />
-																					<span>{dueText(due, task.teslimTarihi)}</span>
+																					<span>{dueText(due, task.dueDate)}</span>
 																				</span>
 																			)}
-																			{(task.maddeSayisi ?? 0) > 0 && (
+																			{(task.itemCount ?? 0) > 0 && (
 																				<span
 																					style={{
 																						display: 'flex',
@@ -698,11 +698,11 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 																				>
 																					<CheckSquare size={11} />
 																					<span>
-																						{task.tamamMaddeSayisi}/{task.maddeSayisi}
+																						{task.doneItemCount}/{task.itemCount}
 																					</span>
 																				</span>
 																			)}
-																			{(task.yorumSayisi ?? 0) > 0 && (
+																			{(task.commentCount ?? 0) > 0 && (
 																				<span
 																					style={{
 																						display: 'flex',
@@ -711,7 +711,7 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 																					}}
 																				>
 																					<MessageSquare size={11} />
-																					<span>{task.yorumSayisi}</span>
+																					<span>{task.commentCount}</span>
 																				</span>
 																			)}
 																		</div>
@@ -775,7 +775,7 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 										currentUserId={state.currentUserId}
 										currentUserName={
 											state.currentUser
-												? `${state.currentUser.ad} ${state.currentUser.soyad}`.trim()
+												? `${state.currentUser.name} ${state.currentUser.surname}`.trim()
 												: t('tmMemberFallback')
 										}
 									/>
@@ -886,10 +886,10 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 
 			{state.applyTo && (
 				<ApplyModal
-					teamName={state.applyTo.ad}
+					teamName={state.applyTo.name}
 					onClose={() => state.setApplyTo(null)}
 					onSend={async (note) => {
-						if (await state.post({ action: 'join', teamId: state.applyTo!.id, basvuruNotu: note })) {
+						if (await state.post({ action: 'join', teamId: state.applyTo!.id, applicationNote: note })) {
 							state.setApplyTo(null);
 						}
 					}}

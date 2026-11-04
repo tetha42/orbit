@@ -3,7 +3,7 @@
 import React from 'react';
 import { MessageSquare, Trash2 } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
-import { YORUM_MAX } from '@/lib/kanban';
+import { COMMENT_MAX } from '@/lib/kanban';
 import { Linkified } from '@/components/Common/Linkified';
 import { initials } from '@/core/text/initials';
 import type { TeamTaskComment } from '@/db/schema';
@@ -11,7 +11,7 @@ import styles from './Kanban.module.css';
 import ui from '@/core/ui/ui.module.css';
 
 interface TaskCommentsProps {
-	yorumlar: TeamTaskComment[];
+	comments: TeamTaskComment[];
 	currentUserId: string;
 	canManage: boolean;
 	canComment: boolean;
@@ -24,7 +24,7 @@ interface TaskCommentsProps {
 }
 
 export function TaskComments({
-	yorumlar,
+	comments,
 	currentUserId,
 	canManage,
 	canComment,
@@ -42,19 +42,19 @@ export function TaskComments({
 			<h5 className={ui.sectionTitle}>
 				<MessageSquare size={13} />
 				{t('kbComments')}
-				{yorumlar.length > 0 && <span style={{ marginLeft: 'auto' }}>{yorumlar.length}</span>}
+				{comments.length > 0 && <span style={{ marginLeft: 'auto' }}>{comments.length}</span>}
 			</h5>
-			{yorumlar.length === 0 && <div className={ui.muted}>{t('kbNoComments')}</div>}
-			{yorumlar.map((y) => (
+			{comments.length === 0 && <div className={ui.muted}>{t('kbNoComments')}</div>}
+			{comments.map((y) => (
 				<div key={y.id} className={styles.comment} data-comment-id={y.id}>
 					<span className={ui.avatar} style={{ marginLeft: 0, width: 28, height: 28, fontSize: 11 }}>
-						{initials(y.kullaniciAdSoyad)}
+						{initials(y.userNameSurname)}
 					</span>
 					<div className={styles.commentBody}>
 						<div className={styles.commentHead}>
-							<strong>{y.kullaniciAdSoyad || t('kbSomeone')}</strong>
-							<time className={ui.muted} style={{ fontSize: 11 }} dateTime={new Date(y.olusturma).toISOString()}>
-								{when(y.olusturma)}
+							<strong>{y.userNameSurname || t('kbSomeone')}</strong>
+							<time className={ui.muted} style={{ fontSize: 11 }} dateTime={new Date(y.creation).toISOString()}>
+								{when(y.creation)}
 							</time>
 							{(y.userId === currentUserId || canManage) && (
 								<button
@@ -68,7 +68,7 @@ export function TaskComments({
 							)}
 						</div>
 						<div className={styles.commentText}>
-							<Linkified text={y.icerik} />
+							<Linkified text={y.content} />
 						</div>
 					</div>
 				</div>
@@ -80,7 +80,7 @@ export function TaskComments({
 						style={{ minHeight: 60 }}
 						rows={2}
 						value={commentDraft}
-						maxLength={YORUM_MAX}
+						maxLength={COMMENT_MAX}
 						placeholder={t('kbCommentPh')}
 						onChange={(e) => setCommentDraft(e.target.value)}
 						onKeyDown={(e) => {

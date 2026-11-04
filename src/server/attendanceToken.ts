@@ -28,11 +28,11 @@ function sameSignature(a: string, b: string): boolean {
 	return x.length === y.length && crypto.timingSafeEqual(x, y);
 }
 
-export async function createAttendanceCode(etkinlikId: string, now = Date.now()): Promise<AttendanceCode & { metin: string; kisaKod: string }> {
+export async function createAttendanceCode(eventId: string, now = Date.now()): Promise<AttendanceCode & { text: string; shortCode: string }> {
 	const windowIndex = attendanceWindow(now);
-	const signature = await sign('qr', [etkinlikId, String(windowIndex)]);
-	const code = { etkinlikId, pencere: windowIndex, imza: signature };
-	return { ...code, metin: attendanceCodeText(code), kisaKod: createShortCode(signature) };
+	const signature = await sign('qr', [eventId, String(windowIndex)]);
+	const code = { eventId, window: windowIndex, signature: signature };
+	return { ...code, text: attendanceCodeText(code), shortCode: createShortCode(signature) };
 }
 
 /** Length of the typeable code shown under the projector QR. */
@@ -52,27 +52,27 @@ export function createShortCode(signature: string): string {
  * Accepts a short code for the event's current or previous window. The short code
  * is only a prefix of a signature, so it is matched by recomputing both windows.
  */
-export async function verifyShortCode(etkinlikId: string, kisa: string, now = Date.now()): Promise<'gecerli' | 'suresi-doldu' | 'gecersiz'> {
-	const aranan = kisa.trim().toUpperCase();
-	if (!new RegExp(`^[A-Z0-9]{${SHORT_CODE_LENGTH}}$`).test(aranan)) return 'gecersiz';
+export async function verifyShortCode(eventId: string, short: string, now = Date.now()): Promise<'gecerli' | 'suresi-doldu' | 'gecersiz'> {
+	const searched = short.trim().toUpperCase();
+	if (!new RegExp(`^[A-Z0-9]{${SHORT_CODE_LENGTH}}$`).test(searched)) return 'gecersiz';
 	const current = attendanceWindow(now);
 	// The current window is valid; the one before it is accepted too (rollover grace).
 	// Any older window is a real code that has simply expired.
 	for (const windowIndex of [current, current - 1]) {
-		const signature = await sign('qr', [etkinlikId, String(windowIndex)]);
-		if (createShortCode(signature) === aranan) return 'gecerli';
+		const signature = await sign('qr', [eventId, String(windowIndex)]);
+		if (createShortCode(signature) === searched) return 'gecerli';
 	}
 	for (let back = 2; back <= 6; back++) {
-		const signature = await sign('qr', [etkinlikId, String(current - back)]);
-		if (createShortCode(signature) === aranan) return 'suresi-doldu';
+		const signature = await sign('qr', [eventId, String(current - back)]);
+		if (createShortCode(signature) === searched) return 'suresi-doldu';
 	}
 	return 'gecersiz';
 }
 
-export async function createTicketCode(etkinlikId: string, userId: string): Promise<string> {
-	return ticketCodeText({ etkinlikId, userId, imza: await sign('bilet', [etkinlikId, userId]) });
+export async function createTicketCode(eventId: string, userId: string): Promise<string> {
+	return ticketCodeText({ eventId, userId, signature: await sign('bilet', [eventId, userId]) });
 }
 
-export async function verifyTicketCode(kod: TicketCode): Promise<boolean> {
-	return sameSignature(await sign('bilet', [kod.etkinlikId, kod.userId]), kod.imza);
+export async function verifyTicketCode(code: TicketCode): Promise<boolean> {
+	return sameSignature(await sign('bilet', [code.eventId, code.userId]), code.signature);
 }

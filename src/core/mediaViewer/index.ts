@@ -4,9 +4,9 @@ import { useSyncExternalStore } from 'react';
 
 export type MediaPreviewKind = 'image' | 'video' | 'audio' | 'pdf' | 'text' | 'unsupported';
 export interface MediaViewerItem {
-	ad: string;
+	name: string;
 	url: string;
-	boyut?: number;
+	size?: number;
 	tip?: string;
 }
 
@@ -91,7 +91,7 @@ function extensionOf(name: string): string {
 function mimeOf(item: MediaViewerItem): string {
 	const declared = (item.tip || '').toLowerCase().trim();
 	if (declared) return declared;
-	return EXTENSION_TYPES[extensionOf(item.ad)] || '';
+	return EXTENSION_TYPES[extensionOf(item.name)] || '';
 }
 
 function browserSupports(kind: 'video' | 'audio', mime: string): boolean {
@@ -106,7 +106,7 @@ function browserSupports(kind: 'video' | 'audio', mime: string): boolean {
  */
 export function mediaPreviewKind(item: MediaViewerItem): MediaPreviewKind {
 	const mime = mimeOf(item);
-	const name = item.ad.toLowerCase();
+	const name = item.name.toLowerCase();
 	if (mime.startsWith('image/')) return IMAGE_TYPES.has(mime) ? 'image' : 'unsupported';
 	if (mime.startsWith('video/')) return browserSupports('video', mime) ? 'video' : 'unsupported';
 	if (mime.startsWith('audio/')) return browserSupports('audio', mime) ? 'audio' : 'unsupported';
@@ -131,7 +131,7 @@ export function downloadMedia(item: MediaViewerItem): void {
 	if (typeof document === 'undefined') return;
 	const anchor = document.createElement('a');
 	anchor.href = item.url;
-	anchor.download = item.ad || 'attachment';
+	anchor.download = item.name || 'attachment';
 	anchor.rel = 'noreferrer noopener';
 	document.body.appendChild(anchor);
 	anchor.click();

@@ -18,10 +18,10 @@ import { requireApp } from '@/lib/auth/access';
 import {
 	DESCRIPTION_MAX,
 	TITLE_MAX,
-	MADDE_MAX,
-	YORUM_MAX,
-	normalizeEtiketler,
-	normalizeOncelik,
+	ITEM_MAX,
+	COMMENT_MAX,
+	normalizeTags,
+	normalizePriority,
 	normalizeDueDate,
 } from '@/lib/kanban';
 import { badRequest, forbidden, getTaskAccess, isAssignable, notFound } from '@/server/taskAccess';
@@ -38,12 +38,12 @@ export async function GET(request: Request, { params }: Params) {
 		const { id } = await params;
 		const access = await getTaskAccess(auth.user, id);
 		if (!access || !access.view) return notFound();
-		const detay = await getTeamTaskDetail(id);
-		if (!detay) return notFound();
+		const detail = await getTeamTaskDetail(id);
+		if (!detail) return notFound();
 		return NextResponse.json({
-			...detay,
+			...detail,
 			// What the sheet should offer; the server checks again on every write.
-			izinler: { manage: access.manage, work: access.work, comment: access.view },
+			permissions: { manage: access.manage, work: access.work, comment: access.view },
 		});
 	} catch (error) {
 		console.error('API /api/takimlar/gorevler GET error:', error);
@@ -68,49 +68,49 @@ async function handlePATCH(request: Request, { params }: Params) {
 		const body = (await request.json()) as Record<string, unknown>;
 		const patch: TeamTaskPatch = {};
 
-		if (body.baslik !== undefined) {
-			if (typeof body.baslik !== 'string' || !body.baslik.trim()) return badRequest('Başlık boş olamaz.');
-			if (body.baslik.trim().length > TITLE_MAX) return badRequest(`Başlık en fazla ${TITLE_MAX} karakter olabilir.`);
-			patch.baslik = body.baslik.trim();
+		if (body.title !== undefined) {
+			if (typeof body.title !== 'string' || !body.title.trim()) return badRequest('Başlık boş olamaz.');
+			if (body.title.trim().length > TITLE_MAX) return badRequest(`Başlık en fazla ${TITLE_MAX} karakter olabilir.`);
+			patch.title = body.title.trim();
 		}
-		if (body.aciklama !== undefined) {
-			if (typeof body.aciklama !== 'string') return badRequest('Geçersiz açıklama.');
-			if (body.aciklama.length > DESCRIPTION_MAX) return badRequest(`Açıklama en fazla ${DESCRIPTION_MAX} karakter olabilir.`);
-			patch.aciklama = body.aciklama.trim();
+		if (body.description !== undefined) {
+			if (typeof body.description !== 'string') return badRequest('Geçersiz açıklama.');
+			if (body.description.length > DESCRIPTION_MAX) return badRequest(`Açıklama en fazla ${DESCRIPTION_MAX} karakter olabilir.`);
+			patch.description = body.description.trim();
 		}
-		if (body.oncelik !== undefined) {
-			const oncelik = normalizeOncelik(body.oncelik);
-			if (!oncelik) return badRequest('Geçersiz öncelik.');
-			patch.oncelik = oncelik;
+		if (body.priority !== undefined) {
+			const priority = normalizePriority(body.priority);
+			if (!priority) return badRequest('Geçersiz öncelik.');
+			patch.priority = priority;
 		}
-		if (body.etiketler !== undefined) {
-			const etiketler = normalizeEtiketler(body.etiketler);
-			if (!etiketler) return badRequest('Etiketler bir metin listesi olmalıdır.');
-			patch.etiketler = etiketler;
+		if (body.tags !== undefined) {
+			const tags = normalizeTags(body.tags);
+			if (!tags) return badRequest('Etiketler bir metin listesi olmalıdır.');
+			patch.tags = tags;
 		}
-		if (body.teslimTarihi !== undefined) {
-			const due = normalizeDueDate(body.teslimTarihi);
+		if (body.dueDate !== undefined) {
+			const due = normalizeDueDate(body.dueDate);
 			if (due === undefined) return badRequest('Geçersiz teslim tarihi.');
-			patch.teslimTarihi = due;
+			patch.dueDate = due;
 		}
 		let claimingFromPool = false;
-		if (body.atananUyeId !== undefined) {
-			const assignee = typeof body.atananUyeId === 'string' && body.atananUyeId ? body.atananUyeId : null;
+		if (body.assigneeMemberId !== undefined) {
+			const assignee = typeof body.assigneeMemberId === 'string' && body.assigneeMemberId ? body.assigneeMemberId : null;
 			// Taking an unassigned task from the pool is open to any team member;
 			// every other ownership change belongs to management and the captain.
-			claimingFromPool = assignee === auth.user.id && !access.task.atananUyeId;
+			claimingFromPool = assignee === auth.user.id && !access.task.assigneeMemberId;
 			if (!access.manage && !claimingFromPool) {
 				return forbidden('Görev atamasını yalnızca yönetim veya takım kaptanı değiştirebilir.');
 			}
 			if (assignee && !isAssignable(access, assignee)) return badRequest('Görev yalnızca takım üyelerine atanabilir.');
-			patch.atananUyeId = assignee;
+			patch.assigneeMemberId = assignee;
 		}
 
 		if (!access.manage) {
 			const fields = Object.keys(patch) as (keyof TeamTaskPatch)[];
 			const onlyClaim = claimingFromPool && fields.length === 1;
 			// The assignee may refine the description and labels of their own task.
-			const assigneeEdit = access.work && fields.every((f) => f === 'aciklama' || f === 'etiketler' || (f === 'atananUyeId' && claimingFromPool));
+			const assigneeEdit = access.work && fields.every((f) => f === 'description' || f === 'tags' || (f === 'assigneeMemberId' && claimingFromPool));
 			if (!onlyClaim && !assigneeEdit) {
 				return forbidden(
 					access.work
@@ -148,62 +148,62 @@ async function handlePOST(request: Request, { params }: Params) {
 			if (!access.work) return forbidden('Kontrol listesini yalnızca görevin sahibi, kaptan veya yönetim değiştirebilir.');
 
 			if (action === 'addItem') {
-				const metin = typeof body.metin === 'string' ? body.metin.trim() : '';
-				if (!metin) return badRequest('Madde metni boş olamaz.');
-				if (metin.length > MADDE_MAX) return badRequest(`Madde en fazla ${MADDE_MAX} karakter olabilir.`);
-				const madde = await addTaskItem(id, metin, auth.user.id);
+				const text = typeof body.text === 'string' ? body.text.trim() : '';
+				if (!text) return badRequest('Madde metni boş olamaz.');
+				if (text.length > ITEM_MAX) return badRequest(`Madde en fazla ${ITEM_MAX} karakter olabilir.`);
+				const item = await addTaskItem(id, text, auth.user.id);
 				await publishEventQuiet(getPgPool(), { k: 'team_updated', teamId: access.task.teamId });
-				return NextResponse.json({ success: true, madde });
+				return NextResponse.json({ success: true, item });
 			}
 
-			const maddeId = typeof body.maddeId === 'string' ? body.maddeId : '';
-			const madde = maddeId ? await getTaskItem(maddeId) : null;
+			const itemId = typeof body.itemId === 'string' ? body.itemId : '';
+			const item = itemId ? await getTaskItem(itemId) : null;
 			// A line from another task is "not found" here, not "forbidden".
-			if (!madde || madde.gorevId !== id) return NextResponse.json({ error: 'Madde bulunamadı.' }, { status: 404 });
+			if (!item || item.taskId !== id) return NextResponse.json({ error: 'Madde bulunamadı.' }, { status: 404 });
 
 			if (action === 'deleteItem') {
-				await deleteTaskItem(maddeId);
+				await deleteTaskItem(itemId);
 				await publishEventQuiet(getPgPool(), { k: 'team_updated', teamId: access.task.teamId });
 				return NextResponse.json({ success: true });
 			}
 
-			const patch: { metin?: string; tamamMi?: boolean } = {};
-			if (body.metin !== undefined) {
-				const metin = typeof body.metin === 'string' ? body.metin.trim() : '';
-				if (!metin) return badRequest('Madde metni boş olamaz.');
-				if (metin.length > MADDE_MAX) return badRequest(`Madde en fazla ${MADDE_MAX} karakter olabilir.`);
-				patch.metin = metin;
+			const patch: { text?: string; doneMi?: boolean } = {};
+			if (body.text !== undefined) {
+				const text = typeof body.text === 'string' ? body.text.trim() : '';
+				if (!text) return badRequest('Madde metni boş olamaz.');
+				if (text.length > ITEM_MAX) return badRequest(`Madde en fazla ${ITEM_MAX} karakter olabilir.`);
+				patch.text = text;
 			}
-			if (body.tamamMi !== undefined) {
-				if (typeof body.tamamMi !== 'boolean') return badRequest('Geçersiz değer.');
-				patch.tamamMi = body.tamamMi;
+			if (body.doneMi !== undefined) {
+				if (typeof body.doneMi !== 'boolean') return badRequest('Geçersiz değer.');
+				patch.doneMi = body.doneMi;
 			}
-			await updateTaskItem(maddeId, patch, auth.user.id);
+			await updateTaskItem(itemId, patch, auth.user.id);
 			await publishEventQuiet(getPgPool(), { k: 'team_updated', teamId: access.task.teamId });
 			return NextResponse.json({ success: true });
 		}
 
 		if (action === 'addComment') {
-			const content = typeof body.icerik === 'string' ? body.icerik.trim() : '';
+			const content = typeof body.content === 'string' ? body.content.trim() : '';
 			if (!content) return badRequest('Yorum boş olamaz.');
-			if (content.length > YORUM_MAX) return badRequest(`Yorum en fazla ${YORUM_MAX} karakter olabilir.`);
-			const yorum = await addTaskComment(id, auth.user.id, content);
+			if (content.length > COMMENT_MAX) return badRequest(`Yorum en fazla ${COMMENT_MAX} karakter olabilir.`);
+			const comment = await addTaskComment(id, auth.user.id, content);
 			await publishEventQuiet(getPgPool(), { k: 'team_updated', teamId: access.task.teamId });
 			return NextResponse.json({
 				success: true,
-				yorum: { ...yorum, kullaniciAdSoyad: `${auth.user.ad} ${auth.user.soyad}` },
+				comment: { ...comment, userNameSurname: `${auth.user.name} ${auth.user.surname}` },
 			});
 		}
 
 		if (action === 'deleteComment') {
-			const yorumId = typeof body.yorumId === 'string' ? body.yorumId : '';
-			const yorum = yorumId ? await getTaskComment(yorumId) : null;
-			if (!yorum || yorum.gorevId !== id) return NextResponse.json({ error: 'Yorum bulunamadı.' }, { status: 404 });
+			const commentId = typeof body.commentId === 'string' ? body.commentId : '';
+			const comment = commentId ? await getTaskComment(commentId) : null;
+			if (!comment || comment.taskId !== id) return NextResponse.json({ error: 'Yorum bulunamadı.' }, { status: 404 });
 			// Your own words, or moderation by management and the captain.
-			if (yorum.userId !== auth.user.id && !access.manage) {
+			if (comment.userId !== auth.user.id && !access.manage) {
 				return forbidden('Bu yorumu yalnızca yazarı, kaptan veya yönetim silebilir.');
 			}
-			await deleteTaskComment(yorumId);
+			await deleteTaskComment(commentId);
 			await publishEventQuiet(getPgPool(), { k: 'team_updated', teamId: access.task.teamId });
 			return NextResponse.json({ success: true });
 		}

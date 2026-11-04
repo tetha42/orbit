@@ -130,15 +130,15 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 	// --------------------------------------------------------------------------
 	if (screen === 'detail' && selected) {
 		const e = selected;
-		const meta = typeMeta(e.tur);
+		const meta = typeMeta(e.typeValue);
 		const live = isLive(e, now);
 		const ended = e.endTime < now;
-		const full = e.kapasite > 0 && e.kayitliSayisi >= e.kapasite;
-		const canRegister = e.status === 'yayinda' && !ended && !e.benimKaydim;
+		const full = e.capacity > 0 && e.registeredCount >= e.capacity;
+		const canRegister = e.status === 'yayinda' && !ended && !e.myMyRecord;
 		const canCheckIn =
 			e.status === 'yayinda' &&
-			Number(e.yoklamaAcik) === 1 &&
-			!e.benimYoklamam &&
+			Number(e.attendanceOpen) === 1 &&
+			!e.myMyAttendance &&
 			!ended;
 
 		return (
@@ -160,7 +160,7 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 						<span>{t('evTitle')}</span>
 					</button>
 
-					<span className={s.topTitle}>{e.baslik}</span>
+					<span className={s.topTitle}>{e.title}</span>
 
 					<div className={s.topActions}>
 						{manage && (
@@ -196,7 +196,7 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 								}`}
 								onClick={() => setDetailTab('attendance')}
 							>
-								{fill(t('evAttendeesCountTab'), { n: e.kayitliSayisi })}
+								{fill(t('evAttendeesCountTab'), { n: e.registeredCount })}
 							</button>
 						</div>
 					</div>
@@ -243,7 +243,7 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 										{t('evCancelled')}
 									</span>
 								)}
-								{e.benimYoklamam ? (
+								{e.myMyAttendance ? (
 									<span
 										className={s.typeBadge}
 										style={{
@@ -256,7 +256,7 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 									>
 										<CheckCircle2 size={11} /> {t('evAttended')}
 									</span>
-								) : e.benimKaydim ? (
+								) : e.myMyRecord ? (
 									<span
 										className={s.typeBadge}
 										style={{ background: 'rgba(10, 132, 255, 0.15)', color: '#0a84ff' }}
@@ -266,7 +266,7 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 								) : null}
 							</div>
 
-							<h1 className={s.detailTitle}>{e.baslik}</h1>
+							<h1 className={s.detailTitle}>{e.title}</h1>
 						</div>
 
 						{/* Facts Group (iOS Inset Table) */}
@@ -278,7 +278,7 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 								<div className={s.factTexts}>
 									<span className={s.factLabel}>{t('evWhen')}</span>
 									<span className={s.factValue}>
-										{formatRange(e.baslangic, e.endTime, locale)}
+										{formatRange(e.start, e.endTime, locale)}
 									</span>
 								</div>
 							</div>
@@ -289,7 +289,7 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 								</div>
 								<div className={s.factTexts}>
 									<span className={s.factLabel}>{t('evWhere')}</span>
-									<span className={s.factValue}>{e.konum}</span>
+									<span className={s.factValue}>{e.location}</span>
 								</div>
 							</div>
 
@@ -307,20 +307,20 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 									>
 										<span className={s.factLabel}>{t('evCapacity')}</span>
 										<span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)' }}>
-											{e.kapasite > 0
-												? `${e.kayitliSayisi} / ${e.kapasite}`
-												: `${e.kayitliSayisi} · ${t('evUnlimited')}`}
+											{e.capacity > 0
+												? `${e.registeredCount} / ${e.capacity}`
+												: `${e.registeredCount} · ${t('evUnlimited')}`}
 										</span>
 									</div>
 
-									{e.kapasite > 0 && (
+									{e.capacity > 0 && (
 										<div className={s.meterBar}>
 											<div
 												className={s.meterFill}
 												style={{
 													width: `${Math.min(
 														100,
-														(e.kayitliSayisi / e.kapasite) * 100
+														(e.registeredCount / e.capacity) * 100
 													)}%`,
 												}}
 											/>
@@ -335,12 +335,12 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 										}}
 									>
 										{ended || live
-											? fill(t('evAttendedCount'), { n: e.katilimciSayisi })
+											? fill(t('evAttendedCount'), { n: e.participantCount })
 											: full
 											? t('evFull')
-											: e.kapasite > 0
+											: e.capacity > 0
 											? fill(t('evSeatsLeft'), {
-													n: e.kapasite - e.kayitliSayisi,
+													n: e.capacity - e.registeredCount,
 											  })
 											: ''}
 									</span>
@@ -349,7 +349,7 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 						</div>
 
 						{/* Attended Success Banner */}
-						{e.benimYoklamam && (
+						{e.myMyAttendance && (
 							<div
 								style={{
 									display: 'flex',
@@ -368,7 +368,7 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 								<span>
 									{fill(t('evAttendedAt'), {
 										when: new Date(
-											e.benimYoklamam.katilimZamani
+											e.myMyAttendance.participationTime
 										).toLocaleString(locale, {
 											hour: '2-digit',
 											minute: '2-digit',
@@ -381,7 +381,7 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 						)}
 
 						{/* Ticket Card if Registered */}
-						{e.benimKaydim && e.biletKodu && (
+						{e.myMyRecord && e.ticketCode && (
 							<div className={s.ticketCard}>
 								<div className={s.ticketLeft}>
 									<Ticket size={24} color="var(--accent)" />
@@ -396,7 +396,7 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 												fontFamily: 'monospace',
 											}}
 										>
-											{e.biletKodu}
+											{e.ticketCode}
 										</div>
 									</div>
 								</div>
@@ -410,7 +410,7 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 							</div>
 						)}
 
-						{e.benimKaydim && e.baslangic <= now && !ended && e.status === 'yayinda' && (
+						{e.myMyRecord && e.start <= now && !ended && e.status === 'yayinda' && (
 							<div
 								style={{
 									display: 'flex',
@@ -430,11 +430,11 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 						)}
 
 						{/* Description */}
-						{e.aciklama && (
+						{e.description && (
 							<div className={s.aboutCard}>
 								<div className={s.aboutTitle}>{t('evAbout')}</div>
 								<div className={s.aboutText}>
-									<Linkified text={e.aciklama} />
+									<Linkified text={e.description} />
 								</div>
 							</div>
 						)}
@@ -470,7 +470,7 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 						</div>
 					) : (
 						<>
-							{e.benimKaydim && e.biletKodu && (
+							{e.myMyRecord && e.ticketCode && (
 								<button
 									type="button"
 									className={s.toolbarBtn}
@@ -495,7 +495,7 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 								</button>
 							)}
 
-							{e.benimKaydim && e.baslangic > now && e.status === 'yayinda' && (
+							{e.myMyRecord && e.start > now && e.status === 'yayinda' && (
 								<button
 									type="button"
 									className={`${s.toolbarBtn} ${s.toolbarBtnDestructive}`}
@@ -527,7 +527,7 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 				{manageSheetOpen && (
 					<div className={s.sheetScrim} onClick={() => setManageSheetOpen(false)}>
 						<div className={s.sheetCard} onClick={(ev) => ev.stopPropagation()}>
-							<div className={s.sheetHeader}>{t('evManage')} · {e.baslik}</div>
+							<div className={s.sheetHeader}>{t('evManage')} · {e.title}</div>
 							{e.status === 'yayinda' && (
 								<button
 									type="button"
@@ -559,7 +559,7 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 									onClick={() => {
 										setManageSheetOpen(false);
 										void onAct(
-											{ action: 'updateEvent', etkinlikId: e.id, status: 'yayinda' },
+											{ action: 'updateEvent', eventId: e.id, status: 'yayinda' },
 											t('evSaved')
 										).then((ok) => ok && onTabChange(tabOf({ ...e, status: 'yayinda' })));
 									}}
@@ -576,13 +576,13 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 										setManageSheetOpen(false);
 										if (
 											await dialog.confirm({
-												message: fill(t('evCancelEventConfirm'), { title: e.baslik }),
+												message: fill(t('evCancelEventConfirm'), { title: e.title }),
 												tone: 'danger',
 											})
 										) {
 											await onAct({
 												action: 'updateEvent',
-												etkinlikId: e.id,
+												eventId: e.id,
 												status: 'iptal',
 											});
 										}
@@ -592,7 +592,7 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 									<span>{t('evCancelEvent')}</span>
 								</button>
 							)}
-							{e.katilimciSayisi === 0 && (
+							{e.participantCount === 0 && (
 								<button
 									type="button"
 									className={s.sheetDestructiveBtn}
@@ -600,11 +600,11 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 										setManageSheetOpen(false);
 										if (
 											await dialog.confirm({
-												message: fill(t('evDeleteConfirm'), { title: e.baslik }),
+												message: fill(t('evDeleteConfirm'), { title: e.title }),
 												tone: 'danger',
 											})
 										) {
-											if (await onAct({ action: 'deleteEvent', etkinlikId: e.id })) {
+											if (await onAct({ action: 'deleteEvent', eventId: e.id })) {
 												onSelectId(null);
 												setScreen('list');
 											}
@@ -725,7 +725,7 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 				)}
 
 				{visible.map((e) => {
-					const meta = typeMeta(e.tur);
+					const meta = typeMeta(e.typeValue);
 					const live = isLive(e, now);
 					return (
 						<div
@@ -740,9 +740,9 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 						>
 							{/* Apple Calendar Leaf */}
 							<div className={s.calendarLeaf}>
-								<div className={s.calendarLeafMonth}>{month(e.baslangic)}</div>
-								<div className={s.calendarLeafDay}>{day(e.baslangic)}</div>
-								<div className={s.calendarLeafWeekday}>{weekday(e.baslangic)}</div>
+								<div className={s.calendarLeafMonth}>{month(e.start)}</div>
+								<div className={s.calendarLeafDay}>{day(e.start)}</div>
+								<div className={s.calendarLeafWeekday}>{weekday(e.start)}</div>
 							</div>
 
 							{/* Center Info */}
@@ -752,25 +752,25 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 									{live && <span className={s.liveBadge}>{t('evLive')}</span>}
 								</div>
 
-								<div className={s.cardTitle}>{e.baslik}</div>
+								<div className={s.cardTitle}>{e.title}</div>
 
 								<div className={s.cardSubtitle}>
 									<span>📍</span>
-									<span>{e.konum}</span>
+									<span>{e.location}</span>
 								</div>
 							</div>
 
 							{/* Right Status */}
 							<div className={s.cardStatusCol}>
-								{e.benimYoklamam ? (
+								{e.myMyAttendance ? (
 									<span className={`${s.statusPill} ${s.attendedPill}`}>
 										{t('evAttended')}
 									</span>
-								) : e.benimKaydim ? (
+								) : e.myMyRecord ? (
 									<span className={s.statusPill}>{t('evRegistered')}</span>
-								) : e.kapasite > 0 ? (
+								) : e.capacity > 0 ? (
 									<span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-										{e.kayitliSayisi}/{e.kapasite}
+										{e.registeredCount}/{e.capacity}
 									</span>
 								) : null}
 								<ChevronRight size={16} color="var(--text-muted)" style={{ opacity: 0.6 }} />

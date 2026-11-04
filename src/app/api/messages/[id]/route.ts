@@ -49,16 +49,16 @@ async function handlePOST(request: Request, { params }: { params: Promise<{ id: 
 		}
 
 		const decision = await recipientDecision(user.id, await getMailParticipantIds(id), false);
-		if (decision.hata) return NextResponse.json({ error: decision.hata }, { status: 400 });
-		const { gidecek, atlananlar } = decision;
+		if (decision.error) return NextResponse.json({ error: decision.error }, { status: 400 });
+		const { outgoing, skipped } = decision;
 		// Everyone else has left or lost Mail: the reply would reach nobody.
-		if (gidecek.length === 0) {
-			return NextResponse.json({ error: atlananlar.map(skippedReason).join(' ') || 'Yanıtın gideceği kimse kalmadı.', skipped: atlananlar }, { status: 422 });
+		if (outgoing.length === 0) {
+			return NextResponse.json({ error: skipped.map(skippedReason).join(' ') || 'Yanıtın gideceği kimse kalmadı.', skipped: skipped }, { status: 422 });
 		}
 
-		const messageId = await addMailReply(id, user.id, messageBody, gidecek.map((u) => u.id));
-		notifyByEmail(gidecek, user, subject.konu);
-		const result: MailSendResult = { threadId: id, messageId, skipped: atlananlar };
+		const messageId = await addMailReply(id, user.id, messageBody, outgoing.map((u) => u.id));
+		notifyByEmail(outgoing, user, subject.topic);
+		const result: MailSendResult = { threadId: id, messageId, skipped: skipped };
 		return NextResponse.json(result, { status: 201 });
 	} catch (error) {
 		console.error('API /api/messages/[id] POST error:', error);
@@ -93,7 +93,7 @@ async function handlePATCH(request: Request, { params }: { params: Promise<{ id:
 		if (!action || !MAIL_ACTIONS.includes(action)) return NextResponse.json({ error: 'Geçersiz işlem.' }, { status: 400 });
 		const subject = await getMailThread(auth.user.id, id);
 		if (!subject) return notFound();
-		if (action === 'sil' && subject.klasor !== 'cop') {
+		if (action === 'sil' && subject.folder !== 'cop') {
 			return NextResponse.json({ error: 'Kalıcı silmek için konu önce çöp kutusunda olmalıdır.' }, { status: 400 });
 		}
 		await setMailThreadStatus(auth.user.id, id, action);

@@ -2,11 +2,11 @@ import { getPgPool, ensurePostgresInit } from '@/db';
 import type { StoredFile } from '@/db/schema';
 
 export async function addStoredFile(params: {
-	ad: string;
-	yukleyenId: string;
+	name: string;
+	uploaderId: string;
 	mime: string;
-	boyut: number;
-	herkeseAcik?: boolean;
+	size: number;
+	everyoneOpen?: boolean;
 	chatRoomId?: string | null;
 }): Promise<void> {
 	await ensurePostgresInit();
@@ -14,22 +14,22 @@ export async function addStoredFile(params: {
 		`INSERT INTO files (id, uploaded_by, mime_type, size_bytes, created_at, is_public)
 		 VALUES ($1, $2, $3, $4, $5, $6)
 		 ON CONFLICT (id) DO NOTHING`,
-		[params.ad, params.yukleyenId, params.mime, params.boyut, Date.now(), params.herkeseAcik ? 1 : 0]
+		[params.name, params.uploaderId, params.mime, params.size, Date.now(), params.everyoneOpen ? 1 : 0]
 	);
 }
 
-export async function deleteStoredFile(ad: string): Promise<void> {
+export async function deleteStoredFile(name: string): Promise<void> {
 	await ensurePostgresInit();
-	await getPgPool().query('DELETE FROM files WHERE id = $1', [ad]);
+	await getPgPool().query('DELETE FROM files WHERE id = $1', [name]);
 }
 
-export async function getStoredFile(ad: string): Promise<StoredFile | null> {
+export async function getStoredFile(name: string): Promise<StoredFile | null> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT id AS ad, uploaded_by AS "yukleyenId", mime_type AS mime, size_bytes AS boyut,
-		        is_public AS "herkeseAcik", NULL::text AS "chatRoomId", created_at AS olusturma
+		`SELECT id AS name, uploaded_by AS "uploaderId", mime_type AS mime, size_bytes AS size,
+		        is_public AS "everyoneOpen", NULL::text AS "chatRoomId", created_at AS creation
 		 FROM files WHERE id = $1`,
-		[ad]
+		[name]
 	);
 	return (res.rows[0] as StoredFile | undefined) ?? null;
 }

@@ -10,13 +10,13 @@ import {
 	requestNotificationPermission,
 	showAppNotification,
 } from '@/lib/client/notifications';
-import type { ChatAttachmentItem, ChatOdaItem, ChatMessageItem, ChatPollItem } from '../types';
+import type { ChatAttachmentItem, ChatRoomItem, ChatMessageItem, ChatPollItem } from '../types';
 
 export function useChat(initialRoomId?: string | null) {
 	const { currentUser, isAdmin } = useSession();
 	const { playSystemSound } = useSound();
 	const { focusTarget, clearFocusTarget } = useWindowFocusTarget();
-	const [rooms, setRooms] = useState<ChatOdaItem[]>([]);
+	const [rooms, setRooms] = useState<ChatRoomItem[]>([]);
 	const [activeRoomId, setActiveRoomId] = useState<string | null>(initialRoomId || null);
 	const [messages, setMessages] = useState<ChatMessageItem[]>([]);
 	const [replyingMessage, setReplyingMessage] = useState<ChatMessageItem | null>(null);
@@ -123,8 +123,8 @@ export function useChat(initialRoomId?: string | null) {
 			if (data.ok && Array.isArray(data.messages)) {
 				const safeMessages: ChatMessageItem[] = data.messages.map((m: ChatMessageItem) => ({
 					...m,
-					gonderenAd: m.gonderenAd || 'Üye',
-					icerik: m.icerik || '',
+					senderName: m.senderName || 'Üye',
+					content: m.content || '',
 				}));
 				setMessages(safeMessages);
 				const hasMore = Boolean(data.hasMore);
@@ -138,7 +138,7 @@ export function useChat(initialRoomId?: string | null) {
 				});
 				// Clear unread count locally
 				setRooms((prev) =>
-					prev.map((r) => (r.id === roomId ? { ...r, okunmamisSayisi: 0 } : r))
+					prev.map((r) => (r.id === roomId ? { ...r, unreadCount: 0 } : r))
 				);
 			}
 		} catch (err: unknown) {
@@ -185,8 +185,8 @@ export function useChat(initialRoomId?: string | null) {
 			if (data.ok && Array.isArray(data.messages)) {
 				const olderMessages: ChatMessageItem[] = data.messages.map((m: ChatMessageItem) => ({
 					...m,
-					gonderenAd: m.gonderenAd || 'Üye',
-					icerik: m.icerik || '',
+					senderName: m.senderName || 'Üye',
+					content: m.content || '',
 				}));
 				setMessages((prev) => {
 					const existing = new Set(prev.map((m) => m.id));
@@ -255,11 +255,11 @@ export function useChat(initialRoomId?: string | null) {
 						const rawMsg = data.message as ChatMessageItem;
 						const newMsg: ChatMessageItem = {
 							...rawMsg,
-							gonderenAd: rawMsg.gonderenAd || 'Üye',
-							icerik: rawMsg.icerik || '',
+							senderName: rawMsg.senderName || 'Üye',
+							content: rawMsg.content || '',
 						};
 						const myId = currentUserIdRef.current;
-						const isFromOther = Boolean(myId && newMsg.gonderenId !== myId);
+						const isFromOther = Boolean(myId && newMsg.senderId !== myId);
 						const isActiveRoom = activeRoomRef.current === newMsg.roomId;
 
 						// If active room, append message and mark read on server
@@ -288,10 +288,10 @@ export function useChat(initialRoomId?: string | null) {
 								if (r.id === newMsg.roomId) {
 									return {
 										...r,
-										sonMesaj: newMsg,
-										okunmamisSayisi: isActiveRoom || !isFromOther
+										lastMessage: newMsg,
+										unreadCount: isActiveRoom || !isFromOther
 											? 0
-											: (r.okunmamisSayisi || 0) + 1,
+											: (r.unreadCount || 0) + 1,
 									};
 								}
 								return r;
@@ -308,32 +308,32 @@ export function useChat(initialRoomId?: string | null) {
 
 							if (isHiddenOrDifferentRoom) {
 								playSystemSoundRef.current();
-								void showAppNotification(`${newMsg.gonderenAd}`, {
-									body: newMsg.icerik,
+								void showAppNotification(`${newMsg.senderName}`, {
+									body: newMsg.content,
 									tag: `chat-${newMsg.roomId}`,
 								});
 							}
 						}
 					} else if (data.type === 'message_deleted') {
-						const { roomId, messageId, silinmeTarihi } = data;
+						const { roomId, messageId, deletionDate } = data;
 						if (activeRoomRef.current === roomId) {
 							setMessages((prev) => {
 								if (isAdminRef.current) {
 									return prev.map((m) =>
-										m.id === messageId ? { ...m, silinmeTarihi: Number(silinmeTarihi) } : m
+										m.id === messageId ? { ...m, deletionDate: Number(deletionDate) } : m
 									);
 								}
 								return prev.filter((m) => m.id !== messageId);
 							});
 						}
 					} else if (data.type === 'messages_cleared') {
-						const { roomId, deletedIds, silinmeTarihi } = data;
+						const { roomId, deletedIds, deletionDate } = data;
 						const idSet = new Set(Array.isArray(deletedIds) ? deletedIds : []);
 						if (activeRoomRef.current === roomId) {
 							setMessages((prev) => {
 								if (isAdminRef.current) {
 									return prev.map((m) =>
-										idSet.has(m.id) ? { ...m, silinmeTarihi: Number(silinmeTarihi) } : m
+										idSet.has(m.id) ? { ...m, deletionDate: Number(deletionDate) } : m
 									);
 								}
 								return prev.filter((m) => !idSet.has(m.id));
@@ -348,8 +348,8 @@ export function useChat(initialRoomId?: string | null) {
 						}
 						setRooms((prev) =>
 							prev.map((r) =>
-								r.id === updated.roomId && r.sonMesaj?.id === updated.id
-									? { ...r, sonMesaj: { ...r.sonMesaj, ...updated } }
+								r.id === updated.roomId && r.lastMessage?.id === updated.id
+									? { ...r, lastMessage: { ...r.lastMessage, ...updated } }
 									: r
 							)
 						);
@@ -358,7 +358,7 @@ export function useChat(initialRoomId?: string | null) {
 						if (activeRoomRef.current === data.roomId) {
 							setMessages((prev) =>
 								prev.map((m) =>
-									m.anket?.id === updatedPoll.id ? { ...m, anket: updatedPoll } : m
+									m.poll?.id === updatedPoll.id ? { ...m, poll: updatedPoll } : m
 								)
 							);
 						}
@@ -389,15 +389,15 @@ export function useChat(initialRoomId?: string | null) {
 
 	// 4. Send Message
 	const sendMessage = useCallback(
-		async (icerik: string, ekler: ChatAttachmentItem[] = []) => {
-			if (!activeRoomId || (!icerik.trim() && ekler.length === 0) || sending) return false;
+		async (content: string, attachments: ChatAttachmentItem[] = []) => {
+			if (!activeRoomId || (!content.trim() && attachments.length === 0) || sending) return false;
 			setSending(true);
-			const yanitlananMesajId = replyingMessage ? replyingMessage.id : null;
-			const yanitlananMesaj = replyingMessage
+			const repliedMessageId = replyingMessage ? replyingMessage.id : null;
+			const repliedMessage = replyingMessage
 				? {
 						id: replyingMessage.id,
-						gonderenAd: replyingMessage.gonderenAd,
-						icerik: replyingMessage.icerik.slice(0, 200),
+						senderName: replyingMessage.senderName,
+						content: replyingMessage.content.slice(0, 200),
 				  }
 				: null;
 			try {
@@ -406,10 +406,10 @@ export function useChat(initialRoomId?: string | null) {
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
 						roomId: activeRoomId,
-						icerik: icerik.trim(),
-						ekler,
-						yanitlananMesajId,
-						yanitlananMesaj,
+						content: content.trim(),
+						attachments,
+						repliedMessageId,
+						repliedMessage,
 					}),
 				});
 				const data = await res.json();
@@ -436,8 +436,8 @@ export function useChat(initialRoomId?: string | null) {
 	}, []);
 
 	const forwardMessage = useCallback(
-		async (mesajId: string, targetRoomIds: string[]): Promise<{ ok: boolean; count?: number }> => {
-			if (!mesajId || !Array.isArray(targetRoomIds) || targetRoomIds.length === 0) {
+		async (messageId: string, targetRoomIds: string[]): Promise<{ ok: boolean; count?: number }> => {
+			if (!messageId || !Array.isArray(targetRoomIds) || targetRoomIds.length === 0) {
 				return { ok: false };
 			}
 			try {
@@ -446,7 +446,7 @@ export function useChat(initialRoomId?: string | null) {
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
 						action: 'forward',
-						mesajId,
+						messageId,
 						targetRoomIds,
 					}),
 				});
@@ -474,7 +474,7 @@ export function useChat(initialRoomId?: string | null) {
 	const createDm = useCallback(async (targetUserId: string): Promise<string | null> => {
 		// Reuse a room the state already knows about; this also avoids a request
 		// when a member card is clicked twice before the rooms list refreshes.
-		const known = rooms.find((room) => room.tur === 'ozel' && room.peerUserId === targetUserId);
+		const known = rooms.find((room) => room.typeValue === 'ozel' && room.peerUserId === targetUserId);
 		if (known) {
 			setActiveRoomId(known.id);
 			return known.id;
@@ -535,9 +535,9 @@ export function useChat(initialRoomId?: string | null) {
 		}
 	}, [fetchRooms, fetchMessages]);
 
-	const deleteMessage = useCallback(async (mesajId: string): Promise<boolean> => {
+	const deleteMessage = useCallback(async (messageId: string): Promise<boolean> => {
 		try {
-			const res = await fetch(`/api/chat/messages?id=${encodeURIComponent(mesajId)}`, {
+			const res = await fetch(`/api/chat/messages?id=${encodeURIComponent(messageId)}`, {
 				method: 'DELETE',
 			});
 			const data = await res.json();
@@ -547,12 +547,12 @@ export function useChat(initialRoomId?: string | null) {
 		}
 	}, []);
 
-	const editMessage = useCallback(async (mesajId: string, yeniIcerik: string): Promise<boolean> => {
+	const editMessage = useCallback(async (messageId: string, newContent: string): Promise<boolean> => {
 		try {
 			const res = await fetch('/api/chat/messages', {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ id: mesajId, icerik: yeniIcerik }),
+				body: JSON.stringify({ id: messageId, content: newContent }),
 			});
 			const data = await res.json();
 			return Boolean(data.ok);
@@ -561,17 +561,17 @@ export function useChat(initialRoomId?: string | null) {
 		}
 	}, []);
 
-	const votePoll = useCallback(async (pollId: string, secenekId: string): Promise<boolean> => {
+	const votePoll = useCallback(async (pollId: string, optionId: string): Promise<boolean> => {
 		try {
 			const res = await fetch('/api/chat/poll', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ action: 'vote', pollId, secenekId }),
+				body: JSON.stringify({ action: 'vote', pollId, optionId }),
 			});
 			const data = await res.json();
 			if (data.ok && data.poll) {
 				setMessages((prev) =>
-					prev.map((m) => (m.anket?.id === pollId ? { ...m, anket: data.poll } : m))
+					prev.map((m) => (m.poll?.id === pollId ? { ...m, poll: data.poll } : m))
 				);
 				return true;
 			}
@@ -591,7 +591,7 @@ export function useChat(initialRoomId?: string | null) {
 			const data = await res.json();
 			if (data.ok && data.poll) {
 				setMessages((prev) =>
-					prev.map((m) => (m.anket?.id === pollId ? { ...m, anket: data.poll } : m))
+					prev.map((m) => (m.poll?.id === pollId ? { ...m, poll: data.poll } : m))
 				);
 				return true;
 			}
@@ -603,12 +603,12 @@ export function useChat(initialRoomId?: string | null) {
 
 	const createPoll = useCallback(
 		async (pollData: {
-			soru: string;
-			secenekler: string[];
-			cokluSecim: boolean;
-			anonim: boolean;
+			question: string;
+			options: string[];
+			multipleSelection: boolean;
+			anonymous: boolean;
 			endsAt?: number | null;
-			sureSaniye?: number | null;
+			sureSeconds?: number | null;
 		}): Promise<boolean> => {
 			if (!activeRoomId) return false;
 			try {
@@ -643,7 +643,7 @@ export function useChat(initialRoomId?: string | null) {
 			} else if (section === 'compose' || kind === 'dm') {
 				if (itemId) {
 					const existingDm = rooms.find(
-						(r) => r.tur === 'ozel' && r.peerUserId === itemId
+						(r) => r.typeValue === 'ozel' && r.peerUserId === itemId
 					);
 					if (existingDm) {
 						setActiveRoomId(existingDm.id);

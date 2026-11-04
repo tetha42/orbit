@@ -120,10 +120,10 @@ export function OAuthAppsPanel() {
 
 	const openEditModal = (c: OAuthClient) => {
 		setEditingClient(c);
-		setFormName(c.ad);
-		setFormDesc(c.aciklama);
+		setFormName(c.name);
+		setFormDesc(c.description);
 		setFormRedirects(c.redirectUris.join('\n'));
-		setFormTrusted(c.guvenilir);
+		setFormTrusted(c.trusted);
 		setFormAllowedScopes(
 			Array.isArray(c.allowedScopes) && c.allowedScopes.length > 0
 				? c.allowedScopes
@@ -146,11 +146,11 @@ export function OAuthAppsPanel() {
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
 						id: editingClient.id,
-						ad: formName,
-						aciklama: formDesc,
+						name: formName,
+						description: formDesc,
 						redirectUris,
 						allowedScopes,
-						guvenilir: formTrusted,
+						trusted: formTrusted,
 					}),
 				});
 				const data = await res.json();
@@ -166,11 +166,11 @@ export function OAuthAppsPanel() {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
-						ad: formName,
-						aciklama: formDesc,
+						name: formName,
+						description: formDesc,
 						redirectUris,
 						allowedScopes,
-						guvenilir: formTrusted,
+						trusted: formTrusted,
 					}),
 				});
 				const data = await res.json();
@@ -178,7 +178,7 @@ export function OAuthAppsPanel() {
 					notify(t('oauthAppCreated'));
 					setShowAddModal(false);
 					setRevealedCreds({
-						name: data.client.ad,
+						name: data.client.name,
 						clientId: data.client.id,
 						clientSecret: data.plainSecret,
 					});
@@ -197,7 +197,7 @@ export function OAuthAppsPanel() {
 	const handleRegenerateSecret = async (c: OAuthClient) => {
 		const confirmed = await dialog.confirm({
 			title: t('oauthRegenTitle'),
-			message: fill(t('oauthRegenConfirm'), { name: c.ad }),
+			message: fill(t('oauthRegenConfirm'), { name: c.name }),
 			tone: 'danger',
 			confirmLabel: t('oauthRegenAction'),
 		});
@@ -215,7 +215,7 @@ export function OAuthAppsPanel() {
 			if (res.ok && data.plainSecret) {
 				notify(t('oauthRegenSuccess'));
 				setRevealedCreds({
-					name: c.ad,
+					name: c.name,
 					clientId: c.id,
 					clientSecret: data.plainSecret,
 				});
@@ -230,7 +230,7 @@ export function OAuthAppsPanel() {
 	const handleDelete = async (c: OAuthClient) => {
 		const confirmed = await dialog.confirm({
 			title: t('oauthDeleteTitle'),
-			message: fill(t('oauthDeleteConfirm'), { name: c.ad }),
+			message: fill(t('oauthDeleteConfirm'), { name: c.name }),
 			tone: 'danger',
 			confirmLabel: t('oauthDeleteTitle'),
 		});
@@ -343,8 +343,8 @@ export function OAuthAppsPanel() {
 						>
 							<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
 								<div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-									<div style={{ fontWeight: 700, fontSize: '15px' }}>{c.ad}</div>
-									{c.guvenilir ? (
+									<div style={{ fontWeight: 700, fontSize: '15px' }}>{c.name}</div>
+									{c.trusted ? (
 										<span
 											style={{
 												display: 'inline-flex',
@@ -409,8 +409,8 @@ export function OAuthAppsPanel() {
 								</div>
 							</div>
 
-							{c.aciklama && (
-								<div style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>{c.aciklama}</div>
+							{c.description && (
+								<div style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>{c.description}</div>
 							)}
 
 							<div
@@ -489,7 +489,7 @@ export function OAuthAppsPanel() {
 			{/* Create / Edit Sheet Modal */}
 			{showAddModal && (
 				<Sheet
-					title={editingClient ? fill(t('oauthEditAppTitle'), { name: editingClient.ad }) : t('oauthNewAppTitle')}
+					title={editingClient ? fill(t('oauthEditAppTitle'), { name: editingClient.name }) : t('oauthNewAppTitle')}
 					label={t('oauthAppLabel')}
 					icon={<Lock size={18} color="#0a84ff" />}
 					onClose={() => setShowAddModal(false)}

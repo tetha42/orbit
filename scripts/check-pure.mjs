@@ -13,7 +13,7 @@ import { groupNotifications, unreadCount } from '../src/lib/notifications.ts';
 import { dayOffset, formatBytes, relativeTime } from '../src/core/data/format.ts';
 import { escapeHtml } from '../src/core/text/escape.ts';
 import { initials } from '../src/core/text/initials.ts';
-import { ADMIN_ROLE_ID, ALL_PERMISSIONS, PERMISSION_APPS, PERMISSION_DESCRIPTIONS, canManage, canUse, extraPermissions, hasManagementPermission, normalizePermissions, roleProblem, canAssignRole, seviyeOf } from '../src/core/permissions/index.ts';
+import { ADMIN_ROLE_ID, ALL_PERMISSIONS, PERMISSION_APPS, PERMISSION_DESCRIPTIONS, canManage, canUse, extraPermissions, hasManagementPermission, normalizePermissions, roleProblem, canAssignRole, levelOf } from '../src/core/permissions/index.ts';
 import {
 	ACCENTS,
 	DEFAULT_THEME_PREFS,
@@ -63,16 +63,16 @@ import { SETUP_GENERAL_MESSAGE, createSetupCache, setupResponse } from '../src/l
 import { isSafeImageUrl } from '../src/types/news.ts';
 import {
 	normalizeStatus,
-	normalizeEtiketler,
-	normalizeOncelik,
+	normalizeTags,
+	normalizePriority,
 	normalizeDueDate,
-	siraBetween,
-	siraFits,
+	orderBetween,
+	orderFits,
 	dueStatus,
 	toDateInput,
 } from '../src/lib/kanban.ts';
-import { MAIL_ACTIONS, MAIL_FOLDERS, skippedReason, onizlemeSatiri } from '../src/lib/messages.ts';
-import { isProjectStatus, normalizeHttpUrl, normalizeTeknolojiler, shortRepo } from '../src/lib/projects.ts';
+import { MAIL_ACTIONS, MAIL_FOLDERS, skippedReason, previewRow } from '../src/lib/messages.ts';
+import { isProjectStatus, normalizeHttpUrl, normalizeTechnologies, shortRepo } from '../src/lib/projects.ts';
 import {
 	ATTENDANCE_WINDOW_MS,
 	ATTENDANCE_TOLERANCE_MS,
@@ -89,17 +89,17 @@ import {
 	normalizeEventStatus,
 	isEventType,
 } from '../src/lib/events.ts';
-import { APPLICATION_NOTE_MAX, EXPERTISE_MAX, buildApplicationNote, isKategori, isParticipationType, isTeamStatus, capacityProblem, normalizeRole } from '../src/lib/teams.ts';
+import { APPLICATION_NOTE_MAX, EXPERTISE_MAX, buildApplicationNote, isCategory, isParticipationType, isTeamStatus, capacityProblem, normalizeRole } from '../src/lib/teams.ts';
 import { myOpenTasks, nextEvent } from '../src/lib/mobileCockpit.ts';
-import { seviye, passwordProblem } from '../src/lib/profile.ts';
-import { rozetler } from '../src/lib/badges.ts';
+import { level, passwordProblem } from '../src/lib/profile.ts';
+import { badges } from '../src/lib/badges.ts';
 import { documentVerificationCode, documentCount } from '../src/lib/documents.ts';
 import { endOfDay, returnStatus, returnText, returnDateProblem, codeProblem, normalizeCode } from '../src/lib/inventory.ts';
 import {
 	AUDIT_CSV_HEADERS,
 	AUDIT_ACTIONS,
 	AUDIT_RETENTION_DAYS,
-	alanFarki,
+	fieldDiff,
 	auditCsvRows,
 	formatAuditAction,
 	statusAction,
@@ -108,15 +108,15 @@ import {
 	roleDiff,
 	roleSummary,
 	retentionDays,
-	smtpFarki,
+	smtpDiff,
 	parseAuditFilter,
-	temizIp,
-	temizle,
+	cleanIp,
+	clear,
 	memberTargetName,
 	memberSummary,
 } from '../src/lib/audit.ts';
 import { isPrivateHost } from '../src/lib/mail/hosts.ts';
-import { aylikAkis, filterRecords, formatMinor, kategoriDagilimi, parseAmount, isValidDate, runningBalance } from '../src/lib/budget.ts';
+import { monthlyFeed, filterRecords, formatMinor, categoryDistribution, parseAmount, isValidDate, runningBalance } from '../src/lib/budget.ts';
 import { inspectDatabaseSql, inspectJsonPayload, inspectRequestComponents, inspectRequestPayload, maskDatabaseRow } from '../src/lib/waf.ts';
 
 let count = 0;
@@ -376,17 +376,17 @@ check('task states: canonical values, legacy aliases, and junk', () => {
 	assert.equal(normalizeStatus('review'), 'inceleme');
 	assert.equal(normalizeStatus('arsiv'), null);
 	assert.equal(normalizeStatus(3), null);
-	assert.equal(normalizeOncelik('KRITIK'), 'kritik');
-	assert.equal(normalizeOncelik('acil'), null);
+	assert.equal(normalizePriority('KRITIK'), 'kritik');
+	assert.equal(normalizePriority('acil'), null);
 });
 
 check('labels are folded, hyphenated, de-duplicated and capped', () => {
-	assert.deepEqual(normalizeEtiketler(['  Front End ', '#UX', 'ux', '', 'İHA']), ['front-end', 'ux', 'iha']);
-	assert.deepEqual(normalizeEtiketler([]), []);
-	assert.equal(normalizeEtiketler('ux'), null);
-	assert.equal(normalizeEtiketler(['ok', 5]), null);
-	assert.equal(normalizeEtiketler(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']).length, 6);
-	assert.equal(normalizeEtiketler(['x'.repeat(50)])[0].length, 24);
+	assert.deepEqual(normalizeTags(['  Front End ', '#UX', 'ux', '', 'İHA']), ['front-end', 'ux', 'iha']);
+	assert.deepEqual(normalizeTags([]), []);
+	assert.equal(normalizeTags('ux'), null);
+	assert.equal(normalizeTags(['ok', 5]), null);
+	assert.equal(normalizeTags(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']).length, 6);
+	assert.equal(normalizeTags(['x'.repeat(50)])[0].length, 24);
 });
 
 check('due dates: numbers, ISO days (end of that local day), clearing, junk', () => {
@@ -404,23 +404,23 @@ check('due dates: numbers, ISO days (end of that local day), clearing, junk', ()
 });
 
 check('drop position: between, above the first, below the last, empty column', () => {
-	assert.equal(siraBetween(10, 20, 0), 15);
-	assert.equal(siraBetween(undefined, 20, 0), 20 - 1024);
-	assert.equal(siraBetween(10, undefined, 0), 10 + 1024);
-	assert.equal(siraBetween(undefined, undefined, -42), -42);
+	assert.equal(orderBetween(10, 20, 0), 15);
+	assert.equal(orderBetween(undefined, 20, 0), 20 - 1024);
+	assert.equal(orderBetween(10, undefined, 0), 10 + 1024);
+	assert.equal(orderBetween(undefined, undefined, -42), -42);
 	// Repeated drops into the same gap eventually exhaust float precision at the
 	// magnitude real keys have (-epoch ms); siraFits must notice before order breaks.
 	let lo = -1_791_000_000_000, hi = lo + 1, steps = 0;
 	for (;;) {
-		const mid = siraBetween(lo, hi, 0);
-		if (!siraFits(lo, mid, hi)) break;
+		const mid = orderBetween(lo, hi, 0);
+		if (!orderFits(lo, mid, hi)) break;
 		hi = mid;
 		steps += 1;
 		assert.ok(steps < 200, 'gap never ran out');
 	}
 	assert.ok(steps > 5, `only ${steps} drops fit`);
-	assert.equal(siraFits(undefined, 5, undefined), true);
-	assert.equal(siraFits(5, 5, 9), false);
+	assert.equal(orderFits(undefined, 5, undefined), true);
+	assert.equal(orderFits(5, 5, 9), false);
 });
 
 check('due state relative to now; done tasks are never late', () => {
@@ -450,12 +450,12 @@ check('project links: only http(s) with a real host reach an href', () => {
 });
 
 check('technologies: comma list or array, casing kept, duplicates folded, capped', () => {
-	assert.deepEqual(normalizeTeknolojiler('Next.js, PostgreSQL , next.js,,'), ['Next.js', 'PostgreSQL']);
-	assert.deepEqual(normalizeTeknolojiler(['ROS2', 'ros2', '  C++ ']), ['ROS2', 'C++']);
-	assert.deepEqual(normalizeTeknolojiler(''), []);
-	assert.equal(normalizeTeknolojiler(5), null);
-	assert.equal(normalizeTeknolojiler(['ok', {}]), null);
-	assert.equal(normalizeTeknolojiler(Array.from({ length: 30 }, (_, i) => `t${i}`)).length, 12);
+	assert.deepEqual(normalizeTechnologies('Next.js, PostgreSQL , next.js,,'), ['Next.js', 'PostgreSQL']);
+	assert.deepEqual(normalizeTechnologies(['ROS2', 'ros2', '  C++ ']), ['ROS2', 'C++']);
+	assert.deepEqual(normalizeTechnologies(''), []);
+	assert.equal(normalizeTechnologies(5), null);
+	assert.equal(normalizeTechnologies(['ok', {}]), null);
+	assert.equal(normalizeTechnologies(Array.from({ length: 30 }, (_, i) => `t${i}`)).length, 12);
 });
 
 check('project status and repo display', () => {
@@ -468,7 +468,7 @@ check('project status and repo display', () => {
 /* ---------------- events ---------------- */
 
 check('attendance codes round-trip and reject look-alikes', () => {
-	const k = { etkinlikId: 'evt_04', pencere: 59708013, imza: 'IANoK_gYemiyKv0ytCbbfC' };
+	const k = { eventId: 'evt_04', window: 59708013, signature: 'IANoK_gYemiyKv0ytCbbfC' };
 	const text = attendanceCodeText(k);
 	assert.deepEqual(parseAttendanceCode(text), k);
 	// The link a phone camera opens carries the same token.
@@ -478,7 +478,7 @@ check('attendance codes round-trip and reject look-alikes', () => {
 	assert.equal(parseAttendanceCode('BY1.evt 04.1.IANoK_gYemiyKv0ytCbbfC'), null);
 	assert.equal(parseAttendanceCode('BY1.evt_04.1.short'), null);
 	assert.equal(parseAttendanceCode(null), null);
-	const b = { etkinlikId: 'evt_01', userId: 'usr_uye_04', imza: 'abcdefghijklmnopqrstuv' };
+	const b = { eventId: 'evt_01', userId: 'usr_uye_04', signature: 'abcdefghijklmnopqrstuv' };
 	assert.deepEqual(parseTicketCode(ticketCodeText(b)), b);
 	// A ticket is not a projector code and vice versa.
 	assert.equal(parseAttendanceCode(ticketCodeText(b)), null);
@@ -528,7 +528,7 @@ check('event vocabulary: types, aliases and statuses', () => {
 /* ---------------- teams ---------------- */
 
 check('team rules: categories, modes, roles and quota', () => {
-	assert.ok(isKategori('Web & Mobile') && !isKategori('Uzay'));
+	assert.ok(isCategory('Web & Mobile') && !isCategory('Uzay'));
 	assert.ok(isParticipationType('onayli') && !isParticipationType('kapali'));
 	assert.ok(isTeamStatus('askida') && !isTeamStatus('silindi'));
 	assert.equal(normalizeRole('  Binary   Exploitation  '), 'Binary Exploitation');
@@ -559,18 +559,18 @@ check('onboarding application note: skills line, free text, caps', () => {
 });
 
 check('phone cockpit: my open tasks and the next event', () => {
-	const task = (id, atanan, status, teslim) => ({ id, teamId: 't', title: id, status, atananUyeId: atanan, teslimTarihi: teslim });
+	const task = (id, assignee, status, due) => ({ id, teamId: 't', title: id, status, assigneeMemberId: assignee, dueDate: due });
 	const teams = [
-		{ ad: 'Roket', gorevler: [task('a', 'u1', 'yapilacak', null), task('b', 'u2', 'yapilacak', 1), task('c', 'u1', 'tamamlandi', 5)] },
-		{ ad: 'İHA', gorevler: [task('d', 'u1', 'suruyor', 200), task('e', 'u1', 'inceleme', 100), task('f', 'u1', 'yapilacak', null)] },
+		{ name: 'Roket', tasks: [task('a', 'u1', 'yapilacak', null), task('b', 'u2', 'yapilacak', 1), task('c', 'u1', 'tamamlandi', 5)] },
+		{ name: 'İHA', tasks: [task('d', 'u1', 'suruyor', 200), task('e', 'u1', 'inceleme', 100), task('f', 'u1', 'yapilacak', null)] },
 	];
 	const mine = myOpenTasks(teams, 'u1');
 	assert.deepEqual(mine.map((x) => x.id), ['e', 'd', 'a', 'f']); // deadline first, undated keep board order
-	assert.equal(mine[0].takimAdi, 'İHA');
+	assert.equal(mine[0].teamName, 'İHA');
 	assert.deepEqual(myOpenTasks(teams, 'nobody'), []);
 	assert.deepEqual(myOpenTasks([], 'u1'), []);
 
-	const ev = (id, status, baslangic, endTime) => ({ id, status, baslangic, endTime });
+	const ev = (id, status, start, endTime) => ({ id, status, start, endTime });
 	const now = 1000;
 	assert.equal(nextEvent([], now), null);
 	assert.equal(nextEvent([ev('past', 'yayinda', 1, 500)], now), null);
@@ -590,7 +590,7 @@ check('password rules', () => {
 	assert.match(passwordProblem('abc1'), /en az 8/);
 	assert.match(passwordProblem('sadeceharf'), /harf ve bir rakam/);
 	assert.match(passwordProblem('12345678'), /harf ve bir rakam/);
-	assert.match(passwordProblem('Şifre-çok-2026', { mevcut: 'Şifre-çok-2026' }), /aynı olamaz/);
+	assert.match(passwordProblem('Şifre-çok-2026', { current: 'Şifre-çok-2026' }), /aynı olamaz/);
 	assert.match(passwordProblem('burak.sahin99', { email: 'burak.sahin@beuteknoloji.org' }), /e-posta/);
 	assert.equal(passwordProblem('Ab1xxxxx', { email: 'ab@x.org' }), null); // a 2-letter local part is not checked
 	assert.match(passwordProblem(null), /gerekli/);
@@ -598,30 +598,30 @@ check('password rules', () => {
 });
 
 check('levels from XP', () => {
-	assert.deepEqual(seviye(0), { seviye: 1, ilerleme: 0, sonraki: 100 });
-	assert.equal(seviye(99).seviye, 1);
-	assert.equal(seviye(100).seviye, 2);
-	assert.equal(seviye(299).seviye, 2);
-	assert.equal(seviye(300).seviye, 3);
-	assert.equal(seviye(820).seviye, 4);
-	assert.equal(seviye(820).sonraki, 1000);
-	assert.equal(seviye(-50).seviye, 1);
+	assert.deepEqual(level(0), { level: 1, progress: 0, next: 100 });
+	assert.equal(level(99).level, 1);
+	assert.equal(level(100).level, 2);
+	assert.equal(level(299).level, 2);
+	assert.equal(level(300).level, 3);
+	assert.equal(level(820).level, 4);
+	assert.equal(level(820).next, 1000);
+	assert.equal(level(-50).level, 1);
 });
 
 /* ---------------- badges ---------------- */
 
 check('badges follow the record, earned first, progress capped', () => {
-	const none = rozetler({ xp: 0, takim: 0, kaptan: false, katilinanEtkinlik: 0, tamamlananGorev: 0, sertifika: 0, project: 0 });
+	const none = badges({ xp: 0, team: 0, captain: false, attendedEvent: 0, completedTask: 0, certificate: 0, project: 0 });
 	assert.equal(none.length, 8);
-	assert.equal(none.filter((r) => r.kazanildi).length, 0);
-	const some = rozetler({ xp: 1850, takim: 2, kaptan: true, katilinanEtkinlik: 7, tamamlananGorev: 3, sertifika: 0, project: 1 });
+	assert.equal(none.filter((r) => r.earned).length, 0);
+	const some = badges({ xp: 1850, team: 2, captain: true, attendedEvent: 7, completedTask: 3, certificate: 0, project: 1 });
 	const byId = Object.fromEntries(some.map((r) => [r.id, r]));
-	assert.ok(byId['ilk-adim'].kazanildi && byId['mudavim'].kazanildi && byId['kaptan'].kazanildi && byId['yildiz'].kazanildi);
-	assert.ok(!byId['task-avcisi'].kazanildi && byId['task-avcisi'].deger === 3);
-	assert.equal(byId['mudavim'].deger, 5); // capped at the target
-	const firstLocked = some.findIndex((r) => !r.kazanildi);
-	assert.ok(some.slice(firstLocked).every((r) => !r.kazanildi), 'earned badges come first');
-	assert.equal(some[firstLocked].id, 'task-avcisi'); // closest to being earned (3/10 beats 0/1)
+	assert.ok(byId['first-step'].earned && byId['regular'].earned && byId['captain'].earned && byId['star'].earned);
+	assert.ok(!byId['task-hunter'].earned && byId['task-hunter'].value === 3);
+	assert.equal(byId['regular'].value, 5); // capped at the target
+	const firstLocked = some.findIndex((r) => !r.earned);
+	assert.ok(some.slice(firstLocked).every((r) => !r.earned), 'earned badges come first');
+	assert.equal(some[firstLocked].id, 'task-hunter'); // closest to being earned (3/10 beats 0/1)
 });
 
 /* ---------------- documents ---------------- */
@@ -657,26 +657,26 @@ check('amounts typed in Turkish or English style', () => {
 check('ledger: running balance, categories, months, filters', () => {
 	const t = (s) => new Date(s).getTime();
 	const rows = [
-		{ id: 'c', date: t('2026-09-06T10:00'), tur: 'gider', kategori: 'Donanım', amountMinor: 890000, aciklama: 'Raspberry Pi', kaydedenAdSoyad: 'Mehmet Demir' },
-		{ id: 'a', date: t('2026-08-22T10:00'), tur: 'gelir', kategori: 'Sponsorluk', amountMinor: 3500000, aciklama: 'Sponsor' },
-		{ id: 'd', date: t('2026-10-01T10:00'), tur: 'gider', kategori: 'İkram', amountMinor: 115000, aciklama: 'Çay, kahve' },
-		{ id: 'e', date: t('2026-10-04T10:00'), tur: 'gider', kategori: 'Donanım', amountMinor: 165000, aciklama: 'Filament' },
+		{ id: 'c', date: t('2026-09-06T10:00'), typeValue: 'gider', category: 'Donanım', amountMinor: 890000, description: 'Raspberry Pi', recorderNameSurname: 'Mehmet Demir' },
+		{ id: 'a', date: t('2026-08-22T10:00'), typeValue: 'gelir', category: 'Sponsorluk', amountMinor: 3500000, description: 'Sponsor' },
+		{ id: 'd', date: t('2026-10-01T10:00'), typeValue: 'gider', category: 'İkram', amountMinor: 115000, description: 'Çay, kahve' },
+		{ id: 'e', date: t('2026-10-04T10:00'), typeValue: 'gider', category: 'Donanım', amountMinor: 165000, description: 'Filament' },
 	];
 	const b = runningBalance(rows);
 	assert.deepEqual([b.get('a'), b.get('c'), b.get('d'), b.get('e')], [3500000, 2610000, 2495000, 2330000]);
-	const dag = kategoriDagilimi(rows);
-	assert.deepEqual(dag.map((d) => d.kategori), ['Donanım', 'İkram']);
+	const dag = categoryDistribution(rows);
+	assert.deepEqual(dag.map((d) => d.category), ['Donanım', 'İkram']);
 	assert.equal(dag[0].amountMinor, 1055000);
-	assert.ok(Math.abs(dag[0].oran + dag[1].oran - 1) < 1e-9);
-	const ay = aylikAkis(rows, t('2026-10-06T00:30'), 3);
-	assert.deepEqual(ay.map((m) => m.ay), ['2026-08', '2026-09', '2026-10']);
-	assert.deepEqual(ay.map((m) => [m.gelir, m.gider]), [[3500000, 0], [0, 890000], [0, 280000]]);
-	assert.deepEqual(aylikAkis(rows, t('2026-01-15T00:00'), 2).map((m) => m.ay), ['2025-12', '2026-01']); // across a year
+	assert.ok(Math.abs(dag[0].ratio + dag[1].ratio - 1) < 1e-9);
+	const month = monthlyFeed(rows, t('2026-10-06T00:30'), 3);
+	assert.deepEqual(month.map((m) => m.month), ['2026-08', '2026-09', '2026-10']);
+	assert.deepEqual(month.map((m) => [m.gelir, m.gider]), [[3500000, 0], [0, 890000], [0, 280000]]);
+	assert.deepEqual(monthlyFeed(rows, t('2026-01-15T00:00'), 2).map((m) => m.month), ['2025-12', '2026-01']); // across a year
 	const fold = (s) => s.toLocaleLowerCase('tr').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ı/g, 'i');
-	assert.deepEqual(filterRecords(rows, { tur: 'gider', ay: '2026-10' }).map((r) => r.id), ['d', 'e']);
-	assert.deepEqual(filterRecords(rows, { arama: 'CAY', fold }).map((r) => r.id), ['d']);
-	assert.deepEqual(filterRecords(rows, { arama: 'mehmet', fold }).map((r) => r.id), ['c']);
-	assert.deepEqual(filterRecords(rows, { kategori: 'Donanım' }).map((r) => r.id), ['c', 'e']);
+	assert.deepEqual(filterRecords(rows, { typeValue: 'gider', month: '2026-10' }).map((r) => r.id), ['d', 'e']);
+	assert.deepEqual(filterRecords(rows, { search: 'CAY', fold }).map((r) => r.id), ['d']);
+	assert.deepEqual(filterRecords(rows, { search: 'mehmet', fold }).map((r) => r.id), ['c']);
+	assert.deepEqual(filterRecords(rows, { category: 'Donanım' }).map((r) => r.id), ['c', 'e']);
 	const now = t('2026-10-06T00:30');
 	assert.ok(isValidDate(now, now) && isValidDate(t('2025-01-01'), now));
 	assert.ok(!isValidDate(now + 3 * 86_400_000, now) && !isValidDate(t('2020-01-01'), now) && !isValidDate(NaN, now));
@@ -690,26 +690,26 @@ check('inventory codes, loan windows and due text', () => {
 	assert.ok(codeProblem('LAB_RPI') && codeProblem('AB') && codeProblem('-LAB') && codeProblem('LAB--X') && codeProblem('A'.repeat(25)));
 	const DAY = 86_400_000;
 	const now = new Date('2026-10-06T10:00').getTime();
-	assert.deepEqual(returnStatus(now + 5 * DAY + 1000, now), { gecikti: false, gun: 5 });
-	assert.deepEqual(returnStatus(now + 3600_000, now), { gecikti: false, gun: 0 });
-	assert.deepEqual(returnStatus(now - 1000, now), { gecikti: true, gun: 1 });
-	assert.deepEqual(returnStatus(now - 2.5 * DAY, now), { gecikti: true, gun: 2 });
-	assert.deepEqual(returnStatus(now - 3 * DAY - 3600_000, now), { gecikti: true, gun: 3 });
+	assert.deepEqual(returnStatus(now + 5 * DAY + 1000, now), { gecikti: false, day: 5 });
+	assert.deepEqual(returnStatus(now + 3600_000, now), { gecikti: false, day: 0 });
+	assert.deepEqual(returnStatus(now - 1000, now), { gecikti: true, day: 1 });
+	assert.deepEqual(returnStatus(now - 2.5 * DAY, now), { gecikti: true, day: 2 });
+	assert.deepEqual(returnStatus(now - 3 * DAY - 3600_000, now), { gecikti: true, day: 3 });
 	assert.equal(returnStatus(null, now), null);
 	assert.equal(returnText(now - 2.5 * DAY, now), '2 gün gecikti');
 	assert.equal(returnText(now + 3600_000, now), 'Bugün iade');
 	assert.equal(returnText(now + 1.5 * DAY, now), 'Yarın iade');
 	assert.equal(returnText(now + 9.2 * DAY, now), '9 gün kaldı');
 	// windows
-	assert.equal(returnDateProblem(now + 14 * DAY, { now, yonetim: false }), null);
-	assert.ok(returnDateProblem(now + 45 * DAY, { now, yonetim: false }));
-	assert.equal(returnDateProblem(now + 45 * DAY, { now, yonetim: true }), null);
-	assert.ok(returnDateProblem(now - DAY, { now, yonetim: true }));
-	assert.ok(returnDateProblem(Number.NaN, { now, yonetim: true }));
+	assert.equal(returnDateProblem(now + 14 * DAY, { now, management: false }), null);
+	assert.ok(returnDateProblem(now + 45 * DAY, { now, management: false }));
+	assert.equal(returnDateProblem(now + 45 * DAY, { now, management: true }), null);
+	assert.ok(returnDateProblem(now - DAY, { now, management: true }));
+	assert.ok(returnDateProblem(Number.NaN, { now, management: true }));
 	// extending: counted from when the loan started, not from now
 	const started = now - 20 * DAY;
-	assert.equal(returnDateProblem(now + 9 * DAY, { now, start: started, yonetim: false }), null);
-	assert.ok(returnDateProblem(now + 12 * DAY, { now, baslangic: started, yonetim: false }));
+	assert.equal(returnDateProblem(now + 9 * DAY, { now, start: started, management: false }), null);
+	assert.ok(returnDateProblem(now + 12 * DAY, { now, start: started, management: false }));
 	const end = new Date(endOfDay(now));
 	assert.deepEqual([end.getHours(), end.getMinutes(), end.getDate()], [23, 59, 6]);
 });
@@ -725,47 +725,47 @@ check('core text helpers', () => {
 });
 
 check('permissions: levels, defaults, escalation, validation', () => {
-	const uye = { news: 'use', events: 'use' };
-	assert.equal(canUse(uye, 'news'), true);
-	assert.equal(canManage(uye, 'news'), false);
-	assert.equal(canUse(uye, 'budget'), false);
+	const member = { news: 'use', events: 'use' };
+	assert.equal(canUse(member, 'news'), true);
+	assert.equal(canManage(member, 'news'), false);
+	assert.equal(canUse(member, 'budget'), false);
 	assert.equal(canUse(null, 'budget'), false);
 	assert.equal(canUse({}, 'settings'), true); // personal settings for everyone
 	assert.equal(canManage({}, 'settings'), false);
-	assert.equal(seviyeOf(uye, 'nonexistent'), 'none');
+	assert.equal(levelOf(member, 'nonexistent'), 'none');
 	for (const a of PERMISSION_APPS) {
 		assert.equal(canManage(ALL_PERMISSIONS, a), true, a);
 		assert.ok(PERMISSION_DESCRIPTIONS[a]?.kullan && PERMISSION_DESCRIPTIONS[a]?.yonet, `description for ${a}`);
 	}
-	assert.deepEqual(extraPermissions({ news: 'manage', events: 'use' }, uye), ['news']);
-	assert.deepEqual(extraPermissions(uye, ALL_PERMISSIONS), []);
+	assert.deepEqual(extraPermissions({ news: 'manage', events: 'use' }, member), ['news']);
+	assert.deepEqual(extraPermissions(member, ALL_PERMISSIONS), []);
 	assert.deepEqual(extraPermissions({ settings: 'use' }, {}), []); // implicit level is not an escalation
-	assert.equal(hasManagementPermission(uye), false);
+	assert.equal(hasManagementPermission(member), false);
 	assert.equal(hasManagementPermission({ notes: 'manage' }), false);
 	assert.equal(hasManagementPermission({ events: 'manage' }), true);
 	assert.deepEqual(normalizePermissions({ news: 'use', budget: 'none' }).value, { news: 'use' });
 	assert.ok(normalizePermissions({ hack: 'manage' }).error);
 	assert.ok(normalizePermissions({ news: 'admin' }).error);
 	assert.ok(normalizePermissions([]).error);
-	assert.equal(roleProblem({ ad: 'Yönetim Kurulu', renk: '#ff9f0a' }), null);
-	assert.ok(roleProblem({ ad: 'Y', renk: '#ff9f0a' }));
-	assert.ok(roleProblem({ ad: 'Yönetim', renk: 'red' }));
+	assert.equal(roleProblem({ name: 'Yönetim Kurulu', color: '#ff9f0a' }), null);
+	assert.ok(roleProblem({ name: 'Y', color: '#ff9f0a' }));
+	assert.ok(roleProblem({ name: 'Yönetim', color: 'red' }));
 });
 
 check('permissions: who may hand out which role', () => {
-	const admin = { admin: true, permissions: ALL_PERMISSIONS, izinler: ALL_PERMISSIONS };
-	const kurul = { admin: false, permissions: { ...ALL_PERMISSIONS }, izinler: { ...ALL_PERMISSIONS } };
-	const sekreter = { admin: false, permissions: { members: 'manage', news: 'use' }, izinler: { members: 'manage', news: 'use' } };
-	const haberci = { id: 'rol_h', permissions: { news: 'use' }, izinler: { news: 'use' } };
+	const admin = { admin: true, permissions: ALL_PERMISSIONS,};
+	const board = { admin: false, permissions: { ...ALL_PERMISSIONS },};
+	const secretary = { admin: false, permissions: { members: 'manage', news: 'use' },};
+	const haberci = { id: 'rol_h', permissions: { news: 'use' },};
 	// The admin role: only an admin, even for someone holding every permission.
 	assert.equal(canAssignRole({ id: ADMIN_ROLE_ID, permissions: ALL_PERMISSIONS }, admin), true);
-	assert.equal(canAssignRole({ id: ADMIN_ROLE_ID, permissions: ALL_PERMISSIONS }, kurul), false);
+	assert.equal(canAssignRole({ id: ADMIN_ROLE_ID, permissions: ALL_PERMISSIONS }, board), false);
 	// Equal or weaker: yes. Stronger in any app: no.
-	assert.equal(canAssignRole(haberci, sekreter), true);
-	assert.equal(canAssignRole({ id: 'rol_k', permissions: ALL_PERMISSIONS }, kurul), true);
-	assert.equal(canAssignRole({ id: 'rol_x', permissions: { news: 'manage' } }, sekreter), false);
-	assert.equal(canAssignRole({ id: 'rol_y', permissions: { budget: 'use' } }, sekreter), false);
-	assert.equal(canAssignRole({ id: 'rol_bos', permissions: {} }, sekreter), true);
+	assert.equal(canAssignRole(haberci, secretary), true);
+	assert.equal(canAssignRole({ id: 'rol_k', permissions: ALL_PERMISSIONS }, board), true);
+	assert.equal(canAssignRole({ id: 'rol_x', permissions: { news: 'manage' } }, secretary), false);
+	assert.equal(canAssignRole({ id: 'rol_y', permissions: { budget: 'use' } }, secretary), false);
+	assert.equal(canAssignRole({ id: 'rol_bos', permissions: {} }, secretary), true);
 });
 
 check('apps: manifests are consistent', () => {
@@ -800,15 +800,15 @@ check('apps: manifests are consistent', () => {
 });
 
 check('posta: previews, skipped-recipient wording, folders and actions', () => {
-	assert.equal(onizlemeSatiri('  Merhaba\n\n dünya  '), 'Merhaba dünya');
-	assert.equal(onizlemeSatiri('x'.repeat(200), 10), `${'x'.repeat(9)}…`);
-	assert.match(skippedReason({ id: '1', ad: 'Ayşe Yılmaz', neden: 'role' }), /roleü Posta'yı açmıyor/);
-	assert.match(skippedReason({ id: '1', ad: 'Ayşe Yılmaz', neden: 'pasif' }), /aktif üye değil/);
+	assert.equal(previewRow('  Merhaba\n\n dünya  '), 'Merhaba dünya');
+	assert.equal(previewRow('x'.repeat(200), 10), `${'x'.repeat(9)}…`);
+	assert.match(skippedReason({ id: '1', name: 'Ayşe Yılmaz', reason: 'role' }), /roleü Posta'yı açmıyor/);
+	assert.match(skippedReason({ id: '1', name: 'Ayşe Yılmaz', reason: 'pasif' }), /aktif üye değil/);
 	assert.deepEqual([...MAIL_FOLDERS], ['gelen', 'gonderilen', 'arsiv', 'cop']);
 	assert.equal(new Set(MAIL_ACTIONS).size, MAIL_ACTIONS.length);
 	// Mail opens with `kullan`, and the message kind needs just `kullan`.
 	assert.equal(NOTIFICATION_KINDS.message.appId, 'chat');
-	assert.equal(NOTIFICATION_KINDS.message.seviye, 'kullan');
+	assert.equal(NOTIFICATION_KINDS.message.level, 'kullan');
 });
 
 check('notifications: every kind belongs to a permission app', () => {
@@ -816,81 +816,81 @@ check('notifications: every kind belongs to a permission app', () => {
 	assert.deepEqual(Object.keys(NOTIFICATION_KINDS).sort(), [...kinds].sort());
 	for (const [kind, rule] of Object.entries(NOTIFICATION_KINDS)) {
 		assert.ok(PERMISSION_APPS.includes(rule.appId), `${kind} → ${rule.appId}`);
-		assert.ok(rule.seviye === 'kullan' || rule.seviye === 'yonet', kind);
+		assert.ok(rule.level === 'kullan' || rule.level === 'yonet', kind);
 	}
 	// Only-news role: news and always-open chat messages pass; the admin's permissions pass every kind.
-	const only = Object.entries(NOTIFICATION_KINDS).filter(([, r]) => (r.seviye === 'yonet' ? canManage : canUse)({ news: 'kullan' }, r.appId)).map(([k]) => k);
+	const only = Object.entries(NOTIFICATION_KINDS).filter(([, r]) => (r.level === 'yonet' ? canManage : canUse)({ news: 'kullan' }, r.appId)).map(([k]) => k);
 	assert.deepEqual(only.sort(), ['message', 'news']);
 	assert.equal(Object.values(NOTIFICATION_KINDS).every((r) => canManage(ALL_PERMISSIONS, r.appId)), true);
 });
 
 /* ---------------- audit log ---------------- */
 
-const ASLA = /pass|parola|password|hash|totp|secret|token|recovery|kurtarma|cookie|oturum/i;
+const NEVER = /pass|parola|password|hash|totp|secret|token|recovery|kurtarma|cookie|oturum/i;
 
 check('audit: credential-looking keys never survive temizle / recordFields', () => {
-	const kirli = {
-		ad: 'Ayşe',
+	const dirty = {
+		name: 'Ayşe',
 		passwordHash: '$2b$10$abc',
-		nested: { totpSecret: 'JBSWY3DP', aktifOturumToken: 'tok', recoveryCodes: ['a'], iyi: 1 },
+		nested: { totpSecret: 'JBSWY3DP', activeSessionToken: 'tok', recoveryCodes: ['a'], good: 1 },
 		smtp_pass: 'cipher',
-		liste: [{ password: 'x', ok: true }],
+		list: [{ password: 'x', ok: true }],
 	};
-	const out = temizle(kirli);
-	assert.deepEqual(out, { ad: 'Ayşe', nested: { iyi: 1 }, liste: [{ ok: true }] });
-	assert.equal(ASLA.test(JSON.stringify(out)), false);
+	const out = clear(dirty);
+	assert.deepEqual(out, { name: 'Ayşe', nested: { good: 1 }, list: [{ ok: true }] });
+	assert.equal(NEVER.test(JSON.stringify(out)), false);
 	assert.equal(recordFields(null), null);
 	assert.deepEqual(recordFields({ token: 'x', a: 1 }), { a: 1 });
 	// Bounded: very long text is cut, undefined/NaN do not break JSON.
-	assert.equal(temizle('x'.repeat(1000)).length, 301);
-	assert.equal(temizle(NaN), null);
+	assert.equal(clear('x'.repeat(1000)).length, 301);
+	assert.equal(clear(NaN), null);
 });
 
 check('audit: roleSummary keeps a white-list and drops "yok" rows; roleDiff lists only changes', () => {
-	const ham = { ad: 'Kurul', renk: '#fff', aciklama: null, ikiAdimZorunlu: 1, izinler: { budget: 'yok', news: 'kullan', events: 'yonet' }, passwordHash: 'x', id: 'rol_1' };
+	const ham = { name: 'Kurul', color: '#fff', description: null, twoStepRequired: 1, permissions: { budget: 'yok', news: 'kullan', events: 'yonet' }, passwordHash: 'x', id: 'rol_1' };
 	const o = roleSummary(ham);
-	assert.deepEqual(Object.keys(o).sort(), ['aciklama', 'ad', 'ikiAdimZorunlu', 'izinler', 'renk']);
-	assert.deepEqual(o.izinler, { events: 'yonet', news: 'kullan' });
-	assert.equal(o.ikiAdimZorunlu, true);
+	assert.deepEqual(Object.keys(o).sort(), ['color', 'description', 'name', 'permissions', 'twoStepRequired']);
+	assert.deepEqual(o.permissions, { events: 'yonet', news: 'kullan' });
+	assert.equal(o.twoStepRequired, true);
 	assert.equal(roleDiff(o, roleSummary(ham)), null);
-	const yeni = roleSummary({ ...ham, ad: 'Yönetim', izinler: { budget: 'yonet', news: 'kullan' } });
-	assert.deepEqual(roleDiff(o, yeni), {
-		before: { ad: 'Kurul', izinler: { budget: 'yok', events: 'yonet' } },
-		after: { ad: 'Yönetim', izinler: { budget: 'yonet', events: 'yok' } },
+	const fresh = roleSummary({ ...ham, name: 'Yönetim', permissions: { budget: 'yonet', news: 'kullan' } });
+	assert.deepEqual(roleDiff(o, fresh), {
+		before: { name: 'Kurul', permissions: { budget: 'yok', events: 'yonet' } },
+		after: { name: 'Yönetim', permissions: { budget: 'yonet', events: 'yok' } },
 	});
 });
 
 check('audit: memberSummary is name + e-mail (+ status/role), never anything else', () => {
-	const u = memberSummary({ ad: 'Ali', soyad: 'Veli', email: 'a@v.test', passwordHash: 'h', totpSecret: 's', aktifOturumToken: 't', status: 'aktif' });
-	assert.deepEqual(u, { ad: 'Ali Veli', email: 'a@v.test', status: 'aktif' });
-	assert.equal(memberTargetName({ ad: 'Ali', soyad: 'Veli', email: 'a@v.test' }), 'Ali Veli (a@v.test)');
+	const u = memberSummary({ name: 'Ali', surname: 'Veli', email: 'a@v.test', passwordHash: 'h', totpSecret: 's', activeSessionToken: 't', status: 'aktif' });
+	assert.deepEqual(u, { name: 'Ali Veli', email: 'a@v.test', status: 'aktif' });
+	assert.equal(memberTargetName({ name: 'Ali', surname: 'Veli', email: 'a@v.test' }), 'Ali Veli (a@v.test)');
 });
 
 check('audit: alanFarki / diffRows', () => {
-	assert.equal(alanFarki({ a: 1, b: 2 }, { a: 1, b: 2 }), null);
-	assert.deepEqual(alanFarki({ status: 'beklemede', roleId: null }, { status: 'aktif', roleId: 'rol_uye' }), {
+	assert.equal(fieldDiff({ a: 1, b: 2 }, { a: 1, b: 2 }), null);
+	assert.deepEqual(fieldDiff({ status: 'beklemede', roleId: null }, { status: 'aktif', roleId: 'rol_uye' }), {
 		before: { status: 'beklemede', roleId: null },
 		after: { status: 'aktif', roleId: 'rol_uye' },
 	});
-	const satirlar = diffRows({ ad: 'A', izinler: { budget: 'yok' } }, { ad: 'B', izinler: { budget: 'yonet' } });
-	assert.deepEqual(satirlar, [
-		{ alan: 'ad', before: 'A', after: 'B' },
-		{ alan: 'izinler.budget', before: 'yok', after: 'yonet' },
+	const rows = diffRows({ name: 'A', permissions: { budget: 'yok' } }, { name: 'B', permissions: { budget: 'yonet' } });
+	assert.deepEqual(rows, [
+		{ field: 'name', before: 'A', after: 'B' },
+		{ field: 'permissions.budget', before: 'yok', after: 'yonet' },
 	]);
-	assert.deepEqual(diffRows(null, { a: true }), [{ alan: 'a', before: null, after: true }]);
+	assert.deepEqual(diffRows(null, { a: true }), [{ field: 'a', before: null, after: true }]);
 });
 
 check('audit: smtpFarki never carries the password, only that it changed', () => {
-	const varsayilan = { smtp_host: 'smtp.gmail.com', smtp_port: '465', smtp_secure: 'true', smtp_user: '', smtp_from: 'K <k@x.test>' };
-	const yeni = { smtp_host: 'smtp.gmail.com', smtp_port: '465', smtp_secure: 'true', smtp_user: 'kulup@x.test', smtp_from: 'K <k@x.test>', smtp_pass: 'enc:v1:GIZLI-SIFRELI-DEGER' };
-	const f = smtpFarki({}, yeni, varsayilan);
-	assert.deepEqual(f, { before: { smtp_user: '', uygulamaAnahtari: 'yok' }, after: { smtp_user: 'kulup@x.test', uygulamaAnahtari: 'degisti' } });
+	const defaultValue = { smtp_host: 'smtp.gmail.com', smtp_port: '465', smtp_secure: 'true', smtp_user: '', smtp_from: 'K <k@x.test>' };
+	const fresh = { smtp_host: 'smtp.gmail.com', smtp_port: '465', smtp_secure: 'true', smtp_user: 'kulup@x.test', smtp_from: 'K <k@x.test>', smtp_pass: 'enc:v1:GIZLI-SIFRELI-DEGER' };
+	const f = smtpDiff({}, fresh, defaultValue);
+	assert.deepEqual(f, { before: { smtp_user: '', appKey: 'yok' }, after: { smtp_user: 'kulup@x.test', appKey: 'degisti' } });
 	assert.equal(JSON.stringify(f).includes('GIZLI'), false);
 	// Same values again: nothing to record. Clearing a password that was never set: nothing either.
-	assert.equal(smtpFarki({ smtp_user: 'kulup@x.test' }, { smtp_user: 'kulup@x.test', smtp_pass: '' }, varsayilan), null);
-	assert.deepEqual(smtpFarki({ smtp_pass: 'enc' }, { smtp_pass: '' }, varsayilan), { before: { uygulamaAnahtari: 'var' }, after: { uygulamaAnahtari: 'silindi' } });
+	assert.equal(smtpDiff({ smtp_user: 'kulup@x.test' }, { smtp_user: 'kulup@x.test', smtp_pass: '' }, defaultValue), null);
+	assert.deepEqual(smtpDiff({ smtp_pass: 'enc' }, { smtp_pass: '' }, defaultValue), { before: { appKey: 'var' }, after: { appKey: 'silindi' } });
 	// Port change reads against the stored value, falling back to the default.
-	assert.deepEqual(smtpFarki({}, { smtp_port: '587' }, varsayilan), { before: { smtp_port: '465' }, after: { smtp_port: '587' } });
+	assert.deepEqual(smtpDiff({}, { smtp_port: '587' }, defaultValue), { before: { smtp_port: '465' }, after: { smtp_port: '587' } });
 });
 
 /* ---------------- SMTP connection test ---------------- */
@@ -901,11 +901,11 @@ check('smtp test: private hosts are recognised, public ones are not', () => {
 });
 
 check('audit: smtpFarki ignores keys it no longer tracks (old imap_* rows), still never the password', () => {
-	const varsayilan = { smtp_host: '', smtp_port: '465', smtp_secure: 'true', smtp_user: '', smtp_from: '' };
-	const f = smtpFarki({}, { ...varsayilan, imap_host: 'imap.eski.test', smtp_pass: 'enc:v1:GIZLI' }, varsayilan);
-	assert.deepEqual(f, { before: { uygulamaAnahtari: 'yok' }, after: { uygulamaAnahtari: 'degisti' } });
+	const defaultValue = { smtp_host: '', smtp_port: '465', smtp_secure: 'true', smtp_user: '', smtp_from: '' };
+	const f = smtpDiff({}, { ...defaultValue, imap_host: 'imap.eski.test', smtp_pass: 'enc:v1:GIZLI' }, defaultValue);
+	assert.deepEqual(f, { before: { appKey: 'yok' }, after: { appKey: 'degisti' } });
 	assert.equal(JSON.stringify(f).includes('GIZLI'), false);
-	assert.equal(smtpFarki({ imap_host: 'a' }, { imap_host: 'b', imap_secure: 'false' }, varsayilan), null);
+	assert.equal(smtpDiff({ imap_host: 'a' }, { imap_host: 'b', imap_secure: 'false' }, defaultValue), null);
 });
 
 check('audit: statusAction names the status change', () => {
@@ -929,10 +929,10 @@ check('audit: parseAuditFilter bounds the query, temizIp the address, retentionD
 	assert.equal(f.pageSize, 200);
 	assert.equal(parseAuditFilter(new URLSearchParams('action=DROP')).action, '');
 	assert.equal(parseAuditFilter(new URLSearchParams('')).pageSize, 50);
-	assert.equal(temizIp('203.0.113.7'), '203.0.113.7');
-	assert.equal(temizIp('1.2.3.4\r\nX-Evil: 1'), '1.2.3.4X-Evil:1');
-	assert.equal(temizIp('a'.repeat(500)).length, 64);
-	assert.equal(temizIp(''), 'unknown');
+	assert.equal(cleanIp('203.0.113.7'), '203.0.113.7');
+	assert.equal(cleanIp('1.2.3.4\r\nX-Evil: 1'), '1.2.3.4X-Evil:1');
+	assert.equal(cleanIp('a'.repeat(500)).length, 64);
+	assert.equal(cleanIp(''), 'unknown');
 	assert.equal(retentionDays(undefined), AUDIT_RETENTION_DAYS);
 	assert.equal(AUDIT_RETENTION_DAYS, 730);
 	assert.equal(retentionDays('365'), 365);
@@ -941,14 +941,14 @@ check('audit: parseAuditFilter bounds the query, temizIp the address, retentionD
 });
 
 check('audit: CSV rows are flat, formula-safe through toCsv, one column per header', () => {
-	const registration = { id: '1', timestamp: Date.UTC(2026, 0, 2, 3, 4, 5), actorId: 'u1', actorName: '=cmd|x', action: 'role.delete', targetType: 'role', targetId: 'rol_1', targetName: 'Üye; "Kurul"', before: { ad: 'A' }, after: null, ip: '10.0.0.1' };
-	const satirlar = auditCsvRows([registration]);
-	assert.equal(satirlar.length, 1);
-	assert.equal(satirlar[0].length, AUDIT_CSV_HEADERS.length);
-	assert.equal(satirlar[0][0], '2026-01-02T03:04:05.000Z');
-	assert.equal(satirlar[0][7], '{"ad":"A"}');
-	assert.equal(satirlar[0][8], '');
-	const csv = toCsv(AUDIT_CSV_HEADERS, satirlar);
+	const registration = { id: '1', timestamp: Date.UTC(2026, 0, 2, 3, 4, 5), actorId: 'u1', actorName: '=cmd|x', action: 'role.delete', targetType: 'role', targetId: 'rol_1', targetName: 'Üye; "Kurul"', before: { name: 'A' }, after: null, ip: '10.0.0.1' };
+	const rows = auditCsvRows([registration]);
+	assert.equal(rows.length, 1);
+	assert.equal(rows[0].length, AUDIT_CSV_HEADERS.length);
+	assert.equal(rows[0][0], '2026-01-02T03:04:05.000Z');
+	assert.equal(rows[0][7], '{"name":"A"}');
+	assert.equal(rows[0][8], '');
+	const csv = toCsv(AUDIT_CSV_HEADERS, rows);
 	assert.ok(csv.includes("'=cmd|x"), 'formula neutralised');
 	assert.ok(csv.includes('"Üye; ""Kurul"""'));
 });
@@ -962,7 +962,7 @@ check('formatAuditAction: humanizes action strings when untranslated', () => {
 
 check('settings: one section per tab, system pages flagged', () => {
 	assert.deepEqual(SETTINGS_SECTIONS.map((s) => s.id).sort(), [...SETTINGS_TAB_IDS].sort());
-	assert.deepEqual(SETTINGS_SECTIONS.filter((s) => s.sistem).map((s) => s.id).sort(), ['community', 'forms', 'integrations', 'legal', 'membership', 'privacy', 'roles', 'smtp', 'teams']);
+	assert.deepEqual(SETTINGS_SECTIONS.filter((s) => s.system).map((s) => s.id).sort(), ['community', 'forms', 'integrations', 'legal', 'membership', 'privacy', 'roles', 'smtp', 'teams']);
 	for (const s of SETTINGS_SECTIONS) assert.ok(s.labelKey && s.group, s.id);
 });
 
@@ -994,27 +994,27 @@ check('membership policy: defaults, clamps and e-mail domains', () => {
 });
 
 check('kurulum: production never carries the reason, development does', () => {
-	const eksik = { hazir: false, sebep: 'BOOTSTRAP_ADMIN_EMAIL ve BOOTSTRAP_ADMIN_PASSWORD tanımlı değil.' };
-	assert.deepEqual(setupResponse({ hazir: true }, 'production'), { hazir: true });
-	assert.deepEqual(setupResponse(eksik, 'production'), { hazir: false, mesaj: SETUP_GENERAL_MESSAGE });
-	assert.equal(JSON.stringify(setupResponse(eksik, 'production')).includes('BOOTSTRAP'), false);
-	assert.equal(setupResponse(eksik, 'development').sebep, eksik.sebep);
-	assert.equal(setupResponse(eksik, undefined).sebep, eksik.sebep);
-	assert.equal(setupResponse({ hazir: true, sebep: 'x' }, 'development').sebep, undefined);
+	const missing = { ready: false, reason: 'BOOTSTRAP_ADMIN_EMAIL ve BOOTSTRAP_ADMIN_PASSWORD tanımlı değil.' };
+	assert.deepEqual(setupResponse({ ready: true }, 'production'), { ready: true });
+	assert.deepEqual(setupResponse(missing, 'production'), { ready: false, message: SETUP_GENERAL_MESSAGE });
+	assert.equal(JSON.stringify(setupResponse(missing, 'production')).includes('BOOTSTRAP'), false);
+	assert.equal(setupResponse(missing, 'development').reason, missing.reason);
+	assert.equal(setupResponse(missing, undefined).reason, missing.reason);
+	assert.equal(setupResponse({ ready: true, reason: 'x' }, 'development').reason, undefined);
 });
 
 checkAsync('kurulum: lookups are shared for the cache window', async () => {
 	let calls = 0;
 	let clock = 1000;
-	const get = createSetupCache(async () => ({ hazir: ++calls > 1 }), 5000, () => clock);
+	const get = createSetupCache(async () => ({ ready: ++calls > 1 }), 5000, () => clock);
 	const [a, b] = await Promise.all([get(), get()]);
 	assert.equal(calls, 1);
-	assert.deepEqual([a.hazir, b.hazir], [false, false]);
+	assert.deepEqual([a.ready, b.ready], [false, false]);
 	clock += 4999;
 	await get();
 	assert.equal(calls, 1);
 	clock += 1;
-	assert.equal((await get()).hazir, true);
+	assert.equal((await get()).ready, true);
 	assert.equal(calls, 2);
 });
 
@@ -1395,12 +1395,12 @@ check('waf: inspectDatabaseSql and maskDatabaseRow enforce Zero-Trust Database S
 		}
 	);
 	assert.deepEqual(
-		maskDatabaseRow({ anahtar: 'smtp_pass', deger: 'unencrypted-secret-value' }),
-		{ anahtar: 'smtp_pass', deger: '••••••••' }
+		maskDatabaseRow({ key: 'smtp_pass', value: 'unencrypted-secret-value' }),
+		{ key: 'smtp_pass', value: '••••••••' }
 	);
 	assert.deepEqual(
-		maskDatabaseRow({ anahtar: 'site_baslik', deger: 'BEÜ Teknoloji' }),
-		{ anahtar: 'site_baslik', deger: 'BEÜ Teknoloji' }
+		maskDatabaseRow({ key: 'site_baslik', value: 'BEÜ Teknoloji' }),
+		{ key: 'site_baslik', value: 'BEÜ Teknoloji' }
 	);
 });
 
@@ -1587,7 +1587,7 @@ check('registration core fields: defaults, visibility, labels and options', () =
 
 
 check('media viewer: browser preview kinds and download fallback', () => {
-	const item = (ad, tip) => ({ ad, url: `/api/uploads/${ad}`, tip });
+	const item = (name, tip) => ({ name, url: `/api/uploads/${name}`, tip });
 	assert.equal(mediaPreviewKind(item('photo.png', 'image/png')), 'image');
 	assert.equal(mediaPreviewKind(item('scan.pdf', 'application/pdf')), 'pdf');
 	assert.equal(mediaPreviewKind(item('notes.md', 'text/markdown')), 'text');

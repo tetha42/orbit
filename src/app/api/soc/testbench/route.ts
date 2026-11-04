@@ -7,7 +7,7 @@ import { getRolePermission } from '@/db/roles';
 import { getOAuthClientById, getOAuthClients } from '@/db/oauth';
 import { readSmtpConfig } from '@/lib/mail/smtpSettings';
 import { signOAuthJwt, verifyOAuthJwt, type JwtPayload } from '@/lib/auth/jwt';
-import { PERMISSION_APPS, seviyeOf } from '@/core/permissions';
+import { PERMISSION_APPS, levelOf } from '@/core/permissions';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,9 +40,9 @@ export async function GET(request: Request) {
 			const start = performance.now();
 			const res = await pool.query(`
 				SELECT 
-					(SELECT count(*) FROM users) as users,
-					(SELECT count(*) FROM roles) as roles,
-					(SELECT count(*) FROM oauth_clients) as clients
+					(SELECT count(*) FROM users) AS users,
+					(SELECT count(*) FROM roles) AS roles,
+					(SELECT count(*) FROM oauth_clients) AS clients
 			`);
 			dbLatency = Math.round((performance.now() - start) * 10) / 10;
 			dbConnected = true;
@@ -115,22 +115,21 @@ export async function GET(request: Request) {
 		const user = auth.user;
 		const perms: Record<string, string> = {};
 		for (const app of PERMISSION_APPS) {
-			perms[app] = seviyeOf(user.permission.izinler, app);
+			perms[app] = levelOf(user.permission.permissions, app);
 		}
 
 		return NextResponse.json(
 			{
 				user: {
 					id: user.id,
-					firstName: user.firstName || user.ad,
-					lastName: user.lastName || user.soyad,
-					ad: user.firstName || user.ad,
-					soyad: user.lastName || user.soyad,
+					firstName: user.firstName || user.name,
+					lastName: user.lastName || user.surname,
+					name: user.firstName || user.name,
+					surname: user.lastName || user.surname,
 					email: user.email,
-					handle: user.handle || user.ogrenciNo,
-					ogrenciNo: user.handle || user.ogrenciNo,
-					roleName: user.permission.role?.name ?? user.permission.role?.ad ?? 'No Role',
-					rolAd: user.permission.role?.name ?? user.permission.role?.ad ?? 'Role Yok',
+					handle: user.handle || user.studentNo,
+					studentNo: user.handle || user.studentNo,
+					roleName: user.permission.role?.name ?? user.permission.role?.name ?? 'No Role',
 					admin: user.permission.admin,
 					totpEnabled: Number(user.totpEnabled) === 1,
 					status: user.status,
@@ -148,10 +147,10 @@ export async function GET(request: Request) {
 			return NextResponse.json(
 				clients.map((c) => ({
 					id: c.id,
-					ad: c.ad,
+					name: c.name,
 					redirectUris: c.redirectUris,
 					allowedScopes: c.allowedScopes,
-					guvenilir: c.guvenilir,
+					trusted: c.trusted,
 				})),
 				{ headers: NO_CACHE }
 			);
@@ -218,7 +217,7 @@ async function handlePOST(request: Request) {
 			exp: now + 3600,
 			iat: now,
 			scope: requestedScopes,
-			roles: permission.role ? [permission.role.ad] : [],
+			roles: permission.role ? [permission.role.name] : [],
 			admin: Boolean(permission.admin),
 		};
 		const accessToken = await signOAuthJwt(accessTokenPayload);
@@ -234,8 +233,8 @@ async function handlePOST(request: Request) {
 		};
 
 		if (scopesList.includes('profile')) {
-			const first = user.firstName || user.ad || '';
-			const last = user.lastName || user.soyad || '';
+			const first = user.firstName || user.name || '';
+			const last = user.lastName || user.surname || '';
 			idTokenPayload.name = `${first} ${last}`.trim();
 			idTokenPayload.given_name = first;
 			idTokenPayload.family_name = last;
@@ -245,13 +244,13 @@ async function handlePOST(request: Request) {
 			idTokenPayload.email_verified = true;
 		}
 		if (scopesList.includes('roles')) {
-			idTokenPayload.roles = permission.role ? [permission.role.name || permission.role.ad] : [];
+			idTokenPayload.roles = permission.role ? [permission.role.name || permission.role.name] : [];
 			idTokenPayload.admin = Boolean(permission.admin);
 		}
 		if (scopesList.includes('academic')) {
-			idTokenPayload.student_no = user.handle || user.ogrenciNo;
-			idTokenPayload.department = user.department || user.bolum;
-			idTokenPayload.class_year = user.grade || user.sinif;
+			idTokenPayload.student_no = user.handle || user.studentNo;
+			idTokenPayload.department = user.department || user.department;
+			idTokenPayload.class_year = user.grade || user.grade;
 		}
 
 		const idToken = await signOAuthJwt(idTokenPayload as unknown as JwtPayload);
@@ -261,12 +260,12 @@ async function handlePOST(request: Request) {
 			sub: user.id,
 		};
 		if (scopesList.includes('profile')) {
-			const first = user.firstName || user.ad || '';
-			const last = user.lastName || user.soyad || '';
+			const first = user.firstName || user.name || '';
+			const last = user.lastName || user.surname || '';
 			userInfoPayload.name = `${first} ${last}`.trim();
 			userInfoPayload.given_name = first;
 			userInfoPayload.family_name = last;
-			userInfoPayload.picture = user.avatarUrl || user.profilFoto || null;
+			userInfoPayload.picture = user.avatarUrl || user.profilePhoto || null;
 			userInfoPayload.bio = user.bio || '';
 		}
 		if (scopesList.includes('email')) {
@@ -274,13 +273,13 @@ async function handlePOST(request: Request) {
 			userInfoPayload.email_verified = true;
 		}
 		if (scopesList.includes('roles')) {
-			userInfoPayload.roles = permission.role ? [permission.role.ad] : [];
+			userInfoPayload.roles = permission.role ? [permission.role.name] : [];
 			userInfoPayload.admin = Boolean(permission.admin);
 		}
 		if (scopesList.includes('academic')) {
-			userInfoPayload.student_no = user.ogrenciNo;
-			userInfoPayload.department = user.bolum;
-			userInfoPayload.class_year = user.sinif;
+			userInfoPayload.student_no = user.studentNo;
+			userInfoPayload.department = user.department;
+			userInfoPayload.class_year = user.grade;
 		}
 
 		const latencyMs = Math.round((performance.now() - start) * 10) / 10;

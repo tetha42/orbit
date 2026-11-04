@@ -15,10 +15,10 @@ const NEWS_COLUMNS = `
 function mapNews(r: Record<string, unknown>): NewsItem {
 	return {
 		...(r as unknown as NewsItem),
-		onemliMi: Number(r.onemliMi),
-		olusturma: Number(r.olusturma),
-		guncellenme: Number(r.guncellenme),
-		yayinTarihi: r.yayinTarihi === null || r.yayinTarihi === undefined ? null : Number(r.yayinTarihi),
+		importantMi: Number(r.importantMi),
+		creation: Number(r.creation),
+		update: Number(r.update),
+		publishDate: r.publishDate === null || r.publishDate === undefined ? null : Number(r.publishDate),
 	};
 }
 
@@ -30,7 +30,7 @@ export async function getNews(audience: 'yonetim' | 'uye' = 'yonetim'): Promise<
 	await ensurePostgresInit();
 	const res = await getPgPool().query(`
 		SELECT ${NEWS_COLUMNS},
-		       k.first_name || ' ' || k.last_name as "yazarAdSoyad"
+		       k.first_name || ' ' || k.last_name as "authorNameSurname"
 		FROM news h
 		LEFT JOIN users k ON h.author_id = k.id
 		${audience === 'yonetim' ? '' : "WHERE h.publish_status <> 'taslak'"}
@@ -44,7 +44,7 @@ export async function getNewsById(id: string): Promise<NewsItem | null> {
 	const res = await getPgPool().query(
 		`
 		SELECT ${NEWS_COLUMNS},
-		       k.first_name || ' ' || k.last_name as "yazarAdSoyad"
+		       k.first_name || ' ' || k.last_name as "authorNameSurname"
 		FROM news h
 		LEFT JOIN users k ON h.author_id = k.id
 		WHERE h.id = $1
@@ -55,9 +55,9 @@ export async function getNewsById(id: string): Promise<NewsItem | null> {
 }
 
 /** Slug for an article: its title, made unique. `exceptId` lets an article keep its own slug. */
-async function newsSlug(client: Pool | PoolClient, baslik: string, exceptId?: string): Promise<string> {
+async function newsSlug(client: Pool | PoolClient, title: string, exceptId?: string): Promise<string> {
 	return uniqueSlug(
-		slugify(baslik),
+		slugify(title),
 		async (candidate) =>
 			((await client.query('SELECT 1 FROM news WHERE slug = $1 AND id <> $2', [candidate, exceptId ?? ''])).rowCount ?? 0) > 0,
 		'haber'
@@ -65,14 +65,14 @@ async function newsSlug(client: Pool | PoolClient, baslik: string, exceptId?: st
 }
 
 export async function createNews(params: {
-	baslik: string;
-	ozet: string;
-	icerik: string;
-	kategori?: string;
-	onemliMi?: boolean | number;
-	resimUrl?: string;
+	title: string;
+	summary: string;
+	content: string;
+	category?: string;
+	importantMi?: boolean | number;
+	imageUrl?: string;
 	publishStatus?: NewsVisibility;
-	yazarId: string;
+	authorId: string;
 }): Promise<NewsItem> {
 	await ensurePostgresInit();
 	const p = getPgPool();
@@ -81,7 +81,7 @@ export async function createNews(params: {
 	const publishStatus: NewsVisibility = params.publishStatus ?? 'yayinda';
 
 	for (let attempt = 0; ; attempt += 1) {
-		const slug = await newsSlug(p, params.baslik.trim());
+		const slug = await newsSlug(p, params.title.trim());
 		try {
 			await p.query(
 				`INSERT INTO news (id, slug, title, summary, content, category, is_pinned, cover_url, publish_status, published_at, author_id, created_at, updated_at)
@@ -89,15 +89,15 @@ export async function createNews(params: {
 				[
 					id,
 					slug,
-					params.baslik.trim(),
-					params.ozet.trim(),
-					params.icerik.trim(),
-					params.kategori || 'genel',
-					params.onemliMi ? 1 : 0,
-					params.resimUrl || null,
+					params.title.trim(),
+					params.summary.trim(),
+					params.content.trim(),
+					params.category || 'genel',
+					params.importantMi ? 1 : 0,
+					params.imageUrl || null,
 					publishStatus,
 					publishStatus === 'taslak' ? null : now,
-					params.yazarId,
+					params.authorId,
 					now,
 				]
 			);
@@ -115,12 +115,12 @@ export async function createNews(params: {
 export async function updateNews(
 	id: string,
 	patch: Partial<{
-		baslik: string;
-		ozet: string;
-		icerik: string;
-		kategori: string;
-		onemliMi: boolean | number;
-		resimUrl: string | null;
+		title: string;
+		summary: string;
+		content: string;
+		category: string;
+		importantMi: boolean | number;
+		imageUrl: string | null;
 		publishStatus: NewsVisibility;
 	}>
 ): Promise<NewsItem | null> {
@@ -132,12 +132,12 @@ export async function updateNews(
 		sets.push(`${column} = $${values.length}`);
 	};
 
-	if (patch.baslik !== undefined) add('title', patch.baslik.trim());
-	if (patch.ozet !== undefined) add('summary', patch.ozet.trim());
-	if (patch.icerik !== undefined) add('content', patch.icerik.trim());
-	if (patch.kategori !== undefined) add('category', patch.kategori);
-	if (patch.onemliMi !== undefined) add('is_pinned', patch.onemliMi ? 1 : 0);
-	if (patch.resimUrl !== undefined) add('cover_url', patch.resimUrl || null);
+	if (patch.title !== undefined) add('title', patch.title.trim());
+	if (patch.summary !== undefined) add('summary', patch.summary.trim());
+	if (patch.content !== undefined) add('content', patch.content.trim());
+	if (patch.category !== undefined) add('category', patch.category);
+	if (patch.importantMi !== undefined) add('is_pinned', patch.importantMi ? 1 : 0);
+	if (patch.imageUrl !== undefined) add('cover_url', patch.imageUrl || null);
 	if (patch.publishStatus !== undefined) {
 		add('publish_status', patch.publishStatus);
 		if (patch.publishStatus !== 'taslak') sets.push('published_at = COALESCE(published_at, $' + (values.length + 1) + ')');
@@ -191,10 +191,10 @@ export async function getPublicNewsBySlug(slug: string): Promise<NewsItem | null
 	return res.rows.length === 0 ? null : mapNews(res.rows[0]);
 }
 
-export async function getPublicNewsCategoryCounts(): Promise<{ kategori: string; sayi: number }[]> {
+export async function getPublicNewsCategoryCounts(): Promise<{ category: string; count: number }[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT category AS kategori, count(*)::int AS sayi FROM news
+		`SELECT category AS category, count(*)::int AS count FROM news
 		 WHERE publish_status = 'yayinda' AND published_at <= $1 GROUP BY category`,
 		[Date.now()]
 	);

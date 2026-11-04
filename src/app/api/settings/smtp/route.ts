@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireApp } from '@/lib/auth/access';
 import { getSystemSettings, setSystemSettings } from '@/db';
 import { auditContext } from '@/db/audit';
-import { smtpFarki } from '@/lib/audit';
+import { smtpDiff } from '@/lib/audit';
 import { isPrivateHost } from '@/lib/mail/hosts';
 import {
 	PASSWORD_MASK,
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
 
 		// The record shows what changed in the account settings; the password only
 		// as "changed" / "removed", never its value (smtpFarki).
-		const varsayilan = {
+		const defaultValue = {
 			[SMTP_KEYS.host]: SMTP_DEFAULTS.host,
 			[SMTP_KEYS.port]: String(SMTP_DEFAULTS.port),
 			[SMTP_KEYS.secure]: String(SMTP_DEFAULTS.secure),
@@ -96,7 +96,7 @@ export async function POST(request: Request) {
 		await setSystemSettings(updates, {
 			ctx: auditContext(request, auth.user),
 			registration: { action: 'setting.smtp', targetType: 'setting', targetId: 'smtp', targetName: 'E-posta hesabı (SMTP)' },
-			fark: (before, yeni) => smtpFarki(before, yeni, varsayilan),
+			diff: (before, fresh) => smtpDiff(before, fresh, defaultValue),
 		});
 
 		// Report the effective state so the panel can warn that mail will not send

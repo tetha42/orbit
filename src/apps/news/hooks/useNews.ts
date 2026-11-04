@@ -41,8 +41,8 @@ export function useNews() {
 	const [newSummary, setNewSummary] = useState('');
 	const [newContent, setNewContent] = useState('');
 	const [newCategory, setNewCategory] = useState('genel');
-	const [newOnemliMi, setNewOnemliMi] = useState(false);
-	const [newResimUrl, setNewResimUrl] = useState('');
+	const [newImportantMi, setNewImportantMi] = useState(false);
+	const [newImageUrl, setNewImageUrl] = useState('');
 	const [newVisibility, setNewVisibility] = useState<NewsVisibility>('yayinda');
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [formError, setFormError] = useState<string | null>(null);
@@ -55,8 +55,8 @@ export function useNews() {
 		setNewSummary('');
 		setNewContent('');
 		setNewCategory('genel');
-		setNewOnemliMi(false);
-		setNewResimUrl('');
+		setNewImportantMi(false);
+		setNewImageUrl('');
 		setNewVisibility('yayinda');
 		setFormError(null);
 		setIsCreateModalOpen(true);
@@ -65,12 +65,12 @@ export function useNews() {
 	const openEditForm = (article: NewsEntry, e?: React.MouseEvent) => {
 		if (e) e.stopPropagation();
 		setEditingId(article.id);
-		setNewTitle(article.baslik);
-		setNewSummary(article.ozet === article.baslik ? '' : article.ozet);
-		setNewContent(article.icerik);
-		setNewCategory(article.kategori);
-		setNewOnemliMi(article.onemliMi === 1);
-		setNewResimUrl(article.resimUrl ?? '');
+		setNewTitle(article.title);
+		setNewSummary(article.summary === article.title ? '' : article.summary);
+		setNewContent(article.content);
+		setNewCategory(article.category);
+		setNewImportantMi(article.importantMi === 1);
+		setNewImageUrl(article.imageUrl ?? '');
 		setNewVisibility(article.publishStatus);
 		setFormError(null);
 		setIsCreateModalOpen(true);
@@ -91,12 +91,12 @@ export function useNews() {
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					...(editingId ? { id: editingId } : {}),
-					baslik: newTitle.trim(),
-					ozet: (newSummary || newTitle).trim(),
-					icerik: newContent.trim(),
-					kategori: newCategory,
-					onemliMi: newOnemliMi,
-					resimUrl: newResimUrl.trim(),
+					title: newTitle.trim(),
+					summary: (newSummary || newTitle).trim(),
+					content: newContent.trim(),
+					category: newCategory,
+					importantMi: newImportantMi,
+					imageUrl: newImageUrl.trim(),
 					publishStatus: newVisibility,
 				}),
 			});
@@ -177,28 +177,28 @@ export function useNews() {
 	};
 
 	const handleShare = (article: NewsEntry) => {
-		const text = `${article.baslik}\n\n${article.ozet}\n\n${t('newsShareClubSuffix')}`;
+		const text = `${article.title}\n\n${article.summary}\n\n${t('newsShareClubSuffix')}`;
 		navigator.clipboard.writeText(text);
 		setCopied(true);
 		setTimeout(() => setCopied(false), 2000);
 	};
 
 	const filteredNews = news.filter((n) => {
-		if (activeCategory !== 'all' && n.kategori !== activeCategory) {
+		if (activeCategory !== 'all' && n.category !== activeCategory) {
 			return false;
 		}
 		if (searchQuery.trim()) {
 			const q = searchQuery.toLowerCase();
 			return (
-				n.baslik.toLowerCase().includes(q) ||
-				n.ozet.toLowerCase().includes(q) ||
-				n.icerik.toLowerCase().includes(q)
+				n.title.toLowerCase().includes(q) ||
+				n.summary.toLowerCase().includes(q) ||
+				n.content.toLowerCase().includes(q)
 			);
 		}
 		return true;
 	});
 
-	const urgentNews = news.find((n) => n.onemliMi === 1 && n.publishStatus !== 'taslak');
+	const urgentNews = news.find((n) => n.importantMi === 1 && n.publishStatus !== 'taslak');
 
 	return {
 		isAdmin,
@@ -222,10 +222,10 @@ export function useNews() {
 		setNewContent,
 		newCategory,
 		setNewCategory,
-		newOnemliMi,
-		setNewOnemliMi,
-		newResimUrl,
-		setNewResimUrl,
+		newImportantMi,
+		setNewImportantMi,
+		newImageUrl,
+		setNewImageUrl,
 		newVisibility,
 		setNewVisibility,
 		editingId,

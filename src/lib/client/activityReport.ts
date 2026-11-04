@@ -17,29 +17,29 @@ interface Member {
 	status: string;
 }
 interface EventRow {
-	baslik: string;
-	baslangic: number;
+	title: string;
+	start: number;
 	status: string;
-	kayitliSayisi: number;
-	katilimciSayisi: number;
+	registeredCount: number;
+	participantCount: number;
 }
 interface Team {
-	ad: string;
+	name: string;
 	status: string;
-	aktifUyeSayisi: number;
-	kontenjan: number;
-	liderAdSoyad: string | null;
-	gorevler: { status: string }[];
+	activeMemberCount: number;
+	capacity: number;
+	leaderNameSurname: string | null;
+	tasks: { status: string }[];
 }
 interface Vault {
-	ad: string;
+	name: string;
 	totalIncomeMinor: number;
 	totalExpenseMinor: number;
 	netBalanceMinor: number;
 }
 interface Item {
 	status: string;
-	iadeTarihi: number | null;
+	returnDate: number | null;
 }
 
 const esc = escapeHtml;
@@ -55,22 +55,22 @@ export async function openActivityReport(): Promise<'ok' | 'popup' | 'error'> {
 	try {
 		const [membersRes, eventsRes, teamsRes, vaultsRes, inventoryRes] = await Promise.all([
 			get<{ members: Member[] }>('/api/members'),
-			get<{ etkinlikler: EventRow[] }>('/api/events'),
+			get<{ events: EventRow[] }>('/api/events'),
 			get<Team[]>('/api/teams'),
-			get<{ kasalar: Vault[] }>('/api/budget/vaults'),
+			get<{ vaults: Vault[] }>('/api/budget/vaults'),
 			get<Item[]>('/api/inventory'),
 		]);
 		const now = Date.now();
 		const members = membersRes?.members ?? [];
 		const count = (pred: (m: Member) => boolean) => members.filter(pred).length;
 		const since = now - 183 * 86_400_000;
-		const events = (eventsRes?.etkinlikler ?? []).filter((e) => e.status !== 'taslak' && e.baslangic >= since && e.baslangic <= now).sort((a, b) => b.baslangic - a.baslangic);
-		const reg = events.reduce((a, e) => a + Number(e.kayitliSayisi || 0), 0);
-		const att = events.reduce((a, e) => a + Number(e.katilimciSayisi || 0), 0);
+		const events = (eventsRes?.events ?? []).filter((e) => e.status !== 'taslak' && e.start >= since && e.start <= now).sort((a, b) => b.start - a.start);
+		const reg = events.reduce((a, e) => a + Number(e.registeredCount || 0), 0);
+		const att = events.reduce((a, e) => a + Number(e.participantCount || 0), 0);
 		const teams = teamsRes ?? [];
 		const items = inventoryRes ?? [];
-		const overdue = items.filter((i) => i.status === 'oduncte' && returnStatus(i.iadeTarihi, now)?.gecikti).length;
-		const kasalar = vaultsRes;
+		const overdue = items.filter((i) => i.status === 'oduncte' && returnStatus(i.returnDate, now)?.gecikti).length;
+		const vaults = vaultsRes;
 
 		const css = `body{font:12px/1.45 system-ui,sans-serif;margin:28px;color:#111}h1{font-size:19px;margin:0}h2{font-size:14px;margin:20px 0 6px;border-bottom:2px solid #0a84ff;padding-bottom:3px}
 table{width:100%;border-collapse:collapse}td,th{border-bottom:1px solid #ddd;padding:4px 6px;text-align:left}th{background:#f2f2f2}.n{text-align:right}
@@ -81,19 +81,19 @@ table{width:100%;border-collapse:collapse}td,th{border-bottom:1px solid #ddd;pad
 <h2>Üyeler</h2><div class="kpis"><div><b>${count((m) => m.status === 'aktif')}</b>aktif üye</div><div><b>${count((m) => m.status === 'beklemede')}</b>onay bekleyen</div><div><b>${count((m) => m.status === 'mezun')}</b>mezun</div><div><b>${count((m) => m.status === 'aktif' && !m.roleId)}</b>roleü atanmamış</div></div>
 <h2>Etkinlikler</h2><div class="kpis"><div><b>${events.length}</b>etkinlik</div><div><b>${reg}</b>kayıt</div><div><b>${att}</b>katılım</div><div><b>${reg ? Math.round((att / reg) * 100) : 0}%</b>katılım oranı</div></div>
 <table><tr><th>Tarih</th><th>CommunityEvent</th><th class="n">Kayıt</th><th class="n">Katılım</th></tr>${
-			events.map((e) => `<tr><td>${esc(new Date(e.baslangic).toLocaleDateString('tr-TR'))}</td><td>${esc(e.baslik)}${e.status === 'iptal' ? ' <i>(iptal)</i>' : ''}</td><td class="n">${e.kayitliSayisi}</td><td class="n">${e.katilimciSayisi}</td></tr>`).join('') ||
+			events.map((e) => `<tr><td>${esc(new Date(e.start).toLocaleDateString('tr-TR'))}</td><td>${esc(e.title)}${e.status === 'iptal' ? ' <i>(iptal)</i>' : ''}</td><td class="n">${e.registeredCount}</td><td class="n">${e.participantCount}</td></tr>`).join('') ||
 			'<tr><td colspan="4" class="muted">Bu dönemde etkinlik yok.</td></tr>'
 		}</table>
 <h2>Takımlar</h2><table><tr><th>Takım</th><th>Kaptan</th><th class="n">Üye / kontenjan</th><th class="n">Açık görev</th><th class="n">Tamamlanan</th><th>Durum</th></tr>${teams
 			.map((t) => {
-				const done = t.gorevler.filter((g) => g.status === 'tamamlandi').length;
-				return `<tr><td>${esc(t.ad)}</td><td>${esc(t.liderAdSoyad ?? '—')}</td><td class="n">${t.aktifUyeSayisi} / ${t.kontenjan}</td><td class="n">${t.gorevler.length - done}</td><td class="n">${done}</td><td>${esc(t.status)}</td></tr>`;
+				const done = t.tasks.filter((g) => g.status === 'tamamlandi').length;
+				return `<tr><td>${esc(t.name)}</td><td>${esc(t.leaderNameSurname ?? '—')}</td><td class="n">${t.activeMemberCount} / ${t.capacity}</td><td class="n">${t.tasks.length - done}</td><td class="n">${done}</td><td>${esc(t.status)}</td></tr>`;
 			})
 			.join('')}</table>
 ${
-	kasalar
-		? `<h2>Kasalar</h2><table><tr><th>Kasa</th><th class="n">Gelir (₺)</th><th class="n">Gider (₺)</th><th class="n">Bakiye (₺)</th></tr>${kasalar.kasalar
-				.map((k) => `<tr><td>${esc(k.ad)}</td><td class="n">${formatMinor(k.totalIncomeMinor)}</td><td class="n">${formatMinor(k.totalExpenseMinor)}</td><td class="n"><b>${formatMinor(k.netBalanceMinor)}</b></td></tr>`)
+	vaults
+		? `<h2>Kasalar</h2><table><tr><th>Kasa</th><th class="n">Gelir (₺)</th><th class="n">Gider (₺)</th><th class="n">Bakiye (₺)</th></tr>${vaults.vaults
+				.map((k) => `<tr><td>${esc(k.name)}</td><td class="n">${formatMinor(k.totalIncomeMinor)}</td><td class="n">${formatMinor(k.totalExpenseMinor)}</td><td class="n"><b>${formatMinor(k.netBalanceMinor)}</b></td></tr>`)
 				.join('')}</table>`
 		: ''
 }

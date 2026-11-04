@@ -35,10 +35,10 @@ export async function POST(request: Request) {
 	try {
 		const field = await createFormField(normalized.value);
 		void logSystemEvent({
-			servis: 'settings',
-			seviye: 'INFO',
-			mesaj: `Custom member field created: ${field.fieldKey}`,
-			detay: { fieldId: field.id, scope: field.scope, type: field.type },
+			service: 'settings',
+			level: 'INFO',
+			message: `Custom member field created: ${field.fieldKey}`,
+			detail: { fieldId: field.id, scope: field.scope, type: field.type },
 			userId: auth.user.id,
 		});
 		return NextResponse.json({ ok: true, field });

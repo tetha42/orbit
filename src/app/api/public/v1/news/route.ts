@@ -52,18 +52,18 @@ export async function GET(request: Request) {
 			getPublicNewsCategoryCounts(),
 		]);
 
-		const countOf = new Map(counts.map((row) => [row.kategori, row.sayi]));
+		const countOf = new Map(counts.map((row) => [row.category, row.count]));
 		return publicJson(request, {
 			data: rows.map((article) => ({
 				id: article.id,
 				slug: article.slug,
-				title: article.baslik,
-				summary: article.ozet,
-				category: { id: article.kategori, label: NEWS_CATEGORY_LABELS[article.kategori as keyof typeof NEWS_CATEGORY_LABELS] ?? NEWS_CATEGORY_LABELS.genel },
-				featured: article.onemliMi === 1,
-				imageUrl: publicImageUrl(article.resimUrl),
-				publishedAt: isoDate(article.yayinTarihi),
-				updatedAt: isoDate(article.guncellenme),
+				title: article.title,
+				summary: article.summary,
+				category: { id: article.category, label: NEWS_CATEGORY_LABELS[article.category as keyof typeof NEWS_CATEGORY_LABELS] ?? NEWS_CATEGORY_LABELS.genel },
+				featured: article.importantMi === 1,
+				imageUrl: publicImageUrl(article.imageUrl),
+				publishedAt: isoDate(article.publishDate),
+				updatedAt: isoDate(article.update),
 			})),
 			meta: { page: effectivePage, pageSize: effectiveSize, total, totalPages: Math.max(1, Math.ceil(total / effectiveSize)) },
 			categories: NEWS_CATEGORY_IDS.map((id) => ({ id, label: NEWS_CATEGORY_LABELS[id], count: countOf.get(id) ?? 0 })),

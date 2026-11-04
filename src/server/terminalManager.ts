@@ -207,7 +207,7 @@ if pid == 0:
     if shell_path.endswith("bash"):
         try:
             fd, rc_path = tempfile.mkstemp(prefix=".beu_bashrc_", text=True)
-            with os.fdopen(fd, "w") as f:
+            with os.fdopen(fd, "w") AS f:
                 f.write('rm -f "' + rc_path + '"\\n')
                 f.write(base64.b64decode("${BASH_RC_POSTLUDE_B64}").decode("utf-8"))
             os.execlp(shell_path, shell_path, "--rcfile", rc_path, "-i")

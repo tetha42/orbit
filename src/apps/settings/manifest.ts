@@ -33,11 +33,11 @@ const manifest = {
 	order: 9,
 	dock: 10,
 	permission: {
-		sira: 12,
-		ad: 'Ayarlar',
+		order: 12,
+		name: 'Ayarlar',
 		kullan: 'Kendi hesabını, güvenliğini ve görünümü ayarlar (herkese açık).',
 		yonet: 'Rolleri, e-posta hesabını ve topluluk bilgilerini yönetir.',
-		herkeseAcik: true,
+		everyoneOpen: true,
 	},
 	menu: {
 		title: { tr: 'Ayarlar', en: 'Settings' },

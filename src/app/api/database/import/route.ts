@@ -160,14 +160,14 @@ export async function POST(request: Request) {
 		});
 
 		await logSystemEvent({
-			servis: 'database',
-			seviye: 'WARN',
-			mesaj: `Toplu veri içe aktarıldı: ${table}`,
-			detay: {
-				tablo: table,
-				satirSayisi: rows.length,
-				etkilenen: affectedCount,
-				strateji: conflictStrategy,
+			service: 'database',
+			level: 'WARN',
+			message: `Toplu veri içe aktarıldı: ${table}`,
+			detail: {
+				table: table,
+				rowCount: rows.length,
+				affected: affectedCount,
+				strategy: conflictStrategy,
 			},
 			userId: auth.user.id,
 			ip,

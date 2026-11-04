@@ -70,10 +70,10 @@ async function handlePOST(request: Request) {
 		// `wx` refuses to overwrite: a name collision fails instead of replacing a receipt.
 		await writeFile(path.join(dir, name), buffer, { flag: 'wx' });
 		await addStoredFile({
-			ad: name,
-			yukleyenId: access.user.id,
+			name: name,
+			uploaderId: access.user.id,
 			mime: sniffed.mime,
-			boyut: buffer.length,
+			size: buffer.length,
 		});
 
 		return NextResponse.json({

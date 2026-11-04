@@ -12,9 +12,9 @@ import styles from './Events.module.css';
 import type { EventView } from './eventsShared';
 
 interface CodeResponse {
-	kisaKod: string;
-	kalanMs: number;
-	katilimciSayisi: number;
+	shortCode: string;
+	remainingMs: number;
+	participantCount: number;
 }
 
 /**
@@ -45,9 +45,9 @@ export function ProjectorModal({ event, onClose }: { event: EventView; onClose: 
 				}
 				setError('');
 				setCode(data);
-				setLeft(data.kalanMs);
+				setLeft(data.remainingMs);
 				// Next poll: at the rollover, or in 5 s for the counter — whichever is first.
-				timer = setTimeout(load, Math.min(data.kalanMs + 250, 5000));
+				timer = setTimeout(load, Math.min(data.remainingMs + 250, 5000));
 			} catch {
 				if (live) timer = setTimeout(load, 5000);
 			}
@@ -64,7 +64,7 @@ export function ProjectorModal({ event, onClose }: { event: EventView; onClose: 
 		let live = true;
 		// The QR carries the same 6-character code that is printed under it, so a scan and a
 		// typed entry are the same input to the same endpoint.
-		QRCode.toDataURL(code.kisaKod, { width: 420, margin: 1, errorCorrectionLevel: 'M' }).then((url) => live && setQr(url));
+		QRCode.toDataURL(code.shortCode, { width: 420, margin: 1, errorCorrectionLevel: 'M' }).then((url) => live && setQr(url));
 		return () => {
 			live = false;
 		};
@@ -84,32 +84,32 @@ export function ProjectorModal({ event, onClose }: { event: EventView; onClose: 
 						<X size={20} />
 					</button>
 				</div>
-				<h2 style={{ margin: 0, fontSize: 22 }}>{event.baslik}</h2>
+				<h2 style={{ margin: 0, fontSize: 22 }}>{event.title}</h2>
 				{error ? (
 					<p style={{ color: '#ff9f0a', margin: '40px 0' }}>{error}</p>
 				) : (
 					<>
-						<div className={styles.qrBox} style={{ padding: 14 }} data-testid="projector-qr" data-code={code?.kisaKod ?? ''}>
+						<div className={styles.qrBox} style={{ padding: 14 }} data-testid="projector-qr" data-code={code?.shortCode ?? ''}>
 							{qr ? <Image src={qr} alt="" width={380} height={380} unoptimized style={{ maxWidth: '100%', height: 'auto' }} /> : <div style={{ width: 380, height: 380 }} />}
 						</div>
 						<div className={styles.countdown} aria-hidden>
 							<span style={{ width: `${(left / ATTENDANCE_WINDOW_MS) * 100}%` }} />
 						</div>
 						<div style={{ fontSize: 13, opacity: 0.75 }}>{fill(t('evRefreshIn'), { n: Math.ceil(left / 1000) })}</div>
-						{code?.kisaKod && (
+						{code?.shortCode && (
 							<div style={{ textAlign: 'center' }}>
 								<div style={{ fontSize: 12, opacity: 0.7 }}>{t('evShortCodeLabel')}</div>
 								<div
 									data-testid="projector-short-code"
 									style={{ fontFamily: 'ui-monospace, monospace', fontSize: 34, fontWeight: 800, letterSpacing: '0.18em' }}
 								>
-									{code.kisaKod}
+									{code.shortCode}
 								</div>
 							</div>
 						)}
 						<div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16, fontWeight: 750 }}>
 							<Users size={18} color="#30d158" />
-							{fill(t('evProjectorCount'), { n: code?.katilimciSayisi ?? 0 })}
+							{fill(t('evProjectorCount'), { n: code?.participantCount ?? 0 })}
 						</div>
 					</>
 				)}

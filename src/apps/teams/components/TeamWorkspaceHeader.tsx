@@ -34,8 +34,8 @@ export function TeamWorkspaceHeader({
 				</button>
 				<div data-focus-id={`team:${team.id}`} style={{ minWidth: 0 }}>
 					<div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-						<h2 className={styles.wsName}>{team.ad}</h2>
-						<span className={`${styles.pill} ${styles.pCategory}`}>{team.kategori}</span>
+						<h2 className={styles.wsName}>{team.name}</h2>
+						<span className={`${styles.pill} ${styles.pCategory}`}>{team.category}</span>
 						{team.status !== 'aktif' && (
 							<span className={`${styles.pill} ${styles.pPaused}`}>
 								{t(team.status === 'askida' ? 'tmPaused' : 'tmFinished')}
@@ -43,11 +43,11 @@ export function TeamWorkspaceHeader({
 						)}
 					</div>
 					<div className={styles.wsMeta}>
-						{t('tmCaptain')}: {team.liderAdSoyad || t('tmNoCaptain')} · {t('tmQuota')}: {team.doluKontenjan}/{team.kontenjan}
+						{t('tmCaptain')}: {team.leaderNameSurname || t('tmNoCaptain')} · {t('tmQuota')}: {team.fullCapacity}/{team.capacity}
 					</div>
 				</div>
 			</div>
-			<nav className={styles.tabs} aria-label={team.ad}>
+			<nav className={styles.tabs} aria-label={team.name}>
 				<button
 					type="button"
 					className={`${styles.tab} ${visibleTab === 'kanban' ? styles.tabActive : ''}`}
@@ -61,8 +61,8 @@ export function TeamWorkspaceHeader({
 					onClick={() => setActiveTab('members')}
 					data-focus-section="members"
 				>
-					<Users size={14} /> {t('tmTabMembers')} ({team.doluKontenjan})
-					{team.basvurular.length > 0 && <span className={styles.tabBadge}>{team.basvurular.length}</span>}
+					<Users size={14} /> {t('tmTabMembers')} ({team.fullCapacity})
+					{team.applications.length > 0 && <span className={styles.tabBadge}>{team.applications.length}</span>}
 				</button>
 				<button
 					type="button"
@@ -82,7 +82,7 @@ export function TeamWorkspaceHeader({
 						<Wallet size={14} /> {t('tmTabKasa')}
 					</button>
 				)}
-				{team.izinler.manage && (
+				{team.permissions.manage && (
 					<button
 						type="button"
 						className={`${styles.tab} ${visibleTab === 'settings' ? styles.tabActive : ''}`}

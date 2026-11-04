@@ -38,14 +38,14 @@ export const SessionsView = React.memo(function SessionsView() {
 	const filteredSessions = useMemo(() => {
 		return sessions.filter((sess) => {
 			if (!query) return true;
-			const name = `${sess.ad} ${sess.soyad}`.toLowerCase();
+			const name = `${sess.name} ${sess.surname}`.toLowerCase();
 			return (
 				name.includes(query) ||
 				sess.email.toLowerCase().includes(query) ||
-				(sess.rolAd && sess.rolAd.toLowerCase().includes(query)) ||
-				(sess.sonGirisIp && sess.sonGirisIp.toLowerCase().includes(query)) ||
-				(sess.sonAktifIp && sess.sonAktifIp.toLowerCase().includes(query)) ||
-				(sess.sonGirisUserAgent && sess.sonGirisUserAgent.toLowerCase().includes(query))
+				(sess.roleName && sess.roleName.toLowerCase().includes(query)) ||
+				(sess.lastLoginIp && sess.lastLoginIp.toLowerCase().includes(query)) ||
+				(sess.lastActiveIp && sess.lastActiveIp.toLowerCase().includes(query)) ||
+				(sess.lastLoginUserAgent && sess.lastLoginUserAgent.toLowerCase().includes(query))
 			);
 		});
 	}, [sessions, query]);
@@ -137,7 +137,7 @@ export const SessionsView = React.memo(function SessionsView() {
 														onDoubleClick={handleSelectDataOnDoubleClick}
 														title={isEn ? 'Right-click for pivoting menu' : 'Sağ tıklayarak menüyü açın'}
 													>
-														{sess.ad} {sess.soyad}
+														{sess.name} {sess.surname}
 													</span>{' '}
 													{isSelf && (
 														<span className={`${s.badge} ${s.badgeInfo}`}>
@@ -163,7 +163,7 @@ export const SessionsView = React.memo(function SessionsView() {
 														onDoubleClick={handleSelectDataOnDoubleClick}
 														title={isEn ? 'Double-click to select role' : 'Roleü seçmek için çift tıklayın'}
 													>
-														{sess.rolAd}
+														{sess.roleName}
 													</span>
 													<span className={`${s.badge} ${sess.totpEnabled ? s.badgeSuccess : s.badgeWarn}`}>
 														{sess.totpEnabled ? '2FA' : isEn ? 'No 2FA' : '2FA Yok'}
@@ -172,30 +172,30 @@ export const SessionsView = React.memo(function SessionsView() {
 											</td>
 											<td>
 												<div className={s.mono}>
-													{sess.sonGirisIp ? (
+													{sess.lastLoginIp ? (
 														<span
 															data-type="ip"
 															className={s.selectableData}
 															onDoubleClick={handleSelectDataOnDoubleClick}
 															title={isEn ? 'Double-click to select login IP' : 'Giriş IP seçmek için çift tıklayın'}
 														>
-															{sess.sonGirisIp}
+															{sess.lastLoginIp}
 														</span>
 													) : (
 														'—'
 													)}{' '}
 													→{' '}
-													{sess.sonAktifIp ? (
+													{sess.lastActiveIp ? (
 														<span
 															data-type="ip"
 															className={s.selectableData}
 															onDoubleClick={handleSelectDataOnDoubleClick}
 															title={isEn ? 'Double-click to select active IP' : 'Aktif IP seçmek için çift tıklayın'}
 														>
-															{sess.sonAktifIp}
+															{sess.lastActiveIp}
 														</span>
 													) : (
-														sess.sonGirisIp || '—'
+														sess.lastLoginIp || '—'
 													)}
 												</div>
 												{sess.impossibleTravel?.detected ? (
@@ -211,7 +211,7 @@ export const SessionsView = React.memo(function SessionsView() {
 																: `İMKANSIZ SEYAHAT (~${sess.impossibleTravel.speedKmh} km/s)`}
 														</span>
 													</div>
-												) : sess.ipDegisti ? (
+												) : sess.ipChanged ? (
 													<div style={{ marginTop: 4 }}>
 														<span className={`${s.badge} ${s.badgeDanger}`}>
 															<AlertTriangle size={11} />
@@ -220,12 +220,12 @@ export const SessionsView = React.memo(function SessionsView() {
 													</div>
 												) : null}
 											</td>
-											<td title={sess.sonGirisUserAgent || ''}>
+											<td title={sess.lastLoginUserAgent || ''}>
 												<span style={{ fontSize: 11.5, opacity: 0.8 }}>
-													{summarizeUa(sess.sonGirisUserAgent)}
+													{summarizeUa(sess.lastLoginUserAgent)}
 												</span>
 											</td>
-											<td>{formatDateTime(sess.sonAktifTarihi || sess.sonGirisTarihi, language)}</td>
+											<td>{formatDateTime(sess.lastActiveDate || sess.lastLoginDate, language)}</td>
 											{canManage && (
 												<td onClick={(e) => e.stopPropagation()}>
 													<div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -264,14 +264,14 @@ export const SessionsView = React.memo(function SessionsView() {
 															</button>
 														)}
 														{!isSelf &&
-															sess.sonAktifIp &&
-															sess.sonAktifIp !== callerIp && (
+															sess.lastActiveIp &&
+															sess.lastActiveIp !== callerIp && (
 																<button
 																	type="button"
 																	className={`${s.actionBtn} ${s.actionBtnDanger}`}
 																	onClick={() =>
 																		void handleQuickBan(
-																			sess.sonAktifIp!,
+																			sess.lastActiveIp!,
 																			isEn
 																				? `Suspicious session IP quarantine (${sess.email})`
 																				: `Şüpheli oturum IP karantinası (${sess.email})`

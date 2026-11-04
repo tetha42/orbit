@@ -37,10 +37,10 @@ export async function GET(request: Request) {
 	const waf = inspectRequestPayload(request);
 	if (waf.matched) {
 		void logSystemEvent({
-			servis: 'security',
-			seviye: 'ERROR',
-			mesaj: `[WAF] OAuth authorize saldırı imzası engellendi (${waf.signature})`,
-			detay: { category: waf.category, signature: waf.signature },
+			service: 'security',
+			level: 'ERROR',
+			message: `[WAF] OAuth authorize saldırı imzası engellendi (${waf.signature})`,
+			detail: { category: waf.category, signature: waf.signature },
 			ip,
 		});
 		void recordSecurityStrike({
@@ -102,8 +102,8 @@ export async function GET(request: Request) {
 			requiresLogin: true,
 			client: {
 				id: client.id,
-				ad: client.ad,
-				aciklama: client.aciklama,
+				name: client.name,
+				description: client.description,
 				logoUrl: client.logoUrl,
 			},
 		});
@@ -128,7 +128,7 @@ export async function GET(request: Request) {
 	// Yalnızca yönetici tarafından 'Güvenilir' olarak onaylanan dahili uygulamalar onay ekranını atlayabilir.
 	// prompt=consent parametresi verilmişse güvenilir uygulamalarda dahi onay ekranı zorunlu tutulur.
 	const prompt = url.searchParams.get('prompt') || '';
-	const autoApprove = client.guvenilir && prompt !== 'consent';
+	const autoApprove = client.trusted && prompt !== 'consent';
 
 	if (autoApprove) {
 		const code = await createAuthCode({
@@ -156,32 +156,28 @@ export async function GET(request: Request) {
 		requiresConsent: true,
 		user: {
 			id: user.id,
-			firstName: user.firstName || user.ad,
-			lastName: user.lastName || user.soyad,
-			name: `${user.firstName || user.ad || ''} ${user.lastName || user.soyad || ''}`.trim(),
-			ad: user.firstName || user.ad,
-			soyad: user.lastName || user.soyad,
-			adSoyad: `${user.firstName || user.ad || ''} ${user.lastName || user.soyad || ''}`.trim(),
+			firstName: user.firstName || user.name,
+			lastName: user.lastName || user.surname,
+			name: `${user.firstName || user.name || ''} ${user.lastName || user.surname || ''}`.trim(),
+			surname: user.lastName || user.surname,
+			nameSurname: `${user.firstName || user.name || ''} ${user.lastName || user.surname || ''}`.trim(),
 			email: user.email,
-			handle: user.handle || user.ogrenciNo,
-			ogrenciNo: user.handle || user.ogrenciNo,
-			department: user.department || user.bolum,
-			bolum: user.department || user.bolum,
-			grade: user.grade || user.sinif,
-			sinif: user.grade || user.sinif,
-			avatarUrl: user.avatarUrl || user.profilFoto || null,
-			profilFoto: user.avatarUrl || user.profilFoto || null,
+			handle: user.handle || user.studentNo,
+			studentNo: user.handle || user.studentNo,
+			department: user.department || user.department,
+			grade: user.grade || user.grade,
+			avatarUrl: user.avatarUrl || user.profilePhoto || null,
+			profilePhoto: user.avatarUrl || user.profilePhoto || null,
 			bio: user.bio || null,
-			roleName: user.permission?.role?.name || user.permission?.role?.ad || 'Member',
-			rolAd: user.permission?.role?.name || user.permission?.role?.ad || 'Member',
+			roleName: user.permission?.role?.name || user.permission?.role?.name || 'Member',
 			xp: user.xp,
 		},
 		client: {
 			id: client.id,
-			ad: client.ad,
-			aciklama: client.aciklama,
+			name: client.name,
+			description: client.description,
 			logoUrl: client.logoUrl,
-			guvenilir: client.guvenilir,
+			trusted: client.trusted,
 		},
 		allowedScopes: clientAllowedScopes,
 		requestedScopes,
@@ -210,10 +206,10 @@ export async function POST(request: Request) {
 	const waf = inspectRequestPayload(request, rawBody);
 	if (waf.matched) {
 		void logSystemEvent({
-			servis: 'security',
-			seviye: 'ERROR',
-			mesaj: `[WAF] OAuth authorize POST saldırı imzası engellendi (${waf.signature})`,
-			detay: { category: waf.category, signature: waf.signature },
+			service: 'security',
+			level: 'ERROR',
+			message: `[WAF] OAuth authorize POST saldırı imzası engellendi (${waf.signature})`,
+			detail: { category: waf.category, signature: waf.signature },
 			ip,
 		});
 		void recordSecurityStrike({
@@ -261,10 +257,10 @@ export async function POST(request: Request) {
 		// Critical security check: prevent Open Redirect / authorization code theft by verifying redirectUri on POST
 		if (!isRedirectUriRegistered(client.redirectUris, redirectUri)) {
 			await logSystemEvent({
-				servis: 'oauth',
-				seviye: 'ERROR',
-				mesaj: `Kayıtsız redirect_uri ile OAuth onay denemesi engellendi (${client.ad})`,
-				detay: { clientId, redirectUri },
+				service: 'oauth',
+				level: 'ERROR',
+				message: `Kayıtsız redirect_uri ile OAuth onay denemesi engellendi (${client.name})`,
+				detail: { clientId, redirectUri },
 				userId: auth.user.id,
 				ip,
 			});
@@ -315,10 +311,10 @@ export async function POST(request: Request) {
 		});
 
 		await logSystemEvent({
-			servis: 'oauth',
-			seviye: 'INFO',
-			mesaj: `OAuth erişim onayı verildi: ${client.ad}`,
-			detay: { clientId: client.id, scope: approvedScope },
+			service: 'oauth',
+			level: 'INFO',
+			message: `OAuth erişim onayı verildi: ${client.name}`,
+			detail: { clientId: client.id, scope: approvedScope },
 			userId: auth.user.id,
 			ip,
 		});

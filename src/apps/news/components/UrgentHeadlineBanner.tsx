@@ -60,17 +60,17 @@ export function UrgentHeadlineBanner({
 						<ShieldAlert size={12} /> {t('newsHeadline')}
 					</span>
 					<span style={{ fontSize: '11px', opacity: 0.7 }}>
-						{new Date(article.olusturma).toLocaleDateString(
+						{new Date(article.creation).toLocaleDateString(
 							language,
 							{ day: 'numeric', month: 'long', year: 'numeric' }
 						)}
 					</span>
 				</div>
 				<h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 6px 0', lineHeight: 1.3 }}>
-					{article.baslik}
+					{article.title}
 				</h3>
 				<p style={{ margin: 0, fontSize: '13px', opacity: 0.85, lineHeight: 1.45, maxWidth: '800px' }}>
-					{article.ozet}
+					{article.summary}
 				</p>
 			</div>
 

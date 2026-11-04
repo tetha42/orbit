@@ -105,27 +105,27 @@ export async function POST(request: Request) {
 
 	try {
 		const body = await request.json();
-		const email = body.email ?? body.eposta;
-		const ad = body.firstName ?? body.ad;
-		const soyad = body.lastName ?? body.soyad;
-		const bolum = body.department ?? body.bolum;
-		const sinif = body.grade ?? body.sinif;
-		const ogrenciNo = body.handle ?? body.memberId ?? body.ogrenciNo;
+		const email = body.email ?? body.email;
+		const name = body.firstName ?? body.name;
+		const surname = body.lastName ?? body.surname;
+		const department = body.department ?? body.department;
+		const grade = body.grade ?? body.grade;
+		const studentNo = body.handle ?? body.memberId ?? body.studentNo;
 		const bio = body.bio;
 		const password = body.password;
 		const coreConfig = await getRegistrationCoreConfig();
 		const allowedLevels = new Set(coreConfig.level.options.map((option) => Number(option.value)));
-		const parsedGrade = Number(sinif) || defaultLevelValue(coreConfig);
+		const parsedGrade = Number(grade) || defaultLevelValue(coreConfig);
 		if (!Number.isInteger(parsedGrade) || !allowedLevels.has(parsedGrade)) {
 			return bad('Experience level must be one of the configured options.');
 		}
-		const handleInput = String(ogrenciNo ?? '').trim();
+		const handleInput = String(studentNo ?? '').trim();
 		const rawHandle = handleInput || `ORB-${randomBytes(3).toString('hex').toUpperCase()}`;
 		if (!/^[a-zA-Z0-9_-]{3,32}$/.test(rawHandle)) {
 			return bad('Member ID / Handle must be 3-32 characters using letters, numbers, hyphens, or underscores.');
 		}
-		const cleanTrack = String(bolum || '').trim() || defaultTrackValue(coreConfig);
-		if (!ad || !soyad || !email) return bad('First name, last name and e-mail are required.');
+		const cleanTrack = String(department || '').trim() || defaultTrackValue(coreConfig);
+		if (!name || !surname || !email) return bad('First name, last name and e-mail are required.');
 		const normalizedEmail = String(email).trim().toLowerCase();
 		if (!isValidEmail(normalizedEmail)) return bad('Enter a valid e-mail address.');
 
@@ -157,21 +157,21 @@ export async function POST(request: Request) {
 		// No role given: the club's default role for new members.
 		const rawRoleId = body.roleId;
 		const roleId: string | null = typeof rawRoleId === 'string' && rawRoleId ? rawRoleId : await getDefaultRoleId();
-		const sinir = await roleLimitProblem(auth.user, roleId);
-		if (sinir) return bad(sinir, 403);
+		const limit = await roleLimitProblem(auth.user, roleId);
+		if (limit) return bad(limit, 403);
 		const rolePermission = roleId ? await getRolePermission(roleId) : null;
 		if (roleId && !rolePermission?.role) return bad('Role bulunamadı.', 404);
 
 		if (await getUserByEmail(normalizedEmail)) return bad('Bu e-posta adresiyle kayıtlı bir üye zaten mevcut', 409);
 
 		const newUser = await createUser({
-			ad: String(ad).trim(),
-			soyad: String(soyad).trim(),
+			name: String(name).trim(),
+			surname: String(surname).trim(),
 			email: normalizedEmail,
 			passwordHash: await bcrypt.hash(memberPassword, 12),
-			ogrenciNo: rawHandle || `24010${randomInt(1000, 10000)}`,
-			bolum: cleanTrack,
-			sinif: parsedGrade,
+			studentNo: rawHandle || `24010${randomInt(1000, 10000)}`,
+			department: cleanTrack,
+			grade: parsedGrade,
 			roleId,
 			bio: bio?.trim() || '',
 			status: isAlumniRole(rolePermission?.role) ? 'mezun' : 'aktif',
@@ -184,12 +184,12 @@ export async function POST(request: Request) {
 			source: 'admin',
 			status: 'approved',
 			snapshot: {
-				ad: newUser.ad,
-				soyad: newUser.soyad,
+				name: newUser.name,
+				surname: newUser.surname,
 				email: newUser.email,
-				ogrenciNo: newUser.ogrenciNo,
-				bolum: newUser.bolum,
-				sinif: newUser.sinif,
+				studentNo: newUser.studentNo,
+				department: newUser.department,
+				grade: newUser.grade,
 				customFields: customValidation.clean,
 				createdBy: auth.user.id,
 			},
@@ -198,14 +198,14 @@ export async function POST(request: Request) {
 		});
 		if (generatedPassword) {
 			void notifyMemberCreatedByAdmin(
-				{ ad: newUser.ad, soyad: newUser.soyad, email: newUser.email },
+				{ name: newUser.name, surname: newUser.surname, email: newUser.email },
 				memberPassword
 			);
 		}
 		const { passwordHash: _h, ...safe } = newUser;
 		return NextResponse.json({
 			success: true,
-			member: { ...safe, eposta: safe.email, rolId: safe.roleId, durum: safe.status },
+			member: { ...safe, email: safe.email, roleId: safe.roleId, status: safe.status },
 			...(generatedPassword ? { temporaryPassword: memberPassword } : {}),
 		});
 	} catch (error) {
@@ -222,7 +222,7 @@ export async function PATCH(request: Request) {
 	try {
 		const body = await request.json();
 		const rawRoleId = body.roleId;
-		const status = body.status ?? body.durum;
+		const status = body.status ?? body.status;
 		const { id, addXp } = body;
 		const rejectionReason =
 			typeof body.rejectionReason === 'string' ? body.rejectionReason.trim().slice(0, 500) : null;
@@ -232,15 +232,15 @@ export async function PATCH(request: Request) {
 
 		// A member stronger than you is out of reach (an admin cannot be demoted by a manager).
 		if (target.id !== auth.user.id) {
-			const sinir = await roleLimitProblem(auth.user, target.roleId);
-			if (sinir) return bad('Sizden daha yetkili bir üyeyi değiştiremezsiniz.', 403);
+			const limit = await roleLimitProblem(auth.user, target.roleId);
+			if (limit) return bad('Sizden daha yetkili bir üyeyi değiştiremezsiniz.', 403);
 		}
 
-		if (body.sifreSifirla) {
+		if (body.passwordReset) {
 			const defaultPass = randomBytes(9).toString('base64url');
 			const passwordHash = await bcrypt.hash(defaultPass, 12);
 			await updateUserPassword(id, passwordHash, true);
-			void notifyPasswordReset({ ad: target.ad, soyad: target.soyad, email: target.email }, defaultPass);
+			void notifyPasswordReset({ name: target.name, surname: target.surname, email: target.email }, defaultPass);
 			return NextResponse.json({
 				success: true,
 				message: 'Üyenin şifresi sıfırlandı.',
@@ -250,8 +250,8 @@ export async function PATCH(request: Request) {
 
 		if (rawRoleId !== undefined) {
 			const roleId: string | null = typeof rawRoleId === 'string' && rawRoleId ? rawRoleId : null;
-			const sinir = await roleLimitProblem(auth.user, roleId);
-			if (sinir) return bad(sinir, 403);
+			const limit = await roleLimitProblem(auth.user, roleId);
+			if (limit) return bad(limit, 403);
 			const r = await setUserRole(id, roleId, auditContext(request, auth.user));
 			if (r === 'role-yok') return bad('Role bulunamadı.', 404);
 			if (r === 'son-admin') return bad('Kulübün son admini roleünü bırakamaz; önce başka birini admin yapın.', 409);
@@ -276,8 +276,8 @@ export async function PATCH(request: Request) {
 			}
 
 			const recipient = {
-				ad: target.ad,
-				soyad: target.soyad,
+				name: target.name,
+				surname: target.surname,
 				email: target.email,
 				preferredLanguage: target.preferredLanguage,
 			};

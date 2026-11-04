@@ -169,10 +169,10 @@ export function AddMemberModal({
 					<span className={ui.fieldLabel}>{t('membersRoleLabel')}</span>
 					<select className={ui.select} style={{ maxWidth: 'none' }} value={newRoleId} data-new-member-role onChange={(e) => setNewRoleId(e.target.value)}>
 						<option value="">
-							{t('membersDefaultRole')}{roleData?.defaultRoleId && rolesById.get(roleData.defaultRoleId) ? ` (${rolesById.get(roleData.defaultRoleId)!.ad})` : ` ${t('membersNoRoleAssigned')}`}
+							{t('membersDefaultRole')}{roleData?.defaultRoleId && rolesById.get(roleData.defaultRoleId) ? ` (${rolesById.get(roleData.defaultRoleId)!.name})` : ` ${t('membersNoRoleAssigned')}`}
 						</option>
 						{assignableRoles.map((r) => (
-							<option key={r.id} value={r.id}>{r.ad}</option>
+							<option key={r.id} value={r.id}>{r.name}</option>
 						))}
 					</select>
 				</label>

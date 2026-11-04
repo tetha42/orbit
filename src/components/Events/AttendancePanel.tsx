@@ -22,7 +22,7 @@ interface Props {
 	onProjector: () => void;
 }
 
-const METHOD_KEY: Record<string, string> = { qr: 'evMethodQr', bilet: 'evMethodBilet', manuel: 'evMethodManuel' };
+const METHOD_KEY: Record<string, string> = { qr: 'evMethodQr', ticket: 'evMethodBilet', manuel: 'evMethodManuel' };
 
 /** Organiser tools for one event: check-in switch, projector, ticket scan, manual entry, the list and CSV. */
 export function AttendancePanel({ event, notify, onChanged, onProjector }: Props) {
@@ -30,16 +30,16 @@ export function AttendancePanel({ event, notify, onChanged, onProjector }: Props
 	const { playSystemSound } = useSound();
 	const dialog = useDialog();
 	const locale = language === 'en' ? 'en-GB' : 'tr-TR';
-	const { data, refetch } = useJsonResource<{ liste: AttendeeRow[] }>(
+	const { data, refetch } = useJsonResource<{ list: AttendeeRow[] }>(
 		`/api/events/${encodeURIComponent(event.id)}/katilim`
 	);
-	const liste = data?.liste ?? [];
-	const [ogrenciNo, setOgrenciNo] = useState('');
+	const list = data?.list ?? [];
+	const [studentNo, setStudentNo] = useState('');
 	const [scanning, setScanning] = useState(false);
-	const open = Number(event.yoklamaAcik) === 1;
+	const open = Number(event.attendanceOpen) === 1;
 
 	const post = async (body: Record<string, unknown>, quiet = false) => {
-		const res = await sendJson<{ message?: string; zaten?: boolean }>('/api/events', 'POST', { etkinlikId: event.id, ...body });
+		const res = await sendJson<{ message?: string; zaten?: boolean }>('/api/events', 'POST', { eventId: event.id, ...body });
 		if (!res.ok) notify(res.error || t('kbActionFailed'), 'error');
 		else {
 			if (!res.data.zaten) playSystemSound();
@@ -56,19 +56,19 @@ export function AttendancePanel({ event, notify, onChanged, onProjector }: Props
 		downloadCsv(
 			`${event.slug || event.id}-${t('evCsvName')}`,
 			[t('evColName'), t('evStudentNo'), 'Bölüm', t('evColReg'), t('evColAttend'), 'Yöntem', t('evColBy')],
-			liste.map((r) => [
-				r.adSoyad,
-				r.ogrenciNo,
-				r.bolum,
-				r.kayitZamani ? new Date(r.kayitZamani).toISOString() : '',
-				r.katilimZamani ? new Date(r.katilimZamani).toISOString() : '',
-				r.yontem ? t(METHOD_KEY[r.yontem]) : '',
-				r.kaydedenAdSoyad,
+			list.map((r) => [
+				r.nameSurname,
+				r.studentNo,
+				r.department,
+				r.recordTime ? new Date(r.recordTime).toISOString() : '',
+				r.participationTime ? new Date(r.participationTime).toISOString() : '',
+				r.method ? t(METHOD_KEY[r.method]) : '',
+				r.recorderNameSurname,
 			])
 		);
 	};
 
-	const attended = liste.filter((r) => r.katilimZamani).length;
+	const attended = list.filter((r) => r.participationTime).length;
 
 	return (
 		<section className={styles.panel} aria-label={t('evManage')}>
@@ -76,12 +76,12 @@ export function AttendancePanel({ event, notify, onChanged, onProjector }: Props
 				<h3 className={styles.panelTitle}>
 					<ListChecks size={15} /> {t('evList')}
 					<span className={ui.count}>
-						{attended}/{liste.length}
+						{attended}/{list.length}
 					</span>
 				</h3>
 				{event.status === 'yayinda' && (
 					<label className={styles.switch}>
-						<input type="checkbox" checked={open} onChange={() => post({ action: 'setYoklama', acik: !open }, true)} />
+						<input type="checkbox" checked={open} onChange={() => post({ action: 'setAttendance', open: !open }, true)} />
 						{open ? t('evAttendanceOpen') : t('evAttendanceClosed')}
 					</label>
 				)}
@@ -97,28 +97,28 @@ export function AttendancePanel({ event, notify, onChanged, onProjector }: Props
 					style={{ display: 'flex', gap: 6 }}
 					onSubmit={async (e) => {
 						e.preventDefault();
-						if (!ogrenciNo.trim()) return;
-						if (await post({ action: 'manuelYoklama', ogrenciNo: ogrenciNo.trim() })) setOgrenciNo('');
+						if (!studentNo.trim()) return;
+						if (await post({ action: 'manualAttendance', studentNo: studentNo.trim() })) setStudentNo('');
 					}}
 				>
 					<input
 						className={ui.input}
 						style={{ width: 150, height: 30, padding: '4px 8px' }}
-						value={ogrenciNo}
+						value={studentNo}
 						inputMode="numeric"
-						onChange={(e) => setOgrenciNo(e.target.value)}
+						onChange={(e) => setStudentNo(e.target.value)}
 						placeholder={t('evManualPh')}
 						aria-label={t('evManualAdd')}
 					/>
-					<button type="submit" className={ui.btn} disabled={!ogrenciNo.trim()}>
+					<button type="submit" className={ui.btn} disabled={!studentNo.trim()}>
 						<UserPlus size={14} /> {t('evAdd')}
 					</button>
 				</form>
-				<button type="button" className={ui.btn} style={{ marginLeft: 'auto' }} disabled={!liste.length} onClick={exportCsv}>
+				<button type="button" className={ui.btn} style={{ marginLeft: 'auto' }} disabled={!list.length} onClick={exportCsv}>
 					<Download size={14} /> {t('evExportCsv')}
 				</button>
 			</div>
-			{liste.length === 0 ? (
+			{list.length === 0 ? (
 				<div className={styles.empty}>{t('evListEmpty')}</div>
 			) : (
 				<div style={{ overflowX: 'auto' }}>
@@ -133,48 +133,48 @@ export function AttendancePanel({ event, notify, onChanged, onProjector }: Props
 							</tr>
 						</thead>
 						<tbody>
-							{liste.map((r) => (
+							{list.map((r) => (
 								<tr key={r.userId} data-member-id={r.userId}>
 									<td>
-										<div style={{ fontWeight: 650 }}>{r.adSoyad}</div>
-										<div className={styles.mono}>{r.ogrenciNo || '—'}</div>
+										<div style={{ fontWeight: 650 }}>{r.nameSurname}</div>
+										<div className={styles.mono}>{r.studentNo || '—'}</div>
 									</td>
-									<td>{r.kayitZamani ? time(r.kayitZamani) : <span className={`${styles.badge} ${styles.b_draft}`}>{t('evWalkIn')}</span>}</td>
+									<td>{r.recordTime ? time(r.recordTime) : <span className={`${styles.badge} ${styles.b_draft}`}>{t('evWalkIn')}</span>}</td>
 									<td>
-										{r.katilimZamani ? (
+										{r.participationTime ? (
 											<span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-												<span className={`${styles.badge} ${styles.b_attended}`}>{t(METHOD_KEY[r.yontem ?? 'qr'])}</span>
-												{time(r.katilimZamani)}
+												<span className={`${styles.badge} ${styles.b_attended}`}>{t(METHOD_KEY[r.method ?? 'qr'])}</span>
+												{time(r.participationTime)}
 											</span>
 										) : (
 											'—'
 										)}
 									</td>
-									<td>{r.kaydedenAdSoyad || '—'}</td>
+									<td>{r.recorderNameSurname || '—'}</td>
 									<td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-										{r.katilimZamani ? (
+										{r.participationTime ? (
 											<button
 												type="button"
 												className={ui.iconBtn}
 												title={t('evRemoveCheckIn')}
 												aria-label={t('evRemoveCheckIn')}
 												onClick={async () => {
-													if (await dialog.confirm({ message: fill(t('evRemoveConfirm'), { name: r.adSoyad }), tone: 'danger' })) {
+													if (await dialog.confirm({ message: fill(t('evRemoveConfirm'), { name: r.nameSurname }), tone: 'danger' })) {
 														await post({ action: 'deleteAttendance', userId: r.userId }, true);
 													}
 												}}
 											>
 												<Undo2 size={14} />
 											</button>
-										) : r.kayitZamani ? (
+										) : r.recordTime ? (
 											<button
 												type="button"
 												className={ui.iconBtn}
 												title={t('evRemoveRegistration')}
 												aria-label={t('evRemoveRegistration')}
 												onClick={async () => {
-													if (await dialog.confirm({ message: fill(t('evRemoveRegistrationConfirm'), { name: r.adSoyad }), tone: 'danger' })) {
-														await post({ action: 'kayitSil', userId: r.userId }, true);
+													if (await dialog.confirm({ message: fill(t('evRemoveRegistrationConfirm'), { name: r.nameSurname }), tone: 'danger' })) {
+														await post({ action: 'removeRegistration', userId: r.userId }, true);
 													}
 												}}
 											>
@@ -194,9 +194,9 @@ export function AttendancePanel({ event, notify, onChanged, onProjector }: Props
 				mode="staff"
 				title={t('evScanTitleStaff')}
 				onClose={() => setScanning(false)}
-				onScan={async (kod) => {
+				onScan={async (code) => {
 					// Stays open for the next person in the queue.
-					await post({ action: 'biletOkut', kod });
+					await post({ action: 'scanTicket', code });
 				}}
 			/>
 		</section>

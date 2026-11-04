@@ -18,14 +18,14 @@ export interface NoteFolder {
 
 export interface ServerNoteRecord {
 	id: string;
-	baslik?: string;
-	icerik?: string;
-	renk?: string;
-	sabitliMi?: number | boolean;
-	klasorId?: string;
-	copteMi?: number | boolean;
-	olusturma?: number | string;
-	guncellenme?: number | string;
+	title?: string;
+	content?: string;
+	color?: string;
+	pinnedMi?: number | boolean;
+	folderId?: string;
+	trashedMi?: number | boolean;
+	creation?: number | string;
+	update?: number | string;
 }
 
 export interface NoteColors {

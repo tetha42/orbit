@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { FolderPlus } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
-import { PROJECT_TITLE_MAX, PROJECT_SUMMARY_MAX, normalizeTeknolojiler } from '@/lib/projects';
+import { PROJECT_TITLE_MAX, PROJECT_SUMMARY_MAX, normalizeTechnologies } from '@/lib/projects';
 import type { Project } from '@/db/schema';
 import ui from '@/core/ui/ui.module.css';
 import styles from './Projects.module.css';
@@ -12,27 +12,27 @@ import { Sheet } from '@/core/ui/Sheet';
 
 interface Props {
 	/** Editing an existing project, or adding a new one. */
-	proje: Project | null;
-	teams: { id: string; ad: string }[];
+	project: Project | null;
+	teams: { id: string; name: string }[];
 	manage: boolean;
 	onClose: () => void;
-	onSaved: (proje: Project, created: boolean) => void;
+	onSaved: (project: Project, created: boolean) => void;
 }
 
-export function ProjectFormModal({ proje, teams, manage, onClose, onSaved }: Props) {
+export function ProjectFormModal({ project, teams, manage, onClose, onSaved }: Props) {
 	const { t } = useI18n();
-	const [baslik, setBaslik] = useState(proje?.baslik ?? '');
-	const [ozet, setOzet] = useState(proje?.ozet ?? '');
-	const [aciklama, setAciklama] = useState(proje?.aciklama ?? '');
-	const [repoUrl, setRepoUrl] = useState(proje?.repoUrl ?? '');
-	const [canliUrl, setCanliUrl] = useState(proje?.canliUrl ?? '');
-	const [tech, setTech] = useState((proje?.teknolojiler ?? []).join(', '));
-	const [teamId, setTeamId] = useState(proje?.teamId ?? '');
-	const [ownerTeamId, setOwnerTeamId] = useState(proje?.ownerTeamId ?? proje?.teamId ?? '');
+	const [title, setTitle] = useState(project?.title ?? '');
+	const [summary, setSummary] = useState(project?.summary ?? '');
+	const [description, setDescription] = useState(project?.description ?? '');
+	const [repoUrl, setRepoUrl] = useState(project?.repoUrl ?? '');
+	const [liveUrl, setLiveUrl] = useState(project?.liveUrl ?? '');
+	const [tech, setTech] = useState((project?.technologies ?? []).join(', '));
+	const [teamId, setTeamId] = useState(project?.teamId ?? '');
+	const [ownerTeamId, setOwnerTeamId] = useState(project?.ownerTeamId ?? project?.teamId ?? '');
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
 
-	const preview = normalizeTeknolojiler(tech) ?? [];
+	const preview = normalizeTechnologies(tech) ?? [];
 
 	const submit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -40,33 +40,33 @@ export function ProjectFormModal({ proje, teams, manage, onClose, onSaved }: Pro
 		setBusy(true);
 		setError('');
 		const body = {
-			baslik,
-			ozet,
-			aciklama,
+			title,
+			summary,
+			description,
 			repoUrl,
-			canliUrl,
-			teknolojiler: tech,
+			liveUrl,
+			technologies: tech,
 			teamId: teamId || null,
 			ownerTeamId: ownerTeamId || null,
 		};
-		const res = proje
-			? await sendJson<{ proje: Project }>(
-					`/api/projects/${encodeURIComponent(proje.id)}`,
+		const res = project
+			? await sendJson<{ project: Project }>(
+					`/api/projects/${encodeURIComponent(project.id)}`,
 					'PATCH',
 					body,
 				)
-			: await sendJson<{ proje: Project }>('/api/projects', 'POST', body);
+			: await sendJson<{ project: Project }>('/api/projects', 'POST', body);
 		setBusy(false);
 		if (!res.ok) {
 			setError(res.error || t('kbActionFailed'));
 			return;
 		}
-		onSaved(res.data.proje, !proje);
+		onSaved(res.data.project, !project);
 	};
 
 	return (
 		<Sheet
-			title={proje ? t('pjFormTitleEdit') : t('pjFormTitleNew')}
+			title={project ? t('pjFormTitleEdit') : t('pjFormTitleNew')}
 			icon={<FolderPlus size={20} color="#0a84ff" />}
 			onClose={onClose}
 			onSubmit={submit}
@@ -78,7 +78,7 @@ export function ProjectFormModal({ proje, teams, manage, onClose, onSaved }: Pro
 						{t('pjCancel')}
 					</button>
 					<button type="submit" className={ui.primaryBtn} disabled={busy}>
-						{proje ? t('pjSave') : manage ? t('pjSubmitPublish') : t('pjSubmitProposal')}
+						{project ? t('pjSave') : manage ? t('pjSubmitPublish') : t('pjSubmitProposal')}
 					</button>
 				</>
 			}
@@ -87,10 +87,10 @@ export function ProjectFormModal({ proje, teams, manage, onClose, onSaved }: Pro
 				<span className={ui.fieldLabel}>{t('pjFieldTitle')}</span>
 				<input
 					className={ui.input}
-					value={baslik}
+					value={title}
 					autoFocus
 					maxLength={PROJECT_TITLE_MAX}
-					onChange={(e) => setBaslik(e.target.value)}
+					onChange={(e) => setTitle(e.target.value)}
 					required
 					minLength={3}
 				/>
@@ -99,16 +99,16 @@ export function ProjectFormModal({ proje, teams, manage, onClose, onSaved }: Pro
 				<span className={ui.fieldLabel} style={{ display: 'flex' }}>
 					{t('pjFieldSummary')}
 					<span className={styles.counter}>
-						{ozet.length}/{PROJECT_SUMMARY_MAX}
+						{summary.length}/{PROJECT_SUMMARY_MAX}
 					</span>
 				</span>
 				<textarea
 					className={ui.textarea}
 					style={{ minHeight: 60 }}
 					rows={2}
-					value={ozet}
+					value={summary}
 					maxLength={PROJECT_SUMMARY_MAX}
-					onChange={(e) => setOzet(e.target.value)}
+					onChange={(e) => setSummary(e.target.value)}
 					required
 					minLength={10}
 				/>
@@ -119,8 +119,8 @@ export function ProjectFormModal({ proje, teams, manage, onClose, onSaved }: Pro
 				<textarea
 					className={ui.textarea}
 					rows={5}
-					value={aciklama}
-					onChange={(e) => setAciklama(e.target.value)}
+					value={description}
+					onChange={(e) => setDescription(e.target.value)}
 					placeholder={t('pjFieldDescPh')}
 				/>
 			</label>
@@ -146,9 +146,9 @@ export function ProjectFormModal({ proje, teams, manage, onClose, onSaved }: Pro
 					<input
 						className={ui.input}
 						type="url"
-						value={canliUrl}
+						value={liveUrl}
 						placeholder="https://…"
-						onChange={(e) => setCanliUrl(e.target.value)}
+						onChange={(e) => setLiveUrl(e.target.value)}
 					/>
 				</label>
 			</div>
@@ -184,7 +184,7 @@ export function ProjectFormModal({ proje, teams, manage, onClose, onSaved }: Pro
 					<option value="">{t('pjNoTeam')}</option>
 					{teams.map((tm) => (
 						<option key={tm.id} value={tm.id}>
-							{tm.ad}
+							{tm.name}
 						</option>
 					))}
 				</select>
@@ -200,12 +200,12 @@ export function ProjectFormModal({ proje, teams, manage, onClose, onSaved }: Pro
 					<option value="">{t('pjNoTeam')}</option>
 					{teams.map((tm) => (
 						<option key={tm.id} value={tm.id}>
-							{tm.ad}
+							{tm.name}
 						</option>
 					))}
 				</select>
 			</label>
-			{!proje && <div className={ui.hint}>{manage ? t('pjManagerHint') : t('pjMemberHint')}</div>}
+			{!project && <div className={ui.hint}>{manage ? t('pjManagerHint') : t('pjMemberHint')}</div>}
 			{error && (
 				<div className={ui.error} role="alert">
 					{error}

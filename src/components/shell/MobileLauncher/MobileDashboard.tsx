@@ -10,7 +10,7 @@ import { postAction } from '@/core/data/http';
 import { dayOffset } from '@/core/data/format';
 import { useNow } from '@/lib/client/useSheet';
 import { fill } from '@/lib/text';
-import { seviye } from '@/lib/profile';
+import { level } from '@/lib/profile';
 import { myOpenTasks, nextEvent } from '@/lib/mobileCockpit';
 import { CameraQRScannerModal } from '@/apps/events/components/CameraQRScannerModal';
 import type { EventsResponse } from '@/components/Events/eventsShared';
@@ -63,13 +63,13 @@ export function MobileDashboard({ onOpenApp }: { onOpenApp: (appId: AppID) => vo
 
 	const locale = language === 'en' ? 'en-GB' : 'tr-TR';
 	const tasks = useMemo(() => (currentUser && Array.isArray(teams.data) ? myOpenTasks(teams.data, currentUser.id) : []), [teams.data, currentUser]);
-	const upcoming = useMemo(() => nextEvent(events.data?.etkinlikler ?? [], now), [events.data, now]);
+	const upcoming = useMemo(() => nextEvent(events.data?.events ?? [], now), [events.data, now]);
 
 	if (!currentUser) return null;
-	const level = seviye(currentUser.xp || 0);
+	const levelInfo = level(currentUser.xp || 0);
 
-	const checkIn = async (kod: string) => {
-		const res = await postAction<{ message: string; zaten?: boolean }>('/api/events', 'yoklama', { kisaKod: kod, kod });
+	const checkIn = async (code: string) => {
+		const res = await postAction<{ message: string; zaten?: boolean }>('/api/events', 'attend', { shortCode: code, code });
 		if (res.ok) {
 			playSystemSound();
 			setFeedback({ ok: !res.data.zaten, text: res.data.message });
@@ -92,20 +92,20 @@ export function MobileDashboard({ onOpenApp }: { onOpenApp: (appId: AppID) => vo
 			{/* Level & XP */}
 			<div data-cockpit="xp" style={CARD}>
 				<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-					<div style={{ fontSize: '17px', fontWeight: 800 }}>{fill(t('mobLevel'), { n: level.seviye })}</div>
+					<div style={{ fontSize: '17px', fontWeight: 800 }}>{fill(t('mobLevel'), { n: levelInfo.level })}</div>
 					<div style={{ fontSize: '12.5px', opacity: 0.75 }}>{currentUser.xp || 0} XP</div>
 				</div>
 				<div
 					role="progressbar"
 					aria-valuemin={0}
 					aria-valuemax={100}
-					aria-valuenow={Math.round(level.ilerleme * 100)}
-					aria-label={fill(t('mobLevel'), { n: level.seviye })}
+					aria-valuenow={Math.round(levelInfo.progress * 100)}
+					aria-label={fill(t('mobLevel'), { n: levelInfo.level })}
 					style={{ height: '8px', borderRadius: '4px', background: 'rgba(255, 255, 255, 0.12)', margin: '10px 0 6px', overflow: 'hidden' }}
 				>
-					<div style={{ height: '100%', width: `${Math.round(level.ilerleme * 100)}%`, background: 'linear-gradient(90deg, #0a84ff, #5e5ce6)' }} />
+					<div style={{ height: '100%', width: `${Math.round(levelInfo.progress * 100)}%`, background: 'linear-gradient(90deg, #0a84ff, #5e5ce6)' }} />
 				</div>
-				<div style={{ fontSize: '11.5px', opacity: 0.6 }}>{fill(t('mobXpToNext'), { n: Math.max(0, level.sonraki - (currentUser.xp || 0)) })}</div>
+				<div style={{ fontSize: '11.5px', opacity: 0.6 }}>{fill(t('mobXpToNext'), { n: Math.max(0, levelInfo.next - (currentUser.xp || 0)) })}</div>
 			</div>
 
 			{feedback && (
@@ -172,12 +172,12 @@ export function MobileDashboard({ onOpenApp }: { onOpenApp: (appId: AppID) => vo
 					) : (
 						<ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
 							{tasks.slice(0, MAX_TASKS_SHOWN).map((task) => {
-								const due = task.teslimTarihi ? dueLabel(task.teslimTarihi) : null;
+								const due = task.dueDate ? dueLabel(task.dueDate) : null;
 								return (
 									<li key={task.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', fontSize: '13px' }}>
 										<span style={{ minWidth: 0 }}>
-											<span style={{ display: 'block', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.baslik}</span>
-											<span style={{ display: 'block', fontSize: '11.5px', opacity: 0.6 }}>{task.takimAdi}</span>
+											<span style={{ display: 'block', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.title}</span>
+											<span style={{ display: 'block', fontSize: '11.5px', opacity: 0.6 }}>{task.teamName}</span>
 										</span>
 										{due && <span style={{ fontSize: '11.5px', color: due.overdue ? '#ff453a' : undefined, opacity: due.overdue ? 1 : 0.7, whiteSpace: 'nowrap' }}>{due.text}</span>}
 									</li>
@@ -202,14 +202,14 @@ export function MobileDashboard({ onOpenApp }: { onOpenApp: (appId: AppID) => vo
 					</div>
 					{upcoming ? (
 						<div style={{ marginTop: '10px' }}>
-							<div style={{ fontSize: '14px', fontWeight: 600 }}>{upcoming.baslik}</div>
+							<div style={{ fontSize: '14px', fontWeight: 600 }}>{upcoming.title}</div>
 							<div style={{ fontSize: '12px', opacity: 0.7, marginTop: '2px' }}>
-								{upcoming.baslangic <= now
+								{upcoming.start <= now
 									? t('mobEventLive')
-									: new Date(upcoming.baslangic).toLocaleString(locale, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-								{upcoming.konum ? ` · ${upcoming.konum}` : ''}
+									: new Date(upcoming.start).toLocaleString(locale, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+								{upcoming.location ? ` · ${upcoming.location}` : ''}
 							</div>
-							{upcoming.benimKaydim && <div style={{ fontSize: '11.5px', color: '#30d158', marginTop: '4px' }}>{t('mobEventRegistered')}</div>}
+							{upcoming.myMyRecord && <div style={{ fontSize: '11.5px', color: '#30d158', marginTop: '4px' }}>{t('mobEventRegistered')}</div>}
 						</div>
 					) : (
 						<div style={{ fontSize: '12.5px', opacity: 0.6, marginTop: '8px' }}>{events.isLoading ? '…' : t('mobNoUpcoming')}</div>

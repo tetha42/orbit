@@ -7,7 +7,7 @@ import { Linkified } from '@/components/Common/Linkified';
 import ui from '@/core/ui/ui.module.css';
 
 interface TaskDescriptionProps {
-	aciklama: string | null;
+	description: string | null;
 	canWork: boolean;
 	descDraft: string | null;
 	setDescDraft: (draft: string | null) => void;
@@ -15,7 +15,7 @@ interface TaskDescriptionProps {
 }
 
 export function TaskDescription({
-	aciklama,
+	description,
 	canWork,
 	descDraft,
 	setDescDraft,
@@ -32,7 +32,7 @@ export function TaskDescription({
 					<button
 						type="button"
 						className={ui.iconBtn}
-						onClick={() => setDescDraft(aciklama ?? '')}
+						onClick={() => setDescDraft(description ?? '')}
 						aria-label={t('kbEdit')}
 						title={t('kbEdit')}
 					>
@@ -62,9 +62,9 @@ export function TaskDescription({
 						</button>
 					</div>
 				</>
-			) : aciklama ? (
+			) : description ? (
 				<div className={ui.descView}>
-					<Linkified text={aciklama} />
+					<Linkified text={description} />
 				</div>
 			) : (
 				<div className={ui.muted}>{t('kbNoDesc')}</div>

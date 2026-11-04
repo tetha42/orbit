@@ -21,15 +21,15 @@ export async function GET(request: Request) {
 
 	const { searchParams } = new URL(request.url);
 	const format = (searchParams.get('format') || 'csv').trim().toLowerCase();
-	const servis = searchParams.get('servis') || undefined;
-	const servisOp = (searchParams.get('servisOp') as 'eq' | 'neq') || undefined;
-	const seviye = searchParams.get('seviye') || undefined;
-	const seviyeOp = (searchParams.get('seviyeOp') as 'eq' | 'neq') || undefined;
+	const service = searchParams.get('service') || undefined;
+	const serviceOp = (searchParams.get('serviceOp') as 'eq' | 'neq') || undefined;
+	const level = searchParams.get('level') || undefined;
+	const levelOp = (searchParams.get('levelOp') as 'eq' | 'neq') || undefined;
 	const ip = searchParams.get('ip') || undefined;
 	const ipOp = (searchParams.get('ipOp') as 'eq' | 'neq' | 'contains' | 'not_contains') || undefined;
-	const arama = searchParams.get('arama') || undefined;
-	const aramaOp = (searchParams.get('aramaOp') as FilterOperator) || undefined;
-	const aramaAlani = (searchParams.get('aramaAlani') as FilterColumn) || undefined;
+	const search = searchParams.get('search') || undefined;
+	const searchOp = (searchParams.get('searchOp') as FilterOperator) || undefined;
+	const searchField = (searchParams.get('searchField') as FilterColumn) || undefined;
 	const timeRange = (searchParams.get('timeRange') as TimeRangePreset | null) || undefined;
 	const startTime = searchParams.get('startTime') ? Number(searchParams.get('startTime')) : undefined;
 	const endTime = searchParams.get('endTime') ? Number(searchParams.get('endTime')) : undefined;
@@ -37,15 +37,15 @@ export async function GET(request: Request) {
 
 	try {
 		const logs = await getSystemLogs({
-			servis,
-			servisOp,
-			seviye,
-			seviyeOp,
+			service,
+			serviceOp,
+			level,
+			levelOp,
 			ip,
 			ipOp,
-			arama,
-			aramaOp,
-			aramaAlani,
+			search,
+			searchOp,
+			searchField,
 			timeRange,
 			startTime,
 			endTime,
@@ -65,13 +65,13 @@ export async function GET(request: Request) {
 		// Default: RFC 4180 CSV
 		const header = 'id,zaman,seviye,servis,mesaj,ip,kullanici_id\r\n';
 		const rows = logs.map((log) => {
-			const zamanStr = new Date(log.zaman).toISOString();
+			const timeStr = new Date(log.time).toISOString();
 			return [
 				escapeCsvField(log.id),
-				escapeCsvField(zamanStr),
-				escapeCsvField(log.seviye),
-				escapeCsvField(log.servis),
-				escapeCsvField(log.mesaj),
+				escapeCsvField(timeStr),
+				escapeCsvField(log.level),
+				escapeCsvField(log.service),
+				escapeCsvField(log.message),
 				escapeCsvField(log.ip),
 				escapeCsvField(log.userId ?? ''),
 			].join(',');

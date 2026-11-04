@@ -15,8 +15,8 @@ import { CONFIG } from '@/server/config';
 export interface Recipient {
 	firstName?: string;
 	lastName?: string;
-	ad?: string;
-	soyad?: string;
+	name?: string;
+	surname?: string;
 	email: string;
 	preferredLanguage?: 'tr' | 'en';
 }
@@ -63,8 +63,8 @@ async function sendNotification(
 	}
 
 	const lang = getLang(user, langOverride);
-	const first = user.firstName || user.ad || '';
-	const last = user.lastName || user.soyad || '';
+	const first = user.firstName || user.name || '';
+	const last = user.lastName || user.surname || '';
 	const greeting =
 		lang === 'en'
 			? `Hello ${safeName(first)} ${safeName(last)},`

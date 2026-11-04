@@ -36,8 +36,8 @@ const manifest = {
 	dock: 1,
 	notifications: { checkin: 'kullan', event: 'kullan' },
 	permission: {
-		sira: 1,
-		ad: 'Etkinlikler',
+		order: 1,
+		name: 'Etkinlikler',
 		kullan: 'Etkinliklere kaydolur, bilet ve QR yoklama kullanır.',
 		yonet: 'Etkinlik oluşturur, yoklama alır, katılımcı listesini görür ve indirir.',
 	},
@@ -49,8 +49,8 @@ const manifest = {
 				id: 'file',
 				title: { tr: 'İşlemler', en: 'Actions' },
 				items: [
-					{ id: 'new-event', label: { tr: 'Yeni CommunityEvent...', en: 'New Event...' }, shortcut: '⌘N', permission: 'yonet', komut: 'new-event' },
-					{ id: 'projector-qr', label: { tr: 'Projeksiyon QR Modu', en: 'Projector QR Mode' }, shortcut: '⌘P', permission: 'yonet', komut: 'projector' },
+					{ id: 'new-event', label: { tr: 'Yeni CommunityEvent...', en: 'New Event...' }, shortcut: '⌘N', permission: 'yonet', command: 'new-event' },
+					{ id: 'projector-qr', label: { tr: 'Projeksiyon QR Modu', en: 'Projector QR Mode' }, shortcut: '⌘P', permission: 'yonet', command: 'projector' },
 				],
 			},
 		],

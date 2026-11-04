@@ -90,21 +90,21 @@ export async function GET(request: Request) {
 		}
 
 		const parseSiemFilter = () => {
-			const servis = searchParams.get('servis') || undefined;
-			const servisOp = (searchParams.get('servisOp') as 'eq' | 'neq') || undefined;
-			const seviye = searchParams.get('seviye') || undefined;
-			const seviyeOp = (searchParams.get('seviyeOp') as 'eq' | 'neq') || undefined;
+			const service = searchParams.get('service') || undefined;
+			const serviceOp = (searchParams.get('serviceOp') as 'eq' | 'neq') || undefined;
+			const level = searchParams.get('level') || undefined;
+			const levelOp = (searchParams.get('levelOp') as 'eq' | 'neq') || undefined;
 			const ip = searchParams.get('ip') || undefined;
 			const ipOp = (searchParams.get('ipOp') as 'eq' | 'neq' | 'contains' | 'not_contains') || undefined;
-			const arama = searchParams.get('arama') || undefined;
-			const aramaOp = (searchParams.get('aramaOp') as FilterOperator) || undefined;
-			const aramaAlani = (searchParams.get('aramaAlani') as FilterColumn) || undefined;
+			const search = searchParams.get('search') || undefined;
+			const searchOp = (searchParams.get('searchOp') as FilterOperator) || undefined;
+			const searchField = (searchParams.get('searchField') as FilterColumn) || undefined;
 			const timeRange = (searchParams.get('timeRange') as TimeRangePreset) || undefined;
 			const startTime = searchParams.get('startTime') ? Number(searchParams.get('startTime')) : undefined;
 			const endTime = searchParams.get('endTime') ? Number(searchParams.get('endTime')) : undefined;
 			const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
 			const limit = Math.min(500, Math.max(10, parseInt(searchParams.get('limit') || '50', 10)));
-			return { servis, servisOp, seviye, seviyeOp, ip, ipOp, arama, aramaOp, aramaAlani, timeRange, startTime, endTime, page, limit };
+			return { service, serviceOp, level, levelOp, ip, ipOp, search, searchOp, searchField, timeRange, startTime, endTime, page, limit };
 		};
 
 		if (action === 'siem') {
@@ -164,7 +164,7 @@ export async function POST(request: Request) {
 		if (action === 'ban_ip' || action === 'ban') {
 			const rawIp = String(body.ip || '').trim();
 			const parsedIp = parseIpOrCidr(rawIp);
-			const neden = String(body.neden || body.sebep || 'SoC Yöneticisi tarafından manuel karantina').trim();
+			const reason = String(body.reason || body.reason || 'SoC Yöneticisi tarafından manuel karantina').trim();
 			const rawDuration = body.durationMinutes;
 			const durationMinutes =
 				rawDuration === null || rawDuration === undefined || rawDuration === 'permanent' || Number(rawDuration) <= 0
@@ -185,17 +185,17 @@ export async function POST(request: Request) {
 			const durationMs = durationMinutes ? durationMinutes * 60_000 : null;
 			await banIp({
 				ip: parsedIp,
-				neden,
+				reason,
 				durationMs,
-				tehditPuani: 100,
-				olusturanId: auth.user.id,
+				threatScore: 100,
+				creatorId: auth.user.id,
 			});
 
 			await logSystemEvent({
-				servis: 'security',
-				seviye: 'ERROR',
-				mesaj: `🛡️ [MANUEL IP KARANTİNASI] ${parsedIp} adresi SoC üzerinden engellendi (${durationMinutes ? `${durationMinutes} dk` : 'Kalıcı'}).`,
-				detay: { ip: parsedIp, neden, durationMinutes },
+				service: 'security',
+				level: 'ERROR',
+				message: `🛡️ [MANUEL IP KARANTİNASI] ${parsedIp} adresi SoC üzerinden engellendi (${durationMinutes ? `${durationMinutes} dk` : 'Kalıcı'}).`,
+				detail: { ip: parsedIp, reason, durationMinutes },
 				userId: auth.user.id,
 				ip: callerIp,
 			});
@@ -212,10 +212,10 @@ export async function POST(request: Request) {
 
 			await unbanIp(ip);
 			await logSystemEvent({
-				servis: 'security',
-				seviye: 'INFO',
-				mesaj: `🔓 [KARANTİNA KALDIRILDI] ${ip} adresinin güvenlik engeli kaldırıldı.`,
-				detay: { ip },
+				service: 'security',
+				level: 'INFO',
+				message: `🔓 [KARANTİNA KALDIRILDI] ${ip} adresinin güvenlik engeli kaldırıldı.`,
+				detail: { ip },
 				userId: auth.user.id,
 				ip: callerIp,
 			});
@@ -226,21 +226,21 @@ export async function POST(request: Request) {
 		if (action === 'whitelist_ip' || action === 'whitelist') {
 			const rawIp = String(body.ip || '').trim();
 			const parsedIp = parseIpOrCidr(rawIp);
-			const neden = String(body.neden || body.sebep || 'Güvenilir IP (Whitelist)').trim();
+			const reason = String(body.reason || body.reason || 'Güvenilir IP (Whitelist)').trim();
 			if (!parsedIp) {
 				return NextResponse.json({ error: 'Geçerli bir IPv4, IPv6 veya CIDR alt ağ adresi girin.' }, { status: 400 });
 			}
 
 			await whitelistIp({
 				ip: parsedIp,
-				neden,
-				olusturanId: auth.user.id,
+				reason,
+				creatorId: auth.user.id,
 			});
 			await logSystemEvent({
-				servis: 'security',
-				seviye: 'INFO',
-				mesaj: `✅ [WHITELIST EKLENDİ] ${parsedIp} adresi güvenilir IP listesine alındı.`,
-				detay: { ip: parsedIp, neden },
+				service: 'security',
+				level: 'INFO',
+				message: `✅ [WHITELIST EKLENDİ] ${parsedIp} adresi güvenilir IP listesine alındı.`,
+				detail: { ip: parsedIp, reason },
 				userId: auth.user.id,
 				ip: callerIp,
 			});
@@ -289,10 +289,10 @@ export async function POST(request: Request) {
 			const { closeUserTerminalSessions } = await import('@/server/terminalManager');
 			const closedCount = closeUserTerminalSessions(userId);
 			await logSystemEvent({
-				servis: 'terminal',
-				seviye: 'WARN',
-				mesaj: `[SoC Shell Guard] User #${userId} active PTY terminal shells terminated (${closedCount} shells closed).`,
-				detay: { userId, closedCount, actorId: auth.user.id },
+				service: 'terminal',
+				level: 'WARN',
+				message: `[SoC Shell Guard] User #${userId} active PTY terminal shells terminated (${closedCount} shells closed).`,
+				detail: { userId, closedCount, actorId: auth.user.id },
 				userId: auth.user.id,
 				ip: callerIp,
 			});
@@ -341,10 +341,10 @@ export async function POST(request: Request) {
 
 			const cleared = resetRateLimit(key);
 			await logSystemEvent({
-				servis: 'security',
-				seviye: 'INFO',
-				mesaj: `⚡ [HIZ SINIRI SIFIRLANDI] '${key}' anahtarlı hız sınırı kısıtlaması SoC üzerinden sıfırlandı.`,
-				detay: { key, cleared },
+				service: 'security',
+				level: 'INFO',
+				message: `⚡ [HIZ SINIRI SIFIRLANDI] '${key}' anahtarlı hız sınırı kısıtlaması SoC üzerinden sıfırlandı.`,
+				detail: { key, cleared },
 				userId: auth.user.id,
 				ip: callerIp,
 			});
@@ -370,10 +370,10 @@ export async function POST(request: Request) {
 			}
 			await saveWebhookConfig(config);
 			await logSystemEvent({
-				servis: 'security',
-				seviye: 'INFO',
-				mesaj: `🔔 [WEBHOOK GÜNCELLENDİ] Güvenlik uyarı webhook ayarları güncellendi (${config.provider || 'none'}).`,
-				detay: { provider: config.provider, enabled: config.enabled },
+				service: 'security',
+				level: 'INFO',
+				message: `🔔 [WEBHOOK GÜNCELLENDİ] Güvenlik uyarı webhook ayarları güncellendi (${config.provider || 'none'}).`,
+				detail: { provider: config.provider, enabled: config.enabled },
 				userId: auth.user.id,
 				ip: callerIp,
 			});

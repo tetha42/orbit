@@ -79,7 +79,7 @@ export async function POST(request: Request) {
 
 			// Replay-protected: a code spent here cannot be reused to sign in.
 			const verification = fresh.totpSecret
-				? await verifyTotpCodeDetailed(fresh.totpSecret, submitted, fresh.totpSonAdim)
+				? await verifyTotpCodeDetailed(fresh.totpSecret, submitted, fresh.totpLastStep)
 				: { valid: false, timeStep: null };
 			const validTotp = verification.valid;
 			if (validTotp && verification.timeStep !== null) {
@@ -93,9 +93,9 @@ export async function POST(request: Request) {
 			if (!validTotp && !remaining) {
 				recordFailure(failKey, WINDOW_MS);
 				await logSystemEvent({
-					servis: 'auth',
-					seviye: 'WARN',
-					mesaj: `2FA setup verification failed: ${user.email}`,
+					service: 'auth',
+					level: 'WARN',
+					message: `2FA setup verification failed: ${user.email}`,
 					userId: user.id,
 					ip,
 				});
@@ -118,9 +118,9 @@ export async function POST(request: Request) {
 		const qrDataUrl = await QRCode.toDataURL(otpauthUri, { margin: 1, width: 240 });
 
 		await logSystemEvent({
-			servis: 'auth',
-			seviye: 'INFO',
-			mesaj: `2FA kurulum anahtarı oluşturuldu: ${user.email}`,
+			service: 'auth',
+			level: 'INFO',
+			message: `2FA kurulum anahtarı oluşturuldu: ${user.email}`,
 			userId: user.id,
 			ip,
 		});

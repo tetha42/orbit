@@ -32,12 +32,12 @@ export interface TaskAccess extends TeamBoardAccess {
 	work: boolean;
 }
 
-export async function getTaskAccess(user: AuthorizedUser, gorevId: string): Promise<TaskAccess | null> {
-	const task = await getTeamTaskById(gorevId);
+export async function getTaskAccess(user: AuthorizedUser, taskId: string): Promise<TaskAccess | null> {
+	const task = await getTeamTaskById(taskId);
 	if (!task) return null;
 	const board = await getBoardAccess(user, task.teamId);
 	if (!board) return null;
-	return { ...board, task, work: board.manage || task.atananUyeId === user.id };
+	return { ...board, task, work: board.manage || task.assigneeMemberId === user.id };
 }
 
 /** A task can only be assigned to someone on the team (or its captain). */

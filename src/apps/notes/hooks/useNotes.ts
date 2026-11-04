@@ -83,13 +83,13 @@ export function useNotes() {
 						const serverNotes = await notesRes.json();
 						if (Array.isArray(serverNotes)) {
 							loadedNotes = serverNotes.map((sn: ServerNoteRecord) => {
-								let parsedBody = sn.icerik || '';
-								let folderId = sn.klasorId || sn.renk || 'quick';
-								let isDeleted = Boolean(sn.copteMi);
+								let parsedBody = sn.content || '';
+								let folderId = sn.folderId || sn.color || 'quick';
+								let isDeleted = Boolean(sn.trashedMi);
 
-								if (typeof sn.icerik === 'string' && sn.icerik.startsWith('{') && sn.icerik.includes('"body"')) {
+								if (typeof sn.content === 'string' && sn.content.startsWith('{') && sn.content.includes('"body"')) {
 									try {
-										const obj = JSON.parse(sn.icerik);
+										const obj = JSON.parse(sn.content);
 										if (obj.body !== undefined) parsedBody = obj.body;
 										if (obj.folderId) folderId = obj.folderId;
 										if (obj.isDeleted !== undefined) isDeleted = Boolean(obj.isDeleted);
@@ -100,13 +100,13 @@ export function useNotes() {
 
 								return {
 									id: sn.id,
-									title: sn.baslik || t('notesUntitledNote'),
+									title: sn.title || t('notesUntitledNote'),
 									body: parsedBody,
 									folderId,
-									isPinned: Boolean(sn.sabitliMi),
+									isPinned: Boolean(sn.pinnedMi),
 									isDeleted,
-									createdAt: Number(sn.olusturma) || Date.now(),
-									updatedAt: Number(sn.guncellenme) || Date.now(),
+									createdAt: Number(sn.creation) || Date.now(),
+									updatedAt: Number(sn.update) || Date.now(),
 								};
 							});
 						}
@@ -115,9 +115,9 @@ export function useNotes() {
 					if (foldersRes.ok) {
 						const serverFolders = await foldersRes.json();
 						if (Array.isArray(serverFolders)) {
-							loadedCustomFolders = serverFolders.map((sf: { id: string; ad: string }) => ({
+							loadedCustomFolders = serverFolders.map((sf: { id: string; name: string }) => ({
 								id: sf.id,
-								name: sf.ad,
+								name: sf.name,
 								isSystem: false,
 								iconType: 'custom',
 							}));
@@ -158,12 +158,12 @@ export function useNotes() {
 			setSyncStatus('saving');
 			const payload = {
 				id: note.id,
-				baslik: note.title.trim() || t('notesUntitledNote'),
-				icerik: note.body,
-				klasorId: note.folderId,
-				renk: note.folderId,
-				sabitliMi: note.isPinned,
-				copteMi: Boolean(note.isDeleted),
+				title: note.title.trim() || t('notesUntitledNote'),
+				content: note.body,
+				folderId: note.folderId,
+				color: note.folderId,
+				pinnedMi: note.isPinned,
+				trashedMi: Boolean(note.isDeleted),
 			};
 
 			const res = await fetch('/api/notes', {
@@ -382,7 +382,7 @@ export function useNotes() {
 				await fetch('/api/notes/folders', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ id: folderId, ad: folderName }),
+					body: JSON.stringify({ id: folderId, name: folderName }),
 				});
 			} catch (e) {
 				console.error('Failed to save folder to server:', e);

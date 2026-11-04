@@ -26,10 +26,10 @@ export async function GET(request: Request) {
 	const waf = inspectRequestPayload(request);
 	if (waf.matched) {
 		void logSystemEvent({
-			servis: 'security',
-			seviye: 'ERROR',
-			mesaj: `[WAF] OAuth userinfo saldırı imzası engellendi (${waf.signature}): GET /api/oauth/userinfo`,
-			detay: { category: waf.category, signature: waf.signature },
+			service: 'security',
+			level: 'ERROR',
+			message: `[WAF] OAuth userinfo saldırı imzası engellendi (${waf.signature}): GET /api/oauth/userinfo`,
+			detail: { category: waf.category, signature: waf.signature },
 			ip,
 		});
 		void recordSecurityStrike({
@@ -90,12 +90,12 @@ export async function GET(request: Request) {
 		};
 
 		if (scopes.includes('profile')) {
-			const first = user.firstName || user.ad || '';
-			const last = user.lastName || user.soyad || '';
+			const first = user.firstName || user.name || '';
+			const last = user.lastName || user.surname || '';
 			claims.name = `${first} ${last}`.trim();
 			claims.given_name = first;
 			claims.family_name = last;
-			claims.picture = user.avatarUrl || user.profilFoto || null;
+			claims.picture = user.avatarUrl || user.profilePhoto || null;
 			claims.bio = user.bio || '';
 		}
 
@@ -105,19 +105,19 @@ export async function GET(request: Request) {
 		}
 
 		if (scopes.includes('academic')) {
-			claims.student_no = user.ogrenciNo || null;
-			claims.department = user.bolum || null;
-			claims.grade = user.sinif ?? null;
+			claims.student_no = user.studentNo || null;
+			claims.department = user.department || null;
+			claims.grade = user.grade ?? null;
 		}
 
 		if (scopes.includes('roles')) {
 			claims.role = {
 				id: permission.role?.id || null,
-				name: permission.role?.ad || null,
-				color: permission.role?.renk || null,
+				name: permission.role?.name || null,
+				color: permission.role?.color || null,
 				is_admin: permission.admin,
 			};
-			claims.permissions = permission.izinler;
+			claims.permissions = permission.permissions;
 			claims.xp = user.xp;
 		}
 

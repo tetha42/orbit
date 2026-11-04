@@ -68,7 +68,7 @@ export function SessionInspectorTab({ sessionInfo, isLoading }: SessionInspector
 					<div>
 						<span style={{ fontSize: '11px', opacity: 0.6, display: 'block' }}>{t('tbSessionFullName')}</span>
 						<strong style={{ fontSize: '13px' }}>
-							{user.firstName || user.ad} {user.lastName || user.soyad}
+							{user.firstName || user.name} {user.lastName || user.surname}
 						</strong>
 					</div>
 					<div>
@@ -78,12 +78,12 @@ export function SessionInspectorTab({ sessionInfo, isLoading }: SessionInspector
 					<div>
 						<span style={{ fontSize: '11px', opacity: 0.6, display: 'block' }}>{t('tbSessionStudentId')}</span>
 						<strong style={{ fontSize: '13px', fontFamily: 'ui-monospace, monospace' }}>
-							{user.handle || user.ogrenciNo || '—'}
+							{user.handle || user.studentNo || '—'}
 						</strong>
 					</div>
 					<div>
 						<span style={{ fontSize: '11px', opacity: 0.6, display: 'block' }}>{t('tbSessionAssignedRole')}</span>
-						<strong style={{ fontSize: '13px' }}>{user.rolAd}</strong>
+						<strong style={{ fontSize: '13px' }}>{user.roleName}</strong>
 					</div>
 					<div>
 						<span style={{ fontSize: '11px', opacity: 0.6, display: 'block' }}>{t('tbSessionMembershipStatus')}</span>
@@ -129,11 +129,11 @@ export function SessionInspectorTab({ sessionInfo, isLoading }: SessionInspector
 					<tbody>
 						{Object.entries(permissions).map(([appId, level]) => {
 							const meta = PERMISSION_DESCRIPTIONS[appId as keyof typeof PERMISSION_DESCRIPTIONS];
-							let ad = meta?.ad ?? appId;
+							let name = meta?.name ?? appId;
 							try {
 								const appMeta = getAppMeta(appId as AppID);
 								if (language === 'en' && appMeta?.title) {
-									ad = appMeta.title;
+									name = appMeta.title;
 								}
 							} catch {
 								// fallback to manifest ad
@@ -154,7 +154,7 @@ export function SessionInspectorTab({ sessionInfo, isLoading }: SessionInspector
 
 							return (
 								<tr key={appId}>
-									<td style={{ fontWeight: 600 }}>{ad}</td>
+									<td style={{ fontWeight: 600 }}>{name}</td>
 									<td>
 										<code
 											style={{ fontSize: '11px', opacity: 0.8, cursor: 'text', userSelect: 'text' }}

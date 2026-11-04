@@ -14,10 +14,10 @@ export async function roleLimitProblem(
 	if (roleId === ADMIN_ROLE_ID && !actor.permission.admin) {
 		return 'Admin roleünü yalnızca bir admin verebilir.';
 	}
-	const excess = extraPermissions((await getRolePermission(roleId)).izinler, actor.permission.izinler);
+	const excess = extraPermissions((await getRolePermission(roleId)).permissions, actor.permission.permissions);
 	return excess.length
 		? `Kendinizden daha yetkili bir role veremezsiniz (${excess
-				.map((a) => PERMISSION_DESCRIPTIONS[a].ad)
+				.map((a) => PERMISSION_DESCRIPTIONS[a].name)
 				.join(', ')}).`
 		: null;
 }

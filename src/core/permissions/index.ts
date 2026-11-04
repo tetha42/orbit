@@ -15,9 +15,8 @@ import { ALL_MANIFESTS, type PermissionApp } from '../../apps/index.ts';
 export const LEVELS = ['none', 'use', 'manage'] as const;
 export const SEVIYELER = LEVELS;
 export type PermissionLevel = (typeof LEVELS)[number];
-export type Seviye = PermissionLevel;
+export type Level = PermissionLevel;
 export const ORDER: Record<PermissionLevel, number> = { none: 0, use: 1, manage: 2 };
-export const SIRA = ORDER;
 
 /**
  * Every app a role can be granted, in the order the role editor lists them —
@@ -39,7 +38,7 @@ export const ALUMNI_ROLE_ID = 'role_alumni';
 
 /** True when a role represents the community's Alumni role. */
 export function isAlumniRole(
-	role: { id?: string | null; name?: string | null; ad?: string | null } | string | null | undefined
+	role: { id?: string | null; name?: string | null;} | string | null | undefined
 ): boolean {
 	if (!role) return false;
 	if (typeof role === 'string') {
@@ -47,7 +46,7 @@ export function isAlumniRole(
 		return norm === ALUMNI_ROLE_ID || norm === 'rol_mezun' || norm === 'mezun' || norm === 'alumni';
 	}
 	if (role.id === ALUMNI_ROLE_ID || role.id === 'rol_mezun') return true;
-	const name = (role.name ?? role.ad)?.trim().toLowerCase();
+	const name = (role.name ?? role.name)?.trim().toLowerCase();
 	return name === 'mezun' || name === 'alumni';
 }
 
@@ -56,16 +55,16 @@ export function isAlumniRole(
  * theme…); its "manage" level adds the system pages — roles, the e-mail account,
  * club details.
  */
-export const ALWAYS_OPEN: readonly PermissionApp[] = ALL_MANIFESTS.filter((m) => m.permission.herkeseAcik).map((m) => m.id as PermissionApp);
-export const HER_ZAMAN_ACIK = ALWAYS_OPEN;
+export const ALWAYS_OPEN: readonly PermissionApp[] = ALL_MANIFESTS.filter((m) => m.permission.everyoneOpen).map((m) => m.id as PermissionApp);
+export const EVERY_TIME_OPEN = ALWAYS_OPEN;
 
 /** What each level means in each app — shown in the role editor next to the switch. */
 export const PERMISSION_DESCRIPTIONS = Object.fromEntries(
-	ALL_MANIFESTS.map((m) => [m.id, { ad: m.permission.ad, kullan: m.permission.kullan, yonet: m.permission.yonet, ...('uyari' in m.permission ? { uyari: m.permission.uyari } : {}) }])
-) as Record<PermissionApp, { ad: string; kullan: string; yonet: string; uyari?: string }>;
+	ALL_MANIFESTS.map((m) => [m.id, { name: m.permission.name, kullan: m.permission.kullan, yonet: m.permission.yonet, ...('uyari' in m.permission ? { warning: m.permission.warning } : {}) }])
+) as Record<PermissionApp, { name: string; kullan: string; yonet: string; warning?: string }>;
 
 export const isPermissionLevel = (v: unknown): v is PermissionLevel => typeof v === 'string' && (LEVELS as readonly string[]).includes(v);
-export const isSeviye = isPermissionLevel;
+export const isLevel = isPermissionLevel;
 export const isPermissionApp = (v: unknown): v is PermissionApp => typeof v === 'string' && (PERMISSION_APPS as readonly string[]).includes(v);
 
 /** Normalizes legacy permission level values if encountered. */
@@ -82,10 +81,9 @@ export function levelOf(permissions: Permissions | null | undefined, appId: stri
 	if (s === 'none' && (ALWAYS_OPEN as readonly string[]).includes(appId)) return 'use';
 	return s;
 }
-export const seviyeOf = levelOf;
 
 export const isSufficientLevel = (held: PermissionLevel, required: PermissionLevel) => ORDER[canonicalLevel(held)] >= ORDER[canonicalLevel(required)];
-export const yeterliMi = isSufficientLevel;
+export const sufficientMi = isSufficientLevel;
 export const canUse = (permissions: Permissions | null | undefined, appId: string) => isSufficientLevel(levelOf(permissions, appId), 'use');
 export const canManage = (permissions: Permissions | null | undefined, appId: string) => isSufficientLevel(levelOf(permissions, appId), 'manage');
 
@@ -119,9 +117,9 @@ export function extraPermissions(requested: Permissions, held: Permissions): Per
  * Whether a member holding `held` may give out, edit or delete role `role`:
  * never one stronger than their own, and the admin role only as an admin.
  */
-export function canAssignRole(role: { id: string; permissions?: Permissions; izinler?: Permissions }, held: { admin: boolean; permissions?: Permissions; izinler?: Permissions }): boolean {
-	const rolePerms = role.permissions ?? role.izinler ?? {};
-	const heldPerms = held.permissions ?? held.izinler ?? {};
+export function canAssignRole(role: { id: string; permissions?: Permissions;}, held: { admin: boolean; permissions?: Permissions;}): boolean {
+	const rolePerms = role.permissions ?? role.permissions ?? {};
+	const heldPerms = held.permissions ?? held.permissions ?? {};
 	if (role.id === ADMIN_ROLE_ID || role.id === 'rol_admin') return held.admin;
 	return extraPermissions(rolePerms, heldPerms).length === 0;
 }
@@ -133,10 +131,10 @@ export const hasManagementPermission = (permissions: Permissions) => PERMISSION_
 export const ROLE_COLORS = ['#0a84ff', '#30d158', '#ff9f0a', '#ff453a', '#bf5af2', '#5e5ce6', '#64d2ff', '#ff375f', '#ac8e68', '#8e8e93'] as const;
 
 /** Validates a role's name, colour and description. */
-export function roleProblem(r: { ad?: unknown; renk?: unknown; aciklama?: unknown }): string | null {
-	const ad = typeof r.ad === 'string' ? r.ad.trim() : '';
-	if (ad.length < 2 || ad.length > 40) return 'Role adı 2-40 karakter olmalıdır.';
-	if (typeof r.renk !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(r.renk)) return 'Renk #rrggbb biçiminde olmalıdır.';
-	if (r.aciklama !== undefined && (typeof r.aciklama !== 'string' || r.aciklama.length > 200)) return 'Açıklama en fazla 200 karakter olabilir.';
+export function roleProblem(r: { name?: unknown; color?: unknown; description?: unknown }): string | null {
+	const name = typeof r.name === 'string' ? r.name.trim() : '';
+	if (name.length < 2 || name.length > 40) return 'Role adı 2-40 karakter olmalıdır.';
+	if (typeof r.color !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(r.color)) return 'Renk #rrggbb biçiminde olmalıdır.';
+	if (r.description !== undefined && (typeof r.description !== 'string' || r.description.length > 200)) return 'Açıklama en fazla 200 karakter olabilir.';
 	return null;
 }

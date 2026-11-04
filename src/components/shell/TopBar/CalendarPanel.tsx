@@ -49,9 +49,9 @@ export function CalendarPanel({ returnFocusTo }: { returnFocusTo: RefObject<HTML
 
 	const byDay = useMemo(() => {
 		const map = new Map<string, EventView[]>();
-		for (const e of data?.etkinlikler ?? []) {
+		for (const e of data?.events ?? []) {
 			if (e.status === 'iptal' || e.status === 'taslak') continue;
-			for (const k of daysOfEvent(e.baslangic, e.endTime)) map.set(k, [...(map.get(k) ?? []), e]);
+			for (const k of daysOfEvent(e.start, e.endTime)) map.set(k, [...(map.get(k) ?? []), e]);
 		}
 		return map;
 	}, [data]);
@@ -165,8 +165,8 @@ export function CalendarPanel({ returnFocusTo }: { returnFocusTo: RefObject<HTML
 									}
 								}}
 							>
-								<span className={styles.agendaTime}>{formatTime(e.baslangic, language)}</span>
-								<span className={styles.agendaTitle}>{e.baslik}</span>
+								<span className={styles.agendaTime}>{formatTime(e.start, language)}</span>
+								<span className={styles.agendaTitle}>{e.title}</span>
 							</div>
 						))
 					)}

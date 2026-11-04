@@ -100,7 +100,7 @@ export function ControlCenterApplet() {
 											width: '36px',
 											height: '36px',
 											borderRadius: '50%',
-											background: roleGradient(currentUser.rolBilgi?.renk),
+											background: roleGradient(currentUser.roleInfo?.color),
 											color: '#fff',
 											display: 'flex',
 											alignItems: 'center',
@@ -110,15 +110,15 @@ export function ControlCenterApplet() {
 											boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
 										}}
 									>
-										{currentUser.ad[0]}
-										{currentUser.soyad[0]}
+										{currentUser.name[0]}
+										{currentUser.surname[0]}
 									</div>
 									<div>
 										<div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--window-text)' }}>
-											{currentUser.ad} {currentUser.soyad}
+											{currentUser.name} {currentUser.surname}
 										</div>
 										<div style={{ fontSize: '11px', opacity: 0.7 }}>
-											{currentUser.bolum}
+											{currentUser.department}
 										</div>
 									</div>
 								</div>
@@ -146,7 +146,7 @@ export function ControlCenterApplet() {
 							</div>
 
 							<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '6px', borderTop: '1px solid var(--card-border)' }}>
-								<RoleBadge role={currentUser.rolBilgi} bosMetin={t('roleNone')} />
+								<RoleBadge role={currentUser.roleInfo} emptyText={t('roleNone')} />
 								<span
 									style={{
 										fontSize: '11px',

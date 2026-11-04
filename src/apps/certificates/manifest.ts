@@ -35,8 +35,8 @@ const manifest = {
 	dock: 6,
 	notifications: { certificate: 'kullan' },
 	permission: {
-		sira: 4,
-		ad: 'Sertifikalar',
+		order: 4,
+		name: 'Sertifikalar',
 		kullan: 'Kendi sertifikalarını ve rozetlerini görür, PDF indirir.',
 		yonet: 'Sertifika verir/siler, imzacıları düzenler.',
 	},

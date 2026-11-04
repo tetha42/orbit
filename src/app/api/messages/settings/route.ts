@@ -11,7 +11,7 @@ export async function GET(request: Request) {
 	if (!auth.authorized) return auth.response;
 	try {
 		const setting = await getMailEmailSetting(auth.user.id);
-		return NextResponse.json({ notifyByEmail: setting, epostaIleHaber: setting }, { headers: { 'Cache-Control': 'no-store' } });
+		return NextResponse.json({ notifyByEmail: setting, emailWithNews: setting }, { headers: { 'Cache-Control': 'no-store' } });
 	} catch (error) {
 		console.error('API /api/messages/settings GET error:', error);
 		return NextResponse.json({ error: 'Ayar okunamadı.' }, { status: 500 });
@@ -22,11 +22,11 @@ async function handlePATCH(request: Request) {
 	const auth = await requireApp(request, 'mail', 'kullan');
 	if (!auth.authorized) return auth.response;
 	try {
-		const body = (await request.json().catch(() => null)) as { notifyByEmail?: unknown; epostaIleHaber?: unknown } | null;
-		const rawValue = body?.notifyByEmail !== undefined ? body.notifyByEmail : body?.epostaIleHaber;
+		const body = (await request.json().catch(() => null)) as { notifyByEmail?: unknown; emailWithNews?: unknown } | null;
+		const rawValue = body?.notifyByEmail !== undefined ? body.notifyByEmail : body?.emailWithNews;
 		if (typeof rawValue !== 'boolean') return NextResponse.json({ error: 'Geçersiz değer.' }, { status: 400 });
 		await setMailEmailSetting(auth.user.id, rawValue);
-		return NextResponse.json({ notifyByEmail: rawValue, epostaIleHaber: rawValue });
+		return NextResponse.json({ notifyByEmail: rawValue, emailWithNews: rawValue });
 	} catch (error) {
 		console.error('API /api/messages/settings PATCH error:', error);
 		return NextResponse.json({ error: 'Ayar kaydedilemedi.' }, { status: 500 });

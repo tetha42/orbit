@@ -85,7 +85,7 @@ export const ForensicPayloadModal = React.memo(function ForensicPayloadModal() {
 								style={{ fontFamily: 'monospace', fontWeight: 600, userSelect: 'text' }}
 								title={isEn ? 'Double-click to select timestamp' : 'Zaman damgasını seçmek için çift tıklayın'}
 							>
-								{formatDateTime(forensicLog.zaman, language)}
+								{formatDateTime(forensicLog.time, language)}
 							</span>
 						</div>
 
@@ -103,17 +103,17 @@ export const ForensicPayloadModal = React.memo(function ForensicPayloadModal() {
 										fontWeight: 700,
 										fontSize: 10.5,
 										background:
-											forensicLog.seviye === 'CRITICAL' || forensicLog.seviye === 'ERROR'
+											forensicLog.level === 'CRITICAL' || forensicLog.level === 'ERROR'
 												? 'color-mix(in srgb, var(--danger, #d70015) 15%, transparent)'
 												: 'color-mix(in srgb, var(--warning, #c45500) 15%, transparent)',
 										color:
-											forensicLog.seviye === 'CRITICAL' || forensicLog.seviye === 'ERROR'
+											forensicLog.level === 'CRITICAL' || forensicLog.level === 'ERROR'
 												? 'var(--danger, #d70015)'
 												: 'var(--warning, #c45500)',
 										userSelect: 'text',
 									}}
 								>
-									{forensicLog.seviye}
+									{forensicLog.level}
 								</span>
 								<span
 									data-type="service"
@@ -127,7 +127,7 @@ export const ForensicPayloadModal = React.memo(function ForensicPayloadModal() {
 										userSelect: 'text',
 									}}
 								>
-									{forensicLog.servis}
+									{forensicLog.service}
 								</span>
 							</div>
 						</div>
@@ -201,7 +201,7 @@ export const ForensicPayloadModal = React.memo(function ForensicPayloadModal() {
 							}}
 							title={isEn ? 'Double-click to select message' : 'Mesajı seçmek için çift tıklayın'}
 						>
-							{forensicLog.mesaj}
+							{forensicLog.message}
 						</div>
 					</div>
 
@@ -220,18 +220,18 @@ export const ForensicPayloadModal = React.memo(function ForensicPayloadModal() {
 							</button>
 						</div>
 						<pre className={s.codeBlock}>
-							{JSON.stringify(forensicLog.detay || {}, null, 2)}
+							{JSON.stringify(forensicLog.detail || {}, null, 2)}
 						</pre>
 					</div>
 
 					{/* Quick Pivots */}
-					{forensicLog.detay && typeof forensicLog.detay === 'object' && Object.keys(forensicLog.detay).length > 0 && (
+					{forensicLog.detail && typeof forensicLog.detail === 'object' && Object.keys(forensicLog.detail).length > 0 && (
 						<div className={s.formField}>
 							<label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)' }}>
 								{isEn ? 'Quick Pivot Filters' : 'Hızlı Pivot Filtreler'}
 							</label>
 							<div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-								{Object.entries(forensicLog.detay).map(([k, v]) => {
+								{Object.entries(forensicLog.detail).map(([k, v]) => {
 									const valStr = typeof v === 'object' ? JSON.stringify(v) : String(v);
 									if (!valStr || valStr.length > 50) return null;
 									return (
@@ -308,8 +308,8 @@ export const ForensicPayloadModal = React.memo(function ForensicPayloadModal() {
 									void handleQuickBan(
 										ipToBan,
 										isEn
-											? `Forensic Inspection: ${forensicLog.mesaj.slice(0, 80)}`
-											: `Adli Müfettiş İncelemesi: ${forensicLog.mesaj.slice(0, 80)}`
+											? `Forensic Inspection: ${forensicLog.message.slice(0, 80)}`
+											: `Adli Müfettiş İncelemesi: ${forensicLog.message.slice(0, 80)}`
 									);
 								}}
 							>
@@ -327,7 +327,7 @@ export const ForensicPayloadModal = React.memo(function ForensicPayloadModal() {
 										{
 											action: 'whitelist_ip',
 											ip: ipToWhitelist,
-											neden: isEn
+											reason: isEn
 												? 'Marked as trusted during forensic inspection'
 												: 'Adli İncelemede Güvenilir Olarak İşaretlendi',
 										},

@@ -33,8 +33,8 @@ const manifest = {
 	dock: 2,
 	notifications: { projectProposal: 'yonet' },
 	permission: {
-		sira: 3,
-		ad: 'Projeler',
+		order: 3,
+		name: 'Projeler',
 		kullan: 'Proje vitrinini görür, yıldızlar, proje önerir.',
 		yonet: 'Önerileri onaylar, yayınlar, arşivler, öne çıkarır.',
 	},

@@ -15,13 +15,13 @@ const notFound = () => NextResponse.json({ error: 'Project bulunamadı.' }, { st
 const forbidden = (error: string) => NextResponse.json({ error }, { status: 403 });
 
 /** Someone else's proposal is invisible — "not found", not "forbidden". */
-async function load(id: string, user: AuthorizedUser): Promise<{ proje: Project; manage: boolean; owner: boolean } | null> {
+async function load(id: string, user: AuthorizedUser): Promise<{ project: Project; manage: boolean; owner: boolean } | null> {
 	const project = await getProjectById(id, user.id);
 	if (!project) return null;
 	const manage = can(user, 'projects', 'yonet');
-	const owner = project.olusturanId === user.id;
+	const owner = project.creatorId === user.id;
 	if (project.status !== 'yayinda' && !manage && !owner) return null;
-	return { proje: project, manage, owner };
+	return { project: project, manage, owner };
 }
 
 export async function GET(request: Request, { params }: Params) {
@@ -29,7 +29,7 @@ export async function GET(request: Request, { params }: Params) {
 	if (!auth.authorized) return auth.response;
 	const { id } = await params;
 	const found = await load(id, auth.user);
-	return found ? NextResponse.json(found.proje) : notFound();
+	return found ? NextResponse.json(found.project) : notFound();
 }
 
 /**
@@ -44,29 +44,29 @@ async function handlePATCH(request: Request, { params }: Params) {
 		const { id } = await params;
 		const found = await load(id, auth.user);
 		if (!found) return notFound();
-		const { proje, manage, owner } = found;
+		const { project, manage, owner } = found;
 		const body = (await request.json()) as Record<string, unknown>;
 
-		const editsContent = ['baslik', 'ozet', 'aciklama', 'repoUrl', 'canliUrl', 'teknolojiler', 'teamId'].some(
+		const editsContent = ['title', 'summary', 'description', 'repoUrl', 'liveUrl', 'technologies', 'teamId'].some(
 			(k) => body[k] !== undefined
 		);
-		if (editsContent && !manage && !(owner && proje.status !== 'arsiv')) {
+		if (editsContent && !manage && !(owner && project.status !== 'arsiv')) {
 			return forbidden('Bu projeyi yalnızca sahibi veya yönetim düzenleyebilir.');
 		}
-		if ((body.status !== undefined || body.oneCikan !== undefined) && !manage) {
+		if ((body.status !== undefined || body.oneLeaving !== undefined) && !manage) {
 			return forbidden('Yayınlama ve öne çıkarma yönetim kuruluna aittir.');
 		}
 		if (body.status !== undefined && !isProjectStatus(body.status)) {
 			return NextResponse.json({ error: 'Geçersiz status.' }, { status: 400 });
 		}
-		if (body.oneCikan !== undefined && typeof body.oneCikan !== 'boolean') {
+		if (body.oneLeaving !== undefined && typeof body.oneLeaving !== 'boolean') {
 			return NextResponse.json({ error: 'Geçersiz değer.' }, { status: 400 });
 		}
 
 		const parsed = await parseProjectInput(body, auth.user, true);
 		if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
-		const next = { ...proje, ...parsed.value };
-		if (!next.repoUrl && !next.canliUrl) {
+		const next = { ...project, ...parsed.value };
+		if (!next.repoUrl && !next.liveUrl) {
 			return NextResponse.json({ error: 'Depo veya canlı demo bağlantılarından en az biri gereklidir.' }, { status: 400 });
 		}
 
@@ -74,15 +74,15 @@ async function handlePATCH(request: Request, { params }: Params) {
 			...parsed.value,
 			status: body.status as Project['status'] | undefined,
 			// Only a published project can be pinned; archiving or unpublishing unpins it.
-			oneCikan:
-				body.oneCikan !== undefined
-					? Boolean(body.oneCikan) && (body.status ?? proje.status) === 'yayinda'
+			oneLeaving:
+				body.oneLeaving !== undefined
+					? Boolean(body.oneLeaving) && (body.status ?? project.status) === 'yayinda'
 					: body.status !== undefined && body.status !== 'yayinda'
 						? false
 						: undefined,
 		});
 		await publishEventQuiet(getPgPool(), [{ k: 'project_updated' }]);
-		return NextResponse.json({ success: true, proje: await getProjectById(id, auth.user.id) });
+		return NextResponse.json({ success: true, project: await getProjectById(id, auth.user.id) });
 	} catch (error) {
 		console.error('API /api/projeler PATCH error:', error);
 		return NextResponse.json({ error: 'Project güncellenemedi.' }, { status: 500 });
@@ -97,7 +97,7 @@ async function handleDELETE(request: Request, { params }: Params) {
 	const { id } = await params;
 	const found = await load(id, auth.user);
 	if (!found) return notFound();
-	if (!found.manage && !(found.owner && found.proje.status === 'oneri')) {
+	if (!found.manage && !(found.owner && found.project.status === 'oneri')) {
 		return forbidden('Yayındaki bir projeyi yalnızca yönetim kaldırabilir.');
 	}
 	await deleteProject(id);
@@ -114,7 +114,7 @@ async function handlePOST(request: Request, { params }: Params) {
 	if (!found) return notFound();
 	const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
 	if (body.action !== 'star') return NextResponse.json({ error: 'Geçersiz işlem.' }, { status: 400 });
-	if (found.proje.status !== 'yayinda') {
+	if (found.project.status !== 'yayinda') {
 		return NextResponse.json({ error: 'Yalnızca yayındaki projeler yıldızlanabilir.' }, { status: 400 });
 	}
 	const result = await toggleProjectLike(id, auth.user.id);

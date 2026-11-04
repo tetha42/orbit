@@ -7,11 +7,11 @@ import { fill } from '@/lib/text';
 import { useDialog } from '@/components/Common/DialogProvider';
 import { useJsonResource } from '@/core/data/useJsonResource';
 import {
-	aylikAkis,
-	ayAnahtari,
+	monthlyFeed,
+	monthKey,
 	filterRecords,
 	formatMinor,
-	kategoriDagilimi,
+	categoryDistribution,
 	runningBalance,
 } from '@/lib/budget';
 import { foldTr } from '@/lib/text';
@@ -24,7 +24,7 @@ import { formatDate, formatDateTime } from '@/core/data/format';
 import { useToast } from '@/core/ui/Toast';
 import { useNow } from '@/lib/client/useSheet';
 
-const tl = (kurus: number) => `₺${formatMinor(kurus)}`;
+const tl = (minor: number) => `₺${formatMinor(minor)}`;
 const dateFmt = (ms: number) => formatDate(ms);
 
 interface UseVaultLedgerOptions {
@@ -44,15 +44,15 @@ export function useVaultLedger({ teamId, onChanged, embedded = false, vaults }: 
 	const url = teamId ? `/api/budget?teamId=${encodeURIComponent(teamId)}` : '/api/budget';
 	const { data, refetch, isLoading, httpStatus } = useJsonResource<VaultResponse>(url);
 
-	const canWrite = !!data?.izin?.yaz;
-	const isManagement = !!data?.izin?.yonet;
-	const records = useMemo(() => data?.kayitlar ?? [], [data]);
-	const summary = data?.ozet ?? null;
+	const canWrite = !!data?.permission?.yaz;
+	const isManagement = !!data?.permission?.yonet;
+	const records = useMemo(() => data?.records ?? [], [data]);
+	const summary = data?.summary ?? null;
 
-	const [tur, setTur] = useState<'hepsi' | 'gelir' | 'gider'>('hepsi');
-	const [kategori, setKategori] = useState('');
-	const [ay, setAy] = useState('');
-	const [arama, setArama] = useState('');
+	const [typeValue, setType] = useState<'hepsi' | 'gelir' | 'gider'>('hepsi');
+	const [category, setCategory] = useState('');
+	const [month, setMonth] = useState('');
+	const [search, setSearch] = useState('');
 	const [modal, setModal] = useState<
 		{ kind: 'new' } | { kind: 'edit'; registration: VaultRecord } | { kind: 'transfer' } | null
 	>(null);
@@ -70,33 +70,33 @@ export function useVaultLedger({ teamId, onChanged, embedded = false, vaults }: 
 	};
 
 	const balances = useMemo(() => runningBalance(records), [records]);
-	const dagilim = useMemo(() => kategoriDagilimi(records), [records]);
-	const aylar = useMemo(() => aylikAkis(records, now, 6), [records, now]);
+	const distribution = useMemo(() => categoryDistribution(records), [records]);
+	const months = useMemo(() => monthlyFeed(records, now, 6), [records, now]);
 	const monthOptions = useMemo(
-		() => [...new Set(records.map((r) => ayAnahtari(r.date)))].sort().reverse(),
+		() => [...new Set(records.map((r) => monthKey(r.date)))].sort().reverse(),
 		[records]
 	);
 	const filtered = useMemo(
-		() => filterRecords(records, { tur, kategori, ay, arama, fold: foldTr }),
-		[records, tur, kategori, ay, arama]
+		() => filterRecords(records, { typeValue, category, month, search, fold: foldTr }),
+		[records, typeValue, category, month, search]
 	);
 	const filteredIn = filtered
-		.filter((r) => r.tur === 'gelir')
+		.filter((r) => r.typeValue === 'gelir')
 		.reduce((a, r) => a + r.amountMinor, 0);
 	const filteredOut = filtered
-		.filter((r) => r.tur === 'gider')
+		.filter((r) => r.typeValue === 'gider')
 		.reduce((a, r) => a + r.amountMinor, 0);
-	const anyFilter = tur !== 'hepsi' || !!kategori || !!ay || !!arama.trim();
-	const maxMonth = Math.max(1, ...aylar.map((m) => Math.max(m.gelir, m.gider)));
+	const anyFilter = typeValue !== 'hepsi' || !!category || !!month || !!search.trim();
+	const maxMonth = Math.max(1, ...months.map((m) => Math.max(m.gelir, m.gider)));
 	const canTransfer = isManagement && !!vaults && vaults.length > 1;
 
 	const remove = async (r: VaultRecord) => {
-		const message = r.aktarimId
-			? fill(t('kasaRevertTransferConfirm'), { target: r.karsiKasaAd ?? t('kasaOtherLedger') })
-			: fill(t('kasaDeleteRecordConfirm'), { desc: r.aciklama, amount: tl(r.amountMinor) });
+		const message = r.transferId
+			? fill(t('kasaRevertTransferConfirm'), { target: r.counterpartVaultName ?? t('kasaOtherLedger') })
+			: fill(t('kasaDeleteRecordConfirm'), { desc: r.description, amount: tl(r.amountMinor) });
 		if (!(await dialog.confirm({ message, tone: 'danger' }))) return;
 		const res = await fetch(`/api/budget?id=${encodeURIComponent(r.id)}`, { method: 'DELETE' });
-		if (res.ok) await changed(r.aktarimId ? t('kasaTransferReverted') : t('kasaRecordDeleted'));
+		if (res.ok) await changed(r.transferId ? t('kasaTransferReverted') : t('kasaRecordDeleted'));
 		else {
 			const body = await res.json().catch(() => ({}));
 			flash(body.error || t('actionFailed'), true);
@@ -108,17 +108,17 @@ export function useVaultLedger({ teamId, onChanged, embedded = false, vaults }: 
 			.reverse()
 			.map((r) => [
 				dateFmt(r.date),
-				r.tur === 'gelir' ? t('kasaIncome') : t('kasaExpense'),
-				r.kategori,
-				r.aciklama,
-				r.aktarimId ? (r.karsiKasaAd ?? '') : '',
-				r.kaydedenAdSoyad ?? '',
-				(r.tur === 'gelir' ? r.amountMinor : -r.amountMinor) / 100,
+				r.typeValue === 'gelir' ? t('kasaIncome') : t('kasaExpense'),
+				r.category,
+				r.description,
+				r.transferId ? (r.counterpartVaultName ?? '') : '',
+				r.recorderNameSurname ?? '',
+				(r.typeValue === 'gelir' ? r.amountMinor : -r.amountMinor) / 100,
 				(balances.get(r.id) ?? 0) / 100,
-				r.fisFotoUrl ? t('yes') : '',
+				r.receiptPhotoUrl ? t('yes') : '',
 			]);
 		downloadCsv(
-			data?.kasa.ad ?? 'kasa',
+			data?.vault.name ?? 'kasa',
 			[
 				t('kasaColDate'),
 				t('kasaColType'),
@@ -140,16 +140,16 @@ export function useVaultLedger({ teamId, onChanged, embedded = false, vaults }: 
 			.reverse()
 			.map(
 				(r) =>
-					`<tr><td>${dateFmt(r.date)}</td><td>${r.tur === 'gelir' ? t('kasaIncome') : t('kasaExpense')}</td><td>${esc(r.kategori)}</td><td>${esc(r.aciklama)}${r.aktarimId && r.karsiKasaAd ? ` <i>(${r.tur === 'gelir' ? t('kasaSource') : t('kasaTarget')}: ${esc(r.karsiKasaAd)})</i>` : ''}</td><td>${esc(r.kaydedenAdSoyad ?? '')}</td><td class="n">${r.tur === 'gelir' ? '' : '−'}${formatMinor(r.amountMinor)}</td><td class="n">${formatMinor(balances.get(r.id) ?? 0)}</td></tr>`
+					`<tr><td>${dateFmt(r.date)}</td><td>${r.typeValue === 'gelir' ? t('kasaIncome') : t('kasaExpense')}</td><td>${esc(r.category)}</td><td>${esc(r.description)}${r.transferId && r.counterpartVaultName ? ` <i>(${r.typeValue === 'gelir' ? t('kasaSource') : t('kasaTarget')}: ${esc(r.counterpartVaultName)})</i>` : ''}</td><td>${esc(r.recorderNameSurname ?? '')}</td><td class="n">${r.typeValue === 'gelir' ? '' : '−'}${formatMinor(r.amountMinor)}</td><td class="n">${formatMinor(balances.get(r.id) ?? 0)}</td></tr>`
 			)
 			.join('');
-		const cats = dagilim
-			.map((d) => `<tr><td>${esc(d.kategori)}</td><td class="n">${formatMinor(d.amountMinor)}</td><td class="n">%${Math.round(d.oran * 100)}</td></tr>`)
+		const cats = distribution
+			.map((d) => `<tr><td>${esc(d.category)}</td><td class="n">${formatMinor(d.amountMinor)}</td><td class="n">%${Math.round(d.ratio * 100)}</td></tr>`)
 			.join('');
 		const scope = anyFilter
 			? fill(t('kasaPrintFilteredScope'), { filtered: filtered.length, total: records.length })
 			: fill(t('kasaAllRecordsCount'), { count: records.length });
-		const title = `${data?.kasa.ad ?? t('kasaBalance')} — ${t('kasaAuditReportTitle')}`;
+		const title = `${data?.vault.name ?? t('kasaBalance')} — ${t('kasaAuditReportTitle')}`;
 		const w = openPrintWindow({
 			title,
 			css: '.sum{display:flex;gap:24px;margin-top:10px}.sum div{border:1px solid #ccc;border-radius:6px;padding:6px 10px}.sign{display:flex;justify-content:space-between;margin-top:48px}.sign div{width:40%;border-top:1px solid #333;padding-top:4px;text-align:center}',
@@ -173,10 +173,10 @@ export function useVaultLedger({ teamId, onChanged, embedded = false, vaults }: 
 	);
 
 	const clearFilter = () => {
-		setTur('hepsi');
-		setKategori('');
-		setAy('');
-		setArama('');
+		setType('hepsi');
+		setCategory('');
+		setMonth('');
+		setSearch('');
 	};
 
 	return {
@@ -190,14 +190,14 @@ export function useVaultLedger({ teamId, onChanged, embedded = false, vaults }: 
 		canWrite,
 		isManagement,
 		canTransfer,
-		tur,
-		setTur,
-		kategori,
-		setKategori,
-		ay,
-		setAy,
-		arama,
-		setArama,
+		typeValue,
+		setType,
+		category,
+		setCategory,
+		month,
+		setMonth,
+		search,
+		setSearch,
 		modal,
 		setModal,
 		changed,
@@ -206,8 +206,8 @@ export function useVaultLedger({ teamId, onChanged, embedded = false, vaults }: 
 		printReport,
 		clearFilter,
 		balances,
-		dagilim,
-		aylar,
+		distribution,
+		months,
 		monthOptions,
 		filtered,
 		filteredIn,

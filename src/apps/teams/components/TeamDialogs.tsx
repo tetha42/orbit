@@ -74,19 +74,19 @@ export function NewTeamModal({
 	onClose,
 	onCreated,
 }: {
-	roster: { id: string; ad: string; soyad: string }[];
+	roster: { id: string; name: string; surname: string }[];
 	categories: string[];
 	onClose: () => void;
 	onCreated: () => Promise<void>;
 }) {
 	const { t } = useI18n();
-	const [ad, setAd] = useState('');
-	const [kategori, setKategori] = useState<string>(categories[0] ?? '');
-	const [aciklama, setAciklama] = useState('');
-	const [kontenjan, setKontenjan] = useState('6');
+	const [name, setName] = useState('');
+	const [category, setCategory] = useState<string>(categories[0] ?? '');
+	const [description, setDescription] = useState('');
+	const [capacity, setCapacity] = useState('6');
 	const [repoUrl, setRepoUrl] = useState('');
 	const [leadId, setLeadId] = useState('');
-	const [katilimTuru, setKatilimTuru] = useState<ParticipationType>('acik');
+	const [participationType, setParticipationType] = useState<ParticipationType>('acik');
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
 
@@ -96,13 +96,13 @@ export function NewTeamModal({
 		setError('');
 		const res = await sendJson('/api/teams', 'POST', {
 			action: 'createTeam',
-			ad: ad.trim(),
-			kategori,
-			aciklama: aciklama.trim(),
-			kontenjan: Number(kontenjan),
+			name: name.trim(),
+			category,
+			description: description.trim(),
+			capacity: Number(capacity),
 			repoUrl: repoUrl.trim() || undefined,
 			leadId: leadId || undefined,
-			katilimTuru,
+			participationType,
 		});
 		setBusy(false);
 		if (!res.ok) {
@@ -139,8 +139,8 @@ export function NewTeamModal({
 					required
 					minLength={3}
 					maxLength={TEAM_NAME_MAX}
-					value={ad}
-					onChange={(e) => setAd(e.target.value)}
+					value={name}
+					onChange={(e) => setName(e.target.value)}
 				/>
 			</label>
 			<div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
@@ -149,8 +149,8 @@ export function NewTeamModal({
 					<select
 						className={ui.select}
 						style={{ maxWidth: 'none' }}
-						value={kategori}
-						onChange={(e) => setKategori(e.target.value)}
+						value={category}
+						onChange={(e) => setCategory(e.target.value)}
 					>
 						{categories.map((c) => (
 							<option key={c} value={c}>
@@ -167,8 +167,8 @@ export function NewTeamModal({
 						min={1}
 						max={CAPACITY_MAX}
 						required
-						value={kontenjan}
-						onChange={(e) => setKontenjan(e.target.value)}
+						value={capacity}
+						onChange={(e) => setCapacity(e.target.value)}
 					/>
 				</label>
 			</div>
@@ -183,7 +183,7 @@ export function NewTeamModal({
 					<option value="">—</option>
 					{roster.map((m) => (
 						<option key={m.id} value={m.id}>
-							{m.ad} {m.soyad}
+							{m.name} {m.surname}
 						</option>
 					))}
 				</select>
@@ -206,8 +206,8 @@ export function NewTeamModal({
 					required
 					minLength={10}
 					maxLength={TEAM_DESCRIPTION_MAX}
-					value={aciklama}
-					onChange={(e) => setAciklama(e.target.value)}
+					value={description}
+					onChange={(e) => setDescription(e.target.value)}
 				/>
 			</label>
 			<div className={ui.field}>
@@ -217,8 +217,8 @@ export function NewTeamModal({
 						<input
 							type="radio"
 							name="yeni-katilim"
-							checked={katilimTuru === 'acik'}
-							onChange={() => setKatilimTuru('acik')}
+							checked={participationType === 'acik'}
+							onChange={() => setParticipationType('acik')}
 						/>
 						{t('tmJoinOpen')}
 					</label>
@@ -226,8 +226,8 @@ export function NewTeamModal({
 						<input
 							type="radio"
 							name="yeni-katilim"
-							checked={katilimTuru === 'onayli'}
-							onChange={() => setKatilimTuru('onayli')}
+							checked={participationType === 'onayli'}
+							onChange={() => setParticipationType('onayli')}
 						/>
 						{t('tmJoinApproval')}
 					</label>
@@ -250,21 +250,21 @@ export function EditTeamModal({
 	onSaved,
 }: {
 	team: import('../types').Team;
-	roster: { id: string; ad: string; soyad: string }[];
+	roster: { id: string; name: string; surname: string }[];
 	categories: string[];
 	onClose: () => void;
 	onSaved: () => Promise<void>;
 }) {
 	const { t } = useI18n();
-	const all = team.izinler.editAll;
-	const [ad, setAd] = useState(team.ad);
-	const [kategori, setKategori] = useState(team.kategori);
-	const [aciklama, setAciklama] = useState(team.aciklama);
-	const [kontenjan, setKontenjan] = useState(String(team.kontenjan));
+	const all = team.permissions.editAll;
+	const [name, setName] = useState(team.name);
+	const [category, setCategory] = useState(team.category);
+	const [description, setDescription] = useState(team.description);
+	const [capacity, setCapacity] = useState(String(team.capacity));
 	const [repoUrl, setRepoUrl] = useState(team.repoUrl ?? '');
 	const [leadId, setLeadId] = useState(team.leadId ?? '');
-	const [katilimTuru, setKatilimTuru] = useState<ParticipationType>(team.katilimTuru);
-	const [status, setDurum] = useState(team.status);
+	const [participationType, setParticipationType] = useState<ParticipationType>(team.participationType);
+	const [status, setStatus] = useState(team.status);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
 
@@ -273,13 +273,13 @@ export function EditTeamModal({
 		setBusy(true);
 		setError('');
 		const body: Record<string, unknown> = { action: 'updateTeam', teamId: team.id };
-		if (aciklama !== team.aciklama) body.aciklama = aciklama.trim();
-		if (Number(kontenjan) !== team.kontenjan) body.kontenjan = Number(kontenjan);
+		if (description !== team.description) body.description = description.trim();
+		if (Number(capacity) !== team.capacity) body.capacity = Number(capacity);
 		if (repoUrl !== (team.repoUrl ?? '')) body.repoUrl = repoUrl.trim();
-		if (katilimTuru !== team.katilimTuru) body.katilimTuru = katilimTuru;
+		if (participationType !== team.participationType) body.participationType = participationType;
 		if (all) {
-			if (ad !== team.ad) body.ad = ad.trim();
-			if (kategori !== team.kategori) body.kategori = kategori;
+			if (name !== team.name) body.name = name.trim();
+			if (category !== team.category) body.category = category;
 			if (status !== team.status) body.status = status;
 			if (leadId !== team.leadId) body.leadId = leadId;
 		}
@@ -292,14 +292,14 @@ export function EditTeamModal({
 		await onSaved();
 	};
 
-	const categoryOptions = categories.includes(team.kategori)
+	const categoryOptions = categories.includes(team.category)
 		? categories
-		: [team.kategori, ...categories];
+		: [team.category, ...categories];
 
 	return (
 		<Sheet
 			title={t('tmSettingsTitle')}
-			subtitle={team.ad}
+			subtitle={team.name}
 			label={t('tmSettingsTitle')}
 			icon={<Users size={20} color="#0a84ff" />}
 			onClose={onClose}
@@ -324,8 +324,8 @@ export function EditTeamModal({
 					required
 					minLength={3}
 					maxLength={TEAM_NAME_MAX}
-					value={ad}
-					onChange={(e) => setAd(e.target.value)}
+					value={name}
+					onChange={(e) => setName(e.target.value)}
 				/>
 			</label>
 			<div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
@@ -335,8 +335,8 @@ export function EditTeamModal({
 						className={ui.select}
 						style={{ maxWidth: 'none' }}
 						disabled={!all}
-						value={kategori}
-						onChange={(e) => setKategori(e.target.value)}
+						value={category}
+						onChange={(e) => setCategory(e.target.value)}
 					>
 						{categoryOptions.map((c) => (
 							<option key={c} value={c}>
@@ -350,11 +350,11 @@ export function EditTeamModal({
 					<input
 						className={ui.input}
 						type="number"
-						min={Math.max(1, team.doluKontenjan)}
+						min={Math.max(1, team.fullCapacity)}
 						max={CAPACITY_MAX}
 						required
-						value={kontenjan}
-						onChange={(e) => setKontenjan(e.target.value)}
+						value={capacity}
+						onChange={(e) => setCapacity(e.target.value)}
 					/>
 				</label>
 			</div>
@@ -366,7 +366,7 @@ export function EditTeamModal({
 							className={ui.select}
 							style={{ maxWidth: 'none' }}
 							value={status}
-							onChange={(e) => setDurum(e.target.value as typeof team.status)}
+							onChange={(e) => setStatus(e.target.value as typeof team.status)}
 						>
 							<option value="aktif">{t('tmStatusActive')}</option>
 							<option value="askida">{t('tmStatusPaused')}</option>
@@ -384,7 +384,7 @@ export function EditTeamModal({
 							<option value="">—</option>
 							{roster.map((m) => (
 								<option key={m.id} value={m.id}>
-									{m.ad} {m.soyad}
+									{m.name} {m.surname}
 								</option>
 							))}
 						</select>
@@ -409,8 +409,8 @@ export function EditTeamModal({
 					required
 					minLength={10}
 					maxLength={TEAM_DESCRIPTION_MAX}
-					value={aciklama}
-					onChange={(e) => setAciklama(e.target.value)}
+					value={description}
+					onChange={(e) => setDescription(e.target.value)}
 				/>
 			</label>
 			<div className={ui.field}>
@@ -420,8 +420,8 @@ export function EditTeamModal({
 						<input
 							type="radio"
 							name="duzenle-katilim"
-							checked={katilimTuru === 'acik'}
-							onChange={() => setKatilimTuru('acik')}
+							checked={participationType === 'acik'}
+							onChange={() => setParticipationType('acik')}
 						/>
 						{t('tmJoinOpen')}
 					</label>
@@ -429,8 +429,8 @@ export function EditTeamModal({
 						<input
 							type="radio"
 							name="duzenle-katilim"
-							checked={katilimTuru === 'onayli'}
-							onChange={() => setKatilimTuru('onayli')}
+							checked={participationType === 'onayli'}
+							onChange={() => setParticipationType('onayli')}
 						/>
 						{t('tmJoinApproval')}
 					</label>

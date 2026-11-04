@@ -141,7 +141,7 @@ export function MobileLauncher() {
 									width: '44px',
 									height: '44px',
 									borderRadius: '50%',
-									background: roleGradient(currentUser?.rolBilgi?.renk),
+									background: roleGradient(currentUser?.roleInfo?.color),
 									display: 'grid',
 									placeItems: 'center',
 									fontWeight: 700,
@@ -149,19 +149,19 @@ export function MobileLauncher() {
 									flexShrink: 0,
 								}}
 							>
-								{currentUser ? `${currentUser.ad[0] ?? ''}${currentUser.soyad[0] ?? ''}` : ''}
+								{currentUser ? `${currentUser.name[0] ?? ''}${currentUser.surname[0] ?? ''}` : ''}
 							</div>
 							<div style={{ minWidth: 0 }}>
 								<div style={{ fontSize: '15px', fontWeight: 700 }}>
-									{currentUser ? `${currentUser.ad} ${currentUser.soyad}` : ''}
+									{currentUser ? `${currentUser.name} ${currentUser.surname}` : ''}
 								</div>
 								<div style={{ fontSize: '11.5px', opacity: 0.7 }}>
-									{currentUser ? `${currentUser.bolum} • ${currentUser.xp || 0} XP` : ''}
+									{currentUser ? `${currentUser.department} • ${currentUser.xp || 0} XP` : ''}
 								</div>
 							</div>
 						</div>
 
-						<RoleBadge role={currentUser?.rolBilgi} bosMetin={t('roleNone')} />
+						<RoleBadge role={currentUser?.roleInfo} emptyText={t('roleNone')} />
 					</div>
 
 					{smtpMissing && (

@@ -30,7 +30,7 @@ const byPosition = <T extends AppManifest>(position: (m: T) => number | undefine
 	(position(a) ?? Infinity) - (position(b) ?? Infinity) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 
 /** All manifests, in the order the role editor lists them. */
-export const ALL_MANIFESTS: readonly AppManifest[] = [...MANIFESTS].sort(byPosition<AppManifest>((m) => m.permission.sira));
+export const ALL_MANIFESTS: readonly AppManifest[] = [...MANIFESTS].sort(byPosition<AppManifest>((m) => m.permission.order));
 
 const hasWindow = (m: AppManifest): m is WindowManifest => !!m.window;
 

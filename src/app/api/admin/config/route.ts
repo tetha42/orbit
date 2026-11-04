@@ -23,13 +23,13 @@ async function handleHoneypot(request: Request) {
 
 	if (!isProbe) {
 		await logSystemEvent({
-			servis: 'security',
-			seviye: 'ERROR',
-			mesaj: `🍯 [HONEYPOT TRAP] Automated scanner / attacker detected: ${request.method} ${origPath}`,
-			detay: {
+			service: 'security',
+			level: 'ERROR',
+			message: `🍯 [HONEYPOT TRAP] Automated scanner / attacker detected: ${request.method} ${origPath}`,
+			detail: {
 				method: request.method,
 				userAgent: ua.slice(0, 200),
-				tuzak: origPath,
+				trap: origPath,
 				signature,
 			},
 			ip,

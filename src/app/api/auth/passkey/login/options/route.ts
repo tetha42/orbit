@@ -109,16 +109,16 @@ export async function POST(request: Request) {
 			id: challengeId,
 			userId: user.id,
 			challenge: options.challenge,
-			tur: 'giris',
+			typeValue: 'login',
 		});
 
 		return NextResponse.json({ success: true, challengeId, options });
 	} catch (error) {
 		console.error('API /api/auth/passkey/login/options error:', error);
 		await logSystemEvent({
-			servis: 'auth',
-			seviye: 'WARN',
-			mesaj: 'Passkey giriş seçenekleri oluşturulurken hata oluştu',
+			service: 'auth',
+			level: 'WARN',
+			message: 'Passkey giriş seçenekleri oluşturulurken hata oluştu',
 			ip,
 		});
 		return NextResponse.json({ error: 'Passkey girişi başlatılamadı.' }, { status: 500 });

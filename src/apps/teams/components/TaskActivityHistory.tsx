@@ -10,23 +10,23 @@ import styles from './Kanban.module.css';
 import ui from '@/core/ui/ui.module.css';
 
 interface TaskActivityHistoryProps {
-	aktivite: TeamTaskActivity[];
+	activity: TeamTaskActivity[];
 	members: { id: string; name: string }[];
 	when: (ts: number) => string;
 }
 
-export function TaskActivityHistory({ aktivite, members, when }: TaskActivityHistoryProps) {
+export function TaskActivityHistory({ activity, members, when }: TaskActivityHistoryProps) {
 	const { t } = useI18n();
 
-	if (!aktivite.length) return null;
+	if (!activity.length) return null;
 
 	const memberName = (id: unknown) =>
 		(typeof id === 'string' && members.find((m) => m.id === id)?.name) || t('kbSomeone');
 
 	const activityText = (a: TeamTaskActivity) => {
-		const actor = a.aktorAdSoyad || t('kbSomeone');
-		const d = a.detay ?? {};
-		switch (a.tur) {
+		const actor = a.actorNameSurname || t('kbSomeone');
+		const d = a.detail ?? {};
+		switch (a.typeValue) {
 			case 'olusturuldu':
 				return fill(t('kbActCreated'), { actor });
 			case 'tasindi':
@@ -37,13 +37,13 @@ export function TaskActivityHistory({ aktivite, members, when }: TaskActivityHis
 				});
 			case 'duzenlendi': {
 				const names: Record<string, string> = {
-					baslik: t('kbFieldTitle'),
-					aciklama: t('kbFieldDesc'),
-					oncelik: t('kbFieldPriority'),
-					teslimTarihi: t('kbFieldDue'),
-					etiketler: t('kbFieldLabels'),
+					title: t('kbFieldTitle'),
+					description: t('kbFieldDesc'),
+					priority: t('kbFieldPriority'),
+					dueDate: t('kbFieldDue'),
+					tags: t('kbFieldLabels'),
 				};
-				const fields = String(d.alanlar ?? '')
+				const fields = String(d.fields ?? '')
 					.split(',')
 					.filter(Boolean)
 					.map((f) => names[f] ?? f)
@@ -53,9 +53,9 @@ export function TaskActivityHistory({ aktivite, members, when }: TaskActivityHis
 			case 'atandi':
 				return d.to ? fill(t('kbActAssigned'), { actor, to: memberName(d.to) }) : fill(t('kbActUnassigned'), { actor });
 			case 'madde_eklendi':
-				return fill(t('kbActItemAdded'), { actor, text: String(d.metin ?? '') });
+				return fill(t('kbActItemAdded'), { actor, text: String(d.text ?? '') });
 			case 'madde_tamamlandi':
-				return fill(t('kbActItemDone'), { actor, text: String(d.metin ?? '') });
+				return fill(t('kbActItemDone'), { actor, text: String(d.text ?? '') });
 			case 'yorum':
 				return fill(t('kbActComment'), { actor });
 			default:
@@ -70,11 +70,11 @@ export function TaskActivityHistory({ aktivite, members, when }: TaskActivityHis
 				{t('kbActivity')}
 			</h5>
 			<ul className={styles.activity}>
-				{aktivite.map((a) => (
+				{activity.map((a) => (
 					<li key={a.id}>
 						<span className={styles.dot} />
 						<span>{activityText(a)}</span>
-						<time dateTime={new Date(a.olusturma).toISOString()}>{when(a.olusturma)}</time>
+						<time dateTime={new Date(a.creation).toISOString()}>{when(a.creation)}</time>
 					</li>
 				))}
 			</ul>

@@ -34,8 +34,8 @@ const manifest = {
 	dock: 5,
 	notifications: { news: 'kullan' },
 	permission: {
-		sira: 0,
-		ad: 'Haberler',
+		order: 0,
+		name: 'Haberler',
 		kullan: 'Duyuruları ve haberleri okur.',
 		yonet: 'Haber yazar, yayınlar, düzenler, siler.',
 	},

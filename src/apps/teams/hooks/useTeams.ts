@@ -32,7 +32,7 @@ export function useTeams() {
 	);
 	const teams = useMemo(() => teamsData ?? [], [teamsData]);
 
-	const { data: rosterData } = useJsonResource<{ members: Array<{ id: string; ad: string; soyad: string; status?: string }> }>('/api/members');
+	const { data: rosterData } = useJsonResource<{ members: Array<{ id: string; name: string; surname: string; status?: string }> }>('/api/members');
 	const roster = useMemo(() => (rosterData?.members ?? []).filter((m) => !m.status || m.status === 'aktif'), [rosterData]);
 
 	const [activeHubTab, setActiveHubTab] = useState<HubTab>('teams');
@@ -46,7 +46,7 @@ export function useTeams() {
 	const [applyTo, setApplyTo] = useState<Team | null>(null);
 	const [busy, setBusy] = useState(false);
 
-	const canCreateTeam = canManageApp('teams') || teams.some((tm) => tm.izinler.editAll);
+	const canCreateTeam = canManageApp('teams') || teams.some((tm) => tm.permissions.editAll);
 
 	useEffect(() => {
 		const refresh = () => void refetchCategories();
@@ -86,20 +86,20 @@ export function useTeams() {
 		});
 	};
 
-	const myTeams = teams.filter((tm) => tm.benimDurumum === 'aktif').length;
+	const myTeams = teams.filter((tm) => tm.myMyStatus === 'aktif').length;
 	const selectedTeam = teams.find((tm) => tm.id === selectedTeamId) ?? null;
 
 	const visibleTeams = useMemo(() => {
 		const q = foldTr(query.trim());
 		return teams.filter(
 			(tm) =>
-				(!category || tm.kategori === category) &&
-				(!q || foldTr([tm.ad, tm.aciklama, tm.kategori, tm.liderAdSoyad, ...tm.uyeler.map((u) => u.kullaniciAdSoyad)].join(' ')).includes(q))
+				(!category || tm.category === category) &&
+				(!q || foldTr([tm.name, tm.description, tm.category, tm.leaderNameSurname, ...tm.uyeler.map((u) => u.userNameSurname)].join(' ')).includes(q))
 		);
 	}, [teams, query, category]);
 
 	const categories = useMemo(() => {
-		const used = new Set(teams.map((tm) => tm.kategori));
+		const used = new Set(teams.map((tm) => tm.category));
 		return [...teamCategories.filter((c) => used.has(c)), ...[...used].filter((c) => !teamCategories.includes(c))];
 	}, [teams, teamCategories]);
 
@@ -116,24 +116,24 @@ export function useTeams() {
 		return res.ok;
 	};
 
-	const join = (team: Team) => (team.katilimTuru === 'onayli' ? setApplyTo(team) : void post({ action: 'join', teamId: team.id }));
+	const join = (team: Team) => (team.participationType === 'onayli' ? setApplyTo(team) : void post({ action: 'join', teamId: team.id }));
 
 	const leave = async (team: Team) => {
-		const applied = team.benimDurumum === 'basvurdu';
-		const message = fill(t(applied ? 'tmWithdrawConfirm' : 'tmLeaveConfirm'), { team: team.ad });
+		const applied = team.myMyStatus === 'basvurdu';
+		const message = fill(t(applied ? 'tmWithdrawConfirm' : 'tmLeaveConfirm'), { team: team.name });
 		if (!(await dialog.confirm({ message, tone: 'warning', confirmLabel: t(applied ? 'tmWithdraw' : 'tmLeave') }))) return;
 		await post({ action: 'leave', teamId: team.id });
 	};
 
 	const remove = async (team: Team) => {
-		if (!(await dialog.confirm({ message: fill(t('tmDeleteConfirm'), { team: team.ad }), tone: 'danger' }))) return;
+		if (!(await dialog.confirm({ message: fill(t('tmDeleteConfirm'), { team: team.name }), tone: 'danger' }))) return;
 		if (await post({ action: 'deleteTeam', teamId: team.id })) showTeam(null);
 	};
 
-	const canEnter = (tm: Team) => tm.izinler.manage || tm.benimDurumum === 'aktif';
-	const canSeeVault = (tm: Team) => tm.izinler.manage;
+	const canEnter = (tm: Team) => tm.permissions.manage || tm.myMyStatus === 'aktif';
+	const canSeeVault = (tm: Team) => tm.permissions.manage;
 	const visibleTab: TeamWorkspaceTab =
-		selectedTeam && ((activeTab === 'kasa' && !canSeeVault(selectedTeam)) || (activeTab === 'settings' && !selectedTeam.izinler.manage))
+		selectedTeam && ((activeTab === 'kasa' && !canSeeVault(selectedTeam)) || (activeTab === 'settings' && !selectedTeam.permissions.manage))
 			? 'kanban'
 			: activeTab;
 

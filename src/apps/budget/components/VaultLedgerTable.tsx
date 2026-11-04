@@ -25,7 +25,7 @@ interface VaultLedgerTableProps {
 	onDelete: (r: VaultRecord) => void;
 }
 
-const tl = (kurus: number) => `₺${formatMinor(kurus)}`;
+const tl = (minor: number) => `₺${formatMinor(minor)}`;
 const dateFmt = (ms: number) => formatDate(ms);
 
 interface VaultRowProps {
@@ -41,14 +41,14 @@ interface VaultRowProps {
 
 function VaultTableRow({ r, balance, lockedForMe, language, onEdit, onDelete }: VaultRowProps) {
 	const { t } = useI18n();
-	const transfer = !!r.aktarimId;
+	const transfer = !!r.transferId;
 
 	const menuItems: MenuItem[] = [
 		{
 			id: 'copy-desc',
 			label: t('ctxBudgetCopyDesc'),
 			icon: <Copy size={13} />,
-			action: () => copyToClipboard(r.aciklama),
+			action: () => copyToClipboard(r.description),
 		},
 		{
 			id: 'copy-amount',
@@ -58,12 +58,12 @@ function VaultTableRow({ r, balance, lockedForMe, language, onEdit, onDelete }: 
 		},
 	];
 
-	if (r.fisFotoUrl) {
+	if (r.receiptPhotoUrl) {
 		menuItems.push({
 			id: 'view-receipt',
 			label: t('ctxBudgetViewReceipt'),
 			icon: <ExternalLink size={13} />,
-			action: () => window.open(r.fisFotoUrl, '_blank', 'noopener,noreferrer'),
+			action: () => window.open(r.receiptPhotoUrl, '_blank', 'noopener,noreferrer'),
 		});
 	}
 
@@ -94,50 +94,50 @@ function VaultTableRow({ r, balance, lockedForMe, language, onEdit, onDelete }: 
 			<td>
 				{transfer ? (
 					<span className={`${k.tag} ${k.tagTransfer}`}>
-						<ArrowRightLeft size={11} /> {r.tur === 'gelir' ? t('kasaTagTransferIn') : t('kasaTagTransferOut')}
+						<ArrowRightLeft size={11} /> {r.typeValue === 'gelir' ? t('kasaTagTransferIn') : t('kasaTagTransferOut')}
 					</span>
 				) : (
-					<span className={`${k.tag} ${r.tur === 'gelir' ? k.tagIn : k.tagOut}`}>
-						{r.tur === 'gelir' ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
-						{r.tur === 'gelir' ? t('kasaTagIncome') : t('kasaTagExpense')}
+					<span className={`${k.tag} ${r.typeValue === 'gelir' ? k.tagIn : k.tagOut}`}>
+						{r.typeValue === 'gelir' ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
+						{r.typeValue === 'gelir' ? t('kasaTagIncome') : t('kasaTagExpense')}
 					</span>
 				)}
 			</td>
-			<td style={{ fontWeight: 650, whiteSpace: 'nowrap' }}>{r.kategori}</td>
+			<td style={{ fontWeight: 650, whiteSpace: 'nowrap' }}>{r.category}</td>
 			<td>
-				<div className={k.desc}>{r.aciklama}</div>
-				{(transfer || r.fisFotoUrl || r.guncellenme) && (
+				<div className={k.desc}>{r.description}</div>
+				{(transfer || r.receiptPhotoUrl || r.update) && (
 					<div className={k.sub}>
 						{transfer && (
 							<span>
-								{r.tur === 'gelir'
-									? `${t('kasaSource')} ${r.karsiKasaAd}`
-									: `${t('kasaTarget')} ${r.karsiKasaAd}`}
+								{r.typeValue === 'gelir'
+									? `${t('kasaSource')} ${r.counterpartVaultName}`
+									: `${t('kasaTarget')} ${r.counterpartVaultName}`}
 							</span>
 						)}
-						{r.fisFotoUrl && (
+						{r.receiptPhotoUrl && (
 							<a
 								className={k.receipt}
-								href={r.fisFotoUrl}
+								href={r.receiptPhotoUrl}
 								target="_blank"
 								rel="noopener noreferrer"
 							>
 								<Receipt size={11} /> {t('kasaReceipt')}
 							</a>
 						)}
-						{r.guncellenme && (
-							<span title={new Date(r.guncellenme).toLocaleString(language)}>
-								{t('kasaEdited')}{r.guncelleyenAdSoyad ? ` · ${r.guncelleyenAdSoyad}` : ''}
+						{r.update && (
+							<span title={new Date(r.update).toLocaleString(language)}>
+								{t('kasaEdited')}{r.updaterNameSurname ? ` · ${r.updaterNameSurname}` : ''}
 							</span>
 						)}
 					</div>
 				)}
 			</td>
 			<td className={k.colUser} style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-				{r.kaydedenAdSoyad ?? '—'}
+				{r.recorderNameSurname ?? '—'}
 			</td>
-			<td className={`${k.num} ${r.tur === 'gelir' ? k.pos : k.neg}`} style={{ fontWeight: 750 }}>
-				{r.tur === 'gelir' ? '+' : '−'}
+			<td className={`${k.num} ${r.typeValue === 'gelir' ? k.pos : k.neg}`} style={{ fontWeight: 750 }}>
+				{r.typeValue === 'gelir' ? '+' : '−'}
 				{tl(r.amountMinor)}
 			</td>
 			<td className={`${k.num} ${k.colBalance}`} style={{ color: 'var(--text-secondary)' }}>
@@ -150,7 +150,7 @@ function VaultTableRow({ r, balance, lockedForMe, language, onEdit, onDelete }: 
 							type="button"
 							className={k.rowBtn}
 							onClick={() => onEdit(r)}
-							aria-label={`${t('edit')}: ${r.aciklama}`}
+							aria-label={`${t('edit')}: ${r.description}`}
 							title={t('edit')}
 						>
 							<Pencil size={14} />
@@ -159,7 +159,7 @@ function VaultTableRow({ r, balance, lockedForMe, language, onEdit, onDelete }: 
 							type="button"
 							className={`${k.rowBtn} ${k.rowBtnDanger}`}
 							onClick={() => onDelete(r)}
-							aria-label={`${t('delete')}: ${r.aciklama}`}
+							aria-label={`${t('delete')}: ${r.description}`}
 							title={transfer ? t('dlgRevoke') : t('delete')}
 						>
 							<Trash2 size={14} />
@@ -173,14 +173,14 @@ function VaultTableRow({ r, balance, lockedForMe, language, onEdit, onDelete }: 
 
 function VaultMobileCard({ r, lockedForMe, onEdit, onDelete }: Omit<VaultRowProps, 'balance'>) {
 	const { t } = useI18n();
-	const transfer = !!r.aktarimId;
+	const transfer = !!r.transferId;
 
 	const menuItems: MenuItem[] = [
 		{
 			id: 'copy-desc',
 			label: t('ctxBudgetCopyDesc'),
 			icon: <Copy size={13} />,
-			action: () => copyToClipboard(r.aciklama),
+			action: () => copyToClipboard(r.description),
 		},
 		{
 			id: 'copy-amount',
@@ -190,12 +190,12 @@ function VaultMobileCard({ r, lockedForMe, onEdit, onDelete }: Omit<VaultRowProp
 		},
 	];
 
-	if (r.fisFotoUrl) {
+	if (r.receiptPhotoUrl) {
 		menuItems.push({
 			id: 'view-receipt',
 			label: t('ctxBudgetViewReceipt'),
 			icon: <ExternalLink size={13} />,
-			action: () => window.open(r.fisFotoUrl, '_blank', 'noopener,noreferrer'),
+			action: () => window.open(r.receiptPhotoUrl, '_blank', 'noopener,noreferrer'),
 		});
 	}
 
@@ -238,40 +238,40 @@ function VaultMobileCard({ r, lockedForMe, onEdit, onDelete }: Omit<VaultRowProp
 			<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
 				{transfer ? (
 					<span className={`${k.tag} ${k.tagTransfer}`}>
-						<ArrowRightLeft size={11} /> {r.tur === 'gelir' ? t('kasaTagTransferIn') : t('kasaTagTransferOut')}
+						<ArrowRightLeft size={11} /> {r.typeValue === 'gelir' ? t('kasaTagTransferIn') : t('kasaTagTransferOut')}
 					</span>
 				) : (
-					<span className={`${k.tag} ${r.tur === 'gelir' ? k.tagIn : k.tagOut}`}>
-						{r.tur === 'gelir' ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
-						{r.tur === 'gelir' ? t('kasaTagIncome') : t('kasaTagExpense')}
+					<span className={`${k.tag} ${r.typeValue === 'gelir' ? k.tagIn : k.tagOut}`}>
+						{r.typeValue === 'gelir' ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
+						{r.typeValue === 'gelir' ? t('kasaTagIncome') : t('kasaTagExpense')}
 					</span>
 				)}
 				<span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{dateFmt(r.date)}</span>
 			</div>
 
 			<div style={{ fontWeight: 650, fontSize: '14px', color: 'var(--text-primary)' }}>
-				{r.aciklama}
+				{r.description}
 			</div>
 
 			<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-secondary)' }}>
-				<span>{r.kategori} · {r.kaydedenAdSoyad ?? '—'}</span>
-				<span className={`${r.tur === 'gelir' ? k.pos : k.neg}`} style={{ fontWeight: 800, fontSize: '15px' }}>
-					{r.tur === 'gelir' ? '+' : '−'}{tl(r.amountMinor)}
+				<span>{r.category} · {r.recorderNameSurname ?? '—'}</span>
+				<span className={`${r.typeValue === 'gelir' ? k.pos : k.neg}`} style={{ fontWeight: 800, fontSize: '15px' }}>
+					{r.typeValue === 'gelir' ? '+' : '−'}{tl(r.amountMinor)}
 				</span>
 			</div>
 
-			{(transfer || r.fisFotoUrl || !lockedForMe) && (
+			{(transfer || r.receiptPhotoUrl || !lockedForMe) && (
 				<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '6px', borderTop: '1px solid var(--card-border)' }}>
 					<div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
 						{transfer && (
 							<span>
-								{r.tur === 'gelir' ? `${t('kasaSource')} ${r.karsiKasaAd}` : `${t('kasaTarget')} ${r.karsiKasaAd}`}
+								{r.typeValue === 'gelir' ? `${t('kasaSource')} ${r.counterpartVaultName}` : `${t('kasaTarget')} ${r.counterpartVaultName}`}
 							</span>
 						)}
-						{r.fisFotoUrl && (
+						{r.receiptPhotoUrl && (
 							<a
 								className={k.receipt}
-								href={r.fisFotoUrl}
+								href={r.receiptPhotoUrl}
 								target="_blank"
 								rel="noopener noreferrer"
 								style={{ marginLeft: transfer ? '8px' : 0 }}
@@ -343,7 +343,7 @@ export function VaultLedgerTable({
 					</div>
 				)}
 				{filtered.map((r) => {
-					const transfer = !!r.aktarimId;
+					const transfer = !!r.transferId;
 					const lockedForMe = !canWrite || (transfer && !isManagement);
 					return (
 						<VaultMobileCard
@@ -390,7 +390,7 @@ export function VaultLedgerTable({
 						</tr>
 					)}
 					{filtered.map((r) => {
-						const transfer = !!r.aktarimId;
+						const transfer = !!r.transferId;
 						const lockedForMe = !canWrite || (transfer && !isManagement);
 						return (
 							<VaultTableRow

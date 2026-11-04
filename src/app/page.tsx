@@ -46,7 +46,7 @@ export default function Home() {
 		fetch('/api/setup', { cache: 'no-store' })
 			.then((res) => (res.ok ? res.json() : null))
 			.then((data) => {
-				if (data && data.hazir === false) {
+				if (data && data.ready === false) {
 					setIsSetupPending(true);
 				} else {
 					setIsSetupPending(false);

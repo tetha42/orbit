@@ -18,13 +18,13 @@ export function TicketModal({ event, onClose }: { event: EventView; onClose: () 
 	const [qr, setQr] = useState('');
 	useEffect(() => {
 		let live = true;
-		if (event.biletKodu) {
-			QRCode.toDataURL(event.biletKodu, { width: 230, margin: 1, errorCorrectionLevel: 'M' }).then((url) => live && setQr(url));
+		if (event.ticketCode) {
+			QRCode.toDataURL(event.ticketCode, { width: 230, margin: 1, errorCorrectionLevel: 'M' }).then((url) => live && setQr(url));
 		}
 		return () => {
 			live = false;
 		};
-	}, [event.biletKodu]);
+	}, [event.ticketCode]);
 	const locale = language === 'en' ? 'en-GB' : 'tr-TR';
 
 	return (
@@ -33,7 +33,7 @@ export function TicketModal({ event, onClose }: { event: EventView; onClose: () 
 				className={styles.ticket}
 				style={
 					{
-						'--type-color': typeMeta(event.tur).color,
+						'--type-color': typeMeta(event.typeValue).color,
 						...(offset.x !== 0 || offset.y !== 0
 							? { transform: `translate3d(${offset.x}px, ${offset.y}px, 0)` }
 							: {}),
@@ -55,9 +55,9 @@ export function TicketModal({ event, onClose }: { event: EventView; onClose: () 
 							<X size={17} />
 						</button>
 					</div>
-					<div style={{ fontSize: 18, fontWeight: 780, marginTop: 10, lineHeight: 1.25 }}>{event.baslik}</div>
-					<div style={{ fontSize: 12.5, opacity: 0.9, marginTop: 6 }}>{formatRange(event.baslangic, event.endTime, locale)}</div>
-					<div style={{ fontSize: 12.5, opacity: 0.9 }}>{event.konum}</div>
+					<div style={{ fontSize: 18, fontWeight: 780, marginTop: 10, lineHeight: 1.25 }}>{event.title}</div>
+					<div style={{ fontSize: 12.5, opacity: 0.9, marginTop: 6 }}>{formatRange(event.start, event.endTime, locale)}</div>
+					<div style={{ fontSize: 12.5, opacity: 0.9 }}>{event.location}</div>
 				</div>
 				<div className={styles.ticketBody}>
 					<div className={styles.qrBox}>{qr ? <Image src={qr} alt="" width={200} height={200} unoptimized /> : <div style={{ width: 200, height: 200 }} />}</div>
@@ -67,13 +67,13 @@ export function TicketModal({ event, onClose }: { event: EventView; onClose: () 
 							<span style={{ color: 'var(--text-secondary)' }}>{t('evTicketHolder')}</span>
 							<br />
 							<strong>
-								{currentUser?.ad} {currentUser?.soyad}
+								{currentUser?.name} {currentUser?.surname}
 							</strong>
 						</span>
 						<span style={{ textAlign: 'right' }}>
 							<span style={{ color: 'var(--text-secondary)' }}>{t('evStudentNo')}</span>
 							<br />
-							<strong className={styles.mono}>{currentUser?.ogrenciNo || '—'}</strong>
+							<strong className={styles.mono}>{currentUser?.studentNo || '—'}</strong>
 						</span>
 					</div>
 				</div>

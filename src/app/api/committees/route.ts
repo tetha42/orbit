@@ -44,23 +44,23 @@ export async function POST(request: Request) {
 
 	try {
 		if (action === 'createCommittee') {
-			const ad = String(body.ad ?? '').trim();
-			const aciklama = String(body.aciklama ?? '').trim();
-			if (ad.length < 3 || ad.length > 120) return bad('Komite adı 3-120 karakter olmalıdır.');
-			if (aciklama.length > 2000) return bad('Açıklama en fazla 2000 karakter olabilir.');
+			const name = String(body.name ?? '').trim();
+			const description = String(body.description ?? '').trim();
+			if (name.length < 3 || name.length > 120) return bad('Komite adı 3-120 karakter olmalıdır.');
+			if (description.length > 2000) return bad('Açıklama en fazla 2000 karakter olabilir.');
 			const committee = await createCommittee({
-				ad,
-				aciklama,
-				kategori: 'Governance',
+				name,
+				description,
+				category: 'Governance',
 				quorum: Math.max(0, Math.min(100, Number(body.quorum) || 0)),
 				leadId: typeof body.leadId === 'string' ? body.leadId : undefined,
-				kontenjan: Math.max(1, Math.min(100, Number(body.kontenjan) || 12)),
+				capacity: Math.max(1, Math.min(100, Number(body.capacity) || 12)),
 			});
 			void logSystemEvent({
-				servis: 'decisions',
-				seviye: 'INFO',
-				mesaj: `Komite oluşturuldu: ${committee.ad}`,
-				detay: { committeeId: committee.id },
+				service: 'decisions',
+				level: 'INFO',
+				message: `Komite oluşturuldu: ${committee.name}`,
+				detail: { committeeId: committee.id },
 				userId: auth.user.id,
 			});
 			return NextResponse.json({ ok: true, committee }, { status: 201 });

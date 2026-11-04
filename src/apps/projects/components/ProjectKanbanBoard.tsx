@@ -43,14 +43,14 @@ export function ProjectKanbanBoard({
 			title: t('pjKanbanInProgress'),
 			icon: <PlayCircle size={15} color="#0a84ff" />,
 			color: '#0a84ff',
-			items: projects.filter((p) => p.status === 'yayinda' && Number(p.oneCikan) !== 1),
+			items: projects.filter((p) => p.status === 'yayinda' && Number(p.oneLeaving) !== 1),
 		},
 		{
 			id: 'arsiv',
 			title: t('pjKanbanDone'),
 			icon: <CheckCircle2 size={15} color="#30d158" />,
 			color: '#30d158',
-			items: projects.filter((p) => p.status === 'arsiv' || Number(p.oneCikan) === 1),
+			items: projects.filter((p) => p.status === 'arsiv' || Number(p.oneLeaving) === 1),
 		},
 	];
 
@@ -129,7 +129,7 @@ export function ProjectKanbanBoard({
 							</div>
 						) : (
 							col.items.map((p) => {
-								const featured = Number(p.oneCikan) === 1;
+								const featured = Number(p.oneLeaving) === 1;
 								return (
 									<div
 										key={p.id}
@@ -156,7 +156,7 @@ export function ProjectKanbanBoard({
 										}}
 									>
 										<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
-											<h4 style={{ margin: 0, fontSize: '13.5px', fontWeight: 700, lineHeight: 1.3 }}>{p.baslik}</h4>
+											<h4 style={{ margin: 0, fontSize: '13.5px', fontWeight: 700, lineHeight: 1.3 }}>{p.title}</h4>
 											{featured && (
 												<span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '4px', background: 'rgba(255, 159, 10, 0.2)', color: '#ff9f0a', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
 													<Pin size={10} />
@@ -176,12 +176,12 @@ export function ProjectKanbanBoard({
 												overflow: 'hidden',
 											}}
 										>
-											{p.ozet}
+											{p.summary}
 										</p>
 
-										{p.teknolojiler.length > 0 && (
+										{p.technologies.length > 0 && (
 											<div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-												{p.teknolojiler.slice(0, 3).map((tech) => (
+												{p.technologies.slice(0, 3).map((tech) => (
 													<span
 														key={tech}
 														style={{
@@ -195,8 +195,8 @@ export function ProjectKanbanBoard({
 														{tech}
 													</span>
 												))}
-												{p.teknolojiler.length > 3 && (
-													<span style={{ fontSize: '10px', opacity: 0.6 }}>+{p.teknolojiler.length - 3}</span>
+												{p.technologies.length > 3 && (
+													<span style={{ fontSize: '10px', opacity: 0.6 }}>+{p.technologies.length - 3}</span>
 												)}
 											</div>
 										)}
@@ -213,7 +213,7 @@ export function ProjectKanbanBoard({
 											}}
 											onClick={(e) => e.stopPropagation()}
 										>
-											<span style={{ opacity: 0.7 }}>{p.olusturanAdSoyad || '—'}</span>
+											<span style={{ opacity: 0.7 }}>{p.creatorNameSurname || '—'}</span>
 
 											<div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
 												{p.repoUrl && (
@@ -238,12 +238,12 @@ export function ProjectKanbanBoard({
 														alignItems: 'center',
 														gap: '3px',
 														fontSize: '11px',
-														color: p.begendimMi ? '#ff9f0a' : 'inherit',
-														opacity: p.begendimMi ? 1 : 0.7,
+														color: p.iLikedMi ? '#ff9f0a' : 'inherit',
+														opacity: p.iLikedMi ? 1 : 0.7,
 													}}
 												>
-													<Star size={12} fill={p.begendimMi ? 'currentColor' : 'none'} />
-													{p.begeniSayisi ?? 0}
+													<Star size={12} fill={p.iLikedMi ? 'currentColor' : 'none'} />
+													{p.likeCount ?? 0}
 												</button>
 											</div>
 										</div>

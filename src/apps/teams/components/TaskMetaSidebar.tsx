@@ -20,7 +20,7 @@ interface TaskMetaSidebarProps {
 	members: { id: string; name: string; role: string }[];
 	allLabels: string[];
 	currentUserId: string;
-	izinler: { manage: boolean; work: boolean; comment: boolean };
+	permissions: { manage: boolean; work: boolean; comment: boolean };
 	canClaim: boolean;
 	due: string | false | null;
 	locale: string;
@@ -35,7 +35,7 @@ export function TaskMetaSidebar({
 	members,
 	allLabels,
 	currentUserId,
-	izinler,
+	permissions,
 	canClaim,
 	due,
 	locale,
@@ -46,7 +46,7 @@ export function TaskMetaSidebar({
 }: TaskMetaSidebarProps) {
 	const { t } = useI18n();
 	const col = columnMeta(task.status);
-	const prio = priorityMeta(task.oncelik);
+	const prio = priorityMeta(task.priority);
 
 	return (
 		<aside className={styles.sheetSide}>
@@ -56,7 +56,7 @@ export function TaskMetaSidebar({
 					className={ui.select}
 					style={{ maxWidth: 'none', borderLeft: `3px solid ${col.color}` }}
 					value={task.status}
-					disabled={!izinler.work}
+					disabled={!permissions.work}
 					onChange={(e) => onSetStatus(e.target.value as TaskStatus)}
 				>
 					{COLUMNS.map((c) => (
@@ -69,12 +69,12 @@ export function TaskMetaSidebar({
 
 			<div className={ui.field}>
 				<span className={ui.fieldLabel}>{t('kbAssignee')}</span>
-				{izinler.manage ? (
+				{permissions.manage ? (
 					<select
 						className={ui.select}
 						style={{ maxWidth: 'none' }}
-						value={task.atananUyeId ?? ''}
-						onChange={(e) => onPatch({ atananUyeId: e.target.value || null })}
+						value={task.assigneeMemberId ?? ''}
+						onChange={(e) => onPatch({ assigneeMemberId: e.target.value || null })}
 					>
 						<option value="">{t('kbUnassigned')}</option>
 						{members.map((m) => (
@@ -85,14 +85,14 @@ export function TaskMetaSidebar({
 					</select>
 				) : (
 					<div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-						<span className={`${ui.avatar} ${task.atananUyeId ? '' : styles.avatarEmpty}`} style={{ marginLeft: 0 }}>
-							{task.atananUyeId ? initials(task.atananAdSoyad) : '?'}
+						<span className={`${ui.avatar} ${task.assigneeMemberId ? '' : styles.avatarEmpty}`} style={{ marginLeft: 0 }}>
+							{task.assigneeMemberId ? initials(task.assigneeNameSurname) : '?'}
 						</span>
-						{task.atananAdSoyad || t('kbUnassigned')}
+						{task.assigneeNameSurname || t('kbUnassigned')}
 					</div>
 				)}
 				{canClaim && (
-					<button type="button" className={ui.primaryBtn} style={{ height: 30 }} onClick={() => onPatch({ atananUyeId: currentUserId })}>
+					<button type="button" className={ui.primaryBtn} style={{ height: 30 }} onClick={() => onPatch({ assigneeMemberId: currentUserId })}>
 						<Hand size={14} />
 						{t('kbClaim')}
 					</button>
@@ -107,11 +107,11 @@ export function TaskMetaSidebar({
 							key={p.id}
 							type="button"
 							role="radio"
-							aria-checked={task.oncelik === p.id}
-							disabled={!izinler.manage}
-							className={`${ui.prioOption} ${task.oncelik === p.id ? ui.prioOptionActive : ''}`}
+							aria-checked={task.priority === p.id}
+							disabled={!permissions.manage}
+							className={`${ui.prioOption} ${task.priority === p.id ? ui.prioOptionActive : ''}`}
 							style={{ '--prio': p.color, fontSize: 10.5 } as React.CSSProperties}
-							onClick={() => task.oncelik !== p.id && onPatch({ oncelik: p.id })}
+							onClick={() => task.priority !== p.id && onPatch({ priority: p.id })}
 						>
 							{t(p.key)}
 						</button>
@@ -131,10 +131,10 @@ export function TaskMetaSidebar({
 				<input
 					className={ui.input}
 					type="date"
-					disabled={!izinler.manage}
-					value={toDateInput(task.teslimTarihi)}
+					disabled={!permissions.manage}
+					value={toDateInput(task.dueDate)}
 					onChange={(e) =>
-						onPatch({ teslimTarihi: e.target.value ? normalizeDueDate(e.target.value) ?? null : null })
+						onPatch({ dueDate: e.target.value ? normalizeDueDate(e.target.value) ?? null : null })
 					}
 				/>
 			</label>
@@ -142,10 +142,10 @@ export function TaskMetaSidebar({
 			<div className={ui.field}>
 				<span className={ui.fieldLabel}>{t('kbLabels')}</span>
 				<LabelEditor
-					labels={task.etiketler ?? []}
+					labels={task.tags ?? []}
 					allLabels={allLabels}
-					readOnly={!izinler.work}
-					onChange={(etiketler) => onPatch({ etiketler })}
+					readOnly={!permissions.work}
+					onChange={(tags) => onPatch({ tags })}
 				/>
 			</div>
 
@@ -153,17 +153,17 @@ export function TaskMetaSidebar({
 				<span style={{ color: prio.color, fontWeight: 700 }}>● {t(prio.key)}</span>
 				<span>
 					{fill(t('kbCreatedBy'), {
-						name: task.olusturanAdSoyad || t('kbSomeone'),
-						when: new Date(task.olusturma).toLocaleDateString(locale),
+						name: task.creatorNameSurname || t('kbSomeone'),
+						when: new Date(task.creation).toLocaleDateString(locale),
 					})}
 				</span>
-				{task.guncellenme ? <span>{fill(t('kbUpdated'), { when: when(task.guncellenme) })}</span> : null}
-				{task.tamamlanma ? (
-					<span>{fill(t('kbCompletedAt'), { when: new Date(task.tamamlanma).toLocaleDateString(locale) })}</span>
+				{task.update ? <span>{fill(t('kbUpdated'), { when: when(task.update) })}</span> : null}
+				{task.completion ? (
+					<span>{fill(t('kbCompletedAt'), { when: new Date(task.completion).toLocaleDateString(locale) })}</span>
 				) : null}
 			</div>
 
-			{izinler.manage && (
+			{permissions.manage && (
 				<button type="button" className={`${ui.btn} ${ui.btnDanger}`} onClick={onDeleteTask}>
 					<Trash2 size={14} />
 					{t('kbDelete')}

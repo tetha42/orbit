@@ -38,7 +38,7 @@ export async function POST(request: Request) {
 
 	try {
 		const { user } = auth;
-		if (user.permission.ikiAdimZorunlu) {
+		if (user.permission.twoStepRequired) {
 			return NextResponse.json(
 				{ error: `Two-factor authentication is strictly required for this role and cannot be turned off.`, code: 'ROLE_REQUIRED' },
 				{ status: 403 }
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
 
 		// Replay-protected like the sign-in step: a code spent here cannot be reused.
 		const verification = fresh.totpSecret
-			? await verifyTotpCodeDetailed(fresh.totpSecret, code, fresh.totpSonAdim)
+			? await verifyTotpCodeDetailed(fresh.totpSecret, code, fresh.totpLastStep)
 			: { valid: false, timeStep: null };
 		const validTotp = verification.valid;
 		if (validTotp && verification.timeStep !== null) {
@@ -73,9 +73,9 @@ export async function POST(request: Request) {
 		if (!validTotp && !spentRecovery) {
 			recordFailure(rateKey, WINDOW_MS);
 			await logSystemEvent({
-				servis: 'auth',
-				seviye: 'WARN',
-				mesaj: `2FA disable failed (invalid code): ${user.email}`,
+				service: 'auth',
+				level: 'WARN',
+				message: `2FA disable failed (invalid code): ${user.email}`,
 				userId: user.id,
 				ip,
 			});
@@ -88,9 +88,9 @@ export async function POST(request: Request) {
 		clearRateLimit(rateKey);
 		await disableUserTotp(user.id, auditContext(request, user));
 		await logSystemEvent({
-			servis: 'auth',
-			seviye: 'WARN',
-			mesaj: `Kullanıcı iki adımlı doğrulamayı (2FA) kapattı: ${user.email}`,
+			service: 'auth',
+			level: 'WARN',
+			message: `Kullanıcı iki adımlı doğrulamayı (2FA) kapattı: ${user.email}`,
 			userId: user.id,
 			ip,
 		});

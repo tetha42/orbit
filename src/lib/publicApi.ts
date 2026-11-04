@@ -97,10 +97,10 @@ export async function limitPublic(request: Request): Promise<NextResponse | null
 		// Yalnızca gerçek dış saldırılar veritabanına loglanır; iç test probları DB'yi kirletmez
 		if (!isProbe) {
 			void logSystemEvent({
-				servis: 'security',
-				seviye: 'ERROR',
-				mesaj: `[WAF] Public API attack signature blocked (${waf.signature}): ${request.method} ${pathname}`,
-				detay: { category: waf.category, signature: waf.signature, url: request.url.slice(0, 240) },
+				service: 'security',
+				level: 'ERROR',
+				message: `[WAF] Public API attack signature blocked (${waf.signature}): ${request.method} ${pathname}`,
+				detail: { category: waf.category, signature: waf.signature, url: request.url.slice(0, 240) },
 				ip,
 			});
 			void recordSecurityStrike({
@@ -148,13 +148,13 @@ export function publicJson(request: Request, body: unknown): NextResponse {
  * presets (`/app-icons/…`) are interface art rather than article images, so they
  * are reported as "no image"; other relative paths are made absolute against the portal.
  */
-export function publicImageUrl(resimUrl: string | null | undefined): string | null {
-	if (!resimUrl || resimUrl.startsWith('/app-icons/')) return null;
-	if (resimUrl.startsWith('/')) {
+export function publicImageUrl(imageUrl: string | null | undefined): string | null {
+	if (!imageUrl || imageUrl.startsWith('/app-icons/')) return null;
+	if (imageUrl.startsWith('/')) {
 		const base = (process.env.PUBLIC_BASE_URL ?? '').replace(/\/+$/, '');
-		return base ? `${base}${resimUrl}` : null;
+		return base ? `${base}${imageUrl}` : null;
 	}
-	return resimUrl;
+	return imageUrl;
 }
 
 export const isoDate = (ms: number | null | undefined): string | null => (ms == null ? null : new Date(Number(ms)).toISOString());

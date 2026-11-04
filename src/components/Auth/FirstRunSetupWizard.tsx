@@ -133,8 +133,8 @@ export function FirstRunSetupWizard({ onComplete }: FirstRunSetupWizardProps) {
 	const selectedPreset = ARCHETYPE_PRESETS[archetype];
 
 	// Step 3: Admin Credentials
-	const [ad, setAd] = useState('Orbit');
-	const [soyad, setSoyad] = useState('Admin');
+	const [name, setName] = useState('Orbit');
+	const [surname, setSurname] = useState('Admin');
 	const [email, setEmail] = useState('admin@orbit.local');
 	const [password, setPassword] = useState('');
 	const [passwordConfirm, setPasswordConfirm] = useState('');
@@ -174,7 +174,7 @@ export function FirstRunSetupWizard({ onComplete }: FirstRunSetupWizardProps) {
 		fetch('/api/setup', { cache: 'no-store' })
 			.then((res) => (res.ok ? res.json() : null))
 			.then((data) => {
-				if (data?.hazir === true) {
+				if (data?.ready === true) {
 					if (typeof window !== 'undefined') {
 						// eslint-disable-next-line @next/next/no-location-assign-relative-destination
 						window.location.href = '/';
@@ -429,7 +429,7 @@ ${dom} {
 			return true;
 		}
 		if (step === 3) {
-			if (!ad.trim() || !soyad.trim()) {
+			if (!name.trim() || !surname.trim()) {
 				setError('Administrator first name and last name are required.');
 				return false;
 			}
@@ -487,8 +487,8 @@ ${dom} {
 			studioName: studioName.trim(),
 			communityName: communityName.trim(),
 			domain: domain.trim(),
-			ad: ad.trim(),
-			soyad: soyad.trim(),
+			name: name.trim(),
+			surname: surname.trim(),
 			email: email.trim(),
 			password,
 			smtpHost: smtpHost.trim() || undefined,
@@ -989,8 +989,8 @@ ${dom} {
 										<input
 											type="text"
 											className={`${styles.input} ${styles.inputWithIcon}`}
-											value={ad}
-											onChange={(e) => setAd(e.target.value)}
+											value={name}
+											onChange={(e) => setName(e.target.value)}
 											placeholder="Orbit"
 											required
 										/>
@@ -1003,8 +1003,8 @@ ${dom} {
 										<input
 											type="text"
 											className={`${styles.input} ${styles.inputWithIcon}`}
-											value={soyad}
-											onChange={(e) => setSoyad(e.target.value)}
+											value={surname}
+											onChange={(e) => setSurname(e.target.value)}
 											placeholder="Admin"
 											required
 										/>
@@ -1204,7 +1204,7 @@ ${dom} {
 										<div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #333333' }}>
 											<span style={{ color: '#888888' }}>Root Administrator</span>
 											<span style={{ fontWeight: 600, color: '#ffffff' }}>
-												{ad} {soyad} ({email})
+												{name} {surname} ({email})
 											</span>
 										</div>
 										<div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #333333' }}>

@@ -551,10 +551,10 @@ export async function runFimScan(
 	// Alert SOC if critical suspicious files found
 	if (parsed.suspiciousFiles && parsed.suspiciousFiles.length > 0) {
 		void logSystemEvent({
-			servis: 'security',
-			seviye: 'ERROR',
-			mesaj: `[FIM Web Shell Uyarısı] ${parsed.suspiciousFiles.length} şüpheli dosya/arka kapı tespit edildi (${key})!`,
-			detay: {
+			service: 'security',
+			level: 'ERROR',
+			message: `[FIM Web Shell Uyarısı] ${parsed.suspiciousFiles.length} şüpheli dosya/arka kapı tespit edildi (${key})!`,
+			detail: {
 				target: key,
 				count: parsed.suspiciousFiles.length,
 				preview: parsed.suspiciousFiles.slice(0, 5),
@@ -903,10 +903,10 @@ export async function runApiSecurityScan(
 
 	if (failed > 0) {
 		void logSystemEvent({
-			servis: 'security',
-			seviye: 'ERROR',
-			mesaj: `[AppSec Zafiyet Uyarısı] API taramasında ${failed} kritik permission sızıntısı tespit edildi!`,
-			detay: {
+			service: 'security',
+			level: 'ERROR',
+			message: `[AppSec Zafiyet Uyarısı] API taramasında ${failed} kritik permission sızıntısı tespit edildi!`,
+			detail: {
 				failedRoutes: reports.filter((r) => r.status === 'FAIL').map((r) => r.endpoint),
 			},
 		});
@@ -987,10 +987,10 @@ export function scheduleBackgroundFimCheck(intervalMs = 30 * 60_000): void {
 					for (const file of newCritical) {
 						fimAlertedFiles.add(`${target}:${file.path}:${file.matchedRule}`);
 						await logSystemEvent({
-							servis: 'security',
-							seviye: 'CRITICAL',
-							mesaj: `🚨 [FIM CRITICAL ALARM] Dizin nöbetçisi tarafından şüpheli dosya veya webshell tespit edildi (${target}): ${file.path} (${file.matchedRule})`,
-							detay: { target, file },
+							service: 'security',
+							level: 'CRITICAL',
+							message: `🚨 [FIM CRITICAL ALARM] Dizin nöbetçisi tarafından şüpheli dosya veya webshell tespit edildi (${target}): ${file.path} (${file.matchedRule})`,
+							detail: { target, file },
 							ip: '127.0.0.1',
 						});
 					}

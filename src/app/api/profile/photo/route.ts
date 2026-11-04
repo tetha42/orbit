@@ -7,7 +7,7 @@ import { auditContext } from '@/db/audit';
 import { verifyAuth } from '@/lib/auth/authGuard';
 import { consumeRateLimit } from '@/lib/rateLimit';
 import { UPLOAD_NAME_RE, sniffFile, uploadDir } from '@/lib/uploads';
-import { PROFIL_FOTO_MAX_BYTES } from '@/lib/profile';
+import { PROFILE_PHOTO_MAX_BYTES } from '@/lib/profile';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,8 +18,8 @@ async function removeOld(current: string | null | undefined, userId: string) {
 	if (!current?.startsWith(PREFIX)) return;
 	const name = current.slice(PREFIX.length);
 	if (!UPLOAD_NAME_RE.test(name)) return;
-	const dosya = await getStoredFile(name);
-	if (!dosya || dosya.yukleyenId !== userId) return;
+	const file = await getStoredFile(name);
+	if (!file || file.uploaderId !== userId) return;
 	await unlink(path.join(uploadDir(), name)).catch(() => {});
 	await deleteStoredFile(name);
 }
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
 		return NextResponse.json({ error: 'Geçersiz yükleme isteği.' }, { status: 400 });
 	}
 	if (!(file instanceof File)) return NextResponse.json({ error: 'Bir fotoğraf seçin.' }, { status: 400 });
-	if (file.size > PROFIL_FOTO_MAX_BYTES) return NextResponse.json({ error: 'Fotoğraf 2 MB sınırını aşamaz.' }, { status: 413 });
+	if (file.size > PROFILE_PHOTO_MAX_BYTES) return NextResponse.json({ error: 'Fotoğraf 2 MB sınırını aşamaz.' }, { status: 413 });
 	const buffer = Buffer.from(await file.arrayBuffer());
 	const sniffed = sniffFile(buffer);
 	if (!sniffed || sniffed.mime === 'application/pdf') {
@@ -66,16 +66,16 @@ export async function POST(request: Request) {
 	const name = `${Date.now()}_${randomBytes(9).toString('hex')}${sniffed.ext}`;
 	await mkdir(uploadDir(), { recursive: true });
 	await writeFile(path.join(uploadDir(), name), buffer, { flag: 'wx' });
-	await addStoredFile({ ad: name, yukleyenId: auth.user.id, mime: sniffed.mime, boyut: buffer.length, herkeseAcik: true });
-	await updateUserProfile(auth.user.id, { profilFoto: `${PREFIX}${name}` }, auditContext(request, auth.user));
-	await removeOld(auth.user.profilFoto, auth.user.id);
-	return NextResponse.json({ success: true, profilFoto: `${PREFIX}${name}` });
+	await addStoredFile({ name: name, uploaderId: auth.user.id, mime: sniffed.mime, size: buffer.length, everyoneOpen: true });
+	await updateUserProfile(auth.user.id, { profilePhoto: `${PREFIX}${name}` }, auditContext(request, auth.user));
+	await removeOld(auth.user.profilePhoto, auth.user.id);
+	return NextResponse.json({ success: true, profilePhoto: `${PREFIX}${name}` });
 }
 
 export async function DELETE(request: Request) {
 	const auth = await verifyAuth(request);
 	if (!auth.authorized) return auth.response;
-	await updateUserProfile(auth.user.id, { profilFoto: null }, auditContext(request, auth.user));
-	await removeOld(auth.user.profilFoto, auth.user.id);
+	await updateUserProfile(auth.user.id, { profilePhoto: null }, auditContext(request, auth.user));
+	await removeOld(auth.user.profilePhoto, auth.user.id);
 	return NextResponse.json({ success: true });
 }

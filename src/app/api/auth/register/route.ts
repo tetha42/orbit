@@ -56,10 +56,10 @@ export async function POST(request: Request) {
 	const waf = inspectRequestPayload(request);
 	if (waf.matched) {
 		void logSystemEvent({
-			servis: 'security',
-			seviye: 'ERROR',
-			mesaj: `[WAF] Attack signature blocked (${waf.signature}): POST /api/auth/register`,
-			detay: { category: waf.category, signature: waf.signature },
+			service: 'security',
+			level: 'ERROR',
+			message: `[WAF] Attack signature blocked (${waf.signature}): POST /api/auth/register`,
+			detail: { category: waf.category, signature: waf.signature },
 			ip,
 		});
 		void recordSecurityStrike({
@@ -99,13 +99,13 @@ export async function POST(request: Request) {
 		if (!body || typeof body !== 'object') {
 			return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
 		}
-		const email = body.email ?? body.eposta;
-		const password = body.password ?? body.sifre;
-		const ad = body.firstName ?? body.ad;
-		const soyad = body.lastName ?? body.soyad;
-		const ogrenciNo = body.handle ?? body.ogrenciNo ?? body.memberId;
-		const bolum = body.department ?? body.bolum;
-		const sinif = body.grade ?? body.sinif;
+		const email = body.email ?? body.email;
+		const password = body.password ?? body.password;
+		const name = body.firstName ?? body.name;
+		const surname = body.lastName ?? body.surname;
+		const studentNo = body.handle ?? body.studentNo ?? body.memberId;
+		const department = body.department ?? body.department;
+		const grade = body.grade ?? body.grade;
 		const { verificationCode, hp_website, inviteToken, preferredLanguage } = body;
 		const userLang: 'tr' | 'en' = preferredLanguage === 'en' ? 'en' : 'tr';
 
@@ -118,10 +118,10 @@ export async function POST(request: Request) {
 				path: '/api/auth/register',
 			});
 			void logSystemEvent({
-				servis: 'security',
-				seviye: 'WARN',
-				mesaj: `[Honeypot] Automated bot registration attempt blocked: ${ip}`,
-				detay: { ip },
+				service: 'security',
+				level: 'WARN',
+				message: `[Honeypot] Automated bot registration attempt blocked: ${ip}`,
+				detail: { ip },
 				ip,
 			});
 			return NextResponse.json({ error: 'Invalid form submission detected.', bot_detected: true }, { status: 400 });
@@ -152,7 +152,7 @@ export async function POST(request: Request) {
 				{ status: 400 }
 			);
 		}
-		const rawHandle = String(ogrenciNo ?? '').trim();
+		const rawHandle = String(studentNo ?? '').trim();
 		// The handle can be optional or mandatory, as configured in Settings.
 		const coreConfig = await getRegistrationCoreConfig();
 		if (coreConfig.memberId.required && !rawHandle) {
@@ -161,42 +161,42 @@ export async function POST(request: Request) {
 				{ status: 400 }
 			);
 		}
-		const cleanOgrenciNo = rawHandle || generateMemberHandle();
-		const cleanName = String(ad || '').trim();
-		const cleanSoyad = String(soyad || '').trim();
+		const cleanStudentNo = rawHandle || generateMemberHandle();
+		const cleanName = String(name || '').trim();
+		const cleanSurname = String(surname || '').trim();
 		// If a community hides the track/level fields, the first configured option
 		// is the canonical default rather than a hard-coded student label.
-		const cleanBolum = String(bolum || '').trim() || defaultTrackValue(coreConfig);
+		const cleanDepartment = String(department || '').trim() || defaultTrackValue(coreConfig);
 
-		if (!/^[a-zA-Z0-9_-]{3,32}$/.test(cleanOgrenciNo)) {
+		if (!/^[a-zA-Z0-9_-]{3,32}$/.test(cleanStudentNo)) {
 			return NextResponse.json(
 				{ error: 'Member ID / Handle must be 3–32 characters using letters, numbers, hyphens, or underscores.' },
 				{ status: 400 }
 			);
 		}
 
-		if (!cleanName || !cleanSoyad || !normalizedEmail || typeof password !== 'string' || !password || !cleanBolum) {
+		if (!cleanName || !cleanSurname || !normalizedEmail || typeof password !== 'string' || !password || !cleanDepartment) {
 			return NextResponse.json({ error: 'Please fill in all required fields.' }, { status: 400 });
 		}
 
 		if (
 			cleanName.length < 2 ||
 			cleanName.length > 60 ||
-			cleanSoyad.length < 2 ||
-			cleanSoyad.length > 60 ||
-			cleanBolum.length < 2 ||
-			cleanBolum.length > 100 ||
+			cleanSurname.length < 2 ||
+			cleanSurname.length > 60 ||
+			cleanDepartment.length < 2 ||
+			cleanDepartment.length > 100 ||
 			hasUnsafeTextChars(cleanName) ||
-			hasUnsafeTextChars(cleanSoyad) ||
-			hasUnsafeTextChars(cleanBolum)
+			hasUnsafeTextChars(cleanSurname) ||
+			hasUnsafeTextChars(cleanDepartment)
 		) {
 			return NextResponse.json({ error: 'Invalid characters or length in first name, last name, or track.' }, { status: 400 });
 		}
 
 		const parsedGrade =
-			sinif === undefined || sinif === null || sinif === ''
+			grade === undefined || grade === null || grade === ''
 				? defaultLevelValue(coreConfig)
-				: Number(sinif);
+				: Number(grade);
 		const allowedLevels = new Set(coreConfig.level.options.map((option) => Number(option.value)));
 		if (!Number.isInteger(parsedGrade) || !allowedLevels.has(parsedGrade)) {
 			return NextResponse.json(
@@ -288,8 +288,8 @@ export async function POST(request: Request) {
 		}
 
 		// Member ID / Handle uniqueness check
-		const existingOgrenci = await getUserByHandle(cleanOgrenciNo);
-		if (existingOgrenci && existingOgrenci.id !== reapplyUser?.id) {
+		const existingStudent = await getUserByHandle(cleanStudentNo);
+		if (existingStudent && existingStudent.id !== reapplyUser?.id) {
 			return NextResponse.json({ error: 'This Member ID / Handle is already registered.' }, { status: 409 });
 		}
 
@@ -312,7 +312,7 @@ export async function POST(request: Request) {
 			}
 
 			const code = String(crypto.randomInt(100000, 1000000));
-			const sonGecerlilik = Date.now() + OTP_WINDOW_MS;
+			const lastValidity = Date.now() + OTP_WINDOW_MS;
 			const hashedCode = hashOtpCode(code);
 
 			await pool.query(
@@ -322,13 +322,13 @@ export async function POST(request: Request) {
 			await pool.query(
 				`INSERT INTO verification_tokens (id, token_type, target, token_hash, expires_at, created_at)
 				 VALUES ($1, 'registration', $2, $3, $4, $5)`,
-				[`otp_${crypto.randomUUID()}`, normalizedEmail, hashedCode, sonGecerlilik, Date.now()]
+				[`otp_${crypto.randomUUID()}`, normalizedEmail, hashedCode, lastValidity, Date.now()]
 			);
 
 			clearRateLimit(verifyKey);
 
 			const delivery = await notifyEmailVerificationCode(
-				{ ad: cleanName, soyad: cleanSoyad, email: normalizedEmail, preferredLanguage: userLang },
+				{ name: cleanName, surname: cleanSurname, email: normalizedEmail, preferredLanguage: userLang },
 				code,
 				userLang
 			);
@@ -345,15 +345,15 @@ export async function POST(request: Request) {
 					await enqueueMail({
 						kind: 'registration_verification',
 						recipient: normalizedEmail,
-						subject: `E-posta Doğrulama Kodu — ${cleanName} ${cleanSoyad}`,
+						subject: `E-posta Doğrulama Kodu — ${cleanName} ${cleanSurname}`,
 						payload: { code },
 					});
 					mailQueued = true;
 					await logSystemEvent({
-						servis: 'auth',
-						seviye: 'WARN',
-						mesaj: `Registration verification e-mail queued for admin approval: ${normalizedEmail}`,
-						detay: { reason: delivery.simulated ? 'smtp_not_configured' : delivery.error },
+						service: 'auth',
+						level: 'WARN',
+						message: `Registration verification e-mail queued for admin approval: ${normalizedEmail}`,
+						detail: { reason: delivery.simulated ? 'smtp_not_configured' : delivery.error },
 						ip,
 					});
 				} catch (queueError) {
@@ -362,9 +362,9 @@ export async function POST(request: Request) {
 			}
 
 			await logSystemEvent({
-				servis: 'auth',
-				seviye: 'INFO',
-				mesaj: mailQueued
+				service: 'auth',
+				level: 'INFO',
+				message: mailQueued
 					? `Registration verification code queued for approval: ${normalizedEmail}`
 					: `Registration verification code sent: ${normalizedEmail}`,
 				ip,
@@ -373,7 +373,7 @@ export async function POST(request: Request) {
 			return NextResponse.json({
 				success: true,
 				requireVerification: true,
-				memberId: cleanOgrenciNo,
+				memberId: cleanStudentNo,
 				mailQueued,
 				message: mailQueued
 					? `E-posta servisi şu anda kullanılamıyor. Doğrulama kodunuz yönetici onayına alındı; onaylandığında ${normalizedEmail} adresine gönderilecek.`
@@ -395,12 +395,12 @@ export async function POST(request: Request) {
 		}
 
 		const codeRes = await pool.query(
-			'SELECT token_hash AS kod, expires_at AS songecerlilik FROM verification_tokens WHERE lower(target) = lower($1) AND token_type = $2 ORDER BY created_at DESC LIMIT 1',
+			'SELECT token_hash AS code, expires_at AS lastValidity FROM verification_tokens WHERE lower(target) = lower($1) AND token_type = $2 ORDER BY created_at DESC LIMIT 1',
 			[normalizedEmail, 'registration']
 		);
 
 		const record = codeRes.rows[0];
-		const expectedCode = record ? String(record.kod ?? record.tokenHash ?? record.token_hash ?? '').trim() : '';
+		const expectedCode = record ? String(record.code ?? record.tokenHash ?? record.token_hash ?? '').trim() : '';
 		const submittedCode = String(verificationCode).trim();
 		if (!record || !verifyOtpCode(expectedCode, submittedCode)) {
 			const attempts = recordFailure(verifyKey, OTP_WINDOW_MS);
@@ -411,17 +411,17 @@ export async function POST(request: Request) {
 				]);
 			}
 			await logSystemEvent({
-				servis: 'auth',
-				seviye: 'WARN',
-				mesaj: `Failed registration OTP attempt: ${normalizedEmail}`,
-				detay: { email: normalizedEmail, denemeSayisi: attempts },
+				service: 'auth',
+				level: 'WARN',
+				message: `Failed registration OTP attempt: ${normalizedEmail}`,
+				detail: { email: normalizedEmail, attemptCount: attempts },
 				ip,
 			});
 			return NextResponse.json({ error: 'The verification code you entered is invalid.' }, { status: 400 });
 		}
 
-		const sonGecerlilik = Number(record.songecerlilik ?? record.expiresAt ?? record.expires_at ?? 0);
-		if (sonGecerlilik < Date.now()) {
+		const lastValidity = Number(record.lastValidity ?? record.expiresAt ?? record.expires_at ?? 0);
+		if (lastValidity < Date.now()) {
 			return NextResponse.json({ error: 'Verification code has expired. Please request a new code.' }, { status: 400 });
 		}
 
@@ -449,9 +449,9 @@ export async function POST(request: Request) {
 				[
 					reapplyUser.id,
 					cleanName,
-					cleanSoyad,
-					cleanOgrenciNo,
-					cleanBolum,
+					cleanSurname,
+					cleanStudentNo,
+					cleanDepartment,
 					parsedGrade,
 					passwordHash,
 					invitation?.roleId ?? null,
@@ -467,25 +467,25 @@ export async function POST(request: Request) {
 			}
 			newUser = {
 				...reapplyUser,
-				ad: cleanName,
-				soyad: cleanSoyad,
-				ogrenciNo: cleanOgrenciNo,
-				bolum: cleanBolum,
-				sinif: parsedGrade,
+				name: cleanName,
+				surname: cleanSurname,
+				studentNo: cleanStudentNo,
+				department: cleanDepartment,
+				grade: parsedGrade,
 				status: 'beklemede' as const,
 				roleId: invitation?.roleId ?? null,
 				preferredLanguage: userLang,
 			};
 		} else {
 			newUser = await createUser({
-				ad: cleanName,
-				soyad: cleanSoyad,
+				name: cleanName,
+				surname: cleanSurname,
 				email: normalizedEmail,
 				passwordHash,
-				ogrenciNo: cleanOgrenciNo,
-				bolum: cleanBolum,
+				studentNo: cleanStudentNo,
+				department: cleanDepartment,
 				status: 'beklemede',
-				sinif: parsedGrade,
+				grade: parsedGrade,
 				roleId: invitation?.roleId ?? null,
 				preferredLanguage: userLang,
 			});
@@ -514,12 +514,12 @@ export async function POST(request: Request) {
 			source: invitation ? 'invite' : 'self',
 			status: 'pending_review',
 			snapshot: {
-				ad: cleanName,
-				soyad: cleanSoyad,
+				name: cleanName,
+				surname: cleanSurname,
 				email: normalizedEmail,
-				ogrenciNo: cleanOgrenciNo,
-				bolum: cleanBolum,
-				sinif: parsedGrade,
+				studentNo: cleanStudentNo,
+				department: cleanDepartment,
+				grade: parsedGrade,
 				customFields: customValidation.clean,
 				acceptedDocumentIds: [...accepted],
 				invitationId: invitation?.id ?? null,
@@ -535,8 +535,8 @@ export async function POST(request: Request) {
 
 		void notifyRegistrationReceived(
 			{
-				ad: newUser.ad,
-				soyad: newUser.soyad,
+				name: newUser.name,
+				surname: newUser.surname,
 				email: newUser.email,
 				preferredLanguage: userLang,
 			},
@@ -545,9 +545,9 @@ export async function POST(request: Request) {
 		);
 
 		await logSystemEvent({
-			servis: 'auth',
-			seviye: 'INFO',
-			mesaj: `New membership application received${emailVerifiedAt ? ' (email verified)' : ''}: ${newUser.ad} ${newUser.soyad} (${newUser.email}) - ID: ${cleanOgrenciNo}`,
+			service: 'auth',
+			level: 'INFO',
+			message: `New membership application received${emailVerifiedAt ? ' (email verified)' : ''}: ${newUser.name} ${newUser.surname} (${newUser.email}) - ID: ${cleanStudentNo}`,
 			userId: newUser.id,
 			ip: clientAddress(request),
 		});
@@ -559,8 +559,8 @@ export async function POST(request: Request) {
 				: 'Your membership application has been received. You can sign in once an administrator approves your account.',
 			user: {
 				id: newUser.id,
-				ad: newUser.ad,
-				soyad: newUser.soyad,
+				name: newUser.name,
+				surname: newUser.surname,
 				email: newUser.email,
 				status: newUser.status,
 			},

@@ -3,11 +3,11 @@
 import React from 'react';
 import { useI18n } from '@/core/i18n';
 import { MessageSquare, Users } from 'lucide-react';
-import type { ChatOdaItem } from '../types';
+import type { ChatRoomItem } from '../types';
 import s from '../Chat.module.css';
 
 interface ChatRoomListProps {
-	rooms: ChatOdaItem[];
+	rooms: ChatRoomItem[];
 	activeRoomId: string | null;
 	onSelectRoom: (roomId: string) => void;
 }
@@ -21,13 +21,13 @@ export function ChatRoomList({ rooms, activeRoomId, onSelectRoom }: ChatRoomList
 		return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 	};
 
-	const genelRooms = rooms.filter((r) => r.tur !== 'takim' && r.tur !== 'ozel');
-	const teamRooms = rooms.filter((r) => r.tur === 'takim');
-	const ozelRooms = rooms.filter((r) => r.tur === 'ozel');
+	const generalRooms = rooms.filter((r) => r.typeValue !== 'takim' && r.typeValue !== 'ozel');
+	const teamRooms = rooms.filter((r) => r.typeValue === 'takim');
+	const customRooms = rooms.filter((r) => r.typeValue === 'ozel');
 
-	const renderRoomItem = (room: ChatOdaItem) => {
+	const renderRoomItem = (room: ChatRoomItem) => {
 		const isActive = room.id === activeRoomId;
-		const isGroupDm = room.tur === 'ozel' && (room.memberCount || 0) > 2;
+		const isGroupDm = room.typeValue === 'ozel' && (room.memberCount || 0) > 2;
 
 		return (
 			<button
@@ -41,14 +41,14 @@ export function ChatRoomList({ rooms, activeRoomId, onSelectRoom }: ChatRoomList
 						// eslint-disable-next-line @next/next/no-img-element
 						<img
 							src={room.avatar}
-							alt={room.ad}
+							alt={room.name}
 							style={{ width: '100%', height: '100%', objectFit: 'cover' }}
 						/>
-					) : room.tur === 'takim' || isGroupDm ? (
+					) : room.typeValue === 'takim' || isGroupDm ? (
 						<Users size={18} />
-					) : room.tur === 'ozel' ? (
+					) : room.typeValue === 'ozel' ? (
 						<span style={{ fontSize: '13px', fontWeight: 700 }}>
-							{(room.ad || '?').slice(0, 1).toUpperCase()}
+							{(room.name || '?').slice(0, 1).toUpperCase()}
 						</span>
 					) : (
 						<MessageSquare size={18} />
@@ -57,20 +57,20 @@ export function ChatRoomList({ rooms, activeRoomId, onSelectRoom }: ChatRoomList
 
 				<div className={s.roomInfo}>
 					<div className={s.roomNameRow}>
-						<span className={s.roomName}>{room.ad}</span>
-						{room.sonMesaj?.date && (
-							<span className={s.roomTime}>{formatTime(room.sonMesaj.date)}</span>
+						<span className={s.roomName}>{room.name}</span>
+						{room.lastMessage?.date && (
+							<span className={s.roomTime}>{formatTime(room.lastMessage.date)}</span>
 						)}
 					</div>
 
 					<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
 						<span className={s.roomLastMsg}>
-							{room.sonMesaj
-								? `${(room.sonMesaj.gonderenAd || 'Üye').split(' ')[0]}: ${room.sonMesaj.icerik}`
+							{room.lastMessage
+								? `${(room.lastMessage.senderName || 'Üye').split(' ')[0]}: ${room.lastMessage.content}`
 								: t('chatNoMessages')}
 						</span>
-						{Boolean(room.okunmamisSayisi && room.okunmamisSayisi > 0) && (
-							<span className={s.unreadBadge}>{room.okunmamisSayisi}</span>
+						{Boolean(room.unreadCount && room.unreadCount > 0) && (
+							<span className={s.unreadBadge}>{room.unreadCount}</span>
 						)}
 					</div>
 				</div>
@@ -89,10 +89,10 @@ export function ChatRoomList({ rooms, activeRoomId, onSelectRoom }: ChatRoomList
 
 	return (
 		<div className={s.roomList}>
-			{genelRooms.length > 0 && (
+			{generalRooms.length > 0 && (
 				<div>
 					<div style={sectionHeaderStyle}>{t('chatChannels')}</div>
-					{genelRooms.map(renderRoomItem)}
+					{generalRooms.map(renderRoomItem)}
 				</div>
 			)}
 
@@ -103,10 +103,10 @@ export function ChatRoomList({ rooms, activeRoomId, onSelectRoom }: ChatRoomList
 				</div>
 			)}
 
-			{ozelRooms.length > 0 && (
+			{customRooms.length > 0 && (
 				<div>
 					<div style={sectionHeaderStyle}>{t('chatDirectMessages')}</div>
-					{ozelRooms.map(renderRoomItem)}
+					{customRooms.map(renderRoomItem)}
 				</div>
 			)}
 

@@ -33,21 +33,21 @@ async function handlePOST(request: Request) {
 			return NextResponse.json({ error: 'Güvenlik duvarı (WAF): Zararlı içerik engellendi.' }, { status: 403 });
 		}
 
-		const { id, baslik, icerik, renk, sabitliMi, klasorId, copteMi } = body;
+		const { id, title, content, color, pinnedMi, folderId, trashedMi } = body;
 
-		if (baslik === undefined && icerik === undefined) {
+		if (title === undefined && content === undefined) {
 			return NextResponse.json({ error: 'Başlık veya içerik girilmelidir.' }, { status: 400 });
 		}
 
 		const saved = await saveUserNote({
 			id,
 			userId: auth.user.id,
-			baslik: baslik !== undefined ? baslik : 'Başlıksız Not',
-			icerik: icerik !== undefined ? icerik : '',
-			renk: renk || klasorId || 'sari',
-			sabitliMi: Boolean(sabitliMi),
-			klasorId: klasorId || 'quick',
-			copteMi: Boolean(copteMi),
+			title: title !== undefined ? title : 'Başlıksız Not',
+			content: content !== undefined ? content : '',
+			color: color || folderId || 'sari',
+			pinnedMi: Boolean(pinnedMi),
+			folderId: folderId || 'quick',
+			trashedMi: Boolean(trashedMi),
 		});
 
 		await publishEventQuiet(getPgPool(), [{ k: 'note_updated', userId: auth.user.id }]);

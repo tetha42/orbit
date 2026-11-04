@@ -43,9 +43,9 @@ export async function POST(request: Request) {
 		if (!(await verifyTotpCode(user.totpSecret, body.code))) {
 			recordFailure(rateKey, WINDOW_MS);
 			await logSystemEvent({
-				servis: 'auth',
-				seviye: 'WARN',
-				mesaj: `2FA enable failed (invalid code): ${user.email}`,
+				service: 'auth',
+				level: 'WARN',
+				message: `2FA enable failed (invalid code): ${user.email}`,
 				userId: user.id,
 				ip,
 			});
@@ -60,9 +60,9 @@ export async function POST(request: Request) {
 		await enableUserTotp(user.id, hashes);
 
 		await logSystemEvent({
-			servis: 'auth',
-			seviye: 'INFO',
-			mesaj: `Kullanıcı iki adımlı doğrulamayı (2FA) etkinleştirdi: ${user.email}`,
+			service: 'auth',
+			level: 'INFO',
+			message: `Kullanıcı iki adımlı doğrulamayı (2FA) etkinleştirdi: ${user.email}`,
 			userId: user.id,
 			ip,
 		});

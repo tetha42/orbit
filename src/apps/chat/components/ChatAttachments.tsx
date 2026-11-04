@@ -27,7 +27,7 @@ function formatBytes(bytes?: number): string {
 
 function kindOf(attachment: ChatAttachmentItem): 'image' | 'video' | 'audio' | 'pdf' | 'markdown' | 'text' | 'archive' | 'file' {
 	const mime = (attachment.tip || '').toLowerCase();
-	const name = attachment.ad.toLowerCase();
+	const name = attachment.name.toLowerCase();
 	if (mime.startsWith('image/')) return 'image';
 	if (mime.startsWith('video/')) return 'video';
 	if (mime.startsWith('audio/')) return 'audio';
@@ -211,7 +211,7 @@ function TextPreview({
 	return (
 		<div className={s.textAttachment}>
 			<div className={s.attachmentHeader}>
-				<span className={s.attachmentName}>{attachment.ad}</span>
+				<span className={s.attachmentName}>{attachment.name}</span>
 				<div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
 					<button type="button" className={s.attachmentAction} onClick={() => setExpanded((v) => !v)}>
 						{expanded ? t('chatAttachmentCollapse') : t('chatAttachmentPreview')}
@@ -227,7 +227,7 @@ function TextPreview({
 				</div>
 			</div>
 			{error ? (
-				<a className={s.attachmentAction} href={attachment.url} download={attachment.ad}>
+				<a className={s.attachmentAction} href={attachment.url} download={attachment.name}>
 					<Download size={12} /> {t('chatAttachmentDownload')}
 				</a>
 			) : content === null ? (
@@ -254,8 +254,8 @@ function PdfAttachment({
 		<div className={s.pdfAttachment}>
 			<div className={s.attachmentHeader}>
 				<span className={s.attachmentName}>
-					<FileText size={13} /> {attachment.ad}
-					{attachment.boyut ? <span className={s.attachmentMeta}>{formatBytes(attachment.boyut)}</span> : null}
+					<FileText size={13} /> {attachment.name}
+					{attachment.size ? <span className={s.attachmentMeta}>{formatBytes(attachment.size)}</span> : null}
 				</span>
 				<div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
 					<button type="button" className={s.attachmentAction} onClick={() => setExpanded((v) => !v)}>
@@ -278,7 +278,7 @@ function PdfAttachment({
 				<iframe
 					className={s.pdfFrame}
 					src={attachment.url}
-					title={attachment.ad}
+					title={attachment.name}
 					loading="lazy"
 				/>
 			)}
@@ -298,10 +298,10 @@ function ImageAttachment({
 			type="button"
 			className={s.imageAttachment}
 			onClick={() => onOpen(attachment)}
-			title={attachment.ad}
+			title={attachment.name}
 		>
 			{/* eslint-disable-next-line @next/next/no-img-element */}
-			<img src={attachment.url} alt={attachment.ad} loading="lazy" />
+			<img src={attachment.url} alt={attachment.name} loading="lazy" />
 			<span className={s.zoomBadge} aria-hidden="true">
 				<ZoomIn size={15} />
 			</span>
@@ -324,8 +324,8 @@ function VideoAttachment({
 			</video>
 			<div className={s.mediaCaption}>
 				<Film size={12} />
-				<span>{attachment.ad}</span>
-				{attachment.boyut ? <span className={s.attachmentMeta}>{formatBytes(attachment.boyut)}</span> : null}
+				<span>{attachment.name}</span>
+				{attachment.size ? <span className={s.attachmentMeta}>{formatBytes(attachment.size)}</span> : null}
 				<button
 					type="button"
 					className={s.mediaOpenBtn}
@@ -351,8 +351,8 @@ function AudioAttachment({
 		<div className={s.mediaPlayer}>
 			<div className={s.mediaCaption}>
 				<Music size={12} />
-				<span>{attachment.ad}</span>
-				{attachment.boyut ? <span className={s.attachmentMeta}>{formatBytes(attachment.boyut)}</span> : null}
+				<span>{attachment.name}</span>
+				{attachment.size ? <span className={s.attachmentMeta}>{formatBytes(attachment.size)}</span> : null}
 				<button
 					type="button"
 					className={s.mediaOpenBtn}
@@ -391,15 +391,15 @@ export function ChatAttachments({ attachments }: { attachments: ChatAttachmentIt
 						key={index}
 						className={s.fileAttachment}
 						href={attachment.url}
-						download={attachment.ad}
+						download={attachment.name}
 						target="_blank"
 						rel="noreferrer noopener"
 					>
 						<span className={s.fileAttachmentIcon}>{fileIcon(kind)}</span>
 						<span className={s.fileAttachmentBody}>
-							<span className={s.attachmentName}>{attachment.ad}</span>
+							<span className={s.attachmentName}>{attachment.name}</span>
 							<span className={s.attachmentMeta}>
-								{formatBytes(attachment.boyut)} · {t('chatAttachmentDownload')}
+								{formatBytes(attachment.size)} · {t('chatAttachmentDownload')}
 							</span>
 						</span>
 						<Download size={14} />

@@ -37,10 +37,10 @@ export async function GET(request: Request) {
 
 	try {
 		// `?gecmis=<id>`: one item's history (who borrowed it, returns, repairs, edits).
-		const gecmis = new URL(request.url).searchParams.get('gecmis');
-		if (gecmis) {
-			if (!(await getInventoryItemById(gecmis))) return bad('Envanter kaydı bulunamadı.', 404);
-			return NextResponse.json({ hareketler: await getInventoryActivities(gecmis) });
+		const history = new URL(request.url).searchParams.get('history');
+		if (history) {
+			if (!(await getInventoryItemById(history))) return bad('Envanter kaydı bulunamadı.', 404);
+			return NextResponse.json({ movements: await getInventoryActivities(history) });
 		}
 		const items = await getInventoryItems();
 		return NextResponse.json(items);
@@ -60,7 +60,7 @@ async function handlePOST(request: Request) {
 
 		const body = (await request.json()) as Record<string, unknown>;
 		const { action } = body;
-		const envanterId = typeof body.envanterId === 'string' ? body.envanterId : '';
+		const inventoryId = typeof body.inventoryId === 'string' ? body.inventoryId : '';
 		// Role alone is not enough: management also needs its second factor (production rule).
 		const isManager = can(auth.user, 'inventory', 'yonet');
 		const now = Date.now();
@@ -68,23 +68,23 @@ async function handlePOST(request: Request) {
 		if (action === 'create' || action === 'update') {
 			if (!isManager) return bad('Donanım ekleme ve düzenleme yetkisi yalnızca yönetimdedir.', 403);
 			const fields: {
-				kod?: string;
-				ad?: string;
-				kategori?: string;
-				konum?: string;
-				aciklama?: string | null;
-				seriNo?: string | null;
+				code?: string;
+				name?: string;
+				category?: string;
+				location?: string;
+				description?: string | null;
+				seriesNo?: string | null;
 			} = {};
-			if (body.kod !== undefined || action === 'create') {
-				const code = normalizeCode(body.kod);
+			if (body.code !== undefined || action === 'create') {
+				const code = normalizeCode(body.code);
 				const err = codeProblem(code);
 				if (err) return bad(err);
-				fields.kod = code;
+				fields.code = code;
 			}
 			for (const [key, min, max, label] of [
-				['ad', 3, 120, 'Ad'],
-				['kategori', 2, 60, 'Kategori'],
-				['konum', 2, 120, 'Konum'],
+				['name', 3, 120, 'Ad'],
+				['category', 2, 60, 'Kategori'],
+				['location', 2, 120, 'Konum'],
 			] as const) {
 				const v = text(body[key], min, max);
 				if (v === null || (v === undefined && action === 'create'))
@@ -92,14 +92,14 @@ async function handlePOST(request: Request) {
 				if (v !== undefined) fields[key] = v;
 			}
 			for (const [key, max] of [
-				['aciklama', 1000],
-				['seriNo', 80],
+				['description', 1000],
+				['seriesNo', 80],
 			] as const) {
 				if (body[key] === undefined) continue;
 				const v = typeof body[key] === 'string' ? (body[key] as string).trim() : '';
 				if (v.length > max)
 					return bad(
-						`${key === 'seriNo' ? 'Seri no' : 'Açıklama'} en fazla ${max} karakter olabilir.`,
+						`${key === 'seriesNo' ? 'Seri no' : 'Açıklama'} en fazla ${max} karakter olabilir.`,
 					);
 				fields[key] = v || null;
 			}
@@ -107,43 +107,43 @@ async function handlePOST(request: Request) {
 			if (action === 'create') {
 				try {
 					const item = await createInventoryItem({
-						kod: fields.kod!,
-						ad: fields.ad!,
-						kategori: fields.kategori!,
-						konum: fields.konum!,
-						aciklama: fields.aciklama,
-						seriNo: fields.seriNo,
+						code: fields.code!,
+						name: fields.name!,
+						category: fields.category!,
+						location: fields.location!,
+						description: fields.description,
+						seriesNo: fields.seriesNo,
 						// A new item is in service, broken or lost — never "on loan" to nobody.
 						status: isInventoryStatus(body.status) && body.status !== 'oduncte' ? body.status : 'saglam',
-						aktorId: auth.user.id,
+						actorId: auth.user.id,
 					});
 					await publishEventQuiet(getPgPool(), { k: 'inventory_updated' });
 					return NextResponse.json({ success: true, item }, { status: 201 });
 				} catch (err) {
 					if (err instanceof InventoryCodeExistsError)
-						return bad(`${fields.kod} kodu zaten kullanılıyor.`, 409);
+						return bad(`${fields.code} kodu zaten kullanılıyor.`, 409);
 					throw err;
 				}
 			}
-			const r = await updateInventoryItem(envanterId, fields, auth.user.id);
+			const r = await updateInventoryItem(inventoryId, fields, auth.user.id);
 			if (r === 'yok') return bad('Envanter kaydı bulunamadı.', 404);
-			if (r === 'kod-var') return bad(`${fields.kod} kodu zaten kullanılıyor.`, 409);
+			if (r === 'kod-var') return bad(`${fields.code} kodu zaten kullanılıyor.`, 409);
 			await publishEventQuiet(getPgPool(), { k: 'inventory_updated' });
 			return NextResponse.json({ success: true });
 		}
 
-		if (!envanterId) return bad('Envanter ID zorunludur.');
+		if (!inventoryId) return bad('Envanter ID zorunludur.');
 
 		if (action === 'delete') {
 			if (!isManager) return bad('Donanım silme yetkisi yalnızca yönetimdedir.', 403);
-			const r = await deleteInventoryItem(envanterId);
+			const r = await deleteInventoryItem(inventoryId);
 			if (r === 'yok') return bad('Kayıt bulunamadı veya silinemedi.', 404);
 			if (r === 'oduncte') return bad('Ödünçteki eşya silinemez; önce iade alın.', 409);
 			await publishEventQuiet(getPgPool(), { k: 'inventory_updated' });
 			return NextResponse.json({ success: true, message: 'Envanter kaydı silindi.' });
 		}
 
-		if (action === 'oduncAl') {
+		if (action === 'borrow') {
 			// Members borrow for themselves; management may lend to someone else.
 			let userId = auth.user.id;
 			if (
@@ -158,14 +158,14 @@ async function handlePOST(request: Request) {
 				userId = target.id;
 			}
 			const returnDate =
-				body.iadeTarihi === undefined ? now + DEFAULT_LOAN_DAYS * DAY : Number(body.iadeTarihi);
-			const err = returnDateProblem(returnDate, { now, yonetim: isManager });
+				body.returnDate === undefined ? now + DEFAULT_LOAN_DAYS * DAY : Number(body.returnDate);
+			const err = returnDateProblem(returnDate, { now, management: isManager });
 			if (err) return bad(err);
 			const r = await lendInventoryItem({
-				id: envanterId,
+				id: inventoryId,
 				userId,
-				iadeTarihi: returnDate,
-				aktorId: auth.user.id,
+				returnDate: returnDate,
+				actorId: auth.user.id,
 			});
 			if (r === 'yok') return bad('Envanter kaydı bulunamadı.', 404);
 			if (r === 'musait-degil')
@@ -174,16 +174,16 @@ async function handlePOST(request: Request) {
 			return NextResponse.json({ success: true, message: 'Ödünç alma işlemi kaydedildi.' });
 		}
 
-		if (action === 'iadeEt') {
+		if (action === 'return') {
 			// Only the borrower or management may return an item. Returning never repairs
 			// it; a borrower may report it broken, which takes it out of service.
 			const not = text(body.not, 0, 500);
 			if (not === null) return bad('Not en fazla 500 karakter olabilir.');
 			const r = await markReturned({
-				id: envanterId,
-				aktorId: auth.user.id,
+				id: inventoryId,
+				actorId: auth.user.id,
 				borrowerOnly: isManager ? undefined : auth.user.id,
-				ariza: body.ariza === true,
+				failure: body.failure === true,
 				not,
 			});
 			if (r === 'yok') return bad('Envanter kaydı bulunamadı.', 404);
@@ -194,29 +194,29 @@ async function handlePOST(request: Request) {
 			return NextResponse.json({
 				success: true,
 				message:
-					body.ariza === true
+					body.failure === true
 						? 'İade alındı; eşya arızalı olarak işaretlendi.'
 						: 'Envanter iade edildi.',
 			});
 		}
 
-		if (action === 'uzat') {
-			const item = await getInventoryItemById(envanterId);
+		if (action === 'extend') {
+			const item = await getInventoryItemById(inventoryId);
 			if (!item) return bad('Envanter kaydı bulunamadı.', 404);
 			if (item.status !== 'oduncte') return bad('Bu eşya ödünçte değil.', 409);
-			if (!isManager && item.oduncAlanId !== auth.user.id)
+			if (!isManager && item.loanFieldId !== auth.user.id)
 				return bad('Süreyi yalnızca ödünç alan kişi veya yönetim uzatabilir.', 403);
-			const returnDate = Number(body.iadeTarihi);
+			const returnDate = Number(body.returnDate);
 			const err = returnDateProblem(returnDate, {
 				now,
-				baslangic: item.oduncTarihi ?? now,
-				yonetim: isManager,
+				start: item.loanDate ?? now,
+				management: isManager,
 			});
 			if (err) return bad(err);
 			const r = await extendLoan({
-				id: envanterId,
-				iadeTarihi: returnDate,
-				aktorId: auth.user.id,
+				id: inventoryId,
+				returnDate: returnDate,
+				actorId: auth.user.id,
 				borrowerOnly: isManager ? undefined : auth.user.id,
 			});
 			if (r !== 'ok') return bad('Süre uzatılamadı; eşyanın durumu değişmiş olabilir.', 409);
@@ -224,7 +224,7 @@ async function handlePOST(request: Request) {
 			return NextResponse.json({ success: true, message: 'İade tarihi güncellendi.' });
 		}
 
-		if (action === 'updateDurum') {
+		if (action === 'updateStatus') {
 			if (!isManager)
 				return bad(
 					'Envanter durumu yalnızca topluluk lideri veya yönetim tarafından güncellenebilir.',
@@ -240,9 +240,9 @@ async function handlePOST(request: Request) {
 			}
 			const not = text(body.not, 0, 500);
 			const r = await setInventoryStatus({
-				id: envanterId,
+				id: inventoryId,
 				status,
-				aktorId: auth.user.id,
+				actorId: auth.user.id,
 				not: not ?? undefined,
 			});
 			if (r === 'yok') return bad('Envanter kaydı bulunamadı.', 404);

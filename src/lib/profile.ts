@@ -15,8 +15,8 @@ export const PASSWORD_MAX = 128;
 /** Profile photos are downscaled in the browser; the server still checks the bytes and the size. */
 export const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 export const AVATAR_PX = 320;
-export const PROFIL_FOTO_MAX_BYTES = AVATAR_MAX_BYTES;
-export const PROFIL_FOTO_PX = AVATAR_PX;
+export const PROFILE_PHOTO_MAX_BYTES = AVATAR_MAX_BYTES;
+export const PROFILE_PHOTO_PX = AVATAR_PX;
 
 const COMMONLY_BREACHED_PASSWORDS = new Set([
 	'password',
@@ -52,17 +52,17 @@ const COMMONLY_BREACHED_PASSWORDS = new Set([
  * Why a new password is not acceptable, or null when it is. Turkish, because the
  * API returns it to the member as is.
  */
-export function passwordProblem(yeni: unknown, opts: { mevcut?: string; email?: string } = {}): string | null {
-	if (typeof yeni !== 'string') return 'Yeni şifre gerekli.';
-	if (yeni.length < PASSWORD_MIN) return `Yeni şifre en az ${PASSWORD_MIN} karakter olmalıdır.`;
-	if (yeni.length > PASSWORD_MAX) return `Yeni şifre en fazla ${PASSWORD_MAX} karakter olabilir.`;
-	if (!/\p{L}/u.test(yeni) || !/\d/.test(yeni)) return 'Yeni şifre en az bir harf ve bir rakam içermelidir.';
-	if (opts.mevcut !== undefined && yeni === opts.mevcut) return 'Yeni şifre mevcut şifreyle aynı olamaz.';
+export function passwordProblem(fresh: unknown, opts: { current?: string; email?: string } = {}): string | null {
+	if (typeof fresh !== 'string') return 'Yeni şifre gerekli.';
+	if (fresh.length < PASSWORD_MIN) return `Yeni şifre en az ${PASSWORD_MIN} karakter olmalıdır.`;
+	if (fresh.length > PASSWORD_MAX) return `Yeni şifre en fazla ${PASSWORD_MAX} karakter olabilir.`;
+	if (!/\p{L}/u.test(fresh) || !/\d/.test(fresh)) return 'Yeni şifre en az bir harf ve bir rakam içermelidir.';
+	if (opts.current !== undefined && fresh === opts.current) return 'Yeni şifre mevcut şifreyle aynı olamaz.';
 	const local = opts.email?.split('@')[0]?.toLocaleLowerCase('tr-TR');
-	if (local && local.length >= 3 && yeni.toLocaleLowerCase('tr-TR').includes(local)) {
+	if (local && local.length >= 3 && fresh.toLocaleLowerCase('tr-TR').includes(local)) {
 		return 'Şifre e-posta adresinizi içeremez.';
 	}
-	const normalized = yeni.toLowerCase().trim();
+	const normalized = fresh.toLowerCase().trim();
 	if (COMMONLY_BREACHED_PASSWORDS.has(normalized)) {
 		return 'Bu şifre dünyada en çok sızdırılan zayıf şifreler listesinde yer alıyor. Lütfen daha güvenli ve tahmin edilemez bir şifre seçiniz.';
 	}
@@ -87,7 +87,7 @@ export function calculateLevel(xp: number): {
 	return { level, progress: (total - floor) / step, next: floor + step };
 }
 
-export function seviye(xp: number): { seviye: number; ilerleme: number; sonraki: number } {
+export function level(xp: number): { level: number; progress: number; next: number } {
 	const res = calculateLevel(xp);
-	return { seviye: res.level, ilerleme: res.progress, sonraki: res.next };
+	return { level: res.level, progress: res.progress, next: res.next };
 }

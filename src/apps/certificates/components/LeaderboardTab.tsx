@@ -72,19 +72,19 @@ export function LeaderboardTab({ topMembers, currentUserId }: LeaderboardTabProp
 									<td style={{ padding: '12px 16px' }}>
 										<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 											<div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg, #0a84ff, #5e5ce6)', display: 'grid', placeItems: 'center', color: '#fff', fontSize: '11px', fontWeight: 700 }}>
-												{(member.firstName || member.ad || '')[0]}{(member.lastName || member.soyad || '')[0]}
+												{(member.firstName || member.name || '')[0]}{(member.lastName || member.surname || '')[0]}
 											</div>
 											<span style={{ fontWeight: isMe ? 700 : 500 }}>
-												{member.firstName || member.ad} {member.lastName || member.soyad} {isMe && ` ${t('certsYou')}`}
+												{member.firstName || member.name} {member.lastName || member.surname} {isMe && ` ${t('certsYou')}`}
 											</span>
 										</div>
 									</td>
 									<td style={{ padding: '12px 16px', opacity: 0.8, fontSize: '12px' }}>
-										{member.department || member.bolum} ({fill(t('membersClassYear'), { year: member.grade || member.sinif })})
+										{member.department || member.department} ({fill(t('membersClassYear'), { year: member.grade || member.grade })})
 									</td>
 									<td style={{ padding: '12px 16px' }}>
 										<span style={{ padding: '3px 8px', borderRadius: '6px', background: 'rgba(255, 255, 255, 0.08)', fontSize: '11px' }}>
-											{member.takimAdi || member.rolAd || '—'}
+											{member.teamName || member.roleName || '—'}
 										</span>
 									</td>
 									<td style={{ padding: '12px 16px', textAlign: 'right' }}>

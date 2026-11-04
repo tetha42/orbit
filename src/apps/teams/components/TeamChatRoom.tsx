@@ -11,5 +11,5 @@ interface TeamChatRoomProps {
 }
 
 export function TeamChatRoom({ team }: TeamChatRoomProps) {
-	return <TeamChatEmbed teamId={team.id} takimAd={team.ad} />;
+	return <TeamChatEmbed teamId={team.id} teamName={team.name} />;
 }

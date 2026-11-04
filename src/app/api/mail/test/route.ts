@@ -11,9 +11,9 @@ export async function GET(request: Request) {
 	const auth = await requireAdmin(request);
 	if (!auth.authorized) {
 		await logSystemEvent({
-			servis: 'mail',
-			seviye: 'WARN',
-			mesaj: 'Unauthorized /api/mail/test access attempt blocked',
+			service: 'mail',
+			level: 'WARN',
+			message: 'Unauthorized /api/mail/test access attempt blocked',
 			ip: clientAddress(request),
 		});
 		return auth.response;

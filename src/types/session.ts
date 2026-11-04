@@ -12,22 +12,20 @@ export interface SessionUser {
 	id: string;
 	firstName: string;
 	lastName: string;
-	ad: string;
-	soyad: string;
+	name: string;
+	surname: string;
 	email: string;
 	handle: string;
-	ogrenciNo: string;
+	studentNo: string;
 	department: string;
-	bolum: string;
 	grade: number;
-	sinif: number;
 	avatarUrl?: string | null;
-	profilFoto?: string | null;
+	profilePhoto?: string | null;
 	bio?: string | null;
 	xp: number;
 	status: User['status'];
 	lastLoginAt?: number | null;
-	sonGirisTarihi?: number | null;
+	lastLoginDate?: number | null;
 	/** Two-factor auth is switched on for this account. */
 	twoFactorEnabled: boolean;
 	authMethod?: 'password' | 'totp' | 'passkey';
@@ -36,10 +34,8 @@ export interface SessionUser {
 	/** Required but not yet configured — drives the blocking setup prompt. */
 	mustSetup2fa: boolean;
 	roleInfo: { id: string; name: string; color: string } | null;
-	rolBilgi?: { id: string; ad: string; renk: string } | null;
 	/** What the role grants per app — the UI shows only what this allows. */
 	permissions: Permissions;
-	izinler: Permissions;
 	/** Holds the built-in admin role. */
 	admin: boolean;
 }
@@ -54,15 +50,13 @@ export interface PendingApplicant {
 	id: string;
 	firstName: string;
 	lastName: string;
-	ad: string;
-	soyad: string;
+	name: string;
+	surname: string;
 	email: string;
 	handle: string;
-	ogrenciNo: string;
+	studentNo: string;
 	department: string;
-	bolum: string;
 	grade: number;
-	sinif: number;
 	createdAt: number;
-	olusturma: number;
+	creation: number;
 }

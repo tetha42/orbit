@@ -57,7 +57,7 @@ async function handlePOST(request: Request) {
 
 	try {
 		const body = await request.json();
-		const { action, roomId, teamId, takimAd, targetUserId, memberIds, title } = body;
+		const { action, roomId, teamId, teamName, targetUserId, memberIds, title } = body;
 
 		if (action === 'read' && roomId) {
 			const hasAccess = await canUserAccessChatRoom(String(roomId), auth.user.id, auth.user.permission.admin);
@@ -68,8 +68,8 @@ async function handlePOST(request: Request) {
 			return NextResponse.json({ ok: true }, { headers: NO_CACHE });
 		}
 
-		if (action === 'ensure_team' && teamId && takimAd) {
-			const roomId = await ensureTeamChatRoom(teamId, takimAd);
+		if (action === 'ensure_team' && teamId && teamName) {
+			const roomId = await ensureTeamChatRoom(teamId, teamName);
 			return NextResponse.json({ ok: true, roomId }, { headers: NO_CACHE });
 		}
 
@@ -80,7 +80,7 @@ async function handlePOST(request: Request) {
 
 		if (action === 'create_group_dm' && Array.isArray(memberIds)) {
 			const result = await createGroupDm(
-				{ id: auth.user.id, ad: auth.user.ad, soyad: auth.user.soyad },
+				{ id: auth.user.id, name: auth.user.name, surname: auth.user.surname },
 				memberIds,
 				title
 			);
@@ -94,7 +94,7 @@ async function handlePOST(request: Request) {
 			}
 			const result = await addMembersToRoom(
 				String(roomId),
-				{ id: auth.user.id, ad: auth.user.ad, soyad: auth.user.soyad },
+				{ id: auth.user.id, name: auth.user.name, surname: auth.user.surname },
 				memberIds
 			);
 			return NextResponse.json({ ok: true, ...result }, { headers: NO_CACHE });

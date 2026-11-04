@@ -75,10 +75,10 @@ export function CommunitySettingsPanel() {
 	const [descriptionEn, setDescriptionEn] = useState('');
 	const [domain, setDomain] = useState('');
 	const [archetype, setArchetype] = useState<OrganizationArchetype>(DEFAULT_ARCHETYPE);
-	const [imza1Ad, setImza1Ad] = useState('');
-	const [imza1Unvan, setImza1Unvan] = useState('');
-	const [imza2Ad, setImza2Ad] = useState('');
-	const [imza2Unvan, setImza2Unvan] = useState('');
+	const [signature1Name, setSignature1Name] = useState('');
+	const [signature1Rank, setSignature1Rank] = useState('');
+	const [signature2Name, setSignature2Name] = useState('');
+	const [signature2Rank, setSignature2Rank] = useState('');
 	const [iconUrl, setIconUrl] = useState<string | null>(identity.iconUrl);
 	const [iconBusy, setIconBusy] = useState(false);
 	const iconInputRef = useRef<HTMLInputElement>(null);
@@ -113,14 +113,14 @@ export function CommunitySettingsPanel() {
 					setIconUrl(site.iconUrl || null);
 				}
 				if (communityData) {
-					setDomain(communityData.kulupDomain || '');
+					setDomain(communityData.clubDomain || '');
 					if (isOrganizationArchetype(communityData.archetype)) {
 						setArchetype(communityData.archetype);
 					}
-					setImza1Ad(communityData.imza1Ad || '');
-					setImza1Unvan(communityData.imza1Unvan || '');
-					setImza2Ad(communityData.imza2Ad || '');
-					setImza2Unvan(communityData.imza2Unvan || '');
+					setSignature1Name(communityData.signature1Name || '');
+					setSignature1Rank(communityData.signature1Rank || '');
+					setSignature2Name(communityData.signature2Name || '');
+					setSignature2Rank(communityData.signature2Rank || '');
 				}
 			})
 			.catch(() => {})
@@ -189,12 +189,12 @@ export function CommunitySettingsPanel() {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					kulupDomain: domain,
+					clubDomain: domain,
 					archetype,
-					imza1Ad,
-					imza1Unvan,
-					imza2Ad,
-					imza2Unvan,
+					signature1Name,
+					signature1Rank,
+					signature2Name,
+					signature2Rank,
 				}),
 			});
 			const communityData = await communityRes.json();
@@ -626,8 +626,8 @@ export function CommunitySettingsPanel() {
 									<input
 										type="text"
 										style={inputStyle}
-										value={imza1Ad}
-										onChange={(event) => setImza1Ad(event.target.value)}
+										value={signature1Name}
+										onChange={(event) => setSignature1Name(event.target.value)}
 										disabled={isSaving}
 									/>
 								</div>
@@ -636,8 +636,8 @@ export function CommunitySettingsPanel() {
 									<input
 										type="text"
 										style={inputStyle}
-										value={imza1Unvan}
-										onChange={(event) => setImza1Unvan(event.target.value)}
+										value={signature1Rank}
+										onChange={(event) => setSignature1Rank(event.target.value)}
 										disabled={isSaving}
 									/>
 								</div>
@@ -670,8 +670,8 @@ export function CommunitySettingsPanel() {
 									<input
 										type="text"
 										style={inputStyle}
-										value={imza2Ad}
-										onChange={(event) => setImza2Ad(event.target.value)}
+										value={signature2Name}
+										onChange={(event) => setSignature2Name(event.target.value)}
 										disabled={isSaving}
 									/>
 								</div>
@@ -680,8 +680,8 @@ export function CommunitySettingsPanel() {
 									<input
 										type="text"
 										style={inputStyle}
-										value={imza2Unvan}
-										onChange={(event) => setImza2Unvan(event.target.value)}
+										value={signature2Rank}
+										onChange={(event) => setSignature2Rank(event.target.value)}
 										disabled={isSaving}
 									/>
 								</div>

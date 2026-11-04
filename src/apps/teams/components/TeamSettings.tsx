@@ -11,7 +11,7 @@ import type { Team } from '../types';
 
 interface Props {
 	team: Team;
-	roster: { id: string; ad: string; soyad: string }[];
+	roster: { id: string; name: string; surname: string }[];
 	categories: string[];
 	notify: (text: string, tone?: 'success' | 'error') => void;
 	onChanged: () => Promise<void>;
@@ -21,14 +21,14 @@ interface Props {
 /** Captain: description, quota, repo, membership mode. Management: everything, including handing over. */
 export function TeamSettings({ team, roster, categories, notify, onChanged, onDelete }: Props) {
 	const { t } = useI18n();
-	const all = team.izinler.editAll;
-	const [ad, setAd] = useState(team.ad);
-	const [kategori, setKategori] = useState(team.kategori);
-	const [aciklama, setAciklama] = useState(team.aciklama);
-	const [kontenjan, setKontenjan] = useState(String(team.kontenjan));
+	const all = team.permissions.editAll;
+	const [name, setName] = useState(team.name);
+	const [category, setCategory] = useState(team.category);
+	const [description, setDescription] = useState(team.description);
+	const [capacity, setCapacity] = useState(String(team.capacity));
 	const [repoUrl, setRepoUrl] = useState(team.repoUrl ?? '');
-	const [katilimTuru, setKatilimTuru] = useState(team.katilimTuru);
-	const [status, setDurum] = useState(team.status);
+	const [participationType, setParticipationType] = useState(team.participationType);
+	const [status, setStatus] = useState(team.status);
 	const [leadId, setLeadId] = useState(team.leadId ?? '');
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
@@ -39,13 +39,13 @@ export function TeamSettings({ team, roster, categories, notify, onChanged, onDe
 		setError('');
 		// Send only what changed, so a captain never trips the management-only fields.
 		const body: Record<string, unknown> = { action: 'updateTeam', teamId: team.id };
-		if (aciklama !== team.aciklama) body.aciklama = aciklama;
-		if (Number(kontenjan) !== team.kontenjan) body.kontenjan = Number(kontenjan);
+		if (description !== team.description) body.description = description;
+		if (Number(capacity) !== team.capacity) body.capacity = Number(capacity);
 		if (repoUrl !== (team.repoUrl ?? '')) body.repoUrl = repoUrl;
-		if (katilimTuru !== team.katilimTuru) body.katilimTuru = katilimTuru;
+		if (participationType !== team.participationType) body.participationType = participationType;
 		if (all) {
-			if (ad !== team.ad) body.ad = ad;
-			if (kategori !== team.kategori) body.kategori = kategori;
+			if (name !== team.name) body.name = name;
+			if (category !== team.category) body.category = category;
 			if (status !== team.status) body.status = status;
 			if (leadId && leadId !== team.leadId) body.leadId = leadId;
 		}
@@ -60,7 +60,7 @@ export function TeamSettings({ team, roster, categories, notify, onChanged, onDe
 	};
 
 	// Legacy rows may hold a category outside the list; keep it selectable.
-	const categoryOptions = categories.includes(team.kategori) ? categories : [team.kategori, ...categories];
+	const categoryOptions = categories.includes(team.category) ? categories : [team.category, ...categories];
 
 	return (
 		<form className={styles.settings} onSubmit={save} aria-label={t('tmSettingsTitle')}>
@@ -71,11 +71,11 @@ export function TeamSettings({ team, roster, categories, notify, onChanged, onDe
 			<div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
 				<label className={ui.field}>
 					<span className={ui.fieldLabel}>{t('tmFieldName')}</span>
-					<input className={ui.input} value={ad} disabled={!all} maxLength={TEAM_NAME_MAX} onChange={(e) => setAd(e.target.value)} />
+					<input className={ui.input} value={name} disabled={!all} maxLength={TEAM_NAME_MAX} onChange={(e) => setName(e.target.value)} />
 				</label>
 				<label className={ui.field}>
 					<span className={ui.fieldLabel}>{t('tmFieldCategory')}</span>
-					<select className={ui.select} style={{ maxWidth: 'none' }} value={kategori} disabled={!all} onChange={(e) => setKategori(e.target.value)}>
+					<select className={ui.select} style={{ maxWidth: 'none' }} value={category} disabled={!all} onChange={(e) => setCategory(e.target.value)}>
 						{categoryOptions.map((c) => (
 							<option key={c} value={c}>
 								{c}
@@ -86,12 +86,12 @@ export function TeamSettings({ team, roster, categories, notify, onChanged, onDe
 			</div>
 			<label className={ui.field}>
 				<span className={ui.fieldLabel}>{t('tmFieldDesc')}</span>
-				<textarea className={ui.textarea} rows={4} maxLength={TEAM_DESCRIPTION_MAX} value={aciklama} onChange={(e) => setAciklama(e.target.value)} />
+				<textarea className={ui.textarea} rows={4} maxLength={TEAM_DESCRIPTION_MAX} value={description} onChange={(e) => setDescription(e.target.value)} />
 			</label>
 			<div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12 }}>
 				<label className={ui.field}>
 					<span className={ui.fieldLabel}>{t('tmFieldQuota')}</span>
-					<input className={ui.input} type="number" min={Math.max(1, team.doluKontenjan)} max={CAPACITY_MAX} value={kontenjan} onChange={(e) => setKontenjan(e.target.value)} />
+					<input className={ui.input} type="number" min={Math.max(1, team.fullCapacity)} max={CAPACITY_MAX} value={capacity} onChange={(e) => setCapacity(e.target.value)} />
 				</label>
 				<label className={ui.field}>
 					<span className={ui.fieldLabel}>{t('tmFieldRepo')}</span>
@@ -102,11 +102,11 @@ export function TeamSettings({ team, roster, categories, notify, onChanged, onDe
 				<span className={ui.fieldLabel}>{t('tmFieldJoin')}</span>
 				<div className={styles.radioList} role="radiogroup">
 					<label className={styles.radio}>
-						<input type="radio" name="katilim" checked={katilimTuru === 'acik'} onChange={() => setKatilimTuru('acik')} />
+						<input type="radio" name="katilim" checked={participationType === 'acik'} onChange={() => setParticipationType('acik')} />
 						{t('tmJoinOpen')}
 					</label>
 					<label className={styles.radio}>
-						<input type="radio" name="katilim" checked={katilimTuru === 'onayli'} onChange={() => setKatilimTuru('onayli')} />
+						<input type="radio" name="katilim" checked={participationType === 'onayli'} onChange={() => setParticipationType('onayli')} />
 						{t('tmJoinApproval')}
 					</label>
 				</div>
@@ -115,7 +115,7 @@ export function TeamSettings({ team, roster, categories, notify, onChanged, onDe
 				<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
 					<label className={ui.field}>
 						<span className={ui.fieldLabel}>{t('tmFieldStatus')}</span>
-						<select className={ui.select} style={{ maxWidth: 'none' }} value={status} onChange={(e) => setDurum(e.target.value as Team['status'])}>
+						<select className={ui.select} style={{ maxWidth: 'none' }} value={status} onChange={(e) => setStatus(e.target.value as Team['status'])}>
 							<option value="aktif">{t('tmStatusActive')}</option>
 							<option value="askida">{t('tmStatusPaused')}</option>
 							<option value="tamamlandi">{t('tmStatusFinished')}</option>
@@ -127,7 +127,7 @@ export function TeamSettings({ team, roster, categories, notify, onChanged, onDe
 							{!team.leadId && <option value="">—</option>}
 							{roster.map((m) => (
 								<option key={m.id} value={m.id}>
-									{m.ad} {m.soyad}
+									{m.name} {m.surname}
 								</option>
 							))}
 						</select>

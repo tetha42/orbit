@@ -9,10 +9,10 @@ import type { Filter } from '../types';
 interface InventoryToolbarProps {
 	filter: Filter;
 	setFilter: (f: Filter) => void;
-	arama: string;
-	setArama: (s: string) => void;
-	kategori: string;
-	setKategori: (k: string) => void;
+	search: string;
+	setSearch: (s: string) => void;
+	category: string;
+	setCategory: (k: string) => void;
 	categories: string[];
 	counts: {
 		hepsi: number;
@@ -30,10 +30,10 @@ interface InventoryToolbarProps {
 export function InventoryToolbar({
 	filter,
 	setFilter,
-	arama,
-	setArama,
-	kategori,
-	setKategori,
+	search,
+	setSearch,
+	category,
+	setCategory,
 	categories,
 	counts,
 	isManager,
@@ -84,14 +84,14 @@ export function InventoryToolbar({
 					className={ui.search}
 					style={{ flex: '1 1 220px', maxWidth: 360 }}
 					placeholder={t('invSearchInputPlaceholder')}
-					value={arama}
-					onChange={(e) => setArama(e.target.value)}
+					value={search}
+					onChange={(e) => setSearch(e.target.value)}
 					aria-label="Envanterde ara"
 				/>
 				<select
 					className={ui.select}
-					value={kategori}
-					onChange={(e) => setKategori(e.target.value)}
+					value={category}
+					onChange={(e) => setCategory(e.target.value)}
 					aria-label="Kategori"
 				>
 					<option value="">{t('invAllCategoriesOpt')}</option>

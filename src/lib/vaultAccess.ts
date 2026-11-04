@@ -24,8 +24,8 @@ import { canUserAccessChatRoom } from '@/db/repositories/chat.repo';
 export type VaultAccess = 'none' | 'read' | 'write' | 'yok' | 'oku' | 'yaz';
 
 export type VaultAccessResult =
-	| { authorized: true; user: AuthorizedUser; isManagement: boolean; access: VaultAccess; erisim: VaultAccess; response?: never }
-	| { authorized: false; user?: never; isManagement?: never; access?: never; erisim?: never; response: NextResponse };
+	| { authorized: true; user: AuthorizedUser; isManagement: boolean; access: VaultAccess;response?: never }
+	| { authorized: false; user?: never; isManagement?: never; access?: never;response: NextResponse };
 
 const forbidden = (message = 'Bu kasaya erişim yetkiniz yok.') =>
 	NextResponse.json({ error: message }, { status: 403 });
@@ -67,24 +67,22 @@ export async function verifyVaultAccess(
 	if (user.status === 'mezun' && isWrite) {
 		return { authorized: false, response: forbidden('Mezunlar sadece okuma erişimine sahiptir.') };
 	}
-	return { authorized: true, user, isManagement: can(user, 'budget', 'yonet'), access, erisim: access };
+	return { authorized: true, user, isManagement: can(user, 'budget', 'yonet'), access,};
 }
 
 /** The vaults this member may open, general first. Empty when none. */
-export async function listAccessibleVaults(user: AuthorizedUser): Promise<Pick<VaultSummary, 'teamId' | 'ad' | 'kind'>[]> {
+export async function listAccessibleVaults(user: AuthorizedUser): Promise<Pick<VaultSummary, 'teamId' | 'name' | 'kind'>[]> {
 	if (can(user, 'budget', 'kullan')) {
 		const teams = await getTeams();
 		return [
-			{ teamId: null, ad: 'Genel Kasa', kind: 'genel' },
-			...teams.map((t) => ({ teamId: t.id, ad: t.ad, kind: 'proje' as const })),
+			{ teamId: null, name: 'Genel Kasa', kind: 'genel' },
+			...teams.map((t) => ({ teamId: t.id, name: t.name, kind: 'proje' as const })),
 		];
 	}
 	if (!can(user, 'teams', 'kullan')) return [];
 	const led = await getLedTeams(user.id);
-	return led.map((t) => ({ teamId: t.id, ad: t.ad, kind: 'proje' as const }));
+	return led.map((t) => ({ teamId: t.id, name: t.name, kind: 'proje' as const }));
 }
-
-export const listAccessibleKasas = listAccessibleVaults;
 
 /** Receipt uploads are for people who can write to some vault. */
 export async function verifyUploadAccess(request: Request): Promise<VaultAccessResult> {
@@ -94,7 +92,7 @@ export async function verifyUploadAccess(request: Request): Promise<VaultAccessR
 	const isManagement = can(user, 'budget', 'yonet');
 	const isCaptain = !isManagement && can(user, 'teams', 'kullan') && (await getLedTeams(user.id)).length > 0;
 	if (!isManagement && !isCaptain) return { authorized: false, response: forbidden('Dosya yükleme yetkiniz yok.') };
-	return { authorized: true, user, isManagement, access: 'yaz', erisim: 'yaz' };
+	return { authorized: true, user, isManagement, access: 'yaz',};
 }
 
 /**
@@ -106,9 +104,9 @@ export async function verifyUploadAccess(request: Request): Promise<VaultAccessR
  */
 export async function canReadUpload(user: AuthorizedUser, name: string): Promise<boolean> {
 	const file = await getStoredFile(name);
-	if (file && file.yukleyenId === user.id) return true;
+	if (file && file.uploaderId === user.id) return true;
 	// Profile photos are part of the member directory every member can see.
-	if (file && Number(file.herkeseAcik) === 1) return true;
+	if (file && Number(file.everyoneOpen) === 1) return true;
 	// Chat attachments are exactly as private as the room they were posted in.
 	if (file?.chatRoomId) {
 		if (!can(user, 'chat', 'kullan') && !user.permission?.admin) return false;

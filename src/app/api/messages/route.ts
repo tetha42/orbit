@@ -27,14 +27,14 @@ export async function GET(request: Request) {
 	if (!auth.authorized) return auth.response;
 	try {
 		const params = new URL(request.url).searchParams;
-		const folder = (params.get('klasor') ?? 'gelen') as MailFolder;
+		const folder = (params.get('folder') ?? 'gelen') as MailFolder;
 		if (!MAIL_FOLDERS.includes(folder)) return NextResponse.json({ error: 'Geçersiz klasör.' }, { status: 400, headers: NO_STORE });
-		const page = Math.max(1, Math.floor(Number(params.get('sayfa'))) || 1);
+		const page = Math.max(1, Math.floor(Number(params.get('page'))) || 1);
 		const [list, unreadCount] = await Promise.all([
 			getMailThreads(auth.user.id, folder, page),
 			getUnreadMailCount(auth.user.id),
 		]);
-		const body: MailConversationList = { klasor: folder, ...list, sayfa: page, sayfaBoyutu: MAIL_PAGE_SIZE, simdi: Date.now(), okunmamis: unreadCount };
+		const body: MailConversationList = { folder: folder, ...list, page: page, pageSize: MAIL_PAGE_SIZE, now: Date.now(), unread: unreadCount };
 		return NextResponse.json(body, { headers: NO_STORE });
 	} catch (error) {
 		console.error('API /api/messages GET error:', error);
@@ -73,18 +73,18 @@ async function handlePOST(request: Request) {
 		}
 
 		const decision = await recipientDecision(user.id, ids, true);
-		if (decision.hata) return NextResponse.json({ error: decision.hata }, { status: 400 });
-		const { gidecek, atlananlar } = decision;
-		if (gidecek.length === 0) {
-			return NextResponse.json({ error: atlananlar.map(skippedReason).join(' '), skipped: atlananlar }, { status: 422 });
+		if (decision.error) return NextResponse.json({ error: decision.error }, { status: 400 });
+		const { outgoing, skipped } = decision;
+		if (outgoing.length === 0) {
+			return NextResponse.json({ error: skipped.map(skippedReason).join(' '), skipped: skipped }, { status: 422 });
 		}
 
-		const { konuId, mesajId } = await createMailThread(user.id, subject, messageBody, gidecek.map((u) => u.id));
-		notifyByEmail(gidecek, user, subject);
+		const { topicId, messageId } = await createMailThread(user.id, subject, messageBody, outgoing.map((u) => u.id));
+		notifyByEmail(outgoing, user, subject);
 		const result: MailSendResult = {
-			threadId: konuId,
-			messageId: mesajId,
-			skipped: atlananlar,
+			threadId: topicId,
+			messageId: messageId,
+			skipped: skipped,
 		};
 		return NextResponse.json(result, { status: 201 });
 	} catch (error) {

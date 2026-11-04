@@ -84,8 +84,8 @@ function ChatDesktopView() {
 
 	const isGroupOrTeam =
 		activeRoom &&
-		(activeRoom.tur === 'takim' ||
-			(activeRoom.tur === 'ozel' && (activeRoom.memberCount || 0) > 2));
+		(activeRoom.typeValue === 'takim' ||
+			(activeRoom.typeValue === 'ozel' && (activeRoom.memberCount || 0) > 2));
 
 	return (
 		<div className={s.container}>
@@ -213,14 +213,14 @@ function ChatDesktopView() {
 										// eslint-disable-next-line @next/next/no-img-element
 										<img
 											src={activeRoom.avatar}
-											alt={activeRoom.ad}
+											alt={activeRoom.name}
 											style={{ width: '100%', height: '100%', objectFit: 'cover' }}
 										/>
 									) : isGroupOrTeam ? (
 										<Users size={18} />
-									) : activeRoom.tur === 'ozel' ? (
+									) : activeRoom.typeValue === 'ozel' ? (
 										<span style={{ fontSize: '13px', fontWeight: 700 }}>
-											{(activeRoom.ad || '?').slice(0, 1).toUpperCase()}
+											{(activeRoom.name || '?').slice(0, 1).toUpperCase()}
 										</span>
 									) : (
 										<MessageSquare size={18} />
@@ -234,12 +234,12 @@ function ChatDesktopView() {
 									}}
 								>
 									<div className={s.headerTitle} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-										{activeRoom.ad}
+										{activeRoom.name}
 									</div>
 									<div className={s.headerSub} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-										{activeRoom.tur === 'genel'
+										{activeRoom.typeValue === 'genel'
 											? t('chatPublicSub')
-											: activeRoom.tur === 'takim'
+											: activeRoom.typeValue === 'takim'
 											? t('chatTeamSub')
 											: activeRoom.memberCount && activeRoom.memberCount > 2
 											? fill(t('chatTotalMembers'), { n: activeRoom.memberCount })

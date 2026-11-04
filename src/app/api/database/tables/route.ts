@@ -145,10 +145,10 @@ export async function POST(request: Request) {
 			await pool.query(createSql);
 
 			await logSystemEvent({
-				servis: 'database',
-				seviye: 'WARN',
-				mesaj: `Yeni tablo oluşturuldu: ${tableName}`,
-				detay: { tablo: tableName, sutunSayisi: columns.length },
+				service: 'database',
+				level: 'WARN',
+				message: `Yeni tablo oluşturuldu: ${tableName}`,
+				detail: { table: tableName, columnCount: columns.length },
 				userId: auth.user.id,
 			});
 
@@ -173,10 +173,10 @@ export async function POST(request: Request) {
 			await pool.query(alterSql);
 
 			await logSystemEvent({
-				servis: 'database',
-				seviye: 'WARN',
-				mesaj: `Tabloya yeni sütun eklendi: ${tableName}.${colName}`,
-				detay: { tablo: tableName, sutun: colName, tip: sqlType },
+				service: 'database',
+				level: 'WARN',
+				message: `Tabloya yeni sütun eklendi: ${tableName}.${colName}`,
+				detail: { table: tableName, column: colName, tip: sqlType },
 				userId: auth.user.id,
 			});
 

@@ -3,33 +3,33 @@ import type { VaultSummary } from '@/types/budget';
 export interface VaultRecord {
 	id: string;
 	date: number;
-	olusturma?: number;
-	tur: 'gelir' | 'gider';
-	kategori: string;
+	creation?: number;
+	typeValue: 'gelir' | 'gider';
+	category: string;
 	amountMinor: number;
-	aciklama: string;
-	fisFotoUrl: string | null;
-	kaydedenId: string;
-	kaydedenAdSoyad: string | null;
-	aktarimId?: string | null;
-	karsiKasaAd?: string | null;
-	guncelleyenAdSoyad?: string | null;
-	guncellenme?: number | null;
+	description: string;
+	receiptPhotoUrl: string | null;
+	recorderId: string;
+	recorderNameSurname: string | null;
+	transferId?: string | null;
+	counterpartVaultName?: string | null;
+	updaterNameSurname?: string | null;
+	update?: number | null;
 }
 
 export interface CashTotals {
 	totalIncomeMinor: number;
 	totalExpenseMinor: number;
 	netBalanceMinor: number;
-	kayitSayisi: number;
+	recordCount: number;
 }
 
 export interface VaultResponse {
-	kasa: { teamId: string | null; ad: string; kind: 'genel' | 'proje' };
-	kayitlar: VaultRecord[];
-	ozet: CashTotals;
+	vault: { teamId: string | null; name: string; kind: 'genel' | 'proje' };
+	records: VaultRecord[];
+	summary: CashTotals;
 	/** What the caller may do here (lib/kasaAccess): write entries; manage (transfers). */
-	izin: { yaz: boolean; yonet: boolean };
+	permission: { yaz: boolean; yonet: boolean };
 }
 
 export type { VaultSummary };

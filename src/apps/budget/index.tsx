@@ -114,7 +114,7 @@ export function BudgetApp() {
 					{active && (
 						<>
 							<div style={{ padding: '18px 24px 0', fontSize: '17px', fontWeight: 750 }}>
-								{active.ad}
+								{active.name}
 							</div>
 							<VaultPanel
 								key={active.teamId ?? 'genel'}

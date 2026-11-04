@@ -8,16 +8,16 @@ import ui from '@/core/ui/ui.module.css';
 import k from './Vault.module.css';
 
 interface VaultInsightsProps {
-	dagilim: { kategori: string; amountMinor: number; oran: number }[];
-	kategori: string;
-	onSelectKategori: (cat: string) => void;
-	aylar: { ay: string; gelir: number; gider: number }[];
-	ay: string;
-	onSelectAy: (m: string) => void;
+	distribution: { category: string; amountMinor: number; ratio: number }[];
+	category: string;
+	onSelectCategory: (cat: string) => void;
+	months: { month: string; gelir: number; gider: number }[];
+	month: string;
+	onSelectMonth: (m: string) => void;
 	maxMonth: number;
 }
 
-const tl = (kurus: number) => `₺${formatMinor(kurus)}`;
+const tl = (minor: number) => `₺${formatMinor(minor)}`;
 const monthName = (key: string, style: 'short' | 'long' = 'short', lang = 'tr') => {
 	const [y, m] = key.split('-').map(Number);
 	return new Date(y, m - 1, 1).toLocaleDateString(
@@ -27,12 +27,12 @@ const monthName = (key: string, style: 'short' | 'long' = 'short', lang = 'tr') 
 };
 
 export function VaultInsights({
-	dagilim,
-	kategori,
-	onSelectKategori,
-	aylar,
-	ay,
-	onSelectAy,
+	distribution,
+	category,
+	onSelectCategory,
+	months,
+	month,
+	onSelectMonth,
 	maxMonth,
 }: VaultInsightsProps) {
 	const { t, language } = useI18n();
@@ -43,21 +43,21 @@ export function VaultInsights({
 				<h4 className={k.boxTitle}>
 					<PieChart size={15} /> {t('kasaSpendingDistribution')}
 				</h4>
-				{dagilim.length === 0 && <div className={ui.muted}>{t('kasaNoExpenses')}</div>}
-				{dagilim.map((d) => (
+				{distribution.length === 0 && <div className={ui.muted}>{t('kasaNoExpenses')}</div>}
+				{distribution.map((d) => (
 					<button
-						key={d.kategori}
+						key={d.category}
 						type="button"
-						className={`${k.catRow} ${kategori === d.kategori ? k.catRowActive : ''}`}
-						onClick={() => onSelectKategori(kategori === d.kategori ? '' : d.kategori)}
-						title={d.kategori}
+						className={`${k.catRow} ${category === d.category ? k.catRowActive : ''}`}
+						onClick={() => onSelectCategory(category === d.category ? '' : d.category)}
+						title={d.category}
 					>
-						<span className={k.catName}>{d.kategori}</span>
+						<span className={k.catName}>{d.category}</span>
 						<span className={k.track}>
-							<span style={{ width: `${Math.max(2, d.oran * 100)}%` }} />
+							<span style={{ width: `${Math.max(2, d.ratio * 100)}%` }} />
 						</span>
 						<span className={k.catAmount}>
-							{tl(d.amountMinor)} · %{Math.round(d.oran * 100)}
+							{tl(d.amountMinor)} · %{Math.round(d.ratio * 100)}
 						</span>
 					</button>
 				))}
@@ -67,13 +67,13 @@ export function VaultInsights({
 					<BarChart3 size={15} /> {t('kasaLast6Months')}
 				</h4>
 				<div className={k.months}>
-					{aylar.map((m) => (
+					{months.map((m) => (
 						<button
-							key={m.ay}
+							key={m.month}
 							type="button"
-							className={`${k.month} ${ay === m.ay ? k.monthActive : ''}`}
-							onClick={() => onSelectAy(ay === m.ay ? '' : m.ay)}
-							title={`${monthName(m.ay, 'long', language)}: ${t('kasaIncome')} ${tl(m.gelir)}, ${t('kasaExpense')} ${tl(m.gider)}`}
+							className={`${k.month} ${month === m.month ? k.monthActive : ''}`}
+							onClick={() => onSelectMonth(month === m.month ? '' : m.month)}
+							title={`${monthName(m.month, 'long', language)}: ${t('kasaIncome')} ${tl(m.gelir)}, ${t('kasaExpense')} ${tl(m.gider)}`}
 						>
 							<span className={k.bars}>
 								<span
@@ -85,7 +85,7 @@ export function VaultInsights({
 									style={{ height: `${(m.gider / maxMonth) * 100}%` }}
 								/>
 							</span>
-							<span className={k.monthLabel}>{monthName(m.ay, 'short', language)}</span>
+							<span className={k.monthLabel}>{monthName(m.month, 'short', language)}</span>
 						</button>
 					))}
 				</div>

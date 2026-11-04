@@ -62,10 +62,10 @@ export function NewChatModal({
 		const q = searchQuery.trim().toLowerCase();
 		if (!q) return contacts;
 		return contacts.filter((c) => {
-			const fullName = `${c.ad} ${c.soyad}`.toLowerCase();
-			const role = (c.rolAd || '').toLowerCase();
-			const bolum = (c.bolum || '').toLowerCase();
-			return fullName.includes(q) || role.includes(q) || bolum.includes(q);
+			const fullName = `${c.name} ${c.surname}`.toLowerCase();
+			const role = (c.roleName || '').toLowerCase();
+			const department = (c.department || '').toLowerCase();
+			return fullName.includes(q) || role.includes(q) || department.includes(q);
 		});
 	}, [contacts, searchQuery]);
 
@@ -159,7 +159,7 @@ export function NewChatModal({
 						<div className={s.chipsContainer}>
 							{selectedContacts.map((sc) => (
 								<div key={sc.id} className={s.chip}>
-									<span>{sc.ad}</span>
+									<span>{sc.name}</span>
 									<button
 										type="button"
 										className={s.chipRemoveBtn}
@@ -217,27 +217,27 @@ export function NewChatModal({
 										)}
 
 										<div className={s.contactAvatar}>
-											{contact.profilFoto ? (
+											{contact.profilePhoto ? (
 												// eslint-disable-next-line @next/next/no-img-element
 												<img
-													src={contact.profilFoto}
-													alt={contact.ad}
+													src={contact.profilePhoto}
+													alt={contact.name}
 													style={{ width: '100%', height: '100%', objectFit: 'cover' }}
 												/>
 											) : (
-												contact.ad.slice(0, 1).toUpperCase()
+												contact.name.slice(0, 1).toUpperCase()
 											)}
 										</div>
 
 										<div className={s.contactInfo}>
 											<div className={s.contactName}>
-												{contact.ad} {contact.soyad}
+												{contact.name} {contact.surname}
 											</div>
 											<div className={s.contactMeta}>
-												{contact.rolAd && (
-													<span className={s.contactRoleBadge}>{contact.rolAd}</span>
+												{contact.roleName && (
+													<span className={s.contactRoleBadge}>{contact.roleName}</span>
 												)}
-												{contact.bolum && <span>{contact.bolum}</span>}
+												{contact.department && <span>{contact.department}</span>}
 											</div>
 										</div>
 									</button>

@@ -10,7 +10,7 @@ import {
 import { publishEvent } from '@/db/events';
 import { logAuditEvent, type AuditContext } from '@/db/audit';
 import { getRolePermission } from '@/db/roles';
-import { alanFarki, memberTargetName } from '@/lib/audit';
+import { fieldDiff, memberTargetName } from '@/lib/audit';
 import { isValidEmail } from '@/lib/mail/address';
 import { BIO_MAX } from '@/lib/profile';
 import {
@@ -25,21 +25,19 @@ export interface MemberAdminMember {
 	id: string;
 	firstName: string;
 	lastName: string;
-	ad: string;
-	soyad: string;
+	name: string;
+	surname: string;
 	email: string;
 	handle: string;
-	ogrenciNo: string;
+	studentNo: string;
 	department: string;
-	bolum: string;
 	grade: number;
-	sinif: number;
 	bio: string;
 	avatarUrl: string | null;
-	profilFoto: string | null;
+	profilePhoto: string | null;
 	status: User['status'];
 	roleId: string | null;
-	rolBilgi: { id: string; ad: string; renk: string } | null;
+	roleInfo: { id: string; name: string; color: string } | null;
 }
 
 export interface MemberAdminDetail {
@@ -58,32 +56,30 @@ function hasUnsafeTextChars(value: string): boolean {
 	return /[<>]|\p{Cc}/u.test(value);
 }
 
-function safeMember(user: User, role: MemberAdminMember['rolBilgi']): MemberAdminMember {
-	const firstName = user.firstName ?? user.ad;
-	const lastName = user.lastName ?? user.soyad;
-	const handle = user.handle ?? user.ogrenciNo ?? '';
-	const department = user.department ?? user.bolum;
-	const grade = Number(user.grade ?? user.sinif) || 1;
-	const avatarUrl = user.avatarUrl ?? user.profilFoto ?? null;
+function safeMember(user: User, role: MemberAdminMember['roleInfo']): MemberAdminMember {
+	const firstName = user.firstName ?? user.name;
+	const lastName = user.lastName ?? user.surname;
+	const handle = user.handle ?? user.studentNo ?? '';
+	const department = user.department ?? user.department;
+	const grade = Number(user.grade ?? user.grade) || 1;
+	const avatarUrl = user.avatarUrl ?? user.profilePhoto ?? null;
 	return {
 		id: user.id,
 		firstName,
 		lastName,
-		ad: firstName,
-		soyad: lastName,
+		name: firstName,
+		surname: lastName,
 		email: user.email,
 		handle,
-		ogrenciNo: handle,
+		studentNo: handle,
 		department,
-		bolum: department,
 		grade,
-		sinif: grade,
 		bio: user.bio ?? '',
 		avatarUrl,
-		profilFoto: avatarUrl,
+		profilePhoto: avatarUrl,
 		status: user.status,
 		roleId: user.roleId ?? null,
-		rolBilgi: role,
+		roleInfo: role,
 	};
 }
 
@@ -135,22 +131,22 @@ export async function updateMemberForAdmin(
 		getFormFields({ includeArchived: false }),
 	]);
 
-	const ad = readString(input.firstName ?? input.ad, target.firstName ?? target.ad);
-	const soyad = readString(input.lastName ?? input.soyad, target.lastName ?? target.soyad);
+	const name = readString(input.firstName ?? input.name, target.firstName ?? target.name);
+	const surname = readString(input.lastName ?? input.surname, target.lastName ?? target.surname);
 	const email = readString(input.email, target.email).toLowerCase();
-	const handle = readString(input.handle ?? input.ogrenciNo, target.handle ?? target.ogrenciNo ?? '');
-	const bolum = readString(input.department ?? input.bolum, target.department ?? target.bolum) || defaultTrackValue(core);
-	const rawLevel = input.grade !== undefined ? Number(input.grade) : (input.sinif === undefined ? (target.grade ?? target.sinif) : Number(input.sinif));
+	const handle = readString(input.handle ?? input.studentNo, target.handle ?? target.studentNo ?? '');
+	const department = readString(input.department ?? input.department, target.department ?? target.department) || defaultTrackValue(core);
+	const rawLevel = input.grade !== undefined ? Number(input.grade) : (input.grade === undefined ? (target.grade ?? target.grade) : Number(input.grade));
 	const bio = input.bio === undefined ? target.bio ?? '' : readString(input.bio);
 
 	if (
-		ad.length < 2 ||
-		ad.length > 60 ||
-		soyad.length < 2 ||
-		soyad.length > 60 ||
-		hasUnsafeTextChars(ad) ||
-		hasUnsafeTextChars(soyad) ||
-		hasUnsafeTextChars(bolum)
+		name.length < 2 ||
+		name.length > 60 ||
+		surname.length < 2 ||
+		surname.length > 60 ||
+		hasUnsafeTextChars(name) ||
+		hasUnsafeTextChars(surname) ||
+		hasUnsafeTextChars(department)
 	) {
 		return { ok: false, status: 400, error: 'Ad, soyad veya topluluk alanı geçersiz.' };
 	}
@@ -169,12 +165,12 @@ export async function updateMemberForAdmin(
 	}
 
 	const allowedTracks = new Set(core.track.options.map((option) => option.value));
-	if (bolum !== target.bolum && !allowedTracks.has(bolum)) {
+	if (department !== target.department && !allowedTracks.has(department)) {
 		return { ok: false, status: 400, error: 'Listeden bir topluluk alanı seçin.' };
 	}
 	const allowedLevels = new Set(core.level.options.map((option) => Number(option.value)));
 	const level = Number(rawLevel);
-	if (!Number.isInteger(level) || (level !== target.sinif && !allowedLevels.has(level))) {
+	if (!Number.isInteger(level) || (level !== target.grade && !allowedLevels.has(level))) {
 		return { ok: false, status: 400, error: 'Geçerli bir deneyim seviyesi seçin.' };
 	}
 
@@ -229,7 +225,7 @@ export async function updateMemberForAdmin(
 				first_name = $2, last_name = $3, email = $4, handle = $5,
 				department = $6, grade = $7, bio = $8
 			 WHERE id = $1`,
-			[id, ad, soyad, email, handle, bolum, level, bio || null]
+			[id, name, surname, email, handle, department, level, bio || null]
 		);
 
 		await setMemberFieldValues(id, customValidation.clean, fields, client);
@@ -256,38 +252,38 @@ export async function updateMemberForAdmin(
 		}
 
 		const before = {
-			ad: `${current.firstName} ${current.lastName}`.trim(),
+			name: `${current.firstName} ${current.lastName}`.trim(),
 			email: String(current.email),
-			ogrenciNo: String(current.handle ?? ''),
-			bolum: String(current.department ?? ''),
-			sinif: Number(current.grade) || 1,
+			studentNo: String(current.handle ?? ''),
+			department: String(current.department ?? ''),
+			grade: Number(current.grade) || 1,
 			bio: current.bio ?? '',
-			profilFoto: current.avatarUrl ?? null,
+			profilePhoto: current.avatarUrl ?? null,
 			customFields: beforeCustom,
 		};
 		const after = {
 			...before,
-			ad: `${ad} ${soyad}`.trim(),
+			name: `${name} ${surname}`.trim(),
 			email,
-			ogrenciNo: handle,
-			bolum,
-			sinif: level,
+			studentNo: handle,
+			department,
+			grade: level,
 			bio,
 			customFields: afterCustom,
 		};
-		const fark = alanFarki(before, after);
-		if (fark) {
+		const diff = fieldDiff(before, after);
+		if (diff) {
 			await logAuditEvent(client, ctx, {
 				action: 'member.profile',
 				targetType: 'member',
 				targetId: id,
 				targetName: memberTargetName({
-					ad: String(current.firstName),
-					soyad: String(current.lastName),
+					name: String(current.firstName),
+					surname: String(current.lastName),
 					email: String(current.email),
 				}),
-				before: fark.before,
-				after: fark.after,
+				before: diff.before,
+				after: diff.after,
 			});
 		}
 
@@ -324,23 +320,23 @@ export async function updateSelfProfile(
 		getFormFields({ scope: 'profile' }),
 	]);
 
-	const bolum = readString(input.bolum, user.bolum) || defaultTrackValue(core);
-	const rawLevel = input.sinif === undefined ? user.sinif : Number(input.sinif);
+	const department = readString(input.department, user.department) || defaultTrackValue(core);
+	const rawLevel = input.grade === undefined ? user.grade : Number(input.grade);
 	const bio = input.bio === undefined ? user.bio ?? '' : readString(input.bio);
 
-	if (hasUnsafeTextChars(bolum)) {
+	if (hasUnsafeTextChars(department)) {
 		return { ok: false, status: 400, error: 'Topluluk alanı geçersiz karakter içeriyor.' };
 	}
 	if (bio.length > BIO_MAX) {
 		return { ok: false, status: 400, error: `Biyografi en fazla ${BIO_MAX} karakter olabilir.` };
 	}
 	const allowedTracks = new Set(core.track.options.map((option) => option.value));
-	if (bolum !== user.bolum && !allowedTracks.has(bolum)) {
+	if (department !== user.department && !allowedTracks.has(department)) {
 		return { ok: false, status: 400, error: 'Listeden bir topluluk alanı seçin.' };
 	}
 	const allowedLevels = new Set(core.level.options.map((option) => Number(option.value)));
 	const level = Number(rawLevel);
-	if (!Number.isInteger(level) || (level !== user.sinif && !allowedLevels.has(level))) {
+	if (!Number.isInteger(level) || (level !== user.grade && !allowedLevels.has(level))) {
 		return { ok: false, status: 400, error: 'Geçerli bir deneyim seviyesi seçin.' };
 	}
 
@@ -375,7 +371,7 @@ export async function updateSelfProfile(
 
 		await client.query(
 			`UPDATE users SET department = $2, grade = $3, bio = $4 WHERE id = $1`,
-			[userId, bolum, level, bio || null]
+			[userId, department, level, bio || null]
 		);
 		await setMemberFieldValues(userId, customValidation.clean, fields, client);
 
@@ -401,25 +397,25 @@ export async function updateSelfProfile(
 		}
 
 		const before = {
-			bolum: String(current.department ?? ''),
-			sinif: Number(current.grade) || 1,
+			department: String(current.department ?? ''),
+			grade: Number(current.grade) || 1,
 			bio: current.bio ?? '',
 			customFields: beforeCustom,
 		};
-		const after = { ...before, bolum, sinif: level, bio, customFields: afterCustom };
-		const fark = alanFarki(before, after);
-		if (fark) {
+		const after = { ...before, department, grade: level, bio, customFields: afterCustom };
+		const diff = fieldDiff(before, after);
+		if (diff) {
 			await logAuditEvent(client, ctx, {
 				action: 'member.profile',
 				targetType: 'member',
 				targetId: userId,
 				targetName: memberTargetName({
-					ad: String(current.firstName),
-					soyad: String(current.lastName),
+					name: String(current.firstName),
+					surname: String(current.lastName),
 					email: String(current.email),
 				}),
-				before: fark.before,
-				after: fark.after,
+				before: diff.before,
+				after: diff.after,
 			});
 		}
 

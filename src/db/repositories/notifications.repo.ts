@@ -1,10 +1,10 @@
 import { getPgPool, ensurePostgresInit } from '@/db';
 
 /** Project proposals waiting for the board. */
-export async function getPendingProjectProposals(): Promise<{ id: string; baslik: string; olusturanAdSoyad: string | null; olusturma: number }[]> {
+export async function getPendingProjectProposals(): Promise<{ id: string; title: string; creatorNameSurname: string | null; creation: number }[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT p.id, p.title AS baslik, k.first_name || ' ' || k.last_name AS "olusturanAdSoyad", p.created_at AS olusturma
+		`SELECT p.id, p.title AS title, k.first_name || ' ' || k.last_name AS "creatorNameSurname", p.created_at AS creation
 		 FROM projects p LEFT JOIN users k ON k.id = p.created_by
 		 WHERE p.status = 'oneri'
 		 ORDER BY p.created_at DESC
@@ -18,10 +18,10 @@ export async function getPendingAttendanceEvents(
 	userId: string,
 	now: number,
 	tolerance: number
-): Promise<{ id: string; baslik: string; konum: string; baslangic: number; endTime: number }[]> {
+): Promise<{ id: string; title: string; location: string; start: number; endTime: number }[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT e.id, e.title AS baslik, e.location AS konum, e.starts_at AS baslangic, e.ends_at AS "endTime"
+		`SELECT e.id, e.title AS title, e.location AS location, e.starts_at AS start, e.ends_at AS "endTime"
 		 FROM events e
 		 JOIN event_participants r ON r.event_id = e.id AND r.user_id = $1
 		 WHERE e.status = 'yayinda' AND e.checkin_open = 1

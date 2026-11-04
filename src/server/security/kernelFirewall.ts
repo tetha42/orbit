@@ -65,10 +65,10 @@ export async function addKernelBlackhole(ipOrCidr: string): Promise<KernelFirewa
 	try {
 		await execFileAsync(IP_BIN, ['route', 'add', 'blackhole', validTarget]);
 		await logSystemEvent({
-			servis: 'security',
-			seviye: 'INFO',
-			mesaj: `🐧 [KERNEL BLACKHOLE] ${validTarget} adresi Linux çekirdeğine (blackhole) eklendi.`,
-			detay: { ip: validTarget, action: 'add_blackhole' },
+			service: 'security',
+			level: 'INFO',
+			message: `🐧 [KERNEL BLACKHOLE] ${validTarget} adresi Linux çekirdeğine (blackhole) eklendi.`,
+			detail: { ip: validTarget, action: 'add_blackhole' },
 		});
 		return { success: true, applied: true };
 	} catch (err: unknown) {
@@ -81,10 +81,10 @@ export async function addKernelBlackhole(ipOrCidr: string): Promise<KernelFirewa
 		// Fallback for non-root containers or lack of CAP_NET_ADMIN
 		if (msg.includes('Operation not permitted') || msg.includes('EPERM')) {
 			await logSystemEvent({
-				servis: 'security',
-				seviye: 'WARN',
-				mesaj: `🐧 [KERNEL BLACKHOLE FALLBACK] ${validTarget} için Linux çekirdek yönlendirme izni yok (CAP_NET_ADMIN / root gerekli); uygulama kalkanı devrede.`,
-				detay: { ip: validTarget, reason: 'EPERM' },
+				service: 'security',
+				level: 'WARN',
+				message: `🐧 [KERNEL BLACKHOLE FALLBACK] ${validTarget} için Linux çekirdek yönlendirme izni yok (CAP_NET_ADMIN / root gerekli); uygulama kalkanı devrede.`,
+				detail: { ip: validTarget, reason: 'EPERM' },
 			}).catch(() => {});
 			return {
 				success: true,
@@ -121,10 +121,10 @@ export async function removeKernelBlackhole(ipOrCidr: string): Promise<KernelFir
 	try {
 		await execFileAsync(IP_BIN, ['route', 'del', 'blackhole', validTarget]);
 		await logSystemEvent({
-			servis: 'security',
-			seviye: 'INFO',
-			mesaj: `🐧 [KERNEL BLACKHOLE] ${validTarget} adresi Linux çekirdek yönlendirme tablosundan kaldırıldı.`,
-			detay: { ip: validTarget, action: 'del_blackhole' },
+			service: 'security',
+			level: 'INFO',
+			message: `🐧 [KERNEL BLACKHOLE] ${validTarget} adresi Linux çekirdek yönlendirme tablosundan kaldırıldı.`,
+			detail: { ip: validTarget, action: 'del_blackhole' },
 		});
 		return { success: true, applied: true };
 	} catch (err: unknown) {
@@ -136,10 +136,10 @@ export async function removeKernelBlackhole(ipOrCidr: string): Promise<KernelFir
 
 		if (msg.includes('Operation not permitted') || msg.includes('EPERM')) {
 			await logSystemEvent({
-				servis: 'security',
-				seviye: 'INFO',
-				mesaj: `🐧 [KERNEL BLACKHOLE] ${validTarget} çekirdek tablosunda işlem yetkisi yok (CAP_NET_ADMIN / root), atlanıyor.`,
-				detay: { ip: validTarget, reason: 'EPERM' },
+				service: 'security',
+				level: 'INFO',
+				message: `🐧 [KERNEL BLACKHOLE] ${validTarget} çekirdek tablosunda işlem yetkisi yok (CAP_NET_ADMIN / root), atlanıyor.`,
+				detail: { ip: validTarget, reason: 'EPERM' },
 			}).catch(() => {});
 			return {
 				success: true,

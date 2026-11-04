@@ -262,7 +262,7 @@ function PanelView() {
 			const res = await fetch('/api/admin/approve', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ userId: String(item.data.userId), aksiyon: action }),
+				body: JSON.stringify({ userId: String(item.data.userId), action: action }),
 			});
 			const body = await res.json().catch(() => ({}));
 			if (res.ok && body.success) {

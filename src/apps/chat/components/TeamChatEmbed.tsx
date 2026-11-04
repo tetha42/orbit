@@ -21,10 +21,10 @@ import s from '../Chat.module.css';
 
 interface TeamChatEmbedProps {
 	teamId: string;
-	takimAd: string;
+	teamName: string;
 }
 
-export function TeamChatEmbed({ teamId, takimAd }: TeamChatEmbedProps) {
+export function TeamChatEmbed({ teamId, teamName }: TeamChatEmbedProps) {
 	const { currentUser, isAdmin } = useSession();
 	const { t } = useI18n();
 	const { openApp } = useWindowActions();
@@ -37,7 +37,7 @@ export function TeamChatEmbed({ teamId, takimAd }: TeamChatEmbedProps) {
 		void fetch('/api/chat/rooms', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ action: 'ensure_team', teamId, takimAd }),
+			body: JSON.stringify({ action: 'ensure_team', teamId, teamName }),
 		})
 			.then((res) => res.json())
 			.then(() => {
@@ -50,7 +50,7 @@ export function TeamChatEmbed({ teamId, takimAd }: TeamChatEmbedProps) {
 		return () => {
 			isSubscribed = false;
 		};
-	}, [teamId, takimAd]);
+	}, [teamId, teamName]);
 
 	const [editingMessage, setEditingMessage] = useState<ChatMessageItem | null>(null);
 	const [forwardingMessage, setForwardingMessage] = useState<ChatMessageItem | null>(null);
@@ -82,14 +82,14 @@ export function TeamChatEmbed({ teamId, takimAd }: TeamChatEmbedProps) {
 			activeRoom ||
 			rooms.find((r) => r.id === targetRoomId) || {
 				id: targetRoomId,
-				tur: 'takim' as const,
-				ad: `${takimAd} ${t('chatTeamChatSuffix')}`,
+				typeValue: 'takim' as const,
+				name: `${teamName} ${t('chatTeamChatSuffix')}`,
 				teamId,
-				olusturma: 0,
+				creation: 0,
 				memberCount: undefined,
 			}
 		);
-	}, [activeRoom, rooms, targetRoomId, takimAd, t, teamId]);
+	}, [activeRoom, rooms, targetRoomId, teamName, t, teamId]);
 
 	if (!currentUser) return null;
 
@@ -110,7 +110,7 @@ export function TeamChatEmbed({ teamId, takimAd }: TeamChatEmbedProps) {
 			<div className={s.chatHeader}>
 				<div style={{ minWidth: 0, flex: 1 }}>
 					<div className={s.headerTitle} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-						{takimAd} {t('chatTeamChatSuffix')}
+						{teamName} {t('chatTeamChatSuffix')}
 					</div>
 					<div className={s.headerSub}>{t('chatTeamChatSub')}</div>
 				</div>

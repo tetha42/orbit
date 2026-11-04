@@ -3,13 +3,13 @@
 import React from 'react';
 import { CheckSquare, Trash2 } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
-import { MADDE_MAX } from '@/lib/kanban';
+import { ITEM_MAX } from '@/lib/kanban';
 import type { TeamTaskItem } from '@/db/schema';
 import styles from './Kanban.module.css';
 import ui from '@/core/ui/ui.module.css';
 
 interface TaskChecklistProps {
-	maddeler: TeamTaskItem[];
+	items: TeamTaskItem[];
 	doneItems: number;
 	canWork: boolean;
 	itemDraft: string;
@@ -20,7 +20,7 @@ interface TaskChecklistProps {
 }
 
 export function TaskChecklist({
-	maddeler,
+	items,
 	doneItems,
 	canWork,
 	itemDraft,
@@ -36,29 +36,29 @@ export function TaskChecklist({
 			<h5 className={ui.sectionTitle}>
 				<CheckSquare size={13} />
 				{t('kbChecklist')}
-				{maddeler.length > 0 && (
+				{items.length > 0 && (
 					<span style={{ marginLeft: 'auto', textTransform: 'none' }}>
-						{doneItems}/{maddeler.length}
+						{doneItems}/{items.length}
 					</span>
 				)}
 			</h5>
-			{maddeler.length > 0 && (
+			{items.length > 0 && (
 				<div className={styles.progressTrack} style={{ marginBottom: 6, height: 5 }}>
 					<div
 						className={styles.progressSeg}
-						style={{ width: `${(doneItems / maddeler.length) * 100}%`, background: '#30d158' }}
+						style={{ width: `${(doneItems / items.length) * 100}%`, background: '#30d158' }}
 					/>
 				</div>
 			)}
-			{maddeler.map((m) => (
+			{items.map((m) => (
 				<label key={m.id} className={styles.checkItem}>
 					<input
 						type="checkbox"
-						checked={Number(m.tamamMi) === 1}
+						checked={Number(m.doneMi) === 1}
 						disabled={!canWork}
 						onChange={() => onToggleItem(m)}
 					/>
-					<span className={Number(m.tamamMi) === 1 ? styles.checkDone : ''}>{m.metin}</span>
+					<span className={Number(m.doneMi) === 1 ? styles.checkDone : ''}>{m.text}</span>
 					{canWork && (
 						<button
 							type="button"
@@ -79,7 +79,7 @@ export function TaskChecklist({
 					<input
 						className={ui.input}
 						value={itemDraft}
-						maxLength={MADDE_MAX}
+						maxLength={ITEM_MAX}
 						onChange={(e) => setItemDraft(e.target.value)}
 						placeholder={t('kbChecklistPh')}
 					/>

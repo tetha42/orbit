@@ -3,13 +3,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useI18n } from '@/core/i18n';
 import { X, Search, UserPlus, Check, CheckSquare, Square, ShieldAlert } from 'lucide-react';
-import type { ChatOdaItem, ChatContactItem, ChatRoomMemberItem } from '../types';
+import type { ChatRoomItem, ChatContactItem, ChatRoomMemberItem } from '../types';
 import s from '../Chat.module.css';
 
 interface AddMemberModalProps {
 	isOpen: boolean;
 	onClose: () => void;
-	room: ChatOdaItem;
+	room: ChatRoomItem;
 	currentUserId: string;
 	onAddMembers: (roomId: string, memberIds: string[]) => Promise<void>;
 	onCreateGroupWithCounterpart: (memberIds: string[], title?: string) => Promise<void>;
@@ -32,7 +32,7 @@ export function AddMemberModal({
 	const [groupTitle, setGroupTitle] = useState('');
 	const [submitting, setSubmitting] = useState(false);
 
-	const is1on1Dm = room.tur === 'ozel' && (room.memberCount === 2 || Boolean(room.peerUserId));
+	const is1on1Dm = room.typeValue === 'ozel' && (room.memberCount === 2 || Boolean(room.peerUserId));
 
 	useEffect(() => {
 		if (!isOpen) {
@@ -85,10 +85,10 @@ export function AddMemberModal({
 		const q = searchQuery.trim().toLowerCase();
 		if (!q) return eligibleContacts;
 		return eligibleContacts.filter((c) => {
-			const fullName = `${c.ad} ${c.soyad}`.toLowerCase();
-			const role = (c.rolAd || '').toLowerCase();
-			const bolum = (c.bolum || '').toLowerCase();
-			return fullName.includes(q) || role.includes(q) || bolum.includes(q);
+			const fullName = `${c.name} ${c.surname}`.toLowerCase();
+			const role = (c.roleName || '').toLowerCase();
+			const department = (c.department || '').toLowerCase();
+			return fullName.includes(q) || role.includes(q) || department.includes(q);
 		});
 	}, [eligibleContacts, searchQuery]);
 
@@ -182,7 +182,7 @@ export function AddMemberModal({
 						<div className={s.chipsContainer}>
 							{selectedContacts.map((sc) => (
 								<div key={sc.id} className={s.chip}>
-									<span>{sc.ad}</span>
+									<span>{sc.name}</span>
 									<button
 										type="button"
 										className={s.chipRemoveBtn}
@@ -232,27 +232,27 @@ export function AddMemberModal({
 										</div>
 
 										<div className={s.contactAvatar}>
-											{contact.profilFoto ? (
+											{contact.profilePhoto ? (
 												// eslint-disable-next-line @next/next/no-img-element
 												<img
-													src={contact.profilFoto}
-													alt={contact.ad}
+													src={contact.profilePhoto}
+													alt={contact.name}
 													style={{ width: '100%', height: '100%', objectFit: 'cover' }}
 												/>
 											) : (
-												contact.ad.slice(0, 1).toUpperCase()
+												contact.name.slice(0, 1).toUpperCase()
 											)}
 										</div>
 
 										<div className={s.contactInfo}>
 											<div className={s.contactName}>
-												{contact.ad} {contact.soyad}
+												{contact.name} {contact.surname}
 											</div>
 											<div className={s.contactMeta}>
-												{contact.rolAd && (
-													<span className={s.contactRoleBadge}>{contact.rolAd}</span>
+												{contact.roleName && (
+													<span className={s.contactRoleBadge}>{contact.roleName}</span>
 												)}
-												{contact.bolum && <span>{contact.bolum}</span>}
+												{contact.department && <span>{contact.department}</span>}
 											</div>
 										</div>
 									</button>

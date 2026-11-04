@@ -93,7 +93,7 @@ export function MemberDirectoryApp() {
 				trackOptions={trackOptions}
 				levelOptions={coreConfig.level.options}
 				roleFilter={roleFilter}
-				onRolFilterChange={setRoleFilter}
+				onRoleFilterChange={setRoleFilter}
 				roleOptions={roleOptions}
 				hasRolelessMember={hasRolelessMember}
 				activeFilter={activeFilter}
@@ -170,7 +170,7 @@ export function MemberDirectoryApp() {
 						? () =>
 								void handleSendPasswordResetEmail(
 									selectedMemberForProfile.id,
-									`${selectedMemberForProfile.ad} ${selectedMemberForProfile.soyad}`.trim()
+									`${selectedMemberForProfile.name} ${selectedMemberForProfile.surname}`.trim()
 								)
 						: undefined
 				}

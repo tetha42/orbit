@@ -27,7 +27,7 @@ export async function GET(request: Request) {
 		}
 		const params = new URL(request.url).searchParams;
 
-		if (params.get('ulasilabilir') === '1' || params.get('reachable') === '1') {
+		if (params.get('reachable') === '1' || params.get('reachable') === '1') {
 			const ids = await reachableIds(await getMailCandidateRoles(user.id));
 			return NextResponse.json({ ids }, { headers: NO_STORE });
 		}
@@ -35,9 +35,9 @@ export async function GET(request: Request) {
 		const id = params.get('id');
 		if (id) {
 			const candidate = await getMailCandidate(user.id, id.slice(0, 64));
-			const alicilar = candidate ? await recipientList([candidate]) : [];
+			const recipients = candidate ? await recipientList([candidate]) : [];
 			return NextResponse.json(
-				{ q: '', recipients: alicilar, suggestion: false },
+				{ q: '', recipients: recipients, suggestion: false },
 				{ headers: NO_STORE }
 			);
 		}
@@ -47,9 +47,9 @@ export async function GET(request: Request) {
 		// Nobody written with yet: show the directory's first names rather than an empty box.
 		const suggestion = !q && candidates.length > 0;
 		const selected = !q && candidates.length === 0 ? await searchMailCandidates(user.id, '', MAIL_SEARCH_LIMIT) : candidates;
-		const alicilar = await recipientList(selected);
+		const recipients = await recipientList(selected);
 		return NextResponse.json(
-			{ q, recipients: alicilar, suggestion },
+			{ q, recipients: recipients, suggestion },
 			{ headers: NO_STORE }
 		);
 	} catch (error) {

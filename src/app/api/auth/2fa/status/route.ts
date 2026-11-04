@@ -10,7 +10,7 @@ export async function GET(request: Request) {
 	const { user } = auth;
 	const fresh = await getUserByEmail(user.email);
 	const enabled = Number(fresh?.totpEnabled ?? user.totpEnabled) === 1;
-	const required = user.permission.ikiAdimZorunlu;
+	const required = user.permission.twoStepRequired;
 
 	return NextResponse.json({
 		success: true,

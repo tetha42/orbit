@@ -19,15 +19,15 @@ export function useProjects() {
 	const { openApp } = useWindowActions();
 	const { data, setData, refetch, error, httpStatus } = useJsonResource<ProjectsResponse>('/api/projects');
 	const { data: teamsData } = useJsonResource<TeamOption[]>('/api/teams');
-	const projects = useMemo(() => data?.projeler ?? [], [data]);
-	const manage = data?.izinler.manage ?? false;
+	const projects = useMemo(() => data?.projects ?? [], [data]);
+	const manage = data?.permissions.manage ?? false;
 
 	const [tab, setTab] = useState<ProjectStatus>('yayinda');
 	const [query, setQuery] = useState('');
 	const [tech, setTech] = useState<string | null>(null);
 	const [sort, setSort] = useState<SortMode>('featured');
 	const [openId, setOpenId] = useState<string | null>(null);
-	const [form, setForm] = useState<{ proje: Project | null } | null>(null);
+	const [form, setForm] = useState<{ project: Project | null } | null>(null);
 
 	const notify = useToast();
 
@@ -54,7 +54,7 @@ export function useProjects() {
 						tm.leadId === currentUserId ||
 						(tm.uyeler ?? []).some((u) => u.userId === currentUserId && u.status === 'aktif')
 				)
-				.map((tm) => ({ id: tm.id, ad: tm.ad })),
+				.map((tm) => ({ id: tm.id, name: tm.name })),
 		[teamsData, manage, currentUserId]
 	);
 
@@ -70,49 +70,49 @@ export function useProjects() {
 	const inTab = useMemo(() => projects.filter((p) => p.status === tab), [projects, tab]);
 	const techs = useMemo(() => {
 		const tally = new Map<string, number>();
-		for (const p of inTab) for (const x of p.teknolojiler) tally.set(x, (tally.get(x) ?? 0) + 1);
+		for (const p of inTab) for (const x of p.technologies) tally.set(x, (tally.get(x) ?? 0) + 1);
 		return [...tally.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([x]) => x);
 	}, [inTab]);
 
 	const allFiltered = useMemo(() => {
 		const q = foldTr(query.trim());
 		const list = projects.filter((p) => {
-			if (tech && !p.teknolojiler.includes(tech)) return false;
+			if (tech && !p.technologies.includes(tech)) return false;
 			if (!q) return true;
 			return foldTr(
-				[p.baslik, p.ozet, p.olusturanAdSoyad ?? '', p.takimAdi ?? '', ...p.teknolojiler].join(' ')
+				[p.title, p.summary, p.creatorNameSurname ?? '', p.teamName ?? '', ...p.technologies].join(' ')
 			).includes(q);
 		});
-		const byNew = (a: Project, b: Project) => b.olusturma - a.olusturma;
+		const byNew = (a: Project, b: Project) => b.creation - a.creation;
 		if (sort === 'newest') return list.sort(byNew);
-		if (sort === 'stars') return list.sort((a, b) => (b.begeniSayisi ?? 0) - (a.begeniSayisi ?? 0) || byNew(a, b));
-		return list.sort((a, b) => Number(b.oneCikan) - Number(a.oneCikan) || (b.begeniSayisi ?? 0) - (a.begeniSayisi ?? 0) || byNew(a, b));
+		if (sort === 'stars') return list.sort((a, b) => (b.likeCount ?? 0) - (a.likeCount ?? 0) || byNew(a, b));
+		return list.sort((a, b) => Number(b.oneLeaving) - Number(a.oneLeaving) || (b.likeCount ?? 0) - (a.likeCount ?? 0) || byNew(a, b));
 	}, [projects, query, tech, sort]);
 
 	const visible = useMemo(() => {
 		const q = foldTr(query.trim());
 		const list = inTab.filter((p) => {
-			if (tech && !p.teknolojiler.includes(tech)) return false;
+			if (tech && !p.technologies.includes(tech)) return false;
 			if (!q) return true;
 			return foldTr(
-				[p.baslik, p.ozet, p.olusturanAdSoyad ?? '', p.takimAdi ?? '', ...p.teknolojiler].join(' ')
+				[p.title, p.summary, p.creatorNameSurname ?? '', p.teamName ?? '', ...p.technologies].join(' ')
 			).includes(q);
 		});
-		const byNew = (a: Project, b: Project) => b.olusturma - a.olusturma;
+		const byNew = (a: Project, b: Project) => b.creation - a.creation;
 		if (sort === 'newest') return list.sort(byNew);
-		if (sort === 'stars') return list.sort((a, b) => (b.begeniSayisi ?? 0) - (a.begeniSayisi ?? 0) || byNew(a, b));
-		return list.sort((a, b) => Number(b.oneCikan) - Number(a.oneCikan) || (b.begeniSayisi ?? 0) - (a.begeniSayisi ?? 0) || byNew(a, b));
+		if (sort === 'stars') return list.sort((a, b) => (b.likeCount ?? 0) - (a.likeCount ?? 0) || byNew(a, b));
+		return list.sort((a, b) => Number(b.oneLeaving) - Number(a.oneLeaving) || (b.likeCount ?? 0) - (a.likeCount ?? 0) || byNew(a, b));
 	}, [inTab, query, tech, sort]);
 
 	const open = projects.find((p) => p.id === openId) ?? null;
 
 	const replace = (next: Project) =>
-		setData((d) => (d ? { ...d, projeler: d.projeler.map((p) => (p.id === next.id ? next : p)) } : d));
+		setData((d) => (d ? { ...d, projects: d.projects.map((p) => (p.id === next.id ? next : p)) } : d));
 
 	const star = async (p: Project) => {
 		if (p.status !== 'yayinda') return;
-		replace({ ...p, begendimMi: !p.begendimMi, begeniSayisi: (p.begeniSayisi ?? 0) + (p.begendimMi ? -1 : 1) });
-		const res = await sendJson<{ begendimMi: boolean; begeniSayisi: number }>(
+		replace({ ...p, iLikedMi: !p.iLikedMi, likeCount: (p.likeCount ?? 0) + (p.iLikedMi ? -1 : 1) });
+		const res = await sendJson<{ iLikedMi: boolean; likeCount: number }>(
 			`/api/projects/${encodeURIComponent(p.id)}`,
 			'POST',
 			{ action: 'star' }
@@ -122,11 +122,11 @@ export function useProjects() {
 			notify(res.error || t('kbActionFailed'), 'error');
 			return;
 		}
-		replace({ ...p, begendimMi: res.data.begendimMi, begeniSayisi: res.data.begeniSayisi });
+		replace({ ...p, iLikedMi: res.data.iLikedMi, likeCount: res.data.likeCount });
 	};
 
 	const patch = async (p: Project, body: Record<string, unknown>, success: string) => {
-		const res = await sendJson<{ proje: Project }>(`/api/projects/${encodeURIComponent(p.id)}`, 'PATCH', body);
+		const res = await sendJson<{ project: Project }>(`/api/projects/${encodeURIComponent(p.id)}`, 'PATCH', body);
 		if (!res.ok) {
 			notify(res.error || t('kbActionFailed'), 'error');
 			return;
@@ -134,7 +134,7 @@ export function useProjects() {
 		playSystemSound();
 		notify(success);
 		await refetch();
-		if (res.data.proje) setTab(res.data.proje.status);
+		if (res.data.project) setTab(res.data.project.status);
 	};
 
 	const remove = async (p: Project) => {

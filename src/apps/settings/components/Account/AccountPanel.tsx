@@ -33,20 +33,20 @@ import {
 interface ProfileResponse {
 	user: {
 		id: string;
-		ad: string;
-		soyad: string;
+		name: string;
+		surname: string;
 		email: string;
-		ogrenciNo: string | null;
-		bolum: string;
-		sinif: number;
-		rolBilgi: { id: string; ad: string; renk: string } | null;
-		profilFoto?: string | null;
+		studentNo: string | null;
+		department: string;
+		grade: number;
+		roleInfo: { id: string; name: string; color: string } | null;
+		profilePhoto?: string | null;
 		bio?: string | null;
 		xp: number;
-		olusturma: number;
+		creation: number;
 	};
-	seviye: { seviye: number; ilerleme: number; sonraki: number };
-	ozet: UserSummary;
+	level: { level: number; progress: number; next: number };
+	summary: UserSummary;
 	fields?: FormField[];
 	customFields?: Record<string, string>;
 	diskUsage?: { bytes: number; count: number };
@@ -74,8 +74,8 @@ export function AccountPanel() {
 		}
 	};
 
-	const [bolum, setBolum] = useState<string | null>(null);
-	const [sinif, setSinif] = useState<number | null>(null);
+	const [department, setDepartment] = useState<string | null>(null);
+	const [grade, setGrade] = useState<number | null>(null);
 	const [bio, setBio] = useState<string | null>(null);
 	const [levelOptions, setLevelOptions] = useState<FormFieldOption[]>(
 		DEFAULT_REGISTRATION_CORE_CONFIG.level.options
@@ -157,28 +157,28 @@ export function AccountPanel() {
 	}, []);
 
 	if (!data) return <div className={ui.muted}>…</div>;
-	const { user, seviye, ozet } = data;
+	const { user, level, summary } = data;
 	const selfFields = data.fields ?? [];
-	const values = { bolum: bolum ?? user.bolum, sinif: sinif ?? user.sinif, bio: bio ?? user.bio ?? '' };
+	const values = { department: department ?? user.department, grade: grade ?? user.grade, bio: bio ?? user.bio ?? '' };
 	const customDirty = selfFields.some(
 		(field) => (customValues[field.fieldKey] ?? '') !== (data.customFields?.[field.fieldKey] ?? '')
 	);
 	const dirty =
-		values.bolum !== user.bolum ||
-		values.sinif !== user.sinif ||
+		values.department !== user.department ||
+		values.grade !== user.grade ||
 		values.bio !== (user.bio ?? '') ||
 		customDirty;
-	const trackOptionsForUser = trackOptions.some((option) => option.value === values.bolum)
+	const trackOptionsForUser = trackOptions.some((option) => option.value === values.department)
 		? trackOptions
 		: [
 				...trackOptions,
-				{ value: values.bolum, labelTr: values.bolum, labelEn: values.bolum },
+				{ value: values.department, labelTr: values.department, labelEn: values.department },
 		  ];
-	const levelOptionsForUser = levelOptions.some((option) => Number(option.value) === values.sinif)
+	const levelOptionsForUser = levelOptions.some((option) => Number(option.value) === values.grade)
 		? levelOptions
 		: [
 				...levelOptions,
-				{ value: String(values.sinif), labelTr: `${values.sinif}`, labelEn: `${values.sinif}` },
+				{ value: String(values.grade), labelTr: `${values.grade}`, labelEn: `${values.grade}` },
 		  ];
 
 	const done = async (area: 'profile' | 'photo' | 'password', ok: boolean, text: string) => {
@@ -207,8 +207,8 @@ export function AccountPanel() {
 			message = payload?.error || message;
 			if (!ok && payload?.fieldErrors) setCustomErrors(payload.fieldErrors);
 			if (ok) {
-				setBolum(null);
-				setSinif(null);
+				setDepartment(null);
+				setGrade(null);
 				setBio(null);
 			}
 		} catch {
@@ -319,14 +319,14 @@ export function AccountPanel() {
 		<div className={styles.root} data-focus-section="account">
 			<AccountProfileHero
 				user={user}
-				seviye={seviye}
+				level={level}
 				busy={busy}
 				onPhotoDone={(ok, text) => done('photo', ok, text)}
 				onSetBusy={setBusy}
 				note={note('photo')}
 			/>
 
-			<AccountStatsCards ozet={ozet} />
+			<AccountStatsCards summary={summary} />
 
 			<form className={styles.card} onSubmit={saveProfile} aria-label={t('acProfile')}>
 				<h4 className={styles.cardTitle}>{t('acProfile')}</h4>
@@ -347,11 +347,11 @@ export function AccountPanel() {
 					</label>
 					<label className={ui.field}>
 						<span className={ui.fieldLabel}>{t('acStudentNo')}</span>
-						<input className={ui.input} value={user.ogrenciNo ?? '—'} disabled />
+						<input className={ui.input} value={user.studentNo ?? '—'} disabled />
 					</label>
 					<label className={ui.field}>
 						<span className={ui.fieldLabel}>{t('acDepartment')}</span>
-						<select className={ui.select} style={{ maxWidth: 'none' }} value={values.bolum} onChange={(e) => setBolum(e.target.value)}>
+						<select className={ui.select} style={{ maxWidth: 'none' }} value={values.department} onChange={(e) => setDepartment(e.target.value)}>
 							{trackOptionsForUser.map((option) => (
 								<option key={option.value} value={option.value}>
 									{optionLabel(option, language)}
@@ -361,7 +361,7 @@ export function AccountPanel() {
 					</label>
 					<label className={ui.field}>
 						<span className={ui.fieldLabel}>{t('acYear')}</span>
-						<select className={ui.select} style={{ maxWidth: 'none' }} value={values.sinif} onChange={(e) => setSinif(Number(e.target.value))}>
+						<select className={ui.select} style={{ maxWidth: 'none' }} value={values.grade} onChange={(e) => setGrade(Number(e.target.value))}>
 							{levelOptionsForUser.map((option) => (
 								<option key={option.value} value={Number(option.value)}>
 									{optionLabel(option, language)}

@@ -34,22 +34,22 @@ export function VaultEntryModal({
 }: VaultEntryModalProps) {
 	const { t } = useI18n();
 	const editing = !!registration;
-	const transfer = !!registration?.aktarimId;
+	const transfer = !!registration?.transferId;
 	const now = useNow(60_000);
 	const today = toDateInput(now);
 
-	const [tur, setTur] = useState<'gelir' | 'gider'>(registration?.tur ?? 'gider');
-	const [kategori, setKategori] = useState<string>(registration?.kategori ?? t('kasaCatHardware'));
-	const [tutar, setTutar] = useState('');
-	const [date, setTarih] = useState(() => toDateInput(registration?.date ?? now));
-	const [aciklama, setAciklama] = useState(registration?.aciklama ?? '');
-	const [fisFotoUrl, setFisFotoUrl] = useState<string | null>(registration?.fisFotoUrl ?? null);
+	const [typeValue, setType] = useState<'gelir' | 'gider'>(registration?.typeValue ?? 'gider');
+	const [category, setCategory] = useState<string>(registration?.category ?? t('kasaCatHardware'));
+	const [amount, setAmount] = useState('');
+	const [date, setDate] = useState(() => toDateInput(registration?.date ?? now));
+	const [description, setDescription] = useState(registration?.description ?? '');
+	const [receiptPhotoUrl, setReceiptPhotoUrl] = useState<string | null>(registration?.receiptPhotoUrl ?? null);
 	const [uploading, setUploading] = useState(false);
 	const [error, setError] = useState('');
 	const [busy, setBusy] = useState(false);
 
-	const kurus = editing ? registration.amountMinor : parseAmount(tutar);
-	const overdraft = !editing && tur === 'gider' && kurus !== null && kurus > netBalanceMinor;
+	const minor = editing ? registration.amountMinor : parseAmount(amount);
+	const overdraft = !editing && typeValue === 'gider' && minor !== null && minor > netBalanceMinor;
 
 	const upload = async (file: File | undefined) => {
 		if (!file) return;
@@ -62,7 +62,7 @@ export function VaultEntryModal({
 			fd.append('file', compressed, fileName);
 			const res = await fetch('/api/upload', { method: 'POST', body: fd });
 			const body = await res.json().catch(() => ({}));
-			if (res.ok && body.url) setFisFotoUrl(body.url);
+			if (res.ok && body.url) setReceiptPhotoUrl(body.url);
 			else setError(body.error || t('kasaUploadFailed'));
 		} catch {
 			setError(t('kasaUploadFailed'));
@@ -76,36 +76,36 @@ export function VaultEntryModal({
 		setError('');
 		const ms = dateInputToMs(date, Date.now());
 		if (ms === null) return setError(t('kasaInvalidDate'));
-		if (!aciklama.trim()) return setError(t('kasaDescRequired'));
+		if (!description.trim()) return setError(t('kasaDescRequired'));
 		if (!editing) {
-			if (kurus === null) return setError(t('kasaInvalidAmount'));
-			if (kurus > MAX_AMOUNT_CENTS)
+			if (minor === null) return setError(t('kasaInvalidAmount'));
+			if (minor > MAX_AMOUNT_CENTS)
 				return setError(fill(t('kasaMaxAmountError'), { max: formatMinor(MAX_AMOUNT_CENTS) }));
 		}
 		setBusy(true);
 		const res = editing
 			? await sendJson('/api/budget', 'PATCH', {
 					id: registration.id,
-					aciklama: aciklama.trim(),
+					description: description.trim(),
 					date: ms,
-					...(transfer ? {} : { kategori, fisFotoUrl }),
+					...(transfer ? {} : { category, receiptPhotoUrl }),
 				})
 			: await sendJson('/api/budget', 'POST', {
 					teamId,
-					tur,
-					kategori,
-					amountMinor: kurus,
-					aciklama: aciklama.trim(),
+					typeValue,
+					category,
+					amountMinor: minor,
+					description: description.trim(),
 					date: ms,
-					fisFotoUrl: fisFotoUrl || undefined,
+					receiptPhotoUrl: receiptPhotoUrl || undefined,
 				});
 		setBusy(false);
 		if (!res.ok) return setError(res.error || t('actionFailed'));
 		if (!editing) {
 			orbitBus.emit('budget:record_created', {
 				recordId: String((res.data as Record<string, unknown>)?.id || ''),
-				amount: kurus ?? 0,
-				type: tur as 'gelir' | 'gider',
+				amount: minor ?? 0,
+				type: typeValue as 'gelir' | 'gider',
 				teamId: teamId || undefined,
 			});
 		}
@@ -138,9 +138,9 @@ export function VaultEntryModal({
 							key={typeOpt}
 							type="button"
 							role="radio"
-							aria-checked={tur === typeOpt}
-							className={`${ui.segment} ${tur === typeOpt ? ui.segmentActive : ''}`}
-							onClick={() => setTur(typeOpt)}
+							aria-checked={typeValue === typeOpt}
+							className={`${ui.segment} ${typeValue === typeOpt ? ui.segmentActive : ''}`}
+							onClick={() => setType(typeOpt)}
 						>
 							{typeOpt === 'gider' ? t('kasaExpenseOption') : t('kasaIncomeOption')}
 						</button>
@@ -148,8 +148,8 @@ export function VaultEntryModal({
 				</div>
 			) : (
 				<div className={k.balanceHint}>
-					<span className={`${k.tag} ${registration.tur === 'gelir' ? k.tagIn : k.tagOut}`}>
-						{registration.tur === 'gelir' ? t('kasaTagIncome') : t('kasaTagExpense')}
+					<span className={`${k.tag} ${registration.typeValue === 'gelir' ? k.tagIn : k.tagOut}`}>
+						{registration.typeValue === 'gelir' ? t('kasaTagIncome') : t('kasaTagExpense')}
 					</span>{' '}
 					<strong>{formatMinor(registration.amountMinor)} ₺</strong> — {t('kasaTypeAmountLockedNotice')}
 				</div>
@@ -159,13 +159,13 @@ export function VaultEntryModal({
 				<label className={ui.field}>
 					<span className={ui.fieldLabel}>{t('budgetColCategory')}</span>
 					{transfer ? (
-						<input className={ui.input} value={registration.kategori} disabled />
+						<input className={ui.input} value={registration.category} disabled />
 					) : (
 						<select
 							className={ui.select}
 							style={{ maxWidth: 'none', width: '100%' }}
-							value={kategori}
-							onChange={(e) => setKategori(e.target.value)}
+							value={category}
+							onChange={(e) => setCategory(e.target.value)}
 						>
 							{BUDGET_CATEGORIES.map((c) => (
 								<option key={c} value={c}>
@@ -184,8 +184,8 @@ export function VaultEntryModal({
 							className={ui.input}
 							inputMode="decimal"
 							placeholder="1.250,00"
-							value={tutar}
-							onChange={(e) => setTutar(e.target.value)}
+							value={amount}
+							onChange={(e) => setAmount(e.target.value)}
 							required
 							autoFocus
 						/>
@@ -198,7 +198,7 @@ export function VaultEntryModal({
 						type="date"
 						value={date}
 						max={today}
-						onChange={(e) => setTarih(e.target.value)}
+						onChange={(e) => setDate(e.target.value)}
 						required
 					/>
 				</label>
@@ -206,12 +206,12 @@ export function VaultEntryModal({
 			{!editing && (
 				<div className={k.balanceHint}>
 					{t('kasaCurrentBalance')} <strong>{formatMinor(netBalanceMinor)} ₺</strong>
-					{kurus !== null && (
+					{minor !== null && (
 						<>
 							{' '}
 							{t('kasaAfterEntry')}{' '}
 							<strong className={overdraft ? k.neg : undefined}>
-								{formatMinor(netBalanceMinor + (tur === 'gelir' ? kurus : -kurus))} ₺
+								{formatMinor(netBalanceMinor + (typeValue === 'gelir' ? minor : -minor))} ₺
 							</strong>
 						</>
 					)}
@@ -226,18 +226,18 @@ export function VaultEntryModal({
 					rows={3}
 					maxLength={500}
 					placeholder={t('kasaDescPh')}
-					value={aciklama}
-					onChange={(e) => setAciklama(e.target.value)}
+					value={description}
+					onChange={(e) => setDescription(e.target.value)}
 					required
 				/>
 			</label>
 
 			{!transfer && (
 				<ReceiptUploadField
-					fisFotoUrl={fisFotoUrl}
+					receiptPhotoUrl={receiptPhotoUrl}
 					uploading={uploading}
 					onUpload={upload}
-					onRemove={() => setFisFotoUrl(null)}
+					onRemove={() => setReceiptPhotoUrl(null)}
 				/>
 			)}
 

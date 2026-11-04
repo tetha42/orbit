@@ -15,9 +15,9 @@ export function PasswordResetModal({ isOpen, onClose, onSuccess }: PasswordReset
 
 	const [step, setStep] = useState<'email' | 'verify'>('email');
 	const [email, setEmail] = useState('');
-	const [kod, setKod] = useState('');
-	const [yeniSifre, setYeniSifre] = useState('');
-	const [yeniSifreTekrar, setYeniSifreTekrar] = useState('');
+	const [code, setCode] = useState('');
+	const [newPassword, setNewPassword] = useState('');
+	const [newPasswordRepeat, setNewPasswordRepeat] = useState('');
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
@@ -50,15 +50,15 @@ export function PasswordResetModal({ isOpen, onClose, onSuccess }: PasswordReset
 
 	const handleResetPassword = async (e: React.FormEvent) => {
 		e.preventDefault();
-		if (kod.trim().length !== 6) {
+		if (code.trim().length !== 6) {
 			setError(t('pwResetCodeLenError', 'Please enter the full 6-digit verification code.'));
 			return;
 		}
-		if (yeniSifre.length < 8) {
+		if (newPassword.length < 8) {
 			setError(t('pwResetMinLenError', 'New password must be at least 8 characters.'));
 			return;
 		}
-		if (yeniSifre !== yeniSifreTekrar) {
+		if (newPassword !== newPasswordRepeat) {
 			setError(t('pwResetMismatchError', 'Passwords do not match.'));
 			return;
 		}
@@ -72,8 +72,8 @@ export function PasswordResetModal({ isOpen, onClose, onSuccess }: PasswordReset
 				body: JSON.stringify({
 					action: 'verify_and_reset',
 					email: email.trim(),
-					kod: kod.trim(),
-					yeniSifre,
+					code: code.trim(),
+					newPassword,
 				}),
 			});
 			const data = await res.json();
@@ -255,8 +255,8 @@ export function PasswordResetModal({ isOpen, onClose, onSuccess }: PasswordReset
 								autoComplete="one-time-code"
 								required
 								maxLength={6}
-								value={kod}
-								onChange={(e) => setKod(e.target.value.replace(/[^0-9]/g, ''))}
+								value={code}
+								onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, ''))}
 								placeholder="••••••"
 								style={{
 									width: '100%',
@@ -286,8 +286,8 @@ export function PasswordResetModal({ isOpen, onClose, onSuccess }: PasswordReset
 								required
 								minLength={8}
 								maxLength={128}
-								value={yeniSifre}
-								onChange={(e) => setYeniSifre(e.target.value)}
+								value={newPassword}
+								onChange={(e) => setNewPassword(e.target.value)}
 								placeholder="••••••••"
 								style={{
 									width: '100%',
@@ -313,8 +313,8 @@ export function PasswordResetModal({ isOpen, onClose, onSuccess }: PasswordReset
 								required
 								minLength={8}
 								maxLength={128}
-								value={yeniSifreTekrar}
-								onChange={(e) => setYeniSifreTekrar(e.target.value)}
+								value={newPasswordRepeat}
+								onChange={(e) => setNewPasswordRepeat(e.target.value)}
 								placeholder="••••••••"
 								style={{
 									width: '100%',
@@ -351,7 +351,7 @@ export function PasswordResetModal({ isOpen, onClose, onSuccess }: PasswordReset
 							</button>
 							<button
 								type="submit"
-								disabled={loading || kod.length !== 6 || !yeniSifre}
+								disabled={loading || code.length !== 6 || !newPassword}
 								style={{
 									flex: 2,
 									minHeight: '42px',

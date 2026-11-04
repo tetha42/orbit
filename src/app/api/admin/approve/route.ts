@@ -16,7 +16,7 @@ export async function POST(request: Request) {
 	try {
 		const body = await request.json();
 		const userId = body.userId;
-		const action = body.action ?? body.aksiyon;
+		const action = body.action ?? body.action;
 		const rejectionReason =
 			typeof body.rejectionReason === 'string' ? body.rejectionReason.trim().slice(0, 500) : null;
 
@@ -56,8 +56,8 @@ export async function POST(request: Request) {
 		// Fire-and-forget: the decision is already persisted, so a mail failure must
 		// not roll it back or fail the request.
 		const recipient = {
-			ad: targetUser.firstName || targetUser.ad || '',
-			soyad: targetUser.lastName || targetUser.soyad || '',
+			name: targetUser.firstName || targetUser.name || '',
+			surname: targetUser.lastName || targetUser.surname || '',
 			email: targetUser.email,
 			preferredLanguage: targetUser.preferredLanguage,
 		};
@@ -70,8 +70,8 @@ export async function POST(request: Request) {
 		return NextResponse.json({
 			success: true,
 			message: isApproval
-				? `${targetUser.ad} ${targetUser.soyad} adlı üyenin başvurusu onaylandı ve hesabı aktifleşti.`
-				: `${targetUser.ad} ${targetUser.soyad} adlı kişinin başvurusu reddedildi.`,
+				? `${targetUser.name} ${targetUser.surname} adlı üyenin başvurusu onaylandı ve hesabı aktifleşti.`
+				: `${targetUser.name} ${targetUser.surname} adlı kişinin başvurusu reddedildi.`,
 			userId,
 			status: newStatus,
 		});

@@ -4,10 +4,10 @@
  */
 
 export interface SetupStatus {
-	hazir: boolean;
+	ready: boolean;
 	firstRun?: boolean;
 	/** Why setup is incomplete, naming the missing variables. Never leaves the server in production. */
-	sebep?: string;
+	reason?: string;
 	step?: 'database' | 'identity' | 'admin' | 'ready';
 	dbStatus?: { connected: boolean; configured: boolean; databaseName?: string; error?: string };
 	brand?: {
@@ -18,7 +18,7 @@ export interface SetupStatus {
 }
 
 export interface SetupResponse {
-	hazir: boolean;
+	ready: boolean;
 	firstRun?: boolean;
 	step?: 'database' | 'identity' | 'admin' | 'ready';
 	dbStatus?: { connected: boolean; configured: boolean; databaseName?: string; error?: string };
@@ -28,28 +28,28 @@ export interface SetupResponse {
 		domain: string;
 	};
 	/** Generic and safe for everyone: set whenever setup is incomplete. */
-	mesaj?: string;
+	message?: string;
 	/** Development only. */
-	sebep?: string;
+	reason?: string;
 }
 
 export const SETUP_GENERAL_MESSAGE = 'Sunucu yöneticisi kurulumu tamamlamalı';
 
 /** Production gets the generic message only, so no environment variable name can leak. */
 export function setupResponse(status: SetupStatus, nodeEnv: string | undefined): SetupResponse {
-	if (status.hazir) {
-		const res: SetupResponse = { hazir: true };
+	if (status.ready) {
+		const res: SetupResponse = { ready: true };
 		if (status.step) res.step = status.step;
 		if (status.brand) res.brand = status.brand;
 		if (status.dbStatus) res.dbStatus = status.dbStatus;
 		return res;
 	}
-	const response: SetupResponse = { hazir: false, mesaj: SETUP_GENERAL_MESSAGE };
+	const response: SetupResponse = { ready: false, message: SETUP_GENERAL_MESSAGE };
 	if (status.firstRun) response.firstRun = true;
 	if (status.step) response.step = status.step;
 	if (status.brand) response.brand = status.brand;
 	if (status.dbStatus) response.dbStatus = status.dbStatus;
-	if (nodeEnv !== 'production' && status.sebep) response.sebep = status.sebep;
+	if (nodeEnv !== 'production' && status.reason) response.reason = status.reason;
 	return response;
 }
 

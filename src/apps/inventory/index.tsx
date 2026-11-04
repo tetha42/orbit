@@ -32,10 +32,10 @@ export function InventoryApp() {
 		items,
 		filter,
 		setFilter,
-		kategori,
-		setKategori,
-		arama,
-		setArama,
+		category,
+		setCategory,
+		search,
+		setSearch,
 		detailId,
 		setDetailId,
 		loan,
@@ -59,10 +59,10 @@ export function InventoryApp() {
 				<InventoryToolbar
 					filter={filter}
 					setFilter={setFilter}
-					arama={arama}
-					setArama={setArama}
-					kategori={kategori}
-					setKategori={setKategori}
+					search={search}
+					setSearch={setSearch}
+					category={category}
+					setCategory={setCategory}
 					categories={categories}
 					counts={counts}
 					isManager={isManager}

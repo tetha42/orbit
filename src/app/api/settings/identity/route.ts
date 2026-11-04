@@ -47,7 +47,7 @@ export async function PATCH(request: Request) {
 		if (!siteName) {
 			return NextResponse.json({ error: 'Site name cannot be empty.', code: 'SITE_NAME_REQUIRED' }, { status: 400 });
 		}
-		updates.kulup_adi = siteName;
+		updates.club_Name = siteName;
 	}
 	if (body.shortName !== undefined) updates.site_short_name = clean(body.shortName, 32);
 	if (body.descriptionTr !== undefined) updates.site_description_tr = clean(body.descriptionTr, 400);
@@ -61,10 +61,10 @@ export async function PATCH(request: Request) {
 	updates.site_brand_version = `${Date.now()}-${randomBytes(4).toString('hex')}`;
 	await setSystemSettings(updates);
 	void logSystemEvent({
-		servis: 'settings',
-		seviye: 'INFO',
-		mesaj: `Site identity updated (${auth.user.firstName || auth.user.ad || ""} ${auth.user.lastName || auth.user.soyad || ""})`,
-		detay: updates,
+		service: 'settings',
+		level: 'INFO',
+		message: `Site identity updated (${auth.user.firstName || auth.user.name || ""} ${auth.user.lastName || auth.user.surname || ""})`,
+		detail: updates,
 		userId: auth.user.id,
 	});
 

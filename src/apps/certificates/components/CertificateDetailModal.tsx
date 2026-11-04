@@ -13,11 +13,11 @@ import { CERTIFICATE_THEMES, inferCertificateCategory } from '@/lib/certificates
 interface CertificateDetailModalProps {
 	cert: Certificate;
 	currentUserName?: string;
-	kulup: CommunityProfile | null;
+	club: CommunityProfile | null;
 	copied: boolean;
-	verifyUrl: (kod: string) => string;
+	verifyUrl: (code: string) => string;
 	onClose: () => void;
-	onCopyVerification: (kod: string) => void;
+	onCopyVerification: (code: string) => void;
 	onAddToLinkedIn: (cert: Certificate) => void;
 	onError: (err: string) => void;
 }
@@ -25,7 +25,7 @@ interface CertificateDetailModalProps {
 export function CertificateDetailModal({
 	cert,
 	currentUserName,
-	kulup,
+	club,
 	copied,
 	verifyUrl,
 	onClose,
@@ -35,10 +35,10 @@ export function CertificateDetailModal({
 }: CertificateDetailModalProps) {
 	const { t, language } = useI18n();
 	const { offset, onHeaderMouseDown, onHeaderDoubleClick } = useDraggableSheet(true);
-	const lang = (cert.dil === 'en' || language === 'en') ? 'en' : 'tr';
-	const recipient = cert.kullaniciAdSoyad || currentUserName || t('membersMember');
+	const lang = (cert.language === 'en' || language === 'en') ? 'en' : 'tr';
+	const recipient = cert.userNameSurname || currentUserName || t('membersMember');
 
-	const catId = inferCertificateCategory(cert.baslik, cert.kategori);
+	const catId = inferCertificateCategory(cert.title, cert.category);
 	const theme = CERTIFICATE_THEMES[catId];
 
 	const IconBadge = catId === 'honor' ? Crown : catId === 'service' ? Medal : catId === 'achievement' ? Trophy : Award;
@@ -55,7 +55,7 @@ export function CertificateDetailModal({
 			<div
 				role="dialog"
 				aria-modal="true"
-				aria-label={cert.baslik}
+				aria-label={cert.title}
 				onMouseDown={onHeaderMouseDown}
 				onDoubleClick={onHeaderDoubleClick}
 				style={{
@@ -118,10 +118,10 @@ export function CertificateDetailModal({
 				</div>
 
 				<div style={{ fontSize: '12px', letterSpacing: '2px', textTransform: 'uppercase', color: theme.secondaryColor, fontWeight: 700 }}>
-					{kulup?.universite.toLocaleUpperCase(lang === 'en' ? 'en-US' : 'tr-TR')}
+					{club?.university.toLocaleUpperCase(lang === 'en' ? 'en-US' : 'tr-TR')}
 				</div>
 				<div style={{ fontSize: '13px', color: '#555', marginTop: '2px' }}>
-					{kulup?.kulupAdi.toLocaleUpperCase(lang === 'en' ? 'en-US' : 'tr-TR')}
+					{club?.clubName.toLocaleUpperCase(lang === 'en' ? 'en-US' : 'tr-TR')}
 				</div>
 
 				<h2 style={{ fontSize: '27px', color: theme.secondaryColor, margin: '18px 0 10px 0', fontWeight: 700, letterSpacing: '-0.01em' }}>
@@ -137,13 +137,13 @@ export function CertificateDetailModal({
 				</div>
 
 				<p style={{ fontSize: '15px', color: '#333', maxWidth: '580px', margin: '0 auto 24px auto', lineHeight: 1.55 }}>
-					<strong>"{cert.baslik}"</strong> {cert.aciklama ? cert.aciklama : theme.completion[lang]}
+					<strong>"{cert.title}"</strong> {cert.description ? cert.description : theme.completion[lang]}
 				</p>
 
 				<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '30px', paddingTop: '20px', borderTop: `1px solid ${theme.badgeBg}` }}>
 					<div style={{ textAlign: 'center', minWidth: 150 }}>
-						<div style={{ fontSize: '14px', fontWeight: 700 }}>{kulup?.imzalar[0]?.ad || '\u00A0'}</div>
-						<div style={{ fontSize: '11px', color: '#666' }}>{kulup?.imzalar[0]?.unvan}</div>
+						<div style={{ fontSize: '14px', fontWeight: 700 }}>{club?.signatures[0]?.name || '\u00A0'}</div>
+						<div style={{ fontSize: '11px', color: '#666' }}>{club?.signatures[0]?.rank}</div>
 					</div>
 
 					<div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
@@ -154,15 +154,15 @@ export function CertificateDetailModal({
 					</div>
 
 					<div style={{ textAlign: 'center', minWidth: 150 }}>
-						<div style={{ fontSize: '14px', fontWeight: 700 }}>{kulup?.imzalar[1]?.ad || '\u00A0'}</div>
-						<div style={{ fontSize: '11px', color: '#666' }}>{kulup?.imzalar[1]?.unvan}</div>
+						<div style={{ fontSize: '14px', fontWeight: 700 }}>{club?.signatures[1]?.name || '\u00A0'}</div>
+						<div style={{ fontSize: '11px', color: '#666' }}>{club?.signatures[1]?.rank}</div>
 					</div>
 				</div>
 
 				<CertificateModalActions
 					cert={cert}
 					recipient={recipient}
-					kulup={kulup}
+					club={club}
 					copied={copied}
 					verifyUrl={verifyUrl}
 					onCopyVerification={onCopyVerification}

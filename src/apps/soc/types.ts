@@ -133,13 +133,13 @@ export interface AppSecSummary {
 export interface SecurityBlock {
 	ip: string;
 	status: 'ban' | 'whitelist';
-	neden: string;
-	tehditPuani: number;
-	ihlaller: number;
-	olusturanId: string | null;
+	reason: string;
+	threatScore: number;
+	violations: number;
+	creatorId: string | null;
 	expiresAt: number | null;
-	olusturma: number;
-	guncellenme: number;
+	creation: number;
+	update: number;
 	threatIntel?: ThreatIntelligence;
 }
 
@@ -162,21 +162,21 @@ export interface SocIncident {
 
 export interface ActiveSessionInfo {
 	id: string;
-	ad: string;
-	soyad: string;
+	name: string;
+	surname: string;
 	email: string;
 	roleId: string | null;
-	rolAd: string;
+	roleName: string;
 	admin: boolean;
 	status: string;
 	totpEnabled: boolean;
-	sonGirisTarihi: number | null;
-	oturumBitis: number | null;
-	sonGirisIp: string | null;
-	sonAktifIp: string | null;
-	sonAktifTarihi: number | null;
-	sonGirisUserAgent: string | null;
-	ipDegisti: boolean;
+	lastLoginDate: number | null;
+	sessionEnd: number | null;
+	lastLoginIp: string | null;
+	lastActiveIp: string | null;
+	lastActiveDate: number | null;
+	lastLoginUserAgent: string | null;
+	ipChanged: boolean;
 	impossibleTravel?: {
 		detected: boolean;
 		speedKmh?: number;
@@ -190,9 +190,9 @@ export interface ActiveSessionInfo {
 export interface TopAttackerItem {
 	ip: string;
 	eventCount: number;
-	tehditPuani: number;
-	sonGorulme: number;
-	sonMesaj: string;
+	threatScore: number;
+	lastSeen: number;
+	lastMessage: string;
 	status: 'ban' | 'whitelist' | 'izleniyor';
 	threatIntel?: ThreatIntelligence;
 }
@@ -272,28 +272,28 @@ export interface HistogramBucket {
 
 export interface SystemLog {
 	id: number;
-	zaman: number;
-	seviye: 'INFO' | 'WARN' | 'ERROR' | 'CRITICAL';
-	servis: string;
-	mesaj: string;
-	detay: Record<string, unknown> | null;
+	time: number;
+	level: 'INFO' | 'WARN' | 'ERROR' | 'CRITICAL';
+	service: string;
+	message: string;
+	detail: Record<string, unknown> | null;
 	userId: string | null;
 	ip: string;
 }
 
-export type SiemAramaOp = 'contains' | 'not_contains' | 'equals' | 'not_equals' | 'starts_with' | 'ends_with';
-export type SiemAramaAlani = 'all' | 'mesaj' | 'ip' | 'servis' | 'userId' | 'detay';
+export type SiemSearchOp = 'contains' | 'not_contains' | 'equals' | 'not_equals' | 'starts_with' | 'ends_with';
+export type SiemSearchField = 'all' | 'message' | 'ip' | 'service' | 'userId' | 'detail';
 
 export interface SiemFilterSnapshot {
-	servis: string;
-	servisOp: 'eq' | 'neq';
-	seviye: string;
-	seviyeOp: 'eq' | 'neq';
+	service: string;
+	serviceOp: 'eq' | 'neq';
+	level: string;
+	levelOp: 'eq' | 'neq';
 	ip: string;
 	ipOp: 'eq' | 'neq' | 'contains' | 'not_contains';
-	arama: string;
-	aramaOp: SiemAramaOp;
-	aramaAlani: SiemAramaAlani;
+	search: string;
+	searchOp: SiemSearchOp;
+	searchField: SiemSearchField;
 	timeRange?: TimeRangePreset;
 	startTime?: number;
 	endTime?: number;

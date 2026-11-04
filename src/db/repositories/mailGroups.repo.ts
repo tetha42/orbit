@@ -25,13 +25,13 @@ export async function getMailRecipientGroups(): Promise<MailRecipientGroup[]> {
 			 ORDER BY email`
 		),
 		db.query(
-			`SELECT r.id, r.name AS ad, u.email
+			`SELECT r.id, r.name AS name, u.email
 			 FROM roles r JOIN users u ON u.role_id = r.id
 			 WHERE u.status = 'aktif' AND u.email IS NOT NULL AND u.email <> ''
 			 ORDER BY r.name, u.email`
 		),
 		db.query(
-			`SELECT t.id, t.name AS ad, t.type, u.email
+			`SELECT t.id, t.name AS name, t.type, u.email
 			 FROM teams t
 			 JOIN team_members tm ON tm.team_id = t.id AND tm.status = 'aktif'
 			 JOIN users u ON u.id = tm.user_id
@@ -55,7 +55,7 @@ export async function getMailRecipientGroups(): Promise<MailRecipientGroup[]> {
 	const roleMap = new Map<string, { id: string; label: string; emails: Set<string> }>();
 	for (const row of roles.rows) {
 		const id = String(row.id);
-		if (!roleMap.has(id)) roleMap.set(id, { id, label: String(row.ad), emails: new Set() });
+		if (!roleMap.has(id)) roleMap.set(id, { id, label: String(row.name), emails: new Set() });
 		roleMap.get(id)!.emails.add(String(row.email));
 	}
 	for (const group of roleMap.values()) {
@@ -74,7 +74,7 @@ export async function getMailRecipientGroups(): Promise<MailRecipientGroup[]> {
 		if (!teamMap.has(id)) {
 			teamMap.set(id, {
 				id,
-				label: String(row.ad),
+				label: String(row.name),
 				type: String(row.type ?? 'working_group'),
 				emails: new Set(),
 			});

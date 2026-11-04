@@ -24,18 +24,18 @@ export async function GET(request: Request) {
 		const events = await getPublicEvents(24);
 		return publicJson(request, {
 			data: events.map((event) => {
-				const capacity = event.kapasite > 0 ? event.kapasite : null;
+				const capacity = event.capacity > 0 ? event.capacity : null;
 				return {
 					id: event.id,
-					title: event.baslik,
-					type: event.tur,
-					typeLabel: TYPE_LABELS[event.tur] ?? event.tur,
-					description: event.aciklama,
-					location: event.konum,
-					startsAt: isoDate(event.baslangic),
+					title: event.title,
+					type: event.typeValue,
+					typeLabel: TYPE_LABELS[event.typeValue] ?? event.typeValue,
+					description: event.description,
+					location: event.location,
+					startsAt: isoDate(event.start),
 					endsAt: isoDate(event.endTime),
 					capacity,
-					seatsLeft: capacity === null ? null : Math.max(0, capacity - event.katilimciSayisi),
+					seatsLeft: capacity === null ? null : Math.max(0, capacity - event.participantCount),
 				};
 			}),
 		});

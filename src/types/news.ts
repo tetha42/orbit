@@ -39,7 +39,7 @@ export function isNewsVisibility(value: unknown): value is NewsVisibility {
 }
 
 /** Length caps, enforced by the API and mirrored by the form. */
-export const NEWS_LIMITS = { baslik: 200, ozet: 500, icerik: 20_000, resimUrl: 500 } as const;
+export const NEWS_LIMITS = { title: 200, summary: 500, content: 20_000, imageUrl: 500 } as const;
 
 /**
  * Whether `url` may be stored as an article image: an `https://` address, or one of
@@ -47,7 +47,7 @@ export const NEWS_LIMITS = { baslik: 200, ozet: 500, icerik: 20_000, resimUrl: 5
  * anything that could close the parenthesis or the quote is refused outright.
  */
 export function isSafeImageUrl(url: string): boolean {
-	if (url.length > NEWS_LIMITS.resimUrl) return false;
+	if (url.length > NEWS_LIMITS.imageUrl) return false;
 	if (/^https:\/\/[^\s"'()<>\\]+$/.test(url)) return true;
 	return /^\/app-icons\/[A-Za-z0-9._/-]+$/.test(url) && !url.includes('..');
 }

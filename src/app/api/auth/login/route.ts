@@ -41,10 +41,10 @@ export async function POST(request: Request) {
 		const waf = inspectRequestPayload(request);
 		if (waf.matched) {
 			void logSystemEvent({
-				servis: 'security',
-				seviye: 'ERROR',
-				mesaj: `[WAF] Attack signature blocked (${waf.signature}): POST /api/auth/login`,
-				detay: { category: waf.category, signature: waf.signature },
+				service: 'security',
+				level: 'ERROR',
+				message: `[WAF] Attack signature blocked (${waf.signature}): POST /api/auth/login`,
+				detail: { category: waf.category, signature: waf.signature },
 				ip,
 			});
 			void recordSecurityStrike({
@@ -79,8 +79,8 @@ export async function POST(request: Request) {
 		if (!body || typeof body !== 'object') {
 			return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
 		}
-		const email = (body as Record<string, unknown>).email ?? (body as Record<string, unknown>).eposta;
-		const password = (body as Record<string, unknown>).password ?? (body as Record<string, unknown>).sifre;
+		const email = (body as Record<string, unknown>).email ?? (body as Record<string, unknown>).email;
+		const password = (body as Record<string, unknown>).password ?? (body as Record<string, unknown>).password;
 
 		if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
 			return NextResponse.json({ error: 'Email and password are required.' }, { status: 400 });
@@ -110,10 +110,10 @@ export async function POST(request: Request) {
 			const gate = isRateLimited(key, limit);
 			if (!gate.allowed) {
 				await logSystemEvent({
-					servis: 'auth',
-					seviye: 'WARN',
-					mesaj: `Login rate limit exceeded (${normalizedEmail})`,
-					detay: { email: normalizedEmail, kilitAnahtari: key, kalanSaniye: gate.retryAfter },
+					service: 'auth',
+					level: 'WARN',
+					message: `Login rate limit exceeded (${normalizedEmail})`,
+					detail: { email: normalizedEmail, lockKey: key, remainingSeconds: gate.retryAfter },
 					ip,
 				});
 				void recordSecurityStrike({
@@ -154,10 +154,10 @@ export async function POST(request: Request) {
 			await bcrypt.compare(password, DUMMY_HASH);
 			fail(`Unregistered account login attempt (${normalizedEmail})`);
 			await logSystemEvent({
-				servis: 'auth',
-				seviye: 'WARN',
-				mesaj: `Failed login attempt (unregistered email): ${normalizedEmail}`,
-				detay: { email: normalizedEmail },
+				service: 'auth',
+				level: 'WARN',
+				message: `Failed login attempt (unregistered email): ${normalizedEmail}`,
+				detail: { email: normalizedEmail },
 				ip,
 			});
 			return NextResponse.json({ error: INVALID_CREDENTIALS }, { status: 401 });
@@ -177,10 +177,10 @@ export async function POST(request: Request) {
 		if (!isValidPassword) {
 			fail(`Invalid password (${user.email})`);
 			await logSystemEvent({
-				servis: 'auth',
-				seviye: 'WARN',
-				mesaj: `Failed login attempt (invalid password): ${user.email}`,
-				detay: { email: user.email },
+				service: 'auth',
+				level: 'WARN',
+				message: `Failed login attempt (invalid password): ${user.email}`,
+				detail: { email: user.email },
 				userId: user.id,
 				ip,
 			});
@@ -230,9 +230,9 @@ export async function POST(request: Request) {
 		const sessionToken = await establishSession(user, request, 'password');
 
 		await logSystemEvent({
-			servis: 'auth',
-			seviye: 'INFO',
-			mesaj: `User signed in: ${user.ad} ${user.soyad} (${user.email})`,
+			service: 'auth',
+			level: 'INFO',
+			message: `User signed in: ${user.name} ${user.surname} (${user.email})`,
 			userId: user.id,
 			ip,
 		});

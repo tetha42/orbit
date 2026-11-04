@@ -30,34 +30,34 @@ export function TransferModal({
 	const today = toDateInput(now);
 
 	const firstOther = vaults.find((x) => x.teamId !== initialSource)?.teamId ?? null;
-	const [kaynak, setKaynak] = useState(vaultKey(initialSource));
-	const [hedef, setHedef] = useState(vaultKey(firstOther));
-	const [tutar, setTutar] = useState('');
-	const [date, setTarih] = useState(() => toDateInput(now));
-	const [aciklama, setAciklama] = useState('');
+	const [sourceKey, setSourceKey] = useState(vaultKey(initialSource));
+	const [targetKey, setTargetKey] = useState(vaultKey(firstOther));
+	const [amount, setAmount] = useState('');
+	const [date, setDate] = useState(() => toDateInput(now));
+	const [description, setDescription] = useState('');
 	const [error, setError] = useState('');
 	const [busy, setBusy] = useState(false);
 
 	const byKey = new Map(vaults.map((x) => [vaultKey(x.teamId), x]));
-	const source = byKey.get(kaynak);
-	const target = byKey.get(hedef);
-	const kurus = parseAmount(tutar);
-	const tooMuch = kurus !== null && !!source && kurus > source.netBalanceMinor;
+	const source = byKey.get(sourceKey);
+	const target = byKey.get(targetKey);
+	const minor = parseAmount(amount);
+	const tooMuch = minor !== null && !!source && minor > source.netBalanceMinor;
 
 	const submit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setError('');
-		if (kaynak === hedef) return setError(t('kasaTransferSameError'));
-		if (kurus === null) return setError(t('kasaInvalidAmount'));
-		const ms = dateInputToMs(date, Date.now());
+		if (sourceKey === targetKey) return setError(t('kasaTransferSameError'));
+		if (minor === null) return setError(t('kasaInvalidAmount'));
+		const ms = dateInputToMs(date, now);
 		if (ms === null) return setError(t('kasaInvalidDate'));
 		setBusy(true);
 		const res = await sendJson('/api/budget', 'POST', {
 			action: 'aktar',
-			kaynak,
-			hedef,
-			amountMinor: kurus,
-			aciklama: aciklama.trim() || undefined,
+			source,
+			target,
+			amountMinor: minor,
+			description: description.trim() || undefined,
 			date: ms,
 		});
 		setBusy(false);
@@ -93,12 +93,12 @@ export function TransferModal({
 					<select
 						className={ui.select}
 						style={{ maxWidth: 'none', width: '100%' }}
-						value={kaynak}
-						onChange={(e) => setKaynak(e.target.value)}
+						value={sourceKey}
+						onChange={(e) => setSourceKey(e.target.value)}
 					>
 						{vaults.map((x) => (
 							<option key={vaultKey(x.teamId)} value={vaultKey(x.teamId)}>
-								{x.ad} ({formatMinor(x.netBalanceMinor)} ₺)
+								{x.name} ({formatMinor(x.netBalanceMinor)} ₺)
 							</option>
 						))}
 					</select>
@@ -108,16 +108,16 @@ export function TransferModal({
 					<select
 						className={ui.select}
 						style={{ maxWidth: 'none', width: '100%' }}
-						value={hedef}
-						onChange={(e) => setHedef(e.target.value)}
+						value={targetKey}
+						onChange={(e) => setTargetKey(e.target.value)}
 					>
 						{vaults.map((x) => (
 							<option
 								key={vaultKey(x.teamId)}
 								value={vaultKey(x.teamId)}
-								disabled={vaultKey(x.teamId) === kaynak}
+								disabled={vaultKey(x.teamId) === sourceKey}
 							>
-								{x.ad}
+								{x.name}
 							</option>
 						))}
 					</select>
@@ -125,23 +125,23 @@ export function TransferModal({
 			</div>
 			{source && (
 				<div className={k.balanceHint}>
-					{source.ad}: {t('kasaCurrentBalance')} <strong>{formatMinor(source.netBalanceMinor)} ₺</strong>
-					{kurus !== null && (
+					{source.name}: {t('kasaCurrentBalance')} <strong>{formatMinor(source.netBalanceMinor)} ₺</strong>
+					{minor !== null && (
 						<>
 							{' '}
 							· {t('kasaAfterTransfer')}{' '}
 							<strong className={tooMuch ? k.neg : undefined}>
-								{formatMinor(source.netBalanceMinor - kurus)} ₺
+								{formatMinor(source.netBalanceMinor - minor)} ₺
 							</strong>
 						</>
 					)}
 					{target && (
 						<div style={{ marginTop: 4 }}>
-							{target.ad}: {formatMinor(target.netBalanceMinor)} ₺
-							{kurus !== null && (
+							{target.name}: {formatMinor(target.netBalanceMinor)} ₺
+							{minor !== null && (
 								<>
 									{' '}
-									→ <strong>{formatMinor(target.netBalanceMinor + kurus)} ₺</strong>
+									→ <strong>{formatMinor(target.netBalanceMinor + minor)} ₺</strong>
 								</>
 							)}
 						</div>
@@ -156,8 +156,8 @@ export function TransferModal({
 						className={ui.input}
 						inputMode="decimal"
 						placeholder="5.000,00"
-						value={tutar}
-						onChange={(e) => setTutar(e.target.value)}
+						value={amount}
+						onChange={(e) => setAmount(e.target.value)}
 						required
 						autoFocus
 					/>
@@ -169,7 +169,7 @@ export function TransferModal({
 						type="date"
 						value={date}
 						max={today}
-						onChange={(e) => setTarih(e.target.value)}
+						onChange={(e) => setDate(e.target.value)}
 						required
 					/>
 				</label>
@@ -180,8 +180,8 @@ export function TransferModal({
 					className={ui.input}
 					maxLength={200}
 					placeholder={t('kasaTransferDescPlaceholder')}
-					value={aciklama}
-					onChange={(e) => setAciklama(e.target.value)}
+					value={description}
+					onChange={(e) => setDescription(e.target.value)}
 				/>
 			</label>
 			{error && <div className={ui.error}>{error}</div>}

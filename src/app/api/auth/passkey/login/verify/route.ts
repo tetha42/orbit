@@ -36,10 +36,10 @@ export async function POST(request: Request) {
 	const waf = inspectRequestPayload(request);
 	if (waf.matched) {
 		void logSystemEvent({
-			servis: 'security',
-			seviye: 'ERROR',
-			mesaj: `[WAF] Saldırı imzası engellendi (${waf.signature}): POST /api/auth/passkey/login/verify`,
-			detay: { category: waf.category, signature: waf.signature },
+			service: 'security',
+			level: 'ERROR',
+			message: `[WAF] Saldırı imzası engellendi (${waf.signature}): POST /api/auth/passkey/login/verify`,
+			detail: { category: waf.category, signature: waf.signature },
 			ip,
 		});
 		void recordSecurityStrike({
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
 		}
 
 		// Consumed before verification so a replayed response cannot be reused.
-		const pending = await consumeWebauthnChallenge(String(challengeId), 'giris');
+		const pending = await consumeWebauthnChallenge(String(challengeId), 'login');
 		if (!pending || !pending.userId) {
 			return NextResponse.json(
 				{ error: 'Doğrulama oturumu geçersiz veya süresi dolmuş. Lütfen tekrar deneyin.' },
@@ -101,9 +101,9 @@ export async function POST(request: Request) {
 				userId: user.id,
 			});
 			await logSystemEvent({
-				servis: 'auth',
-				seviye: 'WARN',
-				mesaj: `Passkey doğrulama hatası (farklı hesaba ait anahtar): ${user.email}`,
+				service: 'auth',
+				level: 'WARN',
+				message: `Passkey doğrulama hatası (farklı hesaba ait anahtar): ${user.email}`,
 				userId: user.id,
 				ip,
 			});
@@ -129,9 +129,9 @@ export async function POST(request: Request) {
 				userId: user.id,
 			});
 			await logSystemEvent({
-				servis: 'auth',
-				seviye: 'WARN',
-				mesaj: `Başarısız Passkey imza doğrulaması: ${user.email}`,
+				service: 'auth',
+				level: 'WARN',
+				message: `Başarısız Passkey imza doğrulaması: ${user.email}`,
 				userId: user.id,
 				ip,
 			});
@@ -156,10 +156,10 @@ export async function POST(request: Request) {
 				userId: user.id,
 			});
 			await logSystemEvent({
-				servis: 'auth',
-				seviye: 'ERROR',
-				mesaj: `Passkey klonlama şüphesi (sayaç ilerlemedi): ${user.email}`,
-				detay: { credentialId: credentialRow.id, storedCounter, newCounter },
+				service: 'auth',
+				level: 'ERROR',
+				message: `Passkey klonlama şüphesi (sayaç ilerlemedi): ${user.email}`,
+				detail: { credentialId: credentialRow.id, storedCounter, newCounter },
 				userId: user.id,
 				ip,
 			});
@@ -186,9 +186,9 @@ export async function POST(request: Request) {
 
 		const sessionToken = await establishSession(user, request, 'passkey');
 		await logSystemEvent({
-			servis: 'auth',
-			seviye: 'INFO',
-			mesaj: `Kullanıcı Passkey ile giriş yaptı: ${user.ad} ${user.soyad} (${user.email})`,
+			service: 'auth',
+			level: 'INFO',
+			message: `Kullanıcı Passkey ile giriş yaptı: ${user.name} ${user.surname} (${user.email})`,
 			userId: user.id,
 			ip,
 		});

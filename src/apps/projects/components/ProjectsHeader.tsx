@@ -7,11 +7,11 @@ import styles from './Projects.module.css';
 
 interface Props {
 	manage: boolean;
-	countYayinda: number;
+	countPublished: number;
 	onOpenForm: () => void;
 }
 
-export function ProjectsHeader({ manage, countYayinda, onOpenForm }: Props) {
+export function ProjectsHeader({ manage, countPublished, onOpenForm }: Props) {
 	const { t } = useI18n();
 
 	return (
@@ -22,7 +22,7 @@ export function ProjectsHeader({ manage, countYayinda, onOpenForm }: Props) {
 				</div>
 				<div>
 					<h1 className={styles.title}>{t('pjTitle')}</h1>
-					<p className={styles.subtitle}>{fill(t('pjSubtitle'), { n: countYayinda })}</p>
+					<p className={styles.subtitle}>{fill(t('pjSubtitle'), { n: countPublished })}</p>
 				</div>
 			</div>
 			<button type="button" className={ui.primaryBtn} onClick={onOpenForm}>

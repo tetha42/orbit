@@ -15,14 +15,13 @@ import { canManage, canUse, type Permissions, type PermissionLevel } from './ind
  */
 export function usePermissions() {
 	const { currentUser } = useSession();
-	const permissions: Permissions = currentUser?.permissions ?? currentUser?.izinler ?? {};
+	const permissions: Permissions = currentUser?.permissions ?? currentUser?.permissions ?? {};
 	const pending2fa = !!currentUser?.mustSetup2fa;
 	return useMemo(
 		() => ({
 			permissions,
-			izinler: permissions,
 			isAdmin: !!currentUser?.admin,
-			role: currentUser?.roleInfo ?? currentUser?.rolBilgi ?? null,
+			role: currentUser?.roleInfo ?? currentUser?.roleInfo ?? null,
 			/** False for everything while a required second factor is not enrolled yet. */
 			can: (appId: string, level: PermissionLevel | 'kullan' | 'yonet' = 'use') =>
 				!pending2fa && (level === 'manage' || level === 'yonet' ? canManage(permissions, appId) : canUse(permissions, appId)),

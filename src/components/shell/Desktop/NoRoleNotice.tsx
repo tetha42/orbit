@@ -21,10 +21,10 @@ export function NoRoleNotice({ compact = false }: { compact?: boolean }) {
 	const { t } = useI18n();
 	const { openApp } = useWindowActions();
 	if (!currentUser || currentUser.mustSetup2fa) return null;
-	const herhangiUygulama = PERMISSION_APPS.some((a) => a !== 'settings' && canUse(currentUser.izinler, a));
-	if (herhangiUygulama) return null;
+	const anyApp = PERMISSION_APPS.some((a) => a !== 'settings' && canUse(currentUser.permissions, a));
+	if (anyApp) return null;
 
-	const hasNoRole = !currentUser.rolBilgi;
+	const hasNoRole = !currentUser.roleInfo;
 	return (
 		<div
 			data-no-role-notice

@@ -6,7 +6,7 @@ import {
 	PROJECT_TITLE_MAX,
 	PROJECT_SUMMARY_MAX,
 	normalizeHttpUrl,
-	normalizeTeknolojiler,
+	normalizeTechnologies,
 } from '@/lib/projects';
 
 /**
@@ -22,24 +22,24 @@ export async function parseProjectInput(
 	const value: Partial<ProjectInput> = {};
 	const has = (k: string) => body[k] !== undefined;
 
-	if (!partial || has('baslik')) {
-		const title = typeof body.baslik === 'string' ? body.baslik.trim() : '';
+	if (!partial || has('title')) {
+		const title = typeof body.title === 'string' ? body.title.trim() : '';
 		if (title.length < 3) return { ok: false, error: 'Project başlığı en az 3 karakter olmalıdır.' };
 		if (title.length > PROJECT_TITLE_MAX) return { ok: false, error: `Başlık en fazla ${PROJECT_TITLE_MAX} karakter olabilir.` };
-		value.baslik = title;
+		value.title = title;
 	}
-	if (!partial || has('ozet')) {
-		const ozet = typeof body.ozet === 'string' ? body.ozet.trim() : '';
-		if (ozet.length < 10) return { ok: false, error: 'Kısa açıklama en az 10 karakter olmalıdır.' };
-		if (ozet.length > PROJECT_SUMMARY_MAX) return { ok: false, error: `Kısa açıklama en fazla ${PROJECT_SUMMARY_MAX} karakter olabilir.` };
-		value.ozet = ozet;
+	if (!partial || has('summary')) {
+		const summary = typeof body.summary === 'string' ? body.summary.trim() : '';
+		if (summary.length < 10) return { ok: false, error: 'Kısa açıklama en az 10 karakter olmalıdır.' };
+		if (summary.length > PROJECT_SUMMARY_MAX) return { ok: false, error: `Kısa açıklama en fazla ${PROJECT_SUMMARY_MAX} karakter olabilir.` };
+		value.summary = summary;
 	}
-	if (!partial || has('aciklama')) {
-		const description = typeof body.aciklama === 'string' ? body.aciklama.trim() : '';
+	if (!partial || has('description')) {
+		const description = typeof body.description === 'string' ? body.description.trim() : '';
 		if (description.length > PROJECT_DESCRIPTION_MAX) return { ok: false, error: `Ayrıntılı açıklama en fazla ${PROJECT_DESCRIPTION_MAX} karakter olabilir.` };
-		value.aciklama = description;
+		value.description = description;
 	}
-	for (const key of ['repoUrl', 'canliUrl'] as const) {
+	for (const key of ['repoUrl', 'liveUrl'] as const) {
 		if (!partial || has(key)) {
 			const url = normalizeHttpUrl(body[key]);
 			if (url === undefined) {
@@ -48,14 +48,14 @@ export async function parseProjectInput(
 			value[key] = url;
 		}
 	}
-	if (!partial && !value.repoUrl && !value.canliUrl) {
+	if (!partial && !value.repoUrl && !value.liveUrl) {
 		return { ok: false, error: 'Depo veya canlı demo bağlantılarından en az biri gereklidir.' };
 	}
-	if (!partial || has('teknolojiler')) {
-		const tech = normalizeTeknolojiler(body.teknolojiler ?? []);
+	if (!partial || has('technologies')) {
+		const tech = normalizeTechnologies(body.technologies ?? []);
 		if (!tech) return { ok: false, error: 'Teknolojiler bir metin listesi olmalıdır.' };
 		if (!tech.length) return { ok: false, error: 'En az bir teknoloji belirtin.' };
-		value.teknolojiler = tech;
+		value.technologies = tech;
 	}
 	if (!partial || has('teamId')) {
 		const teamId = typeof body.teamId === 'string' && body.teamId ? body.teamId : null;

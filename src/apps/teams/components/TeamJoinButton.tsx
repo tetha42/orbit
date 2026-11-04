@@ -27,14 +27,14 @@ export function TeamJoinButton({
 }: TeamJoinButtonProps) {
 	const { t } = useI18n();
 
-	if (tm.benimDurumum === 'aktif') {
+	if (tm.myMyStatus === 'aktif') {
 		return tm.leadId === currentUserId ? null : (
 			<button type="button" className={`${ui.btn} ${ui.btnDanger}`} disabled={busy} onClick={() => onLeave(tm)}>
 				{t('tmLeave')}
 			</button>
 		);
 	}
-	if (tm.benimDurumum === 'basvurdu') {
+	if (tm.myMyStatus === 'basvurdu') {
 		return (
 			<button type="button" className={ui.btn} disabled={busy} onClick={() => onLeave(tm)}>
 				{t('tmWithdraw')}
@@ -42,7 +42,7 @@ export function TeamJoinButton({
 		);
 	}
 	const closed = tm.status !== 'aktif';
-	const full = tm.kalanKontenjan === 0 && tm.katilimTuru === 'acik';
+	const full = tm.remainingCapacity === 0 && tm.participationType === 'acik';
 	const limit = myTeams >= TEAM_LIMIT;
 	return (
 		<button
@@ -53,7 +53,7 @@ export function TeamJoinButton({
 			onClick={() => onJoin(tm)}
 		>
 			<Plus size={14} />
-			{closed ? t('tmClosed') : full ? t('tmFull') : tm.katilimTuru === 'onayli' ? t('tmApply') : t('tmJoin')}
+			{closed ? t('tmClosed') : full ? t('tmFull') : tm.participationType === 'onayli' ? t('tmApply') : t('tmJoin')}
 		</button>
 	);
 }

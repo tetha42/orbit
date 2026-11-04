@@ -24,8 +24,8 @@ export function SocToolbar() {
 		activeTab,
 		globalSearch,
 		setGlobalSearch,
-		siemArama,
-		setSiemArama,
+		siemSearch,
+		setSiemSearch,
 		fetchSiemFiltered,
 		apiSearch,
 		setApiSearch,
@@ -71,7 +71,7 @@ export function SocToolbar() {
 	const handleSearchChange = (value: string) => {
 		setGlobalSearch(value);
 		if (activeTab === 'siem') {
-			setSiemArama(value);
+			setSiemSearch(value);
 		} else if (activeTab === 'inspection') {
 			setApiSearch(value);
 		}
@@ -79,7 +79,7 @@ export function SocToolbar() {
 
 	const currentSearchValue =
 		activeTab === 'siem'
-			? siemArama
+			? siemSearch
 			: activeTab === 'inspection'
 			? apiSearch
 			: globalSearch;

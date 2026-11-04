@@ -16,7 +16,7 @@ interface Props {
 	team: Team;
 	currentUserId: string;
 	/** Everyone in the club, for management's "add member". */
-	roster: { id: string; ad: string; soyad: string }[];
+	roster: { id: string; name: string; surname: string }[];
 	notify: (text: string, tone?: 'success' | 'error') => void;
 	onChanged: () => Promise<void>;
 }
@@ -26,7 +26,7 @@ export function TeamMembers({ team, currentUserId, roster, notify, onChanged }: 
 	const { t, language } = useI18n();
 	const dialog = useDialog();
 	const locale = language === 'en' ? 'en-GB' : 'tr-TR';
-	const manage = team.izinler.manage;
+	const manage = team.permissions.manage;
 	const [roleDrafts, setRoleDrafts] = useState<Record<string, string>>({});
 	const [adding, setAdding] = useState('');
 
@@ -46,7 +46,7 @@ export function TeamMembers({ team, currentUserId, roster, notify, onChanged }: 
 			return next;
 		});
 		if (draft === undefined || draft.trim() === current || !draft.trim()) return;
-		await post({ action: 'setMemberRole', userId, takimRolu: draft });
+		await post({ action: 'setMemberRole', userId, teamRole: draft });
 	};
 
 	const memberIds = new Set(team.uyeler.map((u) => u.userId));
@@ -59,20 +59,20 @@ export function TeamMembers({ team, currentUserId, roster, notify, onChanged }: 
 				<section className={styles.section} aria-label={t('tmApplications')}>
 					<h4 className={styles.sectionHead}>
 						<Inbox size={16} /> {t('tmApplications')}
-						{team.basvurular.length > 0 && <span className={styles.tabBadge}>{team.basvurular.length}</span>}
+						{team.applications.length > 0 && <span className={styles.tabBadge}>{team.applications.length}</span>}
 					</h4>
-					{team.basvurular.length === 0 ? (
+					{team.applications.length === 0 ? (
 						<div className={ui.muted}>{t('tmNoApplications')}</div>
 					) : (
-						team.basvurular.map((b) => (
+						team.applications.map((b) => (
 							<div key={b.userId} className={styles.application} data-applicant-id={b.userId}>
 								<span className={ui.avatar} style={{ marginLeft: 0, width: 32, height: 32, fontSize: 12 }}>
-									{initials(b.kullaniciAdSoyad)}
+									{initials(b.userNameSurname)}
 								</span>
 								<div style={{ flex: 1, minWidth: 0 }}>
-									<div className={styles.memberName}>{b.kullaniciAdSoyad}</div>
+									<div className={styles.memberName}>{b.userNameSurname}</div>
 									<div className={styles.memberSub}>
-										{b.kullaniciBolum} · {date(b.katilimTarihi)}
+										{b.userDepartment} · {date(b.participationDate)}
 									</div>
 								</div>
 								<button type="button" className={ui.primaryBtn} style={{ height: 30, background: '#30d158' }} onClick={() => post({ action: 'approve', userId: b.userId })}>
@@ -82,14 +82,14 @@ export function TeamMembers({ team, currentUserId, roster, notify, onChanged }: 
 									type="button"
 									className={`${ui.btn} ${ui.btnDanger}`}
 									onClick={async () => {
-										if (await dialog.confirm({ message: fill(t('tmRejectConfirm'), { name: b.kullaniciAdSoyad }), tone: 'danger' })) {
+										if (await dialog.confirm({ message: fill(t('tmRejectConfirm'), { name: b.userNameSurname }), tone: 'danger' })) {
 											await post({ action: 'reject', userId: b.userId });
 										}
 									}}
 								>
 									<X size={14} /> {t('tmReject')}
 								</button>
-								{b.basvuruNotu && <div className={styles.applicationNote}>{b.basvuruNotu}</div>}
+								{b.applicationNote && <div className={styles.applicationNote}>{b.applicationNote}</div>}
 							</div>
 						))
 					)}
@@ -100,15 +100,15 @@ export function TeamMembers({ team, currentUserId, roster, notify, onChanged }: 
 				<h4 className={styles.sectionHead}>
 					<Users size={16} /> {t('tmRoster')}
 					<span className={ui.count}>
-						{team.doluKontenjan}/{team.kontenjan}
+						{team.fullCapacity}/{team.capacity}
 					</span>
-					{team.izinler.editAll && addable.length > 0 && (
+					{team.permissions.editAll && addable.length > 0 && (
 						<span style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
 							<select className={ui.select} value={adding} onChange={(e) => setAdding(e.target.value)} aria-label={t('tmAddMember')}>
 								<option value="">{t('tmAddMemberPh')}</option>
 								{addable.map((m) => (
 									<option key={m.id} value={m.id}>
-										{m.ad} {m.soyad}
+										{m.name} {m.surname}
 									</option>
 								))}
 							</select>
@@ -135,28 +135,28 @@ export function TeamMembers({ team, currentUserId, roster, notify, onChanged }: 
 									className={ui.avatar}
 									style={{ marginLeft: 0, width: 36, height: 36, fontSize: 13, background: isCaptain ? 'linear-gradient(135deg,#ff9f0a,#ff375f)' : undefined }}
 								>
-									{initials(u.kullaniciAdSoyad)}
+									{initials(u.userNameSurname)}
 								</span>
 								<div className={styles.memberMain}>
 									<div className={styles.memberName}>
-										{u.kullaniciAdSoyad} {isMe && <span className={ui.muted}>({t('tmYou')})</span>}
+										{u.userNameSurname} {isMe && <span className={ui.muted}>({t('tmYou')})</span>}
 									</div>
 									<input
 										className={styles.roleInput}
-										value={roleDrafts[u.userId] ?? u.takimRolu}
+										value={roleDrafts[u.userId] ?? u.teamRole}
 										maxLength={ROLE_MAX}
 										disabled={!manage || isCaptain}
-										aria-label={`${t('tmRole')}: ${u.kullaniciAdSoyad}`}
+										aria-label={`${t('tmRole')}: ${u.userNameSurname}`}
 										title={isCaptain ? CAPTAIN_ROLE : t('tmRole')}
 										onChange={(e) => setRoleDrafts((d) => ({ ...d, [u.userId]: e.target.value }))}
-										onBlur={() => saveRole(u.userId, u.takimRolu)}
+										onBlur={() => saveRole(u.userId, u.teamRole)}
 										onKeyDown={(e) => {
 											if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
 										}}
 									/>
 									<div className={styles.memberSub}>
-										{u.kullaniciBolum}
-										{u.katilimTarihi ? ` · ${fill(t('tmJoined'), { date: date(u.katilimTarihi) })}` : ''}
+										{u.userDepartment}
+										{u.participationDate ? ` · ${fill(t('tmJoined'), { date: date(u.participationDate) })}` : ''}
 									</div>
 								</div>
 								{manage && !isCaptain && !isMe && (
@@ -164,9 +164,9 @@ export function TeamMembers({ team, currentUserId, roster, notify, onChanged }: 
 										type="button"
 										className={ui.iconBtn}
 										title={t('tmRemove')}
-										aria-label={`${t('tmRemove')}: ${u.kullaniciAdSoyad}`}
+										aria-label={`${t('tmRemove')}: ${u.userNameSurname}`}
 										onClick={async () => {
-											if (await dialog.confirm({ message: fill(t('tmRemoveConfirm'), { name: u.kullaniciAdSoyad }), tone: 'danger' })) {
+											if (await dialog.confirm({ message: fill(t('tmRemoveConfirm'), { name: u.userNameSurname }), tone: 'danger' })) {
 												await post({ action: 'removeMember', userId: u.userId });
 											}
 										}}
@@ -181,7 +181,7 @@ export function TeamMembers({ team, currentUserId, roster, notify, onChanged }: 
 										title={t('tmLeave')}
 										aria-label={t('tmLeave')}
 										onClick={async () => {
-											if (await dialog.confirm({ message: fill(t('tmLeaveConfirm'), { team: team.ad }), tone: 'warning' })) {
+											if (await dialog.confirm({ message: fill(t('tmLeaveConfirm'), { team: team.name }), tone: 'warning' })) {
 												await post({ action: 'leave' });
 											}
 										}}

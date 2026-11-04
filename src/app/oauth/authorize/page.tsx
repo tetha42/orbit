@@ -8,16 +8,16 @@ import styles from './oauth.module.css';
 
 interface AuthorizeUserData {
 	id: string;
-	ad?: string;
-	soyad?: string;
-	adSoyad: string;
+	name?: string;
+	surname?: string;
+	nameSurname: string;
 	email: string;
-	ogrenciNo?: string;
-	bolum?: string;
-	sinif?: number;
-	profilFoto?: string | null;
+	studentNo?: string;
+	department?: string;
+	grade?: number;
+	profilePhoto?: string | null;
 	bio?: string | null;
-	rolAd?: string;
+	roleName?: string;
 	xp?: number;
 }
 
@@ -29,10 +29,10 @@ interface AuthorizeState {
 	user?: AuthorizeUserData;
 	client?: {
 		id: string;
-		ad: string;
-		aciklama: string;
+		name: string;
+		description: string;
 		logoUrl?: string;
-		guvenilir?: boolean;
+		trusted?: boolean;
 	};
 	allowedScopes?: string[];
 	requestedScopes?: string[];
@@ -299,7 +299,7 @@ function AuthorizeContent() {
 					{state.requiresLogin && (
 						<form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
 							<div style={{ fontSize: '13.5px', color: '#a1a1aa', lineHeight: 1.5 }}>
-								<strong style={{ color: '#fafafa' }}>{state.client?.ad || 'An external application'}</strong> is requesting access to your Orbit account. Sign in to continue:
+								<strong style={{ color: '#fafafa' }}>{state.client?.name || 'An external application'}</strong> is requesting access to your Orbit account. Sign in to continue:
 							</div>
 
 							{loginError && (
@@ -361,10 +361,10 @@ function AuthorizeContent() {
 									<Shield size={18} />
 								</div>
 								<div style={{ flex: 1, minWidth: 0 }}>
-									<div style={{ fontWeight: 600, fontSize: '15px', color: '#fafafa' }}>{state.client?.ad}</div>
-									{state.client?.aciklama && (
+									<div style={{ fontWeight: 600, fontSize: '15px', color: '#fafafa' }}>{state.client?.name}</div>
+									{state.client?.description && (
 										<div style={{ fontSize: '12px', color: '#a1a1aa', marginTop: '2px', lineHeight: 1.4 }}>
-											{state.client.aciklama}
+											{state.client.description}
 										</div>
 									)}
 								</div>
@@ -393,7 +393,7 @@ function AuthorizeContent() {
 									>
 										<div>
 											<span>Full Name: </span>
-											<strong style={{ color: '#fafafa' }}>{state.user?.adSoyad}</strong>
+											<strong style={{ color: '#fafafa' }}>{state.user?.nameSurname}</strong>
 										</div>
 										<div>
 											<span>Subject ID: </span>
@@ -455,16 +455,16 @@ function AuthorizeContent() {
 										>
 											<div>
 												<span>Member ID: </span>
-												<strong style={{ color: '#fafafa' }}>{state.user?.ogrenciNo || '—'}</strong>
+												<strong style={{ color: '#fafafa' }}>{state.user?.studentNo || '—'}</strong>
 											</div>
 											<div>
 												<span>Track: </span>
-												<strong style={{ color: '#fafafa' }}>{state.user?.bolum || '—'}</strong>
+												<strong style={{ color: '#fafafa' }}>{state.user?.department || '—'}</strong>
 											</div>
 											<div>
 												<span>Level: </span>
 												<strong style={{ color: '#fafafa' }}>
-													{state.user?.sinif ? `Level ${state.user.sinif}` : '—'}
+													{state.user?.grade ? `Level ${state.user.grade}` : '—'}
 												</strong>
 											</div>
 										</div>
@@ -497,7 +497,7 @@ function AuthorizeContent() {
 										>
 											<div>
 												<span>Role: </span>
-												<strong style={{ color: '#fafafa' }}>{state.user?.rolAd || 'Member'}</strong>
+												<strong style={{ color: '#fafafa' }}>{state.user?.roleName || 'Member'}</strong>
 											</div>
 											<div>
 												<span>Reputation: </span>
@@ -534,7 +534,7 @@ function AuthorizeContent() {
 							<div className={styles.sessionBar}>
 								<span style={{ color: '#a1a1aa' }}>Authenticated Session</span>
 								<strong style={{ color: '#fafafa' }}>
-									{state.user?.adSoyad} <span style={{ color: '#a1a1aa', fontWeight: 400 }}>({state.user?.email})</span>
+									{state.user?.nameSurname} <span style={{ color: '#a1a1aa', fontWeight: 400 }}>({state.user?.email})</span>
 								</strong>
 							</div>
 

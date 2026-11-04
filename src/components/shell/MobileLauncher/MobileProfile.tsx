@@ -4,7 +4,7 @@ import { LogOut, Settings } from 'lucide-react';
 import { useSession } from '@/core/session';
 import { useI18n } from '@/core/i18n';
 import { fill } from '@/lib/text';
-import { seviye } from '@/lib/profile';
+import { level } from '@/lib/profile';
 import { RoleBadge, roleGradient } from '@/core/ui/RoleBadge';
 import { BadgesGrid } from '@/apps/certificates/components/BadgesGrid';
 import type { AppID } from '@/types/workspace';
@@ -30,7 +30,7 @@ export function MobileProfile({ onOpenApp }: { onOpenApp: (appId: AppID) => void
 	const { currentUser, logout } = useSession();
 	const { t } = useI18n();
 	if (!currentUser) return null;
-	const level = seviye(currentUser.xp || 0);
+	const levelInfo = level(currentUser.xp || 0);
 
 	return (
 		<div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -52,7 +52,7 @@ export function MobileProfile({ onOpenApp }: { onOpenApp: (appId: AppID) => void
 							width: '56px',
 							height: '56px',
 							borderRadius: '50%',
-							background: roleGradient(currentUser.rolBilgi?.renk),
+							background: roleGradient(currentUser.roleInfo?.color),
 							display: 'grid',
 							placeItems: 'center',
 							fontWeight: 700,
@@ -60,24 +60,24 @@ export function MobileProfile({ onOpenApp }: { onOpenApp: (appId: AppID) => void
 							flexShrink: 0,
 						}}
 					>
-						{`${currentUser.ad[0] ?? ''}${currentUser.soyad[0] ?? ''}`}
+						{`${currentUser.name[0] ?? ''}${currentUser.surname[0] ?? ''}`}
 					</div>
 					<div style={{ minWidth: 0 }}>
-						<div style={{ fontSize: '17px', fontWeight: 800 }}>{`${currentUser.ad} ${currentUser.soyad}`}</div>
-						<div style={{ fontSize: '12px', opacity: 0.7, marginBottom: '6px' }}>{currentUser.bolum}</div>
-						<RoleBadge role={currentUser.rolBilgi} bosMetin={t('roleNone')} />
+						<div style={{ fontSize: '17px', fontWeight: 800 }}>{`${currentUser.name} ${currentUser.surname}`}</div>
+						<div style={{ fontSize: '12px', opacity: 0.7, marginBottom: '6px' }}>{currentUser.department}</div>
+						<RoleBadge role={currentUser.roleInfo} emptyText={t('roleNone')} />
 					</div>
 				</div>
 
 				<div>
 					<div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 700 }}>
-						<span>{fill(t('mobLevel'), { n: level.seviye })}</span>
+						<span>{fill(t('mobLevel'), { n: levelInfo.level })}</span>
 						<span style={{ opacity: 0.75 }}>{currentUser.xp || 0} XP</span>
 					</div>
 					<div style={{ height: '8px', borderRadius: '4px', background: 'rgba(255, 255, 255, 0.12)', margin: '8px 0 6px', overflow: 'hidden' }}>
-						<div style={{ height: '100%', width: `${Math.round(level.ilerleme * 100)}%`, background: 'linear-gradient(90deg, #0a84ff, #5e5ce6)' }} />
+						<div style={{ height: '100%', width: `${Math.round(levelInfo.progress * 100)}%`, background: 'linear-gradient(90deg, #0a84ff, #5e5ce6)' }} />
 					</div>
-					<div style={{ fontSize: '11.5px', opacity: 0.6 }}>{fill(t('mobXpToNext'), { n: Math.max(0, level.sonraki - (currentUser.xp || 0)) })}</div>
+					<div style={{ fontSize: '11.5px', opacity: 0.6 }}>{fill(t('mobXpToNext'), { n: Math.max(0, levelInfo.next - (currentUser.xp || 0)) })}</div>
 				</div>
 			</div>
 

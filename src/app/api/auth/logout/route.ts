@@ -20,9 +20,9 @@ export async function POST(request: Request) {
 				closeUserTerminalSessions(user.id);
 				// Log audit event
 				await logSystemEvent({
-					servis: 'auth',
-					seviye: 'INFO',
-					mesaj: `Kullanıcı güvenli çıkış yaptı: ${user.ad} ${user.soyad} (${user.email})`,
+					service: 'auth',
+					level: 'INFO',
+					message: `Kullanıcı güvenli çıkış yaptı: ${user.name} ${user.surname} (${user.email})`,
 					userId: user.id,
 					ip,
 				});

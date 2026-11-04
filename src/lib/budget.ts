@@ -6,13 +6,13 @@
 export interface VaultRow {
 	id: string;
 	date: number;
-	olusturma?: number;
-	tur: 'gelir' | 'gider';
-	kategori: string;
+	creation?: number;
+	typeValue: 'gelir' | 'gider';
+	category: string;
 	amountMinor: number;
-	aciklama: string;
-	kaydedenAdSoyad?: string | null;
-	aktarimId?: string | null;
+	description: string;
+	recorderNameSurname?: string | null;
+	transferId?: string | null;
 }
 
 /**
@@ -44,8 +44,8 @@ export function parseAmount(input: string): number | null {
 		whole = whole.replace(/[.,]/g, '');
 	}
 	s = whole;
-	const kurus = Number(s) * 100 + Number(frac.padEnd(2, '0') || 0);
-	return Number.isSafeInteger(kurus) && kurus > 0 ? kurus : null;
+	const minor = Number(s) * 100 + Number(frac.padEnd(2, '0') || 0);
+	return Number.isSafeInteger(minor) && minor > 0 ? minor : null;
 }
 
 /** 123456 → "1.234,56" */
@@ -63,7 +63,7 @@ export const formatMinor = formatCents;
 function chronological<T extends VaultRow>(rows: T[]): T[] {
 	return [...rows].sort(
 		(a, b) =>
-			a.date - b.date || (a.olusturma ?? 0) - (b.olusturma ?? 0) || a.id.localeCompare(b.id),
+			a.date - b.date || (a.creation ?? 0) - (b.creation ?? 0) || a.id.localeCompare(b.id),
 	);
 }
 
@@ -72,7 +72,7 @@ export function runningBalance(rows: VaultRow[]): Map<string, number> {
 	const out = new Map<string, number>();
 	let balance = 0;
 	for (const r of chronological(rows)) {
-		balance += r.tur === 'gelir' ? r.amountMinor : -r.amountMinor;
+		balance += r.typeValue === 'gelir' ? r.amountMinor : -r.amountMinor;
 		out.set(r.id, balance);
 	}
 	return out;
@@ -82,61 +82,60 @@ export function runningBalance(rows: VaultRow[]): Map<string, number> {
 export function categoryBreakdown(rows: VaultRow[], type: 'gelir' | 'gider' = 'gider') {
 	const totals = new Map<string, number>();
 	for (const r of rows)
-		if (r.tur === type) totals.set(r.kategori, (totals.get(r.kategori) ?? 0) + r.amountMinor);
+		if (r.typeValue === type) totals.set(r.category, (totals.get(r.category) ?? 0) + r.amountMinor);
 	const total = [...totals.values()].reduce((a, b) => a + b, 0);
 	return [...totals.entries()]
-		.map(([kategori, amountMinor]) => ({
-			kategori,
+		.map(([category, amountMinor]) => ({
+			category,
 			amountMinor,
-			oran: total ? amountMinor / total : 0,
+			ratio: total ? amountMinor / total : 0,
 		}))
-		.sort((a, b) => b.amountMinor - a.amountMinor || a.kategori.localeCompare(b.kategori, 'tr'));
+		.sort((a, b) => b.amountMinor - a.amountMinor || a.category.localeCompare(b.category, 'tr'));
 }
-export const kategoriDagilimi = categoryBreakdown;
+export const categoryDistribution = categoryBreakdown;
 
 /** "2026-10" for a timestamp, in local time. */
 export function monthKey(ms: number): string {
 	const d = new Date(ms);
 	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
-export const ayAnahtari = monthKey;
 
 /** Income and expense of the last `count` calendar months up to `now`, oldest first. */
 export function monthlyFlow(rows: VaultRow[], now: number, count = 6) {
 	const d = new Date(now);
-	const months: { ay: string; gelir: number; gider: number }[] = [];
+	const months: { month: string; gelir: number; gider: number }[] = [];
 	for (let i = count - 1; i >= 0; i--) {
 		const m = new Date(d.getFullYear(), d.getMonth() - i, 1);
-		months.push({ ay: monthKey(m.getTime()), gelir: 0, gider: 0 });
+		months.push({ month: monthKey(m.getTime()), gelir: 0, gider: 0 });
 	}
-	const byKey = new Map(months.map((m) => [m.ay, m]));
+	const byKey = new Map(months.map((m) => [m.month, m]));
 	for (const r of rows) {
 		const m = byKey.get(monthKey(r.date));
-		if (m) m[r.tur] += r.amountMinor;
+		if (m) m[r.typeValue] += r.amountMinor;
 	}
 	return months;
 }
-export const aylikAkis = monthlyFlow;
+export const monthlyFeed = monthlyFlow;
 
 export interface VaultFilter {
-	tur?: 'hepsi' | 'gelir' | 'gider';
-	kategori?: string;
+	typeValue?: 'hepsi' | 'gelir' | 'gider';
+	category?: string;
 	/** "2026-10"; empty for all months. */
-	ay?: string;
+	month?: string;
 	/** Already folded search text (see foldTr); matched against description, category and recorder. */
-	arama?: string;
+	search?: string;
 	fold?: (s: string) => string;
 }
 
 export function filterRecords<T extends VaultRow>(rows: T[], f: VaultFilter): T[] {
 	const fold = f.fold ?? ((s: string) => s.toLocaleLowerCase('tr'));
-	const q = f.arama?.trim() ? fold(f.arama.trim()) : '';
+	const q = f.search?.trim() ? fold(f.search.trim()) : '';
 	return rows.filter(
 		(r) =>
-			(!f.tur || f.tur === 'hepsi' || r.tur === f.tur) &&
-			(!f.kategori || r.kategori === f.kategori) &&
-			(!f.ay || ayAnahtari(r.date) === f.ay) &&
-			(!q || fold(`${r.aciklama} ${r.kategori} ${r.kaydedenAdSoyad ?? ''}`).includes(q)),
+			(!f.typeValue || f.typeValue === 'hepsi' || r.typeValue === f.typeValue) &&
+			(!f.category || r.category === f.category) &&
+			(!f.month || monthKey(r.date) === f.month) &&
+			(!q || fold(`${r.description} ${r.category} ${r.recorderNameSurname ?? ''}`).includes(q)),
 	);
 }
 

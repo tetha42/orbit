@@ -40,14 +40,14 @@ async function handlePATCH(request: Request) {
 			if (s.length > MAX) throw new Error(`${field} en fazla ${MAX} karakter olabilir.`);
 			return s;
 		};
-		if (body.universite !== undefined) next.universite = text(body.universite, 'Studio', true);
-		if (body.kulupAdi !== undefined) next.kulup_adi = text(body.kulupAdi, 'Community name', true);
-		if (body.imzalar !== undefined) {
-			if (!Array.isArray(body.imzalar) || body.imzalar.length !== 2) throw new Error('İki imza satırı gönderin.');
-			body.imzalar.forEach((imza: unknown, i: number) => {
-				const row = (imza ?? {}) as Record<string, unknown>;
-				next[`imza${i + 1}_ad`] = text(row.ad, 'İmzacı adı', false);
-				next[`imza${i + 1}_unvan`] = text(row.unvan, 'Unvan', true);
+		if (body.university !== undefined) next.university = text(body.university, 'Studio', true);
+		if (body.clubName !== undefined) next.club_Name = text(body.clubName, 'Community name', true);
+		if (body.signatures !== undefined) {
+			if (!Array.isArray(body.signatures) || body.signatures.length !== 2) throw new Error('İki imza satırı gönderin.');
+			body.signatures.forEach((signature: unknown, i: number) => {
+				const row = (signature ?? {}) as Record<string, unknown>;
+				next[`imza${i + 1}_ad`] = text(row.name, 'İmzacı adı', false);
+				next[`imza${i + 1}_unvan`] = text(row.rank, 'Unvan', true);
 			});
 		}
 		await setSystemSettings(next);

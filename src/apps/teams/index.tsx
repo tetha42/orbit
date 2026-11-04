@@ -95,7 +95,7 @@ export function TeamsApp() {
 							team={state.selectedTeam}
 							visibleTab={state.visibleTab}
 							currentUserId={state.currentUserId}
-							currentUserName={state.currentUser ? `${state.currentUser.ad} ${state.currentUser.soyad}`.trim() : undefined}
+							currentUserName={state.currentUser ? `${state.currentUser.name} ${state.currentUser.surname}`.trim() : undefined}
 							canSeeVault={state.canSeeVault(state.selectedTeam)}
 							openTaskId={state.openTaskId}
 							setOpenTaskId={state.setOpenTaskId}
@@ -124,10 +124,10 @@ export function TeamsApp() {
 			)}
 			{state.applyTo && (
 				<ApplyModal
-					teamName={state.applyTo.ad}
+					teamName={state.applyTo.name}
 					onClose={() => state.setApplyTo(null)}
 					onSend={async (note) => {
-						if (await state.post({ action: 'join', teamId: state.applyTo!.id, basvuruNotu: note })) {
+						if (await state.post({ action: 'join', teamId: state.applyTo!.id, applicationNote: note })) {
 							state.setApplyTo(null);
 						}
 					}}

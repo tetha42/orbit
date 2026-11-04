@@ -34,8 +34,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ name
 		return notFound();
 	}
 
-	const dosya = await getStoredFile(name);
-	const mime = dosya?.mime ?? mimeForName(name);
+	const file = await getStoredFile(name);
+	const mime = file?.mime ?? mimeForName(name);
 	const stream = Readable.toWeb(createReadStream(filePath)) as ReadableStream;
 
 	// Chrome's native PDF viewer refuses to initialise under a sandboxed CSP, so

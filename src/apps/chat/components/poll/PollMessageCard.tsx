@@ -22,7 +22,7 @@ interface PollMessageCardProps {
 	poll: ChatPollItem;
 	currentUserId: string;
 	isAdmin: boolean;
-	onVote: (pollId: string, secenekId: string) => Promise<boolean>;
+	onVote: (pollId: string, optionId: string) => Promise<boolean>;
 	onClosePoll: (pollId: string) => Promise<boolean>;
 }
 
@@ -42,13 +42,13 @@ export function PollMessageCard({
 		Boolean(poll.kapali) ||
 		(typeof poll.endsAt === 'number' && now > poll.endsAt);
 
-	const canClose = (isAdmin || poll.olusturanId === currentUserId) && !isClosed;
+	const canClose = (isAdmin || poll.creatorId === currentUserId) && !isClosed;
 
-	const handleOptionClick = async (secenekId: string) => {
+	const handleOptionClick = async (optionId: string) => {
 		if (isClosed || votingOptId) return;
-		setVotingOptId(secenekId);
+		setVotingOptId(optionId);
 		try {
-			await onVote(poll.id, secenekId);
+			await onVote(poll.id, optionId);
 		} finally {
 			setVotingOptId(null);
 		}
@@ -98,11 +98,11 @@ export function PollMessageCard({
 					<div className={s.pollIconBadge}>
 						<BarChart2 size={16} />
 					</div>
-					<h4 className={s.pollQuestion}>{poll.soru}</h4>
+					<h4 className={s.pollQuestion}>{poll.question}</h4>
 				</div>
 
 				<div className={s.pollMetaTags}>
-					{poll.anonim ? (
+					{poll.anonymous ? (
 						<span className={s.pollMetaTag} title={t('chatPollAnonymousDesc')}>
 							<Shield size={12} />
 							<span>{t('chatPollAnonymous')}</span>
@@ -114,7 +114,7 @@ export function PollMessageCard({
 						</span>
 					)}
 
-					{poll.cokluSecim && (
+					{poll.multipleSelection && (
 						<span className={s.pollMetaTag}>
 							<CheckSquare size={12} />
 							<span>{t('chatPollMultiChoice')}</span>
@@ -132,8 +132,8 @@ export function PollMessageCard({
 
 			{/* Options List */}
 			<div className={s.pollOptionsContainer}>
-				{poll.secenekler.map((opt) => {
-					const isVoted = poll.kullaniciOylari.includes(opt.id);
+				{poll.options.map((opt) => {
+					const isVoted = poll.userVotes.includes(opt.id);
 					const isPending = votingOptId === opt.id;
 
 					return (
@@ -149,14 +149,14 @@ export function PollMessageCard({
 							{/* Background Progress Bar */}
 							<div
 								className={`${s.pollProgressBar} ${isVoted ? s.pollProgressBarVoted : ''}`}
-								style={{ width: `${opt.yuzde}%` }}
+								style={{ width: `${opt.percent}%` }}
 							/>
 
 							{/* Option Content */}
 							<div className={s.pollOptionContent}>
 								<div className={s.pollOptionLeft}>
 									<div className={s.pollCheckIcon}>
-										{poll.cokluSecim ? (
+										{poll.multipleSelection ? (
 											isVoted ? (
 												<CheckSquare size={16} className={s.pollCheckActive} />
 											) : (
@@ -168,41 +168,41 @@ export function PollMessageCard({
 											<Circle size={16} />
 										)}
 									</div>
-									<span className={s.pollOptionText}>{opt.metin}</span>
+									<span className={s.pollOptionText}>{opt.text}</span>
 								</div>
 
 								<div className={s.pollOptionRight}>
-									<span className={s.pollOptionPercentage}>%{opt.yuzde}</span>
+									<span className={s.pollOptionPercentage}>%{opt.percent}</span>
 									<span className={s.pollOptionCount}>
-										({fill(t('chatPollTotalVotes'), { n: opt.oySayisi })})
+										({fill(t('chatPollTotalVotes'), { n: opt.voteCount })})
 									</span>
 								</div>
 							</div>
 
 							{/* Non-anonymous Voter Avatars */}
-							{!poll.anonim && opt.oyVerenler && opt.oyVerenler.length > 0 && (
+							{!poll.anonymous && opt.voteGivers && opt.voteGivers.length > 0 && (
 								<div className={s.pollVotersRow}>
-									{opt.oyVerenler.slice(0, 5).map((voter) => (
+									{opt.voteGivers.slice(0, 5).map((voter) => (
 										<span
 											key={voter.id}
 											className={s.pollVoterAvatar}
-											title={voter.ad}
+											title={voter.name}
 										>
-											{voter.foto ? (
+											{voter.photo ? (
 												// eslint-disable-next-line @next/next/no-img-element
 												<img
-													src={voter.foto}
-													alt={voter.ad}
+													src={voter.photo}
+													alt={voter.name}
 													style={{ width: '100%', height: '100%', borderRadius: '50%' }}
 												/>
 											) : (
-												voter.ad.slice(0, 1).toUpperCase()
+												voter.name.slice(0, 1).toUpperCase()
 											)}
 										</span>
 									))}
-									{opt.oyVerenler.length > 5 && (
+									{opt.voteGivers.length > 5 && (
 										<span className={s.pollVotersMore}>
-											+{opt.oyVerenler.length - 5}
+											+{opt.voteGivers.length - 5}
 										</span>
 									)}
 								</div>
@@ -215,7 +215,7 @@ export function PollMessageCard({
 			{/* Footer: Total Votes & Admin Close Button */}
 			<div className={s.pollCardFooter}>
 				<span className={s.pollTotalCount}>
-					{fill(t('chatPollTotalVotes'), { n: poll.toplamOy })}
+					{fill(t('chatPollTotalVotes'), { n: poll.totalVote })}
 				</span>
 
 				{canClose && (

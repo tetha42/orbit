@@ -38,7 +38,7 @@ import { CreatePollModal } from './components/poll/CreatePollModal';
 import { PollMessageCard } from './components/poll/PollMessageCard';
 import { ForwardMessageModal } from './components/ForwardMessageModal';
 import { ChatAttachments } from './components/ChatAttachments';
-import type { ChatAttachmentItem, ChatOdaItem, ChatMessageItem } from './types';
+import type { ChatAttachmentItem, ChatRoomItem, ChatMessageItem } from './types';
 import { useMobileSubView } from '@/lib/client/useMobileSubView';
 import s from './ChatMobile.module.css';
 import chatStyles from './Chat.module.css';
@@ -60,17 +60,17 @@ function formatDateTime(ts?: number): string {
 	return `${d.toLocaleDateString([], { day: '2-digit', month: '2-digit', year: 'numeric' })} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 }
 
-function RoomIcon({ room }: { room: ChatOdaItem }) {
-	const isGroup = room.tur === 'takim' || (room.tur === 'ozel' && (room.memberCount || 0) > 2);
+function RoomIcon({ room }: { room: ChatRoomItem }) {
+	const isGroup = room.typeValue === 'takim' || (room.typeValue === 'ozel' && (room.memberCount || 0) > 2);
 	return (
 		<div className={s.roomIcon}>
 			{room.avatar ? (
 				// eslint-disable-next-line @next/next/no-img-element
-				<img src={room.avatar} alt={room.ad} />
+				<img src={room.avatar} alt={room.name} />
 			) : isGroup ? (
 				<Users size={19} />
-			) : room.tur === 'ozel' ? (
-				<span className={s.roomIconInitial}>{(room.ad || '?').slice(0, 1).toUpperCase()}</span>
+			) : room.typeValue === 'ozel' ? (
+				<span className={s.roomIconInitial}>{(room.name || '?').slice(0, 1).toUpperCase()}</span>
 			) : (
 				<MessageSquare size={19} />
 			)}
@@ -228,38 +228,38 @@ export function ChatMobileView() {
 		const q = searchQuery.trim().toLocaleLowerCase(language);
 		if (!q) return rooms;
 		return rooms.filter((r) =>
-			r.ad.toLocaleLowerCase(language).includes(q)
+			r.name.toLocaleLowerCase(language).includes(q)
 		);
 	}, [rooms, searchQuery, language]);
 
 	// Split rooms into categories matching desktop ChatRoomList
-	const genelRooms = useMemo(
-		() => filteredRooms.filter((r) => r.tur !== 'takim' && r.tur !== 'ozel'),
+	const generalRooms = useMemo(
+		() => filteredRooms.filter((r) => r.typeValue !== 'takim' && r.typeValue !== 'ozel'),
 		[filteredRooms]
 	);
 	const teamRooms = useMemo(
-		() => filteredRooms.filter((r) => r.tur === 'takim'),
+		() => filteredRooms.filter((r) => r.typeValue === 'takim'),
 		[filteredRooms]
 	);
-	const ozelRooms = useMemo(
-		() => filteredRooms.filter((r) => r.tur === 'ozel'),
+	const customRooms = useMemo(
+		() => filteredRooms.filter((r) => r.typeValue === 'ozel'),
 		[filteredRooms]
 	);
 
 	const totalUnreadCount = useMemo(
-		() => rooms.reduce((acc, r) => acc + (r.okunmamisSayisi || 0), 0),
+		() => rooms.reduce((acc, r) => acc + (r.unreadCount || 0), 0),
 		[rooms]
 	);
 	const unreadDirectCount = useMemo(
-		() => ozelRooms.reduce((acc, r) => acc + (r.okunmamisSayisi || 0), 0),
-		[ozelRooms]
+		() => customRooms.reduce((acc, r) => acc + (r.unreadCount || 0), 0),
+		[customRooms]
 	);
 	const unreadChannelsCount = useMemo(
-		() => genelRooms.reduce((acc, r) => acc + (r.okunmamisSayisi || 0), 0),
-		[genelRooms]
+		() => generalRooms.reduce((acc, r) => acc + (r.unreadCount || 0), 0),
+		[generalRooms]
 	);
 	const unreadTeamsCount = useMemo(
-		() => teamRooms.reduce((acc, r) => acc + (r.okunmamisSayisi || 0), 0),
+		() => teamRooms.reduce((acc, r) => acc + (r.unreadCount || 0), 0),
 		[teamRooms]
 	);
 
@@ -317,7 +317,7 @@ export function ChatMobileView() {
 
 	const isGroupOrTeam =
 		!!activeRoom &&
-		(activeRoom.tur === 'takim' || (activeRoom.tur === 'ozel' && (activeRoom.memberCount || 0) > 2));
+		(activeRoom.typeValue === 'takim' || (activeRoom.typeValue === 'ozel' && (activeRoom.memberCount || 0) > 2));
 
 	const openRoom = (id: string) => {
 		selectRoom(id);
@@ -409,31 +409,31 @@ export function ChatMobileView() {
 		});
 	};
 
-	const subtitle = (room: ChatOdaItem) =>
-		room.tur === 'genel'
+	const subtitle = (room: ChatRoomItem) =>
+		room.typeValue === 'genel'
 			? t('chatPublicSub')
-			: room.tur === 'takim'
+			: room.typeValue === 'takim'
 			? t('chatTeamSub')
 			: room.memberCount && room.memberCount > 2
 			? fill(t('chatTotalMembers'), { n: room.memberCount })
 			: t('chatPrivateSub');
 
-	const renderRoomItem = (room: ChatOdaItem) => {
-		const unread = room.okunmamisSayisi || 0;
+	const renderRoomItem = (room: ChatRoomItem) => {
+		const unread = room.unreadCount || 0;
 		return (
 			<button key={room.id} type="button" className={s.roomItem} onClick={() => openRoom(room.id)}>
 				<RoomIcon room={room} />
 				<div className={s.roomBody}>
 					<div className={s.roomNameRow}>
-						<span className={s.roomName}>{room.ad}</span>
-						{room.sonMesaj?.date && (
-							<span className={s.roomTime}>{formatTime(room.sonMesaj.date)}</span>
+						<span className={s.roomName}>{room.name}</span>
+						{room.lastMessage?.date && (
+							<span className={s.roomTime}>{formatTime(room.lastMessage.date)}</span>
 						)}
 					</div>
 					<div className={s.roomLastMsgRow}>
 						<span className={s.roomLastMsg}>
-							{room.sonMesaj
-								? `${(room.sonMesaj.gonderenAd || t('spotKindMember')).split(' ')[0]}: ${room.sonMesaj.icerik}`
+							{room.lastMessage
+								? `${(room.lastMessage.senderName || t('spotKindMember')).split(' ')[0]}: ${room.lastMessage.content}`
 								: t('chatNoMessages')}
 						</span>
 						{unread > 0 && <span className={s.unreadBadge}>{unread}</span>}
@@ -551,10 +551,10 @@ export function ChatMobileView() {
 				<div className={s.list} ref={listScrollRef}>
 					{activeTab === 'all' && (
 						<>
-							{genelRooms.length > 0 && (
+							{generalRooms.length > 0 && (
 								<div>
 									<div className={s.sectionHeader}>{t('chatChannels')}</div>
-									{genelRooms.map(renderRoomItem)}
+									{generalRooms.map(renderRoomItem)}
 								</div>
 							)}
 
@@ -565,10 +565,10 @@ export function ChatMobileView() {
 								</div>
 							)}
 
-							{ozelRooms.length > 0 && (
+							{customRooms.length > 0 && (
 								<div>
 									<div className={s.sectionHeader}>{t('chatDirectMessages')}</div>
-									{ozelRooms.map(renderRoomItem)}
+									{customRooms.map(renderRoomItem)}
 								</div>
 							)}
 
@@ -582,10 +582,10 @@ export function ChatMobileView() {
 
 					{activeTab === 'direct' && (
 						<>
-							{ozelRooms.length > 0 ? (
+							{customRooms.length > 0 ? (
 								<div>
 									<div className={s.sectionHeader}>{t('chatDirectMessages')}</div>
-									{ozelRooms.map(renderRoomItem)}
+									{customRooms.map(renderRoomItem)}
 								</div>
 							) : (
 								<div className={s.emptyListCard}>
@@ -608,10 +608,10 @@ export function ChatMobileView() {
 
 					{activeTab === 'channels' && (
 						<>
-							{genelRooms.length > 0 ? (
+							{generalRooms.length > 0 ? (
 								<div>
 									<div className={s.sectionHeader}>{t('chatChannels')}</div>
-									{genelRooms.map(renderRoomItem)}
+									{generalRooms.map(renderRoomItem)}
 								</div>
 							) : (
 								<div className={s.emptyListCard}>
@@ -699,19 +699,19 @@ export function ChatMobileView() {
 					<div className={s.convIcon}>
 						{activeRoom.avatar ? (
 							// eslint-disable-next-line @next/next/no-img-element
-							<img src={activeRoom.avatar} alt={activeRoom.ad} />
+							<img src={activeRoom.avatar} alt={activeRoom.name} />
 						) : isGroupOrTeam ? (
 							<Users size={18} />
-						) : activeRoom.tur === 'ozel' ? (
+						) : activeRoom.typeValue === 'ozel' ? (
 							<span className={s.convIconInitial}>
-								{activeRoom.ad.slice(0, 1).toUpperCase()}
+								{activeRoom.name.slice(0, 1).toUpperCase()}
 							</span>
 						) : (
 							<MessageSquare size={18} />
 						)}
 					</div>
 					<div className={s.convText}>
-						<span className={s.convName}>{activeRoom.ad}</span>
+						<span className={s.convName}>{activeRoom.name}</span>
 						<span className={s.convSub}>{subtitle(activeRoom)}</span>
 					</div>
 				</button>
@@ -761,16 +761,16 @@ export function ChatMobileView() {
 						</div>
 					)}
 					{messages.map((msg) => {
-						if (msg.gonderenId === 'sistem') {
+						if (msg.senderId === 'sistem') {
 							return (
 								<div key={msg.id} className={s.systemMsg}>
-									<span className={s.systemPill}>{msg.icerik}</span>
+									<span className={s.systemPill}>{msg.content}</span>
 								</div>
 							);
 						}
-						const isMine = msg.gonderenId === currentUser.id;
-						const isDeleted = Boolean(msg.silinmeTarihi);
-						const isEdited = Boolean(msg.duzenlenmeTarihi) && !isDeleted;
+						const isMine = msg.senderId === currentUser.id;
+						const isDeleted = Boolean(msg.deletionDate);
+						const isEdited = Boolean(msg.editDate) && !isDeleted;
 
 						return (
 							<div
@@ -782,23 +782,23 @@ export function ChatMobileView() {
 							>
 								{!isMine && (
 									<div className={s.msgAvatar}>
-										{msg.gonderenFoto ? (
+										{msg.senderPhoto ? (
 											// eslint-disable-next-line @next/next/no-img-element
-											<img src={msg.gonderenFoto} alt={msg.gonderenAd || t('spotKindMember')} />
+											<img src={msg.senderPhoto} alt={msg.senderName || t('spotKindMember')} />
 										) : (
-											(msg.gonderenAd || '?').slice(0, 1).toUpperCase()
+											(msg.senderName || '?').slice(0, 1).toUpperCase()
 										)}
 									</div>
 								)}
 
 								<div className={s.msgBody}>
 									{!isMine && (
-										<span className={s.msgSender}>{msg.gonderenAd || t('spotKindMember')}</span>
+										<span className={s.msgSender}>{msg.senderName || t('spotKindMember')}</span>
 									)}
 									<div className={s.bubbleWrap}>
-										{msg.anket ? (
+										{msg.poll ? (
 											<PollMessageCard
-												poll={msg.anket}
+												poll={msg.poll}
 												currentUserId={currentUser.id}
 												isAdmin={Boolean(isAdmin)}
 												onVote={votePoll}
@@ -807,7 +807,7 @@ export function ChatMobileView() {
 										) : (
 											<div
 												className={`${s.bubble} ${isMine ? s.bubbleMine : ''} ${
-													!isDeleted && (msg.ekler?.length ?? 0) > 0 ? s.bubbleMedia : ''
+													!isDeleted && (msg.attachments?.length ?? 0) > 0 ? s.bubbleMedia : ''
 												} ${isDeleted ? s.bubbleDeleted : ''}`}
 												onClick={(event) => {
 													const target = event.target as HTMLElement;
@@ -820,7 +820,7 @@ export function ChatMobileView() {
 												}}
 											>
 												{/* Forwarded Header */}
-												{msg.iletildiMi && !isDeleted && (
+												{msg.deliveredMi && !isDeleted && (
 													<div className={`${s.forwardedTag} ${isMine ? s.forwardedTagMine : ''}`}>
 														<Forward size={11} />
 														<span>{t('chatForwarded')}</span>
@@ -828,26 +828,26 @@ export function ChatMobileView() {
 												)}
 
 												{/* Quoted Reply Bubble */}
-												{msg.yanitlananMesaj && !isDeleted && (
+												{msg.repliedMessage && !isDeleted && (
 													<div className={`${s.quotedBubble} ${isMine ? s.quotedBubbleMine : ''}`}>
 														<div className={s.quotedBar} />
 														<div className={s.quotedContent}>
-															<span className={s.quotedAuthor}>{msg.yanitlananMesaj.gonderenAd}</span>
-															<span className={s.quotedSnippet}>{msg.yanitlananMesaj.icerik}</span>
+															<span className={s.quotedAuthor}>{msg.repliedMessage.senderName}</span>
+															<span className={s.quotedSnippet}>{msg.repliedMessage.content}</span>
 														</div>
 													</div>
 												)}
 
 												{isDeleted && <span className={s.deletedInlineNotice}>[{t('chatDelete').toUpperCase()}] </span>}
-												{msg.icerik && <div className={s.msgTextContent}>{msg.icerik}</div>}
-												{!isDeleted && msg.ekler?.length > 0 && <ChatAttachments attachments={msg.ekler} />}
+												{msg.content && <div className={s.msgTextContent}>{msg.content}</div>}
+												{!isDeleted && msg.attachments?.length > 0 && <ChatAttachments attachments={msg.attachments} />}
 												<div className={s.bubbleTime}>{formatTime(msg.date)}</div>
 											</div>
 										)}
 
 										{!isDeleted && (
 											<div className={s.mobileMsgActions}>
-												{!msg.anket && (
+												{!msg.poll && (
 													<button
 														type="button"
 														className={s.mobileActionBtn}
@@ -860,7 +860,7 @@ export function ChatMobileView() {
 														<Reply size={11} />
 													</button>
 												)}
-												{!msg.anket && (
+												{!msg.poll && (
 													<button
 														type="button"
 														className={s.mobileActionBtn}
@@ -870,13 +870,13 @@ export function ChatMobileView() {
 														<Forward size={11} />
 													</button>
 												)}
-												{isMine && !msg.anket && (
+												{isMine && !msg.poll && (
 													<button
 														type="button"
 														className={s.mobileActionBtn}
 														onClick={() => {
 															setEditingMessage(msg);
-															setText(msg.icerik);
+															setText(msg.content);
 															composerInputRef.current?.focus();
 														}}
 														title={t('chatEdit')}
@@ -902,16 +902,16 @@ export function ChatMobileView() {
 										)}
 									</div>
 
-									{isDeleted && msg.silinmeTarihi && (
+									{isDeleted && msg.deletionDate && (
 										<div className={s.deletedBadge}>
-											<span>🗑️ {fill(t('chatDeletedAt'), { time: formatDateTime(msg.silinmeTarihi) })}</span>
+											<span>🗑️ {fill(t('chatDeletedAt'), { time: formatDateTime(msg.deletionDate) })}</span>
 											<span className={s.adminOnlyTag}>{t('chatAdminDeletedBadge')}</span>
 										</div>
 									)}
 
-									{isEdited && msg.duzenlenmeTarihi && (
+									{isEdited && msg.editDate && (
 										<div className={s.editedBadge}>
-											<span>✏️ {fill(t('chatEditedAt'), { time: formatTime(msg.duzenlenmeTarihi) })}</span>
+											<span>✏️ {fill(t('chatEditedAt'), { time: formatTime(msg.editDate) })}</span>
 										</div>
 									)}
 								</div>
@@ -927,8 +927,8 @@ export function ChatMobileView() {
 					<div className={s.mobileEditingInfo}>
 						<Pencil size={12} />
 						<span>
-							<strong>{t('chatEditingBanner')}:</strong> {editingMessage.icerik.slice(0, 32)}
-							{editingMessage.icerik.length > 32 ? '…' : ''}
+							<strong>{t('chatEditingBanner')}:</strong> {editingMessage.content.slice(0, 32)}
+							{editingMessage.content.length > 32 ? '…' : ''}
 						</span>
 					</div>
 					<button
@@ -951,9 +951,9 @@ export function ChatMobileView() {
 						<Reply size={12} />
 						<span>
 							<strong>{t('chatReplyingBanner')}:</strong>{' '}
-							<span style={{ fontWeight: 600 }}>{replyingMessage.gonderenAd}</span>{' '}
-							&mdash; {replyingMessage.icerik.slice(0, 32)}
-							{replyingMessage.icerik.length > 32 ? '…' : ''}
+							<span style={{ fontWeight: 600 }}>{replyingMessage.senderName}</span>{' '}
+							&mdash; {replyingMessage.content.slice(0, 32)}
+							{replyingMessage.content.length > 32 ? '…' : ''}
 						</span>
 					</div>
 					<button
@@ -996,7 +996,7 @@ export function ChatMobileView() {
 					{attachments.map((attachment, index) => (
 						<span key={`${attachment.url}-${index}`} className={chatStyles.pendingAttachment}>
 							<Paperclip size={11} />
-							<span>{attachment.ad}</span>
+							<span>{attachment.name}</span>
 							<button
 								type="button"
 								onClick={() =>

@@ -67,7 +67,6 @@ export interface AuditRecord {
 /** Key names that carry credentials — dropped wherever they appear. */
 export const FORBIDDEN_KEY =
 	/pass|parola|password|şifre|sifre|hash|totp|secret|token|recovery|kurtarma|credential|cookie|oturum|api_?key|auth(?:orization)?|private_?key|bearer|access_?key/i;
-export const YASAK_ANAHTAR = FORBIDDEN_KEY;
 
 const MAX_DEPTH = 4;
 const MAX_TEXT = 300;
@@ -91,7 +90,7 @@ export function sanitizeValue(value: unknown, depth = 0): AuditValue | undefined
 	}
 	return undefined;
 }
-export const temizle = sanitizeValue;
+export const clear = sanitizeValue;
 
 /** `sanitizeValue` for a record; an empty one is stored as nothing. */
 export function recordFields(value: Record<string, unknown> | null | undefined): AuditFields | null {
@@ -104,43 +103,42 @@ export function recordFields(value: Record<string, unknown> | null | undefined):
 export function sanitizeIp(raw: string | null | undefined): string {
 	return String(raw ?? '').replace(/[\u0000-\u001f\u007f\s]+/g, '').slice(0, 64) || 'unknown';
 }
-export const temizIp = sanitizeIp;
+export const cleanIp = sanitizeIp;
 
 /* ---------------- white-listed snapshots ---------------- */
 
 export type RoleSummary = {
-	ad: string;
-	renk: string;
-	aciklama: string;
-	ikiAdimZorunlu: boolean;
-	izinler: Record<string, string>;
+	name: string;
+	color: string;
+	description: string;
+	twoStepRequired: boolean;
+	permissions: Record<string, string>;
 };
 
 /** A role as the log sees it: only these fields, permissions without the 'yok' rows. */
-export function roleSummary(r: { ad: string; renk: string; aciklama?: string | null; ikiAdimZorunlu: boolean; izinler: Record<string, string | undefined> }): RoleSummary {
-	const izinler: Record<string, string> = {};
-	for (const [app, seviye] of Object.entries(r.izinler).sort(([a], [b]) => a.localeCompare(b))) {
-		if (seviye && seviye !== 'yok') izinler[app] = seviye;
+export function roleSummary(r: { name: string; color: string; description?: string | null; twoStepRequired: boolean; permissions: Record<string, string | undefined> }): RoleSummary {
+	const permissions: Record<string, string> = {};
+	for (const [app, level] of Object.entries(r.permissions).sort(([a], [b]) => a.localeCompare(b))) {
+		if (level && level !== 'yok') permissions[app] = level;
 	}
-	return { ad: r.ad, renk: r.renk, aciklama: r.aciklama ?? '', ikiAdimZorunlu: !!r.ikiAdimZorunlu, izinler };
+	return { name: r.name, color: r.color, description: r.description ?? '', twoStepRequired: !!r.twoStepRequired, permissions };
 }
 
 /** The minimum a member record keeps about its subject — enough to tell who it was, nothing else. */
-export function memberSummary(u: { ad: string; soyad: string; email: string; status?: string | null; roleId?: string | null; rolAd?: string | null }): AuditFields {
-	const out: AuditFields = { ad: `${u.ad} ${u.soyad}`.trim(), email: u.email };
+export function memberSummary(u: { name: string; surname: string; email: string; status?: string | null; roleId?: string | null; roleName?: string | null }): AuditFields {
+	const out: AuditFields = { name: `${u.name} ${u.surname}`.trim(), email: u.email };
 	if (u.status !== undefined) out.status = u.status ?? null;
 	if (u.roleId !== undefined) out.roleId = u.roleId ?? null;
-	if (u.rolAd !== undefined) out.roleName = u.rolAd ?? null;
+	if (u.roleName !== undefined) out.roleName = u.roleName ?? null;
 	return out;
 }
 
 /** One changed field, flattened for display (permissions as `izinler.<app>`). */
 export interface DiffRow {
-	alan: string;
+	field: string;
 	before: string | number | boolean | null;
 	after: string | number | boolean | null;
 }
-export type FarkSatiri = DiffRow;
 
 const duz = (v: AuditValue | undefined): string | number | boolean | null => (v === undefined || v === null ? null : typeof v === 'object' ? JSON.stringify(v) : v);
 
@@ -156,18 +154,18 @@ export function diffRows(before: AuditFields | null, after: AuditFields | null):
 		if (nested(a) || nested(b)) {
 			const oa = nested(a) ? a : {};
 			const nb = nested(b) ? b : {};
-			for (const kk of new Set([...Object.keys(oa), ...Object.keys(nb)])) rows.push({ alan: `${k}.${kk}`, before: duz(oa[kk]), after: duz(nb[kk]) });
+			for (const kk of new Set([...Object.keys(oa), ...Object.keys(nb)])) rows.push({ field: `${k}.${kk}`, before: duz(oa[kk]), after: duz(nb[kk]) });
 		} else {
-			rows.push({ alan: k, before: duz(a), after: duz(b) });
+			rows.push({ field: k, before: duz(a), after: duz(b) });
 		}
 	}
 	return rows;
 }
 
 /** How a member is named in a record's target column: name and e-mail (the minimum that identifies them). */
-export function memberTargetName(u: { ad?: string; soyad?: string; firstName?: string; lastName?: string; email: string }): string {
-	const first = u.firstName || u.ad || '';
-	const last = u.lastName || u.soyad || '';
+export function memberTargetName(u: { name?: string; surname?: string; firstName?: string; lastName?: string; email: string }): string {
+	const first = u.firstName || u.name || '';
+	const last = u.lastName || u.surname || '';
 	return `${first} ${last}`.trim() + ` (${u.email})`;
 }
 
@@ -177,22 +175,21 @@ export interface DiffResult {
 	before: AuditFields;
 	after: AuditFields;
 }
-export type Fark = DiffResult;
+export type Diff = DiffResult;
 
-const ayni = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
 /** Only the fields that differ, before and after; `null` when nothing changed. */
 export function fieldDiff(before: Record<string, unknown>, after: Record<string, unknown>): DiffResult | null {
 	const o: AuditFields = {};
 	const n: AuditFields = {};
 	for (const k of new Set([...Object.keys(before), ...Object.keys(after)])) {
-		if (ayni(before[k], after[k])) continue;
+		if (same(before[k], after[k])) continue;
 		o[k] = sanitizeValue(before[k] ?? null) ?? null;
 		n[k] = sanitizeValue(after[k] ?? null) ?? null;
 	}
 	return Object.keys(n).length ? { before: o, after: n } : null;
 }
-export const alanFarki = fieldDiff;
 
 /**
  * A role edit as a diff: changed fields, and of the permission matrix only the
@@ -201,7 +198,7 @@ export const alanFarki = fieldDiff;
 export function roleDiff(before: RoleSummary, after: RoleSummary): DiffResult | null {
 	const o: AuditFields = {};
 	const n: AuditFields = {};
-	for (const k of ['ad', 'renk', 'aciklama', 'ikiAdimZorunlu'] as const) {
+	for (const k of ['name', 'color', 'description', 'twoStepRequired'] as const) {
 		if (before[k] !== after[k]) {
 			o[k] = before[k];
 			n[k] = after[k];
@@ -209,17 +206,17 @@ export function roleDiff(before: RoleSummary, after: RoleSummary): DiffResult | 
 	}
 	const oi: Record<string, string> = {};
 	const ni: Record<string, string> = {};
-	for (const app of new Set([...Object.keys(before.izinler), ...Object.keys(after.izinler)])) {
-		const a = before.izinler[app] ?? 'yok';
-		const b = after.izinler[app] ?? 'yok';
+	for (const app of new Set([...Object.keys(before.permissions), ...Object.keys(after.permissions)])) {
+		const a = before.permissions[app] ?? 'yok';
+		const b = after.permissions[app] ?? 'yok';
 		if (a !== b) {
 			oi[app] = a;
 			ni[app] = b;
 		}
 	}
 	if (Object.keys(ni).length) {
-		o.izinler = oi;
-		n.izinler = ni;
+		o.permissions = oi;
+		n.permissions = ni;
 	}
 	return Object.keys(n).length ? { before: o, after: n } : null;
 }
@@ -227,41 +224,38 @@ export function roleDiff(before: RoleSummary, after: RoleSummary): DiffResult | 
 /** The key that holds the (encrypted) app password, only ever reported as changed, never its value. */
 export const SMTP_PASSWORD_KEY = 'smtp_pass';
 export const SMTP_FIELDS = ['smtp_host', 'smtp_port', 'smtp_secure', 'smtp_user', 'smtp_from'] as const;
-export const SMTP_PAROLA_ANAHTARI = SMTP_PASSWORD_KEY;
-export const SMTP_ALANLARI = SMTP_FIELDS;
 
 /**
  * The e-mail account settings (SMTP) as a diff. `before` holds the stored values (a
  * missing key reads as its default), `yeni` the keys being written. The
  * password is reported as "değişti" / "silindi" and never by value.
  */
-export function smtpDiff(before: Record<string, string | undefined>, yeni: Record<string, string>, varsayilan: Record<string, string>): DiffResult | null {
+export function smtpDiff(before: Record<string, string | undefined>, fresh: Record<string, string>, defaultValue: Record<string, string>): DiffResult | null {
 	const o: AuditFields = {};
 	const n: AuditFields = {};
 	for (const k of SMTP_FIELDS) {
-		if (!(k in yeni)) continue;
-		const previous = before[k] ?? varsayilan[k] ?? '';
-		if (previous !== yeni[k]) {
+		if (!(k in fresh)) continue;
+		const previous = before[k] ?? defaultValue[k] ?? '';
+		if (previous !== fresh[k]) {
 			o[k] = previous;
-			n[k] = yeni[k];
+			n[k] = fresh[k];
 		}
 	}
-	if (SMTP_PASSWORD_KEY in yeni) {
-		const vardi = !!before[SMTP_PASSWORD_KEY];
-		if (yeni[SMTP_PASSWORD_KEY] === '') {
+	if (SMTP_PASSWORD_KEY in fresh) {
+		const existed = !!before[SMTP_PASSWORD_KEY];
+		if (fresh[SMTP_PASSWORD_KEY] === '') {
 			// Clearing a password that was never set is no change.
-			if (vardi) {
-				o.uygulamaAnahtari = 'var';
-				n.uygulamaAnahtari = 'silindi';
+			if (existed) {
+				o.appKey = 'var';
+				n.appKey = 'silindi';
 			}
 		} else {
-			o.uygulamaAnahtari = vardi ? 'var' : 'yok';
-			n.uygulamaAnahtari = 'degisti';
+			o.appKey = existed ? 'var' : 'yok';
+			n.appKey = 'degisti';
 		}
 	}
 	return Object.keys(n).length ? { before: o, after: n } : null;
 }
-export const smtpFarki = smtpDiff;
 
 /** Which log entry a membership status change is. */
 export function statusAction(before: string, after: string): AuditAction | null {
@@ -294,9 +288,9 @@ export interface AuditFilter {
 }
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
-const sayi = (v: string | null, varsayilan: number, en: number, fazla: number) => {
+const count = (v: string | null, defaultValue: number, en: number, extra: number) => {
 	const n = Math.floor(Number(v));
-	return Number.isFinite(n) && n >= en ? Math.min(n, fazla) : varsayilan;
+	return Number.isFinite(n) && n >= en ? Math.min(n, extra) : defaultValue;
 };
 
 /** Reads and bounds the list query; unknown or malformed values fall back to "no filter". */
@@ -312,21 +306,21 @@ export function parseAuditFilter(q: URLSearchParams): AuditFilter {
 		action: (AUDIT_ACTIONS as readonly string[]).includes(rawAction) ? rawAction : '',
 		from: day('from'),
 		to: day('to'),
-		page: sayi(q.get('page'), 1, 1, 1_000_000),
-		pageSize: sayi(q.get('limit') ?? q.get('pageSize'), AUDIT_PAGE_SIZE, 1, AUDIT_MAX_PAGE_SIZE),
+		page: count(q.get('page'), 1, 1, 1_000_000),
+		pageSize: count(q.get('limit') ?? q.get('pageSize'), AUDIT_PAGE_SIZE, 1, AUDIT_MAX_PAGE_SIZE),
 	};
 }
 
 /** `YYYY-MM-DD` (local) → the first millisecond of that day. */
-export function startOfDay(gun: string): number {
-	return new Date(`${gun}T00:00:00`).getTime();
+export function startOfDay(day: string): number {
+	return new Date(`${day}T00:00:00`).getTime();
 }
 
 export const AUDIT_CSV_HEADERS = ['Zaman', 'Yapan', 'Yapan No', 'İşlem', 'Hedef türü', 'Hedef No', 'Hedef', 'Önceki', 'Sonraki', 'IP'];
 
 /** The log as CSV rows (header in DENETIM_CSV_BASLIKLARI); before/after as compact JSON. */
-export function auditCsvRows(kayitlar: AuditRecord[]): string[][] {
-	return kayitlar.map((k) => [
+export function auditCsvRows(records: AuditRecord[]): string[][] {
+	return records.map((k) => [
 		new Date(k.timestamp).toISOString(),
 		k.actorName,
 		k.actorId ?? '',

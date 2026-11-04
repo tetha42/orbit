@@ -35,8 +35,8 @@ const manifest = {
 	dock: 7,
 	notifications: { loan: 'kullan' },
 	permission: {
-		sira: 5,
-		ad: 'Envanter',
+		order: 5,
+		name: 'Envanter',
 		kullan: 'Envanteri görür, ödünç alır, iade eder, süre uzatır.',
 		yonet: 'Eşya ekler/düzenler, üye adına ödünç verir, arızalı/kayıp işaretler.',
 	},

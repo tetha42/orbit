@@ -19,7 +19,7 @@ interface Props {
 
 export function ProjectCard({ project: p, locale, onOpen, onOpenTeam, onStar }: Props) {
 	const { t } = useI18n();
-	const featured = Number(p.oneCikan) === 1;
+	const featured = Number(p.oneLeaving) === 1;
 
 	const menuItems = useMemo<MenuItem[]>(() => {
 		const items: MenuItem[] = [
@@ -65,7 +65,7 @@ export function ProjectCard({ project: p, locale, onOpen, onOpenTeam, onStar }: 
 			className={`${styles.card} ${featured ? styles.cardFeatured : ''}`}
 			tabIndex={0}
 			role="button"
-			aria-label={p.baslik}
+			aria-label={p.title}
 			{...contextMenuProps}
 			onClick={() => onOpen(p.id)}
 			onKeyDown={(e) => {
@@ -86,7 +86,7 @@ export function ProjectCard({ project: p, locale, onOpen, onOpenTeam, onStar }: 
 						{t(p.status === 'oneri' ? 'pjStatusOneri' : 'pjStatusArsiv')}
 					</span>
 				)}
-				{p.teamId && p.takimAdi && (
+				{p.teamId && p.teamName && (
 					<button
 						type="button"
 						className={`${styles.pill} ${styles.pillTeam}`}
@@ -96,28 +96,28 @@ export function ProjectCard({ project: p, locale, onOpen, onOpenTeam, onStar }: 
 							onOpenTeam(p.teamId!);
 						}}
 					>
-						<Users size={11} /> {p.takimAdi}
+						<Users size={11} /> {p.teamName}
 					</button>
 				)}
 			</div>
-			<h3 className={styles.cardTitle}>{p.baslik}</h3>
-			<p className={styles.cardSummary}>{p.ozet}</p>
-			{p.teknolojiler.length > 0 && (
+			<h3 className={styles.cardTitle}>{p.title}</h3>
+			<p className={styles.cardSummary}>{p.summary}</p>
+			{p.technologies.length > 0 && (
 				<div className={styles.techList}>
-					{p.teknolojiler.slice(0, 5).map((x) => (
+					{p.technologies.slice(0, 5).map((x) => (
 						<span key={x} className={styles.tech}>
 							{x}
 						</span>
 					))}
-					{p.teknolojiler.length > 5 && <span className={styles.tech}>+{p.teknolojiler.length - 5}</span>}
+					{p.technologies.length > 5 && <span className={styles.tech}>+{p.technologies.length - 5}</span>}
 				</div>
 			)}
 			<div className={styles.cardFooter} onClick={(e) => e.stopPropagation()}>
-				<span className={styles.author} title={new Date(p.olusturma).toLocaleDateString(locale)}>
+				<span className={styles.author} title={new Date(p.creation).toLocaleDateString(locale)}>
 					<span className={ui.avatar} style={{ marginLeft: 0 }}>
-						{initials(p.olusturanAdSoyad)}
+						{initials(p.creatorNameSurname)}
 					</span>
-					<span>{p.olusturanAdSoyad || '—'}</span>
+					<span>{p.creatorNameSurname || '—'}</span>
 				</span>
 				{p.repoUrl && (
 					<a
@@ -131,10 +131,10 @@ export function ProjectCard({ project: p, locale, onOpen, onOpenTeam, onStar }: 
 						<FolderGit2 size={15} />
 					</a>
 				)}
-				{p.canliUrl && (
+				{p.liveUrl && (
 					<a
 						className={styles.linkIcon}
-						href={p.canliUrl}
+						href={p.liveUrl}
 						target="_blank"
 						rel="noreferrer noopener"
 						title={t('pjDemo')}
@@ -145,14 +145,14 @@ export function ProjectCard({ project: p, locale, onOpen, onOpenTeam, onStar }: 
 				)}
 				<button
 					type="button"
-					className={`${styles.starBtn} ${p.begendimMi ? styles.starBtnOn : ''}`}
+					className={`${styles.starBtn} ${p.iLikedMi ? styles.starBtnOn : ''}`}
 					disabled={p.status !== 'yayinda'}
-					aria-pressed={!!p.begendimMi}
-					title={p.begendimMi ? t('pjUnstar') : t('pjStar')}
+					aria-pressed={!!p.iLikedMi}
+					title={p.iLikedMi ? t('pjUnstar') : t('pjStar')}
 					onClick={() => onStar(p)}
 				>
-					<Star size={13} fill={p.begendimMi ? 'currentColor' : 'none'} />
-					{p.begeniSayisi ?? 0}
+					<Star size={13} fill={p.iLikedMi ? 'currentColor' : 'none'} />
+					{p.likeCount ?? 0}
 				</button>
 			</div>
 		</article>

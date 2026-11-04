@@ -46,7 +46,7 @@ export function ProjectsMobileView({ p }: ProjectsMobileViewProps) {
 
 	const handleTabChange = (tabId: ProjectsMobileTab) => {
 		if (tabId === 'add') {
-			p.setForm({ proje: null });
+			p.setForm({ project: null });
 			return;
 		}
 		if (activeTab === tabId) {
@@ -78,7 +78,7 @@ export function ProjectsMobileView({ p }: ProjectsMobileViewProps) {
 	];
 
 	const renderProjectCard = (proj: Project) => {
-		const isStarred = Boolean(proj.begendimMi);
+		const isStarred = Boolean(proj.iLikedMi);
 		return (
 			<div
 				key={proj.id}
@@ -87,11 +87,11 @@ export function ProjectsMobileView({ p }: ProjectsMobileViewProps) {
 			>
 				<div className={s.projectHeader}>
 					<div style={{ flex: 1, minWidth: 0 }}>
-						<div className={s.projectTitle}>{proj.baslik}</div>
-						{proj.takimAdi && (
+						<div className={s.projectTitle}>{proj.title}</div>
+						{proj.teamName && (
 							<div style={{ fontSize: '11px', opacity: 0.6, marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
 								<Users size={11} />
-								<span>{proj.takimAdi}</span>
+								<span>{proj.teamName}</span>
 							</div>
 						)}
 					</div>
@@ -105,30 +105,30 @@ export function ProjectsMobileView({ p }: ProjectsMobileViewProps) {
 							}}
 						>
 							<Star size={13} fill={isStarred ? '#ffb340' : 'none'} strokeWidth={1.8} />
-							<span>{proj.begeniSayisi ?? 0}</span>
+							<span>{proj.likeCount ?? 0}</span>
 						</button>
 					)}
 				</div>
 
-				<div className={s.projectSummary}>{proj.ozet}</div>
+				<div className={s.projectSummary}>{proj.summary}</div>
 
-				{proj.teknolojiler.length > 0 && (
+				{proj.technologies.length > 0 && (
 					<div className={s.techRow}>
-						{proj.teknolojiler.slice(0, 4).map((tech) => (
+						{proj.technologies.slice(0, 4).map((tech) => (
 							<span key={tech} className={s.techPill}>
 								{tech}
 							</span>
 						))}
-						{proj.teknolojiler.length > 4 && (
+						{proj.technologies.length > 4 && (
 							<span className={s.techPill} style={{ opacity: 0.5 }}>
-								+{proj.teknolojiler.length - 4}
+								+{proj.technologies.length - 4}
 							</span>
 						)}
 					</div>
 				)}
 
 				<div className={s.metaRow}>
-					<span style={{ opacity: 0.6 }}>{proj.olusturanAdSoyad || '—'}</span>
+					<span style={{ opacity: 0.6 }}>{proj.creatorNameSurname || '—'}</span>
 					<span style={{ color: 'var(--accent)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '2px' }}>
 						<span>{t('details')}</span>
 						<ChevronRight size={13} />
@@ -288,7 +288,7 @@ export function ProjectsMobileView({ p }: ProjectsMobileViewProps) {
 			{/* Modals */}
 			{p.open && (
 				<ProjectDetailModal
-					proje={p.open}
+					project={p.open}
 					currentUserId={p.currentUserId}
 					manage={p.manage}
 					onClose={() => p.setOpenId(null)}
@@ -297,7 +297,7 @@ export function ProjectsMobileView({ p }: ProjectsMobileViewProps) {
 					onEdit={() => {
 						const current = p.open;
 						p.setOpenId(null);
-						p.setForm({ proje: current });
+						p.setForm({ project: current });
 					}}
 					onPatch={(body, msg) => p.patch(p.open!, body, msg)}
 					onDelete={() => p.remove(p.open!)}
@@ -306,14 +306,14 @@ export function ProjectsMobileView({ p }: ProjectsMobileViewProps) {
 
 			{p.form && (
 				<ProjectFormModal
-					proje={p.form.proje}
+					project={p.form.project}
 					teams={p.teamOptions}
 					manage={p.manage}
 					onClose={() => p.setForm(null)}
-					onSaved={async (proje) => {
+					onSaved={async (project) => {
 						p.setForm(null);
 						await p.refetch();
-						p.setTab(proje.status);
+						p.setTab(project.status);
 					}}
 				/>
 			)}

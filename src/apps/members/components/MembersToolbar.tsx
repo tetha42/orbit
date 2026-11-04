@@ -16,7 +16,7 @@ interface MembersToolbarProps {
 	trackOptions: FormFieldOption[];
 	levelOptions: FormFieldOption[];
 	roleFilter: string;
-	onRolFilterChange: (role: string) => void;
+	onRoleFilterChange: (role: string) => void;
 	roleOptions: [string, string][];
 	hasRolelessMember: boolean;
 	activeFilter: 'all' | 'aktif' | 'beklemede' | 'mezun';
@@ -38,7 +38,7 @@ export function MembersToolbar({
 	trackOptions,
 	levelOptions,
 	roleFilter,
-	onRolFilterChange,
+	onRoleFilterChange,
 	roleOptions,
 	hasRolelessMember,
 	activeFilter,
@@ -140,14 +140,14 @@ export function MembersToolbar({
 					<select
 						className={ui.select}
 						value={roleFilter}
-						onChange={(e) => onRolFilterChange(e.target.value)}
+						onChange={(e) => onRoleFilterChange(e.target.value)}
 						data-role-filter
 						style={{ minWidth: 120, maxWidth: 150 }}
 						title={t('membersFilterRoleTitle')}
 					>
 						<option value="">{t('membersAllRoles')}</option>
-						{roleOptions.map(([id, ad]) => (
-							<option key={id} value={id}>{ad}</option>
+						{roleOptions.map(([id, name]) => (
+							<option key={id} value={id}>{name}</option>
 						))}
 						{hasRolelessMember && <option value="-">{t('membersCtxNoRole')}</option>}
 					</select>

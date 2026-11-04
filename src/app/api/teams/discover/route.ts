@@ -22,13 +22,13 @@ export async function GET(request: Request) {
 	const auth = await authenticateEnrolled(request);
 	if (!auth.authorized) return auth.response;
 	try {
-		const [takimlar, aktifTakimlar] = await Promise.all([getTeamShowcase(auth.user.id), getUserTeamIds(auth.user.id)]);
+		const [teams, activeTeams] = await Promise.all([getTeamShowcase(auth.user.id), getUserTeamIds(auth.user.id)]);
 		return NextResponse.json(
 			{
-				takimlar,
-				benimTakimSayim: aktifTakimlar.length,
-				limitler: { takim: TEAM_LIMIT, bekleyenBasvuru: PENDING_APPLICATION_MAX },
-				saltOkunur: auth.user.status === 'mezun',
+				teams,
+				myTeamCount: activeTeams.length,
+				limits: { team: TEAM_LIMIT, pendingApplication: PENDING_APPLICATION_MAX },
+				saltReadable: auth.user.status === 'mezun',
 			},
 			{ headers: NO_STORE }
 		);
@@ -56,7 +56,7 @@ async function handlePOST(request: Request) {
 		if (action === 'withdraw') {
 			// Only an application can be withdrawn here; leaving a team is the Teams app's job.
 			const mine = (await getTeamShowcase(auth.user.id)).find((t) => t.id === teamId);
-			if (mine?.benimDurumum !== 'basvurdu') {
+			if (mine?.myMyStatus !== 'basvurdu') {
 				return NextResponse.json({ error: 'Geri çekilecek bir başvuru bulunamadı.' }, { status: 404 });
 			}
 			const r = await leaveTeam({ teamId, userId: auth.user.id });
@@ -66,8 +66,8 @@ async function handlePOST(request: Request) {
 				: NextResponse.json({ error: r.message }, { status: r.status ?? 400 });
 		}
 
-		const applicationNote = buildApplicationNote(body?.uzmanliklar, body?.basvuruNotu);
-		const result = await joinTeam({ teamId, userId: auth.user.id, basvuruNotu: applicationNote, basvuruZorunlu: true });
+		const applicationNote = buildApplicationNote(body?.expertise, body?.applicationNote);
+		const result = await joinTeam({ teamId, userId: auth.user.id, applicationNote: applicationNote, applicationRequired: true });
 		if (!result.ok) return NextResponse.json({ error: result.message }, { status: typeof result.status === 'number' ? result.status : 400 });
 
 		// The roster screens refresh, and the captain's bell shows the new application at once.

@@ -14,12 +14,12 @@ export async function getCertificates(userId?: string): Promise<Certificate[]> {
 	await ensurePostgresInit();
 	let query = `
 		SELECT s.id, s.verification_code AS "verificationCode", s.user_id AS "userId",
-		       s.event_id AS "etkinlikId", s.title AS "baslik", s.issued_at AS "verilisTarihi",
-		       s.pdf_url AS "pdfUrl", s.created_at AS "olusturma", s.category AS "kategori",
-		       s.locale AS "dil", s.description AS "aciklama",
-		       k.first_name || ' ' || k.last_name as "kullaniciAdSoyad",
-		       k.handle as "ogrenciNo",
-		       e.title as "etkinlikBaslik"
+		       s.event_id AS "eventId", s.title AS "title", s.issued_at AS "issuanceDate",
+		       s.pdf_url AS "pdfUrl", s.created_at AS "creation", s.category AS "category",
+		       s.locale AS "language", s.description AS "description",
+		       k.first_name || ' ' || k.last_name as "userNameSurname",
+		       k.handle as "studentNo",
+		       e.title as "eventTitle"
 		FROM certificates s
 		JOIN users k ON s.user_id = k.id
 		LEFT JOIN events e ON s.event_id = e.id
@@ -35,36 +35,36 @@ export async function getCertificates(userId?: string): Promise<Certificate[]> {
 	return res.rows;
 }
 
-export async function getCertificateByCode(kod: string): Promise<Certificate | null> {
+export async function getCertificateByCode(code: string): Promise<Certificate | null> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`
 		SELECT s.id, s.verification_code AS "verificationCode", s.user_id AS "userId",
-		       s.event_id AS "etkinlikId", s.title AS "baslik", s.issued_at AS "verilisTarihi",
-		       s.pdf_url AS "pdfUrl", s.created_at AS "olusturma", s.category AS "kategori",
-		       s.locale AS "dil", s.description AS "aciklama",
-		       k.first_name || ' ' || k.last_name as "kullaniciAdSoyad",
-		       k.handle as "ogrenciNo",
-		       k.department as "kullaniciBolum",
-		       e.title as "etkinlikBaslik"
+		       s.event_id AS "eventId", s.title AS "title", s.issued_at AS "issuanceDate",
+		       s.pdf_url AS "pdfUrl", s.created_at AS "creation", s.category AS "category",
+		       s.locale AS "language", s.description AS "description",
+		       k.first_name || ' ' || k.last_name as "userNameSurname",
+		       k.handle as "studentNo",
+		       k.department as "userDepartment",
+		       e.title as "eventTitle"
 		FROM certificates s
 		JOIN users k ON s.user_id = k.id
 		LEFT JOIN events e ON s.event_id = e.id
 		WHERE s.verification_code = $1
 	`,
-		[kod]
+		[code]
 	);
 	return (res.rows[0] as Certificate | undefined) ?? null;
 }
 
 export async function createCertificate(params: {
 	userId: string;
-	baslik: string;
-	etkinlikId?: string;
+	title: string;
+	eventId?: string;
 	pdfUrl?: string;
-	kategori?: string;
-	dil?: string;
-	aciklama?: string;
+	category?: string;
+	language?: string;
+	description?: string;
 }): Promise<{ id: string; verificationCode: string }> {
 	await ensurePostgresInit();
 	const id = randomUUID();
@@ -79,13 +79,13 @@ export async function createCertificate(params: {
 					id,
 					verificationCode,
 					params.userId,
-					params.etkinlikId || null,
-					params.baslik,
+					params.eventId || null,
+					params.title,
 					now,
 					params.pdfUrl || null,
-					params.kategori || 'achievement',
-					params.dil || 'tr',
-					params.aciklama || null,
+					params.category || 'achievement',
+					params.language || 'tr',
+					params.description || null,
 				]
 			);
 			await publishEventQuiet(getPgPool(), notificationEvents([params.userId]));
@@ -97,59 +97,59 @@ export async function createCertificate(params: {
 }
 
 export async function createEventCertificates(
-	etkinlikId: string,
-	baslik: string,
-	options?: { kategori?: string; dil?: string; aciklama?: string }
-): Promise<{ verilen: number; zatenVar: number }> {
+	eventId: string,
+	title: string,
+	options?: { category?: string; language?: string; description?: string }
+): Promise<{ given: number; alreadyVar: number }> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`SELECT y.user_id AS "userId",
 		        EXISTS (SELECT 1 FROM certificates s WHERE s.user_id = y.user_id AND s.event_id = $1) AS "var"
 		 FROM event_participants y
 		 WHERE y.event_id = $1 AND y.status = 'attended'`,
-		[etkinlikId]
+		[eventId]
 	);
-	let verilen = 0;
-	let zatenVar = 0;
+	let given = 0;
+	let alreadyVar = 0;
 	for (const row of res.rows) {
 		if (row.var) {
-			zatenVar += 1;
+			alreadyVar += 1;
 			continue;
 		}
 		await createCertificate({
 			userId: row.userId,
-			etkinlikId,
-			baslik,
-			kategori: options?.kategori,
-			dil: options?.dil,
-			aciklama: options?.aciklama,
+			eventId,
+			title,
+			category: options?.category,
+			language: options?.language,
+			description: options?.description,
 		});
-		verilen += 1;
+		given += 1;
 	}
-	return { verilen, zatenVar };
+	return { given, alreadyVar };
 }
 
 export interface CommunityProfile {
-	universite: string;
-	kulupAdi: string;
-	imzalar: { ad: string; unvan: string }[];
+	university: string;
+	clubName: string;
+	signatures: { name: string; rank: string }[];
 }
 
 export async function getCommunityProfile(): Promise<CommunityProfile> {
 	const setting = await getSystemSettings();
 	let lead = '';
-	if (!setting.imza1_ad) {
+	if (!setting.signature1_Name) {
 		const res = await getPgPool().query(
-			"SELECT first_name || ' ' || last_name AS ad FROM users WHERE role_id = 'rol_admin' AND status = 'aktif' ORDER BY created_at ASC LIMIT 1"
+			"SELECT first_name || ' ' || last_name AS name FROM users WHERE role_id = 'rol_admin' AND status = 'aktif' ORDER BY created_at ASC LIMIT 1"
 		);
-		lead = res.rows[0]?.ad ?? '';
+		lead = res.rows[0]?.name ?? '';
 	}
 	return {
-		universite: setting.universite,
-		kulupAdi: setting.kulup_adi,
-		imzalar: [
-			{ ad: setting.imza1_ad || lead, unvan: setting.imza1_unvan },
-			{ ad: setting.imza2_ad, unvan: setting.imza2_unvan },
+		university: setting.university,
+		clubName: setting.club_Name,
+		signatures: [
+			{ name: setting.signature1_Name || lead, rank: setting.signature1_Rank },
+			{ name: setting.signature2_Name, rank: setting.signature2_Rank },
 		],
 	};
 }

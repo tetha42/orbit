@@ -19,7 +19,7 @@ interface TeamWorkspaceBodyProps {
 	canSeeVault: boolean;
 	openTaskId: string | null;
 	setOpenTaskId: (id: string | null) => void;
-	roster: { id: string; ad: string; soyad: string }[];
+	roster: { id: string; name: string; surname: string }[];
 	categories: string[];
 	notify: (text: string, tone?: 'success' | 'error') => void;
 	fetchTeams: () => Promise<void>;
@@ -50,10 +50,10 @@ export function TeamWorkspaceBody({
 					key={team.id}
 					team={team}
 					currentUserId={currentUserId}
-					isManager={team.izinler.editAll}
+					isManager={team.permissions.editAll}
 					mutateTasks={(fn) =>
 						setTeamsData((prev) =>
-							prev ? prev.map((tm) => (tm.id === team.id ? { ...tm, gorevler: fn(tm.gorevler ?? []) } : tm)) : prev
+							prev ? prev.map((tm) => (tm.id === team.id ? { ...tm, tasks: fn(tm.tasks ?? []) } : tm)) : prev
 						)
 					}
 					refetch={fetchTeams}
@@ -80,9 +80,9 @@ export function TeamWorkspaceBody({
 				/>
 			)}
 			{visibleTab === 'kasa' && canSeeVault && <VaultPanel key={team.id} teamId={team.id} embedded />}
-			{visibleTab === 'settings' && team.izinler.manage && (
+			{visibleTab === 'settings' && team.permissions.manage && (
 				<TeamSettings
-					key={`${team.id}:${team.ad}:${team.kontenjan}:${team.leadId}:${team.status}:${team.katilimTuru}`}
+					key={`${team.id}:${team.name}:${team.capacity}:${team.leadId}:${team.status}:${team.participationType}`}
 					team={team}
 					roster={roster}
 					categories={categories}

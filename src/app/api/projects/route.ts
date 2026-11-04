@@ -14,7 +14,7 @@ export async function GET(request: Request) {
 	try {
 		const manage = can(auth.user, 'projects', 'yonet');
 		const projects = await getProjects(auth.user.id, manage);
-		return NextResponse.json({ projeler: projects, izinler: { manage } });
+		return NextResponse.json({ projects: projects, permissions: { manage } });
 	} catch (error) {
 		console.error('API /api/projeler GET error:', error);
 		return NextResponse.json({ error: 'Projeler okunamadı.' }, { status: 500 });
@@ -38,11 +38,11 @@ async function handlePOST(request: Request) {
 		const manage = can(auth.user, 'projects', 'yonet');
 		const project = await createProject({
 			...(parsed.value as ProjectInput),
-			olusturanId: auth.user.id,
+			creatorId: auth.user.id,
 			status: manage && body.status !== 'oneri' ? 'yayinda' : 'oneri',
 		});
 		await publishEventQuiet(getPgPool(), [{ k: 'project_updated' }]);
-		return NextResponse.json({ success: true, proje: project }, { status: 201 });
+		return NextResponse.json({ success: true, project: project }, { status: 201 });
 	} catch (error) {
 		console.error('API /api/projeler POST error:', error);
 		return NextResponse.json({ error: 'Project kaydedilemedi.' }, { status: 500 });

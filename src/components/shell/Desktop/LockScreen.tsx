@@ -15,7 +15,7 @@ import { useI18n } from '@/core/i18n';
 export function LockScreen() {
 	const { isLocked, unlockWorkspace, currentUser, logout } = useSession();
 	const { t } = useI18n();
-	const [password, setSifre] = useState('');
+	const [password, setPassword] = useState('');
 	const [error, setError] = useState<string | null>(null);
 	const [busy, setBusy] = useState(false);
 	const inputRef = useRef<HTMLInputElement>(null);
@@ -37,7 +37,7 @@ export function LockScreen() {
 		setBusy(false);
 		if (!result.success) {
 			setError(result.error || t('lockInvalidPassword'));
-			setSifre('');
+			setPassword('');
 			inputRef.current?.focus();
 		}
 	};
@@ -78,7 +78,7 @@ export function LockScreen() {
 
 			<div style={{ textAlign: 'center' }}>
 				<div style={{ fontSize: '17px', fontWeight: 700 }}>
-					{currentUser ? `${currentUser.ad} ${currentUser.soyad}` : t('lockTitle')}
+					{currentUser ? `${currentUser.name} ${currentUser.surname}` : t('lockTitle')}
 				</div>
 				<div style={{ fontSize: '12.5px', opacity: 0.65, marginTop: '4px' }}>
 					{t('lockSubtitle')}
@@ -95,7 +95,7 @@ export function LockScreen() {
 					required
 					autoComplete="current-password"
 					value={password}
-					onChange={(e) => setSifre(e.target.value)}
+					onChange={(e) => setPassword(e.target.value)}
 					placeholder={t('lockPassword')}
 					aria-label={t('lockPassword')}
 					style={{

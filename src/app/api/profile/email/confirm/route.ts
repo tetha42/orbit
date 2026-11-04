@@ -85,8 +85,8 @@ export async function POST(request: Request) {
 				targetType: 'member',
 				targetId: auth.user.id,
 				targetName: memberTargetName({
-					ad: String(current.firstName),
-					soyad: String(current.lastName),
+					name: String(current.firstName),
+					surname: String(current.lastName),
 					email: String(current.email),
 				}),
 				before: { email: String(current.email) },
@@ -96,13 +96,13 @@ export async function POST(request: Request) {
 		});
 
 		void notifyEmailChanged(
-			{ firstName: auth.user.firstName || auth.user.ad, lastName: auth.user.lastName || auth.user.soyad, email: oldEmail },
+			{ firstName: auth.user.firstName || auth.user.name, lastName: auth.user.lastName || auth.user.surname, email: oldEmail },
 			pending.newEmail
 		);
 		await logSystemEvent({
-			servis: 'auth',
-			seviye: 'INFO',
-			mesaj: `Üye e-posta adresini değiştirdi: ${oldEmail} → ${pending.newEmail}`,
+			service: 'auth',
+			level: 'INFO',
+			message: `Üye e-posta adresini değiştirdi: ${oldEmail} → ${pending.newEmail}`,
 			userId: auth.user.id,
 			ip: clientAddress(request),
 		});

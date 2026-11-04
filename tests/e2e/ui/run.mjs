@@ -101,13 +101,13 @@ try {
 		}
 		assertTestDatabase(DATABASE_URL);
 		const bootstrap = {
-			eposta: process.env.E2E_ADMIN_EMAIL || 'admin@e2e.test',
-			sifre: process.env.E2E_ADMIN_PASSWORD || `E2e-${crypto.randomBytes(9).toString('hex')}`,
+			email: process.env.E2E_ADMIN_EMAIL || 'admin@e2e.test',
+			password: process.env.E2E_ADMIN_PASSWORD || `E2e-${crypto.randomBytes(9).toString('hex')}`,
 		};
 		const serverEnv = (databaseUrl) => ({
 			DATABASE_URL: databaseUrl,
-			BOOTSTRAP_ADMIN_EMAIL: bootstrap.eposta,
-			BOOTSTRAP_ADMIN_PASSWORD: bootstrap.sifre,
+			BOOTSTRAP_ADMIN_EMAIL: bootstrap.email,
+			BOOTSTRAP_ADMIN_PASSWORD: bootstrap.password,
 			NEXT_TELEMETRY_DISABLED: '1',
 		});
 
@@ -137,7 +137,7 @@ try {
 				fs.rmSync(file, { force: true });
 				const made = spawnSync('node', ['tests/fixtures/dev-fixtures.mjs', '--base', server.base, '--out', file], {
 					cwd: ROOT,
-					env: { ...process.env, BOOTSTRAP_ADMIN_EMAIL: bootstrap.eposta, BOOTSTRAP_ADMIN_PASSWORD: bootstrap.sifre },
+					env: { ...process.env, BOOTSTRAP_ADMIN_EMAIL: bootstrap.email, BOOTSTRAP_ADMIN_PASSWORD: bootstrap.password },
 					stdio: 'inherit',
 				});
 				if (made.status !== 0) throw new Error('tests/fixtures/dev-fixtures.mjs failed');
