@@ -15,7 +15,7 @@ import { canUserAccessChatRoom } from '@/db/repositories/chat.repo';
  *
  *  - Budget app, manage level: every vault, read and write, and transfers between them.
  *  - Budget app, use level: every vault, read only.
- *  - A project's captain (`takimlar.leadId`) keeps their own project's vault in
+ *  - A project's captain (`teams.leadId`) keeps their own project's vault in
  *    the Teams app: read and write, whatever their Budget level.
  *  - Everyone else: no access.
  *

@@ -57,7 +57,7 @@ export async function DELETE(request: Request) {
 		await logSystemEvent({
 			service: 'security',
 			level: 'WARN',
-			message: `Denetim geçmişi (denetim_kaydi) yönetici tarafından sıfırlandı: ${auth.user.email}`,
+			message: `Denetim geçmişi (audit_logs) yönetici tarafından sıfırlandı: ${auth.user.email}`,
 			detail: { actorId: auth.user.id, actorName: `${auth.user.name} ${auth.user.surname}`.trim() },
 			userId: auth.user.id,
 			ip,

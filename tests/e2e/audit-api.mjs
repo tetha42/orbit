@@ -354,7 +354,7 @@ let twoFaSecret;
 	const oldTotal = old.total;
 	const oldRecords = old.records;
 	ok(oldTotal === 0 && oldRecords.length === 0, 'filter: an empty period');
-	const garbage = await admin.call('GET', "/api/audit?user=%27%3B%20DROP%20TABLE%20denetim_kaydi%3B--&role=%25&action=x&from=zz&limit=abc&page=-1");
+	const garbage = await admin.call('GET', "/api/audit?user=%27%3B%20DROP%20TABLE%20audit_logs%3B--&role=%25&action=x&from=zz&limit=abc&page=-1");
 	ok(garbage.status === 200 && garbage.json.page === 1, 'malformed filters are harmless');
 	const finalAll = await everything();
 	ok((finalAll.total) === allTotal, '…and the table is still there');

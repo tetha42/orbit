@@ -1330,7 +1330,7 @@ check('waf: inspectDatabaseSql and maskDatabaseRow enforce Zero-Trust Database S
 	for (const badSql of [
 		"COPY (SELECT 1) TO PROGRAM 'id'",
 		"SELECT pg_read_file('/etc/passwd')",
-		"DO $$ BEGIN EXECUTE 'DELETE FROM sistem_loglari'; END $$",
+		"DO $$ BEGIN EXECUTE 'DELETE FROM system_logs'; END $$",
 	]) {
 		const res = inspectDatabaseSql(badSql);
 		assert.equal(res.allowed, false, badSql);
@@ -1339,12 +1339,12 @@ check('waf: inspectDatabaseSql and maskDatabaseRow enforce Zero-Trust Database S
 
 	// Protected tables cannot be mutated or dropped
 	for (const badWrite of [
-		'DELETE FROM sistem_loglari WHERE id = 1',
-		"UPDATE guvenlik_engelleri SET status = 'whitelist'",
-		'TRUNCATE TABLE kullanici_passkeyler',
-		'DROP TABLE erisim_anahtarlari',
-		"INSERT INTO sistem_ayarlari (anahtar, deger) VALUES ('soc_lockdown_mode', 'false')",
-		"UPDATE sistem_ayarlari SET deger = 'plain' WHERE anahtar = 'smtp_pass'",
+		'DELETE FROM system_logs WHERE id = 1',
+		"UPDATE security_blocks SET status = 'whitelist'",
+		'TRUNCATE TABLE webauthn_credentials',
+		'DROP TABLE oauth_clients',
+		"INSERT INTO system_settings (key, value) VALUES ('soc_lockdown_mode', 'false')",
+		"UPDATE system_settings SET value = 'plain' WHERE key = 'smtp_pass'",
 	]) {
 		const res = inspectDatabaseSql(badWrite);
 		assert.equal(res.allowed, false, badWrite);
@@ -1355,8 +1355,8 @@ check('waf: inspectDatabaseSql and maskDatabaseRow enforce Zero-Trust Database S
 		'SELECT sessionToken AS x FROM users',
 		'SELECT passwordHash FROM users',
 		'SELECT totpSecret, totpRecoveryCodes FROM users',
-		'SELECT secretHash FROM oauth_istemciler',
-		"SELECT deger AS leak FROM sistem_ayarlari WHERE anahtar = 'smtp_pass'",
+		'SELECT secretHash FROM oauth_clients',
+		"SELECT value AS leak FROM system_settings WHERE key = 'smtp_pass'",
 	]) {
 		const res = inspectDatabaseSql(secLeak);
 		assert.equal(res.allowed, false, secLeak);
@@ -1375,7 +1375,7 @@ check('waf: inspectDatabaseSql and maskDatabaseRow enforce Zero-Trust Database S
 	assert.equal(explainStripped.allowed, true);
 	assert.equal(explainStripped.normalizedExplainTarget, 'SELECT id, name FROM users');
 
-	// Row masking covers column names, bcrypt/enc:v1 prefixes, and sistem_ayarlari smtp_pass
+	// Row masking covers column names, bcrypt/enc:v1 prefixes, and system_settings smtp_pass
 	assert.deepEqual(
 		maskDatabaseRow({
 			id: 'usr_1',

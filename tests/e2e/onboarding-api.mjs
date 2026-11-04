@@ -25,12 +25,12 @@ if (!DATABASE_URL) {
 }
 const db = new pg.Pool({ connectionString: DATABASE_URL, max: 2 });
 
-const userTable = (await db.query("SELECT to_regclass('users') AS u")).rows[0]?.u ? 'users' : 'kullanicilar';
-const roleCol = userTable === 'users' ? 'role_id' : 'rolId';
-const statusCol = userTable === 'users' ? 'status' : 'durum';
-const teamsTable = (await db.query("SELECT to_regclass('teams') AS t")).rows[0]?.t ? 'teams' : 'takimlar';
-const teamMembersTable = (await db.query("SELECT to_regclass('team_members') AS t")).rows[0]?.t ? 'team_members' : 'takim_uyeleri';
-const teamDecisionsTable = (await db.query("SELECT to_regclass('team_application_decisions') AS t")).rows[0]?.t ? 'team_application_decisions' : 'takim_basvuru_kararlari';
+const userTable = 'users';
+const roleCol = 'role_id';
+const statusCol = 'status';
+const teamsTable = 'teams';
+const teamMembersTable = 'team_members';
+const teamDecisionsTable = 'team_application_decisions';
 
 let pass = 0;
 let fail = 0;
@@ -160,7 +160,7 @@ try {
 	live.heard.length = 0;
 	const accepted = await ege.call('POST', '/api/teams', { action: 'approve', teamId: teamId, userId: newId });
 	ok(accepted.status === 200, 'captain: approves', JSON.stringify(accepted.json));
-	ok(await until(() => live.heard.includes('takim_guncellendi') && live.heard.includes('bildirim')), 'applicant: live stream gets takim_guncellendi + bildirim', live.heard.join(','));
+	ok(await until(() => live.heard.includes('team_updated') && live.heard.includes('notification')), 'applicant: live stream gets team_updated + notification', live.heard.join(','));
 	live.stop();
 	const member = (await newUser.call('GET', '/api/teams/discover')).json.teams.find((t) => t.id === teamId);
 	ok(member.myMyStatus === 'active' && member.myMyDecision === 'accepted', 'showcase: member, application accepted');
@@ -172,7 +172,7 @@ try {
 	const canBefore = (await can.call('GET', '/api/notifications')).json.items.filter((i) => i.kind === 'teamDecision');
 	ok(canBefore.length === 0, 'feed: no decision yet');
 	ok((await ege.call('POST', '/api/teams', { action: 'reject', teamId: teamId, userId: U.can.id })).status === 200, 'captain: rejects');
-	ok(await until(() => canLive.heard.includes('bildirim')), 'rejected member: live bildirim');
+	ok(await until(() => canLive.heard.includes('notification')), 'rejected member: live notification');
 	canLive.stop();
 	const feed = (await can.call('GET', '/api/notifications')).json.items.find((i) => i.kind === 'teamDecision');
 	ok(feed && feed.data.accepted === false && feed.data.title === FX.content.team.team.name && feed.priority === 'info', 'feed: teamDecision (rejected) with the team name', JSON.stringify(feed));

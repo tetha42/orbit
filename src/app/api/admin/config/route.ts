@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
  * Legitimate users and the application UI never request `/api/admin/config`.
  * Any automated exploit bot, directory fuzzer, or offensive AI agent probing
  * this endpoint immediately receives a 100-point threat strike and is
- * automatically quarantined in `guvenlik_engelleri`.
+ * automatically quarantined in `security_blocks`.
  */
 async function handleHoneypot(request: Request) {
 	const ip = clientAddress(request);

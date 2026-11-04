@@ -397,7 +397,7 @@ async function handlePOST(request: Request) {
 			try {
 				deleted = await deleteTeam(teamId);
 			} catch (err) {
-				// butce_kayitlari references takimlar with ON DELETE RESTRICT: a project
+				// budget_records references teams with ON DELETE RESTRICT: a project
 				// that has money records cannot be deleted out from under them.
 				if ((err as { code?: string })?.code === '23503') {
 					return NextResponse.json(

@@ -215,7 +215,7 @@ const DB_FORBIDDEN_OS_PRIMITIVE_RE =
 	/\b(?:COPY\s+[\s\S]*?\bPROGRAM\b|pg_read_file|pg_read_binary_file|pg_ls_dir|pg_stat_file|lo_import|lo_export|dblink)\b|\bDO\s+\$/i;
 
 const DB_PROTECTED_TABLE_NAME_RE =
-	/\b(?:system_logs|sistem_loglari|audit_logs|denetim_kaydi|security_blocks|guvenlik_engelleri|webauthn_credentials|kullanici_passkeyler|verification_tokens|erisim_anahtarlari|oauth_clients|oauth_istemciler)\b/i;
+	/\b(?:system_logs|audit_logs|security_blocks|webauthn_credentials|verification_tokens|oauth_clients)\b/i;
 
 const DB_MUTATION_OR_DDL_RE =
 	/\b(?:DROP|TRUNCATE|DELETE|UPDATE|INSERT|ALTER|CREATE|GRANT|REVOKE|COMMENT|SECURITY|POLICY|RULE|TRIGGER|RENAME)\b/i;
@@ -276,7 +276,7 @@ export function inspectDatabaseSql(
 		return {
 			allowed: false,
 			strikePoints: 40,
-			reason: 'Güvenlik ve denetim tabloları (sistem_loglari, denetim_kaydi, guvenlik_engelleri) SQL üzerinden değiştirilemez veya silinemez.',
+			reason: 'Güvenlik ve denetim tabloları (system_logs, audit_logs, security_blocks) SQL üzerinden değiştirilemez veya silinemez.',
 		};
 	}
 

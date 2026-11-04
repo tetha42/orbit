@@ -609,7 +609,7 @@ export async function getSecurityBlocks(): Promise<SecurityBlock[]> {
 /**
  * Records a threat strike against an IP address. When the cumulative threat score
  * reaches 100 within the 15-minute window, the IP is automatically quarantined
- * in `guvenlik_engelleri` with progressive ban duration (15m -> 2h -> 24h).
+ * in `security_blocks` with progressive ban duration (15m -> 2h -> 24h).
  */
 export async function recordSecurityStrike(params: {
 	ip: string;

@@ -206,9 +206,9 @@ ok((await st(zeynep, 'POST', '/api/terminal/session', {})) === 403, 'kurul (term
 	ok((await st(can, 'GET', '/api/messages')) === 200, 'üye (mail: kullan) reads mail');
 	ok((await st(reader, 'POST', '/api/messages', { subject: 'x', body: 'y', recipients: [U.can.id] })) === 403, 'okur (mail yok) cannot send');
 	ok((await st(reader, 'PATCH', '/api/messages/baska', { action: 'read' })) === 403, 'okur → mail thread action 403');
-	const lookup = (await can.call('GET', `/api/messages/recipients?q=${encodeURIComponent('reader')}`)).json?.recipients ?? [];
+	const lookup = (await can.call('GET', `/api/messages/recipients?q=${encodeURIComponent('okur')}`)).json?.recipients ?? [];
 	const readerHit = lookup.find((a) => a.id === U.reader.id);
-	ok(!!readerHit && readerHit.reachable === false && Object.keys(readerHit).sort().join() === 'ad,id,soyad,ulasilabilir', 'recipient lookup: id and name only, flags a role without Mail');
+	ok(!!readerHit && readerHit.reachable === false && Object.keys(readerHit).sort().join() === 'id,name,reachable,surname', 'recipient lookup: id and name only, flags a role without Mail');
 	// Finding people: by name, e-mail (from its start), department and student number; the answer is names only.
 	for (const path of ['/api/messages/recipients', '/api/messages/recipients?q=zeynep', `/api/messages/recipients?id=${U.zeynep.id}`, '/api/messages/recipients?ulasilabilir=1']) {
 		ok((await st(reader, 'GET', path)) === 403, `okur (mail yok) → ${path} 403`);
