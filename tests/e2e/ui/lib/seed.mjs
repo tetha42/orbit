@@ -31,7 +31,7 @@ export async function createMember(admin, base, { name, surname, email, roleId, 
 	const u = client(base);
 	const login = await u.post('/api/auth/login', { email: email, password: tempPassword,});
 	if (login.status !== 200) throw new Error(`first sign-in ${email}: ${login.status} ${JSON.stringify(login.json)}`);
-	const changed = await u.post('/api/profilee/password', { currentPassword: tempPassword, newPassword: PASSWORD, current: tempPassword, fresh: PASSWORD });
+	const changed = await u.post('/api/profile/password', { currentPassword: tempPassword, newPassword: PASSWORD, current: tempPassword, fresh: PASSWORD });
 	if (changed.status !== 200) throw new Error(`password ${email}: ${changed.status} ${JSON.stringify(changed.json)}`);
 	return { id: created.json.member?.id || created.json.id, email, password: PASSWORD };
 }

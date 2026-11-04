@@ -33,7 +33,7 @@ export default async function suite(t) {
 		const extra = await addTask(capApi, team.id, { title: 'Kaptanın geçici görevi', assigneeMemberId: bek.id });
 		t.eq(extra.assigneeMemberId, bek.id, 'kaptan görevi takım üyesine atadı');
 		t.eq((await capApi.post('/api/teams', { action: 'updateTask', taskId: extra.id, status: 'in_progress' })).status, 200, 'kaptan başkasının görevini taşıdı');
-		t.eq((await capApi.patch(`/api/teams/gorevler/${extra.id}`, { title: 'Yeni ad', priority: 'critical' })).status, 200, 'kaptan başlık/öncelik değiştirdi');
+		t.eq((await capApi.patch(`/api/teams/tasks/${extra.id}`, { title: 'Yeni ad', priority: 'critical' })).status, 200, 'kaptan başlık/öncelik değiştirdi');
 		const outsiderAssign = await capApi.post('/api/teams', { action: 'addTask', teamId: team.id, title: 'dışarıya', assigneeMemberId: outsider.id });
 		t.eq(outsiderAssign.status, 400, 'takım dışındaki üyeye görev atanamaz (400)');
 		t.eq((await capApi.post('/api/teams', { action: 'deleteTask', taskId: extra.id })).status, 200, 'kaptan görevi sildi');
@@ -126,13 +126,13 @@ export default async function suite(t) {
 		t.eq((await aliApi.post('/api/teams', { action: 'addTask', teamId: team.id, title: 'izinsiz' })).status, 403, 'görev ekleyemez');
 		t.eq((await aliApi.post('/api/teams', { action: 'updateTask', taskId: bekTask.id, status: 'done' })).status, 403, 'başkasının görevini taşıyamaz');
 		t.eq((await aliApi.post('/api/teams', { action: 'deleteTask', taskId: aliTask.id })).status, 403, 'kendi görevini bile silemez');
-		t.eq((await aliApi.patch(`/api/teams/gorevler/${aliTask.id}`, { title: 'değişti' })).status, 403, 'kendi görevinin başlığını değiştiremez');
-		t.eq((await aliApi.patch(`/api/teams/gorevler/${aliTask.id}`, { assigneeMemberId: bek.id })).status, 403, 'kendi görevini başkasına aktaramaz');
-		t.eq((await aliApi.patch(`/api/teams/gorevler/${bekTask.id}`, { assigneeMemberId: ali.id })).status, 403, 'başkasına atanmış görevi üstlenemez');
-		t.eq((await aliApi.post(`/api/teams/gorevler/${bekTask.id}`, { action: 'addItem', text: 'x' })).status, 403, 'başkasının listesine madde ekleyemez');
-		const bekComment = (await bekApi.post(`/api/teams/gorevler/${bekTask.id}`, { action: 'addComment', content: 'Bek yazdı' })).json.comment;
-		t.eq((await aliApi.post(`/api/teams/gorevler/${bekTask.id}`, { action: 'deleteComment', commentId: bekComment.id })).status, 403, 'başkasının yorumunu silemez');
-		t.eq((await capApi.post(`/api/teams/gorevler/${bekTask.id}`, { action: 'deleteComment', commentId: bekComment.id })).status, 200, 'kaptan yorumu silebilir (moderasyon)');
+		t.eq((await aliApi.patch(`/api/teams/tasks/${aliTask.id}`, { title: 'değişti' })).status, 403, 'kendi görevinin başlığını değiştiremez');
+		t.eq((await aliApi.patch(`/api/teams/tasks/${aliTask.id}`, { assigneeMemberId: bek.id })).status, 403, 'kendi görevini başkasına aktaramaz');
+		t.eq((await aliApi.patch(`/api/teams/tasks/${bekTask.id}`, { assigneeMemberId: ali.id })).status, 403, 'başkasına atanmış görevi üstlenemez');
+		t.eq((await aliApi.post(`/api/teams/tasks/${bekTask.id}`, { action: 'addItem', text: 'x' })).status, 403, 'başkasının listesine madde ekleyemez');
+		const bekComment = (await bekApi.post(`/api/teams/tasks/${bekTask.id}`, { action: 'addComment', content: 'Bek yazdı' })).json.comment;
+		t.eq((await aliApi.post(`/api/teams/tasks/${bekTask.id}`, { action: 'deleteComment', commentId: bekComment.id })).status, 403, 'başkasının yorumunu silemez');
+		t.eq((await capApi.post(`/api/teams/tasks/${bekTask.id}`, { action: 'deleteComment', commentId: bekComment.id })).status, 200, 'kaptan yorumu silebilir (moderasyon)');
 		t.eq((await aliApi.post('/api/teams', { action: 'updateTeam', teamId: team.id, description: 'Üye takım ayarını değiştiremez.' })).status, 403, 'takım ayarlarını değiştiremez');
 	});
 
@@ -140,7 +140,7 @@ export default async function suite(t) {
 		const list = await readTeam(outApi, team.id);
 		t.eq(list.tasks, [], 'takım listesinde görev yok');
 		t.eq((await readTask(outApi, aliTask.id)).status, 404, 'görev ayrıntısı 404');
-		t.eq((await outApi.post(`/api/teams/gorevler/${aliTask.id}`, { action: 'addComment', content: 'sızma' })).status, 404, 'yorum yazamaz (404)');
+		t.eq((await outApi.post(`/api/teams/tasks/${aliTask.id}`, { action: 'addComment', content: 'sızma' })).status, 404, 'yorum yazamaz (404)');
 		t.eq((await outApi.post('/api/teams', { action: 'updateTask', taskId: aliTask.id, status: 'done' })).status, 403, 'görev taşıyamaz');
 		const { page } = await outsider.open();
 		const win = await openTeam(page, team.id);
@@ -152,7 +152,7 @@ export default async function suite(t) {
 	await t.step('başka takımın kaptanı bu takımın görevini silemez ve taşıyamaz', async () => {
 		t.eq((await cap2Api.post('/api/teams', { action: 'deleteTask', taskId: aliTask.id, teamId: team2.id })).status, 403, 'deleteTask (gövdede kendi takımı) 403');
 		t.eq((await cap2Api.post('/api/teams', { action: 'updateTask', taskId: aliTask.id, status: 'done' })).status, 403, 'updateTask 403');
-		t.eq((await cap2Api.patch(`/api/teams/gorevler/${aliTask.id}`, { title: 'ele geçirildi' })).status, 404, 'PATCH 404 (görünmüyor)');
+		t.eq((await cap2Api.patch(`/api/teams/tasks/${aliTask.id}`, { title: 'ele geçirildi' })).status, 404, 'PATCH 404 (görünmüyor)');
 		t.check((await readTask(admin, aliTask.id)).status === 200, 'görev yerinde');
 	});
 
@@ -160,7 +160,7 @@ export default async function suite(t) {
 		t.eq((await admin.patch('/api/members', { id: ali.id, status: 'alumni' })).status, 200, 'üye mezun yapıldı');
 		try {
 			t.eq((await readTask(aliApi, aliTask.id)).status, 200, 'mezun görevi okuyabiliyor');
-			t.eq((await aliApi.post(`/api/teams/gorevler/${aliTask.id}`, { action: 'addComment', content: 'alumni' })).status, 403, 'mezun yorum yazamaz');
+			t.eq((await aliApi.post(`/api/teams/tasks/${aliTask.id}`, { action: 'addComment', content: 'alumni' })).status, 403, 'mezun yorum yazamaz');
 			t.eq((await aliApi.post('/api/teams', { action: 'updateTask', taskId: aliTask.id, status: 'done' })).status, 403, 'mezun görev taşıyamaz');
 		} finally {
 			await admin.patch('/api/members', { id: ali.id, status: 'active' });

@@ -49,7 +49,7 @@ export async function addTask(who, teamId, fields = {}) {
 
 /** One task with its checklist, comments and history (the sheet's data). */
 export async function readTask(who, taskId) {
-	const res = await who.get(`/api/teams/gorevler/${encodeURIComponent(taskId)}`);
+	const res = await who.get(`/api/teams/tasks/${encodeURIComponent(taskId)}`);
 	return res;
 }
 

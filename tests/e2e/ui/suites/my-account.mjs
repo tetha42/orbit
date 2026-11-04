@@ -14,7 +14,7 @@ export default async function suite(t) {
 	const upload = async (file) => {
 		const form = new FormData();
 		form.append('file', new Blob([file.buffer], { type: file.mimeType }), file.name);
-		const res = await fetch(`${t.base}/api/profile/foto`, { method: 'POST', headers: { cookie: `${SESSION_COOKIE}=${me.api.token}` }, body: form });
+		const res = await fetch(`${t.base}/api/profile/photo`, { method: 'POST', headers: { cookie: `${SESSION_COOKIE}=${me.api.token}` }, body: form });
 		return { status: res.status, json: await res.json().catch(() => null) };
 	};
 
@@ -127,9 +127,9 @@ export default async function suite(t) {
 		const c = client(t.base);
 		t.eq((await c.get('/api/profile')).status, 401, 'oturumsuz profil okuma 401');
 		t.eq((await c.patch('/api/profile', { bio: 'x' })).status, 401, 'oturumsuz profil yazma 401');
-		t.eq((await c.post('/api/profile/sifre', { current: 'a', fresh: 'b' })).status, 401, 'oturumsuz şifre değiştirme 401');
-		t.eq((await c.del('/api/profile/foto')).status, 401, 'oturumsuz fotoğraf silme 401');
-		const weak = await me.api.post('/api/profile/sifre', { current: '', fresh: 'abc12345' });
+		t.eq((await c.post('/api/profile/password', { current: 'a', fresh: 'b' })).status, 401, 'oturumsuz şifre değiştirme 401');
+		t.eq((await c.del('/api/profile/photo')).status, 401, 'oturumsuz fotoğraf silme 401');
+		const weak = await me.api.post('/api/profile/password', { current: '', fresh: 'abc12345' });
 		t.eq(weak.status, 400, 'mevcut şifre olmadan değişiklik yok (400)');
 	});
 }

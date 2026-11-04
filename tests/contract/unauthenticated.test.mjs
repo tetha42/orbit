@@ -22,8 +22,8 @@ const PROTECTED_ROUTES = [
 	{ path: '/api/certificates', method: 'GET' },
 	{ path: '/api/database/tables', method: 'GET' },
 	{ path: '/api/soc', method: 'GET' },
-	{ path: '/api/profilee/workspace', method: 'GET' },
-	{ path: '/api/profilee/workspace', method: 'PUT', body: {} },
+	{ path: '/api/profile/workspace', method: 'GET' },
+	{ path: '/api/profile/workspace', method: 'PUT', body: {} },
 ];
 
 for (const endpoint of PROTECTED_ROUTES) {
