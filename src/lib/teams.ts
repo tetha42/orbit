@@ -16,11 +16,11 @@ export const TEAM_CATEGORIES = [
 export type TeamCategory = (typeof TEAM_CATEGORIES)[number];
 
 /** `acik`: joining is immediate. `onayli`: joining is an application the captain approves. */
-export const PARTICIPATION_TYPES = ['acik', 'onayli'] as const;
+export const PARTICIPATION_TYPES = ['open', 'approval'] as const;
 export type ParticipationType = (typeof PARTICIPATION_TYPES)[number];
 
 /** `askida` (paused) and `tamamlandi` (finished) teams take no new members. */
-export const TEAM_STATUSES = ['aktif', 'askida', 'tamamlandi'] as const;
+export const TEAM_STATUSES = ['active', 'suspended', 'done'] as const;
 export type TeamStatus = (typeof TEAM_STATUSES)[number];
 
 /** How many teams a member may be active in at once. */

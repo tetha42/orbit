@@ -7,10 +7,10 @@ import styles from './verify.module.css';
 
 const DOCUMENT_TYPES: Record<string, string> = {
 	decision: 'Board Resolution',
-	hall_Allocation: 'Venue Allocation Request',
-	event_Permission: 'Event Authorization Petition',
-	material_Request: 'Equipment Requisition',
-	top_Text: 'Official Cover Letter',
+	hall_allocation: 'Venue Allocation Request',
+	event_permission: 'Event Authorization Petition',
+	material_request: 'Equipment Requisition',
+	top_text: 'Official Cover Letter',
 };
 
 /**
@@ -53,7 +53,7 @@ export async function DocumentVerification({ code, no }: { code: string; no: num
 		);
 	}
 
-	const signed = Number(document.lockedMi) === 1;
+	const signed = Number(document.isLocked) === 1;
 	const summary = documentSummary(document);
 
 	return (
@@ -74,12 +74,12 @@ export async function DocumentVerification({ code, no }: { code: string; no: num
 						</span>
 						<span className={styles.badge}>
 							<FileCheck2 size={12} />
-							{DOCUMENT_TYPES[document.documentType ?? 'karar'] ?? 'Official Document'}
+							{DOCUMENT_TYPES[document.documentType ?? 'resolution'] ?? 'Official Document'}
 						</span>
 					</div>
 
 					<h1 className={styles.title}>
-						{DOCUMENT_TYPES[document.documentType ?? 'karar'] ?? 'Official Community Document'}
+						{DOCUMENT_TYPES[document.documentType ?? 'resolution'] ?? 'Official Community Document'}
 					</h1>
 					<p className={styles.subtitle}>
 						{signed
@@ -107,7 +107,7 @@ export async function DocumentVerification({ code, no }: { code: string; no: num
 							</div>
 						</div>
 
-						{Number(document.publicOpenMi) === 1 ? (
+						{Number(document.isPublicOpen) === 1 ? (
 							<div className={styles.ledgerField} style={{ paddingTop: '12px', borderTop: '1px solid #18181b' }}>
 								<span className={styles.ledgerLabel}>Subject</span>
 								<span className={styles.ledgerValue}>{document.title}</span>

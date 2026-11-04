@@ -191,7 +191,7 @@ export function LegalModal({ isOpen, initialTab = 'terms', onClose, onAccept }: 
 							<p style={{ margin: 0 }}>
 								{t(
 									'legalTermsP3',
-									'Projects, documents, and technical artifacts published within the workspace remain subject to the licenses designated by their respective authors and community governance. The Platform is provided "as is" without warranty of any kind.'
+									'Projects, documents, and technical artifacts published within the workspace remain subject to the licenses designated by their respective authors and community governance. The Platform is provided "AS is" without warranty of any kind.'
 								)}
 							</p>
 						</>
@@ -246,7 +246,7 @@ export function LegalModal({ isOpen, initialTab = 'terms', onClose, onAccept }: 
 							<p style={{ margin: 0 }}>
 								{t(
 									'legalCookiesP2',
-									'User interface preferences such as language selection, theme mode, window geometry, and audio volume are stored locally in your browser via LocalStorage.'
+									'User interface preferences such AS language selection, theme mode, window geometry, and audio volume are stored locally in your browser via LocalStorage.'
 								)}
 							</p>
 							<h4 style={{ fontSize: '14px', fontWeight: 700, color: '#fafafa', margin: 0 }}>

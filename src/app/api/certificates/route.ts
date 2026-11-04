@@ -6,7 +6,7 @@ import { withAudit } from '@/lib/audit/withAudit';
 export async function GET(request: Request) {
 	// Previously unauthenticated: with no `userId` this returned every
 	// member's certificates to anyone who asked.
-	const auth = await requireApp(request, 'certificates', 'kullan');
+	const auth = await requireApp(request, 'certificates', 'use');
 	if (!auth.authorized) return auth.response;
 
 	try {
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
 		const requested = searchParams.get('userId');
 
 		// Members may only list their own; those who manage certificates may list anyone's.
-		const userId = can(auth.user, 'certificates', 'yonet') ? requested || undefined : auth.user.id;
+		const userId = can(auth.user, 'certificates', 'manage') ? requested || undefined : auth.user.id;
 
 		const certs = await getCertificates(userId);
 		return NextResponse.json(certs);
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
 async function handlePOST(request: Request) {
 	// Issuing a certificate mints a publicly verifiable credential, so it is a
 	// management action.
-	const auth = await requireApp(request, 'certificates', 'yonet');
+	const auth = await requireApp(request, 'certificates', 'manage');
 	if (!auth.authorized) return auth.response;
 
 	try {
@@ -81,7 +81,7 @@ async function handlePOST(request: Request) {
 export const POST = withAudit(handlePOST, { action: 'certificates.create', target: 'certificate' });
 
 async function handleDELETE(request: Request) {
-	const auth = await requireApp(request, 'certificates', 'yonet');
+	const auth = await requireApp(request, 'certificates', 'manage');
 	if (!auth.authorized) return auth.response;
 
 	try {

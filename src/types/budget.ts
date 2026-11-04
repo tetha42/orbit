@@ -7,40 +7,32 @@
  * per-category summaries.
  */
 export const BUDGET_CATEGORIES = [
-	'İkram',
-	'Afiş/Baskı',
-	'Sponsorluk',
-	'Donanım',
-	'Ulaşım',
-	'Diğer',
+	'catering',
+	'printing',
+	'sponsorship',
+	'hardware',
+	'transport',
+	'other',
 ] as const;
 
 export type BudgetCategory = (typeof BUDGET_CATEGORIES)[number];
 
 export const BUDGET_CATEGORY_ALIASES: Record<string, BudgetCategory> = {
-	catering: 'İkram',
-	refreshments: 'İkram',
-	food: 'İkram',
-	'afiş/baskı': 'Afiş/Baskı',
-	'afis/baski': 'Afiş/Baskı',
-	printing: 'Afiş/Baskı',
-	print: 'Afiş/Baskı',
-	poster: 'Afiş/Baskı',
-	marketing: 'Afiş/Baskı',
-	sponsorluk: 'Sponsorluk',
-	sponsorship: 'Sponsorluk',
-	sponsor: 'Sponsorluk',
-	donanım: 'Donanım',
-	donanim: 'Donanım',
-	hardware: 'Donanım',
-	equipment: 'Donanım',
-	ulaşım: 'Ulaşım',
-	ulasim: 'Ulaşım',
-	transportation: 'Ulaşım',
-	travel: 'Ulaşım',
-	diğer: 'Diğer',
-	diger: 'Diğer',
-	other: 'Diğer',
+	catering: 'catering',
+	refreshments: 'catering',
+	food: 'catering',
+	printing: 'printing',
+	print: 'printing',
+	poster: 'printing',
+	marketing: 'printing',
+	sponsorship: 'sponsorship',
+	sponsor: 'sponsorship',
+	hardware: 'hardware',
+	equipment: 'hardware',
+	transport: 'transport',
+	transportation: 'transport',
+	travel: 'transport',
+	other: 'other',
 };
 
 export function normalizeBudgetCategory(value: unknown): BudgetCategory | null {
@@ -55,7 +47,7 @@ export function normalizeBudgetCategory(value: unknown): BudgetCategory | null {
  * The category of the two rows an allocation writes (one in each kasa). It is not
  * in BUTCE_KATEGORILERI on purpose: an ordinary entry cannot claim to be one.
  */
-export const TRANSFER_CATEGORY = 'Ödenek Aktarımı' as const;
+export const TRANSFER_CATEGORY = 'allowance_transfer' as const;
 
 /** Any category a stored row can carry. */
 export type BudgetRecordCategory = BudgetCategory | typeof TRANSFER_CATEGORY;
@@ -75,7 +67,7 @@ export interface VaultSummary {
 	/** `null` is the general kasa. */
 	teamId: string | null;
 	name: string;
-	kind: 'genel' | 'proje';
+	kind: 'general' | 'project';
 	totalIncomeMinor: number;
 	totalExpenseMinor: number;
 	netBalanceMinor: number;

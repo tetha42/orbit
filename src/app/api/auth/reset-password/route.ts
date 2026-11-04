@@ -101,11 +101,11 @@ export async function POST(request: Request) {
 
 			await pool.query(
 				'DELETE FROM verification_tokens WHERE lower(target) = lower($1) AND token_type = $2',
-				[normalizedEmail, 'sifre_sifirlama']
+				[normalizedEmail, 'password_reset']
 			);
 			await pool.query(
 				`INSERT INTO verification_tokens (id, user_id, token_type, target, token_hash, expires_at, created_at)
-				 VALUES ($1, $2, 'sifre_sifirlama', $3, $4, $5, $6)`,
+				 VALUES ($1, $2, 'password_reset', $3, $4, $5, $6)`,
 				[`otp_${crypto.randomUUID()}`, user.id, normalizedEmail, hashedCode, lastValidity, Date.now()]
 			);
 
@@ -143,7 +143,7 @@ export async function POST(request: Request) {
 			if (!gate.allowed) {
 				await pool.query('DELETE FROM verification_tokens WHERE lower(target) = lower($1) AND token_type = $2', [
 					normalizedEmail,
-					'sifre_sifirlama',
+					'password_reset',
 				]);
 				return NextResponse.json(
 					{ error: 'Çok fazla hatalı kod denemesi yapıldı. Güvenliğiniz için kod iptal edildi, lütfen yeni kod talep edin.' },
@@ -163,7 +163,7 @@ export async function POST(request: Request) {
 
 			const codeRes = await pool.query(
 				'SELECT token_hash AS code, expires_at AS lastValidity FROM verification_tokens WHERE lower(target) = lower($1) AND token_type = $2 ORDER BY created_at DESC LIMIT 1',
-				[normalizedEmail, 'sifre_sifirlama']
+				[normalizedEmail, 'password_reset']
 			);
 
 			const record = codeRes.rows[0];
@@ -174,7 +174,7 @@ export async function POST(request: Request) {
 				if (attempts >= MAX_OTP_ATTEMPTS) {
 					await pool.query('DELETE FROM verification_tokens WHERE lower(target) = lower($1) AND token_type = $2', [
 						normalizedEmail,
-						'sifre_sifirlama',
+						'password_reset',
 					]);
 				}
 				await logSystemEvent({
@@ -207,7 +207,7 @@ export async function POST(request: Request) {
 			// Kodu ve sayacı temizle
 			await pool.query('DELETE FROM verification_tokens WHERE lower(target) = lower($1) AND token_type = $2', [
 				normalizedEmail,
-				'sifre_sifirlama',
+				'password_reset',
 			]);
 			clearRateLimit(verifyKey);
 

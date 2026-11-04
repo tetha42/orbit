@@ -40,14 +40,14 @@ const manifest = {
 	},
 	menu: {
 		title: { tr: 'Posta', en: 'Mail' },
-		about: { id: 'about-mail', label: { tr: 'Posta Hakkında', en: 'About Mail' }, permission: 'kullan', ac: true },
+		about: { id: 'about-mail', label: { tr: 'Posta Hakkında', en: 'About Mail' }, permission: 'use', ac: true },
 		categories: [
 			{
 				id: 'mailbox',
 				title: { tr: 'Posta Kutusu', en: 'Mailbox' },
 				items: [
-					{ id: 'mail-compose', label: { tr: 'Yeni İleti', en: 'New Message' }, shortcut: '⌘N', permission: 'yonet', command: 'mail-compose' },
-					{ id: 'mail-refresh', label: { tr: 'Postayı Yenile', en: 'Refresh Mail' }, shortcut: '⌘R', permission: 'kullan', command: 'mail-refresh' },
+					{ id: 'mail-compose', label: { tr: 'Yeni İleti', en: 'New Message' }, shortcut: '⌘N', permission: 'manage', command: 'mail-compose' },
+					{ id: 'mail-refresh', label: { tr: 'Postayı Yenile', en: 'Refresh Mail' }, shortcut: '⌘R', permission: 'use', command: 'mail-refresh' },
 				],
 			},
 		],

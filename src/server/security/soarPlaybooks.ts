@@ -87,7 +87,7 @@ export async function executeSoarPlaybook(
 			actionsTaken.push(`Revoked all active session tokens for user #${target.userId}`);
 
 			// 2. Suspend account in PostgreSQL to prevent immediate re-login
-			await pool.query("UPDATE users SET status = 'askida' WHERE id = $1", [target.userId]);
+			await pool.query("UPDATE users SET status = 'suspended' WHERE id = $1", [target.userId]);
 			actionsTaken.push(`Suspended account status to 'askida' for user #${target.userId}`);
 
 			// 3. Kill all active Linux PTY terminal shells

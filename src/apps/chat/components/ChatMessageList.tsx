@@ -172,7 +172,7 @@ function ChatMessageRow({
 							} ${isDeleted ? s.messageBubbleDeleted : ''}`}
 						>
 							{/* Forwarded Header */}
-							{msg.deliveredMi && !isDeleted && (
+							{msg.isDelivered && !isDeleted && (
 								<div className={`${s.forwardedTag} ${isMine ? s.forwardedTagMine : ''}`}>
 									<Forward size={11} />
 									<span>{t('chatForwarded')}</span>
@@ -404,7 +404,7 @@ export function ChatMessageList({
 			)}
 			{messages.map((msg) => {
 				// 1. WhatsApp style centered system notifications (e.g. "X created group", "Y added Z", "/clear" bot message)
-				if (msg.senderId === 'sistem') {
+				if (msg.senderId === 'system') {
 					return (
 						<div
 							key={msg.id}

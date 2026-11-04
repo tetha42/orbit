@@ -44,10 +44,10 @@ const bad = (error: string, status = 400) => NextResponse.json({ error }, { stat
  * from `/api/etkinlikler/[id]/katilim`.
  */
 export async function GET(request: Request) {
-	const auth = await requireApp(request, 'events', 'kullan');
+	const auth = await requireApp(request, 'events', 'use');
 	if (!auth.authorized) return auth.response;
 	try {
-		const manage = can(auth.user, 'events', 'yonet');
+		const manage = can(auth.user, 'events', 'manage');
 		// Close check-in on events that have ended, before anyone reads their state.
 		await closeFinishedAttendances();
 		const rows = await getEventViews(auth.user.id, manage);
@@ -72,32 +72,32 @@ async function parseEventFields(body: Record<string, unknown>, partial: boolean)
 	const has = (k: string) => body[k] !== undefined;
 
 	if (!partial || has('title')) {
-		const rawTitle = body.title ?? body.title;
+		const rawTitle = body.title;
 		const title = typeof rawTitle === 'string' ? rawTitle.trim() : '';
 		if (title.length < 3) return { ok: false, error: 'Event title must be at least 3 characters.' };
 		if (title.length > EVENT_TITLE_MAX) return { ok: false, error: `Title cannot exceed ${EVENT_TITLE_MAX} characters.` };
 		v.title = title;
 	}
 	if (!partial || has('type')) {
-		const rawType = (body.type ?? body.typeValue ?? 'atolye') as string;
+		const rawType = (body.type ?? body.typeValue ?? 'workshop') as string;
 		const typeValue = normalizeEventType(rawType);
 		if (!typeValue) return { ok: false, error: 'Invalid event type.' };
 		v.typeValue = typeValue;
 	}
 	if (!partial || has('description')) {
-		const rawDesc = body.description ?? body.description;
+		const rawDesc = body.description;
 		const description = typeof rawDesc === 'string' ? rawDesc.trim() : '';
 		if (description.length > EVENT_DESCRIPTION_MAX) return { ok: false, error: 'Description is too long.' };
 		v.description = description;
 	}
 	if (!partial || has('location')) {
-		const rawLoc = body.location ?? body.location;
+		const rawLoc = body.location;
 		const location = typeof rawLoc === 'string' ? rawLoc.trim() : '';
 		if (!location) return { ok: false, error: 'Location is required.' };
 		v.location = location.slice(0, 120);
 	}
 	if (!partial || has('start')) {
-		const rawStart = body.start ?? body.start;
+		const rawStart = body.start;
 		const startNum = Number(rawStart);
 		if (!Number.isFinite(startNum) || startNum <= 0) {
 			return { ok: false, error: 'Start and end times must be valid.' };
@@ -105,7 +105,7 @@ async function parseEventFields(body: Record<string, unknown>, partial: boolean)
 		v.start = Math.round(startNum);
 	}
 	if (!partial || has('endTime') || has('end')) {
-		const rawEnd = body.endTime ?? body.end ?? body.end;
+		const rawEnd = body.endTime ?? body.end;
 		const endNum = Number(rawEnd);
 		if (!Number.isFinite(endNum) || endNum <= 0) {
 			return { ok: false, error: 'Start and end times must be valid.' };
@@ -116,7 +116,7 @@ async function parseEventFields(body: Record<string, unknown>, partial: boolean)
 		return { ok: false, error: 'End time must be after start time.' };
 	}
 	if (!partial || has('capacity')) {
-		const rawKap = body.capacity ?? body.capacity ?? 50;
+		const rawKap = body.capacity ?? 50;
 		const n = Number(rawKap);
 		if (!Number.isInteger(n) || n < 0 || n > CAPACITY_MAX) return { ok: false, error: `Capacity must be between 0 and ${CAPACITY_MAX} (0 = unlimited).` };
 		v.capacity = n;
@@ -138,7 +138,7 @@ async function parseEventFields(body: Record<string, unknown>, partial: boolean)
 		const ownerUserId = typeof body.ownerUserId === 'string' && body.ownerUserId ? body.ownerUserId : null;
 		if (ownerUserId) {
 			const owner = await getUserById(ownerUserId);
-			if (!owner || owner.status !== 'aktif') return { ok: false, error: 'Sahip üye bulunamadı.' };
+			if (!owner || owner.status !== 'active') return { ok: false, error: 'Sahip üye bulunamadı.' };
 		}
 		v.ownerUserId = ownerUserId;
 	}
@@ -152,7 +152,7 @@ async function memberOf(body: Record<string, unknown>): Promise<User | null> {
 }
 
 async function handlePOST(request: Request) {
-	const auth = await requireApp(request, 'events', 'kullan');
+	const auth = await requireApp(request, 'events', 'use');
 	if (!auth.authorized) return auth.response;
 	const user = auth.user;
 
@@ -162,29 +162,29 @@ async function handlePOST(request: Request) {
 		const eventId = typeof body.eventId === 'string' ? body.eventId : typeof body.eventId === 'string' ? body.eventId : '';
 
 		// ---- member actions ------------------------------------------------------
-		if (['register', 'join', 'rsvp', 'cancelRegistration', 'iptal', 'rsvp_cancel', 'attend', 'checkin'].includes(action)) {
-			if (user.status === 'mezun') return bad('Mezunlar sadece okuma erişimine sahiptir.', 403);
+		if (['register', 'join', 'rsvp', 'cancelRegistration', 'cancelled', 'rsvp_cancel', 'attend', 'checkin'].includes(action)) {
+			if (user.status === 'alumni') return bad('Mezunlar sadece okuma erişimine sahiptir.', 403);
 
 			if (action === 'register' || action === 'join' || action === 'rsvp') {
 				if (!eventId) return bad('CommunityEvent ID zorunludur.');
 				const r = await registerForEvent(eventId, user.id);
 				const messages: Record<typeof r, [number, string]> = {
 					ok: [200, 'Etkinliğe kaydoldunuz. Biletiniz hazır.'],
-					zaten: [409, 'Bu etkinliğe zaten kayıtlısınız.'],
-					dolu: [409, 'Kontenjan doldu.'],
-					kapali: [400, 'Bu etkinlik kayda açık değil.'],
-					bulunamadi: [404, 'CommunityEvent bulunamadı.'],
+					already: [409, 'Bu etkinliğe zaten kayıtlısınız.'],
+					full: [409, 'Kontenjan doldu.'],
+					closed: [400, 'Bu etkinlik kayda açık değil.'],
+					not_found: [404, 'CommunityEvent bulunamadı.'],
 				};
 				const [status, message] = messages[r];
 				if (status === 200) await publishEventQuiet(getPgPool(), [{ k: 'event_updated' }]);
 				return status === 200 ? NextResponse.json({ success: true, message }) : bad(message, status);
 			}
 
-			if (action === 'cancelRegistration' || action === 'iptal' || action === 'rsvp_cancel') {
+			if (action === 'cancelRegistration' || action === 'cancelled' || action === 'rsvp_cancel') {
 				if (!eventId) return bad('CommunityEvent ID zorunludur.');
 				const r = await cancelEventRegistration(eventId, user.id);
-				if (r === 'basladi') return bad('CommunityEvent başladıktan sonra kayıt iptal edilemez.');
-				if (r === 'yok') return bad('Bu etkinlik için kaydınız bulunmuyor.', 404);
+				if (r === 'started') return bad('CommunityEvent başladıktan sonra kayıt iptal edilemez.');
+				if (r === 'none') return bad('Bu etkinlik için kaydınız bulunmuyor.', 404);
 				await publishEventQuiet(getPgPool(), [{ k: 'event_updated' }]);
 				return NextResponse.json({ success: true, message: 'Kaydınız iptal edildi.' });
 			}
@@ -204,11 +204,11 @@ async function handlePOST(request: Request) {
 			let expired = false;
 			for (const id of open) {
 				const r = await verifyShortCode(id, shortCode);
-				if (r === 'gecerli') {
+				if (r === 'valid') {
 					matchedEventId = id;
 					break;
 				}
-				if (r === 'suresi-doldu') expired = true;
+				if (r === 'expired') expired = true;
 			}
 			if (!matchedEventId) {
 				return expired
@@ -216,22 +216,21 @@ async function handlePOST(request: Request) {
 					: bad('Kod geçersiz.', 403);
 			}
 			const ev = await getEventById(matchedEventId);
-			if (!ev || ev.status !== 'yayinda') return bad('CommunityEvent bulunamadı.', 404);
+			if (!ev || ev.status !== 'published') return bad('CommunityEvent bulunamadı.', 404);
 			if (!Number(ev.attendanceOpen)) return bad('Bu etkinlikte yoklama şu anda kapalı.', 409);
 			if (!isAttendanceTime(ev.start, ev.endTime, Date.now())) return bad('Attendance yalnızca etkinlik sırasında alınabilir.', 409);
 			const r = await saveAttendance({ eventId: ev.id, userId: user.id, method: 'qr' });
 			await publishEventQuiet(getPgPool(), [{ k: 'event_updated' }]);
 			return NextResponse.json({
 				success: true,
-				zaten: r === 'zaten',
-				already: r === 'zaten',
+				already: r === 'already',
 				event: { id: ev.id, title: ev.title },
-				message: r === 'zaten' ? 'Yoklamanız zaten alınmış.' : `Yoklamanız alındı (+${PARTICIPATION_XP} XP).`,
+				message: r === 'already' ? 'Yoklamanız zaten alınmış.' : `Yoklamanız alındı (+${PARTICIPATION_XP} XP).`,
 			});
 		}
 
 		// ---- organiser actions -----------------------------------------------------
-		if (!can(user, 'events', 'yonet')) return bad('Bu işlem Etkinlikler uygulamasında yönetim yetkisi gerektirir.', 403);
+		if (!can(user, 'events', 'manage')) return bad('Bu işlem Etkinlikler uygulamasında yönetim yetkisi gerektirir.', 403);
 
 		if (action === 'createEvent') {
 			const parsed = await parseEventFields(body, false);
@@ -247,7 +246,7 @@ async function handlePOST(request: Request) {
 				endTime: v.endTime!,
 				capacity: v.capacity,
 				creatorId: user.id,
-				status: v.status === 'taslak' || body.status === 'taslak' || body.status === 'draft' ? 'taslak' : 'yayinda',
+				status: v.status === 'draft' || body.status === 'draft' ? 'draft' : 'published',
 				ownerTeamId: v.ownerTeamId ?? null,
 				ownerUserId: v.ownerUserId ?? user.id,
 			});
@@ -266,7 +265,7 @@ async function handlePOST(request: Request) {
 			const end = parsed.value.endTime ?? Number(ev.endTime);
 			if (end <= start) return bad('Bitiş, başlangıçtan sonra olmalıdır.');
 			// Cancelling or completing an event also closes check-in.
-			const closes = parsed.value.status && parsed.value.status !== 'yayinda';
+			const closes = parsed.value.status && parsed.value.status !== 'published';
 			await updateEvent(eventId, { ...parsed.value, ...(closes ? { attendanceOpen: false } : {}) });
 			await publishEventQuiet(getPgPool(), [{ k: 'event_updated' }, ...notificationEvents()]);
 			return NextResponse.json({ success: true });
@@ -274,7 +273,7 @@ async function handlePOST(request: Request) {
 
 		if (action === 'setAttendance') {
 			const open = body.open === true;
-			if (open && ev.status !== 'yayinda') return bad('Yalnızca yayındaki bir etkinlikte yoklama açılabilir.');
+			if (open && ev.status !== 'published') return bad('Yalnızca yayındaki bir etkinlikte yoklama açılabilir.');
 			await updateEvent(eventId, { attendanceOpen: open });
 			await publishEventQuiet(getPgPool(), [{ k: 'event_updated' }]);
 			return NextResponse.json({ success: true, attendanceOpen: open });
@@ -282,14 +281,14 @@ async function handlePOST(request: Request) {
 
 		if (action === 'deleteEvent') {
 			const r = await deleteEvent(eventId);
-			if (r === 'katilim-var') return bad('Katılım kaydı olan etkinlik silinemez; bunun yerine iptal edin.', 409);
+			if (r === 'has_participation') return bad('Katılım kaydı olan etkinlik silinemez; bunun yerine iptal edin.', 409);
 			await publishEventQuiet(getPgPool(), [{ k: 'event_updated' }, ...notificationEvents()]);
 			return NextResponse.json({ success: true });
 		}
 
 		// Organiser attendance writes (ticket, manual, removal) only while the event is running.
 		const attendanceWritable = (e: { status: string; attendanceOpen: number; start: number | string; endTime: number | string }) =>
-			e.status === 'yayinda' && Number(e.attendanceOpen) === 1 && isAttendanceTime(Number(e.start), Number(e.endTime), Date.now());
+			e.status === 'published' && Number(e.attendanceOpen) === 1 && isAttendanceTime(Number(e.start), Number(e.endTime), Date.now());
 		const attendanceClosedMessage = 'Attendance yalnızca açık ve etkinlik sırasında değiştirilebilir.';
 
 		if (action === 'scanTicket') {
@@ -299,13 +298,13 @@ async function handlePOST(request: Request) {
 			if (code.eventId !== eventId) return bad('Bu bilet başka bir etkinliğe ait.', 409);
 			const member = await getUserById(code.userId);
 			if (!member) return bad('Bilet sahibi bulunamadı.', 404);
-			const r = await saveAttendance({ eventId: eventId, userId: member.id, method: 'bilet', recorderId: user.id });
+			const r = await saveAttendance({ eventId: eventId, userId: member.id, method: 'ticket', recorderId: user.id });
 			await publishEventQuiet(getPgPool(), [{ k: 'event_updated' }]);
 			return NextResponse.json({
 				success: true,
-				zaten: r === 'zaten',
+				already: r === 'already',
 				member: { id: member.id, nameSurname: `${member.name} ${member.surname}`, studentNo: member.studentNo },
-				message: r === 'zaten' ? `${member.name} ${member.surname} zaten giriş yaptı.` : `${member.name} ${member.surname} — giriş kaydedildi.`,
+				message: r === 'already' ? `${member.name} ${member.surname} zaten giriş yaptı.` : `${member.name} ${member.surname} — giriş kaydedildi.`,
 			});
 		}
 
@@ -313,14 +312,14 @@ async function handlePOST(request: Request) {
 			if (!attendanceWritable(ev)) return bad(attendanceClosedMessage, 409);
 			const member = await memberOf(body);
 			if (!member) return bad('Üye bulunamadı. Öğrenci numarasını kontrol edin.', 404);
-			if (member.status !== 'aktif' && member.status !== 'mezun') return bad('Bu üyenin hesabı aktif değil.', 409);
-			const r = await saveAttendance({ eventId: eventId, userId: member.id, method: 'manuel', recorderId: user.id });
+			if (member.status !== 'active' && member.status !== 'alumni') return bad('Bu üyenin hesabı aktif değil.', 409);
+			const r = await saveAttendance({ eventId: eventId, userId: member.id, method: 'manual', recorderId: user.id });
 			await publishEventQuiet(getPgPool(), [{ k: 'event_updated' }]);
 			return NextResponse.json({
 				success: true,
-				zaten: r === 'zaten',
+				already: r === 'already',
 				member: { id: member.id, nameSurname: `${member.name} ${member.surname}`, studentNo: member.studentNo },
-				message: r === 'zaten' ? `${member.name} ${member.surname} zaten listede.` : `${member.name} ${member.surname} eklendi.`,
+				message: r === 'already' ? `${member.name} ${member.surname} zaten listede.` : `${member.name} ${member.surname} eklendi.`,
 			});
 		}
 

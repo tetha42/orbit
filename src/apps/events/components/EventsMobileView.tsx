@@ -134,9 +134,9 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 		const live = isLive(e, now);
 		const ended = e.endTime < now;
 		const full = e.capacity > 0 && e.registeredCount >= e.capacity;
-		const canRegister = e.status === 'yayinda' && !ended && !e.myMyRecord;
+		const canRegister = e.status === 'published' && !ended && !e.myMyRecord;
 		const canCheckIn =
-			e.status === 'yayinda' &&
+			e.status === 'published' &&
 			Number(e.attendanceOpen) === 1 &&
 			!e.myMyAttendance &&
 			!ended;
@@ -177,7 +177,7 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 				</div>
 
 				{/* Manager Sub-Tabs: Genel Bilgiler vs Katılımcılar & Attendance */}
-				{manage && e.status !== 'taslak' && (
+				{manage && e.status !== 'draft' && (
 					<div className={s.segmentWrap} style={{ paddingBottom: 0 }}>
 						<div className={s.segmentedBar}>
 							<button
@@ -203,7 +203,7 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 				)}
 
 				{/* Detail Content */}
-				{manage && detailTab === 'attendance' && e.status !== 'taslak' ? (
+				{manage && detailTab === 'attendance' && e.status !== 'draft' ? (
 					<div
 						style={{
 							flex: 1,
@@ -227,7 +227,7 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 							<div className={s.cardBadgeRow}>
 								<span className={s.typeBadge}>{t(meta.key)}</span>
 								{live && <span className={s.liveBadge}>{t('evLive')}</span>}
-								{e.status === 'taslak' && (
+								{e.status === 'draft' && (
 									<span
 										className={s.typeBadge}
 										style={{ background: 'rgba(255, 255, 255, 0.1)', color: '#fff' }}
@@ -235,7 +235,7 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 										{t('evDraft')}
 									</span>
 								)}
-								{e.status === 'iptal' && (
+								{e.status === 'cancelled' && (
 									<span
 										className={s.typeBadge}
 										style={{ background: 'rgba(255, 69, 58, 0.15)', color: '#ff453a' }}
@@ -410,7 +410,7 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 							</div>
 						)}
 
-						{e.myMyRecord && e.start <= now && !ended && e.status === 'yayinda' && (
+						{e.myMyRecord && e.start <= now && !ended && e.status === 'published' && (
 							<div
 								style={{
 									display: 'flex',
@@ -495,7 +495,7 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 								</button>
 							)}
 
-							{e.myMyRecord && e.start > now && e.status === 'yayinda' && (
+							{e.myMyRecord && e.start > now && e.status === 'published' && (
 								<button
 									type="button"
 									className={`${s.toolbarBtn} ${s.toolbarBtnDestructive}`}
@@ -528,7 +528,7 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 					<div className={s.sheetScrim} onClick={() => setManageSheetOpen(false)}>
 						<div className={s.sheetCard} onClick={(ev) => ev.stopPropagation()}>
 							<div className={s.sheetHeader}>{t('evManage')} · {e.title}</div>
-							{e.status === 'yayinda' && (
+							{e.status === 'published' && (
 								<button
 									type="button"
 									className={s.sheetActionBtn}
@@ -552,23 +552,23 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 								<Pencil size={18} />
 								<span>{t('evEdit')}</span>
 							</button>
-							{e.status === 'taslak' && (
+							{e.status === 'draft' && (
 								<button
 									type="button"
 									className={s.sheetActionBtn}
 									onClick={() => {
 										setManageSheetOpen(false);
 										void onAct(
-											{ action: 'updateEvent', eventId: e.id, status: 'yayinda' },
+											{ action: 'updateEvent', eventId: e.id, status: 'published' },
 											t('evSaved')
-										).then((ok) => ok && onTabChange(tabOf({ ...e, status: 'yayinda' })));
+										).then((ok) => ok && onTabChange(tabOf({ ...e, status: 'published' })));
 									}}
 								>
 									<Send size={18} />
 									<span>{t('evPublish')}</span>
 								</button>
 							)}
-							{e.status === 'yayinda' && !ended && (
+							{e.status === 'published' && !ended && (
 								<button
 									type="button"
 									className={s.sheetDestructiveBtn}
@@ -583,7 +583,7 @@ export const EventsMobileView: React.FC<EventsMobileViewProps> = ({
 											await onAct({
 												action: 'updateEvent',
 												eventId: e.id,
-												status: 'iptal',
+												status: 'cancelled',
 											});
 										}
 									}}

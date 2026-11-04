@@ -32,7 +32,7 @@ export function AddMemberModal({
 	const [groupTitle, setGroupTitle] = useState('');
 	const [submitting, setSubmitting] = useState(false);
 
-	const is1on1Dm = room.typeValue === 'ozel' && (room.memberCount === 2 || Boolean(room.peerUserId));
+	const is1on1Dm = room.typeValue === 'private' && (room.memberCount === 2 || Boolean(room.peerUserId));
 
 	useEffect(() => {
 		if (!isOpen) {

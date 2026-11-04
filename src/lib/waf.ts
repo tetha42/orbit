@@ -224,7 +224,7 @@ const DB_PROTECTED_SETTINGS_KEY_RE =
 	/\b(?:soc_lockdown_mode|soc_lockdown_reason|smtp_pass)\b/i;
 
 const DB_SENSITIVE_COLUMN_REF_RE =
-	/\b(?:password_hash|passwordhash|sifrehash|totp_secret|totpsecret|session_token|sessiontoken|aktifoturumtoken|totp_recovery_codes|totprecoverycodes|secret_hash|secrethash|smtp_pass)\b/i;
+	/\b(?:password_hash|passwordhash|totp_secret|totpsecret|session_token|sessiontoken|totp_recovery_codes|totprecoverycodes|secret_hash|secrethash|smtp_pass)\b/i;
 
 const DB_EXPLAIN_TX_BREAKOUT_RE =
 	/\b(?:COMMIT|ROLLBACK|END|BEGIN|START\s+TRANSACTION|SET\s+TRANSACTION|SET\s+SESSION)\b/i;
@@ -232,12 +232,10 @@ const DB_EXPLAIN_TX_BREAKOUT_RE =
 export const DB_SENSITIVE_COLUMNS = new Set([
 	'password_hash',
 	'passwordhash',
-	'sifrehash',
 	'totp_secret',
 	'totpsecret',
 	'session_token',
 	'sessiontoken',
-	'aktifoturumtoken',
 	'totp_recovery_codes',
 	'totprecoverycodes',
 	'secret_hash',

@@ -30,11 +30,11 @@ const PORTAL_MENUS: MenuCategory[] = [
 		id: 'file',
 		title: 'Dosya',
 		items: [
-			{ id: 'new-event', label: 'Yeni CommunityEvent...', shortcut: '⌘N', needs: { appId: 'events', level: 'yonet' }, command: { appId: 'events', name: 'new-event' } },
-			{ id: 'new-member', label: 'Yeni Üye Kaydı...', shortcut: '⇧⌘N', needs: { appId: 'members', level: 'yonet' }, command: { appId: 'members', name: 'add-member' } },
-			{ id: 'new-budget-entry', label: 'Yeni Gelir / Gider Girişi...', shortcut: '⌥⌘N', needs: { appId: 'budget', level: 'yonet' }, command: { appId: 'budget', name: 'new-entry' } },
+			{ id: 'new-event', label: 'Yeni CommunityEvent...', shortcut: '⌘N', needs: { appId: 'events', level: 'manage' }, command: { appId: 'events', name: 'new-event' } },
+			{ id: 'new-member', label: 'Yeni Üye Kaydı...', shortcut: '⇧⌘N', needs: { appId: 'members', level: 'manage' }, command: { appId: 'members', name: 'add-member' } },
+			{ id: 'new-budget-entry', label: 'Yeni Gelir / Gider Girişi...', shortcut: '⌥⌘N', needs: { appId: 'budget', level: 'manage' }, command: { appId: 'budget', name: 'new-entry' } },
 			{ id: 'sep1', label: '', separator: true },
-			{ id: 'export-report', label: 'Yönetim Faaliyet Raporunu Al', shortcut: '⌘E', needs: { appId: 'members', level: 'yonet' } },
+			{ id: 'export-report', label: 'Yönetim Faaliyet Raporunu Al', shortcut: '⌘E', needs: { appId: 'members', level: 'manage' } },
 		],
 	},
 	{

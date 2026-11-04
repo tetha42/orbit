@@ -29,10 +29,10 @@ const SYSTEM_TEMPLATES = [
 		title: 'Disk Kullanımı: En Büyük Tablolar & İndeksler',
 		desc: 'PostgreSQL tablolarının ve indekslerinin kapladığı gerçek disk alanını listeler.',
 		sql: `SELECT
-  relname AS table_Name,
-  pg_size_pretty(pg_total_relation_size(relid)) AS total_Size,
-  pg_size_pretty(pg_relation_size(relid)) AS table_Size,
-  pg_size_pretty(pg_indexes_size(relid)) AS indeks_Size
+  relname AS table_name,
+  pg_size_pretty(pg_total_relation_size(relid)) AS total_size,
+  pg_size_pretty(pg_relation_size(relid)) AS table_size,
+  pg_size_pretty(pg_indexes_size(relid)) AS index_size
 FROM pg_catalog.pg_statio_user_tables
 ORDER BY pg_total_relation_size(relid) DESC
 LIMIT 50;`,
@@ -55,10 +55,10 @@ ORDER BY query_start DESC;`,
 		title: 'Tablo İstatistikleri & Ölü Satırlar (Dead Tuples)',
 		desc: 'Canlı satırlar, silinen ama temizlenmemiş (dead) satırlar ve VACUUM geçmişi.',
 		sql: `SELECT
-  relname AS table_Name,
-  n_live_tup AS live_Rows,
-  n_dead_tup AS olu_Rows,
-  ROUND(100.0 * n_dead_tup / NULLIF(n_live_tup + n_dead_tup, 0), 1) AS olu_Ratio_Percent,
+  relname AS table_name,
+  n_live_tup AS live_rows,
+  n_dead_tup AS dead_rows,
+  ROUND(100.0 * n_dead_tup / NULLIF(n_live_tup + n_dead_tup, 0), 1) AS dead_ratio_percent,
   last_vacuum,
   last_autovacuum
 FROM pg_stat_user_tables
@@ -68,7 +68,7 @@ ORDER BY n_dead_tup DESC;`,
 		title: 'İndeks Kullanım Verimliliği',
 		desc: 'Tabloların Sequential Scan yerine ne sıklıkla Index Scan kullandığını gösterir.',
 		sql: `SELECT
-  relname AS table_Name,
+  relname AS table_name,
   seq_scan AS order_tarama,
   idx_scan AS indeks_tarama,
   ROUND(100.0 * idx_scan / NULLIF(seq_scan + idx_scan, 0), 1) AS indeks_kullanim_yuzdesi

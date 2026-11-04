@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 
 async function handlePOST(request: Request) {
 	try {
-		const auth = await requireApp(request, 'soc', 'yonet');
+		const auth = await requireApp(request, 'soc', 'manage');
 		if (!auth.authorized) return auth.response;
 
 		const body = await request.json().catch(() => null);

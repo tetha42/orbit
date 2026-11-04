@@ -1,6 +1,6 @@
 export interface ChatRoomItem {
 	id: string;
-	typeValue: 'genel' | 'takim' | 'ozel';
+	typeValue: 'general' | 'team' | 'private';
 	teamId: string | null;
 	name: string;
 	creation: number;
@@ -31,7 +31,7 @@ export interface ChatPollItem {
 	multipleSelection: boolean;
 	anonymous: boolean;
 	endsAt: number | null;
-	kapali: boolean;
+	closed: boolean;
 	creation: number;
 	options: ChatPollOptionItem[];
 	totalVote: number;
@@ -48,7 +48,7 @@ export interface ChatAttachmentItem {
 	name: string;
 	url: string;
 	size?: number;
-	tip?: string;
+	type?: string;
 }
 
 export interface ChatMessageItem {
@@ -65,7 +65,7 @@ export interface ChatMessageItem {
 	poll?: ChatPollItem | null;
 	repliedMessageId?: string | null;
 	repliedMessage?: QuotedMessageSnapshot | null;
-	deliveredMi?: boolean;
+	isDelivered?: boolean;
 }
 
 export interface ChatContactItem {

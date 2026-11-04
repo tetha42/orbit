@@ -19,7 +19,7 @@ const bad = (error: string, status = 400) => NextResponse.json({ error }, { stat
 const MEETING_STATUS = ['planned', 'held', 'cancelled'];
 
 export async function GET(request: Request) {
-	const auth = await requireApp(request, 'decisions', 'kullan');
+	const auth = await requireApp(request, 'decisions', 'use');
 	if (!auth.authorized) return auth.response;
 	const id = new URL(request.url).searchParams.get('id');
 	if (id) {
@@ -34,9 +34,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-	const auth = await requireApp(request, 'decisions', 'yonet');
+	const auth = await requireApp(request, 'decisions', 'manage');
 	if (!auth.authorized) return auth.response;
-	if (auth.user.status === 'mezun') return bad('Mezunlar sadece okuma erişimine sahiptir.', 403);
+	if (auth.user.status === 'alumni') return bad('Mezunlar sadece okuma erişimine sahiptir.', 403);
 
 	const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
 	if (!body) return bad('Geçersiz istek.');

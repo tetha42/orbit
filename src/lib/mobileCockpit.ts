@@ -28,7 +28,7 @@ export function myOpenTasks<T extends CockpitTask>(teams: { name: string; tasks:
 	const mine: (T & { teamName: string })[] = [];
 	for (const team of teams) {
 		for (const task of team.tasks) {
-			if (task.assigneeMemberId === userId && task.status !== 'tamamlandi') mine.push({ ...task, teamName: team.name });
+			if (task.assigneeMemberId === userId && task.status !== 'done') mine.push({ ...task, teamName: team.name });
 		}
 	}
 	return mine
@@ -42,7 +42,7 @@ export function myOpenTasks<T extends CockpitTask>(teams: { name: string; tasks:
  * come. Drafts and events that have ended never qualify.
  */
 export function nextEvent<T extends CockpitEvent>(events: T[], now: number): T | null {
-	const candidates = events.filter((e) => e.status === 'yayinda' && e.endTime >= now);
+	const candidates = events.filter((e) => e.status === 'published' && e.endTime >= now);
 	const live = candidates.filter((e) => e.start <= now).sort((a, b) => a.endTime - b.endTime);
 	if (live.length) return live[0];
 	return candidates.sort((a, b) => a.start - b.start)[0] ?? null;

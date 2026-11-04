@@ -126,7 +126,7 @@ interface RowProps {
 	busy: boolean;
 	error?: string;
 	onOpen: (item: NotificationItem) => void;
-	onDecide: (item: NotificationItem, action: 'onayla' | 'reddet') => void;
+	onDecide: (item: NotificationItem, action: 'approve' | 'reject') => void;
 }
 
 function NotificationRow({ item, now, unread, pinned, busy, error, onOpen, onDecide }: RowProps) {
@@ -159,18 +159,18 @@ function NotificationRow({ item, now, unread, pinned, busy, error, onOpen, onDec
 					<button
 						type="button"
 						className="nc-btn nc-btn--danger"
-						data-notification-action="reddet"
+						data-notification-action="reject"
 						disabled={busy}
-						onClick={() => onDecide(item, 'reddet')}
+						onClick={() => onDecide(item, 'reject')}
 					>
 						{t('ncReject')}
 					</button>
 					<button
 						type="button"
 						className="nc-btn nc-btn--primary"
-						data-notification-action="onayla"
+						data-notification-action="approve"
 						disabled={busy}
-						onClick={() => onDecide(item, 'onayla')}
+						onClick={() => onDecide(item, 'approve')}
 					>
 						<Check size={12} aria-hidden="true" /> {t('ncApprove')}
 					</button>
@@ -246,8 +246,8 @@ function PanelView() {
 		openApp('members');
 	};
 
-	const decide = async (item: NotificationItem, action: 'onayla' | 'reddet') => {
-		if (action === 'reddet') {
+	const decide = async (item: NotificationItem, action: 'approve' | 'reject') => {
+		if (action === 'reject') {
 			const confirmed = await dialog.confirm({
 				title: t('ncRejectTitle'),
 				message: fill(t('ncRejectConfirm'), { name: item.data.title }),
@@ -267,7 +267,7 @@ function PanelView() {
 			const body = await res.json().catch(() => ({}));
 			if (res.ok && body.success) {
 				playSystemSound();
-				setStatus(t(action === 'onayla' ? 'ncApproved' : 'ncRejected'));
+				setStatus(t(action === 'approve' ? 'ncApproved' : 'ncRejected'));
 				emitAppEvent('roster-changed');
 				await refresh();
 			} else {

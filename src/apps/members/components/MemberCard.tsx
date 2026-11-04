@@ -37,7 +37,7 @@ interface MemberCardProps {
 	onOpenProfile: (member: MemberRecord) => void;
 	onResetPassword: (memberId: string, name: string) => void;
 	onSendMessage: (memberId: string) => void;
-	onUpdateStatus: (memberId: string, status: 'aktif' | 'reddedildi' | 'mezun') => void;
+	onUpdateStatus: (memberId: string, status: 'active' | 'rejected' | 'alumni') => void;
 	onUpdateRole: (memberId: string, roleId: string) => void;
 	onAwardXp: (memberId: string, xp: number) => void;
 	onDelete: (memberId: string, name: string) => void;
@@ -64,7 +64,7 @@ export const MemberCard = React.memo(function MemberCard({
 	const { openApp } = useWindowActions();
 	const canSoc = canUseApp('soc');
 
-	const isAlumni = member.status === 'mezun' || isAlumniRole({ id: member.roleId, name: member.roleName });
+	const isAlumni = member.status === 'alumni' || isAlumniRole({ id: member.roleId, name: member.roleName });
 	const displayRole = isAlumni
 		? {
 				name: isAlumniRole({ id: member.roleId, name: member.roleName })
@@ -164,24 +164,24 @@ export const MemberCard = React.memo(function MemberCard({
 							alignItems: 'center',
 							gap: '3px',
 							color:
-								member.status === 'aktif'
+								member.status === 'active'
 									? 'var(--success)'
-									: member.status === 'beklemede'
+									: member.status === 'pending'
 									? 'var(--warning)'
-									: member.status === 'mezun'
+									: member.status === 'alumni'
 									? '#64d2ff'
 									: 'var(--danger)',
 						}}
 					>
-						{member.status === 'aktif' && <CheckCircle2 size={11} />}
-						{member.status === 'beklemede' && <Clock size={11} />}
-						{member.status === 'mezun' && <GraduationCap size={11} />}
-						{member.status === 'reddedildi' && <XCircle size={11} />}
-						{member.status === 'aktif'
+						{member.status === 'active' && <CheckCircle2 size={11} />}
+						{member.status === 'pending' && <Clock size={11} />}
+						{member.status === 'alumni' && <GraduationCap size={11} />}
+						{member.status === 'rejected' && <XCircle size={11} />}
+						{member.status === 'active'
 							? t('statusActive', 'Aktif')
-							: member.status === 'beklemede'
+							: member.status === 'pending'
 							? t('statusPending', 'Bekliyor')
-							: member.status === 'mezun'
+							: member.status === 'alumni'
 							? t('membersStatusAlumni', 'Mezun')
 							: t('statusRejected', 'Red')}
 					</span>
@@ -240,7 +240,7 @@ export const MemberCard = React.memo(function MemberCard({
 
 			{/* Actions Row */}
 			<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', flexWrap: 'wrap', paddingTop: '4px' }}>
-				{mailUser && !isSelf && member.status === 'aktif' && (
+				{mailUser && !isSelf && member.status === 'active' && (
 					<button
 						type="button"
 						onClick={() => onSendMessage(member.id)}

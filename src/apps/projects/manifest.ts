@@ -31,7 +31,7 @@ const manifest = {
 	component: { module: './index', export: 'ProjectsApp' },
 	order: 11,
 	dock: 2,
-	notifications: { projectProposal: 'yonet' },
+	notifications: { projectProposal: 'manage' },
 	permission: {
 		order: 3,
 		name: 'Projeler',

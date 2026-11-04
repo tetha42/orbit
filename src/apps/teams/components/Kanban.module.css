@@ -358,22 +358,22 @@
 	color: var(--prio);
 }
 
-.due_gecikti {
+.due_overdue {
 	background: color-mix(in srgb, #ff453a 15%, transparent);
 	color: #ff453a;
 }
 
-.due_bugun {
+.due_today {
 	background: color-mix(in srgb, #ff9f0a 18%, transparent);
 	color: #d97706;
 }
 
-.due_yakin {
+.due_upcoming {
 	background: color-mix(in srgb, #ffd60a 22%, transparent);
 	color: #b58900;
 }
 
-.due_ileri {
+.due_next {
 	background: var(--fill-soft);
 	color: var(--text-secondary);
 }

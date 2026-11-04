@@ -13,7 +13,7 @@ import { AUDIT_CSV_LIMIT, parseAuditFilter } from '@/lib/audit';
 export async function GET(request: Request) {
 	const auth = await authenticate(request);
 	if (!auth.authorized) return auth.response;
-	if (!auth.user.permission.admin && !can(auth.user, 'soc', 'yonet') && !can(auth.user, 'settings', 'yonet')) {
+	if (!auth.user.permission.admin && !can(auth.user, 'soc', 'manage') && !can(auth.user, 'settings', 'manage')) {
 		return NextResponse.json({ error: 'Bu kayıt için yönetim yetkisi gerekir.' }, { status: 403 });
 	}
 

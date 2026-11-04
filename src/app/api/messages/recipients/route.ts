@@ -17,7 +17,7 @@ const NO_STORE = { 'Cache-Control': 'no-store' };
  * `ulasilabilir` says whether the person's role opens Mail.
  */
 export async function GET(request: Request) {
-	const auth = await requireApp(request, 'mail', 'kullan');
+	const auth = await requireApp(request, 'mail', 'use');
 	if (!auth.authorized) return auth.response;
 	const user = auth.user;
 	try {
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
 		}
 		const params = new URL(request.url).searchParams;
 
-		if (params.get('reachable') === '1' || params.get('reachable') === '1') {
+		if (params.get('reachable') === '1') {
 			const ids = await reachableIds(await getMailCandidateRoles(user.id));
 			return NextResponse.json({ ids }, { headers: NO_STORE });
 		}

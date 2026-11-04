@@ -122,8 +122,8 @@ export function MemberDetailModal({
 	}
 
 	const isSelf = member.id === currentUserId;
-	const canMessage = mailUser && !isSelf && member.status === 'aktif';
-	const isAlumni = member.status === 'mezun' || isAlumniRole({ id: member.roleId, name: member.roleName });
+	const canMessage = mailUser && !isSelf && member.status === 'active';
+	const isAlumni = member.status === 'alumni' || isAlumniRole({ id: member.roleId, name: member.roleName });
 	const displayRole = isAlumni
 		? {
 				name: isAlumniRole({ id: member.roleId, name: member.roleName })
@@ -197,32 +197,32 @@ export function MemberDetailModal({
 									padding: '2px 7px',
 									borderRadius: '6px',
 									background:
-										member.status === 'aktif'
+										member.status === 'active'
 											? 'rgba(52, 199, 89, 0.15)'
-											: member.status === 'mezun'
+											: member.status === 'alumni'
 											? 'rgba(10, 132, 255, 0.15)'
-											: member.status === 'beklemede'
+											: member.status === 'pending'
 											? 'rgba(255, 204, 0, 0.15)'
 											: 'rgba(255, 59, 48, 0.15)',
 									color:
-										member.status === 'aktif'
+										member.status === 'active'
 											? '#34c759'
-											: member.status === 'mezun'
+											: member.status === 'alumni'
 											? '#0a84ff'
-											: member.status === 'beklemede'
+											: member.status === 'pending'
 											? '#ffcc00'
 											: '#ff3b30',
 								}}
 							>
-								{member.status === 'aktif' && <CheckCircle2 size={11} />}
-								{member.status === 'beklemede' && <Clock size={11} />}
-								{member.status === 'reddedildi' && <XCircle size={11} />}
-								{member.status === 'mezun' && <GraduationCap size={11} />}
-								{member.status === 'aktif'
+								{member.status === 'active' && <CheckCircle2 size={11} />}
+								{member.status === 'pending' && <Clock size={11} />}
+								{member.status === 'rejected' && <XCircle size={11} />}
+								{member.status === 'alumni' && <GraduationCap size={11} />}
+								{member.status === 'active'
 									? t('membersStatusActive', 'Aktif')
-									: member.status === 'beklemede'
+									: member.status === 'pending'
 									? t('membersStatusPending', 'Onay Bekliyor')
-									: member.status === 'mezun'
+									: member.status === 'alumni'
 									? t('membersStatusAlumni', 'Mezun')
 									: t('membersStatusRejected', 'Reddedildi')}
 							</span>
@@ -361,7 +361,7 @@ export function MemberDetailModal({
 									}}
 								>
 									<span style={{ fontWeight: 600 }}>{tm.name}</span>
-									{tm.leaderMi && (
+									{tm.isLeader && (
 										<span
 											style={{
 												fontSize: '10px',
@@ -375,7 +375,7 @@ export function MemberDetailModal({
 											👑 {t('teamRoleCaptain')}
 										</span>
 									)}
-									{tm.role && !tm.leaderMi && (
+									{tm.role && !tm.isLeader && (
 										<span style={{ fontSize: '11px', opacity: 0.7 }}>({tm.role})</span>
 									)}
 									{tm.category && (
@@ -550,7 +550,7 @@ export function MemberDetailModal({
 							{t('edit')}
 						</button>
 					)}
-					{canEdit && onSendPasswordReset && member.status === 'aktif' && (
+					{canEdit && onSendPasswordReset && member.status === 'active' && (
 						<button
 							type="button"
 							className={ui.btn}

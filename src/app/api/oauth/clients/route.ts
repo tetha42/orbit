@@ -117,7 +117,7 @@ export async function PATCH(request: Request) {
 		if (typeof body.description === 'string') updateData.description = body.description.trim();
 		if (body.logoUrl !== undefined) updateData.logoUrl = body.logoUrl;
 		if (body.trusted !== undefined) updateData.trusted = body.trusted === true;
-		if (body.aktif !== undefined) updateData.aktif = body.aktif === true;
+		if (body.active !== undefined) updateData.active = body.active === true;
 		if (Array.isArray(body.redirectUris)) {
 			updateData.redirectUris = body.redirectUris.map(String).map((u) => u.trim()).filter(Boolean);
 		}

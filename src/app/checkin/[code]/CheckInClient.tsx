@@ -25,7 +25,7 @@ async function submit(code: string): Promise<State> {
 				kind: 'ok',
 				title: data.event?.title ?? '',
 				message: data.message || 'Your attendance has been recorded.',
-				already: !!data.zaten,
+				already: !!data.already,
 			};
 		}
 		return {

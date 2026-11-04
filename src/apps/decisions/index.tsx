@@ -55,7 +55,7 @@ interface Decision {
 	votesFor?: number;
 	votesAgainst?: number;
 	votesAbstain?: number;
-	publicOpenMi: number;
+	isPublicOpen: number;
 }
 
 interface CommitteeDetail {

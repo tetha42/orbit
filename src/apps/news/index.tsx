@@ -104,7 +104,7 @@ export function NewsApp() {
 					isSubmitting={newsHook.isSubmitting}
 					newVisibility={newsHook.newVisibility}
 					newCategory={newsHook.newCategory}
-					newImportantMi={newsHook.newImportantMi}
+					newIsImportant={newsHook.newIsImportant}
 					newTitle={newsHook.newTitle}
 					newSummary={newsHook.newSummary}
 					newImageUrl={newsHook.newImageUrl}
@@ -113,7 +113,7 @@ export function NewsApp() {
 					onSubmit={newsHook.handleSaveNews}
 					onChangeVisibility={newsHook.setNewVisibility}
 					onChangeCategory={newsHook.setNewCategory}
-					onChangeImportantMi={newsHook.setNewImportantMi}
+					onChangeIsImportant={newsHook.setNewIsImportant}
 					onChangeTitle={newsHook.setNewTitle}
 					onChangeSummary={newsHook.setNewSummary}
 					onChangeImageUrl={newsHook.setNewImageUrl}

@@ -87,9 +87,9 @@ async function loginAdmin() {
 }
 
 const ROLES = {
-	management: { name: 'Yönetim Kurulu', color: '#ff9f0a', description: 'Topluluk yönetim kurulu ve icra', twoStepRequired: true, permissions: { news: 'yonet', events: 'yonet', teams: 'yonet', projects: 'yonet', certificates: 'yonet', inventory: 'yonet', members: 'yonet', budget: 'yonet', notes: 'kullan', chat: 'yonet', mail: 'yonet', settings: 'kullan' } },
-	member: { name: 'Üye', color: '#0a84ff', description: 'Aktif topluluk üyesi', twoStepRequired: false, permissions: { news: 'kullan', events: 'kullan', teams: 'kullan', projects: 'kullan', certificates: 'kullan', inventory: 'kullan', members: 'kullan', notes: 'kullan', chat: 'kullan', mail: 'kullan', settings: 'kullan' } },
-	news: { name: 'Sadece Haberler', color: '#8e8e93', description: 'Salt okunur duyuru ve haber erişimi', twoStepRequired: false, permissions: { news: 'kullan' } },
+	management: { name: 'Yönetim Kurulu', color: '#ff9f0a', description: 'Topluluk yönetim kurulu ve icra', twoStepRequired: true, permissions: { news: 'manage', events: 'manage', teams: 'manage', projects: 'manage', certificates: 'manage', inventory: 'manage', members: 'manage', budget: 'manage', notes: 'use', chat: 'manage', mail: 'manage', settings: 'use' } },
+	member: { name: 'Üye', color: '#0a84ff', description: 'Aktif topluluk üyesi', twoStepRequired: false, permissions: { news: 'use', events: 'use', teams: 'use', projects: 'use', certificates: 'use', inventory: 'use', members: 'use', notes: 'use', chat: 'use', mail: 'use', settings: 'use' } },
+	news: { name: 'Sadece Haberler', color: '#8e8e93', description: 'Salt okunur duyuru ve haber erişimi', twoStepRequired: false, permissions: { news: 'use' } },
 };
 
 const MEMBERS = [
@@ -108,10 +108,10 @@ state.admin = {
 
 // Roles (idempotent by name)
 const rolesRes = must(await admin.call('GET', '/api/roles'), 'list roles');
-const existing = rolesRes.roles ?? rolesRes.roles;
+const existing = rolesRes.roles;
 state.roles = {};
 for (const [key, role] of Object.entries(ROLES)) {
-	const found = existing.find((r) => r.name === role.name || r.name === role.name);
+	const found = existing.find((r) => r.name === role.name);
 	if (found) {
 		await admin.call('PATCH', '/api/roles', { id: found.id, name: role.name, color: role.color, description: role.description, twoStepRequired: role.twoStepRequired, permissions: role.permissions });
 		state.roles[key] = found.id;
@@ -147,14 +147,14 @@ if (dbUrl) {
 state.users = state.users ?? {};
 const roster = must(await admin.call('GET', '/api/members'), 'roster').members;
 for (const m of MEMBERS) {
-	const inRoster = roster.find((r) => r.email === m.email || r.email === m.email);
+	const inRoster = roster.find((r) => r.email === m.email);
 	if (state.users[m.key] && inRoster) {
-		await admin.call('PATCH', '/api/members', { id: inRoster.id, roleId: state.roles[m.role], status: 'aktif' });
+		await admin.call('PATCH', '/api/members', { id: inRoster.id, roleId: state.roles[m.role], status: 'active' });
 		continue;
 	}
 	const created = must(await admin.call('POST', '/api/members', { name: m.name, surname: m.surname, email: m.email, department: m.department, grade: m.grade, roleId: state.roles[m.role] }), `create ${m.email}`);
 	const u = client();
-	const initialPw = created.temporaryPassword || created.temporaryPassword;
+	const initialPw = created.temporaryPassword;
 	must(await u.call('POST', '/api/auth/login', { email: m.email, password: initialPw }), `first login ${m.email}`);
 	must(await u.call('POST', '/api/profile/password', { current: initialPw, fresh: PASSWORD, currentPassword: initialPw, newPassword: PASSWORD }), `password ${m.email}`);
 	let totpSecret = null;
@@ -191,9 +191,9 @@ await once('team', async () => {
 	}
 	return must(res, 'team');
 });
-await once('news', async () => must(await admin.call('POST', '/api/news', { title: 'Güz Dönemi Tanışma Toplantısı', content: 'Orbit topluluğu yeni dönem tanışma toplantısı ve platform tanıtımı.', category: 'genel', publishStatus: 'yayinda' }), 'news'));
-await once('event', async () => must(await admin.call('POST', '/api/events', { action: 'createEvent', title: 'Modern Web ve Git Atölyesi', description: 'Sürüm kontrolü ve açık kaynak işbirliği atölye çalışması', typeValue: 'atolye', location: 'Virtual Lab Stage A', start: Date.now() + 3 * 86400000, endTime: Date.now() + 3 * 86400000 + 2 * 3600000, capacity: 30, status: 'yayinda' }), 'event'));
-await once('income', async () => must(await admin.call('POST', '/api/budget', { typeValue: 'gelir', category: 'Sponsorluk', amountMinor: 2500000, description: 'Açık Kaynak Ekosistem Sponsorluk Hibesi' }), 'income'));
+await once('news', async () => must(await admin.call('POST', '/api/news', { title: 'Güz Dönemi Tanışma Toplantısı', content: 'Orbit topluluğu yeni dönem tanışma toplantısı ve platform tanıtımı.', category: 'general', publishStatus: 'published' }), 'news'));
+await once('event', async () => must(await admin.call('POST', '/api/events', { action: 'createEvent', title: 'Modern Web ve Git Atölyesi', description: 'Sürüm kontrolü ve açık kaynak işbirliği atölye çalışması', typeValue: 'workshop', location: 'Virtual Lab Stage A', start: Date.now() + 3 * 86400000, endTime: Date.now() + 3 * 86400000 + 2 * 3600000, capacity: 30, status: 'published' }), 'event'));
+await once('income', async () => must(await admin.call('POST', '/api/budget', { typeValue: 'income', category: 'Sponsorluk', amountMinor: 2500000, description: 'Açık Kaynak Ekosistem Sponsorluk Hibesi' }), 'income'));
 await once('item', async () => {
 	const res = await admin.call('POST', '/api/inventory', { action: 'create', code: 'LAB-RPI-001', name: 'Raspberry Pi 5 (8GB)', category: 'Development Board', location: 'Hardware Lab Rack B-1' });
 	if (res.status === 409) {

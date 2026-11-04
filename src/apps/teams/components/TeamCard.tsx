@@ -31,16 +31,16 @@ export function TeamCard({ team: tm, joinButton, onOpen, onEdit, onRemove }: Tea
 		<article
 			data-focus-id={`team:${tm.id}`}
 			data-team-id={tm.id}
-			className={`${styles.card} ${tm.myMyStatus === 'aktif' ? styles.cardMine : ''}`}
+			className={`${styles.card} ${tm.myMyStatus === 'active' ? styles.cardMine : ''}`}
 		>
 			<div className={styles.pills}>
 				<span className={`${styles.pill} ${styles.pCategory}`}>{tm.category}</span>
-				{tm.myMyStatus === 'aktif' && <span className={`${styles.pill} ${styles.pMine}`}>{t('tmMember')}</span>}
-				{tm.myMyStatus === 'basvurdu' && <span className={`${styles.pill} ${styles.pApplied}`}>{t('tmApplied')}</span>}
-				{tm.participationType === 'onayli' && <span className={`${styles.pill} ${styles.pMode}`}>{t('tmByApplication')}</span>}
-				{tm.status !== 'aktif' && (
+				{tm.myMyStatus === 'active' && <span className={`${styles.pill} ${styles.pMine}`}>{t('tmMember')}</span>}
+				{tm.myMyStatus === 'applied' && <span className={`${styles.pill} ${styles.pApplied}`}>{t('tmApplied')}</span>}
+				{tm.participationType === 'approval' && <span className={`${styles.pill} ${styles.pMode}`}>{t('tmByApplication')}</span>}
+				{tm.status !== 'active' && (
 					<span className={`${styles.pill} ${styles.pPaused}`}>
-						{t(tm.status === 'askida' ? 'tmPaused' : 'tmFinished')}
+						{t(tm.status === 'suspended' ? 'tmPaused' : 'tmFinished')}
 					</span>
 				)}
 				{tm.permissions.manage && tm.applications.length > 0 && (

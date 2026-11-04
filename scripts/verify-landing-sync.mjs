@@ -139,7 +139,7 @@ async function verifyEvents() {
 		(REQUIRE_DATA ? fail : warn)('No upcoming public events; content checks skipped.');
 		return;
 	}
-	const types = new Set(['workshop', 'seminar', 'hackathon', 'meeting', 'atolye', 'seminer', 'yarisma', 'toplanti']);
+	const types = new Set(['workshop', 'seminar', 'hackathon', 'meeting', 'competition']);
 	const now = Date.now();
 	for (const e of body.data) {
 		const problems = [];

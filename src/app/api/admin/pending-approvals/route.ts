@@ -10,7 +10,7 @@ import type { PendingApplicant } from '@/types/session';
  * reviewer needs leave the server (whole rows once leaked password hashes).
  */
 export async function GET(request: Request) {
-	const auth = await requireApp(request, 'members', 'yonet');
+	const auth = await requireApp(request, 'members', 'manage');
 	if (!auth.authorized) return auth.response;
 
 	try {
@@ -25,8 +25,8 @@ export async function GET(request: Request) {
 			email: u.email,
 			handle: u.handle ?? u.studentNo,
 			studentNo: u.handle ?? u.studentNo,
-			department: u.department ?? u.department,
-			grade: u.grade ?? u.grade,
+			department: u.department,
+			grade: u.grade,
 			createdAt: u.createdAt ?? u.creation ?? 0,
 			creation: u.createdAt ?? u.creation ?? 0,
 		}));

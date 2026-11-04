@@ -43,7 +43,7 @@ export interface MenuItem {
 	action?: () => void;
 	children?: MenuItem[];
 	/** The role must hold this level in the app, otherwise the menu bar leaves the item out. */
-	needs?: { appId: AppID; level: 'use' | 'manage' | 'kullan' | 'yonet' };
+	needs?: { appId: AppID; level: 'use' | 'manage' };
 	/** Opens the app, then sends it this command (the app reads it with `useAppCommand`). */
 	command?: { appId: AppID; name: string };
 	/** Opens this app. */

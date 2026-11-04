@@ -22,7 +22,7 @@ export function useProjects() {
 	const projects = useMemo(() => data?.projects ?? [], [data]);
 	const manage = data?.permissions.manage ?? false;
 
-	const [tab, setTab] = useState<ProjectStatus>('yayinda');
+	const [tab, setTab] = useState<ProjectStatus>('published');
 	const [query, setQuery] = useState('');
 	const [tech, setTech] = useState<string | null>(null);
 	const [sort, setSort] = useState<SortMode>('featured');
@@ -38,7 +38,7 @@ export function useProjects() {
 			if (found) {
 				setTab(found.status);
 				setOpenId(found.id);
-			} else if (target.section === 'oneri' || target.section === 'arsiv' || target.section === 'yayinda') {
+			} else if (target.section === 'proposed' || target.section === 'archived' || target.section === 'published') {
 				setTab(target.section);
 			}
 		},
@@ -52,7 +52,7 @@ export function useProjects() {
 					(tm) =>
 						manage ||
 						tm.leadId === currentUserId ||
-						(tm.members ?? []).some((u) => u.userId === currentUserId && u.status === 'aktif')
+						(tm.members ?? []).some((u) => u.userId === currentUserId && u.status === 'active')
 				)
 				.map((tm) => ({ id: tm.id, name: tm.name })),
 		[teamsData, manage, currentUserId]
@@ -60,9 +60,9 @@ export function useProjects() {
 
 	const counts = useMemo(
 		() => ({
-			yayinda: projects.filter((p) => p.status === 'yayinda').length,
-			oneri: projects.filter((p) => p.status === 'oneri').length,
-			arsiv: projects.filter((p) => p.status === 'arsiv').length,
+			published: projects.filter((p) => p.status === 'published').length,
+			proposed: projects.filter((p) => p.status === 'proposed').length,
+			archived: projects.filter((p) => p.status === 'archived').length,
 		}),
 		[projects]
 	);
@@ -110,9 +110,9 @@ export function useProjects() {
 		setData((d) => (d ? { ...d, projects: d.projects.map((p) => (p.id === next.id ? next : p)) } : d));
 
 	const star = async (p: Project) => {
-		if (p.status !== 'yayinda') return;
-		replace({ ...p, iLikedMi: !p.iLikedMi, likeCount: (p.likeCount ?? 0) + (p.iLikedMi ? -1 : 1) });
-		const res = await sendJson<{ iLikedMi: boolean; likeCount: number }>(
+		if (p.status !== 'published') return;
+		replace({ ...p, likedByMe: !p.likedByMe, likeCount: (p.likeCount ?? 0) + (p.likedByMe ? -1 : 1) });
+		const res = await sendJson<{ likedByMe: boolean; likeCount: number }>(
 			`/api/projects/${encodeURIComponent(p.id)}`,
 			'POST',
 			{ action: 'star' }
@@ -122,7 +122,7 @@ export function useProjects() {
 			notify(res.error || t('kbActionFailed'), 'error');
 			return;
 		}
-		replace({ ...p, iLikedMi: res.data.iLikedMi, likeCount: res.data.likeCount });
+		replace({ ...p, likedByMe: res.data.likedByMe, likeCount: res.data.likeCount });
 	};
 
 	const patch = async (p: Project, body: Record<string, unknown>, success: string) => {

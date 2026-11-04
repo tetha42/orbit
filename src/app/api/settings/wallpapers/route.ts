@@ -23,7 +23,7 @@ const clean = (value: unknown, max = 120) =>
 	typeof value === 'string' ? value.trim().slice(0, max) : '';
 
 export async function GET(request: Request) {
-	const auth = await requireApp(request, 'settings', 'kullan');
+	const auth = await requireApp(request, 'settings', 'use');
 	if (!auth.authorized) return auth.response;
 	const wallpapers = (await getCustomWallpapers()).map((wallpaper) => ({
 		...wallpaper,
@@ -37,9 +37,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-	const auth = await requireApp(request, 'settings', 'yonet');
+	const auth = await requireApp(request, 'settings', 'manage');
 	if (!auth.authorized) return auth.response;
-	if (auth.user.status === 'mezun') {
+	if (auth.user.status === 'alumni') {
 		return NextResponse.json({ error: 'Alumni accounts are read-only.' }, { status: 403 });
 	}
 
@@ -95,9 +95,9 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-	const auth = await requireApp(request, 'settings', 'yonet');
+	const auth = await requireApp(request, 'settings', 'manage');
 	if (!auth.authorized) return auth.response;
-	if (auth.user.status === 'mezun') {
+	if (auth.user.status === 'alumni') {
 		return NextResponse.json({ error: 'Alumni accounts are read-only.' }, { status: 403 });
 	}
 	const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
@@ -131,9 +131,9 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-	const auth = await requireApp(request, 'settings', 'yonet');
+	const auth = await requireApp(request, 'settings', 'manage');
 	if (!auth.authorized) return auth.response;
-	if (auth.user.status === 'mezun') {
+	if (auth.user.status === 'alumni') {
 		return NextResponse.json({ error: 'Alumni accounts are read-only.' }, { status: 403 });
 	}
 	const id = new URL(request.url).searchParams.get('id') ?? '';

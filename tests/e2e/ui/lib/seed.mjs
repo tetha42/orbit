@@ -6,7 +6,7 @@ export const PASSWORD = 'Kulup-Test-2026!';
 /** Creates a role and returns its id. `spec` is the body of POST /api/roles. */
 export async function createRole(admin, spec) {
 	const res = await admin.post('/api/roles', spec);
-	if (!res.json?.id) throw new Error(`role "${spec.name || spec.name}": ${res.status} ${JSON.stringify(res.json)}`);
+	if (!res.json?.id) throw new Error(`role "${spec.name}": ${res.status} ${JSON.stringify(res.json)}`);
 	return res.json.id;
 }
 
@@ -26,7 +26,7 @@ export async function createMember(admin, base, { name, surname, email, roleId, 
 		roleId: roleId,
 		...(studentNo ? { handle: studentNo, studentNo } : {}),
 	});
-	const tempPassword = created.json?.temporaryPassword || created.json?.temporaryPassword;
+	const tempPassword = created.json?.temporaryPassword;
 	if (!tempPassword) throw new Error(`member ${email}: ${created.status} ${JSON.stringify(created.json)}`);
 	const u = client(base);
 	const login = await u.post('/api/auth/login', { email: email, password: tempPassword,});

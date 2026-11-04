@@ -32,8 +32,8 @@ export default async function suite(t) {
 	await t.step('kaptan (API): görev ekler, atar, başkasının görevini taşır ve siler', async () => {
 		const extra = await addTask(capApi, team.id, { title: 'Kaptanın geçici görevi', assigneeMemberId: bek.id });
 		t.eq(extra.assigneeMemberId, bek.id, 'kaptan görevi takım üyesine atadı');
-		t.eq((await capApi.post('/api/takimlar', { action: 'updateTask', taskId: extra.id, status: 'suruyor' })).status, 200, 'kaptan başkasının görevini taşıdı');
-		t.eq((await capApi.patch(`/api/takimlar/gorevler/${extra.id}`, { title: 'Yeni ad', priority: 'kritik' })).status, 200, 'kaptan başlık/öncelik değiştirdi');
+		t.eq((await capApi.post('/api/takimlar', { action: 'updateTask', taskId: extra.id, status: 'in_progress' })).status, 200, 'kaptan başkasının görevini taşıdı');
+		t.eq((await capApi.patch(`/api/takimlar/gorevler/${extra.id}`, { title: 'Yeni ad', priority: 'critical' })).status, 200, 'kaptan başlık/öncelik değiştirdi');
 		const outsiderAssign = await capApi.post('/api/takimlar', { action: 'addTask', teamId: team.id, title: 'dışarıya', assigneeMemberId: outsider.id });
 		t.eq(outsiderAssign.status, 400, 'takım dışındaki üyeye görev atanamaz (400)');
 		t.eq((await capApi.post('/api/takimlar', { action: 'deleteTask', taskId: extra.id })).status, 200, 'kaptan görevi sildi');
@@ -47,8 +47,8 @@ export default async function suite(t) {
 		t.check(await win.locator('nav').getByText('Ayarlar').count() === 1, 'Ayarlar sekmesi var');
 		t.eq(await win.locator(`[data-task-id="${bekTask.id}"]`).getAttribute('draggable'), 'true', 'başkasının kartı kaptan için sürüklenebilir');
 		await drag(page, win.locator(`[data-task-id="${bekTask.id}"]`), win.locator('section[aria-label="Sürüyor"]'));
-		await t.waitFor(async () => (await statusOf(bekTask.id)) === 'suruyor');
-		t.eq(await statusOf(bekTask.id), 'suruyor', 'kaptan Bek\'in görevini sürükledi');
+		await t.waitFor(async () => (await statusOf(bekTask.id)) === 'in_progress');
+		t.eq(await statusOf(bekTask.id), 'in_progress', 'kaptan Bek\'in görevini sürükledi');
 		await t.shot(page, 'kaptan-pano');
 	});
 
@@ -66,10 +66,10 @@ export default async function suite(t) {
 		// Başkasının kartını sürüklemeye çalışmak hiçbir şey değiştirmez.
 		await drag(page, win.locator(`[data-task-id="${bekTask.id}"]`), win.locator('section[aria-label="İncelemede"]'));
 		await page.waitForTimeout(500);
-		t.eq(await statusOf(bekTask.id), 'suruyor', 'başkasının görevi yerinde kaldı');
+		t.eq(await statusOf(bekTask.id), 'in_progress', 'başkasının görevi yerinde kaldı');
 		await drag(page, win.locator(`[data-task-id="${aliTask.id}"]`), win.locator('section[aria-label="İncelemede"]'));
-		await t.waitFor(async () => (await statusOf(aliTask.id)) === 'inceleme');
-		t.eq(await statusOf(aliTask.id), 'inceleme', 'kendi görevini sürükledi');
+		await t.waitFor(async () => (await statusOf(aliTask.id)) === 'review');
+		t.eq(await statusOf(aliTask.id), 'review', 'kendi görevini sürükledi');
 		await t.shot(page, 'uye-pano');
 	});
 
@@ -91,8 +91,8 @@ export default async function suite(t) {
 			await sheet.getByRole('button', { name: 'Ekle', exact: true }).click();
 			await sheet.getByText('Benim maddem', { exact: true }).waitFor();
 			await sheet.locator('input[type=checkbox]').first().check();
-			await t.waitFor(async () => (await readTask(aliApi, aliTask.id)).json.items.some((m) => Number(m.doneMi) === 1));
-			t.check((await readTask(aliApi, aliTask.id)).json.items.some((m) => Number(m.doneMi) === 1), 'üye kendi listesini işaretledi');
+			await t.waitFor(async () => (await readTask(aliApi, aliTask.id)).json.items.some((m) => Number(m.isDone) === 1));
+			t.check((await readTask(aliApi, aliTask.id)).json.items.some((m) => Number(m.isDone) === 1), 'üye kendi listesini işaretledi');
 			await sheet.getByRole('button', { name: 'Düzenle' }).click();
 			await sheet.locator('textarea').first().fill('Ali açıklamayı güncelledi.');
 			await sheet.getByRole('button', { name: 'Kaydet' }).click();
@@ -124,7 +124,7 @@ export default async function suite(t) {
 
 	await t.step('üye (API): yetkisi olmayan yazma işlemleri 403', async () => {
 		t.eq((await aliApi.post('/api/takimlar', { action: 'addTask', teamId: team.id, title: 'izinsiz' })).status, 403, 'görev ekleyemez');
-		t.eq((await aliApi.post('/api/takimlar', { action: 'updateTask', taskId: bekTask.id, status: 'tamamlandi' })).status, 403, 'başkasının görevini taşıyamaz');
+		t.eq((await aliApi.post('/api/takimlar', { action: 'updateTask', taskId: bekTask.id, status: 'done' })).status, 403, 'başkasının görevini taşıyamaz');
 		t.eq((await aliApi.post('/api/takimlar', { action: 'deleteTask', taskId: aliTask.id })).status, 403, 'kendi görevini bile silemez');
 		t.eq((await aliApi.patch(`/api/takimlar/gorevler/${aliTask.id}`, { title: 'değişti' })).status, 403, 'kendi görevinin başlığını değiştiremez');
 		t.eq((await aliApi.patch(`/api/takimlar/gorevler/${aliTask.id}`, { assigneeMemberId: bek.id })).status, 403, 'kendi görevini başkasına aktaramaz');
@@ -141,7 +141,7 @@ export default async function suite(t) {
 		t.eq(list.tasks, [], 'takım listesinde görev yok');
 		t.eq((await readTask(outApi, aliTask.id)).status, 404, 'görev ayrıntısı 404');
 		t.eq((await outApi.post(`/api/takimlar/gorevler/${aliTask.id}`, { action: 'addComment', content: 'sızma' })).status, 404, 'yorum yazamaz (404)');
-		t.eq((await outApi.post('/api/takimlar', { action: 'updateTask', taskId: aliTask.id, status: 'tamamlandi' })).status, 403, 'görev taşıyamaz');
+		t.eq((await outApi.post('/api/takimlar', { action: 'updateTask', taskId: aliTask.id, status: 'done' })).status, 403, 'görev taşıyamaz');
 		const { page } = await outsider.open();
 		const win = await openTeam(page, team.id);
 		await win.getByText('Takım alanı üyelere özel').waitFor();
@@ -151,24 +151,24 @@ export default async function suite(t) {
 
 	await t.step('başka takımın kaptanı bu takımın görevini silemez ve taşıyamaz', async () => {
 		t.eq((await cap2Api.post('/api/takimlar', { action: 'deleteTask', taskId: aliTask.id, teamId: team2.id })).status, 403, 'deleteTask (gövdede kendi takımı) 403');
-		t.eq((await cap2Api.post('/api/takimlar', { action: 'updateTask', taskId: aliTask.id, status: 'tamamlandi' })).status, 403, 'updateTask 403');
+		t.eq((await cap2Api.post('/api/takimlar', { action: 'updateTask', taskId: aliTask.id, status: 'done' })).status, 403, 'updateTask 403');
 		t.eq((await cap2Api.patch(`/api/takimlar/gorevler/${aliTask.id}`, { title: 'ele geçirildi' })).status, 404, 'PATCH 404 (görünmüyor)');
 		t.check((await readTask(admin, aliTask.id)).status === 200, 'görev yerinde');
 	});
 
 	await t.step('mezun üye: panoyu okur, yazamaz', async () => {
-		t.eq((await admin.patch('/api/uyeler', { id: ali.id, status: 'mezun' })).status, 200, 'üye mezun yapıldı');
+		t.eq((await admin.patch('/api/uyeler', { id: ali.id, status: 'alumni' })).status, 200, 'üye mezun yapıldı');
 		try {
 			t.eq((await readTask(aliApi, aliTask.id)).status, 200, 'mezun görevi okuyabiliyor');
-			t.eq((await aliApi.post(`/api/takimlar/gorevler/${aliTask.id}`, { action: 'addComment', content: 'mezun' })).status, 403, 'mezun yorum yazamaz');
-			t.eq((await aliApi.post('/api/takimlar', { action: 'updateTask', taskId: aliTask.id, status: 'tamamlandi' })).status, 403, 'mezun görev taşıyamaz');
+			t.eq((await aliApi.post(`/api/takimlar/gorevler/${aliTask.id}`, { action: 'addComment', content: 'alumni' })).status, 403, 'mezun yorum yazamaz');
+			t.eq((await aliApi.post('/api/takimlar', { action: 'updateTask', taskId: aliTask.id, status: 'done' })).status, 403, 'mezun görev taşıyamaz');
 		} finally {
-			await admin.patch('/api/uyeler', { id: ali.id, status: 'aktif' });
+			await admin.patch('/api/uyeler', { id: ali.id, status: 'active' });
 		}
 	});
 
 	await t.step('yetkisiz rol: "Sadece Haberler" panoya ulaşamaz', async () => {
-		const reader = await t.api('okur');
+		const reader = await t.api('reader');
 		t.eq((await readTask(reader, aliTask.id)).status, 403, 'görev ayrıntısı 403');
 		t.eq((await reader.post('/api/takimlar', { action: 'join', teamId: team.id })).status, 403, 'takıma katılamaz');
 	});

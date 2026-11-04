@@ -18,16 +18,16 @@ export function useBudget() {
 	useFocusTarget('budget', {
 		ready: data !== null,
 		apply: (target) => {
-			const vault = target.kind === 'kasa' ? target.itemId : target.parentId;
-			setSelected(vault && vault !== 'genel' ? vault : null);
+			const vault = target.kind === 'vault' ? target.itemId : target.parentId;
+			setSelected(vault && vault !== 'general' ? vault : null);
 		},
 		refetch,
 	});
 
 	const vaults = data?.vaults ?? [];
 	const active = vaults.find((k) => k.teamId === selected) ?? vaults[0];
-	const general = vaults.filter((k) => k.kind === 'genel');
-	const projects = vaults.filter((k) => k.kind === 'proje');
+	const general = vaults.filter((k) => k.kind === 'general');
+	const projects = vaults.filter((k) => k.kind === 'project');
 
 	return {
 		allowed,

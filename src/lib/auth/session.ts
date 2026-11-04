@@ -5,7 +5,7 @@ import { getRolePermission, type Permission } from '@/db/roles';
 import { clientAddress } from '@/lib/http';
 import type { SessionUser } from '@/types/session';
 
-export const SESSION_COOKIE = 'kulup_session_token';
+export const SESSION_COOKIE = 'club_session_token';
 const SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
 
 /**
@@ -82,8 +82,8 @@ export function toSessionUser(user: User, permission: Permission): SessionUser {
 	const firstName = user.firstName ?? user.name;
 	const lastName = user.lastName ?? user.surname;
 	const handle = user.handle ?? user.studentNo;
-	const department = user.department ?? user.department;
-	const grade = user.grade ?? user.grade;
+	const department = user.department;
+	const grade = user.grade;
 	const avatarUrl = user.avatarUrl ?? user.profilePhoto;
 	const lastLoginAt = user.lastLoginAt ?? user.lastLoginDate;
 
@@ -109,8 +109,8 @@ export function toSessionUser(user: User, permission: Permission): SessionUser {
 		twoFactorRequired,
 		authMethod: user.authMethod ?? 'password',
 		mustSetup2fa: twoFactorRequired && !twoFactorEnabled && !passkeySession,
-		roleInfo: permission.role ? { id: permission.role.id, name: permission.role.name ?? permission.role.name, color: permission.role.color ?? permission.role.color } : null,
-		permissions: permission.permissions ?? permission.permissions,
+		roleInfo: permission.role ? { id: permission.role.id, name: permission.role.name, color: permission.role.color } : null,
+		permissions: permission.permissions,
 		admin: permission.admin,
 	};
 }

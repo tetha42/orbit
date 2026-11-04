@@ -39,9 +39,9 @@ export async function recipientDecision(
 	const skipped: MailSkipped[] = [];
 	for (const id of unique) {
 		const u = byId.get(id);
-		if (!u || u.status !== 'aktif') {
+		if (!u || u.status !== 'active') {
 			if (strict) return { outgoing: [], skipped: [], error: 'Alıcılar yalnızca aktif üyeler olabilir.' };
-			if (u) skipped.push({ id, name: fullName(u), reason: 'pasif' });
+			if (u) skipped.push({ id, name: fullName(u), reason: 'inactive' });
 			continue;
 		}
 		const permission = await getRolePermission(u.roleId);

@@ -102,9 +102,9 @@ function cleanPermissions(permissions: Permissions): Permissions {
 	const out: Record<string, 'use' | 'manage'> = {};
 	for (const [appId, lvl] of Object.entries(permissions || {})) {
 		const s = String(lvl);
-		if (s === 'manage' || s === 'yonet') {
+		if (s === 'manage') {
 			out[appId] = 'manage';
-		} else if (s === 'use' || s === 'kullan') {
+		} else if (s === 'use') {
 			out[appId] = 'use';
 		}
 	}
@@ -223,8 +223,8 @@ export async function ensureRoleSchema(client: PoolClient): Promise<void> {
 
 	// Heal any admin account that was marked 'mezun' back to 'aktif', and ensure
 	// non-admin 'mezun' members hold the Mezun role.
-	await client.query(`UPDATE users SET status = 'aktif' WHERE role_id = $1 AND status = 'mezun'`, [ADMIN_ROLE_ID]);
-	await client.query(`UPDATE users SET role_id = $1 WHERE status = 'mezun' AND (role_id IS NULL OR role_id <> $1)`, [alumniRoleId]);
+	await client.query(`UPDATE users SET status = 'active' WHERE role_id = $1 AND status = 'alumni'`, [ADMIN_ROLE_ID]);
+	await client.query(`UPDATE users SET role_id = $1 WHERE status = 'alumni' AND (role_id IS NULL OR role_id <> $1)`, [alumniRoleId]);
 }
 
 async function insertRole(
@@ -260,15 +260,15 @@ const dropCache = () => cache.clear();
 registerEventHandler('role-onbellegi', (event) => {
 	if (event.k === 'permission' || event.k === 'refresh') {
 		dropCache();
-		invalidateCache('roller_raw');
+		invalidateCache('roles_raw');
 	}
 });
 
 export function canonicalRoleId(id: string): string {
-	if (id === 'rol_admin') return ADMIN_ROLE_ID;
-	if (id === 'rol_yonetim_kurulu') return MANAGEMENT_ROLE_ID;
-	if (id === 'rol_uye') return MEMBER_ROLE_ID;
-	if (id === 'rol_mezun') return ALUMNI_ROLE_ID;
+	if (id === 'role_admin') return ADMIN_ROLE_ID;
+	if (id === 'role_management_board') return MANAGEMENT_ROLE_ID;
+	if (id === 'role_member') return MEMBER_ROLE_ID;
+	if (id === 'role_alumni') return ALUMNI_ROLE_ID;
 	return id;
 }
 
@@ -286,7 +286,7 @@ export async function getRolePermission(rawRoleId: string | null | undefined): P
 		);
 		const row = r.rows[0];
 		if (!row) return { role: null, permissions: {}, admin: false, require2fa: false, twoStepRequired: false };
-		const admin = roleId === ADMIN_ROLE_ID || roleId === 'rol_admin' || Number(row.isSystem ?? row.is_system ?? 0) === 1;
+		const admin = roleId === ADMIN_ROLE_ID || roleId === 'role_admin' || Number(row.isSystem ?? row.is_system ?? 0) === 1;
 		const perms: Permissions = admin
 			? { ...ALL_PERMISSIONS }
 			: parsePermissionsJson(row.permissions);
@@ -302,7 +302,7 @@ export async function getRolePermission(rawRoleId: string | null | undefined): P
 		return permission;
 	} catch (error) {
 		console.error('getRolePermission error:', error);
-		if (roleId === ADMIN_ROLE_ID || roleId === 'rol_admin') {
+		if (roleId === ADMIN_ROLE_ID || roleId === 'role_admin') {
 			return {
 				role: { id: ADMIN_ROLE_ID, name: 'Admin', color: '#ff453a',},
 				permissions: { ...ALL_PERMISSIONS },
@@ -323,7 +323,7 @@ export async function getRoles(): Promise<Role[]> {
 				'SELECT id, name, color, description, permissions, is_system AS "isSystem", require_2fa AS "require2fa", created_at AS "createdAt" FROM roles ORDER BY is_system DESC, created_at ASC'
 			),
 			getPgPool().query(
-				`SELECT role_id AS "roleId", COUNT(*)::int AS n FROM users WHERE role_id IS NOT NULL AND status <> 'reddedildi' GROUP BY role_id`
+				`SELECT role_id AS "roleId", COUNT(*)::int AS n FROM users WHERE role_id IS NOT NULL AND status <> 'rejected' GROUP BY role_id`
 			),
 		]);
 		const n = new Map(counts.rows.map((c) => [(c.roleId ?? c.roleid) as string, Number(c.n)]));
@@ -354,7 +354,7 @@ export async function getRoles(): Promise<Role[]> {
 	}
 }
 
-export type RoleResult = { ok: true; id: string; error?: undefined } | { ok: false; error: 'yok' | 'sistem' | 'ad-var'; id?: undefined };
+export type RoleResult = { ok: true; id: string; error?: undefined } | { ok: false; error: 'none' | 'system' | 'ad-var'; id?: undefined };
 
 /** A role as the audit log records it, read inside the operation's transaction. */
 async function readRoleSummary(client: PoolClient, id: string): Promise<RoleSummary | null> {
@@ -385,11 +385,11 @@ async function roleName(client: PoolClient, id: string | null): Promise<string |
 
 export async function createRole(r: { name?: string;color?: string;description?: string;permissions?: Permissions;require2fa?: boolean; twoStepRequired?: boolean }, ctx: AuditContext): Promise<RoleResult> {
 	const id = `rol_${randomBytes(6).toString('hex')}`;
-	const name = (r.name ?? r.name ?? '').trim();
-	const color = r.color ?? r.color ?? '#0a84ff';
-	const description = r.description ?? r.description ?? '';
+	const name = (r.name ?? '').trim();
+	const color = r.color ?? '#0a84ff';
+	const description = r.description ?? '';
 	const require2fa = Boolean(r.require2fa ?? r.twoStepRequired);
-	const permissions = r.permissions ?? r.permissions ?? {};
+	const permissions = r.permissions ?? {};
 	try {
 		await withTransaction(async (client) => {
 			await insertRole(client, id, name, color, description, require2fa, Date.now(), permissions);
@@ -404,16 +404,16 @@ export async function createRole(r: { name?: string;color?: string;description?:
 }
 
 export async function updateRole(id: string, r: { name?: string;color?: string;description?: string;permissions?: Permissions;require2fa?: boolean; twoStepRequired?: boolean }, ctx: AuditContext): Promise<RoleResult> {
-	const name = (r.name ?? r.name ?? '').trim();
-	const color = r.color ?? r.color ?? '#0a84ff';
-	const description = r.description ?? r.description ?? '';
+	const name = (r.name ?? '').trim();
+	const color = r.color ?? '#0a84ff';
+	const description = r.description ?? '';
 	const require2fa = Boolean(r.require2fa ?? r.twoStepRequired);
-	const permissions = r.permissions ?? r.permissions ?? {};
+	const permissions = r.permissions ?? {};
 	try {
 		const out = await withTransaction(async (client): Promise<RoleResult> => {
 			const found = await client.query('SELECT is_system AS "isSystem" FROM roles WHERE id = $1 FOR UPDATE', [id]);
-			if (!found.rows[0]) return { ok: false, error: 'yok' };
-			if (Number(found.rows[0].isSystem ?? found.rows[0].is_system ?? 0) === 1) return { ok: false, error: 'sistem' };
+			if (!found.rows[0]) return { ok: false, error: 'none' };
+			if (Number(found.rows[0].isSystem ?? found.rows[0].is_system ?? 0) === 1) return { ok: false, error: 'system' };
 			const previous = await readRoleSummary(client, id);
 			const perms = cleanPermissions(permissions);
 			await client.query(
@@ -441,11 +441,11 @@ export async function updateRole(id: string, r: { name?: string;color?: string;d
 export async function deleteRole(id: string, move: string | null, ctx: AuditContext): Promise<RoleResult> {
 	const out = await withTransaction(async (client): Promise<RoleResult> => {
 		const found = await client.query('SELECT is_system AS "isSystem" FROM roles WHERE id = $1 FOR UPDATE', [id]);
-		if (!found.rows[0]) return { ok: false, error: 'yok' };
-		if (Number(found.rows[0].isSystem ?? found.rows[0].is_system ?? 0) === 1 || id === ALUMNI_ROLE_ID) return { ok: false, error: 'sistem' };
+		if (!found.rows[0]) return { ok: false, error: 'none' };
+		if (Number(found.rows[0].isSystem ?? found.rows[0].is_system ?? 0) === 1 || id === ALUMNI_ROLE_ID) return { ok: false, error: 'system' };
 		if (move) {
 			const target = await client.query('SELECT 1 FROM roles WHERE id = $1 AND id <> $2', [move, id]);
-			if (!target.rowCount) return { ok: false, error: 'yok' };
+			if (!target.rowCount) return { ok: false, error: 'none' };
 		}
 		const previous = await readRoleSummary(client, id);
 		const moveName = await roleName(client, move);
@@ -475,29 +475,29 @@ export async function deleteRole(id: string, move: string | null, ctx: AuditCont
  * Assigning the Mezun role automatically sets `status = 'mezun'`; assigning any
  * other role to a graduate automatically restores `status = 'aktif'`.
  */
-export async function setUserRole(userId: string, roleId: string | null, ctx: AuditContext): Promise<'ok' | 'yok' | 'role-yok' | 'son-admin'> {
+export async function setUserRole(userId: string, roleId: string | null, ctx: AuditContext): Promise<'ok' | 'none' | 'no_role' | 'last_admin'> {
 	return withTransaction(async (client) => {
 		await client.query("SELECT pg_advisory_xact_lock(hashtext('roles.admin'))");
 		const u = await client.query('SELECT first_name AS name, last_name AS surname, email, role_id AS "roleId", status FROM users WHERE id = $1 FOR UPDATE', [userId]);
-		if (!u.rows[0]) return 'yok';
+		if (!u.rows[0]) return 'none';
 		let targetRole: { id: string; name: string } | null = null;
 		if (roleId) {
 			const r = await client.query('SELECT id, name FROM roles WHERE id = $1', [roleId]);
-			if (!r.rowCount) return 'role-yok';
+			if (!r.rowCount) return 'no_role';
 			targetRole = { id: String(r.rows[0].id), name: String(r.rows[0].name) };
 		}
 		if (u.rows[0].roleId === ADMIN_ROLE_ID && roleId !== ADMIN_ROLE_ID) {
-			const admins = await client.query(`SELECT COUNT(*)::int AS n FROM users WHERE role_id = $1 AND status = 'aktif'`, [ADMIN_ROLE_ID]);
-			if (Number(admins.rows[0].n) <= 1) return 'son-admin';
+			const admins = await client.query(`SELECT COUNT(*)::int AS n FROM users WHERE role_id = $1 AND status = 'active'`, [ADMIN_ROLE_ID]);
+			if (Number(admins.rows[0].n) <= 1) return 'last_admin';
 		}
 
 		const previous: string | null = u.rows[0].roleId ?? null;
-		const previousStatus = (u.rows[0].status as 'aktif' | 'beklemede' | 'reddedildi' | 'mezun') || 'aktif';
+		const previousStatus = (u.rows[0].status as 'active' | 'pending' | 'rejected' | 'alumni') || 'active';
 		const targetAlumni = isAlumniRole(targetRole);
-		const newStatus: 'aktif' | 'beklemede' | 'reddedildi' | 'mezun' = targetAlumni
-			? 'mezun'
-			: previousStatus === 'mezun'
-			? 'aktif'
+		const newStatus: 'active' | 'pending' | 'rejected' | 'alumni' = targetAlumni
+			? 'alumni'
+			: previousStatus === 'alumni'
+			? 'active'
 			: previousStatus;
 
 		await client.query('UPDATE users SET role_id = $2 WHERE id = $1', [userId, roleId]);
@@ -534,17 +534,17 @@ export async function setUserRole(userId: string, roleId: string | null, ctx: Au
  * default role in the same step; graduating a member assigns the Mezun role,
  * and reactivating a graduate restores the club's default role.
  */
-export async function setMemberStatus(userId: string, status: 'aktif' | 'beklemede' | 'reddedildi' | 'mezun', ctx: AuditContext): Promise<'ok' | 'yok'> {
+export async function setMemberStatus(userId: string, status: 'active' | 'pending' | 'rejected' | 'alumni', ctx: AuditContext): Promise<'ok' | 'none'> {
 	return withTransaction(async (client) => {
 		const u = await client.query('SELECT first_name AS name, last_name AS surname, email, status, role_id AS "roleId" FROM users WHERE id = $1 FOR UPDATE', [userId]);
 		const row = u.rows[0];
-		if (!row) return 'yok';
+		if (!row) return 'none';
 		let roleId: string | null = row.roleId ?? null;
 		const currentRoleName = await roleName(client, roleId);
 
-		if (status === 'mezun') {
+		if (status === 'alumni') {
 			const alumniRole = await client.query(
-				`SELECT id FROM roles WHERE id = $1 OR lower(name) IN ('mezun', 'alumni') ORDER BY CASE WHEN id = $1 THEN 0 ELSE 1 END LIMIT 1`,
+				`SELECT id FROM roles WHERE id = $1 OR lower(name) IN ('alumni', 'alumni') ORDER BY CASE WHEN id = $1 THEN 0 ELSE 1 END LIMIT 1`,
 				[ALUMNI_ROLE_ID]
 			);
 			if (alumniRole.rows[0]?.id) {
@@ -552,9 +552,9 @@ export async function setMemberStatus(userId: string, status: 'aktif' | 'bekleme
 				await client.query('UPDATE users SET role_id = $2 WHERE id = $1', [userId, roleId]);
 			}
 		} else if (
-			status === 'aktif' &&
-			((row.status === 'beklemede' && !roleId) ||
-				(row.status === 'mezun' && (!roleId || isAlumniRole({ id: roleId, name: currentRoleName }))))
+			status === 'active' &&
+			((row.status === 'pending' && !roleId) ||
+				(row.status === 'alumni' && (!roleId || isAlumniRole({ id: roleId, name: currentRoleName }))))
 		) {
 			const def = await client.query(
 				`SELECT r.id FROM system_settings s JOIN roles r ON r.id = s.value WHERE s.key = $1
@@ -590,7 +590,7 @@ export async function setMemberStatus(userId: string, status: 'aktif' | 'bekleme
 /** Active admins — the last one cannot be deleted, deactivated or demoted. */
 export async function countActiveAdmins(): Promise<number> {
 	await ensurePostgresInit();
-	const r = await getPgPool().query(`SELECT COUNT(*)::int AS n FROM users WHERE role_id = $1 AND status = 'aktif'`, [ADMIN_ROLE_ID]);
+	const r = await getPgPool().query(`SELECT COUNT(*)::int AS n FROM users WHERE role_id = $1 AND status = 'active'`, [ADMIN_ROLE_ID]);
 	return Number(r.rows[0]?.n ?? 0);
 }
 
@@ -599,14 +599,14 @@ export async function getDefaultRoleId(): Promise<string | null> {
 	return v || null;
 }
 
-export async function setDefaultRoleId(roleId: string | null, ctx: AuditContext): Promise<'ok' | 'yok' | 'sistem'> {
+export async function setDefaultRoleId(roleId: string | null, ctx: AuditContext): Promise<'ok' | 'none' | 'system'> {
 	return withTransaction(async (client) => {
 		if (roleId) {
 			const r = await client.query('SELECT id, name, is_system AS "isSystem" FROM roles WHERE id = $1', [roleId]);
-			if (!r.rows[0]) return 'yok';
+			if (!r.rows[0]) return 'none';
 			// New members never become admins or graduates by default.
 			const row = r.rows[0];
-			if (Number(row.isSystem ?? row.is_system ?? 0) === 1 || isAlumniRole({ id: String(row.id), name: String(row.name ?? '') })) return 'sistem';
+			if (Number(row.isSystem ?? row.is_system ?? 0) === 1 || isAlumniRole({ id: String(row.id), name: String(row.name ?? '') })) return 'system';
 		}
 		const cur = await client.query('SELECT value AS value FROM system_settings WHERE key = $1 FOR UPDATE', [DEFAULT_ROLE_KEY]);
 		const previous: string | null = cur.rows[0]?.value || null;
@@ -633,8 +633,8 @@ export async function setDefaultRoleId(roleId: string | null, ctx: AuditContext)
 export async function getRoleIdsWith(appId: string, level: Level): Promise<string[]> {
 	try {
 		await ensurePostgresInit();
-		const isManage = level === 'manage' || (level as string) === 'yonet';
-		const levels = isManage ? ['manage', 'yonet'] : ['use', 'kullan', 'manage', 'yonet'];
+		const isManage = level === 'manage' || (level as string) === 'manage';
+		const levels = isManage ? ['manage'] : ['use', 'manage'];
 		const r = await getPgPool().query(
 			'SELECT id FROM roles WHERE (permissions ->> $1) = ANY($2)',
 			[appId, levels]

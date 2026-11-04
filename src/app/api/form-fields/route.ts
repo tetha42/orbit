@@ -21,7 +21,7 @@ export async function GET(request: Request) {
 					: 'registration';
 	try {
 		const auth = await authenticate(request).catch(() => ({ authorized: false as const }));
-		const isManager = auth.authorized ? can(auth.user, 'members', 'yonet') : false;
+		const isManager = auth.authorized ? can(auth.user, 'members', 'manage') : false;
 		const fields = await getFormFields({ scope, enabledOnly: true, isManager });
 		return NextResponse.json(
 			{ ok: true, fields },

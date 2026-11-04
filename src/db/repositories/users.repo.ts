@@ -5,7 +5,7 @@ import { fieldDiff, memberTargetName } from '@/lib/audit';
 import type { UpcomingReturn } from '@/db/schema';
 
 export interface UserSummary {
-	teams: { id: string; name: string; role: string; captainMi: boolean }[];
+	teams: { id: string; name: string; role: string; isCaptain: boolean }[];
 	attendedEvent: number;
 	registeredEvent: number;
 	completedTask: number;
@@ -37,7 +37,7 @@ export async function getUserUpcomingReturns(
 			SELECT id, code AS code, name AS name, due_at AS "returnDate"
 			FROM inventory
 			WHERE holder_user_id = $1
-			  AND status IN ('oduncte', 'borrowed')
+			  AND status IN ('on_loan', 'borrowed')
 			  AND due_at IS NOT NULL
 			  AND due_at <= $2
 			ORDER BY due_at ASC
@@ -131,9 +131,9 @@ export async function getUserSummary(id: string): Promise<UserSummary> {
 		const db = getPgPool();
 		const [teams, counts] = await Promise.all([
 			db.query(
-				`SELECT t.id, t.name AS name, tu.role_title AS role, (t.lead_id = $1) AS "captainMi"
+				`SELECT t.id, t.name AS name, tu.role_title AS role, (t.lead_id = $1) AS "isCaptain"
 				 FROM team_members tu JOIN teams t ON t.id = tu.team_id
-				 WHERE tu.user_id = $1 AND tu.status IN ('aktif', 'active')
+				 WHERE tu.user_id = $1 AND tu.status IN ('active', 'active')
 				 ORDER BY tu.joined_at ASC`,
 				[id]
 			),
@@ -141,10 +141,10 @@ export async function getUserSummary(id: string): Promise<UserSummary> {
 				`SELECT
 				   (SELECT COUNT(*) FROM event_participants WHERE user_id = $1 AND status = 'attended')::int AS "attendedEvent",
 				   (SELECT COUNT(*) FROM event_participants WHERE user_id = $1 AND status IN ('registered', 'attended'))::int AS "registeredEvent",
-				   (SELECT COUNT(*) FROM team_tasks WHERE assignee_id = $1 AND status IN ('tamamlandi', 'done'))::int AS "completedTask",
-				   (SELECT COUNT(*) FROM team_tasks WHERE assignee_id = $1 AND status NOT IN ('tamamlandi', 'done'))::int AS "openTask",
+				   (SELECT COUNT(*) FROM team_tasks WHERE assignee_id = $1 AND status IN ('done', 'done'))::int AS "completedTask",
+				   (SELECT COUNT(*) FROM team_tasks WHERE assignee_id = $1 AND status NOT IN ('done', 'done'))::int AS "openTask",
 				   (SELECT COUNT(*) FROM certificates WHERE user_id = $1)::int AS "certificate",
-				   (SELECT COUNT(*) FROM projects WHERE created_by = $1 AND status IN ('yayinda', 'published'))::int AS "project"`,
+				   (SELECT COUNT(*) FROM projects WHERE created_by = $1 AND status IN ('published', 'published'))::int AS "project"`,
 				[id]
 			),
 		]);
@@ -154,7 +154,7 @@ export async function getUserSummary(id: string): Promise<UserSummary> {
 				id: String(r.id),
 				name: String(r.name ?? ''),
 				role: String(r.role ?? ''),
-				captainMi: Boolean(r.captainMi),
+				isCaptain: Boolean(r.isCaptain),
 			})),
 			attendedEvent: Number(row.attendedEvent ?? 0),
 			registeredEvent: Number(row.registeredEvent ?? 0),

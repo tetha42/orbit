@@ -20,9 +20,9 @@ type Params = { params: Promise<{ id: string }> };
  * The code is never returned to the caller; it only reaches the member's inbox.
  */
 export async function POST(request: Request, { params }: Params) {
-	const auth = await requireApp(request, 'members', 'yonet');
+	const auth = await requireApp(request, 'members', 'manage');
 	if (!auth.authorized) return auth.response;
-	if (auth.user.status === 'mezun') {
+	if (auth.user.status === 'alumni') {
 		return NextResponse.json({ error: 'Mezunlar sadece okuma erişimine sahiptir.' }, { status: 403 });
 	}
 
@@ -54,12 +54,12 @@ export async function POST(request: Request, { params }: Params) {
 	await withTransaction(async (client) => {
 		await client.query('DELETE FROM verification_tokens WHERE expires_at < $1', [Date.now()]);
 		await client.query(
-			`DELETE FROM verification_tokens WHERE token_type = 'sifre_sifirlama' AND lower(target) = lower($1)`,
+			`DELETE FROM verification_tokens WHERE token_type = 'password_reset' AND lower(target) = lower($1)`,
 			[target.email]
 		);
 		await client.query(
 			`INSERT INTO verification_tokens (id, user_id, token_type, target, token_hash, expires_at, created_at)
-			 VALUES ($1, $2, 'sifre_sifirlama', $3, $4, $5, $6)`,
+			 VALUES ($1, $2, 'password_reset', $3, $4, $5, $6)`,
 			[`otp_${crypto.randomUUID()}`, target.id, target.email, hashOtpCode(code), expiresAt, Date.now()]
 		);
 		await logAuditEvent(client, auditContext(request, auth.user), {
@@ -79,7 +79,7 @@ export async function POST(request: Request, { params }: Params) {
 	let mailQueued = false;
 	if (!wasDelivered(delivery)) {
 		await getPgPool().query(
-			"UPDATE verification_tokens SET expires_at = $1 WHERE lower(target) = lower($2) AND token_type = 'sifre_sifirlama'",
+			"UPDATE verification_tokens SET expires_at = $1 WHERE lower(target) = lower($2) AND token_type = 'password_reset'",
 			[Date.now() + 24 * 60 * 60_000, target.email]
 		);
 		await enqueueMail({

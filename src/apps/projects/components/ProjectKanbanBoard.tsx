@@ -32,25 +32,25 @@ export function ProjectKanbanBoard({
 		items: Project[];
 	}[] = [
 		{
-			id: 'oneri',
+			id: 'proposed',
 			title: t('pjKanbanTodo'),
 			icon: <Clock size={15} color="#ff9f0a" />,
 			color: '#ff9f0a',
-			items: projects.filter((p) => p.status === 'oneri'),
+			items: projects.filter((p) => p.status === 'proposed'),
 		},
 		{
-			id: 'yayinda',
+			id: 'published',
 			title: t('pjKanbanInProgress'),
 			icon: <PlayCircle size={15} color="#0a84ff" />,
 			color: '#0a84ff',
-			items: projects.filter((p) => p.status === 'yayinda' && Number(p.oneLeaving) !== 1),
+			items: projects.filter((p) => p.status === 'published' && Number(p.oneLeaving) !== 1),
 		},
 		{
-			id: 'arsiv',
+			id: 'archived',
 			title: t('pjKanbanDone'),
 			icon: <CheckCircle2 size={15} color="#30d158" />,
 			color: '#30d158',
-			items: projects.filter((p) => p.status === 'arsiv' || Number(p.oneLeaving) === 1),
+			items: projects.filter((p) => p.status === 'archived' || Number(p.oneLeaving) === 1),
 		},
 	];
 
@@ -238,11 +238,11 @@ export function ProjectKanbanBoard({
 														alignItems: 'center',
 														gap: '3px',
 														fontSize: '11px',
-														color: p.iLikedMi ? '#ff9f0a' : 'inherit',
-														opacity: p.iLikedMi ? 1 : 0.7,
+														color: p.likedByMe ? '#ff9f0a' : 'inherit',
+														opacity: p.likedByMe ? 1 : 0.7,
 													}}
 												>
-													<Star size={12} fill={p.iLikedMi ? 'currentColor' : 'none'} />
+													<Star size={12} fill={p.likedByMe ? 'currentColor' : 'none'} />
 													{p.likeCount ?? 0}
 												</button>
 											</div>

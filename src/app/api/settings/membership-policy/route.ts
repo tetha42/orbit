@@ -6,7 +6,7 @@ import { logSystemEvent } from '@/db/repositories/logs.repo';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-	const auth = await requireApp(request, 'settings', 'kullan');
+	const auth = await requireApp(request, 'settings', 'use');
 	if (!auth.authorized) return auth.response;
 	return NextResponse.json(
 		{ ok: true, policy: await getMembershipPolicy() },
@@ -15,9 +15,9 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-	const auth = await requireApp(request, 'settings', 'yonet');
+	const auth = await requireApp(request, 'settings', 'manage');
 	if (!auth.authorized) return auth.response;
-	if (auth.user.status === 'mezun') {
+	if (auth.user.status === 'alumni') {
 		return NextResponse.json({ error: 'Mezunlar sadece okuma erişimine sahiptir.' }, { status: 403 });
 	}
 	const body = await request.json().catch(() => null);

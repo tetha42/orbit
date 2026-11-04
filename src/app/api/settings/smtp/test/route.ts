@@ -11,7 +11,7 @@ import { consumeRateLimit, pruneRateLimits } from '@/lib/rateLimit';
 const RATE_LIMIT = { max: 5, windowMs: 10 * 60 * 1000 };
 
 async function handlePOST(request: Request) {
-	const auth = await requireApp(request, 'settings', 'yonet');
+	const auth = await requireApp(request, 'settings', 'manage');
 	if (!auth.authorized) return auth.response;
 
 	pruneRateLimits();

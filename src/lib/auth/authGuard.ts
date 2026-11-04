@@ -193,7 +193,7 @@ export async function verifyAuth(request: Request): Promise<AuthResult> {
 		}
 
 		// Alumni keep a read-only session; routes refuse their writes.
-		if (user.status !== 'aktif' && user.status !== 'mezun') {
+		if (user.status !== 'active' && user.status !== 'alumni') {
 			const res = NextResponse.json({ error: 'Hesabınız aktif durumda değildir.' }, { status: 403 });
 			res.cookies.delete(SESSION_COOKIE);
 			return { authorized: false, user: null, response: res };

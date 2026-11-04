@@ -84,8 +84,8 @@ function ChatDesktopView() {
 
 	const isGroupOrTeam =
 		activeRoom &&
-		(activeRoom.typeValue === 'takim' ||
-			(activeRoom.typeValue === 'ozel' && (activeRoom.memberCount || 0) > 2));
+		(activeRoom.typeValue === 'team' ||
+			(activeRoom.typeValue === 'private' && (activeRoom.memberCount || 0) > 2));
 
 	return (
 		<div className={s.container}>
@@ -218,7 +218,7 @@ function ChatDesktopView() {
 										/>
 									) : isGroupOrTeam ? (
 										<Users size={18} />
-									) : activeRoom.typeValue === 'ozel' ? (
+									) : activeRoom.typeValue === 'private' ? (
 										<span style={{ fontSize: '13px', fontWeight: 700 }}>
 											{(activeRoom.name || '?').slice(0, 1).toUpperCase()}
 										</span>
@@ -237,9 +237,9 @@ function ChatDesktopView() {
 										{activeRoom.name}
 									</div>
 									<div className={s.headerSub} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-										{activeRoom.typeValue === 'genel'
+										{activeRoom.typeValue === 'general'
 											? t('chatPublicSub')
-											: activeRoom.typeValue === 'takim'
+											: activeRoom.typeValue === 'team'
 											? t('chatTeamSub')
 											: activeRoom.memberCount && activeRoom.memberCount > 2
 											? fill(t('chatTotalMembers'), { n: activeRoom.memberCount })

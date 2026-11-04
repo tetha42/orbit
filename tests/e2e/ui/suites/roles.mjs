@@ -18,7 +18,7 @@ export default async function suite(t) {
 
 	// Whatever this suite leaves behind goes: members back to their fixture roles, test roles deleted.
 	t.cleanup(async () => {
-		for (const [key, roleKey] of [['ege', 'uye'], ['can', 'uye']]) {
+		for (const [key, roleKey] of [['ege', 'member'], ['can', 'member']]) {
 			await admin.patch('/api/uyeler', { id: t.fx.users[key].id, roleId: t.fx.roles[roleKey] });
 		}
 		for (const id of [createdId, lockedId]) {
@@ -95,8 +95,8 @@ export default async function suite(t) {
 		createdId = r?.id ?? null;
 		t.check(r, 'GET /api/roller yeni rolü döndürüyor');
 		t.eq(r?.color, GREEN, 'renk #30d158 kaydedildi');
-		t.eq(r?.permissions?.events, 'yonet', 'Etkinlikler = yonet kaydedildi');
-		t.eq(r?.permissions?.news, 'kullan', 'Haberler = kullan kaydedildi');
+		t.eq(r?.permissions?.events, 'manage', 'Etkinlikler = yonet kaydedildi');
+		t.eq(r?.permissions?.news, 'use', 'Haberler = kullan kaydedildi');
 		t.eq(r?.twoStepRequired, true, 'ikiAdimZorunlu: true (yönetim yetkisi olan rolde otomatik)');
 		const row = settings.locator(`[data-role-id="${createdId}"]`);
 		t.check((await row.innerText()).includes('2FA zorunlu'), 'rol satırında "2FA zorunlu" rozeti var');
@@ -105,7 +105,7 @@ export default async function suite(t) {
 
 	// Yöneticinin (zeynep) kendinde olmayan yetkiyi içeren rol: o atayamaz, admin atayabilir.
 	await t.step('kilitli rol (zeynep atayamaz) hazırlanıyor', async () => {
-		const res = await admin.post('/api/roller', { name: roleNameLocked, color: '#ff375f', description: '', twoStepRequired: true, permissions: { notes: 'yonet', news: 'kullan', settings: 'kullan' } });
+		const res = await admin.post('/api/roller', { name: roleNameLocked, color: '#ff375f', description: '', twoStepRequired: true, permissions: { notes: 'manage', news: 'use', settings: 'use' } });
 		lockedId = res.json?.id ?? null;
 		t.check(res.status === 200 || res.status === 201, 'notlar=yönet rolü API ile oluşturuldu', JSON.stringify(res));
 	});

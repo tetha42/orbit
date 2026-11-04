@@ -14,7 +14,7 @@ const notFound = () => NextResponse.json({ error: 'Konu bulunamadı.' }, { statu
 
 /** The conversation, if the caller is part of it. Reading does not mark it read; PATCH `okundu` does. */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
-	const auth = await requireApp(request, 'mail', 'kullan');
+	const auth = await requireApp(request, 'mail', 'use');
 	if (!auth.authorized) return auth.response;
 	try {
 		const { id } = await params;
@@ -29,7 +29,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
 /** Replies to everyone in the conversation. */
 async function handlePOST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-	const auth = await requireApp(request, 'mail', 'kullan');
+	const auth = await requireApp(request, 'mail', 'use');
 	if (!auth.authorized) return auth.response;
 	const user = auth.user;
 	try {
@@ -67,23 +67,18 @@ async function handlePOST(request: Request, { params }: { params: Promise<{ id: 
 }
 
 const ACTION_MAP: Record<string, MailAction> = {
-	read: 'okundu',
-	unread: 'okunmadi',
-	archive: 'arsivle',
-	inbox: 'gelene',
-	trash: 'cope',
-	delete: 'sil',
-	okundu: 'okundu',
-	okunmadi: 'okunmadi',
-	arsivle: 'arsivle',
-	gelene: 'gelene',
-	cope: 'cope',
-	sil: 'sil',
+	read: 'read',
+	unread: 'unread',
+	archive: 'archive',
+	inbox: 'restore',
+	trash: 'trash',
+	delete: 'delete',
+	restore: 'restore',
 };
 
 /** `{ action }`: okundu, okunmadi, arsivle, gelene (back to the inbox), cope, sil (from the trash, for good — for the caller only). */
 async function handlePATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-	const auth = await requireApp(request, 'mail', 'kullan');
+	const auth = await requireApp(request, 'mail', 'use');
 	if (!auth.authorized) return auth.response;
 	try {
 		const { id } = await params;
@@ -93,7 +88,7 @@ async function handlePATCH(request: Request, { params }: { params: Promise<{ id:
 		if (!action || !MAIL_ACTIONS.includes(action)) return NextResponse.json({ error: 'Geçersiz işlem.' }, { status: 400 });
 		const subject = await getMailThread(auth.user.id, id);
 		if (!subject) return notFound();
-		if (action === 'sil' && subject.folder !== 'cop') {
+		if (action === 'delete' && subject.folder !== 'trash') {
 			return NextResponse.json({ error: 'Kalıcı silmek için konu önce çöp kutusunda olmalıdır.' }, { status: 400 });
 		}
 		await setMailThreadStatus(auth.user.id, id, action);

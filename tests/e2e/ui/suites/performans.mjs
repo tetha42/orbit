@@ -119,7 +119,7 @@ export default async function suite(t) {
 	});
 
 	await t.step('rol: Sadece Haberler kullanıcısının boş masaüstü; 3 pencere açamaz', async () => {
-		const page = await openMeasured(t, browser, 'okur');
+		const page = await openMeasured(t, browser, 'reader');
 		const dock = await page.locator('[data-dock-app]').count();
 		t.eq(dock, 2, 'okur Dock\'ta yalnız 2 uygulama görüyor: 3 pencereli senaryo bu rol için kurulamaz');
 		await page.waitForTimeout(2500);
@@ -129,7 +129,7 @@ export default async function suite(t) {
 		t.check(m.commitsPerSecond < 5, `okur boş masaüstü boşta: ${m.commitsPerSecond} commit/sn (< 5; boşta yeniden çizim yok)`);
 	});
 
-	console.log(`\n  Performans (${report.machine.cpus} çekirdek, yük ${report.machine.loadAverage.join('/')}, WebGL: ${report.webgl ?? 'yok'})`);
+	console.log(`\n  Performans (${report.machine.cpus} çekirdek, yük ${report.machine.loadAverage.join('/')}, WebGL: ${report.webgl ?? 'none'})`);
 	printTable(rows);
 	const file = writeReport(report);
 	console.log(`  JSON: ${file}`);

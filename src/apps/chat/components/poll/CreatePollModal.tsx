@@ -28,7 +28,7 @@ export function CreatePollModal(props: CreatePollModalProps) {
 function CreatePollDialog({ onClose, onSubmit }: CreatePollModalProps) {
 	const { t } = useI18n();
 	const [question, setQuestion] = useState('');
-	const [options, setOptions] = useState<string[]>(['', '']);
+	const [options, setOptions] = useState<string[]>(['']);
 	const [multipleSelection, setMultipleSelection] = useState(false);
 	const [anonymous, setAnonymous] = useState(true);
 	const [duration, setDuration] = useState<DurationOption>('none');

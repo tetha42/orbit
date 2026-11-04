@@ -27,16 +27,16 @@ export interface EventsResponse {
 }
 
 export const TYPE_META: Record<EventType, { color: string; key: string }> = {
-	atolye: { color: 'var(--ev-atolye)', key: 'evTypeAtolye' },
-	seminer: { color: 'var(--ev-seminer)', key: 'evTypeSeminer' },
-	yarisma: { color: 'var(--ev-yarisma)', key: 'evTypeYarisma' },
-	toplanti: { color: 'var(--ev-toplanti)', key: 'evTypeToplanti' },
+	workshop: { color: 'var(--ev-atolye)', key: 'evTypeAtolye' },
+	seminar: { color: 'var(--ev-seminer)', key: 'evTypeSeminer' },
+	competition: { color: 'var(--ev-yarisma)', key: 'evTypeYarisma' },
+	meeting: { color: 'var(--ev-toplanti)', key: 'evTypeToplanti' },
 };
 
-export const typeMeta = (typeValue: string) => TYPE_META[typeValue as EventType] ?? TYPE_META.atolye;
+export const typeMeta = (typeValue: string) => TYPE_META[typeValue as EventType] ?? TYPE_META.workshop;
 
 export function isLive(e: Pick<EventView, 'start' | 'endTime' | 'status'>, now: number): boolean {
-	return e.status === 'yayinda' && now >= e.start && now <= e.endTime;
+	return e.status === 'published' && now >= e.start && now <= e.endTime;
 }
 
 /** "12 Eki Pzt · 14:00–17:00", or with both dates when it spans days. */

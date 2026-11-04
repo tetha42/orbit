@@ -33,7 +33,7 @@ const manifest = {
 	hotkey: '5',
 	order: 4,
 	dock: 6,
-	notifications: { certificate: 'kullan' },
+	notifications: { certificate: 'use' },
 	permission: {
 		order: 4,
 		name: 'Sertifikalar',
@@ -42,7 +42,7 @@ const manifest = {
 	},
 	menu: {
 		title: { tr: 'Sertifikalar', en: 'Credentials' },
-		about: { id: 'about-certs', label: { tr: 'Sertifika Doğrulama Hakkında', en: 'About Credential Verification' }, permission: 'kullan', ac: true },
+		about: { id: 'about-certs', label: { tr: 'Sertifika Doğrulama Hakkında', en: 'About Credential Verification' }, permission: 'use', ac: true },
 	},
 } as const satisfies AppManifest;
 

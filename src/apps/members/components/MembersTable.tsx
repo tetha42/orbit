@@ -19,7 +19,7 @@ interface MembersTableProps {
 	onOpenProfile: (member: MemberRecord) => void;
 	onResetPassword: (memberId: string, name: string) => void;
 	onSendMessage: (memberId: string) => void;
-	onUpdateStatus: (memberId: string, status: 'aktif' | 'reddedildi' | 'mezun') => void;
+	onUpdateStatus: (memberId: string, status: 'active' | 'rejected' | 'alumni') => void;
 	onUpdateRole: (memberId: string, roleId: string) => void;
 	onAwardXp: (memberId: string, xp: number) => void;
 	onDelete: (memberId: string, name: string) => void;

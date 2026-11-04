@@ -15,13 +15,13 @@ interface InventoryToolbarProps {
 	setCategory: (k: string) => void;
 	categories: string[];
 	counts: {
-		hepsi: number;
-		saglam: number;
-		oduncte: number;
-		gecikmis: number;
-		arizali: number;
-		kayip: number;
-		bende: number;
+		all: number;
+		available: number;
+		on_loan: number;
+		overdue: number;
+		faulty: number;
+		lost: number;
+		mine: number;
 	};
 	isManager: boolean;
 	onNewItem: () => void;
@@ -45,7 +45,7 @@ export function InventoryToolbar({
 		<button
 			type="button"
 			className={`${s.stat} ${filter === key ? s.statActive : ''}`}
-			onClick={() => setFilter(filter === key ? 'hepsi' : key)}
+			onClick={() => setFilter(filter === key ? 'all' : key)}
 			aria-pressed={filter === key}
 		>
 			<div className={s.statValue} style={tone ? { color: tone } : undefined}>
@@ -65,17 +65,17 @@ export function InventoryToolbar({
 					<p className={s.subtitle}>{t('invSubtitle')}</p>
 				</div>
 				<div className={s.stats}>
-					{stat('hepsi', t('invStatTotal'), counts.hepsi)}
-					{stat('saglam', t('invStatAvailable'), counts.saglam, 'var(--green)')}
-					{stat('oduncte', t('invStatOnLoan'), counts.oduncte, 'var(--orange)')}
+					{stat('all', t('invStatTotal'), counts.all)}
+					{stat('available', t('invStatAvailable'), counts.available, 'var(--green)')}
+					{stat('on_loan', t('invStatOnLoan'), counts.on_loan, 'var(--orange)')}
 					{stat(
-						'gecikmis',
+						'overdue',
 						t('invStatOverdue'),
-						counts.gecikmis,
-						counts.gecikmis ? 'var(--red)' : undefined
+						counts.overdue,
+						counts.overdue ? 'var(--red)' : undefined
 					)}
-					{stat('arizali', t('invStatBroken'), counts.arizali)}
-					{counts.kayip > 0 && stat('kayip', t('invStatLost'), counts.kayip)}
+					{stat('faulty', t('invStatBroken'), counts.faulty)}
+					{counts.lost > 0 && stat('lost', t('invStatLost'), counts.lost)}
 				</div>
 			</header>
 
@@ -103,11 +103,11 @@ export function InventoryToolbar({
 				</select>
 				<button
 					type="button"
-					className={`${ui.btn} ${filter === 'bende' ? ui.segmentActive : ''}`}
-					onClick={() => setFilter(filter === 'bende' ? 'hepsi' : 'bende')}
-					aria-pressed={filter === 'bende'}
+					className={`${ui.btn} ${filter === 'mine' ? ui.segmentActive : ''}`}
+					onClick={() => setFilter(filter === 'mine' ? 'all' : 'mine')}
+					aria-pressed={filter === 'mine'}
 				>
-					<User size={14} /> {fill(t('invMyItems'), { n: counts.bende })}
+					<User size={14} /> {fill(t('invMyItems'), { n: counts.mine })}
 				</button>
 				<span className={s.spacer} />
 				{isManager && (

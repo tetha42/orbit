@@ -8,7 +8,7 @@
  * `oneri`: proposed by a member, visible to them and to management only.
  * `yayinda`: in the showcase for every member. `arsiv`: kept, but out of the way.
  */
-export const PROJECT_STATUSES = ['oneri', 'yayinda', 'arsiv'] as const;
+export const PROJECT_STATUSES = ['proposed', 'published', 'archived'] as const;
 export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
 
 export const PROJECT_TITLE_MAX = 120;

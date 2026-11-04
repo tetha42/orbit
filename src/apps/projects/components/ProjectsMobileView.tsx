@@ -30,17 +30,17 @@ export function ProjectsMobileView({ p }: ProjectsMobileViewProps) {
 	const scrollAreaRef = useRef<HTMLDivElement>(null);
 
 	const showcaseProjects = useMemo(
-		() => p.allFiltered.filter((proj) => proj.status === 'yayinda'),
+		() => p.allFiltered.filter((proj) => proj.status === 'published'),
 		[p.allFiltered]
 	);
 
 	const proposalProjects = useMemo(
-		() => p.allFiltered.filter((proj) => proj.status === 'oneri'),
+		() => p.allFiltered.filter((proj) => proj.status === 'proposed'),
 		[p.allFiltered]
 	);
 
 	const archiveProjects = useMemo(
-		() => p.allFiltered.filter((proj) => proj.status === 'arsiv'),
+		() => p.allFiltered.filter((proj) => proj.status === 'archived'),
 		[p.allFiltered]
 	);
 
@@ -53,9 +53,9 @@ export function ProjectsMobileView({ p }: ProjectsMobileViewProps) {
 			scrollAreaRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
 		} else {
 			setActiveTab(tabId);
-			if (tabId === 'showcase') p.setTab('yayinda');
-			else if (tabId === 'proposals') p.setTab('oneri');
-			else if (tabId === 'archive') p.setTab('arsiv');
+			if (tabId === 'showcase') p.setTab('published');
+			else if (tabId === 'proposals') p.setTab('proposed');
+			else if (tabId === 'archive') p.setTab('archived');
 			scrollAreaRef.current?.scrollTo({ top: 0, behavior: 'instant' });
 		}
 	};
@@ -71,14 +71,14 @@ export function ProjectsMobileView({ p }: ProjectsMobileViewProps) {
 			id: 'proposals',
 			label: t('pjMobTabProposals'),
 			Icon: Lightbulb,
-			badgeCount: p.counts.oneri > 0 ? p.counts.oneri : undefined,
+			badgeCount: p.counts.proposed > 0 ? p.counts.proposed : undefined,
 		},
 		{ id: 'archive', label: t('pjMobTabArchive'), Icon: Archive },
 		{ id: 'add', label: t('pjMobAddProject'), Icon: PlusCircle },
 	];
 
 	const renderProjectCard = (proj: Project) => {
-		const isStarred = Boolean(proj.iLikedMi);
+		const isStarred = Boolean(proj.likedByMe);
 		return (
 			<div
 				key={proj.id}
@@ -95,7 +95,7 @@ export function ProjectsMobileView({ p }: ProjectsMobileViewProps) {
 							</div>
 						)}
 					</div>
-					{proj.status === 'yayinda' && (
+					{proj.status === 'published' && (
 						<button
 							type="button"
 							className={`${s.starBtn} ${isStarred ? s.starBtnStarred : ''}`}

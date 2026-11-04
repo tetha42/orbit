@@ -2,7 +2,7 @@ export interface MemberTeamInfo {
 	id: string;
 	name: string;
 	category?: string;
-	leaderMi?: boolean;
+	isLeader?: boolean;
 	role?: string;
 }
 
@@ -24,7 +24,7 @@ export interface MemberRecord {
 	profilePhoto?: string;
 	bio?: string;
 	xp: number;
-	status: 'aktif' | 'beklemede' | 'reddedildi' | 'mezun';
+	status: 'active' | 'pending' | 'rejected' | 'alumni';
 	createdAt: number;
 	creation: number;
 	teamName?: string;

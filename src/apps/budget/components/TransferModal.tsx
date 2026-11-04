@@ -53,7 +53,7 @@ export function TransferModal({
 		if (ms === null) return setError(t('kasaInvalidDate'));
 		setBusy(true);
 		const res = await sendJson('/api/budget', 'POST', {
-			action: 'aktar',
+			action: 'transfer',
 			source,
 			target,
 			amountMinor: minor,

@@ -54,11 +54,11 @@ export function TaskChecklist({
 				<label key={m.id} className={styles.checkItem}>
 					<input
 						type="checkbox"
-						checked={Number(m.doneMi) === 1}
+						checked={Number(m.isDone) === 1}
 						disabled={!canWork}
 						onChange={() => onToggleItem(m)}
 					/>
-					<span className={Number(m.doneMi) === 1 ? styles.checkDone : ''}>{m.text}</span>
+					<span className={Number(m.isDone) === 1 ? styles.checkDone : ''}>{m.text}</span>
 					{canWork && (
 						<button
 							type="button"

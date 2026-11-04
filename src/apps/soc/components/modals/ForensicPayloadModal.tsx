@@ -328,7 +328,7 @@ export const ForensicPayloadModal = React.memo(function ForensicPayloadModal() {
 											action: 'whitelist_ip',
 											ip: ipToWhitelist,
 											reason: isEn
-												? 'Marked as trusted during forensic inspection'
+												? 'Marked AS trusted during forensic inspection'
 												: 'Adli İncelemede Güvenilir Olarak İşaretlendi',
 										},
 										isEn

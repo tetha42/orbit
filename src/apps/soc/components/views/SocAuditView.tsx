@@ -272,7 +272,7 @@ export function SocAuditView() {
 			if (selectedAction) p.set('action', selectedAction);
 			if (fromDate) p.set('from', fromDate);
 			if (toDate) p.set('to', toDate);
-			p.set('tum', '1');
+			p.set('all', '1');
 
 			const res = await fetch(`/api/audit?${p.toString()}`);
 			if (!res.ok) throw new Error();
@@ -844,20 +844,20 @@ function SocAuditDetailSheet({
 			return val ? t('auditYes') : t('auditNo');
 		}
 		if (field === 'roleId' || field === 'movedToRoleId') {
-			if (val === 'rol_admin') return t('auditRoleAdmin', 'Yönetici (Admin)');
-			if (val === 'rol_yonetim_kurulu') return t('auditRoleBoard', 'Board Member');
-			if (val === 'rol_uye') return t('auditRoleMember', 'Member');
-			if (val === 'rol_mezun') return t('auditRoleAlumni', 'Alumni');
+			if (val === 'role_admin') return t('auditRoleAdmin', 'Yönetici (Admin)');
+			if (val === 'role_management_board') return t('auditRoleBoard', 'Board Member');
+			if (val === 'role_member') return t('auditRoleMember', 'Member');
+			if (val === 'role_alumni') return t('auditRoleAlumni', 'Alumni');
 		}
 		if (typeof val === 'string') {
 			if (
-				val === 'yok' ||
-				val === 'kullan' ||
-				val === 'yonet' ||
-				val === 'aktif' ||
-				val === 'mezun' ||
-				val === 'beklemede' ||
-				val === 'reddedildi'
+				val === 'none' ||
+				val === 'use' ||
+				val === 'manage' ||
+				val === 'active' ||
+				val === 'alumni' ||
+				val === 'pending' ||
+				val === 'rejected'
 			) {
 				return t(`auditValue_${val}`, val);
 			}

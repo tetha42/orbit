@@ -121,7 +121,7 @@ export function inferCertificateCategory(title: string, explicitCategory?: strin
 	if (lower.includes('onur') || lower.includes('temsil') || lower.includes('honor')) {
 		return 'honor';
 	}
-	if (lower.includes('katılım') || lower.includes('atölye') || lower.includes('workshop') || lower.includes('seminer') || lower.includes('participation')) {
+	if (lower.includes('katılım') || lower.includes('atölye') || lower.includes('workshop') || lower.includes('seminar') || lower.includes('participation')) {
 		return 'participation';
 	}
 	return 'achievement';

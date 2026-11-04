@@ -5,6 +5,6 @@ export type { SettingsTabId };
 export interface SettingsSection {
 	id: SettingsTabId;
 	labelKey: string;
-	group: 'kisisel' | 'hesap' | 'sistem';
+	group: 'personal' | 'account' | 'system';
 	system?: boolean;
 }

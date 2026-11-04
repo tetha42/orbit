@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 
 export interface OrbitEventMap {
-	'budget:record_created': { recordId: string; amount: number; type: 'gelir' | 'gider'; teamId?: string };
+	'budget:record_created': { recordId: string; amount: number; type: 'income' | 'expense'; teamId?: string };
 	'team:member_added': { teamId: string; userId: string; role: string };
 	'chat:unread_count_changed': { roomId: string; unreadCount: number };
 	'events:attendance_taken': { eventId: string; userId: string };

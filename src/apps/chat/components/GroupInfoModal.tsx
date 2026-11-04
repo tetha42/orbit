@@ -121,7 +121,7 @@ export function GroupInfoModal({
 					</div>
 
 					{/* Action: Add member to this group */}
-					{room.typeValue !== 'genel' && (
+					{room.typeValue !== 'general' && (
 						<button
 							type="button"
 							className={s.newGroupToggleBtn}
@@ -180,8 +180,8 @@ export function GroupInfoModal({
 												{member.firstName || member.name} {member.lastName || member.surname}
 											</div>
 											<div className={s.contactMeta}>
-												{(member.roleName || member.roleName) && (
-													<span className={s.contactRoleBadge}>{member.roleName || member.roleName}</span>
+												{(member.roleName) && (
+													<span className={s.contactRoleBadge}>{member.roleName}</span>
 												)}
 												{member.department && <span>{member.department}</span>}
 											</div>

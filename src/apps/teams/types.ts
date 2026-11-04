@@ -49,31 +49,31 @@ export interface Team {
 	leaderNameSurname: string;
 	capacity: number;
 	repoUrl: string | null;
-	status: 'aktif' | 'askida' | 'tamamlandi';
-	participationType: 'acik' | 'onayli';
+	status: 'active' | 'suspended' | 'done';
+	participationType: 'open' | 'approval';
 	fullCapacity: number;
 	remainingCapacity: number;
 	occupancyRatio: number;
 	members: (TeamMember & { participationDate?: number })[];
 	applications: TeamApplication[];
-	myMyStatus: 'aktif' | 'basvurdu' | null;
+	myMyStatus: 'active' | 'applied' | null;
 	permissions: { manage: boolean; editAll: boolean };
 	tasks: TeamTask[];
 	canManage?: boolean;
 }
 
 export const COLUMNS: { id: TaskStatus; color: string; key: string }[] = [
-	{ id: 'yapilacak', color: 'var(--kb-todo)', key: 'kbColTodo' },
-	{ id: 'suruyor', color: 'var(--kb-doing)', key: 'kbColDoing' },
-	{ id: 'inceleme', color: 'var(--kb-review)', key: 'kbColReview' },
-	{ id: 'tamamlandi', color: 'var(--kb-done)', key: 'kbColDone' },
+	{ id: 'todo', color: 'var(--kb-todo)', key: 'kbColTodo' },
+	{ id: 'in_progress', color: 'var(--kb-doing)', key: 'kbColDoing' },
+	{ id: 'review', color: 'var(--kb-review)', key: 'kbColReview' },
+	{ id: 'done', color: 'var(--kb-done)', key: 'kbColDone' },
 ];
 
 export const PRIORITIES: { id: TaskPriority; color: string; key: string }[] = [
-	{ id: 'dusuk', color: 'var(--kb-low)', key: 'kbPrioLow' },
-	{ id: 'orta', color: 'var(--kb-medium)', key: 'kbPrioMedium' },
-	{ id: 'yuksek', color: 'var(--kb-high)', key: 'kbPrioHigh' },
-	{ id: 'kritik', color: 'var(--kb-critical)', key: 'kbPrioCritical' },
+	{ id: 'low', color: 'var(--kb-low)', key: 'kbPrioLow' },
+	{ id: 'medium', color: 'var(--kb-medium)', key: 'kbPrioMedium' },
+	{ id: 'high', color: 'var(--kb-high)', key: 'kbPrioHigh' },
+	{ id: 'critical', color: 'var(--kb-critical)', key: 'kbPrioCritical' },
 ];
 
 export const priorityMeta = (id: TaskPriority) => PRIORITIES.find((p) => p.id === id) ?? PRIORITIES[1];
@@ -94,8 +94,8 @@ export function sortTasks(tasks: TeamTask[], mode: 'manual' | 'priority' | 'due'
 	if (mode === 'priority') {
 		return list.sort(
 			(a, b) =>
-				(b.priority === 'kritik' ? 4 : b.priority === 'yuksek' ? 3 : b.priority === 'orta' ? 2 : 1) -
-				(a.priority === 'kritik' ? 4 : a.priority === 'yuksek' ? 3 : a.priority === 'orta' ? 2 : 1) ||
+				(b.priority === 'critical' ? 4 : b.priority === 'high' ? 3 : b.priority === 'medium' ? 2 : 1) -
+				(a.priority === 'critical' ? 4 : a.priority === 'high' ? 3 : a.priority === 'medium' ? 2 : 1) ||
 				(a.dueDate ?? Infinity) - (b.dueDate ?? Infinity) ||
 				byManual(a, b)
 		);
@@ -103,8 +103,8 @@ export function sortTasks(tasks: TeamTask[], mode: 'manual' | 'priority' | 'due'
 	return list.sort(
 		(a, b) =>
 			(a.dueDate ?? Infinity) - (b.dueDate ?? Infinity) ||
-			(b.priority === 'kritik' ? 4 : b.priority === 'yuksek' ? 3 : b.priority === 'orta' ? 2 : 1) -
-			(a.priority === 'kritik' ? 4 : a.priority === 'yuksek' ? 3 : a.priority === 'orta' ? 2 : 1) ||
+			(b.priority === 'critical' ? 4 : b.priority === 'high' ? 3 : b.priority === 'medium' ? 2 : 1) -
+			(a.priority === 'critical' ? 4 : a.priority === 'high' ? 3 : a.priority === 'medium' ? 2 : 1) ||
 			byManual(a, b)
 	);
 }

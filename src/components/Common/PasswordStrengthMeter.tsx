@@ -19,7 +19,7 @@ function estimateStrength(password: string): number {
 }
 
 // macOS‑style colors: weak (red), medium (orange), strong (green)
-const strengthColors = ['#ff3b30', '#ff9500', '#ffcc00', '#34c759', '#34c759'];
+const strengthColors = ['#ff3b30', '#ff9500', '#ffcc00', '#34c759'];
 const strengthLabels = ['Çok Zayıf', 'Zayıf', 'Orta', 'İyi', 'Mükemmel'];
 
 export const PasswordStrengthMeter: React.FC<{ password: string }> = ({ password }) => {

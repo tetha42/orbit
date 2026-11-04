@@ -21,7 +21,7 @@ const PORTAL_FILE = ['new-event', 'new-member', 'new-budget-entry', 'export-repo
 export default async function suite(t) {
 	// Portal menüsü → Dosya: Yeni Etkinlik / Yeni Üye / Gelir-Gider / Faaliyet Raporu
 	for (const [key, expected] of [
-		['okur', []],
+		['reader', []],
 		['can', []],
 		['zeynep', PORTAL_FILE],
 		['admin', PORTAL_FILE],

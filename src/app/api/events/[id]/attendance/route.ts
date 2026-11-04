@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 /** Registrations and check-ins with names and student numbers — organisers only. */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
-	const auth = await requireApp(request, 'events', 'yonet');
+	const auth = await requireApp(request, 'events', 'manage');
 	if (!auth.authorized) return auth.response;
 	const { id } = await params;
 	const ev = await getEventById(id);

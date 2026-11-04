@@ -79,7 +79,7 @@ export function TeamWorkspaceBody({
 					currentUserName={currentUserName || t('tmMemberFallback')}
 				/>
 			)}
-			{visibleTab === 'kasa' && canSeeVault && <VaultPanel key={team.id} teamId={team.id} embedded />}
+			{visibleTab === 'vault' && canSeeVault && <VaultPanel key={team.id} teamId={team.id} embedded />}
 			{visibleTab === 'settings' && team.permissions.manage && (
 				<TeamSettings
 					key={`${team.id}:${team.name}:${team.capacity}:${team.leadId}:${team.status}:${team.participationType}`}

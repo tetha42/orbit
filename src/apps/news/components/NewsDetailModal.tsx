@@ -39,17 +39,17 @@ export function NewsDetailModal({
 	const { offset, onHeaderMouseDown, onHeaderDoubleClick } = useDraggableSheet(true);
 
 	const categoryMap: Record<string, string> = {
-		genel: t('newsCatGenel'),
+		general: t('newsCatGenel'),
 		teknofest: t('newsCatTeknofest'),
-		atolye: t('newsCatAtolye'),
-		isbirligi: t('newsCatIsbirligi'),
-		resmi: t('newsCatResmi'),
+		workshop: t('newsCatAtolye'),
+		collaboration: t('newsCatIsbirligi'),
+		official: t('newsCatResmi'),
 	};
 
 	const visibilityLabels: Record<NewsVisibility, string> = {
-		taslak: t('newsVisDraft'),
-		uyeler: t('newsVisMembers'),
-		yayinda: t('newsVisPublic'),
+		draft: t('newsVisDraft'),
+		members: t('newsVisMembers'),
+		published: t('newsVisPublic'),
 	};
 
 	return (
@@ -258,7 +258,7 @@ export function NewsDetailModal({
 								{ day: 'numeric', month: 'long', year: 'numeric' }
 							)}
 						</span>
-						{article.importantMi === 1 && (
+						{article.isImportant === 1 && (
 							<>
 								<span>•</span>
 								<span style={{ color: '#ff2d55', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>

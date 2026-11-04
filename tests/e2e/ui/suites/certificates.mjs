@@ -48,14 +48,14 @@ export default async function suite(t) {
 		const team = await makeTeam(t, admin, { label: 'Rozet', leadId: star.id });
 		for (let i = 0; i < 10; i++) {
 			const g = await addTask(starApi, team.id, { title: `Rozet görevi ${i}`, assigneeMemberId: star.id });
-			await starApi.post('/api/takimlar', { action: 'updateTask', taskId: g.id, status: 'tamamlandi' });
+			await starApi.post('/api/takimlar', { action: 'updateTask', taskId: g.id, status: 'done' });
 		}
 		// Üyenin önerisi yayınlanınca "Yapımcı".
 		const own = await starApi.post('/api/projeler', { title: `E2E Rozetim ${runTag()}`, summary: 'Üyenin kendi yayındaki projesi', repoUrl: 'https://example.com/benim', technologies: 'Go' });
 		t.cleanup(() => admin.del(`/api/projeler/${own.json.project.id}`));
 		const { page: before } = await star.open();
 		t.eq((await badges(before)).producer, false, 'öneri aşamasında "Yapımcı" yok');
-		await admin.patch(`/api/projeler/${own.json.project.id}`, { status: 'yayinda' });
+		await admin.patch(`/api/projeler/${own.json.project.id}`, { status: 'published' });
 
 		const { page } = await star.open();
 		const got = await badges(page);
@@ -133,7 +133,7 @@ export default async function suite(t) {
 		const anon = await t.anonymous();
 		const api = await anon.page.request.get(`${t.base}/api/sertifikalar/${cert.verificationCode}`);
 		t.eq(api.status(), 200, 'oturumsuz doğrulama 200');
-		t.eq((await api.json()).validMi, true, 'gecerliMi: true');
+		t.eq((await api.json()).isValid, true, 'gecerliMi: true');
 		t.eq((await anon.page.request.get(`${t.base}/api/sertifikalar/UYDURMA-${runTag()}`)).status(), 404, 'uydurma kod 404');
 		await anon.page.goto(`${t.base}/dogrula/${cert.verificationCode}`);
 		await anon.page.getByText('Dijital Sertifika Doğrulandı').waitFor();
@@ -168,9 +168,9 @@ export default async function suite(t) {
 	});
 
 	await t.step('yetkisiz rol: "Sadece Haberler" sertifikalara ulaşamaz', async () => {
-		const reader = await t.api('okur');
+		const reader = await t.api('reader');
 		t.eq((await reader.get('/api/sertifikalar')).status, 403, 'GET 403');
-		const { page } = await t.open('okur');
+		const { page } = await t.open('reader');
 		t.eq(await page.locator('[data-dock-app=certificates]').count(), 0, 'Dock\'ta Sertifikalar yok');
 	});
 }

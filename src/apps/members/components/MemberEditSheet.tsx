@@ -84,8 +84,8 @@ export function MemberEditSheet({ memberId, onClose, onSaved }: MemberEditSheetP
 					surname: next.member.lastName || next.member.surname,
 					email: next.member.email,
 					studentNo: next.member.handle || next.member.studentNo,
-					department: next.member.department || next.member.department,
-					grade: next.member.grade || next.member.grade,
+					department: next.member.department,
+					grade: next.member.grade,
 					bio: next.member.bio,
 				});
 				setCustomValues(next.customFields ?? {});

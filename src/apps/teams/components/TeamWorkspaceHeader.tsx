@@ -7,7 +7,7 @@ import styles from './Teams.module.css';
 import ui from '@/core/ui/ui.module.css';
 import type { Team } from '../types';
 
-export type TeamWorkspaceTab = 'kanban' | 'members' | 'chat' | 'kasa' | 'settings';
+export type TeamWorkspaceTab = 'kanban' | 'members' | 'chat' | 'vault' | 'settings';
 
 interface TeamWorkspaceHeaderProps {
 	team: Team;
@@ -36,9 +36,9 @@ export function TeamWorkspaceHeader({
 					<div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
 						<h2 className={styles.wsName}>{team.name}</h2>
 						<span className={`${styles.pill} ${styles.pCategory}`}>{team.category}</span>
-						{team.status !== 'aktif' && (
+						{team.status !== 'active' && (
 							<span className={`${styles.pill} ${styles.pPaused}`}>
-								{t(team.status === 'askida' ? 'tmPaused' : 'tmFinished')}
+								{t(team.status === 'suspended' ? 'tmPaused' : 'tmFinished')}
 							</span>
 						)}
 					</div>
@@ -75,9 +75,9 @@ export function TeamWorkspaceHeader({
 				{canSeeVault && (
 					<button
 						type="button"
-						className={`${styles.tab} ${visibleTab === 'kasa' ? styles.tabActive : ''}`}
-						onClick={() => setActiveTab('kasa')}
-						data-focus-section="kasa"
+						className={`${styles.tab} ${visibleTab === 'vault' ? styles.tabActive : ''}`}
+						onClick={() => setActiveTab('vault')}
+						data-focus-section="vault"
 					>
 						<Wallet size={14} /> {t('tmTabKasa')}
 					</button>

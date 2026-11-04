@@ -40,10 +40,10 @@ export function useNews() {
 	const [newTitle, setNewTitle] = useState('');
 	const [newSummary, setNewSummary] = useState('');
 	const [newContent, setNewContent] = useState('');
-	const [newCategory, setNewCategory] = useState('genel');
-	const [newImportantMi, setNewImportantMi] = useState(false);
+	const [newCategory, setNewCategory] = useState('general');
+	const [newIsImportant, setNewIsImportant] = useState(false);
 	const [newImageUrl, setNewImageUrl] = useState('');
-	const [newVisibility, setNewVisibility] = useState<NewsVisibility>('yayinda');
+	const [newVisibility, setNewVisibility] = useState<NewsVisibility>('published');
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [formError, setFormError] = useState<string | null>(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -54,10 +54,10 @@ export function useNews() {
 		setNewTitle('');
 		setNewSummary('');
 		setNewContent('');
-		setNewCategory('genel');
-		setNewImportantMi(false);
+		setNewCategory('general');
+		setNewIsImportant(false);
 		setNewImageUrl('');
-		setNewVisibility('yayinda');
+		setNewVisibility('published');
 		setFormError(null);
 		setIsCreateModalOpen(true);
 	};
@@ -69,7 +69,7 @@ export function useNews() {
 		setNewSummary(article.summary === article.title ? '' : article.summary);
 		setNewContent(article.content);
 		setNewCategory(article.category);
-		setNewImportantMi(article.importantMi === 1);
+		setNewIsImportant(article.isImportant === 1);
 		setNewImageUrl(article.imageUrl ?? '');
 		setNewVisibility(article.publishStatus);
 		setFormError(null);
@@ -95,7 +95,7 @@ export function useNews() {
 					summary: (newSummary || newTitle).trim(),
 					content: newContent.trim(),
 					category: newCategory,
-					importantMi: newImportantMi,
+					isImportant: newIsImportant,
 					imageUrl: newImageUrl.trim(),
 					publishStatus: newVisibility,
 				}),
@@ -198,7 +198,7 @@ export function useNews() {
 		return true;
 	});
 
-	const urgentNews = news.find((n) => n.importantMi === 1 && n.publishStatus !== 'taslak');
+	const urgentNews = news.find((n) => n.isImportant === 1 && n.publishStatus !== 'draft');
 
 	return {
 		isAdmin,
@@ -222,8 +222,8 @@ export function useNews() {
 		setNewContent,
 		newCategory,
 		setNewCategory,
-		newImportantMi,
-		setNewImportantMi,
+		newIsImportant,
+		setNewIsImportant,
 		newImageUrl,
 		setNewImageUrl,
 		newVisibility,

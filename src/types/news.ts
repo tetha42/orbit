@@ -3,16 +3,16 @@
  * public API the landing site reads.
  */
 
-export const NEWS_CATEGORY_IDS = ['genel', 'teknofest', 'atolye', 'isbirligi', 'resmi'] as const;
+export const NEWS_CATEGORY_IDS = ['general', 'teknofest', 'workshop', 'collaboration', 'official'] as const;
 export type NewsCategoryId = (typeof NEWS_CATEGORY_IDS)[number];
 
 /** The labels the public API returns. The News app keeps shorter labels of its own, with icons. */
 export const NEWS_CATEGORY_LABELS: Record<NewsCategoryId, string> = {
-	genel: 'Genel Duyuru & NewsItem',
+	general: 'Genel Duyuru & NewsItem',
 	teknofest: 'TEKNOFEST & Yarışmalar',
-	atolye: 'Atölye & Eğitim',
-	isbirligi: 'İş Birliği & Sponsorluk',
-	resmi: 'Rektörlük & SKS Resmi Bildirimi',
+	workshop: 'Atölye & Eğitim',
+	collaboration: 'İş Birliği & Sponsorluk',
+	official: 'Rektörlük & SKS Resmi Bildirimi',
 };
 
 export function isNewsCategory(value: unknown): value is NewsCategoryId {
@@ -25,13 +25,13 @@ export function isNewsCategory(value: unknown): value is NewsCategoryId {
  *  - `uyeler`: signed-in club members, in the portal.
  *  - `yayinda`: everyone — the portal and the public API (and so the landing site).
  */
-export const NEWS_VISIBILITIES = ['taslak', 'uyeler', 'yayinda'] as const;
+export const NEWS_VISIBILITIES = ['draft', 'members', 'published'] as const;
 export type NewsVisibility = (typeof NEWS_VISIBILITIES)[number];
 
 export const NEWS_VISIBILITY_LABELS: Record<NewsVisibility, string> = {
-	taslak: 'Taslak',
-	uyeler: 'Sadece üyeler',
-	yayinda: 'Herkese açık',
+	draft: 'Taslak',
+	members: 'Sadece üyeler',
+	published: 'Herkese açık',
 };
 
 export function isNewsVisibility(value: unknown): value is NewsVisibility {

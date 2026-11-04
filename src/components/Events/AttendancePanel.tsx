@@ -22,7 +22,7 @@ interface Props {
 	onProjector: () => void;
 }
 
-const METHOD_KEY: Record<string, string> = { qr: 'evMethodQr', ticket: 'evMethodBilet', manuel: 'evMethodManuel' };
+const METHOD_KEY: Record<string, string> = { qr: 'evMethodQr', ticket: 'evMethodBilet', manual: 'evMethodManuel' };
 
 /** Organiser tools for one event: check-in switch, projector, ticket scan, manual entry, the list and CSV. */
 export function AttendancePanel({ event, notify, onChanged, onProjector }: Props) {
@@ -39,11 +39,11 @@ export function AttendancePanel({ event, notify, onChanged, onProjector }: Props
 	const open = Number(event.attendanceOpen) === 1;
 
 	const post = async (body: Record<string, unknown>, quiet = false) => {
-		const res = await sendJson<{ message?: string; zaten?: boolean }>('/api/events', 'POST', { eventId: event.id, ...body });
+		const res = await sendJson<{ message?: string; already?: boolean }>('/api/events', 'POST', { eventId: event.id, ...body });
 		if (!res.ok) notify(res.error || t('kbActionFailed'), 'error');
 		else {
-			if (!res.data.zaten) playSystemSound();
-			if (!quiet && res.data.message) notify(res.data.message, res.data.zaten ? 'error' : 'success');
+			if (!res.data.already) playSystemSound();
+			if (!quiet && res.data.message) notify(res.data.message, res.data.already ? 'error' : 'success');
 		}
 		await Promise.all([refetch(), onChanged()]);
 		return res.ok;
@@ -79,7 +79,7 @@ export function AttendancePanel({ event, notify, onChanged, onProjector }: Props
 						{attended}/{list.length}
 					</span>
 				</h3>
-				{event.status === 'yayinda' && (
+				{event.status === 'published' && (
 					<label className={styles.switch}>
 						<input type="checkbox" checked={open} onChange={() => post({ action: 'setAttendance', open: !open }, true)} />
 						{open ? t('evAttendanceOpen') : t('evAttendanceClosed')}

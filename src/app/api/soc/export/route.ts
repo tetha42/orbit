@@ -16,7 +16,7 @@ function escapeCsvField(val: unknown): string {
 }
 
 export async function GET(request: Request) {
-	const auth = await requireApp(request, 'soc', 'kullan');
+	const auth = await requireApp(request, 'soc', 'use');
 	if (!auth.authorized) return auth.response;
 
 	const { searchParams } = new URL(request.url);

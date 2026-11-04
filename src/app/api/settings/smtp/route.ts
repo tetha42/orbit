@@ -14,7 +14,7 @@ import {
 } from '@/lib/mail/smtpSettings';
 
 export async function GET(request: Request) {
-	const auth = await requireApp(request, 'settings', 'yonet');
+	const auth = await requireApp(request, 'settings', 'manage');
 	if (!auth.authorized) return auth.response;
 
 	try {
@@ -44,7 +44,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-	const auth = await requireApp(request, 'settings', 'yonet');
+	const auth = await requireApp(request, 'settings', 'manage');
 	if (!auth.authorized) return auth.response;
 
 	try {

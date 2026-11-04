@@ -4,7 +4,7 @@ export interface VaultRecord {
 	id: string;
 	date: number;
 	creation?: number;
-	typeValue: 'gelir' | 'gider';
+	typeValue: 'income' | 'expense';
 	category: string;
 	amountMinor: number;
 	description: string;
@@ -25,7 +25,7 @@ export interface CashTotals {
 }
 
 export interface VaultResponse {
-	vault: { teamId: string | null; name: string; kind: 'genel' | 'proje' };
+	vault: { teamId: string | null; name: string; kind: 'general' | 'project' };
 	records: VaultRecord[];
 	summary: CashTotals;
 	/** What the caller may do here (lib/kasaAccess): write entries; manage (transfers). */
@@ -35,4 +35,4 @@ export interface VaultResponse {
 export type { VaultSummary };
 
 /** "Genel Kasa" or the project's name, for the transfer form. */
-export const vaultKey = (teamId: string | null) => teamId ?? 'genel';
+export const vaultKey = (teamId: string | null) => teamId ?? 'general';

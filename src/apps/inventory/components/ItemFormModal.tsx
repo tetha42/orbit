@@ -28,7 +28,7 @@ export function ItemFormModal({
 	const [location, setLocation] = useState(item?.location ?? '');
 	const [seriesNo, setSeriesNo] = useState(item?.seriesNo ?? '');
 	const [description, setDescription] = useState(item?.description ?? '');
-	const [status, setStatus] = useState<'saglam' | 'arizali'>('saglam');
+	const [status, setStatus] = useState<'available' | 'faulty'>('available');
 	const [error, setError] = useState('');
 	const [busy, setBusy] = useState(false);
 	const normalizedCode = normalizeCode(code);
@@ -162,7 +162,7 @@ export function ItemFormModal({
 			</label>
 			{!item && (
 				<div className={ui.segmented} role="radiogroup" aria-label={t('invConditionLabel')}>
-					{(['saglam', 'arizali'] as const).map((d) => (
+					{(['available', 'faulty'] as const).map((d) => (
 						<button
 							key={d}
 							type="button"
@@ -171,7 +171,7 @@ export function ItemFormModal({
 							className={`${ui.segment} ${status === d ? ui.segmentActive : ''}`}
 							onClick={() => setStatus(d)}
 						>
-							{d === 'saglam' ? t('invBadgeAvailable') : t('invBadgeBroken')}
+							{d === 'available' ? t('invBadgeAvailable') : t('invBadgeBroken')}
 						</button>
 					))}
 				</div>

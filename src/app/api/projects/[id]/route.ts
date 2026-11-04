@@ -18,14 +18,14 @@ const forbidden = (error: string) => NextResponse.json({ error }, { status: 403 
 async function load(id: string, user: AuthorizedUser): Promise<{ project: Project; manage: boolean; owner: boolean } | null> {
 	const project = await getProjectById(id, user.id);
 	if (!project) return null;
-	const manage = can(user, 'projects', 'yonet');
+	const manage = can(user, 'projects', 'manage');
 	const owner = project.creatorId === user.id;
-	if (project.status !== 'yayinda' && !manage && !owner) return null;
+	if (project.status !== 'published' && !manage && !owner) return null;
 	return { project: project, manage, owner };
 }
 
 export async function GET(request: Request, { params }: Params) {
-	const auth = await requireApp(request, 'projects', 'kullan');
+	const auth = await requireApp(request, 'projects', 'use');
 	if (!auth.authorized) return auth.response;
 	const { id } = await params;
 	const found = await load(id, auth.user);
@@ -37,9 +37,9 @@ export async function GET(request: Request, { params }: Params) {
  * `status` and `oneCikan` (publishing, archiving, pinning): management only.
  */
 async function handlePATCH(request: Request, { params }: Params) {
-	const auth = await requireApp(request, 'projects', 'kullan');
+	const auth = await requireApp(request, 'projects', 'use');
 	if (!auth.authorized) return auth.response;
-	if (auth.user.status === 'mezun') return forbidden('Mezunlar sadece okuma erişimine sahiptir.');
+	if (auth.user.status === 'alumni') return forbidden('Mezunlar sadece okuma erişimine sahiptir.');
 	try {
 		const { id } = await params;
 		const found = await load(id, auth.user);
@@ -50,7 +50,7 @@ async function handlePATCH(request: Request, { params }: Params) {
 		const editsContent = ['title', 'summary', 'description', 'repoUrl', 'liveUrl', 'technologies', 'teamId'].some(
 			(k) => body[k] !== undefined
 		);
-		if (editsContent && !manage && !(owner && project.status !== 'arsiv')) {
+		if (editsContent && !manage && !(owner && project.status !== 'archived')) {
 			return forbidden('Bu projeyi yalnızca sahibi veya yönetim düzenleyebilir.');
 		}
 		if ((body.status !== undefined || body.oneLeaving !== undefined) && !manage) {
@@ -76,8 +76,8 @@ async function handlePATCH(request: Request, { params }: Params) {
 			// Only a published project can be pinned; archiving or unpublishing unpins it.
 			oneLeaving:
 				body.oneLeaving !== undefined
-					? Boolean(body.oneLeaving) && (body.status ?? project.status) === 'yayinda'
-					: body.status !== undefined && body.status !== 'yayinda'
+					? Boolean(body.oneLeaving) && (body.status ?? project.status) === 'published'
+					: body.status !== undefined && body.status !== 'published'
 						? false
 						: undefined,
 		});
@@ -91,13 +91,13 @@ async function handlePATCH(request: Request, { params }: Params) {
 
 /** Management, or the author while it is still a proposal. */
 async function handleDELETE(request: Request, { params }: Params) {
-	const auth = await requireApp(request, 'projects', 'kullan');
+	const auth = await requireApp(request, 'projects', 'use');
 	if (!auth.authorized) return auth.response;
-	if (auth.user.status === 'mezun') return forbidden('Mezunlar sadece okuma erişimine sahiptir.');
+	if (auth.user.status === 'alumni') return forbidden('Mezunlar sadece okuma erişimine sahiptir.');
 	const { id } = await params;
 	const found = await load(id, auth.user);
 	if (!found) return notFound();
-	if (!found.manage && !(found.owner && found.project.status === 'oneri')) {
+	if (!found.manage && !(found.owner && found.project.status === 'proposed')) {
 		return forbidden('Yayındaki bir projeyi yalnızca yönetim kaldırabilir.');
 	}
 	await deleteProject(id);
@@ -107,14 +107,14 @@ async function handleDELETE(request: Request, { params }: Params) {
 
 /** `{ action: 'star' }` toggles the caller's star on a published project. */
 async function handlePOST(request: Request, { params }: Params) {
-	const auth = await requireApp(request, 'projects', 'kullan');
+	const auth = await requireApp(request, 'projects', 'use');
 	if (!auth.authorized) return auth.response;
 	const { id } = await params;
 	const found = await load(id, auth.user);
 	if (!found) return notFound();
 	const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
 	if (body.action !== 'star') return NextResponse.json({ error: 'Geçersiz işlem.' }, { status: 400 });
-	if (found.project.status !== 'yayinda') {
+	if (found.project.status !== 'published') {
 		return NextResponse.json({ error: 'Yalnızca yayındaki projeler yıldızlanabilir.' }, { status: 400 });
 	}
 	const result = await toggleProjectLike(id, auth.user.id);

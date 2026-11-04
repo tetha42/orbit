@@ -36,13 +36,13 @@ export async function GET(request: Request) {
 	if (!auth.authorized) return auth.response;
 	const user = auth.user;
 	const settings = user.permission.admin;
-	if (!settings && !can(user, 'members', 'yonet')) return bad('Bu işlem Yönetici yetkisi veya Üye Rehberi yönetim yetkisi gerektirir.', 403);
+	if (!settings && !can(user, 'members', 'manage')) return bad('Bu işlem Yönetici yetkisi veya Üye Rehberi yönetim yetkisi gerektirir.', 403);
 
-	let raw = getCached<{ roles: Awaited<ReturnType<typeof getRoles>>; defaultRoleId: string | null }>('roller_raw');
+	let raw = getCached<{ roles: Awaited<ReturnType<typeof getRoles>>; defaultRoleId: string | null }>('roles_raw');
 	if (!raw) {
 		const [roles, defaultRoleId] = await Promise.all([getRoles(), getDefaultRoleId()]);
 		raw = { roles, defaultRoleId };
-		setCached('roller_raw', raw, 60_000);
+		setCached('roles_raw', raw, 60_000);
 	}
 
 	const marked = raw.roles.map((r) => {
@@ -81,16 +81,16 @@ export async function POST(request: Request) {
 				return bad('Varsayılan role sizden daha yetkili olamaz.', 403);
 			}
 			const r = await setDefaultRoleId(roleId, auditContext(request, auth.user));
-			if (r === 'yok') return bad('Role bulunamadı.', 404);
-			if (r === 'sistem') return bad('Admin cannot be the default role', 400);
-			invalidateCache('roller_raw');
+			if (r === 'none') return bad('Role bulunamadı.', 404);
+			if (r === 'system') return bad('Admin cannot be the default role', 400);
+			invalidateCache('roles_raw');
 			return NextResponse.json({ success: true });
 		}
 		const parsed = readRole(body, auth.user);
 		if (parsed.error !== undefined) return bad(parsed.error, parsed.status);
 		const r = await createRole(parsed.value, auditContext(request, auth.user));
 		if (!r.ok) return bad(r.error === 'ad-var' ? 'Bu adla bir role zaten var.' : 'Role oluşturulamadı.', 409);
-		invalidateCache('roller_raw');
+		invalidateCache('roles_raw');
 		return NextResponse.json({ success: true, id: r.id }, { status: 201 });
 	} catch (error) {
 		console.error('API /api/roles POST error:', error);
@@ -111,11 +111,11 @@ export async function PATCH(request: Request) {
 		if (parsed.error !== undefined) return bad(parsed.error, parsed.status);
 		const r = await updateRole(id, parsed.value, auditContext(request, auth.user));
 		if (!r.ok) {
-			if (r.error === 'yok') return bad('Role bulunamadı.', 404);
-			if (r.error === 'sistem') return bad('Yerleşik role değiştirilemez.', 409);
+			if (r.error === 'none') return bad('Role bulunamadı.', 404);
+			if (r.error === 'system') return bad('Yerleşik role değiştirilemez.', 409);
 			return bad('Bu adla bir role zaten var.', 409);
 		}
-		invalidateCache('roller_raw');
+		invalidateCache('roles_raw');
 		return NextResponse.json({ success: true });
 	} catch (error) {
 		console.error('API /api/roles PATCH error:', error);
@@ -138,8 +138,8 @@ export async function DELETE(request: Request) {
 			return bad('Üyeleri kendinizden daha yetkili bir role taşıyamazsınız.', 403);
 		}
 		const r = await deleteRole(id, move, auditContext(request, auth.user));
-		if (!r.ok) return bad(r.error === 'sistem' ? 'Yerleşik role silinemez.' : 'Role bulunamadı.', r.error === 'sistem' ? 409 : 404);
-		invalidateCache('roller_raw');
+		if (!r.ok) return bad(r.error === 'system' ? 'Yerleşik role silinemez.' : 'Role bulunamadı.', r.error === 'system' ? 409 : 404);
+		invalidateCache('roles_raw');
 		return NextResponse.json({ success: true });
 	} catch (error) {
 		console.error('API /api/roles DELETE error:', error);

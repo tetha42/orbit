@@ -3,9 +3,9 @@ import { ensurePostgresInit, getPgPool, withTransaction } from '@/db/index';
 import type { Decision } from '@/db/schema';
 
 const DECISION_SELECT_COLUMNS = `
-	id, reference_no AS "kararNo", record_type AS "belgeTuru", title AS "baslik", date,
-	agenda AS "gundem", content AS "icerik", is_public AS "kamuyaAcikMi", is_locked AS "kilitliMi",
-	created_by AS "olusturanId", created_at AS "olusturma",
+	id, reference_no AS "decisionNo", record_type AS "documentType", title AS "title", date,
+	agenda AS "agenda", content AS "content", is_public AS "isPublicOpen", is_locked AS "isLocked",
+	created_by AS "creatorId", created_at AS "creation",
 	body_id, body_id AS "bodyId",
 	decision_type, decision_type AS "decisionType",
 	quorum_met, quorum_met AS "quorumMet",
@@ -19,7 +19,7 @@ export async function getDecisions(): Promise<Decision[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(`
 		SELECT t.id, t.reference_no AS "decisionNo", t.record_type AS "documentType", t.title AS "title", t.date,
-		       t.agenda AS "agenda", t.content AS "content", t.is_public AS "publicOpenMi", t.is_locked AS "lockedMi",
+		       t.agenda AS "agenda", t.content AS "content", t.is_public AS "isPublicOpen", t.is_locked AS "isLocked",
 		       t.created_by AS "creatorId", t.created_at AS "creation",
 		       t.body_id, t.body_id AS "bodyId",
 		       t.decision_type, t.decision_type AS "decisionType",
@@ -28,7 +28,7 @@ export async function getDecisions(): Promise<Decision[]> {
 		       t.votes_against, t.votes_against AS "votesAgainst",
 		       t.votes_abstain, t.votes_abstain AS "votesAbstain",
 		       t.published_at, t.published_at AS "publishedAt",
-		       k.first_name || ' ' || k.last_name as "creatorNameSurname",
+		       k.first_name || ' ' || k.last_name AS "creatorNameSurname",
 		       b.name AS "bodyName"
 		FROM decisions t
 		LEFT JOIN users k ON t.created_by = k.id
@@ -38,8 +38,8 @@ export async function getDecisions(): Promise<Decision[]> {
 	`);
 	return res.rows.map((r) => ({
 		...r,
-		publicOpenMi: Number(r.publicOpenMi),
-		lockedMi: Number(r.lockedMi),
+		isPublicOpen: Number(r.isPublicOpen),
+		isLocked: Number(r.isLocked),
 	}));
 }
 
@@ -50,7 +50,7 @@ export async function createDecision(params: {
 	creatorId: string;
 	documentType?: string;
 	date?: number;
-	publicOpenMi?: boolean;
+	isPublicOpen?: boolean;
 	bodyId?: string | null;
 	decisionType?: string;
 	quorumMet?: boolean;
@@ -75,13 +75,13 @@ export async function createDecision(params: {
 		const decision: Decision = {
 			id: randomUUID(),
 			decisionNo: Number(maxRow.rows[0].maxNo) + 1,
-			documentType: params.documentType || 'karar',
+			documentType: params.documentType || 'resolution',
 			title: params.title.trim(),
 			date,
 			agenda: params.agenda.trim(),
 			content: params.content.trim(),
-			publicOpenMi: params.publicOpenMi !== false ? 1 : 0,
-			lockedMi: 0,
+			isPublicOpen: params.isPublicOpen !== false ? 1 : 0,
+			isLocked: 0,
 			creatorId: params.creatorId,
 			creation: now,
 			bodyId: params.bodyId ?? null,
@@ -105,7 +105,7 @@ export async function createDecision(params: {
 				decision.date,
 				decision.agenda,
 				decision.content,
-				decision.publicOpenMi,
+				decision.isPublicOpen,
 				decision.creatorId,
 				now,
 				decision.bodyId,
@@ -125,14 +125,14 @@ export async function getDecisionById(id: string): Promise<Decision | null> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(`SELECT ${DECISION_SELECT_COLUMNS} FROM decisions WHERE id = $1`, [id]);
 	const r = res.rows[0];
-	return r ? { ...r, publicOpenMi: Number(r.publicOpenMi), lockedMi: Number(r.lockedMi) } : null;
+	return r ? { ...r, isPublicOpen: Number(r.isPublicOpen), isLocked: Number(r.isLocked) } : null;
 }
 
 export async function getDecisionByNumber(decisionNo: number): Promise<Decision | null> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(`SELECT ${DECISION_SELECT_COLUMNS} FROM decisions WHERE reference_no = $1`, [decisionNo]);
 	const r = res.rows[0];
-	return r ? { ...r, publicOpenMi: Number(r.publicOpenMi), lockedMi: Number(r.lockedMi) } : null;
+	return r ? { ...r, isPublicOpen: Number(r.isPublicOpen), isLocked: Number(r.isLocked) } : null;
 }
 
 /**
@@ -146,7 +146,7 @@ export async function updateDecision(
 		agenda?: string;
 		content?: string;
 		documentType?: string;
-		publicOpenMi?: boolean;
+		isPublicOpen?: boolean;
 		bodyId?: string | null;
 		decisionType?: string;
 		quorumMet?: boolean;
@@ -155,7 +155,7 @@ export async function updateDecision(
 		votesAbstain?: number;
 		publishedAt?: number | null;
 	}
-): Promise<'ok' | 'kilitli' | 'yok'> {
+): Promise<'ok' | 'locked' | 'none'> {
 	await ensurePostgresInit();
 	const sets: string[] = [];
 	const values: unknown[] = [];
@@ -167,7 +167,7 @@ export async function updateDecision(
 	if (patch.agenda !== undefined) set('agenda', patch.agenda);
 	if (patch.content !== undefined) set('content', patch.content);
 	if (patch.documentType !== undefined) set('record_type', patch.documentType);
-	if (patch.publicOpenMi !== undefined) set('is_public', patch.publicOpenMi ? 1 : 0);
+	if (patch.isPublicOpen !== undefined) set('is_public', patch.isPublicOpen ? 1 : 0);
 	if (patch.bodyId !== undefined) set('body_id', patch.bodyId);
 	if (patch.decisionType !== undefined) set('decision_type', patch.decisionType);
 	if (patch.quorumMet !== undefined) set('quorum_met', patch.quorumMet ? 1 : 0);
@@ -183,18 +183,18 @@ export async function updateDecision(
 		values
 	);
 	if (res.rowCount) return 'ok';
-	return (await getDecisionById(id)) ? 'kilitli' : 'yok';
+	return (await getDecisionById(id)) ? 'locked' : 'none';
 }
 
-export async function setDecisionLock(id: string, kilitli: boolean): Promise<boolean> {
+export async function setDecisionLock(id: string, locked: boolean): Promise<boolean> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query('UPDATE decisions SET is_locked = $1, updated_at = $2 WHERE id = $3', [kilitli ? 1 : 0, Date.now(), id]);
+	const res = await getPgPool().query('UPDATE decisions SET is_locked = $1, updated_at = $2 WHERE id = $3', [locked ? 1 : 0, Date.now(), id]);
 	return (res.rowCount ?? 0) > 0;
 }
 
-export async function deleteDecision(id: string): Promise<'ok' | 'kilitli' | 'yok'> {
+export async function deleteDecision(id: string): Promise<'ok' | 'locked' | 'none'> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query('DELETE FROM decisions WHERE id = $1 AND is_locked = 0', [id]);
 	if (res.rowCount) return 'ok';
-	return (await getDecisionById(id)) ? 'kilitli' : 'yok';
+	return (await getDecisionById(id)) ? 'locked' : 'none';
 }

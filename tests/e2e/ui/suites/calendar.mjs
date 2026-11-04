@@ -150,7 +150,7 @@ export default async function suite(t) {
 		// Esc yalnız takvimi değil her şeyi kapatır; İngilizce: Pazar başlangıçlı, İngilizce ay adı.
 		await page.keyboard.press('Escape');
 		await waitClosed(page);
-		await page.evaluate(() => localStorage.setItem('kulup_language', 'en'));
+		await page.evaluate(() => localStorage.setItem('club_language', 'en'));
 		await page.reload();
 		await page.locator('[data-dock-app]').first().waitFor();
 		await open(page);
@@ -162,7 +162,7 @@ export default async function suite(t) {
 		t.eq(names[0], new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(new Date(2023, 0, 1)), 'en: haftanın günü başlığı Sun', JSON.stringify(names));
 		t.eq(await page.locator('[data-calendar-today]').textContent(), 'Today', 'en: "Today" düğmesi');
 		await t.shot(page, 'acik-en');
-		await page.evaluate(() => localStorage.removeItem('kulup_language'));
+		await page.evaluate(() => localStorage.removeItem('club_language'));
 	});
 
 	await t.step('etkinlik işareti: events=kullan yetkisinde o gün işaretli ve listede; yetkisizde hiç istek yok', async () => {
@@ -181,7 +181,7 @@ export default async function suite(t) {
 		t.check((await page.locator(`[data-calendar-event="${ev.id}"]`).count()) === 1, 'güne tıklayınca etkinlik listede', ev.title);
 		t.check((await page.locator(`[data-calendar-event="${ev.id}"]`).textContent()).includes(ev.title), 'etkinlik başlığı görünüyor');
 		// Beklenen: ızgaradaki, (taslak/iptal olmayan) bir etkinliğin değdiği günler — fikstürdeki etkinlikler de dahil.
-		const all = (await admin.get('/api/etkinlikler')).json.events.filter((e) => e.status !== 'taslak' && e.status !== 'iptal');
+		const all = (await admin.get('/api/etkinlikler')).json.events.filter((e) => e.status !== 'draft' && e.status !== 'cancelled');
 		const touched = new Set();
 		for (const e of all) for (let d = new Date(new Date(e.start).setHours(0, 0, 0, 0)); d.getTime() <= e.end; d.setDate(d.getDate() + 1)) touched.add(keyOf(d));
 		const shown = await gridKeys(page);
@@ -192,7 +192,7 @@ export default async function suite(t) {
 		await page.keyboard.press('Escape');
 
 		// Yetkisiz (yalnız Haberler): sekme açılmadan da, panel açıkken de /api/etkinlikler'e istek yok; liste kutusu da yok.
-		const { page: reader } = await t.open('okur');
+		const { page: reader } = await t.open('reader');
 		const readerReqs = [];
 		reader.on('request', (r) => r.url().includes('/api/etkinlikler') && readerReqs.push(r.url()));
 		await open(reader);

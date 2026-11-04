@@ -7,12 +7,10 @@ import { logSystemEvent } from '@/db/repositories/logs.repo';
 const SENSITIVE_COLUMNS = new Set([
 	'password_hash',
 	'passwordhash',
-	'sifrehash',
 	'totp_secret',
 	'totpsecret',
 	'session_token',
 	'sessiontoken',
-	'aktifoturumtoken',
 	'totp_recovery_codes',
 	'totprecoverycodes',
 	'secret_hash',

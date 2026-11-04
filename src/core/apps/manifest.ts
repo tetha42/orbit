@@ -18,7 +18,7 @@ export interface L10n {
 }
 
 /** The level an item needs: `use` = use the app, `manage` = manage it. */
-export type MenuLevel = 'use' | 'manage' | 'kullan' | 'yonet';
+export type MenuLevel = 'use' | 'manage';
 
 export type AppCategory = 'Operations' | 'Finance' | 'Community' | 'Productivity';
 

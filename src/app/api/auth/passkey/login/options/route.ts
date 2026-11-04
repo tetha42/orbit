@@ -81,7 +81,7 @@ export async function POST(request: Request) {
 			'Bu hesap için kullanılabilir bir passkey bulunamadı. Şifre ile giriş yapabilirsiniz.';
 
 		const user = await getUserByEmail(email);
-		if (!user || user.status !== 'aktif') {
+		if (!user || user.status !== 'active') {
 			return NextResponse.json({ error: UNIFORM_NOT_AVAILABLE }, { status: 404 });
 		}
 

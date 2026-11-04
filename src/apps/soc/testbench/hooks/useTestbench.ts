@@ -22,16 +22,16 @@ const SUITE_ENDPOINTS: Array<{
 	nameEn: string;
 	endpoint: string;
 	appId: string;
-	requiredLevel: 'kullan' | 'yonet' | 'admin' | 'public';
+	requiredLevel: 'use' | 'manage' | 'admin' | 'public';
 }> = [
-	{ id: 'butce', name: 'Bütçe & Kasa', nameEn: 'Budget & Vault', endpoint: '/api/budget', appId: 'budget', requiredLevel: 'kullan' },
-	{ id: 'etkinlikler', name: 'Etkinlikler', nameEn: 'Events', endpoint: '/api/events', appId: 'events', requiredLevel: 'kullan' },
-	{ id: 'projeler', name: 'Projeler', nameEn: 'Projects', endpoint: '/api/projects', appId: 'projects', requiredLevel: 'kullan' },
-	{ id: 'haberler', name: 'Haberler & Duyurular', nameEn: 'News & Announcements', endpoint: '/api/news', appId: 'news', requiredLevel: 'kullan' },
-	{ id: 'envanter', name: 'Donanım & Envanter', nameEn: 'Hardware & Inventory', endpoint: '/api/inventory', appId: 'inventory', requiredLevel: 'kullan' },
-	{ id: 'uyeler', name: 'Üye Rehberi', nameEn: 'Member Directory', endpoint: '/api/members', appId: 'members', requiredLevel: 'kullan' },
-	{ id: 'takimlar', name: 'Takımlar', nameEn: 'Teams', endpoint: '/api/teams', appId: 'teams', requiredLevel: 'kullan' },
-	{ id: 'sohbet', name: 'Sohbet Odaları', nameEn: 'Chat Rooms', endpoint: '/api/chat/rooms', appId: 'chat', requiredLevel: 'kullan' },
+	{ id: 'butce', name: 'Bütçe & Kasa', nameEn: 'Budget & Vault', endpoint: '/api/budget', appId: 'budget', requiredLevel: 'use' },
+	{ id: 'etkinlikler', name: 'Etkinlikler', nameEn: 'Events', endpoint: '/api/events', appId: 'events', requiredLevel: 'use' },
+	{ id: 'projeler', name: 'Projeler', nameEn: 'Projects', endpoint: '/api/projects', appId: 'projects', requiredLevel: 'use' },
+	{ id: 'haberler', name: 'Haberler & Duyurular', nameEn: 'News & Announcements', endpoint: '/api/news', appId: 'news', requiredLevel: 'use' },
+	{ id: 'envanter', name: 'Donanım & Envanter', nameEn: 'Hardware & Inventory', endpoint: '/api/inventory', appId: 'inventory', requiredLevel: 'use' },
+	{ id: 'members', name: 'Üye Rehberi', nameEn: 'Member Directory', endpoint: '/api/members', appId: 'members', requiredLevel: 'use' },
+	{ id: 'takimlar', name: 'Takımlar', nameEn: 'Teams', endpoint: '/api/teams', appId: 'teams', requiredLevel: 'use' },
+	{ id: 'sohbet', name: 'Sohbet Odaları', nameEn: 'Chat Rooms', endpoint: '/api/chat/rooms', appId: 'chat', requiredLevel: 'use' },
 	{ id: 'roller', name: 'Roller & Yetkiler', nameEn: 'Roles & Permissions', endpoint: '/api/roles', appId: 'settings', requiredLevel: 'admin' },
 	{ id: 'denetim', name: 'Denetim Kayıtları', nameEn: 'Audit Logs', endpoint: '/api/audit', appId: 'settings', requiredLevel: 'admin' },
 	{ id: 'jwks', name: 'OAuth 2.0 JWKS', nameEn: 'OAuth 2.0 JWKS', endpoint: '/api/oauth/jwks', appId: 'settings', requiredLevel: 'public' },
@@ -82,9 +82,9 @@ export function useTestbench(canManage: boolean) {
 
 					if (item.requiredLevel === 'admin') {
 						expectedStatus = admin ? 200 : 403;
-					} else if (item.requiredLevel === 'kullan' || (item.requiredLevel as string) === 'use') {
+					} else if (item.requiredLevel === 'use' || (item.requiredLevel as string) === 'use') {
 						expectedStatus = (admin || userPerm !== 'none') ? 200 : 403;
-					} else if (item.requiredLevel === 'yonet' || (item.requiredLevel as string) === 'manage') {
+					} else if (item.requiredLevel === 'manage' || (item.requiredLevel as string) === 'manage') {
 						expectedStatus = (admin || userPerm === 'manage') ? 200 : 403;
 					}
 

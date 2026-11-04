@@ -86,7 +86,7 @@ export function MenuBar() {
 	/** An item that needs a level in some app is shown only to roles that hold it (the dock and search follow the same rule). */
 	const permitted = (item: MenuItem) => {
 		if (!item.needs) return true;
-		return item.needs.level === 'yonet' ? canManageApp(item.needs.appId) : canUseApp(item.needs.appId);
+		return item.needs.level === 'manage' ? canManageApp(item.needs.appId) : canUseApp(item.needs.appId);
 	};
 
 	/** Drops items the role does not allow, then any separator left leading, trailing or doubled. */

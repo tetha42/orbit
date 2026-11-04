@@ -6,7 +6,7 @@ import type { ChatPollItem, ChatPollOptionItem } from '@/apps/chat/types';
 
 export interface ChatRoom {
 	id: string;
-	typeValue: 'genel' | 'takim' | 'ozel';
+	typeValue: 'general' | 'team' | 'private';
 	teamId: string | null;
 	name: string;
 	creation: number;
@@ -30,14 +30,14 @@ export interface ChatMessageRecord {
 	senderName: string;
 	senderPhoto: string | null;
 	content: string;
-	attachments: Array<{ name: string; url: string; size?: number; tip?: string; pollId?: string }>;
+	attachments: Array<{ name: string; url: string; size?: number; type?: string; pollId?: string }>;
 	date: number;
 	deletionDate?: number | null;
 	editDate?: number | null;
 	poll?: ChatPollItem | null;
 	repliedMessageId?: string | null;
 	repliedMessage?: QuotedMessageSnapshot | null;
-	deliveredMi?: boolean;
+	isDelivered?: boolean;
 }
 
 export interface UnreadChatRoomSummary {
@@ -91,13 +91,13 @@ export async function canUserAccessChatRoom(
 		 WHERE o.id = $1
 		   AND o.room_type <> 'mail_thread'
 		   AND (
-		     o.room_type = 'genel'
-		     OR ($3 = true AND o.room_type = 'takim')
-		     OR (o.room_type = 'takim' AND (
-		       EXISTS (SELECT 1 FROM team_members tu WHERE tu.team_id = o.team_id AND tu.user_id = $2 AND tu.status = 'aktif')
+		     o.room_type = 'general'
+		     OR ($3 = true AND o.room_type = 'team')
+		     OR (o.room_type = 'team' AND (
+		       EXISTS (SELECT 1 FROM team_members tu WHERE tu.team_id = o.team_id AND tu.user_id = $2 AND tu.status = 'active')
 		       OR EXISTS (SELECT 1 FROM chat_members su WHERE su.room_id = o.id AND su.user_id = $2)
 		     ))
-		     OR (o.room_type = 'ozel' AND EXISTS (SELECT 1 FROM chat_members su WHERE su.room_id = o.id AND su.user_id = $2))
+		     OR (o.room_type = 'private' AND EXISTS (SELECT 1 FROM chat_members su WHERE su.room_id = o.id AND su.user_id = $2))
 		   )
 		 LIMIT 1`,
 		[roomId, userId, isAdmin]
@@ -112,7 +112,7 @@ export async function getChatRooms(userId: string, isAdmin = false): Promise<Cha
 	// Return public/general rooms + team rooms the user belongs to (or all if admin), excluding internal mail_thread rooms
 	const res = await p.query(
 		`SELECT o.id, o.room_type AS typeValue, o.team_id AS "teamId", o.name AS name, o.created_at AS creation,
-		        (SELECT COUNT(*)::int FROM chat_members su_count WHERE su_count.room_id = o.id) as "memberCount",
+		        (SELECT COUNT(*)::int FROM chat_members su_count WHERE su_count.room_id = o.id) AS "memberCount",
 		        (SELECT json_build_object(
 		            'id', k.id,
 		            'name', (k.first_name || ' ' || k.last_name),
@@ -122,31 +122,31 @@ export async function getChatRooms(userId: string, isAdmin = false): Promise<Cha
 		         JOIN users k ON k.id = su2.user_id
 		         WHERE su2.room_id = o.id AND su2.user_id <> $1
 		         LIMIT 1
-		        ) as "counterpartUser",
+		        ) AS "counterpartUser",
 		        (SELECT json_build_object(
 		            'id', m.id, 'roomId', m.room_id, 'senderId', m.sender_id,
 		            'senderName', m.sender_name, 'senderPhoto', m.sender_avatar,
 		            'content', m.content, 'attachments', m.attachments, 'date', m.date,
 		            'deletionDate', m.deleted_at, 'editDate', m.edited_at,
 		            'repliedMessageId', m.reply_to_id, 'repliedMessage', m.reply_snapshot,
-		            'deliveredMi', m.is_delivered
-		         ) FROM chat_messages m WHERE m.room_id = o.id AND ($2 = true OR m.deleted_at IS NULL) ORDER BY m.date DESC LIMIT 1) as "lastMessage",
+		            'isDelivered', m.is_delivered
+		         ) FROM chat_messages m WHERE m.room_id = o.id AND ($2 = true OR m.deleted_at IS NULL) ORDER BY m.date DESC LIMIT 1) AS "lastMessage",
 		        (SELECT COUNT(*)::int FROM chat_messages m2
 		         WHERE m2.room_id = o.id
 		           AND m2.sender_id <> $1
 		           AND m2.deleted_at IS NULL
 		           AND m2.date > COALESCE(
 		             (SELECT u.last_read_at FROM chat_members u WHERE u.room_id = o.id AND u.user_id = $1), 0
-		         )) as "unreadCount"
+		         )) AS "unreadCount"
 		 FROM chat_rooms o
 		 WHERE o.room_type <> 'mail_thread'
 		   AND (
-		     o.room_type = 'genel'
-		     OR ($2 = true AND o.room_type = 'takim')
-		     OR (o.room_type = 'takim' AND EXISTS (SELECT 1 FROM team_members tu WHERE tu.team_id = o.team_id AND tu.user_id = $1 AND tu.status = 'aktif'))
-		     OR (o.room_type = 'ozel' AND EXISTS (SELECT 1 FROM chat_members su WHERE su.room_id = o.id AND su.user_id = $1))
+		     o.room_type = 'general'
+		     OR ($2 = true AND o.room_type = 'team')
+		     OR (o.room_type = 'team' AND EXISTS (SELECT 1 FROM team_members tu WHERE tu.team_id = o.team_id AND tu.user_id = $1 AND tu.status = 'active'))
+		     OR (o.room_type = 'private' AND EXISTS (SELECT 1 FROM chat_members su WHERE su.room_id = o.id AND su.user_id = $1))
 		   )
-		 ORDER BY o.room_type = 'genel' DESC, COALESCE((SELECT m3.date FROM chat_messages m3 WHERE m3.room_id = o.id AND ($2 = true OR m3.deleted_at IS NULL) ORDER BY m3.date DESC LIMIT 1), o.created_at) DESC`,
+		 ORDER BY o.room_type = 'general' DESC, COALESCE((SELECT m3.date FROM chat_messages m3 WHERE m3.room_id = o.id AND ($2 = true OR m3.deleted_at IS NULL) ORDER BY m3.date DESC LIMIT 1), o.created_at) DESC`,
 		[userId, isAdmin]
 	);
 
@@ -156,7 +156,7 @@ export async function getChatRooms(userId: string, isAdmin = false): Promise<Cha
 		let avatar: string | null = null;
 		let peerUserId: string | null = null;
 
-		if (row.typeValue === 'ozel' && memberCount === 2 && row.counterpartUser) {
+		if (row.typeValue === 'private' && memberCount === 2 && row.counterpartUser) {
 			const k = typeof row.counterpartUser === 'string' ? JSON.parse(row.counterpartUser) : row.counterpartUser;
 			if (k && k.name) {
 				name = String(k.name);
@@ -183,10 +183,10 @@ export async function getChatRooms(userId: string, isAdmin = false): Promise<Cha
 			lastMessage: rawLast
 				? {
 						id: String(rawLast.id ?? ''),
-						roomId: String(rawLast.roomId ?? rawLast.roomId ?? row.id),
-						senderId: String(rawLast.senderId ?? rawLast.senderId ?? ''),
-						senderName: String(rawLast.senderName ?? rawLast.senderName ?? 'Üye'),
-						senderPhoto: rawLast.senderPhoto ?? rawLast.senderPhoto ?? null,
+						roomId: String(rawLast.roomId ?? row.id),
+						senderId: String(rawLast.senderId ?? ''),
+						senderName: String(rawLast.senderName ?? 'Üye'),
+						senderPhoto: rawLast.senderPhoto ?? null,
 						content: String(rawLast.content ?? ''),
 						attachments: Array.isArray(rawLast.attachments)
 							? rawLast.attachments
@@ -202,7 +202,7 @@ export async function getChatRooms(userId: string, isAdmin = false): Promise<Cha
 								? JSON.parse(rawLast.repliedMessage)
 								: rawLast.repliedMessage
 							: null,
-						deliveredMi: Boolean(rawLast.deliveredMi && Number(rawLast.deliveredMi) > 0),
+						isDelivered: Boolean(rawLast.isDelivered && Number(rawLast.isDelivered) > 0),
 				  }
 				: null,
 			unreadCount: Number(row.unreadCount || 0),
@@ -268,7 +268,7 @@ export async function getPollDetails(pollId: string, currentUserId?: string): Pr
 				? JSON.parse(rawAtt)
 				: [];
 			const pollAtt = Array.isArray(parsedAtt)
-				? parsedAtt.find((a: Record<string, unknown>) => a && (a.pollId === pollId || a.tip === 'anket'))
+				? parsedAtt.find((a: Record<string, unknown>) => a && (a.pollId === pollId || a.type === 'poll'))
 				: null;
 			if (pollAtt && typeof pollAtt.anonymous === 'boolean') {
 				isAnon = pollAtt.anonymous;
@@ -335,7 +335,7 @@ export async function getPollDetails(pollId: string, currentUserId?: string): Pr
 		multipleSelection: Boolean(row.multipleSelection),
 		anonymous: isAnon,
 		endsAt,
-		kapali: isExpired,
+		closed: isExpired,
 		creation: Number(row.creation ?? 0),
 		options: options,
 		totalVote: totalVotes,
@@ -349,7 +349,7 @@ async function enrichMessagesWithPolls(messages: ChatMessageRecord[], currentUse
 	const pollMessageMap = new Map<string, string>(); // mesajId -> pollId
 	for (const m of messages) {
 		if (Array.isArray(m.attachments)) {
-			const addPoll = m.attachments.find((e) => e && (e.tip === 'anket' || (e as { pollId?: string }).pollId));
+			const addPoll = m.attachments.find((e) => e && (e.type === 'poll' || (e as { pollId?: string }).pollId));
 			if (addPoll) {
 				const aId = (addPoll as { pollId?: string }).pollId || (addPoll as { id?: string }).id;
 				if (aId) pollMessageMap.set(m.id, aId);
@@ -410,7 +410,7 @@ export async function getChatRoomMessages(
 		          edited_at AS "editDate",
 		          reply_to_id AS "repliedMessageId",
 		          reply_snapshot AS "repliedMessage",
-		          COALESCE(is_delivered, 0) AS "deliveredMi"
+		          COALESCE(is_delivered, 0) AS "isDelivered"
 		   FROM chat_messages
 		   WHERE room_id = $1
 		     AND ($3 = true OR deleted_at IS NULL)
@@ -437,10 +437,10 @@ export async function getChatRoomMessages(
 
 		return {
 			id: String(r.id ?? ''),
-			roomId: String(r.roomId ?? r.roomId ?? roomId),
-			senderId: String(r.senderId ?? r.senderId ?? ''),
-			senderName: String(r.senderName ?? r.senderName ?? 'Üye'),
-			senderPhoto: (r.senderPhoto ?? r.senderPhoto ?? null) as string | null,
+			roomId: String(r.roomId ?? roomId),
+			senderId: String(r.senderId ?? ''),
+			senderName: String(r.senderName ?? 'Üye'),
+			senderPhoto: (r.senderPhoto ?? null) as string | null,
 			content: String(r.content ?? ''),
 			attachments: Array.isArray(r.attachments)
 				? r.attachments
@@ -452,7 +452,7 @@ export async function getChatRoomMessages(
 			editDate: r.editDate ? Number(r.editDate) : null,
 			repliedMessageId: r.repliedMessageId ? String(r.repliedMessageId) : null,
 			repliedMessage,
-			deliveredMi: Boolean(r.deliveredMi && Number(r.deliveredMi) > 0),
+			isDelivered: Boolean(r.isDelivered && Number(r.isDelivered) > 0),
 		};
 	});
 
@@ -475,7 +475,7 @@ export async function getChatMessageById(messageId: string): Promise<ChatMessage
 		        edited_at AS "editDate",
 		        reply_to_id AS "repliedMessageId",
 		        reply_snapshot AS "repliedMessage",
-		        COALESCE(is_delivered, 0) AS "deliveredMi"
+		        COALESCE(is_delivered, 0) AS "isDelivered"
 		 FROM chat_messages
 		 WHERE id = $1
 		 LIMIT 1`,
@@ -498,10 +498,10 @@ export async function getChatMessageById(messageId: string): Promise<ChatMessage
 
 	return {
 		id: String(r.id ?? ''),
-		roomId: String(r.roomId ?? r.roomId ?? ''),
-		senderId: String(r.senderId ?? r.senderId ?? ''),
-		senderName: String(r.senderName ?? r.senderName ?? 'Üye'),
-		senderPhoto: (r.senderPhoto ?? r.senderPhoto ?? null) as string | null,
+		roomId: String(r.roomId ?? ''),
+		senderId: String(r.senderId ?? ''),
+		senderName: String(r.senderName ?? 'Üye'),
+		senderPhoto: (r.senderPhoto ?? null) as string | null,
 		content: String(r.content ?? ''),
 		attachments: Array.isArray(r.attachments)
 			? r.attachments
@@ -513,7 +513,7 @@ export async function getChatMessageById(messageId: string): Promise<ChatMessage
 		editDate: r.editDate ? Number(r.editDate) : null,
 		repliedMessageId: r.repliedMessageId ? String(r.repliedMessageId) : null,
 		repliedMessage,
-		deliveredMi: Boolean(r.deliveredMi && Number(r.deliveredMi) > 0),
+		isDelivered: Boolean(r.isDelivered && Number(r.isDelivered) > 0),
 	};
 }
 
@@ -521,11 +521,11 @@ export async function createChatMessage(
 	roomId: string,
 	sender: { id: string; name: string; surname: string; profilePhoto?: string | null },
 	content: string,
-	attachments: Array<{ name: string; url: string; size?: number; tip?: string }> = [],
+	attachments: Array<{ name: string; url: string; size?: number; type?: string }> = [],
 	options?: {
 		repliedMessageId?: string | null;
 		repliedMessage?: QuotedMessageSnapshot | null;
-		deliveredMi?: boolean;
+		isDelivered?: boolean;
 	}
 ): Promise<ChatMessageRecord> {
 	await ensurePostgresInit();
@@ -538,7 +538,7 @@ export async function createChatMessage(
 
 	const repliedMessageId = options?.repliedMessageId || null;
 	let repliedMessage = options?.repliedMessage || null;
-	const deliveredMi = Boolean(options?.deliveredMi);
+	const isDelivered = Boolean(options?.isDelivered);
 
 	// If yanitlananMesajId is provided but snapshot isn't, fetch snapshot
 	if (repliedMessageId && !repliedMessage) {
@@ -568,7 +568,7 @@ export async function createChatMessage(
 			date,
 			repliedMessageId,
 			repliedMessageJson,
-			deliveredMi ? 1 : 0,
+			isDelivered ? 1 : 0,
 		]
 	);
 
@@ -591,7 +591,7 @@ export async function createChatMessage(
 		date,
 		repliedMessageId,
 		repliedMessage,
-		deliveredMi,
+		isDelivered,
 	};
 
 	// 1. Notify real-time Chat SSE stream
@@ -797,7 +797,7 @@ export async function ensureTeamChatRoom(teamId: string, teamName: string): Prom
 	const roomId = `oda_takim_${teamId}`;
 	await p.query(
 		`INSERT INTO chat_rooms (id, room_type, team_id, name, created_at)
-		 VALUES ($1, 'takim', $2, $3, $4)
+		 VALUES ($1, 'team', $2, $3, $4)
 		 ON CONFLICT (id) DO UPDATE SET name = $3`,
 		[roomId, teamId, `${teamName} Takım Sohbeti`, Date.now()]
 	);
@@ -841,7 +841,7 @@ export async function getOrCreateDmRoom(
 		await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [lockKey]);
 		const existing = await client.query(
 			`SELECT o.id FROM chat_rooms o
-			 WHERE o.room_type = 'ozel'
+			 WHERE o.room_type = 'private'
 			   AND (SELECT COUNT(*) FROM chat_members WHERE room_id = o.id) = 2
 			   AND EXISTS (SELECT 1 FROM chat_members WHERE room_id = o.id AND user_id = $1)
 			   AND EXISTS (SELECT 1 FROM chat_members WHERE room_id = o.id AND user_id = $2)
@@ -863,7 +863,7 @@ export async function getOrCreateDmRoom(
 
 		await client.query(
 			`INSERT INTO chat_rooms (id, room_type, name, created_by, created_at)
-			 VALUES ($1, 'ozel', $2, $3, $4)`,
+			 VALUES ($1, 'private', $2, $3, $4)`,
 			[roomId, roomName, user1Id, now]
 		);
 		await client.query(
@@ -905,7 +905,7 @@ export async function createGroupDm(
 
 	await p.query(
 		`INSERT INTO chat_rooms (id, room_type, name, created_by, created_at)
-		 VALUES ($1, 'ozel', $2, $3, $4)`,
+		 VALUES ($1, 'private', $2, $3, $4)`,
 		[roomId, groupTitle, creator.id, now]
 	);
 
@@ -926,7 +926,7 @@ export async function createGroupDm(
 	const sysContent = `${creatorName} grubu oluşturdu.`;
 	await p.query(
 		`INSERT INTO chat_messages (id, room_id, sender_id, sender_name, sender_avatar, content, attachments, date)
-		 VALUES ($1, $2, 'sistem', 'Sistem', NULL, $3, '[]', $4)`,
+		 VALUES ($1, $2, 'system', 'Sistem', NULL, $3, '[]', $4)`,
 		[sysMsgId, roomId, sysContent, now]
 	);
 
@@ -940,7 +940,7 @@ export async function createGroupDm(
 					message: {
 						id: sysMsgId,
 						roomId,
-						senderId: 'sistem',
+						senderId: 'system',
 						senderName: 'Sistem',
 						senderPhoto: null,
 						content: sysContent,
@@ -999,7 +999,7 @@ export async function addMembersToRoom(
 
 	await p.query(
 		`INSERT INTO chat_messages (id, room_id, sender_id, sender_name, sender_avatar, content, attachments, date)
-		 VALUES ($1, $2, 'sistem', 'Sistem', NULL, $3, '[]', $4)`,
+		 VALUES ($1, $2, 'system', 'Sistem', NULL, $3, '[]', $4)`,
 		[sysMsgId, roomId, sysContent, now]
 	);
 
@@ -1013,7 +1013,7 @@ export async function addMembersToRoom(
 					message: {
 						id: sysMsgId,
 						roomId,
-						senderId: 'sistem',
+						senderId: 'system',
 						senderName: 'Sistem',
 						senderPhoto: null,
 						content: sysContent,
@@ -1039,7 +1039,7 @@ export async function getRoomMembers(roomId: string): Promise<ChatRoomMemberItem
 	await ensurePostgresInit();
 	const p = getPgPool();
 	const res = await p.query(
-		`SELECT k.id, k.first_name AS name, k.last_name AS surname, k.avatar_url as "profilePhoto", k.department AS department, r.name as "roleName"
+		`SELECT k.id, k.first_name AS name, k.last_name AS surname, k.avatar_url AS "profilePhoto", k.department AS department, r.name AS "roleName"
 		 FROM chat_members su
 		 JOIN users k ON k.id = su.user_id
 		 LEFT JOIN roles r ON r.id = k.role_id
@@ -1075,10 +1075,10 @@ export async function getChatContacts(excludeUserId: string): Promise<ChatContac
 	await ensurePostgresInit();
 	const p = getPgPool();
 	const res = await p.query(
-		`SELECT k.id, k.first_name AS name, k.last_name AS surname, k.avatar_url as "profilePhoto", k.department AS department, r.name as "roleName"
+		`SELECT k.id, k.first_name AS name, k.last_name AS surname, k.avatar_url AS "profilePhoto", k.department AS department, r.name AS "roleName"
 		 FROM users k
 		 LEFT JOIN roles r ON r.id = k.role_id
-		 WHERE k.status = 'aktif' AND k.id <> $1
+		 WHERE k.status = 'active' AND k.id <> $1
 		 ORDER BY k.first_name ASC, k.last_name ASC`,
 		[excludeUserId]
 	);
@@ -1109,7 +1109,7 @@ export async function getUnreadChatRooms(
 		.map((r) => {
 			const last = r.lastMessage!;
 			const preview = last.content.length > 72 ? `${last.content.slice(0, 72)}…` : last.content;
-			const isDirect = r.typeValue === 'ozel' && (r.memberCount || 0) === 2;
+			const isDirect = r.typeValue === 'private' && (r.memberCount || 0) === 2;
 			return {
 				id: r.id,
 				topic: isDirect ? preview : `${r.name}: ${preview}`,
@@ -1168,7 +1168,7 @@ export async function createPollInRoom(
 	const senderName = `${creator.name} ${creator.surname}`.trim() || 'Yönetici';
 	const senderPhoto = creator.profilePhoto || null;
 	const isAnon = data.anonymous !== false;
-	const attachmentsJson = JSON.stringify([{ tip: 'anket', pollId, question, anonymous: isAnon }]);
+	const attachmentsJson = JSON.stringify([{ type: 'poll', pollId, question, anonymous: isAnon }]);
 
 	// 1. Insert chat message
 	await p.query(
@@ -1217,7 +1217,7 @@ export async function createPollInRoom(
 		senderName: senderName,
 		senderPhoto,
 		content: question,
-		attachments: [{ tip: 'anket', pollId, name: 'Anket', url: '' }],
+		attachments: [{ type: 'poll', pollId, name: 'Anket', url: '' }],
 		date: now,
 		poll: pollDetails ? { ...pollDetails, messageId: messageId } : null,
 	};

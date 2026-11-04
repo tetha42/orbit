@@ -89,14 +89,14 @@ export function NewsCard({
 		string,
 		{ label: string; color: string; icon: React.ComponentType<{ size?: number; color?: string }> }
 	> = {
-		genel: { label: t('newsCatGenel'), color: '#0a84ff', icon: Megaphone },
+		general: { label: t('newsCatGenel'), color: '#0a84ff', icon: Megaphone },
 		teknofest: { label: t('newsCatTeknofest'), color: '#ff9500', icon: Rocket },
-		atolye: { label: t('newsCatAtolye'), color: '#30d158', icon: GraduationCap },
-		isbirligi: { label: t('newsCatIsbirligi'), color: '#af52de', icon: Handshake },
-		resmi: { label: t('newsCatResmi'), color: '#ff2d55', icon: ShieldAlert },
+		workshop: { label: t('newsCatAtolye'), color: '#30d158', icon: GraduationCap },
+		collaboration: { label: t('newsCatIsbirligi'), color: '#af52de', icon: Handshake },
+		official: { label: t('newsCatResmi'), color: '#ff2d55', icon: ShieldAlert },
 	};
 
-	const cat = categoryMap[article.category] || categoryMap.genel;
+	const cat = categoryMap[article.category] || categoryMap.general;
 	const CategoryIcon = cat.icon;
 
 	return (
@@ -106,7 +106,7 @@ export function NewsCard({
 			style={{
 				background: 'rgba(255, 255, 255, 0.04)',
 				border:
-					article.importantMi === 1
+					article.isImportant === 1
 						? '1px solid rgba(255, 45, 85, 0.35)'
 						: '1px solid rgba(255, 255, 255, 0.08)',
 				borderRadius: '14px',
@@ -164,7 +164,7 @@ export function NewsCard({
 
 					<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 						{isAdmin && <VisibilityBadge visibility={article.publishStatus} />}
-						{article.importantMi === 1 && (
+						{article.isImportant === 1 && (
 							<span
 								style={{
 									fontSize: '9.5px',

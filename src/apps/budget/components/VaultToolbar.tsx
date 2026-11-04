@@ -6,12 +6,13 @@ import { useI18n } from '@/core/i18n';
 import { BUDGET_CATEGORIES, TRANSFER_CATEGORY } from '@/types/budget';
 import ui from '@/core/ui/ui.module.css';
 import k from './Vault.module.css';
+import { categoryLabel } from '../categoryLabel';
 
 interface VaultToolbarProps {
 	search: string;
 	onSearchChange: (val: string) => void;
-	typeValue: 'hepsi' | 'gelir' | 'gider';
-	onTypeChange: (val: 'hepsi' | 'gelir' | 'gider') => void;
+	typeValue: 'all' | 'income' | 'expense';
+	onTypeChange: (val: 'all' | 'income' | 'expense') => void;
 	category: string;
 	onCategoryChange: (val: string) => void;
 	month: string;
@@ -62,7 +63,7 @@ export function VaultToolbar({
 				aria-label={t('kasaSearchPlaceholder')}
 			/>
 			<div className={ui.segmented} role="radiogroup" aria-label={t('budgetColType')}>
-				{(['hepsi', 'gelir', 'gider'] as const).map((f) => (
+				{(['all', 'income', 'expense'] as const).map((f) => (
 					<button
 						key={f}
 						type="button"
@@ -71,7 +72,7 @@ export function VaultToolbar({
 						className={`${ui.segment} ${typeValue === f ? ui.segmentActive : ''}`}
 						onClick={() => onTypeChange(f)}
 					>
-						{f === 'hepsi' ? t('all') : f === 'gelir' ? t('kasaIncome') : t('kasaExpense')}
+						{f === 'all' ? t('all') : f === 'income' ? t('kasaIncome') : t('kasaExpense')}
 					</button>
 				))}
 			</div>
@@ -85,7 +86,7 @@ export function VaultToolbar({
 				<option value="">{t('kasaAllCategories')}</option>
 				{[...BUDGET_CATEGORIES, TRANSFER_CATEGORY].map((c) => (
 					<option key={c} value={c}>
-						{c}
+						{categoryLabel(t, c)}
 					</option>
 				))}
 			</select>

@@ -524,7 +524,8 @@
   "olc": "measure",
   "yetkililer": "authorized",
   "yonetebilir": "canManage",
-  "yesno": "yesNo"
+  "yesno": "yesNo",
+  "tip": "type"
  },
  "wholeTokens": {
   "yeni": "fresh",

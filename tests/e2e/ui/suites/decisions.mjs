@@ -14,7 +14,7 @@ export default async function suite(t) {
 	const admin = await t.api('admin');
 	const zeynep = await t.api('zeynep');
 	const can = await t.api('can');
-	const reader = await t.api('okur');
+	const reader = await t.api('reader');
 	const tag = uniq();
 	const year = new Date().getFullYear();
 	const TITLE = `E2E Karar ${tag}`;
@@ -59,9 +59,9 @@ export default async function suite(t) {
 		made.push(doc.id);
 		t.eq(doc.decisionNo, maxBefore + 1, 'evrak numarası bir öncekinin devamı');
 		t.eq(Math.floor(doc.decisionNo / 1000), year, 'numara bu yılın (YYYYnnn)');
-		t.eq(doc.documentType, 'karar', 'seçilen şablonun belge türü kaydedildi');
-		t.eq(Number(doc.publicOpenMi), 1, 'arayüzden yazılan belge üyelere açık');
-		t.eq(Number(doc.lockedMi), 0, 'yeni belge kilitli değil');
+		t.eq(doc.documentType, 'resolution', 'seçilen şablonun belge türü kaydedildi');
+		t.eq(Number(doc.isPublicOpen), 1, 'arayüzden yazılan belge üyelere açık');
+		t.eq(Number(doc.isLocked), 0, 'yeni belge kilitli değil');
 		t.check(/^[0-9A-F]{4}(-[0-9A-F]{4}){3}$/.test(doc.summary ?? ''), 'içerik özeti XXXX-XXXX-XXXX-XXXX biçiminde', doc.summary);
 		const listed = await row(zWin, TITLE).innerText();
 		t.includes(listed, `Sayı: ${document(doc.decisionNo)}`, 'listede evrak sayısı YYYY/nnn biçiminde');
@@ -73,7 +73,7 @@ export default async function suite(t) {
 	});
 
 	await t.step('belge numaraları art arda gidiyor (API)', async () => {
-		const res = await zeynep.post('/api/kararlar', { title: TITLE_2, content: CONTENT, documentType: 'etkinlik_izni', publicOpenMi: false });
+		const res = await zeynep.post('/api/kararlar', { title: TITLE_2, content: CONTENT, documentType: 'event_permission', isPublicOpen: false });
 		t.eq(res.status, 201, 'Yönetim Kurulu API ile belge yazabiliyor');
 		secret = res.json;
 		if (secret?.id) made.push(secret.id);
@@ -113,15 +113,15 @@ export default async function suite(t) {
 		await sheet.getByRole('checkbox').uncheck();
 		await sheet.getByRole('button', { name: 'Kaydet' }).click();
 		await sheet.waitFor({ state: 'detached' });
-		await t.waitFor(async () => Number((await byTitle(fresh))?.publicOpenMi) === 0);
-		t.eq(Number((await byTitle(fresh))?.publicOpenMi), 0, 'kutu kapatılınca belge üyelerden gizlendi');
+		await t.waitFor(async () => Number((await byTitle(fresh))?.isPublicOpen) === 0);
+		t.eq(Number((await byTitle(fresh))?.isPublicOpen), 0, 'kutu kapatılınca belge üyelerden gizlendi');
 		await zWin.getByRole('button', { name: 'Düzenle' }).click();
 		await sheet.waitFor();
 		await sheet.getByRole('checkbox').check();
 		await sheet.getByRole('button', { name: 'Kaydet' }).click();
 		await sheet.waitFor({ state: 'detached' });
-		await t.waitFor(async () => Number((await byTitle(fresh))?.publicOpenMi) === 1);
-		t.eq(Number((await byTitle(fresh))?.publicOpenMi), 1, 'kutu açılınca belge tekrar üyelere açık');
+		await t.waitFor(async () => Number((await byTitle(fresh))?.isPublicOpen) === 1);
+		t.eq(Number((await byTitle(fresh))?.isPublicOpen), 1, 'kutu açılınca belge tekrar üyelere açık');
 		doc = await byTitle(fresh);
 	});
 
@@ -131,12 +131,12 @@ export default async function suite(t) {
 		await zWin.getByRole('button', { name: 'Onayla ve Kilitle' }).click();
 		const asked = await dialogReply(zeynepPage, false);
 		t.includes(asked, `Belge ${document(doc.decisionNo)} onaylanıp kilitlenecek`, 'onay penceresi belgeyi adıyla soruyor');
-		t.eq(Number((await byTitle(doc.title))?.lockedMi), 0, 'vazgeçince belge kilitlenmedi');
+		t.eq(Number((await byTitle(doc.title))?.isLocked), 0, 'vazgeçince belge kilitlenmedi');
 
 		await zWin.getByRole('button', { name: 'Onayla ve Kilitle' }).click();
 		await dialogReply(zeynepPage, true);
 		await zWin.getByText('Kilitli', { exact: true }).waitFor();
-		t.eq(Number((await byTitle(doc.title))?.lockedMi), 1, 'onaylayınca belge kilitlendi');
+		t.eq(Number((await byTitle(doc.title))?.isLocked), 1, 'onaylayınca belge kilitlendi');
 		for (const name of ['Düzenle', 'Onayla ve Kilitle', 'Sil']) {
 			t.eq(await zWin.getByRole('button', { name }).count(), 0, `kilitli belgede "${name}" düğmesi yok`);
 		}
@@ -150,7 +150,7 @@ export default async function suite(t) {
 		t.eq(del.status, 409, 'kilitli belge API ile de silinemiyor (409)');
 		const unlock = await zeynep.post('/api/kararlar', { action: 'unlock', id: doc.id });
 		t.eq(unlock.status, 403, 'Yönetim Kurulu API ile kilit açamıyor (403)');
-		t.eq(Number((await byTitle(doc.title))?.lockedMi), 1, 'reddedilen istekler sonrası belge hâlâ kilitli');
+		t.eq(Number((await byTitle(doc.title))?.isLocked), 1, 'reddedilen istekler sonrası belge hâlâ kilitli');
 	});
 
 	await t.step('doğrulama sayfası (herkese açık): numara, durum ve içerik özeti', async () => {
@@ -190,7 +190,7 @@ export default async function suite(t) {
 		const asked = await dialogReply(page, true);
 		t.includes(asked, `Belge ${document(doc.decisionNo)} kilidi açılsın mı?`, 'kilit açma onay penceresi belgeyi soruyor');
 		await win.getByRole('button', { name: 'Düzenle' }).waitFor();
-		t.eq(Number((await byTitle(doc.title))?.lockedMi), 0, 'Admin kilidi açtı');
+		t.eq(Number((await byTitle(doc.title))?.isLocked), 0, 'Admin kilidi açtı');
 		t.eq(await win.getByRole('button', { name: 'Kilidi Aç' }).count(), 0, 'kilit açılınca "Kilidi Aç" kayboldu');
 		const ok = await zeynep.patch('/api/kararlar', { id: doc.id, agenda: 'Kilit açıldıktan sonra düzenlendi' });
 		t.eq(ok.status, 200, 'kilit açılınca düzenleme yeniden mümkün');
@@ -238,7 +238,7 @@ export default async function suite(t) {
 	});
 
 	await t.step('Sadece Haberler: Kararlar uygulaması hiç yok, API kapalı', async () => {
-		const { page } = await t.open('okur');
+		const { page } = await t.open('reader');
 		t.eq(await dockApps(page), ['news', 'settings'], 'Dock\'ta Kararlar yok');
 		t.eq((await reader.get('/api/kararlar')).status, 403, 'okuma 403');
 		t.eq((await reader.post('/api/kararlar', { title: TITLE, content: CONTENT })).status, 403, 'yazma 403');

@@ -79,8 +79,8 @@ export async function POST(request: Request) {
 		if (!body || typeof body !== 'object') {
 			return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
 		}
-		const email = (body as Record<string, unknown>).email ?? (body as Record<string, unknown>).email;
-		const password = (body as Record<string, unknown>).password ?? (body as Record<string, unknown>).password;
+		const email = (body as Record<string, unknown>).email;
+		const password = (body as Record<string, unknown>).password;
 
 		if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
 			return NextResponse.json({ error: 'Email and password are required.' }, { status: 400 });
@@ -187,21 +187,21 @@ export async function POST(request: Request) {
 			return NextResponse.json({ error: INVALID_CREDENTIALS }, { status: 401 });
 		}
 
-		if (user.status === 'beklemede') {
+		if (user.status === 'pending') {
 			return NextResponse.json(
 				{
 					error: 'Your membership application is awaiting administrator approval.',
-					status: 'beklemede',
+					status: 'pending',
 				},
 				{ status: 403 }
 			);
 		}
 
-		if (user.status === 'reddedildi') {
+		if (user.status === 'rejected') {
 			return NextResponse.json(
 				{
 					error: 'Your membership application was not approved by community administration.',
-					status: 'reddedildi',
+					status: 'rejected',
 				},
 				{ status: 403 }
 			);

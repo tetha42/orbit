@@ -629,7 +629,7 @@ export async function getSystemLogsPaginated(filter: SystemLogFilter = {}): Prom
 			service: row.service,
 			message: row.message,
 			detail: parsedDetail,
-			userId: row.userId ?? row.userId ?? null,
+			userId: row.userId ?? null,
 			ip: row.ip,
 		};
 	});

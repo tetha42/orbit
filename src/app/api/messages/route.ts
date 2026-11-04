@@ -23,11 +23,11 @@ const NO_STORE = { 'Cache-Control': 'no-store' };
 
 /** One folder of the caller's own conversations, a page at a time. */
 export async function GET(request: Request) {
-	const auth = await requireApp(request, 'mail', 'kullan');
+	const auth = await requireApp(request, 'mail', 'use');
 	if (!auth.authorized) return auth.response;
 	try {
 		const params = new URL(request.url).searchParams;
-		const folder = (params.get('folder') ?? 'gelen') as MailFolder;
+		const folder = (params.get('folder') ?? 'inbox') as MailFolder;
 		if (!MAIL_FOLDERS.includes(folder)) return NextResponse.json({ error: 'Geçersiz klasör.' }, { status: 400, headers: NO_STORE });
 		const page = Math.max(1, Math.floor(Number(params.get('page'))) || 1);
 		const [list, unreadCount] = await Promise.all([
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
  * message goes to the rest — or, when nobody can be reached, nowhere (422).
  */
 async function handlePOST(request: Request) {
-	const auth = await requireApp(request, 'mail', 'kullan');
+	const auth = await requireApp(request, 'mail', 'use');
 	if (!auth.authorized) return auth.response;
 	const user = auth.user;
 	try {

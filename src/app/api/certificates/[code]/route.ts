@@ -13,7 +13,7 @@ export async function GET(
 	const ban = await isIpBanned(ip);
 	if (ban.banned) {
 		return NextResponse.json(
-			{ validMi: false, error: 'IP adresiniz siber güvenlik politikası gereği karantinaya alınmıştır.' },
+			{ isValid: false, error: 'IP adresiniz siber güvenlik politikası gereği karantinaya alınmıştır.' },
 			{ status: 403 }
 		);
 	}
@@ -27,7 +27,7 @@ export async function GET(
 			path: '/api/sertifikalar/[code]',
 		});
 		return NextResponse.json(
-			{ validMi: false, error: 'Güvenlik duvarı (WAF) tarafından şüpheli istek engellendi.' },
+			{ isValid: false, error: 'Güvenlik duvarı (WAF) tarafından şüpheli istek engellendi.' },
 			{ status: 403 }
 		);
 	}
@@ -35,7 +35,7 @@ export async function GET(
 	const rl = consumeRateLimit(`cert_verify:${ip}`, 30, 60_000);
 	if (!rl.allowed) {
 		return NextResponse.json(
-			{ validMi: false, error: 'Çok fazla sorgu yaptınız. Lütfen biraz bekleyin.' },
+			{ isValid: false, error: 'Çok fazla sorgu yaptınız. Lütfen biraz bekleyin.' },
 			{ status: 429, headers: { 'Retry-After': String(rl.retryAfter) } }
 		);
 	}
@@ -45,7 +45,7 @@ export async function GET(
 		const cert = await getCertificateByCode(code!);
 
 		if (!cert) {
-			return NextResponse.json({ validMi: false, error: 'Certificate bulunamadı veya geçersiz.' }, { status: 404 });
+			return NextResponse.json({ isValid: false, error: 'Certificate bulunamadı veya geçersiz.' }, { status: 404 });
 		}
 
 		// Strip internal user ID and 11-digit student number from public verification response
@@ -56,7 +56,7 @@ export async function GET(
 		} = cert as typeof cert & { studentNo?: string };
 
 		return NextResponse.json({
-			validMi: true,
+			isValid: true,
 			certificate: publicCert,
 		});
 	} catch (error) {

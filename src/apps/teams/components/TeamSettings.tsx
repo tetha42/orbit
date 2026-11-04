@@ -102,11 +102,11 @@ export function TeamSettings({ team, roster, categories, notify, onChanged, onDe
 				<span className={ui.fieldLabel}>{t('tmFieldJoin')}</span>
 				<div className={styles.radioList} role="radiogroup">
 					<label className={styles.radio}>
-						<input type="radio" name="katilim" checked={participationType === 'acik'} onChange={() => setParticipationType('acik')} />
+						<input type="radio" name="katilim" checked={participationType === 'open'} onChange={() => setParticipationType('open')} />
 						{t('tmJoinOpen')}
 					</label>
 					<label className={styles.radio}>
-						<input type="radio" name="katilim" checked={participationType === 'onayli'} onChange={() => setParticipationType('onayli')} />
+						<input type="radio" name="katilim" checked={participationType === 'approval'} onChange={() => setParticipationType('approval')} />
 						{t('tmJoinApproval')}
 					</label>
 				</div>
@@ -116,9 +116,9 @@ export function TeamSettings({ team, roster, categories, notify, onChanged, onDe
 					<label className={ui.field}>
 						<span className={ui.fieldLabel}>{t('tmFieldStatus')}</span>
 						<select className={ui.select} style={{ maxWidth: 'none' }} value={status} onChange={(e) => setStatus(e.target.value as Team['status'])}>
-							<option value="aktif">{t('tmStatusActive')}</option>
-							<option value="askida">{t('tmStatusPaused')}</option>
-							<option value="tamamlandi">{t('tmStatusFinished')}</option>
+							<option value="active">{t('tmStatusActive')}</option>
+							<option value="suspended">{t('tmStatusPaused')}</option>
+							<option value="done">{t('tmStatusFinished')}</option>
 						</select>
 					</label>
 					<label className={ui.field}>

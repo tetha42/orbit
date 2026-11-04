@@ -19,12 +19,12 @@ export default async function suite(t) {
 	const zeynep = await t.api('zeynep');
 	const can = await t.api('can');
 	const ege = await t.api('ege');
-	const noAccess = await t.api('okur');
+	const noAccess = await t.api('reader');
 	const tag = uniq();
 	const OPEN = (s) => `E2E ${s} ${tag}`;
 
 	// A member who may only read the kasa, and a project of its own whose captain is "can".
-	const reader = await temporaryMember(t, { permissions: { budget: 'kullan', settings: 'kullan' }, name: 'Kasaokur' });
+	const reader = await temporaryMember(t, { permissions: { budget: 'use', settings: 'use' }, name: 'Kasaokur' });
 	const team = (await admin.post('/api/takimlar', { action: 'createTeam', name: `E2E Proje ${tag}`, category: 'Web & Mobil', description: 'Kasa testi için geçici proje', capacity: 6, leadId: fx.users.can.id })).json?.team;
 	if (!team) throw new Error('geçici proje kurulamadı');
 	const created = []; // general-kasa entries this suite made
@@ -46,7 +46,7 @@ export default async function suite(t) {
 	async function fillEntry(page, { typeValue, category, amount, description, file }) {
 		const m = page.getByRole('dialog', { name: 'Yeni kasa kaydı' });
 		await m.waitFor();
-		await m.getByRole('radio', { name: typeValue === 'gelir' ? /^Gelir/ : /^Gider/ }).click();
+		await m.getByRole('radio', { name: typeValue === 'income' ? /^Gelir/ : /^Gider/ }).click();
 		if (category) await m.locator('select').selectOption(category);
 		await m.getByPlaceholder('1.250,00').fill(amount);
 		await m.locator('textarea').fill(description);
@@ -56,13 +56,13 @@ export default async function suite(t) {
 
 	await t.step('gelir: arayüzden "1.250,50" yazılır, kuruş olarak kaydedilir, bakiye artar', async () => {
 		await win.getByRole('button', { name: 'Yeni Gelir / Gider Girişi' }).click();
-		const m = await fillEntry(zPage, { typeValue: 'gelir', category: 'Sponsorluk', amount: '1.250,50', description: OPEN('gelir') });
+		const m = await fillEntry(zPage, { typeValue: 'income', category: 'Sponsorluk', amount: '1.250,50', description: OPEN('income') });
 		await t.shot(zPage, 'gelir-formu');
 		await m.getByRole('button', { name: 'Kaydet' }).click();
-		await row(win, OPEN('gelir')).waitFor();
-		const r = await find(OPEN('gelir'));
+		await row(win, OPEN('income')).waitFor();
+		const r = await find(OPEN('income'));
 		track(r);
-		t.eq([r?.typeValue, r?.amountMinor, r?.category], ['gelir', 125050, 'Sponsorluk'], 'kayıt: tür, tutar (kuruş) ve kategori');
+		t.eq([r?.typeValue, r?.amountMinor, r?.category], ['income', 125050, 'Sponsorluk'], 'kayıt: tür, tutar (kuruş) ve kategori');
 		t.eq(await vaultBalance(admin), start + 125050, 'bakiye 1.250,50 ₺ arttı');
 		t.includes(await balanceText(win), tl(start + 125050), 'ekrandaki bakiye de güncellendi');
 	});
@@ -70,25 +70,25 @@ export default async function suite(t) {
 	await t.step('gider: bakiyeyi aşan gider reddedilir, makul gider kaydedilir', async () => {
 		const bal = await vaultBalance(admin);
 		await win.getByRole('button', { name: 'Yeni Gelir / Gider Girişi' }).click();
-		const m = await fillEntry(zPage, { typeValue: 'gider', category: 'Donanım', amount: tl(bal + 100), description: OPEN('çok büyük gider') });
+		const m = await fillEntry(zPage, { typeValue: 'expense', category: 'Donanım', amount: tl(bal + 100), description: OPEN('çok büyük gider') });
 		await m.getByText('kasa eksiye düşemez').waitFor();
 		t.eq(await m.getByRole('button', { name: 'Kaydet' }).isDisabled(), true, 'bakiyeyi aşan giderde "Kaydet" kapalı');
 		await m.getByRole('button', { name: 'Vazgeç' }).click();
-		const api = await zeynep.post('/api/butce', { typeValue: 'gider', category: 'Donanım', amountMinor: bal + 100, description: OPEN('çok büyük gider') });
+		const api = await zeynep.post('/api/butce', { typeValue: 'expense', category: 'Donanım', amountMinor: bal + 100, description: OPEN('çok büyük gider') });
 		t.eq([api.status, api.json?.code], [409, 'INSUFFICIENT_FUNDS'], 'API de bakiyeyi aşan gideri reddediyor (409)');
 
 		await win.getByRole('button', { name: 'Yeni Gelir / Gider Girişi' }).click();
-		const ok = await fillEntry(zPage, { typeValue: 'gider', category: 'Donanım', amount: '400,25', description: OPEN('gider') });
+		const ok = await fillEntry(zPage, { typeValue: 'expense', category: 'Donanım', amount: '400,25', description: OPEN('expense') });
 		await ok.getByRole('button', { name: 'Kaydet' }).click();
-		await row(win, OPEN('gider')).waitFor();
-		const r = await find(OPEN('gider'));
+		await row(win, OPEN('expense')).waitFor();
+		const r = await find(OPEN('expense'));
 		track(r);
-		t.eq([r?.typeValue, r?.amountMinor], ['gider', 40025], 'gider kuruş olarak kaydedildi');
+		t.eq([r?.typeValue, r?.amountMinor], ['expense', 40025], 'gider kuruş olarak kaydedildi');
 		t.eq(await vaultBalance(admin), bal - 40025, 'bakiye 400,25 ₺ azaldı');
 	});
 
 	await t.step('API doğrulamaları: tutar, tür, kategori, tarih, fiş bağlantısı', async () => {
-		const base = { typeValue: 'gelir', category: 'Sponsorluk', amountMinor: 100, description: OPEN('doğrulama') };
+		const base = { typeValue: 'income', category: 'Sponsorluk', amountMinor: 100, description: OPEN('doğrulama') };
 		const post = (patch) => zeynep.post('/api/butce', { ...base, ...patch });
 		const control = await post({ description: OPEN('doğrulama kontrolü') });
 		t.eq(control.status, 200, 'kontrol: geçerli kayıt kabul edilir (diğer ret sebepleri tek tek sınanıyor)');
@@ -103,8 +103,8 @@ export default async function suite(t) {
 	});
 
 	await t.step('düzeltme: açıklama ve kategori değişir; tutar ve tür değişmez', async () => {
-		const before = await find(OPEN('gider'));
-		await row(win, OPEN('gider')).getByRole('button', { name: `Düzelt: ${OPEN('gider')}` }).click();
+		const before = await find(OPEN('expense'));
+		await row(win, OPEN('expense')).getByRole('button', { name: `Düzelt: ${OPEN('expense')}` }).click();
 		const m = zPage.getByRole('dialog', { name: 'Kaydı düzelt' });
 		await m.waitFor();
 		t.eq(await m.getByPlaceholder('1.250,00').count(), 0, 'düzeltme formunda tutar yazılamıyor (kilitli)');
@@ -114,11 +114,11 @@ export default async function suite(t) {
 		await row(win, OPEN('gider düzeltildi')).waitFor();
 		const after = await find(OPEN('gider düzeltildi'));
 		t.eq(after?.id, before?.id, 'aynı kayıt düzeltildi');
-		t.eq([after?.category, after?.amountMinor, after?.typeValue], ['Ulaşım', 40025, 'gider'], 'kategori değişti, tutar ve tür aynı');
+		t.eq([after?.category, after?.amountMinor, after?.typeValue], ['Ulaşım', 40025, 'expense'], 'kategori değişti, tutar ve tür aynı');
 		t.includes(await row(win, OPEN('gider düzeltildi')).innerText(), 'düzeltildi', 'satırda "düzeltildi" izi var');
 		const bad = await zeynep.patch('/api/butce', { id: before.id, amountMinor: 1 });
 		t.eq(bad.status, 400, 'tutarı API ile değiştirmek reddedildi');
-		t.eq((await zeynep.patch('/api/butce', { id: before.id, typeValue: 'gelir' })).status, 400, 'türü API ile değiştirmek reddedildi');
+		t.eq((await zeynep.patch('/api/butce', { id: before.id, typeValue: 'income' })).status, 400, 'türü API ile değiştirmek reddedildi');
 		await t.shot(zPage, 'duzeltildi');
 	});
 
@@ -136,12 +136,12 @@ export default async function suite(t) {
 		t.eq(await vaultBalance(admin), bal + 40025, 'bakiye giderin tutarı kadar geri geldi');
 		// Para giren kayıt harcanmışsa silinemez: bakiyenin tamamı harcanınca gelir silinemez.
 		const full = await vaultBalance(admin);
-		const spent = (await admin.post('/api/butce', { typeValue: 'gider', category: 'Diğer', amountMinor: full, description: OPEN('tümünü harca') })).json;
+		const spent = (await admin.post('/api/butce', { typeValue: 'expense', category: 'Diğer', amountMinor: full, description: OPEN('tümünü harca') })).json;
 		track(spent);
-		const income = await find(OPEN('gelir'));
+		const income = await find(OPEN('income'));
 		const refuse = await admin.del(`/api/butce?id=${encodeURIComponent(income.id)}`);
 		t.eq([refuse.status, refuse.json?.code], [409, 'INSUFFICIENT_FUNDS'], 'harcanmış gelir silinemez (409)');
-		t.check(await find(OPEN('gelir')), 'reddedilen silme geliri yerinde bıraktı');
+		t.check(await find(OPEN('income')), 'reddedilen silme geliri yerinde bıraktı');
 		await admin.del(`/api/butce?id=${encodeURIComponent(spent.id)}`);
 		created.splice(created.indexOf(spent.id), 1);
 		t.eq(await vaultBalance(admin), full, 'harcama geri alınınca bakiye eski haline döndü');
@@ -149,7 +149,7 @@ export default async function suite(t) {
 
 	await t.step('fiş: yüklenir, kayda bağlanır, kasaya erişenler görür; sahte dosya reddedilir', async () => {
 		await win.getByRole('button', { name: 'Yeni Gelir / Gider Girişi' }).click();
-		const m = await fillEntry(zPage, { typeValue: 'gelir', category: 'Sponsorluk', amount: '10,00', description: OPEN('fişli gelir'), file: png('fis.png') });
+		const m = await fillEntry(zPage, { typeValue: 'income', category: 'Sponsorluk', amount: '10,00', description: OPEN('fişli gelir'), file: png('fis.png') });
 		await m.getByText('Fiş ekli — görüntüle').waitFor();
 		await m.getByRole('button', { name: 'Kaydet' }).click();
 		await row(win, OPEN('fişli gelir')).waitFor();
@@ -186,13 +186,13 @@ export default async function suite(t) {
 		t.eq(await vaultBalance(admin, team.id), p0 + 10000, 'proje kasasına 100 ₺ girdi');
 		const out = await find(OPEN('aktarım'));
 		const into = await find(OPEN('aktarım'), team.id);
-		t.eq([out?.typeValue, into?.typeValue], ['gider', 'gelir'], 'iki taraf: genelde gider, projede gelir');
+		t.eq([out?.typeValue, into?.typeValue], ['expense', 'income'], 'iki taraf: genelde gider, projede gelir');
 		t.check(out?.transferId && out.transferId === into?.transferId, 'iki kayıt aynı aktarım kimliğini taşıyor');
-		await t.shot(zPage, 'aktarim');
+		await t.shot(zPage, 'transfer');
 
-		const tooMuch = await zeynep.post('/api/butce', { action: 'aktar', source: team.id, target: 'genel', amountMinor: p0 + 10000 + 100, description: OPEN('fazla aktarım') });
+		const tooMuch = await zeynep.post('/api/butce', { action: 'transfer', source: team.id, target: 'general', amountMinor: p0 + 10000 + 100, description: OPEN('fazla aktarım') });
 		t.eq(tooMuch.status, 409, 'kaynak kasanın bakiyesini aşan aktarım reddedildi (409)');
-		t.eq((await zeynep.post('/api/butce', { action: 'aktar', source: 'genel', target: 'genel', amountMinor: 100, description: OPEN('aynı') })).status, 400, 'kaynak ve hedef aynı olamaz');
+		t.eq((await zeynep.post('/api/butce', { action: 'transfer', source: 'general', target: 'general', amountMinor: 100, description: OPEN('aynı') })).status, 400, 'kaynak ve hedef aynı olamaz');
 
 		await row(win, OPEN('aktarım')).getByRole('button', { name: `Sil: ${OPEN('aktarım')}` }).click();
 		const asked = await dialogReply(zPage, true);
@@ -200,7 +200,7 @@ export default async function suite(t) {
 		await t.waitFor(async () => !(await find(OPEN('aktarım'))));
 		t.eq([await vaultBalance(admin), await vaultBalance(admin, team.id)], [g0, p0], 'tek tarafı silince iki kasa da eski haline döndü');
 		// Kaptan testi için projeye yeniden ödenek.
-		const again = await zeynep.post('/api/butce', { action: 'aktar', source: 'genel', target: team.id, amountMinor: 50000, description: OPEN('proje ödeneği') });
+		const again = await zeynep.post('/api/butce', { action: 'transfer', source: 'general', target: team.id, amountMinor: 50000, description: OPEN('proje ödeneği') });
 		t.eq(again.status, 201, 'projeye 500 ₺ ödenek aktarıldı');
 	});
 
@@ -210,7 +210,7 @@ export default async function suite(t) {
 		const text = fs.readFileSync(await dl.path(), 'utf8');
 		t.check(text.startsWith('﻿'), 'dosya BOM ile başlıyor (Türkçe karakterler Excel\'de bozulmaz)');
 		t.includes(text, 'Tarih;Tür;Kategori;Açıklama', 'başlık satırı noktalı virgülle ayrılmış');
-		t.includes(text, OPEN('gelir'), 'süzülen kayıt dosyada');
+		t.includes(text, OPEN('income'), 'süzülen kayıt dosyada');
 		t.includes(text, '1250.5', 'tutar sayı olarak yazıldı');
 		const lines = text.trim().split('\n').length - 1;
 		t.eq(lines, await win.locator('tr[data-focus-id^="kasa-row:"]').count(), 'dosyadaki satır sayısı ekrandakiyle aynı (süzgeç uygulandı)');
@@ -230,7 +230,7 @@ export default async function suite(t) {
 		t.includes(body, 'Toplam gelir', 'toplam gelir');
 		t.includes(body, 'Net bakiye', 'net bakiye');
 		t.includes(body, tl(await vaultBalance(admin)), 'rapordaki net bakiye kasayla aynı');
-		t.includes(body, OPEN('gelir'), 'hareketler listede');
+		t.includes(body, OPEN('income'), 'hareketler listede');
 		t.includes(body, 'Hazırlayan', 'imza satırı (Hazırlayan)');
 		t.includes(body, 'Denetleyen', 'imza satırı (Denetleyen)');
 		await popup.close();
@@ -240,18 +240,18 @@ export default async function suite(t) {
 		const { page } = await reader.open();
 		const w = await openApp(page, 'budget');
 		await w.locator('[data-testid=kasa-balance][data-loaded]').first().waitFor();
-		await row(w, OPEN('gelir')).waitFor();
+		await row(w, OPEN('income')).waitFor();
 		t.eq(await w.getByRole('button', { name: 'Yeni Gelir / Gider Girişi' }).count(), 0, 'okuyucuda "yeni kayıt" yok');
 		t.eq(await w.getByRole('button', { name: 'Ödenek aktar', exact: true }).count(), 0, 'okuyucuda "ödenek aktar" yok');
 		t.eq(await w.getByRole('button', { name: /^(Düzelt|Sil):/ }).count(), 0, 'okuyucuda düzelt/sil düğmeleri yok');
 		t.eq(await w.getByRole('button', { name: 'CSV' }).isEnabled(), true, 'okuyucu CSV alabiliyor');
 		await t.shot(page, 'kullan-salt-okur');
-		const id = (await find(OPEN('gelir')))?.id;
-		const post = await reader.api.post('/api/butce', { typeValue: 'gelir', category: 'Sponsorluk', amountMinor: 100, description: OPEN('okuyucu yazamaz') });
+		const id = (await find(OPEN('income')))?.id;
+		const post = await reader.api.post('/api/butce', { typeValue: 'income', category: 'Sponsorluk', amountMinor: 100, description: OPEN('okuyucu yazamaz') });
 		t.eq(post.status, 403, 'okuyucu kayıt ekleyemez (403)');
 		t.eq((await reader.api.patch('/api/butce', { id, description: 'x' })).status, 403, 'okuyucu düzeltemez (403)');
 		t.eq((await reader.api.del(`/api/butce?id=${encodeURIComponent(id)}`)).status, 403, 'okuyucu silemez (403)');
-		t.eq((await reader.api.post('/api/butce', { action: 'aktar', source: 'genel', target: team.id, amountMinor: 100, description: OPEN('okuyucu aktaramaz') })).status, 403, 'okuyucu aktarım yapamaz (403)');
+		t.eq((await reader.api.post('/api/butce', { action: 'transfer', source: 'general', target: team.id, amountMinor: 100, description: OPEN('okuyucu aktaramaz') })).status, 403, 'okuyucu aktarım yapamaz (403)');
 		t.eq((await reader.api.get('/api/butce')).status, 200, 'okuyucu genel kasayı okuyabilir');
 		t.eq((await reader.api.get(`/api/butce?teamId=${team.id}`)).status, 200, 'okuyucu proje kasasını da okuyabilir');
 		const vaults = (await reader.api.get('/api/butce/kasalar')).json?.vaults ?? [];
@@ -269,21 +269,21 @@ export default async function suite(t) {
 		t.includes(await balanceText(w), tl(50000), 'proje kasasının bakiyesi aktarılan ödenek');
 		t.eq(await w.getByRole('button', { name: 'Ödenek aktar', exact: true }).count(), 0, 'kaptan ödenek aktaramaz');
 		await w.getByRole('button', { name: 'Yeni Gelir / Gider Girişi' }).click();
-		const m = await fillEntry(page, { typeValue: 'gider', category: 'Donanım', amount: '125,00', description: OPEN('kaptan gideri') });
+		const m = await fillEntry(page, { typeValue: 'expense', category: 'Donanım', amount: '125,00', description: OPEN('kaptan gideri') });
 		await m.getByRole('button', { name: 'Kaydet' }).click();
 		await row(w, OPEN('kaptan gideri')).waitFor();
 		const r = await find(OPEN('kaptan gideri'), team.id);
-		t.eq([r?.typeValue, r?.amountMinor], ['gider', 12500], 'kaptanın gideri proje kasasına yazıldı');
+		t.eq([r?.typeValue, r?.amountMinor], ['expense', 12500], 'kaptanın gideri proje kasasına yazıldı');
 		t.eq(await vaultBalance(admin, team.id), 50000 - 12500, 'proje bakiyesi düştü');
 		await t.shot(page, 'kaptan-proje-kasasi');
 
 		// Sınırlar: yalnız kendi projesi.
-		const mine = { typeValue: 'gelir', category: 'Sponsorluk', amountMinor: 100 };
+		const mine = { typeValue: 'income', category: 'Sponsorluk', amountMinor: 100 };
 		t.eq((await can.post('/api/butce', { ...mine, teamId: team.id, description: OPEN('kaptan geliri') })).status, 200, 'kaptan kendi projesine API ile de yazabilir');
 		t.eq((await can.post('/api/butce', { ...mine, description: OPEN('kaptan genele') })).status, 403, 'kaptan genel kasaya yazamaz (403)');
 		t.eq((await can.get('/api/butce')).status, 403, 'kaptan genel kasayı okuyamaz (403)');
 		t.eq((await can.post('/api/butce', { ...mine, teamId: fx.content.team.team.id, description: OPEN('kaptan başka projeye') })).status, 403, 'kaptan başka projenin kasasına yazamaz (403)');
-		t.eq((await can.post('/api/butce', { action: 'aktar', source: team.id, target: 'genel', amountMinor: 100, description: OPEN('kaptan aktarımı') })).status, 403, 'kaptan aktarım yapamaz (403)');
+		t.eq((await can.post('/api/butce', { action: 'transfer', source: team.id, target: 'general', amountMinor: 100, description: OPEN('kaptan aktarımı') })).status, 403, 'kaptan aktarım yapamaz (403)');
 		const vaults = (await can.get('/api/butce/kasalar')).json?.vaults ?? [];
 		t.eq(vaults.map((k) => k.teamId), [team.id], 'kaptanın kasa listesinde yalnız kendi projesi var');
 		t.eq((await ege.post('/api/butce', { ...mine, teamId: team.id, description: OPEN('başka kaptan') })).status, 403, 'başka projenin kaptanı bu projeye yazamaz (403)');
@@ -291,11 +291,11 @@ export default async function suite(t) {
 	});
 
 	await t.step('Sadece Haberler: Kasa hiç görünmez, API kapalı', async () => {
-		const { page } = await t.open('okur');
+		const { page } = await t.open('reader');
 		t.excludes(await dockApps(page), 'budget', 'Dock\'ta Kasa yok');
 		t.eq((await noAccess.get('/api/butce')).status, 403, 'okuma 403');
 		t.eq((await noAccess.get('/api/butce/kasalar')).status, 403, 'kasa listesi 403');
-		t.eq((await noAccess.post('/api/butce', { typeValue: 'gelir', category: 'Sponsorluk', amountMinor: 100, description: OPEN('okur') })).status, 403, 'yazma 403');
+		t.eq((await noAccess.post('/api/butce', { typeValue: 'income', category: 'Sponsorluk', amountMinor: 100, description: OPEN('reader') })).status, 403, 'yazma 403');
 		t.eq((await client(t.base).get('/api/butce')).status, 401, 'oturumsuz istek 401');
 	});
 }

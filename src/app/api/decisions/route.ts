@@ -6,20 +6,20 @@ import { can, requireApp } from '@/lib/auth/access';
 import { documentSummary } from '@/server/documentDigest';
 import { notificationEvents, publishEventQuiet } from '@/db/events';
 
-const DOCUMENT_TYPES = ['karar', 'salon_tahsisi', 'etkinlik_izni', 'malzeme_talep', 'ust_yazi'];
+const DOCUMENT_TYPES = ['resolution', 'hall_allocation', 'event_permission', 'material_request', 'cover_letter'];
 const DECISION_TYPES = ['resolution', 'motion', 'minutes', 'appointment', 'budget'];
 const bad = (error: string, status = 400) => jsonError(error, status);
 
 export async function GET(request: Request) {
 	// Kararlar, uygulamayı kullanan üyelere salt okunur açıktır (şeffaf kulüp ilkesi) — yalnızca
 	// `kamuyaAcikMi = 0` ile işaretlenenler hariç: onları yalnız kararları yönetenler görür.
-	const auth = await requireApp(request, 'decisions', 'kullan');
+	const auth = await requireApp(request, 'decisions', 'use');
 	if (!auth.authorized) return auth.response;
 
 	try {
 		const decisions = await getDecisions();
-		const management = can(auth.user, 'decisions', 'yonet');
-		const visible = management ? decisions : decisions.filter((k) => Number(k.publicOpenMi) === 1);
+		const management = can(auth.user, 'decisions', 'manage');
+		const visible = management ? decisions : decisions.filter((k) => Number(k.isPublicOpen) === 1);
 		// The digest is printed on the document and shown on the verification page.
 		return jsonSuccess(visible.map((k) => ({ ...k, summary: documentSummary(k) })));
 	} catch (error) {
@@ -35,7 +35,7 @@ function parse(body: Record<string, unknown>, partial: boolean) {
 		agenda?: string;
 		content?: string;
 		documentType?: string;
-		publicOpenMi?: boolean;
+		isPublicOpen?: boolean;
 		bodyId?: string | null;
 		decisionType?: string;
 		quorumMet?: boolean;
@@ -59,11 +59,11 @@ function parse(body: Record<string, unknown>, partial: boolean) {
 		v.agenda = agenda;
 	}
 	if (body.documentType !== undefined || !partial) {
-		const typeValue = body.documentType ?? 'karar';
+		const typeValue = body.documentType ?? 'resolution';
 		if (typeof typeValue !== 'string' || !DOCUMENT_TYPES.includes(typeValue)) return { error: 'Geçersiz belge türü.' };
 		v.documentType = typeValue;
 	}
-	if (body.publicOpenMi !== undefined) v.publicOpenMi = Boolean(body.publicOpenMi);
+	if (body.isPublicOpen !== undefined) v.isPublicOpen = Boolean(body.isPublicOpen);
 	if (body.bodyId !== undefined) {
 		if (body.bodyId === null || body.bodyId === '') v.bodyId = null;
 		else if (typeof body.bodyId === 'string' && body.bodyId.length <= 100) v.bodyId = body.bodyId;
@@ -90,7 +90,7 @@ async function validateBody(bodyId: string | null | undefined): Promise<string |
 }
 
 async function handlePOST(request: Request) {
-	const auth = await requireApp(request, 'decisions', 'yonet');
+	const auth = await requireApp(request, 'decisions', 'manage');
 	if (!auth.authorized) return auth.response;
 
 	try {
@@ -104,7 +104,7 @@ async function handlePOST(request: Request) {
 			if (body.action === 'unlock' && !auth.user.permission.admin) return bad('Kilidi yalnızca bir admin açabilir.', 403);
 			await setDecisionLock(id, body.action === 'lock');
 			await publishEventQuiet(getPgPool(), [{ k: 'decision_updated' }]);
-			return NextResponse.json({ success: true, lockedMi: body.action === 'lock' ? 1 : 0 });
+			return NextResponse.json({ success: true, isLocked: body.action === 'lock' ? 1 : 0 });
 		}
 
 		const parsed = parse(body, false);
@@ -117,7 +117,7 @@ async function handlePOST(request: Request) {
 			agenda: v.agenda ?? '',
 			content: v.content!,
 			documentType: v.documentType,
-			publicOpenMi: v.publicOpenMi ?? true,
+			isPublicOpen: v.isPublicOpen ?? true,
 			creatorId: auth.user.id,
 			bodyId: v.bodyId ?? null,
 			decisionType: v.decisionType,
@@ -136,7 +136,7 @@ async function handlePOST(request: Request) {
 
 /** Edits an unlocked document. */
 async function handlePATCH(request: Request) {
-	const auth = await requireApp(request, 'decisions', 'yonet');
+	const auth = await requireApp(request, 'decisions', 'manage');
 	if (!auth.authorized) return auth.response;
 	try {
 		const body = (await request.json()) as Record<string, unknown>;
@@ -146,8 +146,8 @@ async function handlePATCH(request: Request) {
 		const bodyProblem = await validateBody(parsed.value.bodyId);
 		if (bodyProblem) return bad(bodyProblem, 404);
 		const r = await updateDecision(id, parsed.value);
-		if (r === 'yok') return bad('Belge bulunamadı.', 404);
-		if (r === 'kilitli') return bad('Kilitli belge düzenlenemez.', 409);
+		if (r === 'none') return bad('Belge bulunamadı.', 404);
+		if (r === 'locked') return bad('Kilitli belge düzenlenemez.', 409);
 		await publishEventQuiet(getPgPool(), [{ k: 'decision_updated' }]);
 		return jsonSuccess({ success: true });
 	} catch (error) {
@@ -158,12 +158,12 @@ async function handlePATCH(request: Request) {
 
 /** Deletes an unlocked document. */
 async function handleDELETE(request: Request) {
-	const auth = await requireApp(request, 'decisions', 'yonet');
+	const auth = await requireApp(request, 'decisions', 'manage');
 	if (!auth.authorized) return auth.response;
 	const id = new URL(request.url).searchParams.get('id') ?? '';
 	const r = await deleteDecision(id);
-	if (r === 'yok') return bad('Belge bulunamadı.', 404);
-	if (r === 'kilitli') return bad('Kilitli belge silinemez; önce başkanın kilidi açması gerekir.', 409);
+	if (r === 'none') return bad('Belge bulunamadı.', 404);
+	if (r === 'locked') return bad('Kilitli belge silinemez; önce başkanın kilidi açması gerekir.', 409);
 	await publishEventQuiet(getPgPool(), [{ k: 'decision_updated' }]);
 	return jsonSuccess({ success: true });
 }

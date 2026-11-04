@@ -95,11 +95,11 @@ export function useTaskDetail({
 	};
 
 	const toggleItem = async (m: TeamTaskItem) => {
-		const doneMi = Number(m.doneMi) !== 1;
+		const isDone = Number(m.isDone) !== 1;
 		setData((d) =>
-			d ? { ...d, items: d.items.map((x) => (x.id === m.id ? { ...x, doneMi: doneMi ? 1 : 0 } : x)) } : d
+			d ? { ...d, items: d.items.map((x) => (x.id === m.id ? { ...x, isDone: isDone ? 1 : 0 } : x)) } : d
 		);
-		await action({ action: 'updateItem', itemId: m.id, doneMi });
+		await action({ action: 'updateItem', itemId: m.id, isDone });
 	};
 
 	const addItem = async (e: React.FormEvent) => {

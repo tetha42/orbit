@@ -32,7 +32,7 @@ function text(value: unknown, min: number, max: number): string | undefined | nu
 export async function GET(request: Request) {
 	// Inventory is visible to members, but the custody columns (who holds what)
 	// must not be readable anonymously.
-	const auth = await requireApp(request, 'inventory', 'kullan');
+	const auth = await requireApp(request, 'inventory', 'use');
 	if (!auth.authorized) return auth.response;
 
 	try {
@@ -52,9 +52,9 @@ export async function GET(request: Request) {
 
 async function handlePOST(request: Request) {
 	try {
-		const auth = await requireApp(request, 'inventory', 'kullan');
+		const auth = await requireApp(request, 'inventory', 'use');
 		if (!auth.authorized) return auth.response;
-		if (auth.user.status === 'mezun') {
+		if (auth.user.status === 'alumni') {
 			return bad('Mezunlar sadece okuma erişimine sahiptir.', 403);
 		}
 
@@ -62,7 +62,7 @@ async function handlePOST(request: Request) {
 		const { action } = body;
 		const inventoryId = typeof body.inventoryId === 'string' ? body.inventoryId : '';
 		// Role alone is not enough: management also needs its second factor (production rule).
-		const isManager = can(auth.user, 'inventory', 'yonet');
+		const isManager = can(auth.user, 'inventory', 'manage');
 		const now = Date.now();
 
 		if (action === 'create' || action === 'update') {
@@ -114,7 +114,7 @@ async function handlePOST(request: Request) {
 						description: fields.description,
 						seriesNo: fields.seriesNo,
 						// A new item is in service, broken or lost — never "on loan" to nobody.
-						status: isInventoryStatus(body.status) && body.status !== 'oduncte' ? body.status : 'saglam',
+						status: isInventoryStatus(body.status) && body.status !== 'on_loan' ? body.status : 'available',
 						actorId: auth.user.id,
 					});
 					await publishEventQuiet(getPgPool(), { k: 'inventory_updated' });
@@ -126,8 +126,8 @@ async function handlePOST(request: Request) {
 				}
 			}
 			const r = await updateInventoryItem(inventoryId, fields, auth.user.id);
-			if (r === 'yok') return bad('Envanter kaydı bulunamadı.', 404);
-			if (r === 'kod-var') return bad(`${fields.code} kodu zaten kullanılıyor.`, 409);
+			if (r === 'none') return bad('Envanter kaydı bulunamadı.', 404);
+			if (r === 'code_exists') return bad(`${fields.code} kodu zaten kullanılıyor.`, 409);
 			await publishEventQuiet(getPgPool(), { k: 'inventory_updated' });
 			return NextResponse.json({ success: true });
 		}
@@ -137,8 +137,8 @@ async function handlePOST(request: Request) {
 		if (action === 'delete') {
 			if (!isManager) return bad('Donanım silme yetkisi yalnızca yönetimdedir.', 403);
 			const r = await deleteInventoryItem(inventoryId);
-			if (r === 'yok') return bad('Kayıt bulunamadı veya silinemedi.', 404);
-			if (r === 'oduncte') return bad('Ödünçteki eşya silinemez; önce iade alın.', 409);
+			if (r === 'none') return bad('Kayıt bulunamadı veya silinemedi.', 404);
+			if (r === 'on_loan') return bad('Ödünçteki eşya silinemez; önce iade alın.', 409);
 			await publishEventQuiet(getPgPool(), { k: 'inventory_updated' });
 			return NextResponse.json({ success: true, message: 'Envanter kaydı silindi.' });
 		}
@@ -153,7 +153,7 @@ async function handlePOST(request: Request) {
 				body.userId !== auth.user.id
 			) {
 				const target = await getUserById(body.userId);
-				if (!target || target.status !== 'aktif')
+				if (!target || target.status !== 'active')
 					return bad('Ödünç verilecek üye bulunamadı veya aktif değil.', 404);
 				userId = target.id;
 			}
@@ -167,8 +167,8 @@ async function handlePOST(request: Request) {
 				returnDate: returnDate,
 				actorId: auth.user.id,
 			});
-			if (r === 'yok') return bad('Envanter kaydı bulunamadı.', 404);
-			if (r === 'musait-degil')
+			if (r === 'none') return bad('Envanter kaydı bulunamadı.', 404);
+			if (r === 'unavailable')
 				return bad('Bu eşya şu anda ödünç verilemez: başkasında, arızalı veya kayıp.', 409);
 			await publishEventQuiet(getPgPool(), { k: 'inventory_updated' });
 			return NextResponse.json({ success: true, message: 'Ödünç alma işlemi kaydedildi.' });
@@ -186,8 +186,8 @@ async function handlePOST(request: Request) {
 				failure: body.failure === true,
 				not,
 			});
-			if (r === 'yok') return bad('Envanter kaydı bulunamadı.', 404);
-			if (r === 'oduncte-degil') return bad('Bu eşya ödünçte değil.', 409);
+			if (r === 'none') return bad('Envanter kaydı bulunamadı.', 404);
+			if (r === 'not_on_loan') return bad('Bu eşya ödünçte değil.', 409);
 			if (r === 'permission')
 				return bad('Bu eşyayı yalnızca ödünç alan kişi veya yönetim iade edebilir.', 403);
 			await publishEventQuiet(getPgPool(), { k: 'inventory_updated' });
@@ -203,7 +203,7 @@ async function handlePOST(request: Request) {
 		if (action === 'extend') {
 			const item = await getInventoryItemById(inventoryId);
 			if (!item) return bad('Envanter kaydı bulunamadı.', 404);
-			if (item.status !== 'oduncte') return bad('Bu eşya ödünçte değil.', 409);
+			if (item.status !== 'on_loan') return bad('Bu eşya ödünçte değil.', 409);
 			if (!isManager && item.loanFieldId !== auth.user.id)
 				return bad('Süreyi yalnızca ödünç alan kişi veya yönetim uzatabilir.', 403);
 			const returnDate = Number(body.returnDate);
@@ -233,9 +233,9 @@ async function handlePOST(request: Request) {
 			const status = body.status;
 			// Reject unknown values instead of persisting a status nothing can filter on;
 			// "on loan" is reached by lending, never set by hand.
-			if (!isInventoryStatus(status) || status === 'oduncte') {
+			if (!isInventoryStatus(status) || status === 'on_loan') {
 				return bad(
-					`Geçersiz status. Beklenen: ${INVENTORY_STATUSES.filter((d) => d !== 'oduncte').join(', ')}`,
+					`Geçersiz status. Beklenen: ${INVENTORY_STATUSES.filter((d) => d !== 'on_loan').join(', ')}`,
 				);
 			}
 			const not = text(body.not, 0, 500);
@@ -245,8 +245,8 @@ async function handlePOST(request: Request) {
 				actorId: auth.user.id,
 				not: not ?? undefined,
 			});
-			if (r === 'yok') return bad('Envanter kaydı bulunamadı.', 404);
-			if (r === 'oduncte')
+			if (r === 'none') return bad('Envanter kaydı bulunamadı.', 404);
+			if (r === 'on_loan')
 				return bad('Eşya ödünçte; önce iade alın (kaybolduysa "Kayıp" seçebilirsiniz).', 409);
 			await publishEventQuiet(getPgPool(), { k: 'inventory_updated' });
 			return NextResponse.json({ success: true, message: 'Envanter durumu güncellendi.', status });

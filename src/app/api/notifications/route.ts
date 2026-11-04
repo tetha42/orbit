@@ -66,7 +66,7 @@ export async function GET(request: Request) {
 
 		const [applications, proposals, assigned, checkins, decisions] = await Promise.all([
 			// Teams managers see every team's applications; a captain their own teams'.
-			when('teamApplication', () => getPendingTeamApplications(user.id, can(user, 'teams', 'yonet'))),
+			when('teamApplication', () => getPendingTeamApplications(user.id, can(user, 'teams', 'manage'))),
 			when('projectProposal', () => getPendingProjectProposals()),
 			when('assigned', () => getUserNewAssignments(user.id, now - FEED_WINDOW)),
 			when('checkin', () => getPendingAttendanceEvents(user.id, now, ATTENDANCE_TOLERANCE_MS)),
@@ -75,7 +75,7 @@ export async function GET(request: Request) {
 
 		const [pending, news, events, myEventIds, tasks, loans, certificates, messages] = await Promise.all([
 			when('approval', () => getPendingUsers()),
-			when('news', () => getNews('uye')),
+			when('news', () => getNews('member')),
 			when('event', () => getEvents()),
 			when('event', () => getUserEventRegistrationIds(user.id)),
 			when('task', () => getUserUpcomingTasks(user.id, now + DUE_WINDOW)),
@@ -159,7 +159,7 @@ export async function GET(request: Request) {
 				priority: 'action',
 				at: p.creation,
 				data: { title: p.title, author: p.creatorNameSurname },
-				target: { appId: 'projects', kind: 'project', itemId: p.id, section: 'oneri' },
+				target: { appId: 'projects', kind: 'project', itemId: p.id, section: 'proposed' },
 			});
 		}
 
@@ -172,7 +172,7 @@ export async function GET(request: Request) {
 		});
 		let pinnedTaken = false;
 		for (const article of recentNews.slice(0, MAX_NEWS)) {
-			const urgent = article.importantMi === 1 && !pinnedTaken;
+			const urgent = article.isImportant === 1 && !pinnedTaken;
 			if (urgent) pinnedTaken = true;
 			items.push({
 				id: `news:${article.id}`,
@@ -186,7 +186,7 @@ export async function GET(request: Request) {
 		}
 
 		const upcoming = events
-			.filter((e) => e.status === 'yayinda' && Number(e.endTime ?? (e as { endtime?: number }).endtime) >= now && e.start <= now + EVENT_WINDOW)
+			.filter((e) => e.status === 'published' && Number(e.endTime ?? (e as { endtime?: number }).endtime) >= now && e.start <= now + EVENT_WINDOW)
 			.slice(0, MAX_EVENTS);
 		for (const event of upcoming) {
 			items.push({
@@ -226,7 +226,7 @@ export async function GET(request: Request) {
 				kind: 'teamDecision',
 				priority: 'info',
 				at: d.date,
-				data: { title: d.teamName, accepted: d.decision === 'kabul' },
+				data: { title: d.teamName, accepted: d.decision === 'accepted' },
 				target: { appId: 'teams', kind: 'team', itemId: d.teamId },
 			});
 		}

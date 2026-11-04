@@ -69,7 +69,7 @@ let focusNonce = 0;
 const readCycleSetting = () => {
 	if (typeof window === 'undefined') return true;
 	try {
-		return localStorage.getItem('kulup_window_cycle') !== 'off';
+		return localStorage.getItem('club_window_cycle') !== 'off';
 	} catch {
 		return true;
 	}
@@ -316,7 +316,7 @@ export function createWindowStore() {
 	const setIsWindowCycleEnabled = (enabled: boolean) => {
 		set({ isWindowCycleEnabled: enabled });
 		try {
-			localStorage.setItem('kulup_window_cycle', enabled ? 'on' : 'off');
+			localStorage.setItem('club_window_cycle', enabled ? 'on' : 'off');
 		} catch {
 			// Private mode: the choice just doesn't persist.
 		}

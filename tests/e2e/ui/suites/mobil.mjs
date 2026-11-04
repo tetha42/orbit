@@ -16,7 +16,7 @@ const launcher = (page) => page.locator('[data-launcher-app]').evaluateAll((els)
 
 export default async function suite(t) {
 	await t.step('"Sadece Haberler" (okur): yalnız Haberler ve Ayarlar + rozet', async () => {
-		const { page } = await t.open('okur', { mobile: true });
+		const { page } = await t.open('reader', { mobile: true });
 		// First screen is the cockpit: the role badge sits in its header, the grid is one tab away.
 		await page.locator('[data-mobile-nav]').waitFor();
 		const badge = page.locator('[data-role-badge="Sadece Haberler"]');

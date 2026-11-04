@@ -21,9 +21,9 @@ export interface ServerNoteRecord {
 	title?: string;
 	content?: string;
 	color?: string;
-	pinnedMi?: number | boolean;
+	isPinned?: number | boolean;
 	folderId?: string;
-	trashedMi?: number | boolean;
+	isTrashed?: number | boolean;
 	creation?: number | string;
 	update?: number | string;
 }

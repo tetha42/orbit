@@ -57,7 +57,7 @@ function parseIpOrCidr(raw: string | null | undefined): string | null {
 }
 
 export async function GET(request: Request) {
-	const auth = await requireApp(request, 'soc', 'kullan');
+	const auth = await requireApp(request, 'soc', 'use');
 	if (!auth.authorized) return auth.response;
 
 	const { searchParams } = new URL(request.url);
@@ -152,7 +152,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-	const auth = await requireApp(request, 'soc', 'yonet');
+	const auth = await requireApp(request, 'soc', 'manage');
 	if (!auth.authorized) return auth.response;
 
 	const callerIp = clientAddress(request);
@@ -164,7 +164,7 @@ export async function POST(request: Request) {
 		if (action === 'ban_ip' || action === 'ban') {
 			const rawIp = String(body.ip || '').trim();
 			const parsedIp = parseIpOrCidr(rawIp);
-			const reason = String(body.reason || body.reason || 'SoC Yöneticisi tarafından manuel karantina').trim();
+			const reason = String(body.reason || 'SoC Yöneticisi tarafından manuel karantina').trim();
 			const rawDuration = body.durationMinutes;
 			const durationMinutes =
 				rawDuration === null || rawDuration === undefined || rawDuration === 'permanent' || Number(rawDuration) <= 0
@@ -226,7 +226,7 @@ export async function POST(request: Request) {
 		if (action === 'whitelist_ip' || action === 'whitelist') {
 			const rawIp = String(body.ip || '').trim();
 			const parsedIp = parseIpOrCidr(rawIp);
-			const reason = String(body.reason || body.reason || 'Güvenilir IP (Whitelist)').trim();
+			const reason = String(body.reason || 'Güvenilir IP (Whitelist)').trim();
 			if (!parsedIp) {
 				return NextResponse.json({ error: 'Geçerli bir IPv4, IPv6 veya CIDR alt ağ adresi girin.' }, { status: 400 });
 			}

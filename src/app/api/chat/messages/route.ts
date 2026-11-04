@@ -25,7 +25,7 @@ const NO_CACHE = { 'Cache-Control': 'no-store' };
 const MAX_CHAT_MESSAGE_LENGTH = 4000;
 
 export async function GET(request: Request) {
-	const auth = await requireApp(request, 'chat', 'kullan');
+	const auth = await requireApp(request, 'chat', 'use');
 	if (!auth.authorized) return auth.response;
 
 	const { searchParams } = new URL(request.url);
@@ -89,11 +89,11 @@ export async function GET(request: Request) {
  * target room, so forwarded media is exactly as private as its new message.
  */
 async function cloneAttachmentsForRoom(
-	attachments: Array<{ name: string; url: string; size?: number; tip?: string }>,
+	attachments: Array<{ name: string; url: string; size?: number; type?: string }>,
 	roomId: string,
 	userId: string
-): Promise<Array<{ name: string; url: string; size?: number; tip?: string }>> {
-	const cloned: Array<{ name: string; url: string; size?: number; tip?: string }> = [];
+): Promise<Array<{ name: string; url: string; size?: number; type?: string }>> {
+	const cloned: Array<{ name: string; url: string; size?: number; type?: string }> = [];
 	const dir = uploadDir();
 	await mkdir(dir, { recursive: true });
 	for (const attachment of attachments) {
@@ -104,7 +104,7 @@ async function cloneAttachmentsForRoom(
 			const extension = sourceName.slice(sourceName.lastIndexOf('.'));
 			const name = `${Date.now()}_${randomBytes(9).toString('hex')}${extension}`;
 			await writeFile(path.join(dir, name), buffer, { flag: 'wx' });
-			const mime = attachment.tip || mimeForName(name);
+			const mime = attachment.type || mimeForName(name);
 			await addStoredFile({
 				name: name,
 				uploaderId: userId,
@@ -116,7 +116,7 @@ async function cloneAttachmentsForRoom(
 				name: attachment.name,
 				url: `/api/uploads/${name}`,
 				size: buffer.length,
-				tip: mime,
+				type: mime,
 			});
 		} catch {
 			// A missing source file is skipped rather than breaking the forward.
@@ -126,7 +126,7 @@ async function cloneAttachmentsForRoom(
 }
 
 export async function POST(request: Request) {
-	const auth = await requireApp(request, 'chat', 'kullan');
+	const auth = await requireApp(request, 'chat', 'use');
 	if (!auth.authorized) return auth.response;
 
 	const msgLimit = consumeRateLimit(`chat:msg:${auth.user.id}`, 40, 60_000);
@@ -187,7 +187,7 @@ export async function POST(request: Request) {
 						},
 						sourceMsg.content,
 						copiedAttachments,
-						{ deliveredMi: true }
+						{ isDelivered: true }
 					);
 					forwardedMessages.push(fMsg);
 				}
@@ -208,13 +208,13 @@ export async function POST(request: Request) {
 			);
 		}
 
-		const { roomId, content, attachments: rawAttachments, repliedMessageId, repliedMessage, deliveredMi } = body;
+		const { roomId, content, attachments: rawAttachments, repliedMessageId, repliedMessage, isDelivered } = body;
 
 		// Attachments-only messages are valid; the text may be empty.
 		const attachments = (Array.isArray(rawAttachments) ? rawAttachments : [])
 			.slice(0, 10)
 			.filter(
-				(item): item is { name: unknown; url: string; size?: unknown; tip?: unknown } =>
+				(item): item is { name: unknown; url: string; size?: unknown; type?: unknown } =>
 					Boolean(item) &&
 					typeof item === 'object' &&
 					typeof (item as { url?: unknown }).url === 'string' &&
@@ -224,7 +224,7 @@ export async function POST(request: Request) {
 				name: String(item.name ?? 'attachment').slice(0, 140),
 				url: String(item.url),
 				...(typeof item.size === 'number' ? { size: item.size } : {}),
-				...(typeof item.tip === 'string' ? { tip: item.tip.slice(0, 120) } : {}),
+				...(typeof item.type === 'string' ? { type: item.type.slice(0, 120) } : {}),
 			}));
 
 		if (typeof content !== 'string' || (!content.trim() && attachments.length === 0)) {
@@ -312,7 +312,7 @@ export async function POST(request: Request) {
 			const sysMsg = await createChatMessage(
 				roomId,
 				{
-					id: 'sistem',
+					id: 'system',
 					name: 'Sistem',
 					surname: '',
 					profilePhoto: null,
@@ -354,7 +354,7 @@ export async function POST(request: Request) {
 			{
 				repliedMessageId: repliedMessageId ? String(repliedMessageId) : null,
 				repliedMessage: repliedMessage && typeof repliedMessage === 'object' ? repliedMessage : null,
-				deliveredMi: Boolean(deliveredMi),
+				isDelivered: Boolean(isDelivered),
 			}
 		);
 
@@ -380,7 +380,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-	const auth = await requireApp(request, 'chat', 'kullan');
+	const auth = await requireApp(request, 'chat', 'use');
 	if (!auth.authorized) return auth.response;
 
 	try {
@@ -417,7 +417,7 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-	const auth = await requireApp(request, 'chat', 'kullan');
+	const auth = await requireApp(request, 'chat', 'use');
 	if (!auth.authorized) return auth.response;
 
 	try {

@@ -100,7 +100,7 @@ export function TaskDetailModal({ taskId, currentUserId, members, allLabels, not
 	const { task, items, comments, activity, permissions } = data;
 	const col = columnMeta(task.status);
 	const due = dueStatus(task.dueDate, task.status, now);
-	const doneItems = items.filter((m) => Number(m.doneMi) === 1).length;
+	const doneItems = items.filter((m) => Number(m.isDone) === 1).length;
 	const canClaim = !task.assigneeMemberId && !permissions.manage && members.some((m) => m.id === currentUserId);
 	const when = (ts: number) => relativeTime(ts, now, language === 'en' ? 'en' : 'tr');
 

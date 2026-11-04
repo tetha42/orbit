@@ -23,6 +23,7 @@ import { openPrintWindow } from '@/core/data/print';
 import { formatDate, formatDateTime } from '@/core/data/format';
 import { useToast } from '@/core/ui/Toast';
 import { useNow } from '@/lib/client/useSheet';
+import { categoryLabel } from '../categoryLabel';
 
 const tl = (minor: number) => `₺${formatMinor(minor)}`;
 const dateFmt = (ms: number) => formatDate(ms);
@@ -49,7 +50,7 @@ export function useVaultLedger({ teamId, onChanged, embedded = false, vaults }: 
 	const records = useMemo(() => data?.records ?? [], [data]);
 	const summary = data?.summary ?? null;
 
-	const [typeValue, setType] = useState<'hepsi' | 'gelir' | 'gider'>('hepsi');
+	const [typeValue, setType] = useState<'all' | 'income' | 'expense'>('all');
 	const [category, setCategory] = useState('');
 	const [month, setMonth] = useState('');
 	const [search, setSearch] = useState('');
@@ -81,13 +82,13 @@ export function useVaultLedger({ teamId, onChanged, embedded = false, vaults }: 
 		[records, typeValue, category, month, search]
 	);
 	const filteredIn = filtered
-		.filter((r) => r.typeValue === 'gelir')
+		.filter((r) => r.typeValue === 'income')
 		.reduce((a, r) => a + r.amountMinor, 0);
 	const filteredOut = filtered
-		.filter((r) => r.typeValue === 'gider')
+		.filter((r) => r.typeValue === 'expense')
 		.reduce((a, r) => a + r.amountMinor, 0);
-	const anyFilter = typeValue !== 'hepsi' || !!category || !!month || !!search.trim();
-	const maxMonth = Math.max(1, ...months.map((m) => Math.max(m.gelir, m.gider)));
+	const anyFilter = typeValue !== 'all' || !!category || !!month || !!search.trim();
+	const maxMonth = Math.max(1, ...months.map((m) => Math.max(m.income, m.expense)));
 	const canTransfer = isManagement && !!vaults && vaults.length > 1;
 
 	const remove = async (r: VaultRecord) => {
@@ -108,17 +109,17 @@ export function useVaultLedger({ teamId, onChanged, embedded = false, vaults }: 
 			.reverse()
 			.map((r) => [
 				dateFmt(r.date),
-				r.typeValue === 'gelir' ? t('kasaIncome') : t('kasaExpense'),
-				r.category,
+				r.typeValue === 'income' ? t('kasaIncome') : t('kasaExpense'),
+				categoryLabel(t, r.category),
 				r.description,
 				r.transferId ? (r.counterpartVaultName ?? '') : '',
 				r.recorderNameSurname ?? '',
-				(r.typeValue === 'gelir' ? r.amountMinor : -r.amountMinor) / 100,
+				(r.typeValue === 'income' ? r.amountMinor : -r.amountMinor) / 100,
 				(balances.get(r.id) ?? 0) / 100,
 				r.receiptPhotoUrl ? t('yes') : '',
 			]);
 		downloadCsv(
-			data?.vault.name ?? 'kasa',
+			data?.vault.name ?? 'vault',
 			[
 				t('kasaColDate'),
 				t('kasaColType'),
@@ -140,11 +141,11 @@ export function useVaultLedger({ teamId, onChanged, embedded = false, vaults }: 
 			.reverse()
 			.map(
 				(r) =>
-					`<tr><td>${dateFmt(r.date)}</td><td>${r.typeValue === 'gelir' ? t('kasaIncome') : t('kasaExpense')}</td><td>${esc(r.category)}</td><td>${esc(r.description)}${r.transferId && r.counterpartVaultName ? ` <i>(${r.typeValue === 'gelir' ? t('kasaSource') : t('kasaTarget')}: ${esc(r.counterpartVaultName)})</i>` : ''}</td><td>${esc(r.recorderNameSurname ?? '')}</td><td class="n">${r.typeValue === 'gelir' ? '' : '−'}${formatMinor(r.amountMinor)}</td><td class="n">${formatMinor(balances.get(r.id) ?? 0)}</td></tr>`
+					`<tr><td>${dateFmt(r.date)}</td><td>${r.typeValue === 'income' ? t('kasaIncome') : t('kasaExpense')}</td><td>${esc(r.category)}</td><td>${esc(r.description)}${r.transferId && r.counterpartVaultName ? ` <i>(${r.typeValue === 'income' ? t('kasaSource') : t('kasaTarget')}: ${esc(r.counterpartVaultName)})</i>` : ''}</td><td>${esc(r.recorderNameSurname ?? '')}</td><td class="n">${r.typeValue === 'income' ? '' : '−'}${formatMinor(r.amountMinor)}</td><td class="n">${formatMinor(balances.get(r.id) ?? 0)}</td></tr>`
 			)
 			.join('');
 		const cats = distribution
-			.map((d) => `<tr><td>${esc(d.category)}</td><td class="n">${formatMinor(d.amountMinor)}</td><td class="n">%${Math.round(d.ratio * 100)}</td></tr>`)
+			.map((d) => `<tr><td>${esc(categoryLabel(t, d.category))}</td><td class="n">${formatMinor(d.amountMinor)}</td><td class="n">%${Math.round(d.ratio * 100)}</td></tr>`)
 			.join('');
 		const scope = anyFilter
 			? fill(t('kasaPrintFilteredScope'), { filtered: filtered.length, total: records.length })
@@ -173,7 +174,7 @@ export function useVaultLedger({ teamId, onChanged, embedded = false, vaults }: 
 	);
 
 	const clearFilter = () => {
-		setType('hepsi');
+		setType('all');
 		setCategory('');
 		setMonth('');
 		setSearch('');

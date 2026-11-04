@@ -57,18 +57,18 @@ export async function getPublicIdentity(): Promise<PublicIdentity> {
 		`SELECT key, value FROM system_settings WHERE key = ANY($1)`,
 		[
 			[
-				'kulup_adi',
+				'club_name',
 				'site_short_name',
 				'site_description_tr',
 				'site_description_en',
-				'kulup_domain',
+				'club_domain',
 				'site_icon',
 				'site_brand_version',
 			],
 		]
 	);
 	const map = Object.fromEntries(res.rows.map((row) => [String(row.key), String(row.value)]));
-	const siteName = map.club_Name?.trim() || 'Orbit Community';
+	const siteName = map.club_name?.trim() || 'Orbit Community';
 	const storedIcon = map.site_icon?.trim() || null;
 	const iconName = customImageNameFromUrl(storedIcon);
 	const iconUrl =

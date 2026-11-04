@@ -5,11 +5,11 @@
  */
 
 /** The folders of the Mail app. `gonderilen` is a view of what the member wrote, not a place to file things. */
-export const MAIL_FOLDERS = ['gelen', 'gonderilen', 'arsiv', 'cop'] as const;
+export const MAIL_FOLDERS = ['inbox', 'sent', 'archived', 'trash'] as const;
 export type MailFolder = (typeof MAIL_FOLDERS)[number];
 
 /** Where a member has filed a conversation (stored per member). */
-export type MailStorage = 'gelen' | 'gonderilen' | 'arsiv' | 'cop';
+export type MailStorage = 'inbox' | 'sent' | 'archived' | 'trash';
 
 export const MAIL_SUBJECT_MAX = 120;
 export const MAIL_BODY_MAX = 10_000;
@@ -23,7 +23,7 @@ export const MAIL_SEARCH_MAX = 64;
 export const MAIL_PER_MINUTE_LIMIT = 20;
 
 /** What the conversation endpoint's PATCH can do. */
-export const MAIL_ACTIONS = ['okundu', 'okunmadi', 'arsivle', 'gelene', 'cope', 'sil'] as const;
+export const MAIL_ACTIONS = ['read', 'unread', 'archive', 'restore', 'trash', 'delete'] as const;
 export type MailAction = (typeof MAIL_ACTIONS)[number];
 
 export interface MailPerson {
@@ -64,8 +64,8 @@ export interface MailMessage {
 	sender: MailPerson;
 	body: string;
 	creation: number;
-	okundu: boolean;
-	myMi: boolean;
+	read: boolean;
+	isMine: boolean;
 }
 
 export interface MailConversation {
@@ -81,7 +81,7 @@ export interface MailSkipped {
 	id: string;
 	name: string;
 	/** `role`: the member's role does not open Mail. `pasif`: no longer an active member. */
-	reason: 'role' | 'pasif';
+	reason: 'role' | 'inactive';
 }
 
 export interface MailSendResult {

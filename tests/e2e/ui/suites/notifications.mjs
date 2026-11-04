@@ -50,13 +50,13 @@ export default async function suite(t) {
 	const stamp = Date.now().toString(36);
 
 	// --- veri: haber (önemli + normal), yakın etkinlik, ege'ye görev, bekleyen başvuru ---
-	const news = must(await admin.post('/api/haberler', { title: `Bildirim testi haberi ${stamp}`, content: 'Bildirim paketi için.', category: 'genel', publishStatus: 'yayinda' }), 'haber');
+	const news = must(await admin.post('/api/haberler', { title: `Bildirim testi haberi ${stamp}`, content: 'Bildirim paketi için.', category: 'general', publishStatus: 'published' }), 'news');
 	t.cleanup(() => admin.del(`/api/haberler?id=${news.id}`));
-	const pinned = must(await admin.post('/api/haberler', { title: `Önemli duyuru ${stamp}`, content: 'Sabitlenen duyuru.', category: 'genel', publishStatus: 'yayinda', importantMi: true }), 'önemli haber');
+	const pinned = must(await admin.post('/api/haberler', { title: `Önemli duyuru ${stamp}`, content: 'Sabitlenen duyuru.', category: 'general', publishStatus: 'published', isImportant: true }), 'önemli haber');
 	t.cleanup(() => admin.del(`/api/haberler?id=${pinned.id}`));
 
 	const start = Date.now() + 2 * 3600_000;
-	const event = must(await admin.post('/api/etkinlikler', { action: 'createEvent', title: `Bildirim etkinliği ${stamp}`, description: 'Bildirim paketi', typeValue: 'atolye', location: 'D-101', start: start, end: start + 3600_000, capacity: 10, status: 'yayinda' }), 'etkinlik');
+	const event = must(await admin.post('/api/etkinlikler', { action: 'createEvent', title: `Bildirim etkinliği ${stamp}`, description: 'Bildirim paketi', typeValue: 'workshop', location: 'D-101', start: start, end: start + 3600_000, capacity: 10, status: 'published' }), 'etkinlik');
 	t.cleanup(() => admin.post('/api/etkinlikler', { action: 'deleteEvent', eventId: event.id }));
 
 	const team = fx.content.team.team ?? fx.content.team;
@@ -77,7 +77,7 @@ export default async function suite(t) {
 
 	await t.step('API: her rol yalnız kendi uygulamalarının bildirimini alır', async () => {
 		const feed = async (key) => must(await (await t.api(key)).get('/api/bildirimler'), `bildirimler ${key}`).items.map((i) => i.id);
-		const reader = await feed('okur');
+		const reader = await feed('reader');
 		t.includes(reader, ids.news, 'okur: haber bildirimi var');
 		for (const k of ['event', 'task', 'approval']) t.excludes(reader, ids[k], `okur: ${k} bildirimi yok`);
 		const can = await feed('can');
@@ -117,7 +117,7 @@ export default async function suite(t) {
 		await closePanel(page);
 
 		// Yeni bir haber: yeniden yüklemeden sonra sayaç bir artar (son bakış tarayıcıda saklı).
-		const late = must(await admin.post('/api/haberler', { title: `Sonradan gelen ${stamp}`, content: 'Yeni.', category: 'genel', publishStatus: 'yayinda' }), 'ikinci haber');
+		const late = must(await admin.post('/api/haberler', { title: `Sonradan gelen ${stamp}`, content: 'Yeni.', category: 'general', publishStatus: 'published' }), 'ikinci haber');
 		t.cleanup(() => admin.del(`/api/haberler?id=${late.id}`));
 		await page.reload({ waitUntil: 'domcontentloaded' });
 		await page.locator('[data-notification-toggle]').waitFor();
@@ -153,7 +153,7 @@ export default async function suite(t) {
 	});
 
 	await t.step('okur (Sadece Haberler): yalnız haber bildirimleri; etkinlik/görev/başvuru yok', async () => {
-		const { page } = await t.open('okur');
+		const { page } = await t.open('reader');
 		await openPanel(page);
 		const list = await rows(page);
 		t.check(list.length > 0, 'okur panelinde satır var');

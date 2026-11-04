@@ -263,7 +263,7 @@ export async function handleSetupSubmission(request: Request) {
 			);
 
 			const dbSettings: Record<string, string> = {
-				club_Name: communityName,
+				club_name: communityName,
 				club_domain: domain,
 				university: studioName,
 				organization_archetype: archetype,
@@ -311,7 +311,7 @@ export async function handleSetupSubmission(request: Request) {
 		try {
 			await getPgPool().query(
 				`INSERT INTO chat_rooms (id, room_type, team_id, name, created_at)
-				 VALUES ('oda_genel', 'genel', NULL, 'Orbit General Chat', $1)
+				 VALUES ('room_general', 'general', NULL, 'Orbit General Chat', $1)
 				 ON CONFLICT (id) DO UPDATE SET name = 'Orbit General Chat'`,
 				[Date.now()]
 			);

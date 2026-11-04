@@ -224,7 +224,7 @@ async function bootstrapFirstAdmin(client: PoolClient): Promise<void> {
 	const { email, password, firstName, lastName } = env;
 	await client.query(
 		`INSERT INTO users (id, first_name, last_name, email, password_hash, handle, department, grade, role_id, avatar_url, bio, xp, status, created_at)
-		 VALUES ($1, $2, $3, $4, $5, NULL, 'Management', 1, $6, NULL, '', 0, 'aktif', $7)
+		 VALUES ($1, $2, $3, $4, $5, NULL, 'Management', 1, $6, NULL, '', 0, 'active', $7)
 		 ON CONFLICT (email) DO NOTHING`,
 		[randomUUID(), firstName, lastName, email, await bcrypt.hash(password, 12), ADMIN_ROLE_ID, Date.now()]
 	);
@@ -309,7 +309,7 @@ export async function setupFirstAdmin(params: {
 		const lName = (params.lastName ?? params.surname ?? '').trim();
 		await client.query(
 			`INSERT INTO users (id, first_name, last_name, email, password_hash, handle, department, grade, role_id, avatar_url, bio, xp, status, created_at)
-			 VALUES ($1, $2, $3, $4, $5, NULL, 'Management', 1, $6, NULL, '', 0, 'aktif', $7)`,
+			 VALUES ($1, $2, $3, $4, $5, NULL, 'Management', 1, $6, NULL, '', 0, 'active', $7)`,
 			[id, fName, lName, email, passwordHash, ADMIN_ROLE_ID, now]
 		);
 		const userRes = await client.query('SELECT * FROM users WHERE id = $1', [id]);
@@ -355,12 +355,12 @@ export async function ensurePostgresInit(): Promise<void> {
 			// community. Reconcile the process config once the database is ready.
 			try {
 				const identityRes = await client.query(
-					"SELECT key, value FROM system_settings WHERE key IN ('kulup_adi', 'kulup_domain')"
+					"SELECT key, value FROM system_settings WHERE key IN ('club_name', 'club_domain')"
 				);
 				const identity = Object.fromEntries(
 					identityRes.rows.map((row) => [String(row.key), String(row.value ?? '').trim()])
 				);
-				const name = identity.club_Name || CONFIG.clubPreset.name;
+				const name = identity.club_name || CONFIG.clubPreset.name;
 				const domain = identity.club_domain || CONFIG.clubPreset.domain;
 				if (name !== CONFIG.clubPreset.name || domain !== CONFIG.clubPreset.domain) {
 					CONFIG.clubPreset.name = name;

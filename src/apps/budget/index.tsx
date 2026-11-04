@@ -117,7 +117,7 @@ export function BudgetApp() {
 								{active.name}
 							</div>
 							<VaultPanel
-								key={active.teamId ?? 'genel'}
+								key={active.teamId ?? 'general'}
 								teamId={active.teamId}
 								onChanged={refetch}
 								vaults={vaults}

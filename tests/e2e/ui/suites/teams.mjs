@@ -38,7 +38,7 @@ export default async function suite(t) {
 		await toast(ap, 'Yeni takım kuruldu.');
 		appTeam = (await admin.get('/api/takimlar')).json.find((tm) => tm.name === name);
 		t.cleanup(() => admin.post('/api/takimlar', { action: 'deleteTeam', teamId: appTeam.id }));
-		t.eq(appTeam?.participationType, 'onayli', 'katılım: başvuru ile');
+		t.eq(appTeam?.participationType, 'approval', 'katılım: başvuru ile');
 		t.eq(appTeam?.capacity, 3, 'kontenjan 3');
 		t.eq(appTeam?.category, 'Robotik & Gömülü', 'kategori');
 		t.eq(appTeam?.leadId, captain.id, 'kaptan');
@@ -62,7 +62,7 @@ export default async function suite(t) {
 			await toast(page, 'Başvurunuz takım kaptanına iletildi.');
 			await card(win, appTeam.id).getByText('Başvurun bekliyor').waitFor();
 			t.eq((await statusOf(appTeam.id, deniz.id)) ?? null, null, 'başvuru kadroda değil');
-			t.eq((await readTeam(denizApi, appTeam.id)).myMyStatus, 'basvurdu', 'durum: başvurdu');
+			t.eq((await readTeam(denizApi, appTeam.id)).myMyStatus, 'applied', 'durum: başvurdu');
 			t.eq((await denizApi.post('/api/takimlar', { action: 'join', teamId: appTeam.id })).status, 409, 'ikinci başvuru 409');
 			t.eq((await readTeam(denizApi, appTeam.id)).applications, [], 'üye başvuru listesini görmüyor');
 			await card(win, appTeam.id).getByRole('button', { name: 'Başvuruyu geri çek' }).click();
@@ -83,7 +83,7 @@ export default async function suite(t) {
 		t.check(await denizApp.getByText('Yeniden başvuruyorum.').count() === 1, 'başvuru notu görünüyor');
 		await denizApp.getByRole('button', { name: 'Kabul et' }).click();
 		await toast(page, 'Başvuru kabul edildi.');
-		t.eq((await statusOf(appTeam.id, deniz.id))?.status, 'aktif', 'kabul edilen aktif üye');
+		t.eq((await statusOf(appTeam.id, deniz.id))?.status, 'active', 'kabul edilen aktif üye');
 		await win.locator(`[data-applicant-id="${ece.id}"]`).getByRole('button', { name: 'Reddet' }).click();
 		await answerDialog(page);
 		await toast(page, 'Başvuru reddedildi.');
@@ -123,7 +123,7 @@ export default async function suite(t) {
 		await toast(page, 'Takım güncellendi.');
 		const tm = await readTeam(admin, appTeam.id);
 		t.eq(tm.capacity, 2, 'kontenjan 2');
-		t.eq(tm.participationType, 'acik', 'katılım açık');
+		t.eq(tm.participationType, 'open', 'katılım açık');
 		t.eq((await capApi.post('/api/takimlar', { action: 'updateTeam', teamId: appTeam.id, capacity: 1 })).status, 400, 'aktif üyelerin altına düşürülemez');
 		t.eq((await capApi.post('/api/takimlar', { action: 'updateTeam', teamId: appTeam.id, name: 'Yeni ad' })).status, 403, 'kaptan adı değiştiremez');
 		t.eq((await capApi.post('/api/takimlar', { action: 'updateTeam', teamId: appTeam.id, leadId: deniz.id })).status, 403, 'kaptan kaptanlığı kendi devredemez');
@@ -149,7 +149,7 @@ export default async function suite(t) {
 		const tm = await readTeam(admin, appTeam.id);
 		t.eq(tm.leadId, deniz.id, 'yeni kaptan');
 		t.eq(tm.members.find((u) => u.userId === deniz.id)?.teamRole, 'Takım Kaptanı', 'yeni kaptanın unvanı');
-		t.eq(tm.members.find((u) => u.userId === captain.id)?.status, 'aktif', 'eski kaptan takımda');
+		t.eq(tm.members.find((u) => u.userId === captain.id)?.status, 'active', 'eski kaptan takımda');
 		t.check(tm.members.find((u) => u.userId === captain.id)?.teamRole !== 'Takım Kaptanı', 'eski kaptanın unvanı değişti');
 		t.eq((await readTeam(capApi, appTeam.id)).permissions.manage, false, 'eski kaptanın yönetim yetkisi kalktı');
 		t.eq((await readTeam(denizApi, appTeam.id)).permissions.manage, true, 'yeni kaptan yönetiyor');
@@ -191,7 +191,7 @@ export default async function suite(t) {
 
 	await t.step('askıya alınan takım üye almaz; yönetim takımı siler', async () => {
 		const paused = await makeTeam(t, admin, { label: 'Askida' });
-		await admin.post('/api/takimlar', { action: 'updateTeam', teamId: paused.id, status: 'askida' });
+		await admin.post('/api/takimlar', { action: 'updateTeam', teamId: paused.id, status: 'suspended' });
 		t.eq((await denizApi.post('/api/takimlar', { action: 'join', teamId: paused.id })).status, 409, 'askıdaki takıma katılım 409');
 		// The list is read once when the app opens: reload to see the paused team.
 		await ap.reload();
@@ -213,7 +213,7 @@ export default async function suite(t) {
 		const win = await openWide(page, 'teams');
 		t.eq(await win.getByRole('button', { name: 'Yeni Takım' }).count(), 0, 'üyede "Yeni Takım" yok');
 		t.eq(await win.getByRole('button', { name: /Takımı sil/ }).count(), 0, 'üyede silme düğmesi yok');
-		const reader = await t.api('okur');
+		const reader = await t.api('reader');
 		t.eq((await reader.post('/api/takimlar', { action: 'join', teamId: appTeam.id })).status, 403, '"Sadece Haberler": katılım 403');
 	});
 }

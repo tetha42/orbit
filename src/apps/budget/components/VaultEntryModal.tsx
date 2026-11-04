@@ -16,6 +16,7 @@ import { useNow } from '@/lib/client/useSheet';
 import { compressImageToWebp } from '@/lib/client/imageCompress';
 import { fill } from '@/lib/text';
 import { orbitBus } from '@/core/ipc/orbitBus';
+import { categoryLabel } from '../categoryLabel';
 
 interface VaultEntryModalProps {
 	teamId: string | null;
@@ -38,8 +39,8 @@ export function VaultEntryModal({
 	const now = useNow(60_000);
 	const today = toDateInput(now);
 
-	const [typeValue, setType] = useState<'gelir' | 'gider'>(registration?.typeValue ?? 'gider');
-	const [category, setCategory] = useState<string>(registration?.category ?? t('kasaCatHardware'));
+	const [typeValue, setType] = useState<'income' | 'expense'>(registration?.typeValue ?? 'expense');
+	const [category, setCategory] = useState<string>(registration?.category ?? 'hardware');
 	const [amount, setAmount] = useState('');
 	const [date, setDate] = useState(() => toDateInput(registration?.date ?? now));
 	const [description, setDescription] = useState(registration?.description ?? '');
@@ -49,7 +50,7 @@ export function VaultEntryModal({
 	const [busy, setBusy] = useState(false);
 
 	const minor = editing ? registration.amountMinor : parseAmount(amount);
-	const overdraft = !editing && typeValue === 'gider' && minor !== null && minor > netBalanceMinor;
+	const overdraft = !editing && typeValue === 'expense' && minor !== null && minor > netBalanceMinor;
 
 	const upload = async (file: File | undefined) => {
 		if (!file) return;
@@ -105,7 +106,7 @@ export function VaultEntryModal({
 			orbitBus.emit('budget:record_created', {
 				recordId: String((res.data as Record<string, unknown>)?.id || ''),
 				amount: minor ?? 0,
-				type: typeValue as 'gelir' | 'gider',
+				type: typeValue as 'income' | 'expense',
 				teamId: teamId || undefined,
 			});
 		}
@@ -133,7 +134,7 @@ export function VaultEntryModal({
 		>
 			{!editing ? (
 				<div className={ui.segmented} role="radiogroup" aria-label={t('budgetColType')}>
-					{(['gider', 'gelir'] as const).map((typeOpt) => (
+					{(['expense', 'income'] as const).map((typeOpt) => (
 						<button
 							key={typeOpt}
 							type="button"
@@ -142,14 +143,14 @@ export function VaultEntryModal({
 							className={`${ui.segment} ${typeValue === typeOpt ? ui.segmentActive : ''}`}
 							onClick={() => setType(typeOpt)}
 						>
-							{typeOpt === 'gider' ? t('kasaExpenseOption') : t('kasaIncomeOption')}
+							{typeOpt === 'expense' ? t('kasaExpenseOption') : t('kasaIncomeOption')}
 						</button>
 					))}
 				</div>
 			) : (
 				<div className={k.balanceHint}>
-					<span className={`${k.tag} ${registration.typeValue === 'gelir' ? k.tagIn : k.tagOut}`}>
-						{registration.typeValue === 'gelir' ? t('kasaTagIncome') : t('kasaTagExpense')}
+					<span className={`${k.tag} ${registration.typeValue === 'income' ? k.tagIn : k.tagOut}`}>
+						{registration.typeValue === 'income' ? t('kasaTagIncome') : t('kasaTagExpense')}
 					</span>{' '}
 					<strong>{formatMinor(registration.amountMinor)} ₺</strong> — {t('kasaTypeAmountLockedNotice')}
 				</div>
@@ -159,7 +160,7 @@ export function VaultEntryModal({
 				<label className={ui.field}>
 					<span className={ui.fieldLabel}>{t('budgetColCategory')}</span>
 					{transfer ? (
-						<input className={ui.input} value={registration.category} disabled />
+						<input className={ui.input} value={categoryLabel(t, registration.category)} disabled />
 					) : (
 						<select
 							className={ui.select}
@@ -169,7 +170,7 @@ export function VaultEntryModal({
 						>
 							{BUDGET_CATEGORIES.map((c) => (
 								<option key={c} value={c}>
-									{c}
+									{categoryLabel(t, c)}
 								</option>
 							))}
 						</select>
@@ -211,7 +212,7 @@ export function VaultEntryModal({
 							{' '}
 							{t('kasaAfterEntry')}{' '}
 							<strong className={overdraft ? k.neg : undefined}>
-								{formatMinor(netBalanceMinor + (typeValue === 'gelir' ? minor : -minor))} ₺
+								{formatMinor(netBalanceMinor + (typeValue === 'income' ? minor : -minor))} ₺
 							</strong>
 						</>
 					)}

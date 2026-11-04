@@ -33,9 +33,9 @@ export function ProjectDetailModal({ project, currentUserId, manage, onClose, on
 	const locale = language === 'en' ? 'en-GB' : 'tr-TR';
 
 	const owner = project.creatorId === currentUserId;
-	const canEdit = manage || (owner && project.status !== 'arsiv');
-	const canDelete = manage || (owner && project.status === 'oneri');
-	const statusKey = project.status === 'oneri' ? 'pjStatusOneri' : project.status === 'arsiv' ? 'pjStatusArsiv' : 'pjStatusYayinda';
+	const canEdit = manage || (owner && project.status !== 'archived');
+	const canDelete = manage || (owner && project.status === 'proposed');
+	const statusKey = project.status === 'proposed' ? 'pjStatusOneri' : project.status === 'archived' ? 'pjStatusArsiv' : 'pjStatusYayinda';
 
 	const remove = async () => {
 		confirmOpen.current = true;
@@ -93,12 +93,12 @@ export function ProjectDetailModal({ project, currentUserId, manage, onClose, on
 								<Pencil size={14} /> {t('pjActEdit')}
 							</button>
 						)}
-						{manage && project.status === 'oneri' && (
-							<button type="button" className={ui.primaryBtn} style={{ height: 30 }} onClick={() => onPatch({ status: 'yayinda' }, t('pjPublished'))}>
+						{manage && project.status === 'proposed' && (
+							<button type="button" className={ui.primaryBtn} style={{ height: 30 }} onClick={() => onPatch({ status: 'published' }, t('pjPublished'))}>
 								<Send size={14} /> {t('pjActPublish')}
 							</button>
 						)}
-						{manage && project.status === 'yayinda' && (
+						{manage && project.status === 'published' && (
 							<>
 								<button
 									type="button"
@@ -108,16 +108,16 @@ export function ProjectDetailModal({ project, currentUserId, manage, onClose, on
 									{Number(project.oneLeaving) === 1 ? <PinOff size={14} /> : <Pin size={14} />}
 									{Number(project.oneLeaving) === 1 ? t('pjActUnpin') : t('pjActPin')}
 								</button>
-								<button type="button" className={ui.btn} onClick={() => onPatch({ status: 'oneri' }, t('pjSaved'))}>
+								<button type="button" className={ui.btn} onClick={() => onPatch({ status: 'proposed' }, t('pjSaved'))}>
 									<Undo2 size={14} /> {t('pjActUnpublish')}
 								</button>
-								<button type="button" className={ui.btn} onClick={() => onPatch({ status: 'arsiv' }, t('pjSaved'))}>
+								<button type="button" className={ui.btn} onClick={() => onPatch({ status: 'archived' }, t('pjSaved'))}>
 									<Archive size={14} /> {t('pjActArchive')}
 								</button>
 							</>
 						)}
-						{manage && project.status === 'arsiv' && (
-							<button type="button" className={ui.btn} onClick={() => onPatch({ status: 'yayinda' }, t('pjSaved'))}>
+						{manage && project.status === 'archived' && (
+							<button type="button" className={ui.btn} onClick={() => onPatch({ status: 'published' }, t('pjSaved'))}>
 								<ArchiveRestore size={14} /> {t('pjActRestore')}
 							</button>
 						)}
@@ -130,8 +130,8 @@ export function ProjectDetailModal({ project, currentUserId, manage, onClose, on
 				) : undefined
 			}
 		>
-			{project.status === 'oneri' && <div className={styles.note}>{t('pjProposalNote')}</div>}
-			{project.status === 'arsiv' && <div className={styles.note}>{t('pjArchiveNote')}</div>}
+			{project.status === 'proposed' && <div className={styles.note}>{t('pjProposalNote')}</div>}
+			{project.status === 'archived' && <div className={styles.note}>{t('pjArchiveNote')}</div>}
 
 			<div className={styles.detailHero}>
 				<p style={{ margin: 0, fontSize: 14, lineHeight: 1.55 }}>{project.summary}</p>
@@ -150,14 +150,14 @@ export function ProjectDetailModal({ project, currentUserId, manage, onClose, on
 					)}
 					<button
 						type="button"
-						className={`${styles.starBtn} ${project.iLikedMi ? styles.starBtnOn : ''}`}
+						className={`${styles.starBtn} ${project.likedByMe ? styles.starBtnOn : ''}`}
 						style={{ height: 34 }}
-						disabled={project.status !== 'yayinda'}
-						aria-pressed={!!project.iLikedMi}
+						disabled={project.status !== 'published'}
+						aria-pressed={!!project.likedByMe}
 						onClick={onStar}
-						title={project.iLikedMi ? t('pjUnstar') : t('pjStar')}
+						title={project.likedByMe ? t('pjUnstar') : t('pjStar')}
 					>
-						<Star size={15} fill={project.iLikedMi ? 'currentColor' : 'none'} />
+						<Star size={15} fill={project.likedByMe ? 'currentColor' : 'none'} />
 						{project.likeCount ?? 0}
 					</button>
 				</div>

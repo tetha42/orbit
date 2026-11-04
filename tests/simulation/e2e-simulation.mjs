@@ -83,7 +83,7 @@ async function run() {
 			const adminId = crypto.randomUUID();
 			await client.query(
 				`INSERT INTO users (id, first_name, last_name, email, password_hash, handle, department, grade, role_id, status, xp, created_at)
-				 VALUES ($1, 'Orbit', 'Administrator', 'admin@orbit.local', '$2b$12$e2eSimulationDummyHash2026', 'admin', 'Architecture', 4, 'role_admin', 'aktif', 100, $2)`,
+				 VALUES ($1, 'Orbit', 'Administrator', 'admin@orbit.local', '$2b$12$e2eSimulationDummyHash2026', 'admin', 'Architecture', 4, 'role_admin', 'active', 100, $2)`,
 				[adminId, Date.now()]
 			);
 			adminRes = await client.query(
@@ -111,7 +111,7 @@ async function run() {
 			isTestTeamCreated = true;
 			await client.query(
 				`INSERT INTO teams (id, name, slug, description, category, lead_id, capacity, repo_url, status, created_at)
-				 VALUES ($1, $2, $3, $4, $5, $6, 10, 'https://github.com/tetha42/orbit', 'aktif', $7)`,
+				 VALUES ($1, $2, $3, $4, $5, $6, 10, 'https://github.com/tetha42/orbit', 'active', $7)`,
 				[
 					teamId,
 					'Core Engineering Team (E2E Test)',
@@ -128,7 +128,7 @@ async function run() {
 		const taskId = `test-task-${Date.now()}`;
 		await client.query(
 			`INSERT INTO team_tasks (id, team_id, title, description, status, priority, assignee_id, due_at, created_at, position, updated_at, xp_awarded)
-			 VALUES ($1, $2, $3, $4, 'yapilacak', 'yuksek', $5, $6, $7, 1, $7, 0)`,
+			 VALUES ($1, $2, $3, $4, 'todo', 'high', $5, $6, $7, 1, $7, 0)`,
 			[
 				taskId,
 				teamId,
@@ -149,7 +149,7 @@ async function run() {
 
 		// Mark task completed and xp_awarded = 1
 		await client.query(
-			`UPDATE team_tasks SET status = 'tamamlandi', completed_at = $1, xp_awarded = 1, updated_at = $1 WHERE id = $2`,
+			`UPDATE team_tasks SET status = 'done', completed_at = $1, xp_awarded = 1, updated_at = $1 WHERE id = $2`,
 			[Date.now(), taskId]
 		);
 		await client.query(`UPDATE users SET xp = xp + 40 WHERE id = $1`, [admin.id]);
@@ -169,7 +169,7 @@ async function run() {
 		const decisionNo = Math.floor(Math.random() * 90000) + 10000;
 		await client.query(
 			`INSERT INTO decisions (id, reference_no, title, agenda, content, date, decision_type, is_public, is_locked, created_by, created_at)
-			 VALUES ($1, $2, $3, $4, $5, $6, 'karar', 1, 0, $7, $6)`,
+			 VALUES ($1, $2, $3, $4, $5, $6, 'resolution', 1, 0, $7, $6)`,
 			[
 				docId,
 				decisionNo,

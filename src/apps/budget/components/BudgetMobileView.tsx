@@ -26,6 +26,7 @@ import { VaultInsights } from './VaultInsights';
 import { VaultEntryModal } from './VaultEntryModal';
 import { TransferModal } from './TransferModal';
 import s from './BudgetMobile.module.css';
+import { categoryLabel } from '../categoryLabel';
 
 export interface BudgetMobileViewProps {
 	vaults: VaultSummary[];
@@ -131,23 +132,23 @@ export function BudgetMobileView({
 			<div className={s.chipRow}>
 				<button
 					type="button"
-					className={`${s.chip} ${ledger.typeValue === 'hepsi' ? s.chipActive : ''}`}
-					onClick={() => ledger.setType('hepsi')}
+					className={`${s.chip} ${ledger.typeValue === 'all' ? s.chipActive : ''}`}
+					onClick={() => ledger.setType('all')}
 				>
 					{t('kasaFilterAll')} ({ledger.records.length})
 				</button>
 				<button
 					type="button"
-					className={`${s.chip} ${ledger.typeValue === 'gelir' ? s.chipActive : ''}`}
-					onClick={() => ledger.setType('gelir')}
+					className={`${s.chip} ${ledger.typeValue === 'income' ? s.chipActive : ''}`}
+					onClick={() => ledger.setType('income')}
 				>
 					<TrendingUp size={13} color="#34c759" />
 					<span>{t('kasaFilterIncome')}</span>
 				</button>
 				<button
 					type="button"
-					className={`${s.chip} ${ledger.typeValue === 'gider' ? s.chipActive : ''}`}
-					onClick={() => ledger.setType('gider')}
+					className={`${s.chip} ${ledger.typeValue === 'expense' ? s.chipActive : ''}`}
+					onClick={() => ledger.setType('expense')}
 				>
 					<TrendingDown size={13} color="#ff453a" />
 					<span>{t('kasaFilterExpense')}</span>
@@ -166,7 +167,7 @@ export function BudgetMobileView({
 					</div>
 				) : (
 					ledger.filtered.map((r) => {
-						const isIncome = r.typeValue === 'gelir';
+						const isIncome = r.typeValue === 'income';
 						return (
 							<div
 								key={r.id}
@@ -182,7 +183,7 @@ export function BudgetMobileView({
 										<div className={s.txSub}>
 											<span>{formatDate(r.date)}</span>
 											<span>•</span>
-											<span>{r.category}</span>
+											<span>{categoryLabel(t, r.category)}</span>
 											{r.receiptPhotoUrl && (
 												<>
 													<span>•</span>
@@ -246,7 +247,7 @@ export function BudgetMobileView({
 					const isCurrent = active?.teamId === k.teamId;
 					return (
 						<div
-							key={k.teamId ?? 'genel'}
+							key={k.teamId ?? 'general'}
 							className={`${s.walletCard} ${isCurrent ? s.walletCardActive : ''}`}
 							onClick={() => onSelect(k.teamId)}
 						>
@@ -298,7 +299,7 @@ export function BudgetMobileView({
 						const isCurrent = active?.teamId === k.teamId;
 						return (
 							<div
-								key={k.teamId ?? 'proje'}
+								key={k.teamId ?? 'project'}
 								className={`${s.walletCard} ${isCurrent ? s.walletCardActive : ''}`}
 								onClick={() => onSelect(k.teamId)}
 							>
@@ -440,10 +441,10 @@ export function BudgetMobileView({
 						<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'rgba(255, 255, 255, 0.04)', borderRadius: '12px' }}>
 							<div>
 								<div style={{ fontSize: '15px', fontWeight: 700 }}>{selectedRecord.description}</div>
-								<div style={{ fontSize: '12px', opacity: 0.6 }}>{selectedRecord.category} • {formatDate(selectedRecord.date)}</div>
+								<div style={{ fontSize: '12px', opacity: 0.6 }}>{categoryLabel(t, selectedRecord.category)} • {formatDate(selectedRecord.date)}</div>
 							</div>
-							<div style={{ fontSize: '18px', fontWeight: 800, color: selectedRecord.typeValue === 'gelir' ? '#34c759' : '#ffffff' }}>
-								{selectedRecord.typeValue === 'gelir' ? '+' : '-'}{tl(selectedRecord.amountMinor)}
+							<div style={{ fontSize: '18px', fontWeight: 800, color: selectedRecord.typeValue === 'income' ? '#34c759' : '#ffffff' }}>
+								{selectedRecord.typeValue === 'income' ? '+' : '-'}{tl(selectedRecord.amountMinor)}
 							</div>
 						</div>
 

@@ -9,7 +9,7 @@ const MIN = 60_000;
  * Creates an event starting `startMin` minutes from now and lasting `lengthMin`, and
  * removes it when the suite ends (check-ins first: an event with attendance cannot be deleted).
  */
-export async function makeEvent(t, admin, { label, startMin = 3 * 24 * 60, lengthMin = 120, capacity = 30, status = 'yayinda', typeValue = 'atolye' } = {}) {
+export async function makeEvent(t, admin, { label, startMin = 3 * 24 * 60, lengthMin = 120, capacity = 30, status = 'published', typeValue = 'workshop' } = {}) {
 	const now = Date.now();
 	const res = await admin.post('/api/etkinlikler', {
 		action: 'createEvent',

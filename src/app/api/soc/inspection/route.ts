@@ -11,7 +11,7 @@ import {
 } from '@/db/repositories/inspection.repo';
 
 export async function GET(request: Request) {
-	const auth = await requireApp(request, 'soc', 'kullan');
+	const auth = await requireApp(request, 'soc', 'use');
 	if (!auth.authorized) return auth.response;
 
 	const { searchParams } = new URL(request.url);
@@ -54,7 +54,7 @@ export async function GET(request: Request) {
 }
 
 async function handlePOST(request: Request) {
-	const auth = await requireApp(request, 'soc', 'kullan');
+	const auth = await requireApp(request, 'soc', 'use');
 	if (!auth.authorized) return auth.response;
 
 	const url = new URL(request.url);
@@ -76,7 +76,7 @@ async function handlePOST(request: Request) {
 		}
 
 		if (action === 'create_baseline') {
-			const isManager = canManage(auth.user.permission?.permissions, 'soc') || auth.user.roleId === 'rol_admin';
+			const isManager = canManage(auth.user.permission?.permissions, 'soc') || auth.user.roleId === 'role_admin';
 			if (!isManager) {
 				return NextResponse.json(
 					{ error: 'Bütünlük başlangıç profili (baseline) oluşturmak için yönetici yetkisi gereklidir.' },

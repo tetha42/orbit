@@ -35,7 +35,7 @@ function cashFilter(teamId: string | null): { sql: string; params: string[] } {
  * arrive together cannot both pass the balance check and overspend.
  */
 async function lockCashRegister(client: PoolClient, teamId: string | null): Promise<void> {
-	await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`kasa:${teamId ?? 'genel'}`]);
+	await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`kasa:${teamId ?? 'general'}`]);
 }
 
 /** Locks several kasas in one fixed order, so two allocations in opposite directions cannot deadlock. */
@@ -47,7 +47,7 @@ async function lockCashRegisters(client: PoolClient, vaults: (string | null)[]):
 async function cashNetCents(client: PoolClient, teamId: string | null): Promise<number> {
 	const filter = cashFilter(teamId);
 	const res = await client.query(
-		`SELECT COALESCE(SUM(CASE WHEN entry_type = 'gelir' THEN amount_minor ELSE -amount_minor END), 0) AS net
+		`SELECT COALESCE(SUM(CASE WHEN entry_type = 'income' THEN amount_minor ELSE -amount_minor END), 0) AS net
 		 FROM budget_records WHERE ${filter.sql}`,
 		filter.params
 	);
@@ -59,16 +59,16 @@ export async function getCashTotals(): Promise<CashTotals[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(`
 		SELECT team_id AS "teamId",
-		       COALESCE(SUM(CASE WHEN entry_type = 'gelir' THEN amount_minor ELSE 0 END), 0) AS gelir,
-		       COALESCE(SUM(CASE WHEN entry_type = 'gider' THEN amount_minor ELSE 0 END), 0) AS gider,
+		       COALESCE(SUM(CASE WHEN entry_type = 'income' THEN amount_minor ELSE 0 END), 0) AS income,
+		       COALESCE(SUM(CASE WHEN entry_type = 'expense' THEN amount_minor ELSE 0 END), 0) AS expense,
 		       COUNT(*)::int AS count
 		FROM budget_records
 		GROUP BY team_id
 	`);
 	return res.rows.map((r) => ({
 		teamId: (r.teamId as string | null) ?? null,
-		totalIncomeMinor: Number(r.gelir),
-		totalExpenseMinor: Number(r.gider),
+		totalIncomeMinor: Number(r.income),
+		totalExpenseMinor: Number(r.expense),
 		recordCount: Number(r.count),
 	}));
 }
@@ -86,9 +86,9 @@ export async function getBudgetRecords(teamId: string | null): Promise<BudgetRec
 		       b.amount_minor AS "amountMinor", b.description AS "description", b.receipt_url AS "receiptPhotoUrl",
 		       b.recorded_by AS "recorderId", b.team_id AS "teamId", b.created_at AS "creation",
 		       b.transfer_pair_id AS "transferId", b.updated_by AS "updaterId", b.updated_at AS "update",
-		       k.first_name || ' ' || k.last_name as "recorderNameSurname",
-		       g.first_name || ' ' || g.last_name as "updaterNameSurname",
-		       CASE WHEN o.id IS NULL THEN NULL ELSE COALESCE(t.name, 'Genel Kasa') END as "counterpartVaultName"
+		       k.first_name || ' ' || k.last_name AS "recorderNameSurname",
+		       g.first_name || ' ' || g.last_name AS "updaterNameSurname",
+		       CASE WHEN o.id IS NULL THEN NULL ELSE COALESCE(t.name, 'Genel Kasa') END AS "counterpartVaultName"
 		FROM budget_records b
 		LEFT JOIN users k ON b.recorded_by = k.id
 		LEFT JOIN users g ON b.updated_by = g.id
@@ -143,14 +143,14 @@ export async function addAllowanceTransfer(params: {
 		await lockCashRegisters(client, [params.sourceTeamId, params.targetTeamId]);
 		const net = await cashNetCents(client, params.sourceTeamId);
 		if (params.amountMinor > net) throw new InsufficientFundsError(net);
-		const insert = (typeValue: 'gelir' | 'gider', teamId: string | null, suffix: string) =>
+		const insert = (typeValue: 'income' | 'expense', teamId: string | null, suffix: string) =>
 			client.query(
 				`INSERT INTO budget_records (id, date, entry_type, category, amount_minor, description, receipt_url, recorded_by, team_id, created_at, transfer_pair_id)
 				 VALUES ($1, $2, $3, $4, $5, $6, NULL, $7, $8, $9, $10)`,
 				[`btc_${now}_${suffix}_${randomBytes(3).toString('hex')}`, date, typeValue, TRANSFER_CATEGORY, params.amountMinor, params.description.trim(), params.recorderId, teamId, now, transferId]
 			);
-		await insert('gider', params.sourceTeamId, 'out');
-		await insert('gelir', params.targetTeamId, 'in');
+		await insert('expense', params.sourceTeamId, 'out');
+		await insert('income', params.targetTeamId, 'in');
 	});
 	return { transferId };
 }
@@ -165,12 +165,12 @@ export async function updateBudgetRecord(
 	id: string,
 	changes: { description?: string; category?: BudgetCategory; date?: number; receiptPhotoUrl?: string | null },
 	updaterId: string
-): Promise<'ok' | 'yok' | 'aktarim'> {
+): Promise<'ok' | 'none' | 'transfer'> {
 	return withTransaction(async (client) => {
 		const found = await client.query('SELECT id, transfer_pair_id AS "transferId" FROM budget_records WHERE id = $1 FOR UPDATE', [id]);
 		const row = found.rows[0] as { id: string; transferId: string | null } | undefined;
-		if (!row) return 'yok';
-		if (row.transferId && (changes.category !== undefined || changes.receiptPhotoUrl !== undefined)) return 'aktarim';
+		if (!row) return 'none';
+		if (row.transferId && (changes.category !== undefined || changes.receiptPhotoUrl !== undefined)) return 'transfer';
 
 		const sets: string[] = [];
 		const values: unknown[] = [];
@@ -194,7 +194,7 @@ export async function updateBudgetRecord(
 }
 
 export async function createBudgetRecord(params: {
-	typeValue: 'gelir' | 'gider';
+	typeValue: 'income' | 'expense';
 	category: BudgetCategory;
 	amountMinor: number;
 	description: string;
@@ -224,7 +224,7 @@ export async function createBudgetRecord(params: {
 	// checking first and inserting afterwards let concurrent expenses overspend.
 	await withTransaction(async (client) => {
 		await lockCashRegister(client, teamId);
-		if (registration.typeValue === 'gider') {
+		if (registration.typeValue === 'expense') {
 			const net = await cashNetCents(client, teamId);
 			if (registration.amountMinor > net) throw new InsufficientFundsError(net);
 		}
@@ -266,7 +266,7 @@ export async function deleteBudgetRecord(id: string): Promise<boolean> {
 
 		// Removing income lowers that kasa's balance; refuse if expenses have already spent it.
 		for (const r of rows) {
-			if (r.typeValue !== 'gelir') continue;
+			if (r.typeValue !== 'income') continue;
 			const teamId = r.teamId ?? null;
 			const net = await cashNetCents(client, teamId);
 			if (net - Number(r.amountMinor) < 0) throw new InsufficientFundsError(net);

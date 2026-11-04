@@ -63,7 +63,7 @@ export function ProjectsToolbar({
 								}}
 							>
 								{x.label}
-								{x.id === 'oneri' && x.count > 0 && <span className={styles.tabBadge}>{x.count}</span>}
+								{x.id === 'proposed' && x.count > 0 && <span className={styles.tabBadge}>{x.count}</span>}
 							</button>
 						))}
 				</div>

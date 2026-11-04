@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
 const NO_CACHE = { 'Cache-Control': 'no-store' };
 
 export async function GET(request: Request) {
-	const auth = await requireApp(request, 'soc', 'kullan');
+	const auth = await requireApp(request, 'soc', 'use');
 	if (!auth.authorized) return auth.response;
 
 	const { searchParams } = new URL(request.url);
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 
 	// Health exposes SMTP host and database internals, and the client list exposes
 	// redirect URIs of integrated apps: both are for SoC managers only.
-	if ((action === 'health' || action === 'clients') && !can(auth.user, 'soc', 'yonet')) {
+	if ((action === 'health' || action === 'clients') && !can(auth.user, 'soc', 'manage')) {
 		return NextResponse.json(
 			{ error: 'Bu veriyi görüntülemek için SoC yönetim yetkisi gereklidir.' },
 			{ status: 403, headers: NO_CACHE }
@@ -129,7 +129,7 @@ export async function GET(request: Request) {
 					email: user.email,
 					handle: user.handle || user.studentNo,
 					studentNo: user.handle || user.studentNo,
-					roleName: user.permission.role?.name ?? user.permission.role?.name ?? 'No Role',
+					roleName: user.permission.role?.name ?? 'No Role',
 					admin: user.permission.admin,
 					totpEnabled: Number(user.totpEnabled) === 1,
 					status: user.status,
@@ -163,7 +163,7 @@ export async function GET(request: Request) {
 }
 
 async function handlePOST(request: Request) {
-	const auth = await requireApp(request, 'soc', 'yonet');
+	const auth = await requireApp(request, 'soc', 'manage');
 	if (!auth.authorized) return auth.response;
 
 	const body = await request.json().catch(() => ({}));
@@ -244,13 +244,13 @@ async function handlePOST(request: Request) {
 			idTokenPayload.email_verified = true;
 		}
 		if (scopesList.includes('roles')) {
-			idTokenPayload.roles = permission.role ? [permission.role.name || permission.role.name] : [];
+			idTokenPayload.roles = permission.role ? [permission.role.name] : [];
 			idTokenPayload.admin = Boolean(permission.admin);
 		}
 		if (scopesList.includes('academic')) {
 			idTokenPayload.student_no = user.handle || user.studentNo;
-			idTokenPayload.department = user.department || user.department;
-			idTokenPayload.class_year = user.grade || user.grade;
+			idTokenPayload.department = user.department;
+			idTokenPayload.class_year = user.grade;
 		}
 
 		const idToken = await signOAuthJwt(idTokenPayload as unknown as JwtPayload);

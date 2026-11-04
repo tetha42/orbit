@@ -81,9 +81,9 @@ export function ProjectCard({ project: p, locale, onOpen, onOpenTeam, onStar }: 
 						<Pin size={11} /> {t('pjFeatured')}
 					</span>
 				)}
-				{p.status !== 'yayinda' && (
+				{p.status !== 'published' && (
 					<span className={`${styles.pill} ${styles[`pill_${p.status}`]}`}>
-						{t(p.status === 'oneri' ? 'pjStatusOneri' : 'pjStatusArsiv')}
+						{t(p.status === 'proposed' ? 'pjStatusOneri' : 'pjStatusArsiv')}
 					</span>
 				)}
 				{p.teamId && p.teamName && (
@@ -145,13 +145,13 @@ export function ProjectCard({ project: p, locale, onOpen, onOpenTeam, onStar }: 
 				)}
 				<button
 					type="button"
-					className={`${styles.starBtn} ${p.iLikedMi ? styles.starBtnOn : ''}`}
-					disabled={p.status !== 'yayinda'}
-					aria-pressed={!!p.iLikedMi}
-					title={p.iLikedMi ? t('pjUnstar') : t('pjStar')}
+					className={`${styles.starBtn} ${p.likedByMe ? styles.starBtnOn : ''}`}
+					disabled={p.status !== 'published'}
+					aria-pressed={!!p.likedByMe}
+					title={p.likedByMe ? t('pjUnstar') : t('pjStar')}
 					onClick={() => onStar(p)}
 				>
-					<Star size={13} fill={p.iLikedMi ? 'currentColor' : 'none'} />
+					<Star size={13} fill={p.likedByMe ? 'currentColor' : 'none'} />
 					{p.likeCount ?? 0}
 				</button>
 			</div>

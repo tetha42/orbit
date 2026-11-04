@@ -40,7 +40,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
 	const auth = await verifyAuth(request);
 	if (!auth.authorized) return auth.response;
-	if (auth.user.status !== 'aktif') {
+	if (auth.user.status !== 'active') {
 		return NextResponse.json({ error: 'Yalnızca aktif hesaplar e-posta değiştirebilir.' }, { status: 403 });
 	}
 

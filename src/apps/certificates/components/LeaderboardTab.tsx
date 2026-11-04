@@ -80,7 +80,7 @@ export function LeaderboardTab({ topMembers, currentUserId }: LeaderboardTabProp
 										</div>
 									</td>
 									<td style={{ padding: '12px 16px', opacity: 0.8, fontSize: '12px' }}>
-										{member.department || member.department} ({fill(t('membersClassYear'), { year: member.grade || member.grade })})
+										{member.department} ({fill(t('membersClassYear'), { year: member.grade })})
 									</td>
 									<td style={{ padding: '12px 16px' }}>
 										<span style={{ padding: '3px 8px', borderRadius: '6px', background: 'rgba(255, 255, 255, 0.08)', fontSize: '11px' }}>

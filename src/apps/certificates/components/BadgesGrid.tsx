@@ -26,7 +26,7 @@ export function BadgesGrid() {
 	const list = badges({
 		xp: Number(data.user.xp) || 0,
 		team: data.summary.teams.length,
-		captain: data.summary.teams.some((tm) => tm.captainMi),
+		captain: data.summary.teams.some((tm) => tm.isCaptain),
 		attendedEvent: data.summary.attendedEvent,
 		completedTask: data.summary.completedTask,
 		certificate: data.summary.certificate,

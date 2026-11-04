@@ -27,15 +27,15 @@ export function TaskActivityHistory({ activity, members, when }: TaskActivityHis
 		const actor = a.actorNameSurname || t('kbSomeone');
 		const d = a.detail ?? {};
 		switch (a.typeValue) {
-			case 'olusturuldu':
+			case 'created':
 				return fill(t('kbActCreated'), { actor });
-			case 'tasindi':
+			case 'moved':
 				return fill(t('kbActMoved'), {
 					actor,
 					from: t(columnMeta(String(d.from) as TaskStatus).key),
 					to: t(columnMeta(String(d.to) as TaskStatus).key),
 				});
-			case 'duzenlendi': {
+			case 'edited': {
 				const names: Record<string, string> = {
 					title: t('kbFieldTitle'),
 					description: t('kbFieldDesc'),
@@ -50,13 +50,13 @@ export function TaskActivityHistory({ activity, members, when }: TaskActivityHis
 					.join(', ');
 				return fill(t('kbActEdited'), { actor, fields });
 			}
-			case 'atandi':
+			case 'assigned':
 				return d.to ? fill(t('kbActAssigned'), { actor, to: memberName(d.to) }) : fill(t('kbActUnassigned'), { actor });
-			case 'madde_eklendi':
+			case 'item_added':
 				return fill(t('kbActItemAdded'), { actor, text: String(d.text ?? '') });
-			case 'madde_tamamlandi':
+			case 'item_completed':
 				return fill(t('kbActItemDone'), { actor, text: String(d.text ?? '') });
-			case 'yorum':
+			case 'comment':
 				return fill(t('kbActComment'), { actor });
 			default:
 				return actor;

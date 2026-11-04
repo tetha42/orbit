@@ -83,7 +83,7 @@ export async function searchMailCandidates(userId: string, q: string, limit: num
 	}
 	const res = await getPgPool().query(
 		`SELECT id, first_name AS name, last_name AS surname, role_id AS "roleId" FROM users
-		 WHERE status = 'aktif' AND id <> $1 ${conditions.map((c) => `AND ${c}`).join(' ')}
+		 WHERE status = 'active' AND id <> $1 ${conditions.map((c) => `AND ${c}`).join(' ')}
 		 ORDER BY ${rank}first_name, last_name, id
 		 LIMIT $2`,
 		params
@@ -100,8 +100,8 @@ export async function getRecentMailThreads(userId: string, limit: number): Promi
 		 JOIN chat_rooms r ON r.id = me.room_id AND r.room_type = 'mail_thread'
 		 JOIN chat_messages m ON m.room_id = r.id
 		 JOIN chat_members o ON o.room_id = r.id AND o.user_id <> $1
-		 JOIN users x ON x.id = o.user_id AND x.status = 'aktif'
-		 WHERE me.user_id = $1 AND me.folder <> 'silindi'
+		 JOIN users x ON x.id = o.user_id AND x.status = 'active'
+		 WHERE me.user_id = $1 AND me.folder <> 'deleted'
 		 GROUP BY x.id, x.first_name, x.last_name, x.role_id
 		 ORDER BY son DESC, x.id
 		 LIMIT $2`,
@@ -114,7 +114,7 @@ export async function getRecentMailThreads(userId: string, limit: number): Promi
 export async function getMailCandidate(userId: string, id: string): Promise<MailCandidate | null> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT id, first_name AS name, last_name AS surname, role_id AS "roleId" FROM users WHERE id = $2 AND id <> $1 AND status = 'aktif'`,
+		`SELECT id, first_name AS name, last_name AS surname, role_id AS "roleId" FROM users WHERE id = $2 AND id <> $1 AND status = 'active'`,
 		[userId, id]
 	);
 	return res.rows[0] ?? null;
@@ -123,7 +123,7 @@ export async function getMailCandidate(userId: string, id: string): Promise<Mail
 /** Every active member (not the caller) with the role they hold: what "who can I message" is worked out from. */
 export async function getMailCandidateRoles(userId: string): Promise<{ id: string; roleId: string | null }[]> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query(`SELECT id, role_id AS "roleId" FROM users WHERE status = 'aktif' AND id <> $1`, [userId]);
+	const res = await getPgPool().query(`SELECT id, role_id AS "roleId" FROM users WHERE status = 'active' AND id <> $1`, [userId]);
 	return res.rows;
 }
 
@@ -154,41 +154,41 @@ export async function getMailThreads(
 	await ensurePostgresInit();
 	const pool = getPgPool();
 	const folder =
-		folderName === 'gonderilen'
-			? `t.yazdim AND t.klasor <> 'cop'`
-			: folderName === 'gelen'
-				? `t.klasor = 'gelen' AND t.aldim`
-				: `t.klasor = '${folderName === 'arsiv' ? 'arsiv' : 'cop'}'`;
+		folderName === 'sent'
+			? `t.yazdim AND t.klasor <> 'trash'`
+			: folderName === 'inbox'
+				? `t.klasor = 'inbox' AND t.aldim`
+				: `t.klasor = '${folderName === 'archived' ? 'archived' : 'trash'}'`;
 	const lateralFilter =
-		folderName === 'gonderilen'
+		folderName === 'sent'
 			? `AND mine.sender_id = $1`
-			: folderName === 'gelen'
+			: folderName === 'inbox'
 				? `AND mine.sender_id IS DISTINCT FROM $1`
 				: '';
 	const lastExpr =
-		folderName === 'gonderilen'
+		folderName === 'sent'
 			? `COALESCE(t.son_gonderilen, t.son)`
-			: folderName === 'gelen'
+			: folderName === 'inbox'
 				? `COALESCE(t.son_gelen, t.son)`
 				: `t.son`;
-	const countExpr = folderName === 'gonderilen' ? `t.gonderilen_adet` : `t.adet`;
-	const unreadExpr = folderName === 'gonderilen' ? `0` : `t.okunmamis`;
+	const countExpr = folderName === 'sent' ? `t.gonderilen_adet` : `t.adet`;
+	const unreadExpr = folderName === 'sent' ? `0` : `t.okunmamis`;
 	const base = `
 		WITH mine AS (
 			SELECT m.room_id, m.sender_id, m.content, m.date,
-				CASE WHEN m.sender_id = $1 OR m.date <= cm.last_read_at THEN 1 ELSE 0 END AS okundu,
+				CASE WHEN m.sender_id = $1 OR m.date <= cm.last_read_at THEN 1 ELSE 0 END AS read,
 				cm.folder AS folder
 			FROM chat_members cm
 			JOIN chat_rooms r ON r.id = cm.room_id AND r.room_type = 'mail_thread'
 			JOIN chat_messages m ON m.room_id = r.id
-			WHERE cm.user_id = $1 AND cm.folder <> 'silindi'
+			WHERE cm.user_id = $1 AND cm.folder <> 'deleted'
 		), t AS (
 			SELECT room_id,
 				MAX(date) AS last,
 				MAX(CASE WHEN sender_id = $1 THEN date END) AS last_gonderilen,
-				MAX(CASE WHEN sender_id IS DISTINCT FROM $1 THEN date END) AS last_Incoming,
+				MAX(CASE WHEN sender_id IS DISTINCT FROM $1 THEN date END) AS last_incoming,
 				COUNT(*)::int AS count,
-				COUNT(*) FILTER (WHERE sender_id = $1)::int AS gonderilen_Count,
+				COUNT(*) FILTER (WHERE sender_id = $1)::int AS gonderilen_count,
 				SUM(CASE WHEN okundu = 0 AND sender_id IS DISTINCT FROM $1 THEN 1 ELSE 0 END)::int AS unread,
 				(array_agg(klasor ORDER BY date DESC))[1] AS folder,
 				bool_or(sender_id = $1) AS yazdim,
@@ -217,7 +217,7 @@ export async function getMailThreads(
 		topics: rows.rows.map((r) => ({
 			id: String(r.id),
 			topic: String(r.topic),
-			lastMessage: Number(r.lastMessage ?? r.lastMessage ?? 0),
+			lastMessage: Number(r.lastMessage ?? 0),
 			preview: previewLine(String(r.body ?? '')),
 			lastSender: person(r, 'g'),
 			attendees: attendees.get(String(r.id)) ?? [],
@@ -240,7 +240,7 @@ async function getAttendees(threadIds: string[], excludeId: string): Promise<Map
 		[threadIds, excludeId]
 	);
 	for (const r of res.rows) {
-		const key = String(r.topicId ?? r.topicId ?? '');
+		const key = String(r.topicId ?? '');
 		const list = out.get(key) ?? [];
 		list.push(person(r));
 		out.set(key, list);
@@ -256,7 +256,7 @@ export async function getUnreadMailCount(userId: string): Promise<number> {
 		 FROM chat_members cm
 		 JOIN chat_rooms k ON k.id = cm.room_id AND k.room_type = 'mail_thread'
 		 JOIN chat_messages m ON m.room_id = k.id
-		 WHERE cm.user_id = $1 AND cm.folder = 'gelen'
+		 WHERE cm.user_id = $1 AND cm.folder = 'inbox'
 		   AND m.sender_id IS DISTINCT FROM $1
 		   AND m.date > cm.last_read_at`,
 		[userId]
@@ -281,7 +281,7 @@ export async function getUnreadMailThreads(userId: string, limit: number): Promi
 			JOIN chat_rooms k ON k.id = cm.room_id AND k.room_type = 'mail_thread'
 			JOIN chat_messages m ON m.room_id = k.id
 			LEFT JOIN users u ON u.id = m.sender_id
-			WHERE cm.user_id = $1 AND cm.folder = 'gelen'
+			WHERE cm.user_id = $1 AND cm.folder = 'inbox'
 			  AND m.sender_id IS DISTINCT FROM $1
 			  AND m.date > cm.last_read_at
 			ORDER BY m.room_id, m.date DESC
@@ -305,13 +305,13 @@ export async function getMailThread(userId: string, threadId: string): Promise<M
 	const pool = getPgPool();
 	const res = await pool.query(
 		`SELECT m.id, m.content AS body, m.date AS creation, m.sender_id AS "senderId",
-		        CASE WHEN m.sender_id = $1 OR m.date <= cm.last_read_at THEN 1 ELSE 0 END AS okundu,
+		        CASE WHEN m.sender_id = $1 OR m.date <= cm.last_read_at THEN 1 ELSE 0 END AS read,
 		        cm.folder AS folder, k.name AS topic, u.first_name AS givenName, u.last_name AS familySurname
 		 FROM chat_members cm
 		 JOIN chat_rooms k ON k.id = cm.room_id AND k.room_type = 'mail_thread'
 		 JOIN chat_messages m ON m.room_id = k.id
 		 LEFT JOIN users u ON u.id = m.sender_id
-		 WHERE cm.user_id = $1 AND cm.folder <> 'silindi' AND cm.room_id = $2
+		 WHERE cm.user_id = $1 AND cm.folder <> 'deleted' AND cm.room_id = $2
 		 ORDER BY m.date, m.id`,
 		[userId, threadId]
 	);
@@ -320,17 +320,17 @@ export async function getMailThread(userId: string, threadId: string): Promise<M
 	return {
 		id: threadId,
 		topic: String(last.topic),
-		folder: (['arsiv', 'cop', 'gonderilen'].includes(String(last.folder)) ? String(last.folder) : 'gelen') as MailStorage,
+		folder: (['archived', 'trash', 'sent'].includes(String(last.folder)) ? String(last.folder) : 'inbox') as MailStorage,
 		attendees: (await getAttendees([threadId], userId)).get(threadId) ?? [],
 		messages: res.rows.map((r) => {
-			const gId = String(r.senderId ?? r.senderId ?? '');
+			const gId = String(r.senderId ?? '');
 			return {
 				id: String(r.id),
 				sender: { id: gId, name: String(r.givenName ?? 'Silinmiş'), surname: String(r.familySurname ?? 'üye') },
 				body: String(r.body),
 				creation: Number(r.creation),
-				okundu: Number(r.okundu) === 1,
-				myMi: gId === userId,
+				read: Number(r.read) === 1,
+				isMine: gId === userId,
 			};
 		}),
 	};
@@ -356,7 +356,7 @@ async function insertMessage(
 	body: string,
 	recipientIds: string[],
 	now: number,
-	senderFolder: 'gelen' | 'gonderilen' = 'gonderilen'
+	senderFolder: 'inbox' | 'sent' = 'sent'
 ): Promise<string> {
 	const messageId = randomUUID();
 	const senderRes = await client.query(
@@ -383,9 +383,9 @@ async function insertMessage(
 	for (const id of recipientIds) {
 		await client.query(
 			`INSERT INTO chat_members (room_id, user_id, folder, is_starred, last_read_at, joined_at)
-			 VALUES ($1, $2, 'gelen', 0, 0, $3)
+			 VALUES ($1, $2, 'inbox', 0, 0, $3)
 			 ON CONFLICT (room_id, user_id) DO UPDATE SET
-			   folder = CASE WHEN chat_members.folder = 'silindi' THEN 'silindi' ELSE 'gelen' END`,
+			   folder = CASE WHEN chat_members.folder = 'deleted' THEN 'deleted' ELSE 'inbox' END`,
 			[threadId, id, now]
 		);
 	}
@@ -408,7 +408,7 @@ export async function createMailThread(
 			 VALUES ($1, 'mail_thread', NULL, $2, $3, $4)`,
 			[subjectId, subject, senderId, now]
 		);
-		const messageId = await insertMessage(client, subjectId, senderId, body, recipientIds, now, 'gonderilen');
+		const messageId = await insertMessage(client, subjectId, senderId, body, recipientIds, now, 'sent');
 		return { topicId: subjectId, messageId: messageId };
 	});
 }
@@ -418,34 +418,34 @@ export async function addMailReply(threadId: string, senderId: string, body: str
 	return withTransaction(async (client) => {
 		if (recipientIds.length > 0) {
 			await client.query(
-				`UPDATE chat_members SET folder = 'gelen'
-				 WHERE room_id = $1 AND user_id = ANY($2::text[]) AND folder <> 'silindi'`,
+				`UPDATE chat_members SET folder = 'inbox'
+				 WHERE room_id = $1 AND user_id = ANY($2::text[]) AND folder <> 'deleted'`,
 				[threadId, recipientIds]
 			);
 		}
 		const incomingRes = await client.query(
 			`SELECT 1 FROM chat_members cm
 			 JOIN chat_messages m ON m.room_id = cm.room_id
-			 WHERE cm.room_id = $1 AND cm.user_id = $2 AND cm.folder <> 'silindi'
+			 WHERE cm.room_id = $1 AND cm.user_id = $2 AND cm.folder <> 'deleted'
 			   AND m.sender_id IS DISTINCT FROM $2
 			 LIMIT 1`,
 			[threadId, senderId]
 		);
-		const senderFolder: 'gelen' | 'gonderilen' = incomingRes.rows.length > 0 ? 'gelen' : 'gonderilen';
+		const senderFolder: 'inbox' | 'sent' = incomingRes.rows.length > 0 ? 'inbox' : 'sent';
 		return insertMessage(client, threadId, senderId, body, recipientIds, Date.now(), senderFolder);
 	});
 }
 
-export type MailStatusAction = 'okundu' | 'okunmadi' | 'arsivle' | 'gelene' | 'cope' | 'sil';
+export type MailStatusAction = 'read' | 'unread' | 'archive' | 'restore' | 'trash' | 'delete';
 
 /** Applies a state change to the member's own rows of a conversation. Returns false when they have none. */
 export async function setMailThreadStatus(userId: string, threadId: string, action: MailStatusAction): Promise<boolean> {
 	await ensurePostgresInit();
-	const own = `user_id = $1 AND room_id = $2 AND folder <> 'silindi'`;
+	const own = `user_id = $1 AND room_id = $2 AND folder <> 'deleted'`;
 	const pool = getPgPool();
 	let res;
 	switch (action) {
-		case 'okundu':
+		case 'read':
 			res = await pool.query(
 				`UPDATE chat_members
 				 SET last_read_at = GREATEST(last_read_at, COALESCE((SELECT MAX(date) FROM chat_messages WHERE room_id = $2), $3))
@@ -453,7 +453,7 @@ export async function setMailThreadStatus(userId: string, threadId: string, acti
 				[userId, threadId, Date.now()]
 			);
 			break;
-		case 'okunmadi':
+		case 'unread':
 			// Only the newest incoming message goes back to unread: the thread is "something to look at again".
 			res = await pool.query(
 				`UPDATE chat_members
@@ -466,21 +466,21 @@ export async function setMailThreadStatus(userId: string, threadId: string, acti
 				[userId, threadId]
 			);
 			break;
-		case 'arsivle':
-		case 'cope':
-			res = await pool.query(`UPDATE chat_members SET folder = $3 WHERE ${own}`, [userId, threadId, action === 'arsivle' ? 'arsiv' : 'cop']);
+		case 'archive':
+		case 'trash':
+			res = await pool.query(`UPDATE chat_members SET folder = $3 WHERE ${own}`, [userId, threadId, action === 'archive' ? 'archived' : 'trash']);
 			break;
-		case 'gelene':
+		case 'restore':
 			res = await pool.query(
 				`UPDATE chat_members SET folder = CASE WHEN EXISTS (
 					SELECT 1 FROM chat_messages m2
 					WHERE m2.room_id = $2 AND m2.sender_id IS DISTINCT FROM $1
-				 ) THEN 'gelen' ELSE 'gonderilen' END WHERE ${own}`,
+				 ) THEN 'inbox' ELSE 'sent' END WHERE ${own}`,
 				[userId, threadId]
 			);
 			break;
-		case 'sil':
-			res = await pool.query(`UPDATE chat_members SET folder = 'silindi' WHERE ${own}`, [userId, threadId]);
+		case 'delete':
+			res = await pool.query(`UPDATE chat_members SET folder = 'deleted' WHERE ${own}`, [userId, threadId]);
 			break;
 	}
 	return (res.rowCount ?? 0) > 0;
@@ -505,7 +505,7 @@ export async function getMailSearchThreads(userId: string, limit = 200): Promise
 		 JOIN chat_rooms k ON k.id = cm.room_id AND k.room_type = 'mail_thread'
 		 JOIN chat_messages m ON m.room_id = k.id
 		 LEFT JOIN users u ON u.id = m.sender_id
-		 WHERE cm.user_id = $1 AND cm.folder <> 'silindi' AND cm.folder <> 'cop'
+		 WHERE cm.user_id = $1 AND cm.folder <> 'deleted' AND cm.folder <> 'trash'
 		 GROUP BY m.room_id, k.name
 		 ORDER BY son DESC
 		 LIMIT $2`,

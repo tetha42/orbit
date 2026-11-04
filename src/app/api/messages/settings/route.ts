@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 /** The caller's own Mail preference: also be told by e-mail when a message arrives. */
 export async function GET(request: Request) {
-	const auth = await requireApp(request, 'mail', 'kullan');
+	const auth = await requireApp(request, 'mail', 'use');
 	if (!auth.authorized) return auth.response;
 	try {
 		const setting = await getMailEmailSetting(auth.user.id);
@@ -19,7 +19,7 @@ export async function GET(request: Request) {
 }
 
 async function handlePATCH(request: Request) {
-	const auth = await requireApp(request, 'mail', 'kullan');
+	const auth = await requireApp(request, 'mail', 'use');
 	if (!auth.authorized) return auth.response;
 	try {
 		const body = (await request.json().catch(() => null)) as { notifyByEmail?: unknown; emailWithNews?: unknown } | null;

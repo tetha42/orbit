@@ -11,7 +11,7 @@ export interface OAuthClient {
 	redirectUris: string[];
 	allowedScopes: string[];
 	trusted: boolean;
-	aktif: boolean;
+	active: boolean;
 	creatorId?: string | null;
 	creatorNameSurname?: string | null;
 	creation: number;
@@ -131,7 +131,7 @@ function mapClientRow(row: RawClientRow): OAuthClient {
 		redirectUris: parseRedirectUris(row.redirectUris ?? row.redirect_uris),
 		allowedScopes: parseAllowedScopes(row.allowedScopes ?? row.allowed_scopes),
 		trusted: false,
-		aktif: true,
+		active: true,
 		creatorId: row.createdBy ?? row.created_by ?? null,
 		creatorNameSurname: row.creatorName ? row.creatorName.trim() : null,
 		creation: createdAt,
@@ -246,7 +246,7 @@ export async function updateOAuthClient(
 		redirectUris?: string[];
 		allowedScopes?: string[];
 		trusted?: boolean;
-		aktif?: boolean;
+		active?: boolean;
 	}
 ): Promise<boolean> {
 	await ensurePostgresInit();

@@ -69,10 +69,10 @@ export function MobileDashboard({ onOpenApp }: { onOpenApp: (appId: AppID) => vo
 	const levelInfo = level(currentUser.xp || 0);
 
 	const checkIn = async (code: string) => {
-		const res = await postAction<{ message: string; zaten?: boolean }>('/api/events', 'attend', { shortCode: code, code });
+		const res = await postAction<{ message: string; already?: boolean }>('/api/events', 'attend', { shortCode: code, code });
 		if (res.ok) {
 			playSystemSound();
-			setFeedback({ ok: !res.data.zaten, text: res.data.message });
+			setFeedback({ ok: !res.data.already, text: res.data.message });
 		} else {
 			setFeedback({ ok: false, text: res.error || t('kbActionFailed') });
 		}

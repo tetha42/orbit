@@ -14,13 +14,13 @@ export async function GET(request: Request) {
 	const auth = await verifyAuth(request);
 	if (!auth.authorized) return auth.response;
 
-	const cached = getCached<unknown>('kulup_bilgileri');
+	const cached = getCached<unknown>('club_info');
 	if (cached) {
 		return NextResponse.json(cached);
 	}
 
 	const data = await getCommunityProfile();
-	setCached('kulup_bilgileri', data, 60_000);
+	setCached('club_info', data, 60_000);
 	return NextResponse.json(data);
 }
 
@@ -28,7 +28,7 @@ export async function GET(request: Request) {
 async function handlePATCH(request: Request) {
 	const auth = await authenticateEnrolled(request);
 	if (!auth.authorized) return auth.response;
-	if (!can(auth.user, 'settings', 'yonet') && !can(auth.user, 'certificates', 'yonet')) {
+	if (!can(auth.user, 'settings', 'manage') && !can(auth.user, 'certificates', 'manage')) {
 		return NextResponse.json({ error: 'Bu işlem için yetkiniz bulunmuyor.' }, { status: 403 });
 	}
 	try {
@@ -41,7 +41,7 @@ async function handlePATCH(request: Request) {
 			return s;
 		};
 		if (body.university !== undefined) next.university = text(body.university, 'Studio', true);
-		if (body.clubName !== undefined) next.club_Name = text(body.clubName, 'Community name', true);
+		if (body.clubName !== undefined) next.club_name = text(body.clubName, 'Community name', true);
 		if (body.signatures !== undefined) {
 			if (!Array.isArray(body.signatures) || body.signatures.length !== 2) throw new Error('İki imza satırı gönderin.');
 			body.signatures.forEach((signature: unknown, i: number) => {
@@ -51,9 +51,9 @@ async function handlePATCH(request: Request) {
 			});
 		}
 		await setSystemSettings(next);
-		invalidateCache('kulup_bilgileri');
+		invalidateCache('club_info');
 		const fresh = await getCommunityProfile();
-		setCached('kulup_bilgileri', fresh, 60_000);
+		setCached('club_info', fresh, 60_000);
 		return NextResponse.json({ success: true, ...fresh });
 	} catch (error) {
 		const message = error instanceof Error ? error.message : '';

@@ -567,7 +567,7 @@ export function PWADownloadLanding() {
 									<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 										<span style={{ color: '#fafafa', fontWeight: 700, fontFamily: 'monospace' }}>02</span>
 										<span>
-											{t('pwaLinuxStep2', 'Integrated as a native desktop (.desktop) window launcher.')}
+											{t('pwaLinuxStep2', 'Integrated AS a native desktop (.desktop) window launcher.')}
 										</span>
 									</div>
 								</>

@@ -19,7 +19,7 @@ import { withAudit } from '@/lib/audit/withAudit';
 
 /** `?teamId=` selects a project's kasa; missing or `genel` is the general kasa. */
 function parseVault(value: unknown): string | null {
-	return typeof value === 'string' && value && value !== 'genel' ? value : null;
+	return typeof value === 'string' && value && value !== 'general' ? value : null;
 }
 
 /** Receipts are private uploads; anything else in this field could be a hostile link. */
@@ -39,7 +39,7 @@ function parseDate(value: unknown): { ok: true; date?: number; error?: undefined
 
 /** Allocation between two kasas — Kasa managers only, since it moves the club's money. */
 async function transfer(request: Request, body: Record<string, unknown>) {
-	const access = await verifyVaultAccess(request, null, 'yaz');
+	const access = await verifyVaultAccess(request, null, 'write');
 	if (!access.authorized) return access.response;
 	if (!access.isManagement) return bad('Kasalar arası aktarım Kasa yönetim yetkisi gerektirir.', 403);
 
@@ -78,7 +78,7 @@ export async function GET(request: Request) {
 	const teamId = parseVault(url.searchParams.get('teamId'));
 
 	// Kasa readers and managers see every kasa; a captain sees their project's.
-	const access = await verifyVaultAccess(request, teamId, 'oku');
+	const access = await verifyVaultAccess(request, teamId, 'read');
 	if (!access.authorized) return access.response;
 
 	try {
@@ -94,15 +94,15 @@ export async function GET(request: Request) {
 		let totalIncomeMinor = 0;
 		let totalExpenseMinor = 0;
 		for (const r of records) {
-			if (r.typeValue === 'gelir') totalIncomeMinor += r.amountMinor;
+			if (r.typeValue === 'income') totalIncomeMinor += r.amountMinor;
 			else totalExpenseMinor += r.amountMinor;
 		}
 		const netBalanceCents = totalIncomeMinor - totalExpenseMinor;
 
 		return NextResponse.json({
-			vault: { teamId, name, kind: teamId ? 'proje' : 'genel' },
+			vault: { teamId, name, kind: teamId ? 'project' : 'general' },
 			// What the caller may do here — the panel hides what the server would refuse.
-			permission: { write: access.access === 'yaz' && access.user.status !== 'mezun', manage: access.isManagement },
+			permission: { write: access.access === 'write' && access.user.status !== 'alumni', manage: access.isManagement },
 			records: records,
 			// Amounts travel as integer kuruş only; each client formats them for its language.
 			summary: {
@@ -121,10 +121,10 @@ export async function GET(request: Request) {
 export const POST = withAudit(async function POST(request: Request) {
 	try {
 		const body = await request.json();
-		if (body?.action === 'aktar') return await transfer(request, body);
+		if (body?.action === 'transfer') return await transfer(request, body);
 		const teamId = parseVault(body?.teamId);
 
-		const access = await verifyVaultAccess(request, teamId, 'yaz');
+		const access = await verifyVaultAccess(request, teamId, 'write');
 		if (!access.authorized) return access.response;
 
 		const { typeValue, category, receiptPhotoUrl } = body;
@@ -135,8 +135,8 @@ export const POST = withAudit(async function POST(request: Request) {
 			return NextResponse.json({ error: 'Tür, kategori, tutar ve açıklama zorunludur.' }, { status: 400 });
 		}
 
-		if (typeValue !== 'gelir' && typeValue !== 'gider') {
-			return NextResponse.json({ error: "Tür 'gelir' veya 'gider' olmalıdır." }, { status: 400 });
+		if (typeValue !== 'income' && typeValue !== 'expense') {
+			return NextResponse.json({ error: "Tür 'income' veya 'expense' olmalıdır." }, { status: 400 });
 		}
 
 		// Reject unknown categories instead of storing free text the summaries
@@ -213,7 +213,7 @@ export const PATCH = withAudit(async function PATCH(request: Request) {
 		const id = typeof body.id === 'string' ? body.id : '';
 		// As with DELETE, the kasa comes from the stored row, not from the request.
 		const registration = id ? await getBudgetRecordById(id) : null;
-		const access = await verifyVaultAccess(request, registration?.teamId ?? null, 'yaz');
+		const access = await verifyVaultAccess(request, registration?.teamId ?? null, 'write');
 		if (!access.authorized) return access.response;
 		if (!registration) return bad('Kayıt bulunamadı.', 404);
 		// An allocation also touches the general kasa, which only Kasa managers may change.
@@ -244,8 +244,8 @@ export const PATCH = withAudit(async function PATCH(request: Request) {
 		}
 
 		const r = await updateBudgetRecord(id, changes, access.user.id);
-		if (r === 'yok') return bad('Kayıt bulunamadı.', 404);
-		if (r === 'aktarim') return bad('Ödenek aktarımının kategorisi ve fişi değiştirilemez.', 409);
+		if (r === 'none') return bad('Kayıt bulunamadı.', 404);
+		if (r === 'transfer') return bad('Ödenek aktarımının kategorisi ve fişi değiştirilemez.', 409);
 		await publishEventQuiet(getPgPool(), { k: 'budget_updated' });
 		return jsonSuccess({ success: true });
 	} catch (error) {
@@ -264,7 +264,7 @@ export const DELETE = withAudit(async function DELETE(request: Request) {
 		// Which kasa the entry belongs to comes from the stored row, never from the
 		// request — otherwise the leader of one project could delete another's entries.
 		const registration = await getBudgetRecordById(id);
-		const access = await verifyVaultAccess(request, registration?.teamId ?? null, 'yaz');
+		const access = await verifyVaultAccess(request, registration?.teamId ?? null, 'write');
 		if (!access.authorized) return access.response;
 
 		if (!registration) {

@@ -12,7 +12,7 @@ const attrs = (page) =>
 		const d = document.documentElement;
 		return { theme: d.getAttribute('data-theme'), accent: d.getAttribute('data-accent'), transparency: d.getAttribute('data-transparency'), motion: d.getAttribute('data-motion') };
 	});
-const stored = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('kulup_theme') || 'null'));
+const stored = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('club_theme') || 'null'));
 const waitAttr = (t, page, key, value, name) => t.waitFor(async () => (await attrs(page))[key] === value, { timeout: 3000, every: 50 }).then((ms) => t.check(ms >= 0, name, JSON.stringify({ requested: value })));
 
 /** CSS değişkenini bir yoklama öğesiyle çözer: gerçek renk ("rgb(...)"). */
@@ -306,7 +306,7 @@ export default async function suite(t) {
 	});
 
 	await t.step('rol boyutu: "Sadece Haberler" rolü de Görünüm ayarlarını değiştirebilir ve kalıcıdır', async () => {
-		const { page } = await t.open('okur', { colorScheme: 'light' });
+		const { page } = await t.open('reader', { colorScheme: 'light' });
 		const win = await openSettingsTab(page, 'appearance');
 		t.eq(await win.locator('[data-theme-option]').count(), 3, 'tema kartları görünüyor');
 		await win.locator('[data-theme-option=dark]').click();
@@ -324,17 +324,17 @@ export default async function suite(t) {
 		t.eq(await attrs(page), { theme: 'dark', accent: 'pink', transparency: 'on', motion: 'reduce' }, 'tohumlanan tercihler uygulandı');
 
 		// Sonraki duvar kağıdı: katalogdaki sıra (3B Aurora → Ventura Light).
-		await page.evaluate(() => localStorage.setItem('kulup_active_wallpaper', '3d-aurora'));
+		await page.evaluate(() => localStorage.setItem('club_active_wallpaper', '3d-aurora'));
 		await reloadDesktop(page);
 		await rightClickDesktop(page);
 		await page.locator('[data-menu-item=dt-next-wallpaper]').click();
-		t.eq(await page.evaluate(() => localStorage.getItem('kulup_active_wallpaper')), '/wallpapers/ventura-2.webp', 'sonraki duvar kağıdı kataloğun ikincisi');
+		t.eq(await page.evaluate(() => localStorage.getItem('club_active_wallpaper')), '/wallpapers/ventura-2.webp', 'sonraki duvar kağıdı kataloğun ikincisi');
 
 		const win = await openSettingsTab(page, 'storage');
 		await win.getByRole('button', { name: 'Reset Session' }).click();
 		await dialogReply(page, true);
 		await waitAttr(t, page, 'accent', 'blue', 'sıfırlayınca vurgu mavi');
 		t.eq(await stored(page), { theme: 'system', accent: 'blue', transparency: false, reduceMotion: null }, 'tercihler varsayılana döndü');
-		t.eq(await page.evaluate(() => localStorage.getItem('kulup_active_wallpaper')), '3d-aurora', 'duvar kağıdı varsayılana döndü');
+		t.eq(await page.evaluate(() => localStorage.getItem('club_active_wallpaper')), '3d-aurora', 'duvar kağıdı varsayılana döndü');
 	});
 }

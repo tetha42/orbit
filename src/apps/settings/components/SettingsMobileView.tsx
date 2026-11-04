@@ -202,10 +202,10 @@ export function SettingsMobileView({ nav }: SettingsMobileViewProps) {
 		? `${currentUser.name?.[0] || ''}${currentUser.surname?.[0] || ''}`.toUpperCase()
 		: 'U';
 
-	const groups: Array<{ key: 'kisisel' | 'hesap' | 'sistem'; title: string }> = [
-		{ key: 'kisisel', title: t('settingsGroupPersonal') },
-		{ key: 'hesap', title: t('settingsGroupAccount') },
-		{ key: 'sistem', title: t('settingsGroupAdmin') },
+	const groups: Array<{ key: 'personal' | 'account' | 'system'; title: string }> = [
+		{ key: 'personal', title: t('settingsGroupPersonal') },
+		{ key: 'account', title: t('settingsGroupAccount') },
+		{ key: 'system', title: t('settingsGroupAdmin') },
 	];
 
 	return (

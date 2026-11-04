@@ -88,7 +88,7 @@ export function SessionInspectorTab({ sessionInfo, isLoading }: SessionInspector
 					<div>
 						<span style={{ fontSize: '11px', opacity: 0.6, display: 'block' }}>{t('tbSessionMembershipStatus')}</span>
 						<strong style={{ fontSize: '13px', textTransform: 'capitalize' }}>
-							{user.status === 'aktif' ? (language === 'en' ? 'Active' : 'Aktif') : user.status}
+							{user.status === 'active' ? (language === 'en' ? 'Active' : 'Aktif') : user.status}
 						</strong>
 					</div>
 					<div>
@@ -141,14 +141,14 @@ export function SessionInspectorTab({ sessionInfo, isLoading }: SessionInspector
 
 							const desc =
 								language === 'en'
-									? level === 'yonet'
+									? level === 'manage'
 										? t('tbSessionDescManage')
-										: level === 'kullan'
+										: level === 'use'
 										? t('tbSessionDescUse')
 										: t('tbSessionDescNone')
-									: level === 'yonet'
+									: level === 'manage'
 									? meta?.manage ?? t('tbSessionDescManage')
-									: level === 'kullan'
+									: level === 'use'
 									? meta?.use ?? t('tbSessionDescUse')
 									: t('tbSessionDescNone');
 
@@ -174,12 +174,12 @@ export function SessionInspectorTab({ sessionInfo, isLoading }: SessionInspector
 									<td>
 										<span
 											className={`${s.badge} ${
-												level === 'yonet' ? s.badgeOk : level === 'kullan' ? s.badgeWarn : s.badgeFail
+												level === 'manage' ? s.badgeOk : level === 'use' ? s.badgeWarn : s.badgeFail
 											}`}
 										>
-											{level === 'yonet'
+											{level === 'manage'
 												? t('tbSessionLevelManage')
-												: level === 'kullan'
+												: level === 'use'
 												? t('tbSessionLevelUse')
 												: t('tbSessionLevelNone')}
 										</span>

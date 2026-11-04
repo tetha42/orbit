@@ -30,12 +30,12 @@ export function BudgetSidebar({ active, general, projects, onSelect }: BudgetSid
 
 	const renderItem = (vault: VaultSummary) => {
 		const isActive = active && vault.teamId === active.teamId;
-		const Icon = vault.kind === 'genel' ? Landmark : FolderGit2;
+		const Icon = vault.kind === 'general' ? Landmark : FolderGit2;
 		return (
 			<button
-				key={vault.teamId ?? 'genel'}
+				key={vault.teamId ?? 'general'}
 				className="kasa-item"
-				data-focus-id={`kasa-item:${vault.teamId ?? 'genel'}`}
+				data-focus-id={`kasa-item:${vault.teamId ?? 'general'}`}
 				onClick={() => onSelect(vault.teamId)}
 				style={{
 					display: 'flex',

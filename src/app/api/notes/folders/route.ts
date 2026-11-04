@@ -5,7 +5,7 @@ import { getUserNoteFolders, saveUserNoteFolder, deleteUserNoteFolder } from '@/
 
 export async function GET(request: Request) {
 	try {
-		const auth = await requireApp(request, 'notes', 'kullan');
+		const auth = await requireApp(request, 'notes', 'use');
 		if (!auth.authorized) {
 			return auth.response;
 		}
@@ -20,7 +20,7 @@ export async function GET(request: Request) {
 
 async function handlePOST(request: Request) {
 	try {
-		const auth = await requireApp(request, 'notes', 'kullan');
+		const auth = await requireApp(request, 'notes', 'use');
 		if (!auth.authorized) {
 			return auth.response;
 		}
@@ -53,7 +53,7 @@ async function handlePOST(request: Request) {
 
 async function handleDELETE(request: Request) {
 	try {
-		const auth = await requireApp(request, 'notes', 'kullan');
+		const auth = await requireApp(request, 'notes', 'use');
 		if (!auth.authorized) {
 			return auth.response;
 		}

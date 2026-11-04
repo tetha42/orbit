@@ -15,7 +15,7 @@ const PROJECT_SELECT = `
 	       ot.name AS "ownerTeamName",
 	       ou.first_name || ' ' || ou.last_name AS "ownerUserNameSurname",
 	       jsonb_array_length(COALESCE(p.starred_by, '[]'::jsonb)) AS "likeCount",
-	       (COALESCE(p.starred_by, '[]'::jsonb) ? $1::text) AS "iLikedMi"
+	       (COALESCE(p.starred_by, '[]'::jsonb) ? $1::text) AS "likedByMe"
 	FROM projects p
 	LEFT JOIN teams t ON t.id = p.team_id
 	LEFT JOIN users k ON k.id = p.created_by
@@ -32,7 +32,7 @@ function toProject(row: Record<string, unknown>): Project {
 	} catch {
 		technologies = [];
 	}
-	return { ...(row as unknown as Project), technologies, iLikedMi: Boolean(row.iLikedMi) };
+	return { ...(row as unknown as Project), technologies, likedByMe: Boolean(row.likedByMe) };
 }
 
 /**
@@ -43,7 +43,7 @@ export async function getProjects(viewerId: string, includeAll: boolean): Promis
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`${PROJECT_SELECT}
-		 WHERE $2::boolean OR p.status = 'yayinda' OR p.created_by = $1
+		 WHERE $2::boolean OR p.status = 'published' OR p.created_by = $1
 		 ORDER BY p.is_featured DESC, p.created_at DESC`,
 		[viewerId, includeAll]
 	);
@@ -76,7 +76,7 @@ export async function createProject(input: ProjectInput & { creatorId: string; s
 	const slug = await uniqueSlug(
 		slugify(input.title),
 		async (candidate) => ((await db.query('SELECT 1 FROM projects WHERE slug = $1', [candidate])).rowCount ?? 0) > 0,
-		'proje'
+		'project'
 	);
 	await db.query(
 		`INSERT INTO projects
@@ -142,7 +142,7 @@ export async function deleteProject(id: string): Promise<boolean> {
 export async function toggleProjectLike(
 	projectId: string,
 	userId: string
-): Promise<{ iLikedMi: boolean; likeCount: number }> {
+): Promise<{ likedByMe: boolean; likeCount: number }> {
 	return withTransaction(async (client) => {
 		const cur = await client.query(
 			`SELECT COALESCE(starred_by, '[]'::jsonb) AS starred_by FROM projects WHERE id = $1 FOR UPDATE`,
@@ -158,6 +158,6 @@ export async function toggleProjectLike(
 			`UPDATE projects SET starred_by = $2::jsonb WHERE id = $1`,
 			[projectId, JSON.stringify(nextList)]
 		);
-		return { iLikedMi: !alreadyStarred, likeCount: nextList.length };
+		return { likedByMe: !alreadyStarred, likeCount: nextList.length };
 	});
 }

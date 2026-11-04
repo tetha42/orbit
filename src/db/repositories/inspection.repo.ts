@@ -197,7 +197,7 @@ export function resolveTargetDir(target: string): { key: string; path: string } 
  */
 function runFimProcessViaSpawn(binPath: string, args: string[], cwd: string, timeoutMs = 30_000): Promise<string> {
 	return new Promise((resolvePromise, rejectPromise) => {
-		const child = spawn(binPath, args, { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
+		const child = spawn(binPath, args, { cwd, stdio: ['ignore', 'pipe'] });
 		const stdoutChunks: Buffer[] = [];
 		const stderrChunks: Buffer[] = [];
 
@@ -1058,7 +1058,7 @@ export async function getFimFileDiff(targetFilePath: string): Promise<FimDiffRes
 				cwd: ROOT_DIR,
 				encoding: 'utf-8',
 				maxBuffer: 2 * 1024 * 1024,
-				stdio: ['ignore', 'pipe', 'ignore'],
+				stdio: ['ignore', 'pipe'],
 			});
 			originalContent = gitShow;
 			hasGitBaseline = true;
@@ -1091,7 +1091,7 @@ export async function getFimFileDiff(targetFilePath: string): Promise<FimDiffRes
 					cwd: ROOT_DIR,
 					encoding: 'utf-8',
 					maxBuffer: 2 * 1024 * 1024,
-					stdio: ['ignore', 'pipe', 'ignore'],
+					stdio: ['ignore', 'pipe'],
 				});
 				diff = gitDiff;
 			}

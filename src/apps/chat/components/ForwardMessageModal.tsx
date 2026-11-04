@@ -127,7 +127,7 @@ export function ForwardMessageModal({
 						) : (
 							filteredRooms.map((room) => {
 								const isSelected = selectedRoomIds.includes(room.id);
-								const isGroup = room.typeValue === 'takim' || (room.typeValue === 'ozel' && (room.memberCount || 0) > 2);
+								const isGroup = room.typeValue === 'team' || (room.typeValue === 'private' && (room.memberCount || 0) > 2);
 
 								return (
 									<button
@@ -146,7 +146,7 @@ export function ForwardMessageModal({
 												/>
 											) : isGroup ? (
 												<Users size={16} />
-											) : room.typeValue === 'ozel' ? (
+											) : room.typeValue === 'private' ? (
 												<span>{(room.name || '?').slice(0, 1).toUpperCase()}</span>
 											) : (
 												<MessageSquare size={16} />
@@ -156,9 +156,9 @@ export function ForwardMessageModal({
 										<div className={s.forwardRoomInfo}>
 											<span className={s.forwardRoomName}>{room.name}</span>
 											<span className={s.forwardRoomType}>
-												{room.typeValue === 'genel'
+												{room.typeValue === 'general'
 													? t('chatPublicSub')
-													: room.typeValue === 'takim'
+													: room.typeValue === 'team'
 													? t('chatTeamSub')
 													: t('chatPrivateSub')}
 											</span>

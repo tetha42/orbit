@@ -29,7 +29,7 @@ export default async function suite(t) {
 	const body = `Merhaba, bu uçtan uca bir test mesajıdır (${tag}).`;
 	let topicId = null;
 
-	const inbox = async (api, folder = 'gelen') => must(await api.get(`/api/posta?klasor=${folder}`), `liste ${folder}`);
+	const inbox = async (api, folder = 'inbox') => must(await api.get(`/api/posta?klasor=${folder}`), `liste ${folder}`);
 	const thread = async (api, id = topicId) => api.get(`/api/posta/${encodeURIComponent(id)}`);
 
 	await t.step('API: mail:yok rolü Posta uçlarının hiçbirine giremez (403)', async () => {
@@ -37,7 +37,7 @@ export default async function suite(t) {
 			t.eq((await hApi.get(path)).status, 403, `GET ${path} → 403`);
 		}
 		t.eq((await hApi.post('/api/posta', { topic: 'x', body: 'y', recipients: [berk.id] })).status, 403, 'POST /api/posta → 403');
-		t.eq((await hApi.patch('/api/posta/yok', { action: 'okundu' })).status, 403, 'PATCH → 403');
+		t.eq((await hApi.patch('/api/posta/yok', { action: 'read' })).status, 403, 'PATCH → 403');
 	});
 
 	await t.step('API: gönderim doğrulamaları (alıcı, uzunluk, aktif üye, kendine)', async () => {
@@ -51,9 +51,9 @@ export default async function suite(t) {
 		t.eq((await post({ topic, body: 'g'.repeat(10_001), recipients: [berk.id] })).status, 400, 'gövde sınırı (10000) 400');
 		t.eq((await post({ topic, body, recipients: Array.from({ length: 21 }, (_, i) => `x${i}`) })).status, 400, 'en fazla 20 alıcı');
 		// Aktif olmayan üye (mezun): alıcı olamaz.
-		const mezun = await newMember(t, admin, { label: 'posta-m', roleId: fx.roles.member });
-		t.eq((await admin.patch('/api/uyeler', { id: mezun.id, status: 'mezun' })).status, 200, 'üye mezun yapıldı');
-		t.eq((await post({ topic, body, recipients: [berk.id, mezun.id] })).status, 400, 'aktif olmayan alıcı 400');
+		const alumni = await newMember(t, admin, { label: 'posta-m', roleId: fx.roles.member });
+		t.eq((await admin.patch('/api/uyeler', { id: alumni.id, status: 'alumni' })).status, 200, 'üye mezun yapıldı');
+		t.eq((await post({ topic, body, recipients: [berk.id, alumni.id] })).status, 400, 'aktif olmayan alıcı 400');
 		t.eq((await inbox(bApi)).total, 0, 'hiçbir reddedilen istek mesaj bırakmadı');
 	});
 
@@ -63,7 +63,7 @@ export default async function suite(t) {
 		t.eq(only.json?.skipped?.[0]?.reason, 'rol', 'neden: rol');
 		t.check(/rolü Posta'yı açmıyor/.test(only.json?.error ?? ''), 'hata metni "rolü Posta\'yı açmıyor" diyor', only.json?.error);
 		t.check((only.json?.error ?? '').includes('posta-h'), 'hata metni alıcının adını söylüyor', only.json?.error);
-		t.eq((await inbox(aApi, 'gonderilen')).total, 0, 'gönderilenlerde konu yok');
+		t.eq((await inbox(aApi, 'sent')).total, 0, 'gönderilenlerde konu yok');
 	});
 
 	await t.step('arayüz (ayşe): Posta açılır, alıcı otomatik tamamlamayla yeni mesaj yazar', async () => {
@@ -95,7 +95,7 @@ export default async function suite(t) {
 		await sheet.locator('[data-mail-send]').click();
 		await toast(page, 'Mesaj gönderildi.');
 		await sheet.waitFor({ state: 'detached' });
-		const sent = await inbox(aApi, 'gonderilen');
+		const sent = await inbox(aApi, 'sent');
 		topicId = sent.topics[0]?.id;
 		t.eq(sent.topics[0]?.topic, topic, 'gönderilenlerde konu var');
 		// Gönderilenler klasörü açılır ve konu seçili gelir.
@@ -116,7 +116,7 @@ export default async function suite(t) {
 		t.eq(item?.target, { appId: 'mail', kind: 'thread', itemId: topicId }, 'hedef: Posta/konu');
 		t.eq(item?.data?.title, topic, 'başlık konu');
 		t.eq(feed.counts.unreadMessages, 1, 'counts.unreadMessages 1');
-		t.eq(must(await bApi.get('/api/posta/okunmamis'), 'okunmamis').count, 1, '/api/posta/okunmamis 1');
+		t.eq(must(await bApi.get('/api/posta/okunmamis'), 'unread').count, 1, '/api/posta/okunmamis 1');
 
 		const { page } = await berk.open();
 		const badge = page.locator('[data-dock-app=mail] [data-dock-badge]');
@@ -136,18 +136,18 @@ export default async function suite(t) {
 		await win.locator('[data-mail-message]').first().waitFor();
 		t.check((await win.locator('[data-mail-message]').first().innerText()).includes(body), 'konu açıldı, mesaj görünüyor');
 		await badge.waitFor({ state: 'detached' });
-		t.eq(must(await bApi.get('/api/posta/okunmamis'), 'okunmamis').count, 0, 'konu açılınca okundu: sayı 0');
-		t.eq((await thread(bApi)).json.messages.every((m) => m.okundu), true, 'API: tüm mesajlar okundu');
+		t.eq(must(await bApi.get('/api/posta/okunmamis'), 'unread').count, 0, 'konu açılınca okundu: sayı 0');
+		t.eq((await thread(bApi)).json.messages.every((m) => m.read), true, 'API: tüm mesajlar okundu');
 		await t.shot(page, 'berk-okundu');
 	});
 
 	await t.step('okundu / okunmadı: konuyu açmak okur, "Okunmadı Yap" geri alır', async () => {
 		const row = (await inbox(bApi)).topics.find((k) => k.id === topicId);
 		t.eq(row?.unread, 0, 'liste: okunmamış 0');
-		t.eq((await bApi.patch(`/api/posta/${topicId}`, { action: 'okunmadi' })).status, 200, 'okunmadı işareti 200');
-		t.eq(must(await bApi.get('/api/posta/okunmamis'), 'okunmamis').count, 1, 'okunmamış sayısı 1');
-		t.eq((await bApi.patch(`/api/posta/${topicId}`, { action: 'okundu' })).status, 200, 'okundu işareti 200');
-		t.eq(must(await bApi.get('/api/posta/okunmamis'), 'okunmamis').count, 0, 'okunmamış sayısı 0');
+		t.eq((await bApi.patch(`/api/posta/${topicId}`, { action: 'unread' })).status, 200, 'okunmadı işareti 200');
+		t.eq(must(await bApi.get('/api/posta/okunmamis'), 'unread').count, 1, 'okunmamış sayısı 1');
+		t.eq((await bApi.patch(`/api/posta/${topicId}`, { action: 'read' })).status, 200, 'okundu işareti 200');
+		t.eq(must(await bApi.get('/api/posta/okunmamis'), 'unread').count, 0, 'okunmamış sayısı 0');
 		t.eq((await bApi.patch(`/api/posta/${topicId}`, { action: 'uc' })).status, 400, 'geçersiz işlem 400');
 	});
 
@@ -173,7 +173,7 @@ export default async function suite(t) {
 		await aWin.locator('[data-mail-message]').nth(1).waitFor();
 		t.check((await aWin.locator('[data-mail-message]').nth(1).innerText()).includes('mesajınız ulaştı'), 'ayşe yanıtı okuyor');
 		await aWin.locator('[data-mail-folder=gelen] [data-mail-unread]').waitFor({ state: 'detached' });
-		t.eq(must(await aApi.get('/api/posta/okunmamis'), 'okunmamis').count, 0, 'okununca ayşenin sayısı 0');
+		t.eq(must(await aApi.get('/api/posta/okunmamis'), 'unread').count, 0, 'okununca ayşenin sayısı 0');
 	});
 
 	await t.step('başkasının konusu: açma, yanıtlama, işlem, arama → 404 (varlık sızmaz)', async () => {
@@ -183,8 +183,8 @@ export default async function suite(t) {
 		t.eq(gone.status, 404, 'olmayan konu: GET 404');
 		t.eq(JSON.stringify(g.json), JSON.stringify(gone.json), 'iki yanıt aynı: konunun varlığı belli olmuyor');
 		t.eq((await yApi.post(`/api/posta/${topicId}`, { body: 'sızma' })).status, 404, 'yabancı: yanıt 404');
-		t.eq((await yApi.patch(`/api/posta/${topicId}`, { action: 'cope' })).status, 404, 'yabancı: çöpe atma 404');
-		t.eq((await yApi.patch(`/api/posta/${topicId}`, { action: 'sil' })).status, 404, 'yabancı: silme 404');
+		t.eq((await yApi.patch(`/api/posta/${topicId}`, { action: 'trash' })).status, 404, 'yabancı: çöpe atma 404');
+		t.eq((await yApi.patch(`/api/posta/${topicId}`, { action: 'delete' })).status, 404, 'yabancı: silme 404');
 		t.eq((await thread(aApi)).json.messages.length, 2, 'konu bozulmadı');
 		const q = (api) => api.get(`/api/search?q=${encodeURIComponent(tag)}`).then((r) => (r.json?.hits ?? []).filter((h) => h.kind === 'message').map((h) => h.id));
 		t.includes(await q(bApi), `message:${topicId}`, 'aramada katılımcı konuyu buluyor');
@@ -200,7 +200,7 @@ export default async function suite(t) {
 		await win.locator('[data-mail-action=arsivle]').click();
 		await toast(page, 'Konu arşivlendi.');
 		await row.waitFor({ state: 'detached' });
-		t.eq((await inbox(bApi, 'arsiv')).topics.map((k) => k.id), [topicId], 'API: arşivde');
+		t.eq((await inbox(bApi, 'archived')).topics.map((k) => k.id), [topicId], 'API: arşivde');
 		t.eq((await inbox(bApi)).total, 0, 'API: gelen kutusunda yok');
 
 		await win.locator('[data-mail-folder=arsiv]').click();
@@ -213,7 +213,7 @@ export default async function suite(t) {
 		await row.click();
 		await win.locator('[data-mail-action=cope]').click();
 		await toast(page, 'Konu çöpe atıldı.');
-		t.eq((await inbox(bApi, 'cop')).topics.map((k) => k.id), [topicId], 'API: çöpte');
+		t.eq((await inbox(bApi, 'trash')).topics.map((k) => k.id), [topicId], 'API: çöpte');
 		await win.locator('[data-mail-folder=cop]').click();
 		await row.click();
 		await win.locator('[data-mail-action=sil]').waitFor();
@@ -224,20 +224,20 @@ export default async function suite(t) {
 		await toast(page, 'Konu silindi.');
 		t.eq((await thread(bApi)).status, 404, 'silinen konu berk için 404');
 		t.eq((await thread(aApi)).status, 200, 'ayşe konuyu hâlâ görüyor');
-		t.eq((await bApi.patch(`/api/posta/${topicId}`, { action: 'cope' })).status, 404, 'silinmiş konuda işlem 404');
+		t.eq((await bApi.patch(`/api/posta/${topicId}`, { action: 'trash' })).status, 404, 'silinmiş konuda işlem 404');
 	});
 
 	await t.step('API: kalıcı silme yalnız çöpteki konuda; yeni mesaj arşivdeki konuyu gelene döndürür', async () => {
 		const made = must(await aApi.post('/api/posta', { topic: `${topic} ikinci`, body, recipients: [berk.id, foreign.id] }), 'ikinci konu');
 		const id = made.topicId;
 		t.eq(made.skipped, [], 'herkese ulaştı');
-		t.eq((await bApi.patch(`/api/posta/${id}`, { action: 'sil' })).status, 400, 'gelen kutusundaki konu doğrudan silinemez (400)');
-		t.eq((await bApi.patch(`/api/posta/${id}`, { action: 'arsivle' })).status, 200, 'berk arşivler');
+		t.eq((await bApi.patch(`/api/posta/${id}`, { action: 'delete' })).status, 400, 'gelen kutusundaki konu doğrudan silinemez (400)');
+		t.eq((await bApi.patch(`/api/posta/${id}`, { action: 'archive' })).status, 200, 'berk arşivler');
 		t.eq((await inbox(bApi)).topics.length, 0, 'berkin gelen kutusu boş');
 		must(await aApi.post(`/api/posta/${id}`, { body: 'ikinci mesaj' }), 'yanıt');
 		t.eq((await inbox(bApi)).topics.map((k) => k.id), [id], 'yeni mesaj konuyu gelen kutusuna döndürdü');
 		t.eq((await inbox(bApi)).topics[0]?.unread, 2, 'iki okunmamış mesaj');
-		t.eq(must(await bApi.get('/api/posta/okunmamis'), 'okunmamis').count, 1, 'okunmamış sayısı konu sayısıdır (1)');
+		t.eq(must(await bApi.get('/api/posta/okunmamis'), 'unread').count, 1, 'okunmamış sayısı konu sayısıdır (1)');
 		t.eq((await inbox(yApi)).topics.length, 1, 'üçüncü alıcı da aldı');
 		// Berk'in rolü Posta'yı kapatır; yabancı hâlâ var: yanıt yalnız ona gider ve berk atlananlarda görünür.
 		const roleId = await newRole(t, admin, tag);
@@ -312,7 +312,7 @@ export default async function suite(t) {
 
 /** A role that opens News only (no Mail). Removed when the suite ends. */
 async function newRole(t, admin, tag) {
-	const res = await admin.post('/api/roller', { name: `E2E Postasiz ${tag}`, color: '#8e8e93', description: 'Posta yok', twoStepRequired: false, permissions: { news: 'kullan', settings: 'kullan' } });
+	const res = await admin.post('/api/roller', { name: `E2E Postasiz ${tag}`, color: '#8e8e93', description: 'Posta yok', twoStepRequired: false, permissions: { news: 'use', settings: 'use' } });
 	const id = must(res, 'rol').id;
 	t.cleanup(() => admin.del('/api/roller', { id, move: t.fx.roles.member }));
 	return id;

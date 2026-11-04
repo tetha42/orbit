@@ -29,7 +29,7 @@ export function NewTaskModal({ teamId, column, members, labels, onClose, onCreat
 	const [title, setTitle] = useState('');
 	const [description, setDescription] = useState('');
 	const [status, setStatus] = useState<TaskStatus>(column);
-	const [priority, setPriority] = useState<TaskPriority>('orta');
+	const [priority, setPriority] = useState<TaskPriority>('medium');
 	const [assignee, setAssignee] = useState('');
 	const [due, setDue] = useState('');
 	const [tags, setTags] = useState<string[]>([]);

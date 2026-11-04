@@ -32,7 +32,7 @@ const manifest = {
 	component: { module: './index', export: 'NewsApp' },
 	order: 8,
 	dock: 5,
-	notifications: { news: 'kullan' },
+	notifications: { news: 'use' },
 	permission: {
 		order: 0,
 		name: 'Haberler',

@@ -72,7 +72,7 @@ export async function GET(request: Request) {
 	}
 
 	const client = await getOAuthClientById(clientId);
-	if (!client || !client.aktif) {
+	if (!client || !client.active) {
 		return NextResponse.json(
 			{ error: 'unauthorized_client', error_description: 'Geçersiz veya devre dışı bırakılmış istemci.' },
 			{ status: 400 }
@@ -164,12 +164,12 @@ export async function GET(request: Request) {
 			email: user.email,
 			handle: user.handle || user.studentNo,
 			studentNo: user.handle || user.studentNo,
-			department: user.department || user.department,
-			grade: user.grade || user.grade,
+			department: user.department,
+			grade: user.grade,
 			avatarUrl: user.avatarUrl || user.profilePhoto || null,
 			profilePhoto: user.avatarUrl || user.profilePhoto || null,
 			bio: user.bio || null,
-			roleName: user.permission?.role?.name || user.permission?.role?.name || 'Member',
+			roleName: user.permission?.role?.name || 'Member',
 			xp: user.xp,
 		},
 		client: {
@@ -250,7 +250,7 @@ export async function POST(request: Request) {
 		}
 
 		const client = await getOAuthClientById(clientId);
-		if (!client || !client.aktif) {
+		if (!client || !client.active) {
 			return NextResponse.json({ error: 'Geçersiz istemci.' }, { status: 400 });
 		}
 

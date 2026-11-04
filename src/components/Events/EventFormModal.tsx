@@ -40,7 +40,7 @@ export function EventFormModal({ event, onClose, onSaved }: Props) {
 	const start0 = event?.start ?? defaults;
 	const end0 = event?.endTime ?? defaults + 2 * 3_600_000;
 	const [title, setTitle] = useState(event?.title ?? '');
-	const [typeValue, setType] = useState<EventType>(event?.typeValue ?? 'atolye');
+	const [typeValue, setType] = useState<EventType>(event?.typeValue ?? 'workshop');
 	const [description, setDescription] = useState(event?.description ?? '');
 	const [location, setLocation] = useState(event?.location ?? '');
 	const [date, setDate] = useState(toDateInput(start0));
@@ -68,7 +68,7 @@ export function EventFormModal({ event, onClose, onSaved }: Props) {
 			: await sendJson<{ id: string }>('/api/events', 'POST', {
 					action: 'createEvent',
 					...fields,
-					status: draft ? 'taslak' : 'yayinda',
+					status: draft ? 'draft' : 'published',
 				});
 		setBusy(false);
 		if (!res.ok) {

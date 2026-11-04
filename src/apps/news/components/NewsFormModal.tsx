@@ -19,7 +19,7 @@ interface NewsFormModalProps {
 	isSubmitting: boolean;
 	newVisibility: NewsVisibility;
 	newCategory: string;
-	newImportantMi: boolean;
+	newIsImportant: boolean;
 	newTitle: string;
 	newSummary: string;
 	newImageUrl: string;
@@ -28,7 +28,7 @@ interface NewsFormModalProps {
 	onSubmit: (e: React.FormEvent) => void;
 	onChangeVisibility: (v: NewsVisibility) => void;
 	onChangeCategory: (c: string) => void;
-	onChangeImportantMi: (val: boolean) => void;
+	onChangeIsImportant: (val: boolean) => void;
 	onChangeTitle: (val: string) => void;
 	onChangeSummary: (val: string) => void;
 	onChangeImageUrl: (val: string) => void;
@@ -41,7 +41,7 @@ export function NewsFormModal({
 	isSubmitting,
 	newVisibility,
 	newCategory,
-	newImportantMi,
+	newIsImportant,
 	newTitle,
 	newSummary,
 	newImageUrl,
@@ -50,7 +50,7 @@ export function NewsFormModal({
 	onSubmit,
 	onChangeVisibility,
 	onChangeCategory,
-	onChangeImportantMi,
+	onChangeIsImportant,
 	onChangeTitle,
 	onChangeSummary,
 	onChangeImageUrl,
@@ -63,9 +63,9 @@ export function NewsFormModal({
 		NewsVisibility,
 		{ color: string; icon: React.ComponentType<{ size?: number; color?: string }>; hint: string; label: string }
 	> = {
-		taslak: { color: '#8e8e93', icon: FilePen, hint: t('newsVisDraftHint'), label: t('newsVisDraft') },
-		uyeler: { color: '#0a84ff', icon: Lock, hint: t('newsVisMembersHint'), label: t('newsVisMembers') },
-		yayinda: { color: '#30d158', icon: Globe, hint: t('newsVisPublicHint'), label: t('newsVisPublic') },
+		draft: { color: '#8e8e93', icon: FilePen, hint: t('newsVisDraftHint'), label: t('newsVisDraft') },
+		members: { color: '#0a84ff', icon: Lock, hint: t('newsVisMembersHint'), label: t('newsVisMembers') },
+		published: { color: '#30d158', icon: Globe, hint: t('newsVisPublicHint'), label: t('newsVisPublic') },
 	};
 
 	const bannerPresets = [
@@ -235,11 +235,11 @@ export function NewsFormModal({
 								fontSize: '13px',
 							}}
 						>
-							<option value="genel">{t('newsCatGenel')}</option>
+							<option value="general">{t('newsCatGenel')}</option>
 							<option value="teknofest">{t('newsCatTeknofest')}</option>
-							<option value="atolye">{t('newsCatAtolye')}</option>
-							<option value="isbirligi">{t('newsCatIsbirligi')}</option>
-							<option value="resmi">{t('newsCatResmi')}</option>
+							<option value="workshop">{t('newsCatAtolye')}</option>
+							<option value="collaboration">{t('newsCatIsbirligi')}</option>
+							<option value="official">{t('newsCatResmi')}</option>
 						</select>
 					</div>
 
@@ -252,13 +252,13 @@ export function NewsFormModal({
 								fontSize: '12.5px',
 								fontWeight: 600,
 								cursor: 'pointer',
-								color: newImportantMi ? '#ff375f' : 'inherit',
+								color: newIsImportant ? '#ff375f' : 'inherit',
 							}}
 						>
 							<input
 								type="checkbox"
-								checked={newImportantMi}
-								onChange={(e) => onChangeImportantMi(e.target.checked)}
+								checked={newIsImportant}
+								onChange={(e) => onChangeIsImportant(e.target.checked)}
 								style={{ width: '16px', height: '16px' }}
 							/>
 							<span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
@@ -453,8 +453,8 @@ export function NewsFormModal({
 						}}
 					>
 						{isSubmitting
-							? (editingId ? t('newsSaving') : newVisibility === 'taslak' ? t('newsSaving') : t('newsPublishing'))
-							: (editingId ? t('newsSaveEdit') : newVisibility === 'taslak' ? t('newsSaveDraft') : t('newsPublish'))}
+							? (editingId ? t('newsSaving') : newVisibility === 'draft' ? t('newsSaving') : t('newsPublishing'))
+							: (editingId ? t('newsSaveEdit') : newVisibility === 'draft' ? t('newsSaveDraft') : t('newsPublish'))}
 					</button>
 				</div>
 			</form>

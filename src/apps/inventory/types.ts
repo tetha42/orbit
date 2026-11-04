@@ -16,7 +16,7 @@ export interface InventoryItem {
 	seriesNo: string | null;
 }
 
-export type Filter = 'hepsi' | InventoryStatus | 'gecikmis' | 'bende';
+export type Filter = 'all' | InventoryStatus | 'overdue' | 'mine';
 
 export const CATEGORY_SUGGESTIONS = [
 	'Geliştirme Kartı',

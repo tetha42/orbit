@@ -7,7 +7,7 @@ import { inspectJsonPayload } from '@/lib/waf';
 
 export async function GET(request: Request) {
 	try {
-		const auth = await requireApp(request, 'notes', 'kullan');
+		const auth = await requireApp(request, 'notes', 'use');
 		if (!auth.authorized) {
 			return auth.response;
 		}
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 
 async function handlePOST(request: Request) {
 	try {
-		const auth = await requireApp(request, 'notes', 'kullan');
+		const auth = await requireApp(request, 'notes', 'use');
 		if (!auth.authorized) {
 			return auth.response;
 		}
@@ -33,7 +33,7 @@ async function handlePOST(request: Request) {
 			return NextResponse.json({ error: 'Güvenlik duvarı (WAF): Zararlı içerik engellendi.' }, { status: 403 });
 		}
 
-		const { id, title, content, color, pinnedMi, folderId, trashedMi } = body;
+		const { id, title, content, color, isPinned, folderId, isTrashed } = body;
 
 		if (title === undefined && content === undefined) {
 			return NextResponse.json({ error: 'Başlık veya içerik girilmelidir.' }, { status: 400 });
@@ -44,10 +44,10 @@ async function handlePOST(request: Request) {
 			userId: auth.user.id,
 			title: title !== undefined ? title : 'Başlıksız Not',
 			content: content !== undefined ? content : '',
-			color: color || folderId || 'sari',
-			pinnedMi: Boolean(pinnedMi),
+			color: color || folderId || 'yellow',
+			isPinned: Boolean(isPinned),
 			folderId: folderId || 'quick',
-			trashedMi: Boolean(trashedMi),
+			isTrashed: Boolean(isTrashed),
 		});
 
 		await publishEventQuiet(getPgPool(), [{ k: 'note_updated', userId: auth.user.id }]);
@@ -65,7 +65,7 @@ async function handlePOST(request: Request) {
 
 async function handleDELETE(request: Request) {
 	try {
-		const auth = await requireApp(request, 'notes', 'kullan');
+		const auth = await requireApp(request, 'notes', 'use');
 		if (!auth.authorized) {
 			return auth.response;
 		}

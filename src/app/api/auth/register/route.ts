@@ -99,13 +99,13 @@ export async function POST(request: Request) {
 		if (!body || typeof body !== 'object') {
 			return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
 		}
-		const email = body.email ?? body.email;
-		const password = body.password ?? body.password;
+		const email = body.email;
+		const password = body.password;
 		const name = body.firstName ?? body.name;
 		const surname = body.lastName ?? body.surname;
 		const studentNo = body.handle ?? body.studentNo ?? body.memberId;
-		const department = body.department ?? body.department;
-		const grade = body.grade ?? body.grade;
+		const department = body.department;
+		const grade = body.grade;
 		const { verificationCode, hp_website, inviteToken, preferredLanguage } = body;
 		const userLang: 'tr' | 'en' = preferredLanguage === 'en' ? 'en' : 'tr';
 
@@ -257,7 +257,7 @@ export async function POST(request: Request) {
 		let reapplyUser: typeof existingUser = null;
 		let reapplyOf: string | null = null;
 		if (existingUser) {
-			if (existingUser.status !== 'reddedildi') {
+			if (existingUser.status !== 'rejected') {
 				return NextResponse.json(
 					{ error: 'An account or pending application with this email address already exists.' },
 					{ status: 409 }
@@ -443,8 +443,8 @@ export async function POST(request: Request) {
 			const revived = await getPgPool().query(
 				`UPDATE users SET
 					first_name = $2, last_name = $3, handle = $4, department = $5, grade = $6,
-					password_hash = $7, status = 'beklemede', role_id = $8, email_verified_at = $9, preferred_language = $10
-				 WHERE id = $1 AND status = 'reddedildi'
+					password_hash = $7, status = 'pending', role_id = $8, email_verified_at = $9, preferred_language = $10
+				 WHERE id = $1 AND status = 'rejected'
 				 RETURNING id`,
 				[
 					reapplyUser.id,
@@ -472,7 +472,7 @@ export async function POST(request: Request) {
 				studentNo: cleanStudentNo,
 				department: cleanDepartment,
 				grade: parsedGrade,
-				status: 'beklemede' as const,
+				status: 'pending' as const,
 				roleId: invitation?.roleId ?? null,
 				preferredLanguage: userLang,
 			};
@@ -484,7 +484,7 @@ export async function POST(request: Request) {
 				passwordHash,
 				studentNo: cleanStudentNo,
 				department: cleanDepartment,
-				status: 'beklemede',
+				status: 'pending',
 				grade: parsedGrade,
 				roleId: invitation?.roleId ?? null,
 				preferredLanguage: userLang,

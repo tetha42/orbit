@@ -50,7 +50,7 @@ export function CalendarPanel({ returnFocusTo }: { returnFocusTo: RefObject<HTML
 	const byDay = useMemo(() => {
 		const map = new Map<string, EventView[]>();
 		for (const e of data?.events ?? []) {
-			if (e.status === 'iptal' || e.status === 'taslak') continue;
+			if (e.status === 'cancelled' || e.status === 'draft') continue;
 			for (const k of daysOfEvent(e.start, e.endTime)) map.set(k, [...(map.get(k) ?? []), e]);
 		}
 		return map;

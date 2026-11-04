@@ -193,7 +193,7 @@ export interface TopAttackerItem {
 	threatScore: number;
 	lastSeen: number;
 	lastMessage: string;
-	status: 'ban' | 'whitelist' | 'izleniyor';
+	status: 'ban' | 'whitelist' | 'monitoring';
 	threatIntel?: ThreatIntelligence;
 }
 

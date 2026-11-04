@@ -119,7 +119,7 @@ export type RoleSummary = {
 export function roleSummary(r: { name: string; color: string; description?: string | null; twoStepRequired: boolean; permissions: Record<string, string | undefined> }): RoleSummary {
 	const permissions: Record<string, string> = {};
 	for (const [app, level] of Object.entries(r.permissions).sort(([a], [b]) => a.localeCompare(b))) {
-		if (level && level !== 'yok') permissions[app] = level;
+		if (level && level !== 'none') permissions[app] = level;
 	}
 	return { name: r.name, color: r.color, description: r.description ?? '', twoStepRequired: !!r.twoStepRequired, permissions };
 }
@@ -207,8 +207,8 @@ export function roleDiff(before: RoleSummary, after: RoleSummary): DiffResult | 
 	const oi: Record<string, string> = {};
 	const ni: Record<string, string> = {};
 	for (const app of new Set([...Object.keys(before.permissions), ...Object.keys(after.permissions)])) {
-		const a = before.permissions[app] ?? 'yok';
-		const b = after.permissions[app] ?? 'yok';
+		const a = before.permissions[app] ?? 'none';
+		const b = after.permissions[app] ?? 'none';
 		if (a !== b) {
 			oi[app] = a;
 			ni[app] = b;
@@ -246,12 +246,12 @@ export function smtpDiff(before: Record<string, string | undefined>, fresh: Reco
 		if (fresh[SMTP_PASSWORD_KEY] === '') {
 			// Clearing a password that was never set is no change.
 			if (existed) {
-				o.appKey = 'var';
-				n.appKey = 'silindi';
+				o.appKey = 'set';
+				n.appKey = 'deleted';
 			}
 		} else {
-			o.appKey = existed ? 'var' : 'yok';
-			n.appKey = 'degisti';
+			o.appKey = existed ? 'set' : 'none';
+			n.appKey = 'changed';
 		}
 	}
 	return Object.keys(n).length ? { before: o, after: n } : null;
@@ -260,10 +260,10 @@ export function smtpDiff(before: Record<string, string | undefined>, fresh: Reco
 /** Which log entry a membership status change is. */
 export function statusAction(before: string, after: string): AuditAction | null {
 	if (before === after) return null;
-	if (before === 'beklemede' && after === 'aktif') return 'application.approve';
-	if (before === 'beklemede' && after === 'reddedildi') return 'application.reject';
-	if (after === 'mezun') return 'member.graduate';
-	if (after === 'aktif') return 'member.activate';
+	if (before === 'pending' && after === 'active') return 'application.approve';
+	if (before === 'pending' && after === 'rejected') return 'application.reject';
+	if (after === 'alumni') return 'member.graduate';
+	if (after === 'active') return 'member.activate';
 	return 'member.status';
 }
 

@@ -19,10 +19,10 @@ export async function normalizeUserRow(
 	const totpSecret = skip ? null : (rawTotpSecret ? await decryptSecret(rawTotpSecret) : null);
 	const firstName = String(row.firstName ?? row.first_name ?? row.name ?? '');
 	const lastName = String(row.lastName ?? row.last_name ?? row.surname ?? '');
-	const handle = String(row.handle ?? row.studentNo ?? row.studentNo ?? '');
-	const department = String(row.department ?? row.department ?? '');
-	const grade = Number(row.grade ?? row.grade ?? 1);
-	const avatarUrl = (row.avatarUrl ?? row.avatar_url ?? row.profilePhoto ?? row.profilePhoto) ? String(row.avatarUrl ?? row.avatar_url ?? row.profilePhoto ?? row.profilePhoto) : undefined;
+	const handle = String(row.handle ?? row.studentNo ?? '');
+	const department = String(row.department ?? '');
+	const grade = Number(row.grade ?? 1);
+	const avatarUrl = (row.avatarUrl ?? row.avatar_url ?? row.profilePhoto) ? String(row.avatarUrl ?? row.avatar_url ?? row.profilePhoto) : undefined;
 	const createdAt = Number(row.createdAt ?? row.created_at ?? row.creation ?? 0);
 	const lastLoginAt = row.lastLoginAt ? Number(row.lastLoginAt) : (row.last_login_at ? Number(row.last_login_at) : (row.lastLoginDate ? Number(row.lastLoginDate) : (row.lastLoginDate ? Number(row.lastLoginDate) : undefined)));
 	return {
@@ -32,26 +32,26 @@ export async function normalizeUserRow(
 		name: firstName,
 		surname: lastName,
 		email: String(row.email ?? ''),
-		passwordHash: String(row.passwordHash ?? row.password_hash ?? row.passwordHash ?? ''),
+		passwordHash: String(row.passwordHash ?? row.password_hash ?? ''),
 		handle,
 		studentNo: handle,
 		department,
 		grade,
-		roleId: (row.roleId ?? row.role_id ?? row.roleId ?? row.roleId ?? null) as string | null,
+		roleId: (row.roleId ?? row.role_id ?? null) as string | null,
 		avatarUrl,
 		profilePhoto: avatarUrl,
 		bio: (row.bio ?? '') ? String(row.bio) : undefined,
 		xp: Number(row.xp ?? 0),
-		status: ((row.status ?? row.status) as User['status']) || 'aktif',
+		status: ((row.status) as User['status']) || 'active',
 		authMethod: (['password', 'totp', 'passkey'].includes(String(row.authMethod ?? ''))
 			? String(row.authMethod)
 			: 'password') as User['authMethod'],
-		activeSessionToken: (row.sessionToken ?? row.session_token ?? row.activeSessionToken ?? row.activeSessionToken) ? String(row.sessionToken ?? row.session_token ?? row.activeSessionToken ?? row.activeSessionToken) : undefined,
+		activeSessionToken: (row.sessionToken ?? row.session_token ?? row.activeSessionToken) ? String(row.sessionToken ?? row.session_token ?? row.activeSessionToken) : undefined,
 		lastLoginAt,
 		lastLoginDate: lastLoginAt,
-		lastLoginIp: (row.lastLoginIp ?? row.last_login_ip ?? row.lastLoginIp ?? row.lastLoginIp) ? String(row.lastLoginIp ?? row.last_login_ip ?? row.lastLoginIp ?? row.lastLoginIp) : null,
-		lastLoginUserAgent: (row.lastLoginUserAgent ?? row.last_login_user_agent ?? row.lastLoginUserAgent ?? row.lastLoginUserAgent) ? String(row.lastLoginUserAgent ?? row.last_login_user_agent ?? row.lastLoginUserAgent ?? row.lastLoginUserAgent) : null,
-		lastActiveIp: (row.lastActiveIp ?? row.last_active_ip ?? row.lastActiveIp ?? row.lastActiveIp) ? String(row.lastActiveIp ?? row.last_active_ip ?? row.lastActiveIp ?? row.lastActiveIp) : null,
+		lastLoginIp: (row.lastLoginIp ?? row.last_login_ip) ? String(row.lastLoginIp ?? row.last_login_ip) : null,
+		lastLoginUserAgent: (row.lastLoginUserAgent ?? row.last_login_user_agent) ? String(row.lastLoginUserAgent ?? row.last_login_user_agent) : null,
+		lastActiveIp: (row.lastActiveIp ?? row.last_active_ip) ? String(row.lastActiveIp ?? row.last_active_ip) : null,
 		lastActiveDate: row.lastActiveAt ? Number(row.lastActiveAt) : (row.last_active_at ? Number(row.last_active_at) : (row.lastActiveDate ? Number(row.lastActiveDate) : (row.lastActiveDate ? Number(row.lastActiveDate) : null))),
 		sessionEnd: row.sessionExpiresAt ? Number(row.sessionExpiresAt) : (row.session_expires_at ? Number(row.session_expires_at) : (row.sessionEnd ? Number(row.sessionEnd) : (row.sessionEnd ? Number(row.sessionEnd) : null))),
 		preferredLanguage: (row.preferredLanguage ?? row.preferred_language ?? row.preferredlanguage ?? 'tr') === 'en' ? 'en' : 'tr',
@@ -115,18 +115,18 @@ export interface PaginatedMemberRoster {
 }
 
 function mapRosterRow(r: Record<string, unknown>): MemberRosterRow {
-	const email = String(r.email ?? r.email ?? '');
+	const email = String(r.email ?? '');
 	const roleId = (r.roleId ?? r.role_id ?? null) as string | null;
-	const status = ((r.status ?? r.status) as User['status']) || 'aktif';
+	const status = ((r.status) as User['status']) || 'active';
 	const firstName = String(r.firstName ?? r.first_name ?? r.name ?? '');
 	const lastName = String(r.lastName ?? r.last_name ?? r.surname ?? '');
 	const handle = String(r.handle ?? r.studentNo ?? '');
-	const department = String(r.department ?? r.department ?? '');
-	const grade = Number(r.grade ?? r.grade ?? 1);
+	const department = String(r.department ?? '');
+	const grade = Number(r.grade ?? 1);
 	const avatarUrl = (r.avatarUrl ?? r.avatar_url ?? r.profilePhoto ?? undefined) as string | undefined;
 	const createdAt = Number(r.createdAt ?? r.created_at ?? r.creation ?? 0);
-	const roleName = (r.roleName ?? r.roleName ?? null) as string | null;
-	const roleColor = (r.roleColor ?? r.roleColor ?? null) as string | null;
+	const roleName = (r.roleName ?? null) as string | null;
+	const roleColor = (r.roleColor ?? null) as string | null;
 	return {
 		id: String(r.id ?? ''),
 		firstName,
@@ -219,7 +219,7 @@ export async function getMemberRoster(options?: MemberRosterOptions): Promise<Me
 			const params: unknown[] = [];
 
 			if (!options?.isManager) {
-				conditions.push("(status = 'aktif' OR status = 'mezun')");
+				conditions.push("(status = 'active' OR status = 'alumni')");
 			}
 
 			if (options?.search?.trim()) {
@@ -263,7 +263,7 @@ export async function getMemberRoster(options?: MemberRosterOptions): Promise<Me
 			const conditions: string[] = ['1=1'];
 			const params: unknown[] = [];
 			if (!options?.isManager) {
-				conditions.push("(status = 'aktif' OR status = 'mezun')");
+				conditions.push("(status = 'active' OR status = 'alumni')");
 			}
 			params.push(`%${options.search.trim()}%`);
 			conditions.push(
@@ -355,7 +355,7 @@ export async function getUserBySessionToken(token: string): Promise<User | null>
 
 		// Transparent seamless upgrade: if stored token was plaintext, upgrade to sha256 hash immediately
 		const rawRow = res.rows[0];
-		if (rawRow && (rawRow.session_token === token || rawRow.session_token === token)) {
+		if (rawRow && (rawRow.session_token === token)) {
 			void getPgPool().query('UPDATE users SET session_token = $1 WHERE id = $2', [tokenHash, user.id]).catch(() => {});
 		}
 
@@ -424,7 +424,7 @@ export async function createUser(
 		department?: string;
 		grade?: number;
 		roleId?: string | null;
-		status?: 'aktif' | 'beklemede' | 'reddedildi' | 'mezun';
+		status?: 'active' | 'pending' | 'rejected' | 'alumni';
 		bio?: string;
 		preferredLanguage?: 'tr' | 'en';
 	},
@@ -435,8 +435,8 @@ export async function createUser(
 	const firstName = (data.firstName ?? data.name ?? '').trim();
 	const lastName = (data.lastName ?? data.surname ?? '').trim();
 	const handle = (data.handle ?? data.studentNo ?? '').trim();
-	const department = (data.department ?? data.department ?? '').trim();
-	const grade = Number(data.grade ?? data.grade) || 1;
+	const department = (data.department ?? '').trim();
+	const grade = Number(data.grade) || 1;
 	const createdAt = Date.now();
 	const newUser: User = {
 		id,
@@ -453,7 +453,7 @@ export async function createUser(
 		roleId: data.roleId ?? null,
 		bio: data.bio || '',
 		xp: 50,
-		status: data.status || 'beklemede',
+		status: data.status || 'pending',
 		preferredLanguage: data.preferredLanguage === 'en' ? 'en' : 'tr',
 		createdAt,
 		creation: createdAt,
@@ -480,7 +480,7 @@ export async function createUser(
 				newUser.preferredLanguage ?? 'tr',
 			]
 		);
-		if (newUser.status === 'beklemede') await publishEvent(client, notificationEvents());
+		if (newUser.status === 'pending') await publishEvent(client, notificationEvents());
 		if (audit && newUser.roleId) {
 			const role = await client.query('SELECT name FROM roles WHERE id = $1', [newUser.roleId]);
 			const roleNameVal = role.rows[0]?.name ?? null;
@@ -503,7 +503,7 @@ export async function getPendingUsers(): Promise<User[]> {
 	try {
 		await ensurePostgresInit();
 		const res = await getPgPool().query(
-			"SELECT * FROM users WHERE status = 'beklemede' ORDER BY created_at ASC"
+			"SELECT * FROM users WHERE status = 'pending' ORDER BY created_at ASC"
 		);
 		if (!res.rows?.length) return [];
 		const users = await Promise.all(res.rows.map(normalizeUserRow));
@@ -516,13 +516,13 @@ export async function getPendingUsers(): Promise<User[]> {
 
 export async function updateUserStatus(
 	userId: string,
-	status: 'aktif' | 'beklemede' | 'reddedildi' | 'mezun',
+	status: 'active' | 'pending' | 'rejected' | 'alumni',
 	db: Pick<PoolClient, 'query'> = getPgPool()
 ): Promise<void> {
 	await ensurePostgresInit();
-	if (status === 'aktif') {
+	if (status === 'active') {
 		await db.query(
-			"UPDATE users SET status = $1, xp = COALESCE(xp, 0) + CASE WHEN status = 'beklemede' THEN 50 ELSE 0 END WHERE id = $2",
+			"UPDATE users SET status = $1, xp = COALESCE(xp, 0) + CASE WHEN status = 'pending' THEN 50 ELSE 0 END WHERE id = $2",
 			[status, userId]
 		);
 	} else {

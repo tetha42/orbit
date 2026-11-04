@@ -26,9 +26,9 @@ export function NewsToolbar({
 	const tabs = [
 		{ id: 'all', label: t('newsAll') },
 		{ id: 'teknofest', label: t('newsCatTeknofestShort') },
-		{ id: 'atolye', label: t('newsCatAtolyeShort') },
-		{ id: 'isbirligi', label: t('newsCatIsbirligiShort') },
-		{ id: 'resmi', label: t('newsCatResmiShort') },
+		{ id: 'workshop', label: t('newsCatAtolyeShort') },
+		{ id: 'collaboration', label: t('newsCatIsbirligiShort') },
+		{ id: 'official', label: t('newsCatResmiShort') },
 	];
 
 	return (

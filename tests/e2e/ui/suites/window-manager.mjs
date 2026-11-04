@@ -224,7 +224,7 @@ export default async function suite(t) {
 		await page.waitForTimeout(SAVE_MS);
 		t.includes(await openWindows(page), 'budget', 'kurul üyesinde bütçe penceresi açık (kurulum)');
 
-		const reader = await t.api('okur');
+		const reader = await t.api('reader');
 		await swapSession(context, t.base, reader.token);
 		await reloadDesktop(page);
 		await waitDesktop(page);

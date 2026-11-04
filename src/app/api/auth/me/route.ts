@@ -80,7 +80,7 @@ export async function GET(request: Request) {
 
 		// Alumni keep a read-only session (as verifyAuth allows); pending or
 		// rejected accounts are signed out.
-		if (user.status !== 'aktif' && user.status !== 'mezun') {
+		if (user.status !== 'active' && user.status !== 'alumni') {
 			const response = NextResponse.json({ authenticated: false, user: null, error: 'Hesabınız aktif durumda değildir.' }, { status: 403 });
 			response.cookies.delete(SESSION_COOKIE);
 			return response;

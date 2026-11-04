@@ -6,7 +6,7 @@ import { logSystemEvent } from '@/db/repositories/logs.repo';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-	const auth = await requireApp(request, 'settings', 'yonet');
+	const auth = await requireApp(request, 'settings', 'manage');
 	if (!auth.authorized) return auth.response;
 	const categories = await getTeamCategories();
 	return NextResponse.json(
@@ -16,9 +16,9 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-	const auth = await requireApp(request, 'settings', 'yonet');
+	const auth = await requireApp(request, 'settings', 'manage');
 	if (!auth.authorized) return auth.response;
-	if (auth.user.status === 'mezun') {
+	if (auth.user.status === 'alumni') {
 		return NextResponse.json({ error: 'Alumni accounts are read-only.' }, { status: 403 });
 	}
 

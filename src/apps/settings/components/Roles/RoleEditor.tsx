@@ -132,7 +132,7 @@ export function RoleEditor({ role, myPermissions, onClose, onSaved }: RoleEditor
 											? fill(t(v === 'manage' ? 'rolesPermManageGeneric' : 'rolesPermUseGeneric'), {
 													app: englishAppTitle(a),
 												})
-											: meta[v === 'manage' ? 'yonet' : 'kullan']}
+											: meta[v === 'manage' ? 'manage' : 'use']}
 								</span>
 								{meta.warning && v !== 'none' && (
 									<span className={s.warn}>

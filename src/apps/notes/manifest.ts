@@ -44,7 +44,7 @@ const manifest = {
 		title: { tr: 'Notlar', en: 'Notes' },
 		about: { id: 'about-notes', label: { tr: 'Notlar Hakkında', en: 'About Notes' } },
 		defaultItems: [
-			{ id: 'new-note', label: { tr: 'Yeni Not', en: 'New Note' }, shortcut: '⌘N', permission: 'kullan', command: 'new-note' },
+			{ id: 'new-note', label: { tr: 'Yeni Not', en: 'New Note' }, shortcut: '⌘N', permission: 'use', command: 'new-note' },
 		],
 	},
 } as const satisfies AppManifest;

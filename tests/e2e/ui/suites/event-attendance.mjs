@@ -17,7 +17,7 @@ export default async function suite(t) {
 
 	const qr = await newMember(t, admin, { label: 'qr', roleId: fx.roles.member });
 	const link = await newMember(t, admin, { label: 'baglanti', roleId: fx.roles.member });
-	const ticket = await newMember(t, admin, { label: 'bilet', roleId: fx.roles.member });
+	const ticket = await newMember(t, admin, { label: 'ticket', roleId: fx.roles.member });
 	const walkIn = await newMember(t, admin, { label: 'elle', roleId: fx.roles.member });
 	const [qrApi, linkApi, ticketApi] = await Promise.all([qr.api(), link.api(), ticket.api()]);
 	const studentNo = (await admin.get('/api/uyeler')).json.members.find((m) => m.id === walkIn.id)?.studentNo;
@@ -75,7 +75,7 @@ export default async function suite(t) {
 		await t.waitFor(async () => (await detail.getByText('Katıldın').count()) > 0);
 		t.check(await detail.getByText('Katıldın').count() > 0, '"Katıldın" rozeti');
 		const again = await qrApi.post('/api/etkinlikler', { action: 'attend', code: (await codeOf(live.id)).json.text });
-		t.eq(again.json?.zaten, true, 'ikinci yoklama "zaten" diyor');
+		t.eq(again.json?.already, true, 'ikinci yoklama "zaten" diyor');
 		t.eq(await xpOf(qrApi), before + 150, 'XP ikinci kez verilmedi');
 		await t.shot(page, 'qr-yoklama');
 	});
@@ -117,8 +117,8 @@ export default async function suite(t) {
 		await toast(ap, 'eklendi');
 		const list = await attendance(admin, live.id);
 		const row = (id) => list.find((r) => r.userId === id);
-		t.eq(row(ticket.id)?.method, 'bilet', 'bilet okutulan: yöntem bilet');
-		t.eq(row(walkIn.id)?.method, 'manuel', 'elle eklenen: yöntem manuel');
+		t.eq(row(ticket.id)?.method, 'ticket', 'bilet okutulan: yöntem bilet');
+		t.eq(row(walkIn.id)?.method, 'manual', 'elle eklenen: yöntem manuel');
 		t.eq(row(walkIn.id)?.recordTime ?? null, null, 'elle eklenen kayıtsız gelmiş');
 		t.eq(row(qr.id)?.method, 'qr', 'karekodla gelen: yöntem qr');
 		await detail.locator(`tr[data-member-id="${walkIn.id}"]`).getByText('Kayıtsız').waitFor();
@@ -163,7 +163,7 @@ export default async function suite(t) {
 	});
 
 	await t.step('yetkisiz rol: "Sadece Haberler" yoklama veremez, kod alamaz', async () => {
-		const reader = await t.api('okur');
+		const reader = await t.api('reader');
 		await admin.post('/api/etkinlikler', { action: 'setAttendance', eventId: live.id, open: true });
 		const code = (await codeOf(live.id)).json.text;
 		t.eq((await reader.post('/api/etkinlikler', { action: 'attend', code: code })).status, 403, 'yoklama 403');

@@ -10,18 +10,18 @@ import {
 
 export async function POST(request: Request) {
 	// Deciding applications is managing members (the guard also enforces the role's 2FA rule).
-	const auth = await requireApp(request, 'members', 'yonet');
+	const auth = await requireApp(request, 'members', 'manage');
 	if (!auth.authorized) return auth.response;
 
 	try {
 		const body = await request.json();
 		const userId = body.userId;
-		const action = body.action ?? body.action;
+		const action = body.action;
 		const rejectionReason =
 			typeof body.rejectionReason === 'string' ? body.rejectionReason.trim().slice(0, 500) : null;
 
-		const isApproval = action === 'approve' || action === 'onayla';
-		const isRejection = action === 'reject' || action === 'reddet';
+		const isApproval = action === 'approve';
+		const isRejection = action === 'reject';
 		if (!userId || (!isApproval && !isRejection)) {
 			return NextResponse.json({ error: 'Geçersiz parametreler' }, { status: 400 });
 		}
@@ -33,22 +33,22 @@ export async function POST(request: Request) {
 
 		// This endpoint decides membership applications, nothing else. Without the
 		// check it could be pointed at any account — including an admin's.
-		if (targetUser.status !== 'beklemede') {
+		if (targetUser.status !== 'pending') {
 			return NextResponse.json(
 				{ error: 'Bu kayıt için onay işlemi yapılamaz: başvuru beklemede değil.' },
 				{ status: 409 }
 			);
 		}
 
-		const newStatus = isApproval ? 'aktif' : 'reddedildi';
+		const newStatus = isApproval ? 'active' : 'rejected';
 		// An approved member starts with the club's default role (none if unset:
 		// they then see only their own settings until someone assigns one).
-		if ((await setMemberStatus(userId, newStatus, auditContext(request, auth.user))) === 'yok') {
+		if ((await setMemberStatus(userId, newStatus, auditContext(request, auth.user))) === 'none') {
 			return NextResponse.json({ error: 'Kullanıcı bulunamadı' }, { status: 404 });
 		}
 		await recordApplicationDecision(
 			userId,
-			newStatus === 'aktif' ? 'approved' : 'rejected',
+			newStatus === 'active' ? 'approved' : 'rejected',
 			auth.user.id,
 			rejectionReason
 		);
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
 			email: targetUser.email,
 			preferredLanguage: targetUser.preferredLanguage,
 		};
-		if (newStatus === 'aktif') {
+		if (newStatus === 'active') {
 			notifyMembershipApproved(recipient);
 		} else {
 			notifyMembershipRejected(recipient);

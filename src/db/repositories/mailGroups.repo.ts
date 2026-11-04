@@ -21,21 +21,21 @@ export async function getMailRecipientGroups(): Promise<MailRecipientGroup[]> {
 	const [members, roles, teams] = await Promise.all([
 		db.query(
 			`SELECT email FROM users
-			 WHERE status = 'aktif' AND email IS NOT NULL AND email <> ''
+			 WHERE status = 'active' AND email IS NOT NULL AND email <> ''
 			 ORDER BY email`
 		),
 		db.query(
 			`SELECT r.id, r.name AS name, u.email
 			 FROM roles r JOIN users u ON u.role_id = r.id
-			 WHERE u.status = 'aktif' AND u.email IS NOT NULL AND u.email <> ''
+			 WHERE u.status = 'active' AND u.email IS NOT NULL AND u.email <> ''
 			 ORDER BY r.name, u.email`
 		),
 		db.query(
 			`SELECT t.id, t.name AS name, t.type, u.email
 			 FROM teams t
-			 JOIN team_members tm ON tm.team_id = t.id AND tm.status = 'aktif'
+			 JOIN team_members tm ON tm.team_id = t.id AND tm.status = 'active'
 			 JOIN users u ON u.id = tm.user_id
-			 WHERE t.status = 'aktif' AND u.status = 'aktif'
+			 WHERE t.status = 'active' AND u.status = 'active'
 			   AND u.email IS NOT NULL AND u.email <> ''
 			 ORDER BY t.name, u.email`
 		),

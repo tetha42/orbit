@@ -100,7 +100,7 @@ export interface TopAttackerItem {
 	threatScore: number;
 	lastSeen: number;
 	lastMessage: string;
-	status: 'ban' | 'whitelist' | 'izleniyor';
+	status: 'ban' | 'whitelist' | 'monitoring';
 	threatIntel?: ThreatIntelligence;
 }
 
@@ -305,9 +305,9 @@ async function loadFirewallMap(): Promise<Map<string, SecurityBlock>> {
 			ip: ipKey,
 			status,
 			reason: String(r.reason || ''),
-			threatScore: Number(r.threatScore ?? r.threatScore ?? 100),
+			threatScore: Number(r.threatScore ?? 100),
 			violations: Number(r.violations ?? 1),
-			creatorId: (r.creatorId ?? r.creatorId) ? String(r.creatorId ?? r.creatorId) : null,
+			creatorId: (r.creatorId) ? String(r.creatorId) : null,
 			expiresAt: endTimestamp,
 			creation: Number(r.creation ?? now),
 			update: Number(r.update ?? now),
@@ -595,9 +595,9 @@ export async function getSecurityBlocks(): Promise<SecurityBlock[]> {
 			ip,
 			status: (r.status === 'whitelist' ? 'whitelist' : 'ban') as 'ban' | 'whitelist',
 			reason: String(r.reason || ''),
-			threatScore: Number(r.threatScore ?? r.threatScore ?? 100),
+			threatScore: Number(r.threatScore ?? 100),
 			violations: Number(r.violations ?? 1),
-			creatorId: (r.creatorId ?? r.creatorId) ? String(r.creatorId ?? r.creatorId) : null,
+			creatorId: (r.creatorId) ? String(r.creatorId) : null,
 			expiresAt: endTime !== null && endTime !== undefined ? Number(endTime) : null,
 			creation: Number(r.creation ?? now),
 			update: Number(r.update ?? now),
@@ -932,15 +932,15 @@ export async function getActiveSessions(): Promise<ActiveSessionInfo[]> {
 	);
 
 	return res.rows.map((r) => {
-		const loginIp = (r.lastLoginIp ?? r.lastLoginIp) ? String(r.lastLoginIp ?? r.lastLoginIp) : null;
-		const activeIp = (r.lastActiveIp ?? r.lastActiveIp) ? String(r.lastActiveIp ?? r.lastActiveIp) : loginIp;
-		const roleId = (r.roleId ?? r.roleId) ? String(r.roleId ?? r.roleId) : null;
+		const loginIp = (r.lastLoginIp) ? String(r.lastLoginIp) : null;
+		const activeIp = (r.lastActiveIp) ? String(r.lastActiveIp) : loginIp;
+		const roleId = (r.roleId) ? String(r.roleId) : null;
 		const ipChanged = Boolean(loginIp && activeIp && loginIp !== activeIp);
 		let impossibleTravel: ActiveSessionInfo['impossibleTravel'] = undefined;
 
 		if (ipChanged && loginIp && activeIp) {
-			const loginTime = r.lastLoginDate || r.lastLoginDate ? Number(r.lastLoginDate ?? r.lastLoginDate) : now;
-			const activeTime = r.lastActiveDate || r.lastActiveDate ? Number(r.lastActiveDate ?? r.lastActiveDate) : now;
+			const loginTime = r.lastLoginDate ? Number(r.lastLoginDate) : now;
+			const activeTime = r.lastActiveDate ? Number(r.lastActiveDate) : now;
 			const deltaMs = Math.abs(activeTime - loginTime);
 			const deltaMinutes = Math.max(1, Math.round(deltaMs / 60_000));
 
@@ -970,11 +970,11 @@ export async function getActiveSessions(): Promise<ActiveSessionInfo[]> {
 		const firstName = String(r.firstName ?? r.name ?? '');
 		const lastName = String(r.lastName ?? r.surname ?? '');
 		const roleName = r.roleName ? String(r.roleName) : (r.roleName ? String(r.roleName) : 'Member');
-		const lastLoginAt = r.lastLoginAt || r.lastLoginDate || r.lastLoginDate ? Number(r.lastLoginAt ?? r.lastLoginDate ?? r.lastLoginDate) : null;
-		const sessionExpiresAt = r.sessionExpiresAt || r.sessionEnd || r.sessionEnd ? Number(r.sessionExpiresAt ?? r.sessionEnd ?? r.sessionEnd) : null;
-		const lastActiveAt = r.lastActiveAt || r.lastActiveDate || r.lastActiveDate ? Number(r.lastActiveAt ?? r.lastActiveDate ?? r.lastActiveDate) : null;
-		const lastLoginUserAgent = (r.lastLoginUserAgent ?? r.lastLoginUserAgent ?? r.lastLoginUserAgent)
-			? String(r.lastLoginUserAgent ?? r.lastLoginUserAgent ?? r.lastLoginUserAgent)
+		const lastLoginAt = r.lastLoginAt || r.lastLoginDate ? Number(r.lastLoginAt ?? r.lastLoginDate) : null;
+		const sessionExpiresAt = r.sessionExpiresAt || r.sessionEnd ? Number(r.sessionExpiresAt ?? r.sessionEnd) : null;
+		const lastActiveAt = r.lastActiveAt || r.lastActiveDate ? Number(r.lastActiveAt ?? r.lastActiveDate) : null;
+		const lastLoginUserAgent = (r.lastLoginUserAgent)
+			? String(r.lastLoginUserAgent)
 			: null;
 
 		return {
@@ -992,8 +992,8 @@ export async function getActiveSessions(): Promise<ActiveSessionInfo[]> {
 			surname: lastName,
 			email: String(r.email),
 			roleId,
-			admin: roleId === 'role_admin' || roleId === 'rol_admin',
-			status: String(r.status || 'aktif'),
+			admin: roleId === 'role_admin',
+			status: String(r.status || 'active'),
 			totpEnabled: Number(r.totpenabled ?? r.totpEnabled ?? 0) === 1,
 			lastLoginDate: lastLoginAt,
 			sessionEnd: sessionExpiresAt,
@@ -1124,13 +1124,13 @@ export async function suspendUserAccount(params: {
 		return { ok: false, error: 'Kullanıcı bulunamadı.' };
 	}
 	const target = check.rows[0];
-	if ((target.roleId ?? target.roleId) === 'rol_admin') {
+	if ((target.roleId) === 'role_admin') {
 		return { ok: false, error: 'Tam yetkili yönetici hesabı askıya alınamaz.' };
 	}
 
 	await pool.query(
 		`UPDATE users
-		 SET status = 'beklemede', session_token = NULL, session_expires_at = NULL
+		 SET status = 'pending', session_token = NULL, session_expires_at = NULL
 		 WHERE id = $1`,
 		[params.targetUserId]
 	);
@@ -1382,7 +1382,7 @@ export async function getSocOverview(): Promise<SocOverviewData> {
 			threatScore: computedScore,
 			lastSeen: Number(r.lastSeen ?? now),
 			lastMessage: String(r.lastMessage ?? ''),
-			status: block ? block.status : 'izleniyor',
+			status: block ? block.status : 'monitoring',
 			threatIntel: classifyThreatIntel(ip),
 		};
 	});

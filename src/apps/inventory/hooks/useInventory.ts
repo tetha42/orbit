@@ -14,13 +14,13 @@ export function useInventory() {
 	const { currentUserId, currentUser, canManageApp } = useSession();
 	const { playSystemSound } = useSound();
 	const isManager = canManageApp('inventory');
-	const isAlumni = currentUser?.status === 'mezun';
+	const isAlumni = currentUser?.status === 'alumni';
 	const now = useNow(60_000);
 
 	const { data, refetch } = useJsonResource<InventoryItem[]>('/api/inventory');
 	const items = useMemo(() => data ?? [], [data]);
 
-	const [filter, setFilter] = useState<Filter>('hepsi');
+	const [filter, setFilter] = useState<Filter>('all');
 	const [category, setCategory] = useState('');
 	const [search, setSearch] = useState('');
 	const [detailId, setDetailId] = useState<string | null>(null);
@@ -30,7 +30,7 @@ export function useInventory() {
 	useFocusTarget('inventory', {
 		ready: data !== null,
 		apply: (target) => {
-			setFilter('hepsi');
+			setFilter('all');
 			setCategory('');
 			setSearch('');
 			if (target.itemId) setDetailId(target.itemId);
@@ -50,16 +50,16 @@ export function useInventory() {
 	};
 
 	const overdue = (i: InventoryItem) =>
-		i.status === 'oduncte' && !!returnStatus(i.returnDate, now)?.gecikti;
+		i.status === 'on_loan' && !!returnStatus(i.returnDate, now)?.overdue;
 
 	const counts = {
-		hepsi: items.length,
-		saglam: items.filter((i) => i.status === 'saglam').length,
-		oduncte: items.filter((i) => i.status === 'oduncte').length,
-		gecikmis: items.filter(overdue).length,
-		arizali: items.filter((i) => i.status === 'arizali').length,
-		kayip: items.filter((i) => i.status === 'kayip').length,
-		bende: items.filter((i) => i.status === 'oduncte' && i.loanFieldId === currentUserId).length,
+		all: items.length,
+		available: items.filter((i) => i.status === 'available').length,
+		on_loan: items.filter((i) => i.status === 'on_loan').length,
+		overdue: items.filter(overdue).length,
+		faulty: items.filter((i) => i.status === 'faulty').length,
+		lost: items.filter((i) => i.status === 'lost').length,
+		mine: items.filter((i) => i.status === 'on_loan' && i.loanFieldId === currentUserId).length,
 	};
 
 	const categories = useMemo(
@@ -70,10 +70,10 @@ export function useInventory() {
 	const q = foldTr(search.trim());
 	const visible = items
 		.filter((i) => {
-			if (filter === 'gecikmis' && !overdue(i)) return false;
-			if (filter === 'bende' && !(i.status === 'oduncte' && i.loanFieldId === currentUserId))
+			if (filter === 'overdue' && !overdue(i)) return false;
+			if (filter === 'mine' && !(i.status === 'on_loan' && i.loanFieldId === currentUserId))
 				return false;
-			if (filter !== 'hepsi' && filter !== 'gecikmis' && filter !== 'bende' && i.status !== filter)
+			if (filter !== 'all' && filter !== 'overdue' && filter !== 'mine' && i.status !== filter)
 				return false;
 			if (category && i.category !== category) return false;
 			return (

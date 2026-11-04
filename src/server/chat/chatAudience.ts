@@ -28,7 +28,7 @@ export interface ChatAudience {
 const TTL_MS = 10_000;
 const MAX_CACHE_ENTRIES = 500;
 
-const GENERAL_ROOM_ID = 'oda_genel';
+const GENERAL_ROOM_ID = 'room_general';
 
 const GENERAL_AUDIENCE: ChatAudience = {
 	all: true,
@@ -72,17 +72,17 @@ export async function getChatAudience(roomId: string): Promise<ChatAudience | nu
 		if (!room) return null;
 
 		const roomType = String(room.roomType || '');
-		if (roomType === 'genel' || roomType === 'general') {
+		if (roomType === 'general') {
 			cache.set(roomId, GENERAL_AUDIENCE);
 			return GENERAL_AUDIENCE;
 		}
 
 		const teamId = room.teamId ? String(room.teamId) : null;
 		const membersRes =
-			(roomType === 'takim' || roomType === 'team') && teamId
+			(roomType === 'team') && teamId
 				? await p.query(
 						`SELECT DISTINCT user_id AS "userId" FROM (
-							SELECT user_id FROM team_members WHERE team_id = $1 AND (status = 'aktif' OR status = 'active')
+							SELECT user_id FROM team_members WHERE team_id = $1 AND (status = 'active' OR status = 'active')
 							UNION
 							SELECT user_id FROM chat_members WHERE room_id = $2
 						 ) t`,
@@ -95,7 +95,7 @@ export async function getChatAudience(roomId: string): Promise<ChatAudience | nu
 
 		const audience: ChatAudience = {
 			all: false,
-			team: roomType === 'takim' || roomType === 'team',
+			team: roomType === 'team',
 			memberIds: new Set(
 				membersRes.rows.map((r) => String(r.userId ?? '')).filter(Boolean)
 			),

@@ -6,7 +6,7 @@ import { LEGAL_DOCUMENT_TYPES, type LegalDocumentType } from '@/lib/legalDefault
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-	const auth = await requireApp(request, 'settings', 'kullan');
+	const auth = await requireApp(request, 'settings', 'use');
 	if (!auth.authorized) return auth.response;
 	const docType = new URL(request.url).searchParams.get('docType') ?? '';
 	if (!LEGAL_DOCUMENT_TYPES.includes(docType as LegalDocumentType)) {

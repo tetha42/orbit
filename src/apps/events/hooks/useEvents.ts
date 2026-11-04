@@ -32,14 +32,14 @@ export function useEvents() {
 
 	const notify = useToast();
 
-	const tabOf = (e: EventView): Tab => (e.status === 'taslak' ? 'drafts' : e.endTime >= now ? 'upcoming' : 'past');
+	const tabOf = (e: EventView): Tab => (e.status === 'draft' ? 'drafts' : e.endTime >= now ? 'upcoming' : 'past');
 
 	useAppCommand('events', (command) => {
 		if (!manage) return notify(t('evManageOnlyToast'), 'error');
 		if (command === 'new-event') setForm({ event: null });
 		else if (command === 'projector') {
 			const candidates = events
-				.filter((e) => e.status === 'yayinda' && e.endTime > Date.now())
+				.filter((e) => e.status === 'published' && e.endTime > Date.now())
 				.sort((a, b) => a.start - b.start);
 			if (candidates[0]) setProjectorFor(candidates[0]);
 			else notify(t('evNoUpcomingToast'), 'error');
@@ -60,7 +60,7 @@ export function useEvents() {
 
 	const counts = useMemo(() => {
 		const c = { upcoming: 0, past: 0, drafts: 0 };
-		for (const e of events) c[e.status === 'taslak' ? 'drafts' : e.endTime >= now ? 'upcoming' : 'past'] += 1;
+		for (const e of events) c[e.status === 'draft' ? 'drafts' : e.endTime >= now ? 'upcoming' : 'past'] += 1;
 		return c;
 	}, [events, now]);
 
@@ -68,7 +68,7 @@ export function useEvents() {
 		const q = foldTr(query.trim());
 		const list = events.filter(
 			(e) =>
-				(e.status === 'taslak' ? 'drafts' : e.endTime >= now ? 'upcoming' : 'past') === tab &&
+				(e.status === 'draft' ? 'drafts' : e.endTime >= now ? 'upcoming' : 'past') === tab &&
 				(!q || foldTr(`${e.title} ${e.location} ${e.description}`).includes(q))
 		);
 		return tab === 'past' ? [...list].sort((a, b) => b.start - a.start) : list;
@@ -112,11 +112,11 @@ export function useEvents() {
 	// The member's identity comes from the session; the code only says which window is live.
 	const checkIn = async (code: string) => {
 		const shortCode = code.trim().toUpperCase();
-		const res = await sendJson<{ message: string; zaten: boolean }>('/api/events', 'POST', { action: 'attend', shortCode });
+		const res = await sendJson<{ message: string; already: boolean }>('/api/events', 'POST', { action: 'attend', shortCode });
 		if (!res.ok) notify(res.error || t('kbActionFailed'), 'error');
 		else {
 			playSystemSound();
-			notify(res.data.message, res.data.zaten ? 'error' : 'success');
+			notify(res.data.message, res.data.already ? 'error' : 'success');
 		}
 		await refetch();
 	};

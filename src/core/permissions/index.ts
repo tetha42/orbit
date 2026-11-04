@@ -43,11 +43,11 @@ export function isAlumniRole(
 	if (!role) return false;
 	if (typeof role === 'string') {
 		const norm = role.trim().toLowerCase();
-		return norm === ALUMNI_ROLE_ID || norm === 'rol_mezun' || norm === 'mezun' || norm === 'alumni';
+		return norm === ALUMNI_ROLE_ID || norm === 'role_alumni' || norm === 'alumni';
 	}
-	if (role.id === ALUMNI_ROLE_ID || role.id === 'rol_mezun') return true;
-	const name = (role.name ?? role.name)?.trim().toLowerCase();
-	return name === 'mezun' || name === 'alumni';
+	if (role.id === ALUMNI_ROLE_ID || role.id === 'role_alumni') return true;
+	const name = (role.name)?.trim().toLowerCase();
+	return name === 'alumni';
 }
 
 /**
@@ -69,8 +69,8 @@ export const isPermissionApp = (v: unknown): v is PermissionApp => typeof v === 
 
 /** Normalizes legacy permission level values if encountered. */
 export function canonicalLevel(v: unknown): PermissionLevel {
-	if (v === 'use' || v === 'kullan') return 'use';
-	if (v === 'manage' || v === 'yonet') return 'manage';
+	if (v === 'use') return 'use';
+	if (v === 'manage') return 'manage';
 	return 'none';
 }
 
@@ -83,7 +83,7 @@ export function levelOf(permissions: Permissions | null | undefined, appId: stri
 }
 
 export const isSufficientLevel = (held: PermissionLevel, required: PermissionLevel) => ORDER[canonicalLevel(held)] >= ORDER[canonicalLevel(required)];
-export const sufficientMi = isSufficientLevel;
+export const isSufficient = isSufficientLevel;
 export const canUse = (permissions: Permissions | null | undefined, appId: string) => isSufficientLevel(levelOf(permissions, appId), 'use');
 export const canManage = (permissions: Permissions | null | undefined, appId: string) => isSufficientLevel(levelOf(permissions, appId), 'manage');
 
@@ -97,7 +97,7 @@ export function normalizePermissions(input: unknown): { value: Permissions; erro
 	for (const [k, v] of Object.entries(input as Record<string, unknown>)) {
 		if (!isPermissionApp(k)) return { error: `Unknown app: ${k}` };
 		const norm = canonicalLevel(v);
-		if (!isPermissionLevel(v) && v !== 'yok' && v !== 'kullan' && v !== 'yonet') {
+		if (!isPermissionLevel(v) && v !== 'none' && v !== 'use' && v !== 'manage') {
 			return { error: `Invalid permission level (${k}): ${String(v)}` };
 		}
 		if (norm !== 'none') out[k] = norm;
@@ -118,9 +118,9 @@ export function extraPermissions(requested: Permissions, held: Permissions): Per
  * never one stronger than their own, and the admin role only as an admin.
  */
 export function canAssignRole(role: { id: string; permissions?: Permissions;}, held: { admin: boolean; permissions?: Permissions;}): boolean {
-	const rolePerms = role.permissions ?? role.permissions ?? {};
-	const heldPerms = held.permissions ?? held.permissions ?? {};
-	if (role.id === ADMIN_ROLE_ID || role.id === 'rol_admin') return held.admin;
+	const rolePerms = role.permissions ?? {};
+	const heldPerms = held.permissions ?? {};
+	if (role.id === ADMIN_ROLE_ID || role.id === 'role_admin') return held.admin;
 	return extraPermissions(rolePerms, heldPerms).length === 0;
 }
 

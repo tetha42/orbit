@@ -157,7 +157,7 @@ export default async function suite(t) {
 		await page.locator('[data-notification-toggle]').waitFor();
 		await t.sleep(1500);
 		const before = await badge(page);
-		const news = must(await admin.post('/api/haberler', { title: `SSE bildirim haberi ${stamp}`, content: 'Canlı bildirim.', category: 'genel', publishStatus: 'yayinda' }), 'haber');
+		const news = must(await admin.post('/api/haberler', { title: `SSE bildirim haberi ${stamp}`, content: 'Canlı bildirim.', category: 'general', publishStatus: 'published' }), 'news');
 		t.cleanup(() => admin.del(`/api/haberler?id=${news.id}`));
 		const ms = await t.waitFor(async () => (await badge(page)) > before, { timeout: 20_000, every: 100 });
 		t.check(ms >= 0 && ms <= SSE_LIMIT_MS, `zil sayacı ${before} → ${await badge(page)} (${ms} ms; yoklama 60 sn'de bir)`);
@@ -247,12 +247,12 @@ export default async function suite(t) {
 
 		// (2) B'nin 5 sn'lik izin önbelleği, A'daki rol düzenlemesiyle hemen geçersiz kalır.
 		const roleName = `E2E SSE ${stamp}`;
-		const role = must(await admin.post('/api/roller', { name: roleName, color: '#8e8e93', description: 'SSE önbellek', twoStepRequired: false, permissions: { news: 'kullan', events: 'kullan', settings: 'kullan' } }), 'rol');
+		const role = must(await admin.post('/api/roller', { name: roleName, color: '#8e8e93', description: 'SSE önbellek', twoStepRequired: false, permissions: { news: 'use', events: 'use', settings: 'use' } }), 'rol');
 		t.cleanup(() => admin.del('/api/roller', { id: role.id, move: fx.roles.member }));
 		must(await setRole(role.id), 'üyeye rol');
 		t.eq((await canB.get('/api/etkinlikler')).status, 200, 'B: Etkinlikler izinli (izin önbelleğe alındı)');
 		t.eq((await canB.get('/api/etkinlikler')).status, 200, 'B: ikinci istek önbellekten 200');
-		const edit = await admin.patch('/api/roller', { id: role.id, name: roleName, color: '#8e8e93', description: 'SSE önbellek', twoStepRequired: false, permissions: { news: 'kullan', settings: 'kullan' } });
+		const edit = await admin.patch('/api/roller', { id: role.id, name: roleName, color: '#8e8e93', description: 'SSE önbellek', twoStepRequired: false, permissions: { news: 'use', settings: 'use' } });
 		t.eq(edit.status, 200, 'A: rolden Etkinlikler izni kaldırıldı');
 		const cacheMs = await t.waitFor(async () => (await canB.get('/api/etkinlikler')).status === 403, { timeout: 8000, every: 100 });
 		t.check(cacheMs >= 0 && cacheMs < 2500, `B'nin önbelleği NOTIFY ile geçersiz kaldı (${cacheMs} ms; TTL olsaydı ~5000 ms'ye kadar 200 dönerdi)`);

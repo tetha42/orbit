@@ -168,7 +168,7 @@ export default async function suite(t) {
 		t.includes(await shortcuts('zeynep'), 'dock-new-event', 'zeynep (etkinlik yöneticisi): Dock menüsünde "yeni etkinlik" var');
 		t.excludes(await shortcuts('can'), 'dock-new-event', 'can (Üye): Dock menüsünde "yeni etkinlik" yok');
 
-		const { page } = await t.open('okur');
+		const { page } = await t.open('reader');
 		await rightClickDesktop(page);
 		await item(page, 'dt-open-tool').waitFor();
 		const desk = await menuItems(page);

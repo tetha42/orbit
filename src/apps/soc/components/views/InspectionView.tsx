@@ -186,7 +186,7 @@ export const InspectionView = React.memo(function InspectionView() {
 										className={s.actionBtn}
 										onClick={() => void handleDownloadAuditReport()}
 										disabled={reportLoading}
-										title={isEn ? 'Download complete AppSec report as Markdown' : 'Eksiksiz AppSec denetim raporunu Markdown olarak indir'}
+										title={isEn ? 'Download complete AppSec report AS Markdown' : 'Eksiksiz AppSec denetim raporunu Markdown olarak indir'}
 									>
 										<Download size={14} className={reportLoading ? s.spin : ''} />
 										<span>

@@ -169,17 +169,17 @@
 	background: color-mix(in srgb, var(--accent) 24%, transparent);
 }
 
-.pill_oneri {
+.pill_proposed {
 	background: color-mix(in srgb, #ff9f0a 16%, transparent);
 	color: #d97706;
 }
 
-.pill_yayinda {
+.pill_published {
 	background: color-mix(in srgb, #30d158 16%, transparent);
 	color: #248a3d;
 }
 
-.pill_arsiv {
+.pill_archived {
 	background: var(--fill-soft);
 	color: var(--text-secondary);
 }

@@ -84,7 +84,7 @@ export function VaultPanel({ teamId, onChanged, embedded = false, vaults }: Vaul
 	}
 
 	return (
-		<div className={`${k.panel} ${embedded ? k.embedded : ''}`} data-focus-id={`kasa:${teamId ?? 'genel'}`}>
+		<div className={`${k.panel} ${embedded ? k.embedded : ''}`} data-focus-id={`kasa:${teamId ?? 'general'}`}>
 			<VaultCardSummary
 				teamId={teamId}
 				summary={summary}

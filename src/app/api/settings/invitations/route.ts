@@ -15,7 +15,7 @@ import { logSystemEvent } from '@/db/repositories/logs.repo';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-	const auth = await requireApp(request, 'settings', 'yonet');
+	const auth = await requireApp(request, 'settings', 'manage');
 	if (!auth.authorized) return auth.response;
 	const [invitations, roles] = await Promise.all([listInvitations(), getRoles()]);
 	return NextResponse.json(
@@ -29,9 +29,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-	const auth = await requireApp(request, 'settings', 'yonet');
+	const auth = await requireApp(request, 'settings', 'manage');
 	if (!auth.authorized) return auth.response;
-	if (auth.user.status === 'mezun') {
+	if (auth.user.status === 'alumni') {
 		return NextResponse.json({ error: 'Mezunlar sadece okuma erişimine sahiptir.' }, { status: 403 });
 	}
 
@@ -90,9 +90,9 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-	const auth = await requireApp(request, 'settings', 'yonet');
+	const auth = await requireApp(request, 'settings', 'manage');
 	if (!auth.authorized) return auth.response;
-	if (auth.user.status === 'mezun') {
+	if (auth.user.status === 'alumni') {
 		return NextResponse.json({ error: 'Mezunlar sadece okuma erişimine sahiptir.' }, { status: 403 });
 	}
 	const id = new URL(request.url).searchParams.get('id') ?? '';

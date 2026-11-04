@@ -343,10 +343,10 @@ check('slugify: length is capped without leaving a trailing dash, and junk gives
 	assert.equal(slugify(''), '');
 });
 checkAsync('uniqueSlug: numbers a slug that is taken, and falls back when there is nothing to slug', async () => {
-	const taken = new Set(['haber', 'haber-2']);
-	assert.equal(await uniqueSlug('haber', async (c) => taken.has(c)), 'haber-3');
+	const taken = new Set(['news', 'news-2']);
+	assert.equal(await uniqueSlug('news', async (c) => taken.has(c)), 'news-3');
 	assert.equal(await uniqueSlug('yeni', async (c) => taken.has(c)), 'yeni');
-	assert.equal(await uniqueSlug('', async () => false, 'haber'), 'haber');
+	assert.equal(await uniqueSlug('', async () => false, 'news'), 'news');
 });
 check('isSafeImageUrl: https and the portal presets only, nothing that can break out of url(...)', () => {
 	assert.ok(isSafeImageUrl('https://cdn.example.org/a/b.png?x=1'));
@@ -369,15 +369,14 @@ check('isSafeImageUrl: https and the portal presets only, nothing that can break
 
 /* ---------------- kanban ---------------- */
 
-check('task states: canonical values, legacy aliases, and junk', () => {
-	assert.equal(normalizeStatus('inceleme'), 'inceleme');
-	assert.equal(normalizeStatus(' Tamamlandi '), 'tamamlandi');
-	assert.equal(normalizeStatus('bitti'), 'tamamlandi');
-	assert.equal(normalizeStatus('review'), 'inceleme');
-	assert.equal(normalizeStatus('arsiv'), null);
+check('task states: canonical values, and junk', () => {
+	assert.equal(normalizeStatus('review'), 'review');
+	assert.equal(normalizeStatus(' Done '), 'done');
+	assert.equal(normalizeStatus('review'), 'review');
+	assert.equal(normalizeStatus('archived'), null);
 	assert.equal(normalizeStatus(3), null);
-	assert.equal(normalizePriority('KRITIK'), 'kritik');
-	assert.equal(normalizePriority('acil'), null);
+	assert.equal(normalizePriority('CRITICAL'), 'critical');
+	assert.equal(normalizePriority('urgent'), null);
 });
 
 check('labels are folded, hyphenated, de-duplicated and capped', () => {
@@ -426,13 +425,13 @@ check('drop position: between, above the first, below the last, empty column', (
 check('due state relative to now; done tasks are never late', () => {
 	const now = new Date(2026, 9, 5, 12, 0).getTime();
 	const at = (d, h = 12) => new Date(2026, 9, d, h, 0).getTime();
-	assert.equal(dueStatus(at(4), 'suruyor', now), 'gecikti');
-	assert.equal(dueStatus(at(4), 'tamamlandi', now), null);
-	assert.equal(dueStatus(at(5, 18), 'yapilacak', now), 'bugun');
-	assert.equal(dueStatus(at(6), 'yapilacak', now), 'yakin');
-	assert.equal(dueStatus(at(7), 'yapilacak', now), 'yakin');
-	assert.equal(dueStatus(at(9), 'yapilacak', now), 'ileri');
-	assert.equal(dueStatus(null, 'yapilacak', now), null);
+	assert.equal(dueStatus(at(4), 'in_progress', now), 'overdue');
+	assert.equal(dueStatus(at(4), 'done', now), null);
+	assert.equal(dueStatus(at(5, 18), 'todo', now), 'today');
+	assert.equal(dueStatus(at(6), 'todo', now), 'upcoming');
+	assert.equal(dueStatus(at(7), 'todo', now), 'upcoming');
+	assert.equal(dueStatus(at(9), 'todo', now), 'next');
+	assert.equal(dueStatus(null, 'todo', now), null);
 });
 
 /* ---------------- projects ---------------- */
@@ -459,8 +458,8 @@ check('technologies: comma list or array, casing kept, duplicates folded, capped
 });
 
 check('project status and repo display', () => {
-	assert.ok(isProjectStatus('oneri') && isProjectStatus('arsiv'));
-	assert.ok(!isProjectStatus('silindi') && !isProjectStatus(undefined));
+	assert.ok(isProjectStatus('proposed') && isProjectStatus('archived'));
+	assert.ok(!isProjectStatus('deleted') && !isProjectStatus(undefined));
 	assert.equal(shortRepo('https://www.github.com/beuteknoloji/portal/'), 'github.com/beuteknoloji/portal');
 	assert.equal(shortRepo(null), '');
 });
@@ -509,19 +508,18 @@ check('CSV: quoting, separators and spreadsheet formula injection', () => {
 });
 
 check('event vocabulary: types, aliases and statuses', () => {
-	assert.equal(normalizeEventType('workshop'), 'atolye');
-	assert.equal(normalizeEventType('seminar'), 'seminer');
-	assert.equal(normalizeEventType('hackathon'), 'yarisma');
-	assert.equal(normalizeEventType('meeting'), 'toplanti');
-	assert.equal(normalizeEventType('atolye'), 'atolye');
+	assert.equal(normalizeEventType('workshop'), 'workshop');
+	assert.equal(normalizeEventType('seminar'), 'seminar');
+	assert.equal(normalizeEventType('hackathon'), 'competition');
+	assert.equal(normalizeEventType('meeting'), 'meeting');
 	assert.equal(normalizeEventType('invalid'), null);
-	assert.equal(isEventType('atolye'), true);
-	assert.equal(isEventType('workshop'), false);
-	assert.equal(normalizeEventStatus('draft'), 'taslak');
-	assert.equal(normalizeEventStatus('published'), 'yayinda');
-	assert.equal(normalizeEventStatus('completed'), 'tamamlandi');
-	assert.equal(normalizeEventStatus('cancelled'), 'iptal');
-	assert.equal(normalizeEventStatus('yayinda'), 'yayinda');
+	assert.equal(isEventType('workshop'), true);
+	assert.equal(isEventType('invalid'), false);
+	assert.equal(normalizeEventStatus('draft'), 'draft');
+	assert.equal(normalizeEventStatus('published'), 'published');
+	assert.equal(normalizeEventStatus('completed'), 'done');
+	assert.equal(normalizeEventStatus('cancelled'), 'cancelled');
+	assert.equal(normalizeEventStatus('published'), 'published');
 	assert.equal(normalizeEventStatus('bad_status'), null);
 });
 
@@ -529,8 +527,8 @@ check('event vocabulary: types, aliases and statuses', () => {
 
 check('team rules: categories, modes, roles and quota', () => {
 	assert.ok(isCategory('Web & Mobile') && !isCategory('Uzay'));
-	assert.ok(isParticipationType('onayli') && !isParticipationType('kapali'));
-	assert.ok(isTeamStatus('askida') && !isTeamStatus('silindi'));
+	assert.ok(isParticipationType('approval') && !isParticipationType('closed'));
+	assert.ok(isTeamStatus('suspended') && !isTeamStatus('deleted'));
 	assert.equal(normalizeRole('  Binary   Exploitation  '), 'Binary Exploitation');
 	assert.equal(normalizeRole('   '), null);
 	assert.equal(normalizeRole(5), null);
@@ -561,8 +559,8 @@ check('onboarding application note: skills line, free text, caps', () => {
 check('phone cockpit: my open tasks and the next event', () => {
 	const task = (id, assignee, status, due) => ({ id, teamId: 't', title: id, status, assigneeMemberId: assignee, dueDate: due });
 	const teams = [
-		{ name: 'Roket', tasks: [task('a', 'u1', 'yapilacak', null), task('b', 'u2', 'yapilacak', 1), task('c', 'u1', 'tamamlandi', 5)] },
-		{ name: 'İHA', tasks: [task('d', 'u1', 'suruyor', 200), task('e', 'u1', 'inceleme', 100), task('f', 'u1', 'yapilacak', null)] },
+		{ name: 'Roket', tasks: [task('a', 'u1', 'todo', null), task('b', 'u2', 'todo', 1), task('c', 'u1', 'done', 5)] },
+		{ name: 'İHA', tasks: [task('d', 'u1', 'in_progress', 200), task('e', 'u1', 'review', 100), task('f', 'u1', 'todo', null)] },
 	];
 	const mine = myOpenTasks(teams, 'u1');
 	assert.deepEqual(mine.map((x) => x.id), ['e', 'd', 'a', 'f']); // deadline first, undated keep board order
@@ -573,12 +571,12 @@ check('phone cockpit: my open tasks and the next event', () => {
 	const ev = (id, status, start, endTime) => ({ id, status, start, endTime });
 	const now = 1000;
 	assert.equal(nextEvent([], now), null);
-	assert.equal(nextEvent([ev('past', 'yayinda', 1, 500)], now), null);
-	assert.equal(nextEvent([ev('draft', 'taslak', 1100, 1200)], now), null);
-	assert.equal(nextEvent([ev('later', 'yayinda', 3000, 4000), ev('soon', 'yayinda', 1500, 2000)], now).id, 'soon');
-	assert.equal(nextEvent([ev('soon', 'yayinda', 1500, 2000), ev('live', 'yayinda', 900, 1100)], now).id, 'live');
-	assert.equal(nextEvent([ev('live2', 'yayinda', 900, 1900), ev('live1', 'yayinda', 800, 1100)], now).id, 'live1'); // ends first
-	assert.equal(nextEvent([ev('edge', 'yayinda', 1, 1000)], now).id, 'edge'); // ends exactly now: still on
+	assert.equal(nextEvent([ev('past', 'published', 1, 500)], now), null);
+	assert.equal(nextEvent([ev('draft', 'draft', 1100, 1200)], now), null);
+	assert.equal(nextEvent([ev('later', 'published', 3000, 4000), ev('soon', 'published', 1500, 2000)], now).id, 'soon');
+	assert.equal(nextEvent([ev('soon', 'published', 1500, 2000), ev('live', 'published', 900, 1100)], now).id, 'live');
+	assert.equal(nextEvent([ev('live2', 'published', 900, 1900), ev('live1', 'published', 800, 1100)], now).id, 'live1'); // ends first
+	assert.equal(nextEvent([ev('edge', 'published', 1, 1000)], now).id, 'edge'); // ends exactly now: still on
 });
 
 /* ---------------- profile ---------------- */
@@ -657,10 +655,10 @@ check('amounts typed in Turkish or English style', () => {
 check('ledger: running balance, categories, months, filters', () => {
 	const t = (s) => new Date(s).getTime();
 	const rows = [
-		{ id: 'c', date: t('2026-09-06T10:00'), typeValue: 'gider', category: 'Donanım', amountMinor: 890000, description: 'Raspberry Pi', recorderNameSurname: 'Mehmet Demir' },
-		{ id: 'a', date: t('2026-08-22T10:00'), typeValue: 'gelir', category: 'Sponsorluk', amountMinor: 3500000, description: 'Sponsor' },
-		{ id: 'd', date: t('2026-10-01T10:00'), typeValue: 'gider', category: 'İkram', amountMinor: 115000, description: 'Çay, kahve' },
-		{ id: 'e', date: t('2026-10-04T10:00'), typeValue: 'gider', category: 'Donanım', amountMinor: 165000, description: 'Filament' },
+		{ id: 'c', date: t('2026-09-06T10:00'), typeValue: 'expense', category: 'Donanım', amountMinor: 890000, description: 'Raspberry Pi', recorderNameSurname: 'Mehmet Demir' },
+		{ id: 'a', date: t('2026-08-22T10:00'), typeValue: 'income', category: 'Sponsorluk', amountMinor: 3500000, description: 'Sponsor' },
+		{ id: 'd', date: t('2026-10-01T10:00'), typeValue: 'expense', category: 'İkram', amountMinor: 115000, description: 'Çay, kahve' },
+		{ id: 'e', date: t('2026-10-04T10:00'), typeValue: 'expense', category: 'Donanım', amountMinor: 165000, description: 'Filament' },
 	];
 	const b = runningBalance(rows);
 	assert.deepEqual([b.get('a'), b.get('c'), b.get('d'), b.get('e')], [3500000, 2610000, 2495000, 2330000]);
@@ -670,10 +668,10 @@ check('ledger: running balance, categories, months, filters', () => {
 	assert.ok(Math.abs(dag[0].ratio + dag[1].ratio - 1) < 1e-9);
 	const month = monthlyFeed(rows, t('2026-10-06T00:30'), 3);
 	assert.deepEqual(month.map((m) => m.month), ['2026-08', '2026-09', '2026-10']);
-	assert.deepEqual(month.map((m) => [m.gelir, m.gider]), [[3500000, 0], [0, 890000], [0, 280000]]);
+	assert.deepEqual(month.map((m) => [m.income, m.expense]), [[3500000, 0], [0, 890000], [0, 280000]]);
 	assert.deepEqual(monthlyFeed(rows, t('2026-01-15T00:00'), 2).map((m) => m.month), ['2025-12', '2026-01']); // across a year
 	const fold = (s) => s.toLocaleLowerCase('tr').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ı/g, 'i');
-	assert.deepEqual(filterRecords(rows, { typeValue: 'gider', month: '2026-10' }).map((r) => r.id), ['d', 'e']);
+	assert.deepEqual(filterRecords(rows, { typeValue: 'expense', month: '2026-10' }).map((r) => r.id), ['d', 'e']);
 	assert.deepEqual(filterRecords(rows, { search: 'CAY', fold }).map((r) => r.id), ['d']);
 	assert.deepEqual(filterRecords(rows, { search: 'mehmet', fold }).map((r) => r.id), ['c']);
 	assert.deepEqual(filterRecords(rows, { category: 'Donanım' }).map((r) => r.id), ['c', 'e']);
@@ -690,11 +688,11 @@ check('inventory codes, loan windows and due text', () => {
 	assert.ok(codeProblem('LAB_RPI') && codeProblem('AB') && codeProblem('-LAB') && codeProblem('LAB--X') && codeProblem('A'.repeat(25)));
 	const DAY = 86_400_000;
 	const now = new Date('2026-10-06T10:00').getTime();
-	assert.deepEqual(returnStatus(now + 5 * DAY + 1000, now), { gecikti: false, day: 5 });
-	assert.deepEqual(returnStatus(now + 3600_000, now), { gecikti: false, day: 0 });
-	assert.deepEqual(returnStatus(now - 1000, now), { gecikti: true, day: 1 });
-	assert.deepEqual(returnStatus(now - 2.5 * DAY, now), { gecikti: true, day: 2 });
-	assert.deepEqual(returnStatus(now - 3 * DAY - 3600_000, now), { gecikti: true, day: 3 });
+	assert.deepEqual(returnStatus(now + 5 * DAY + 1000, now), { overdue: false, day: 5 });
+	assert.deepEqual(returnStatus(now + 3600_000, now), { overdue: false, day: 0 });
+	assert.deepEqual(returnStatus(now - 1000, now), { overdue: true, day: 1 });
+	assert.deepEqual(returnStatus(now - 2.5 * DAY, now), { overdue: true, day: 2 });
+	assert.deepEqual(returnStatus(now - 3 * DAY - 3600_000, now), { overdue: true, day: 3 });
 	assert.equal(returnStatus(null, now), null);
 	assert.equal(returnText(now - 2.5 * DAY, now), '2 gün gecikti');
 	assert.equal(returnText(now + 3600_000, now), 'Bugün iade');
@@ -803,12 +801,12 @@ check('posta: previews, skipped-recipient wording, folders and actions', () => {
 	assert.equal(previewRow('  Merhaba\n\n dünya  '), 'Merhaba dünya');
 	assert.equal(previewRow('x'.repeat(200), 10), `${'x'.repeat(9)}…`);
 	assert.match(skippedReason({ id: '1', name: 'Ayşe Yılmaz', reason: 'role' }), /roleü Posta'yı açmıyor/);
-	assert.match(skippedReason({ id: '1', name: 'Ayşe Yılmaz', reason: 'pasif' }), /aktif üye değil/);
-	assert.deepEqual([...MAIL_FOLDERS], ['gelen', 'gonderilen', 'arsiv', 'cop']);
+	assert.match(skippedReason({ id: '1', name: 'Ayşe Yılmaz', reason: 'inactive' }), /aktif üye değil/);
+	assert.deepEqual([...MAIL_FOLDERS], ['inbox', 'sent', 'archived', 'trash']);
 	assert.equal(new Set(MAIL_ACTIONS).size, MAIL_ACTIONS.length);
 	// Mail opens with `kullan`, and the message kind needs just `kullan`.
 	assert.equal(NOTIFICATION_KINDS.message.appId, 'chat');
-	assert.equal(NOTIFICATION_KINDS.message.level, 'kullan');
+	assert.equal(NOTIFICATION_KINDS.message.level, 'use');
 });
 
 check('notifications: every kind belongs to a permission app', () => {
@@ -816,10 +814,10 @@ check('notifications: every kind belongs to a permission app', () => {
 	assert.deepEqual(Object.keys(NOTIFICATION_KINDS).sort(), [...kinds].sort());
 	for (const [kind, rule] of Object.entries(NOTIFICATION_KINDS)) {
 		assert.ok(PERMISSION_APPS.includes(rule.appId), `${kind} → ${rule.appId}`);
-		assert.ok(rule.level === 'kullan' || rule.level === 'yonet', kind);
+		assert.ok(rule.level === 'use' || rule.level === 'manage', kind);
 	}
 	// Only-news role: news and always-open chat messages pass; the admin's permissions pass every kind.
-	const only = Object.entries(NOTIFICATION_KINDS).filter(([, r]) => (r.level === 'yonet' ? canManage : canUse)({ news: 'kullan' }, r.appId)).map(([k]) => k);
+	const only = Object.entries(NOTIFICATION_KINDS).filter(([, r]) => (r.level === 'manage' ? canManage : canUse)({ news: 'use' }, r.appId)).map(([k]) => k);
 	assert.deepEqual(only.sort(), ['message', 'news']);
 	assert.equal(Object.values(NOTIFICATION_KINDS).every((r) => canManage(ALL_PERMISSIONS, r.appId)), true);
 });
@@ -847,35 +845,35 @@ check('audit: credential-looking keys never survive temizle / recordFields', () 
 });
 
 check('audit: roleSummary keeps a white-list and drops "yok" rows; roleDiff lists only changes', () => {
-	const ham = { name: 'Kurul', color: '#fff', description: null, twoStepRequired: 1, permissions: { budget: 'yok', news: 'kullan', events: 'yonet' }, passwordHash: 'x', id: 'rol_1' };
+	const ham = { name: 'Kurul', color: '#fff', description: null, twoStepRequired: 1, permissions: { budget: 'none', news: 'use', events: 'manage' }, passwordHash: 'x', id: 'rol_1' };
 	const o = roleSummary(ham);
 	assert.deepEqual(Object.keys(o).sort(), ['color', 'description', 'name', 'permissions', 'twoStepRequired']);
-	assert.deepEqual(o.permissions, { events: 'yonet', news: 'kullan' });
+	assert.deepEqual(o.permissions, { events: 'manage', news: 'use' });
 	assert.equal(o.twoStepRequired, true);
 	assert.equal(roleDiff(o, roleSummary(ham)), null);
-	const fresh = roleSummary({ ...ham, name: 'Yönetim', permissions: { budget: 'yonet', news: 'kullan' } });
+	const fresh = roleSummary({ ...ham, name: 'Yönetim', permissions: { budget: 'manage', news: 'use' } });
 	assert.deepEqual(roleDiff(o, fresh), {
-		before: { name: 'Kurul', permissions: { budget: 'yok', events: 'yonet' } },
-		after: { name: 'Yönetim', permissions: { budget: 'yonet', events: 'yok' } },
+		before: { name: 'Kurul', permissions: { budget: 'none', events: 'manage' } },
+		after: { name: 'Yönetim', permissions: { budget: 'manage', events: 'none' } },
 	});
 });
 
 check('audit: memberSummary is name + e-mail (+ status/role), never anything else', () => {
-	const u = memberSummary({ name: 'Ali', surname: 'Veli', email: 'a@v.test', passwordHash: 'h', totpSecret: 's', activeSessionToken: 't', status: 'aktif' });
-	assert.deepEqual(u, { name: 'Ali Veli', email: 'a@v.test', status: 'aktif' });
+	const u = memberSummary({ name: 'Ali', surname: 'Veli', email: 'a@v.test', passwordHash: 'h', totpSecret: 's', activeSessionToken: 't', status: 'active' });
+	assert.deepEqual(u, { name: 'Ali Veli', email: 'a@v.test', status: 'active' });
 	assert.equal(memberTargetName({ name: 'Ali', surname: 'Veli', email: 'a@v.test' }), 'Ali Veli (a@v.test)');
 });
 
 check('audit: alanFarki / diffRows', () => {
 	assert.equal(fieldDiff({ a: 1, b: 2 }, { a: 1, b: 2 }), null);
-	assert.deepEqual(fieldDiff({ status: 'beklemede', roleId: null }, { status: 'aktif', roleId: 'rol_uye' }), {
-		before: { status: 'beklemede', roleId: null },
-		after: { status: 'aktif', roleId: 'rol_uye' },
+	assert.deepEqual(fieldDiff({ status: 'pending', roleId: null }, { status: 'active', roleId: 'role_member' }), {
+		before: { status: 'pending', roleId: null },
+		after: { status: 'active', roleId: 'role_member' },
 	});
-	const rows = diffRows({ name: 'A', permissions: { budget: 'yok' } }, { name: 'B', permissions: { budget: 'yonet' } });
+	const rows = diffRows({ name: 'A', permissions: { budget: 'none' } }, { name: 'B', permissions: { budget: 'manage' } });
 	assert.deepEqual(rows, [
 		{ field: 'name', before: 'A', after: 'B' },
-		{ field: 'permissions.budget', before: 'yok', after: 'yonet' },
+		{ field: 'permissions.budget', before: 'none', after: 'manage' },
 	]);
 	assert.deepEqual(diffRows(null, { a: true }), [{ field: 'a', before: null, after: true }]);
 });
@@ -884,11 +882,11 @@ check('audit: smtpFarki never carries the password, only that it changed', () =>
 	const defaultValue = { smtp_host: 'smtp.gmail.com', smtp_port: '465', smtp_secure: 'true', smtp_user: '', smtp_from: 'K <k@x.test>' };
 	const fresh = { smtp_host: 'smtp.gmail.com', smtp_port: '465', smtp_secure: 'true', smtp_user: 'kulup@x.test', smtp_from: 'K <k@x.test>', smtp_pass: 'enc:v1:GIZLI-SIFRELI-DEGER' };
 	const f = smtpDiff({}, fresh, defaultValue);
-	assert.deepEqual(f, { before: { smtp_user: '', appKey: 'yok' }, after: { smtp_user: 'kulup@x.test', appKey: 'degisti' } });
+	assert.deepEqual(f, { before: { smtp_user: '', appKey: 'none' }, after: { smtp_user: 'kulup@x.test', appKey: 'changed' } });
 	assert.equal(JSON.stringify(f).includes('GIZLI'), false);
 	// Same values again: nothing to record. Clearing a password that was never set: nothing either.
 	assert.equal(smtpDiff({ smtp_user: 'kulup@x.test' }, { smtp_user: 'kulup@x.test', smtp_pass: '' }, defaultValue), null);
-	assert.deepEqual(smtpDiff({ smtp_pass: 'enc' }, { smtp_pass: '' }, defaultValue), { before: { appKey: 'var' }, after: { appKey: 'silindi' } });
+	assert.deepEqual(smtpDiff({ smtp_pass: 'enc' }, { smtp_pass: '' }, defaultValue), { before: { appKey: 'set' }, after: { appKey: 'deleted' } });
 	// Port change reads against the stored value, falling back to the default.
 	assert.deepEqual(smtpDiff({}, { smtp_port: '587' }, defaultValue), { before: { smtp_port: '465' }, after: { smtp_port: '587' } });
 });
@@ -903,18 +901,18 @@ check('smtp test: private hosts are recognised, public ones are not', () => {
 check('audit: smtpFarki ignores keys it no longer tracks (old imap_* rows), still never the password', () => {
 	const defaultValue = { smtp_host: '', smtp_port: '465', smtp_secure: 'true', smtp_user: '', smtp_from: '' };
 	const f = smtpDiff({}, { ...defaultValue, imap_host: 'imap.eski.test', smtp_pass: 'enc:v1:GIZLI' }, defaultValue);
-	assert.deepEqual(f, { before: { appKey: 'yok' }, after: { appKey: 'degisti' } });
+	assert.deepEqual(f, { before: { appKey: 'none' }, after: { appKey: 'changed' } });
 	assert.equal(JSON.stringify(f).includes('GIZLI'), false);
 	assert.equal(smtpDiff({ imap_host: 'a' }, { imap_host: 'b', imap_secure: 'false' }, defaultValue), null);
 });
 
 check('audit: statusAction names the status change', () => {
-	assert.equal(statusAction('beklemede', 'aktif'), 'application.approve');
-	assert.equal(statusAction('beklemede', 'reddedildi'), 'application.reject');
-	assert.equal(statusAction('aktif', 'mezun'), 'member.graduate');
-	assert.equal(statusAction('mezun', 'aktif'), 'member.activate');
-	assert.equal(statusAction('aktif', 'beklemede'), 'member.status');
-	assert.equal(statusAction('aktif', 'aktif'), null);
+	assert.equal(statusAction('pending', 'active'), 'application.approve');
+	assert.equal(statusAction('pending', 'rejected'), 'application.reject');
+	assert.equal(statusAction('active', 'alumni'), 'member.graduate');
+	assert.equal(statusAction('alumni', 'active'), 'member.activate');
+	assert.equal(statusAction('active', 'pending'), 'member.status');
+	assert.equal(statusAction('active', 'active'), null);
 	for (const op of ['application.approve', 'application.reject', 'member.graduate', 'member.activate', 'member.status']) assert.ok(AUDIT_ACTIONS.includes(op), op);
 });
 
@@ -1325,7 +1323,7 @@ check('waf: inspectJsonPayload recursively detects SQLi, SSTI, Prototype Polluti
 
 check('waf: inspectDatabaseSql and maskDatabaseRow enforce Zero-Trust Database Studio guards', () => {
 	// Legitimate read/write queries
-	const cleanSelect = inspectDatabaseSql('SELECT id, ad, soyad, email FROM kullanicilar LIMIT 10');
+	const cleanSelect = inspectDatabaseSql('SELECT id, name, surname, email FROM users LIMIT 10');
 	assert.equal(cleanSelect.allowed, true);
 
 	// Dangerous OS / file / DO block functions
@@ -1354,9 +1352,9 @@ check('waf: inspectDatabaseSql and maskDatabaseRow enforce Zero-Trust Database S
 
 	// Sensitive credential columns cannot be projected via aliases to bypass row masking
 	for (const secLeak of [
-		'SELECT aktifOturumToken AS x FROM kullanicilar',
-		'SELECT passwordHash FROM kullanicilar',
-		'SELECT totpSecret, totpRecoveryCodes FROM kullanicilar',
+		'SELECT sessionToken AS x FROM users',
+		'SELECT passwordHash FROM users',
+		'SELECT totpSecret, totpRecoveryCodes FROM users',
 		'SELECT secretHash FROM oauth_istemciler',
 		"SELECT deger AS leak FROM sistem_ayarlari WHERE anahtar = 'smtp_pass'",
 	]) {
@@ -1366,16 +1364,16 @@ check('waf: inspectDatabaseSql and maskDatabaseRow enforce Zero-Trust Database S
 
 	// EXPLAIN mode must reject multi-statement transaction breakouts and non-read statements
 	assert.equal(
-		inspectDatabaseSql("SELECT 1; ROLLBACK; UPDATE kullanicilar SET roleId = 'rol_admin'", { isExplain: true }).allowed,
+		inspectDatabaseSql("SELECT 1; ROLLBACK; UPDATE users SET role_id = 'role_admin'", { isExplain: true }).allowed,
 		false
 	);
 	assert.equal(
-		inspectDatabaseSql("UPDATE kullanicilar SET ad = 'Test'", { isExplain: true }).allowed,
+		inspectDatabaseSql("UPDATE users SET name = 'Test'", { isExplain: true }).allowed,
 		false
 	);
-	const explainStripped = inspectDatabaseSql('EXPLAIN ANALYZE SELECT id, ad FROM kullanicilar;', { isExplain: true });
+	const explainStripped = inspectDatabaseSql('EXPLAIN ANALYZE SELECT id, name FROM users;', { isExplain: true });
 	assert.equal(explainStripped.allowed, true);
-	assert.equal(explainStripped.normalizedExplainTarget, 'SELECT id, ad FROM kullanicilar');
+	assert.equal(explainStripped.normalizedExplainTarget, 'SELECT id, name FROM users');
 
 	// Row masking covers column names, bcrypt/enc:v1 prefixes, and sistem_ayarlari smtp_pass
 	assert.deepEqual(
@@ -1587,7 +1585,7 @@ check('registration core fields: defaults, visibility, labels and options', () =
 
 
 check('media viewer: browser preview kinds and download fallback', () => {
-	const item = (name, tip) => ({ name, url: `/api/uploads/${name}`, tip });
+	const item = (name, type) => ({ name, url: `/api/uploads/${name}`, type });
 	assert.equal(mediaPreviewKind(item('photo.png', 'image/png')), 'image');
 	assert.equal(mediaPreviewKind(item('scan.pdf', 'application/pdf')), 'pdf');
 	assert.equal(mediaPreviewKind(item('notes.md', 'text/markdown')), 'text');

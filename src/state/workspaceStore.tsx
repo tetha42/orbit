@@ -76,7 +76,7 @@ function ShellProvider({ children }: { children: React.ReactNode }) {
 	const [activeWallpaper, setActiveWallpaper] = useState<string>(() => {
 		if (typeof window !== 'undefined') {
 			try {
-				const saved = localStorage.getItem('kulup_active_wallpaper');
+				const saved = localStorage.getItem('club_active_wallpaper');
 				// Custom wallpapers live under the custom asset route and are not in the
 				// compile-time catalogue, so accept any well-formed image path here.
 				if (
@@ -144,7 +144,7 @@ function ShellProvider({ children }: { children: React.ReactNode }) {
 			const nextWp = nextWallpaper(prev);
 			if (typeof window !== 'undefined') {
 				try {
-					localStorage.setItem('kulup_active_wallpaper', nextWp);
+					localStorage.setItem('club_active_wallpaper', nextWp);
 				} catch {}
 			}
 			return nextWp;
@@ -155,7 +155,7 @@ function ShellProvider({ children }: { children: React.ReactNode }) {
 		setActiveWallpaper(url);
 		if (typeof window !== 'undefined') {
 			try {
-				localStorage.setItem('kulup_active_wallpaper', url);
+				localStorage.setItem('club_active_wallpaper', url);
 			} catch {}
 		}
 	}, []);

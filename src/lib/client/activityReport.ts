@@ -64,12 +64,12 @@ export async function openActivityReport(): Promise<'ok' | 'popup' | 'error'> {
 		const members = membersRes?.members ?? [];
 		const count = (pred: (m: Member) => boolean) => members.filter(pred).length;
 		const since = now - 183 * 86_400_000;
-		const events = (eventsRes?.events ?? []).filter((e) => e.status !== 'taslak' && e.start >= since && e.start <= now).sort((a, b) => b.start - a.start);
+		const events = (eventsRes?.events ?? []).filter((e) => e.status !== 'draft' && e.start >= since && e.start <= now).sort((a, b) => b.start - a.start);
 		const reg = events.reduce((a, e) => a + Number(e.registeredCount || 0), 0);
 		const att = events.reduce((a, e) => a + Number(e.participantCount || 0), 0);
 		const teams = teamsRes ?? [];
 		const items = inventoryRes ?? [];
-		const overdue = items.filter((i) => i.status === 'oduncte' && returnStatus(i.returnDate, now)?.gecikti).length;
+		const overdue = items.filter((i) => i.status === 'on_loan' && returnStatus(i.returnDate, now)?.overdue).length;
 		const vaults = vaultsRes;
 
 		const css = `body{font:12px/1.45 system-ui,sans-serif;margin:28px;color:#111}h1{font-size:19px;margin:0}h2{font-size:14px;margin:20px 0 6px;border-bottom:2px solid #0a84ff;padding-bottom:3px}
@@ -78,15 +78,15 @@ table{width:100%;border-collapse:collapse}td,th{border-bottom:1px solid #ddd;pad
 .muted{color:#666}`;
 		const html = `
 <h1>Yönetim Faaliyet Raporu</h1><div class="muted">${esc(new Date(now).toLocaleString('tr-TR'))} · son 6 ay</div>
-<h2>Üyeler</h2><div class="kpis"><div><b>${count((m) => m.status === 'aktif')}</b>aktif üye</div><div><b>${count((m) => m.status === 'beklemede')}</b>onay bekleyen</div><div><b>${count((m) => m.status === 'mezun')}</b>mezun</div><div><b>${count((m) => m.status === 'aktif' && !m.roleId)}</b>roleü atanmamış</div></div>
+<h2>Üyeler</h2><div class="kpis"><div><b>${count((m) => m.status === 'active')}</b>aktif üye</div><div><b>${count((m) => m.status === 'pending')}</b>onay bekleyen</div><div><b>${count((m) => m.status === 'alumni')}</b>mezun</div><div><b>${count((m) => m.status === 'active' && !m.roleId)}</b>roleü atanmamış</div></div>
 <h2>Etkinlikler</h2><div class="kpis"><div><b>${events.length}</b>etkinlik</div><div><b>${reg}</b>kayıt</div><div><b>${att}</b>katılım</div><div><b>${reg ? Math.round((att / reg) * 100) : 0}%</b>katılım oranı</div></div>
 <table><tr><th>Tarih</th><th>CommunityEvent</th><th class="n">Kayıt</th><th class="n">Katılım</th></tr>${
-			events.map((e) => `<tr><td>${esc(new Date(e.start).toLocaleDateString('tr-TR'))}</td><td>${esc(e.title)}${e.status === 'iptal' ? ' <i>(iptal)</i>' : ''}</td><td class="n">${e.registeredCount}</td><td class="n">${e.participantCount}</td></tr>`).join('') ||
+			events.map((e) => `<tr><td>${esc(new Date(e.start).toLocaleDateString('tr-TR'))}</td><td>${esc(e.title)}${e.status === 'cancelled' ? ' <i>(iptal)</i>' : ''}</td><td class="n">${e.registeredCount}</td><td class="n">${e.participantCount}</td></tr>`).join('') ||
 			'<tr><td colspan="4" class="muted">Bu dönemde etkinlik yok.</td></tr>'
 		}</table>
 <h2>Takımlar</h2><table><tr><th>Takım</th><th>Kaptan</th><th class="n">Üye / kontenjan</th><th class="n">Açık görev</th><th class="n">Tamamlanan</th><th>Durum</th></tr>${teams
 			.map((t) => {
-				const done = t.tasks.filter((g) => g.status === 'tamamlandi').length;
+				const done = t.tasks.filter((g) => g.status === 'done').length;
 				return `<tr><td>${esc(t.name)}</td><td>${esc(t.leaderNameSurname ?? '—')}</td><td class="n">${t.activeMemberCount} / ${t.capacity}</td><td class="n">${t.tasks.length - done}</td><td class="n">${done}</td><td>${esc(t.status)}</td></tr>`;
 			})
 			.join('')}</table>
@@ -97,7 +97,7 @@ ${
 				.join('')}</table>`
 		: ''
 }
-<h2>Envanter</h2><div class="kpis"><div><b>${items.length}</b>eşya</div><div><b>${items.filter((i) => i.status === 'saglam').length}</b>müsait</div><div><b>${items.filter((i) => i.status === 'oduncte').length}</b>ödünçte</div><div><b>${overdue}</b>gecikmiş iade</div><div><b>${items.filter((i) => i.status === 'arizali').length}</b>arızalı</div><div><b>${items.filter((i) => i.status === 'kayip').length}</b>kayıp</div></div>
+<h2>Envanter</h2><div class="kpis"><div><b>${items.length}</b>eşya</div><div><b>${items.filter((i) => i.status === 'available').length}</b>müsait</div><div><b>${items.filter((i) => i.status === 'on_loan').length}</b>ödünçte</div><div><b>${overdue}</b>gecikmiş iade</div><div><b>${items.filter((i) => i.status === 'faulty').length}</b>arızalı</div><div><b>${items.filter((i) => i.status === 'lost').length}</b>kayıp</div></div>
 `;
 		writePrintWindow(w, { title: 'Yönetim Faaliyet Raporu', body: html, css });
 		return 'ok';

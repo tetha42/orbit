@@ -73,7 +73,7 @@ export async function GET(request: Request) {
 		const userId = verified.payload.sub;
 		const user = await getUserById(userId);
 
-		if (!user || (user.status !== 'aktif' && user.status !== 'mezun')) {
+		if (!user || (user.status !== 'active' && user.status !== 'alumni')) {
 			return NextResponse.json(
 				{ error: 'invalid_token', error_description: 'Kullanıcı bulunamadı veya aktif değil.' },
 				{ status: 401 }

@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic';
 const MAX_ICON_BYTES = 2 * 1024 * 1024;
 
 export async function POST(request: Request) {
-	const auth = await requireApp(request, 'settings', 'yonet');
+	const auth = await requireApp(request, 'settings', 'manage');
 	if (!auth.authorized) return auth.response;
 
 	let formData: FormData;
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-	const auth = await requireApp(request, 'settings', 'yonet');
+	const auth = await requireApp(request, 'settings', 'manage');
 	if (!auth.authorized) return auth.response;
 	const settings = await getSystemSettings();
 	const previous = customImageNameFromUrl(settings.site_icon);

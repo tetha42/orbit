@@ -33,12 +33,12 @@ export function InventoryMobileView({ inv }: InventoryMobileViewProps) {
 	const scrollAreaRef = useRef<HTMLDivElement>(null);
 
 	const loanedItems = useMemo(
-		() => inv.items.filter((i) => i.status === 'oduncte'),
+		() => inv.items.filter((i) => i.status === 'on_loan'),
 		[inv.items]
 	);
 
 	const myItems = useMemo(
-		() => inv.items.filter((i) => i.status === 'oduncte' && i.loanFieldId === inv.currentUserId),
+		() => inv.items.filter((i) => i.status === 'on_loan' && i.loanFieldId === inv.currentUserId),
 		[inv.items, inv.currentUserId]
 	);
 
@@ -68,7 +68,7 @@ export function InventoryMobileView({ inv }: InventoryMobileViewProps) {
 			id: 'loans',
 			label: t('invMobTabLoans'),
 			Icon: Clock,
-			badgeCount: inv.counts.gecikmis > 0 ? inv.counts.gecikmis : undefined,
+			badgeCount: inv.counts.overdue > 0 ? inv.counts.overdue : undefined,
 		},
 		{
 			id: 'mine',
@@ -85,18 +85,18 @@ export function InventoryMobileView({ inv }: InventoryMobileViewProps) {
 
 	const getStatusBadge = (item: InventoryItem) => {
 		switch (item.status) {
-			case 'saglam':
+			case 'available':
 				return <span className={`${s.badge} ${s.badgeOk}`}>{t('invStatusAvailable')}</span>;
-			case 'oduncte': {
+			case 'on_loan': {
 				const info = returnStatus(item.returnDate, inv.now);
-				if (info?.gecikti) {
+				if (info?.overdue) {
 					return <span className={`${s.badge} ${s.badgeDanger}`}>{t('invStatusOverdue')}</span>;
 				}
 				return <span className={`${s.badge} ${s.badgeWarn}`}>{t('invStatusOnLoan')}</span>;
 			}
-			case 'arizali':
+			case 'faulty':
 				return <span className={`${s.badge} ${s.badgeDanger}`}>{t('invStatusBroken')}</span>;
-			case 'kayip':
+			case 'lost':
 				return <span className={`${s.badge} ${s.badgeMuted}`}>{t('invStatusLost')}</span>;
 			default:
 				return null;
@@ -241,7 +241,7 @@ export function InventoryMobileView({ inv }: InventoryMobileViewProps) {
 							</div>
 
 							<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '6px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
-								{info?.gecikti ? (
+								{info?.overdue ? (
 									<span className={`${s.badge} ${s.badgeDanger}`}>
 										<AlertTriangle size={12} /> {info.day} {t('invDaysOverdue')}
 									</span>
@@ -302,7 +302,7 @@ export function InventoryMobileView({ inv }: InventoryMobileViewProps) {
 							</div>
 
 							<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
-								{info?.gecikti ? (
+								{info?.overdue ? (
 									<span className={`${s.badge} ${s.badgeDanger}`}>
 										{info.day} {t('invDaysOverdue')}
 									</span>

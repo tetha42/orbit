@@ -28,7 +28,7 @@ export interface ApiTestItem {
 	nameEn?: string;
 	endpoint: string;
 	appId: string;
-	requiredLevel: 'kullan' | 'yonet' | 'admin' | 'public';
+	requiredLevel: 'use' | 'manage' | 'admin' | 'public';
 	status?: number;
 	statusText?: string;
 	latencyMs?: number;
@@ -90,7 +90,7 @@ export interface UserSessionInfo {
 		totpEnabled: boolean;
 		status: string;
 	};
-	permissions: Record<string, 'none' | 'use' | 'manage' | 'yok' | 'kullan' | 'yonet'>;
+	permissions: Record<string, 'none' | 'use' | 'manage'>;
 }
 
 export interface OAuthClientOption {

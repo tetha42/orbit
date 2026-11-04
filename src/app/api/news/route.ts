@@ -19,7 +19,7 @@ interface NewsInput {
 	summary?: string;
 	content?: string;
 	category?: string;
-	importantMi?: boolean;
+	isImportant?: boolean;
 	imageUrl?: string | null;
 	publishStatus?: NewsVisibility;
 }
@@ -65,10 +65,10 @@ function parseNewsInput(body: Record<string, unknown>, partial: boolean): Parsed
 		if (!isNewsCategory(body.category)) return { ok: false, error: 'Geçersiz kategori.' };
 		out.category = body.category;
 	} else if (!partial) {
-		out.category = 'genel';
+		out.category = 'general';
 	}
 
-	if (body.importantMi !== undefined) out.importantMi = Boolean(body.importantMi);
+	if (body.isImportant !== undefined) out.isImportant = Boolean(body.isImportant);
 
 	if (body.imageUrl !== undefined) {
 		const url = typeof body.imageUrl === 'string' ? body.imageUrl.trim() : '';
@@ -82,7 +82,7 @@ function parseNewsInput(body: Record<string, unknown>, partial: boolean): Parsed
 		if (!isNewsVisibility(body.publishStatus)) return { ok: false, error: 'Geçersiz görünürlük.' };
 		out.publishStatus = body.publishStatus;
 	} else if (!partial) {
-		out.publishStatus = 'yayinda';
+		out.publishStatus = 'published';
 	}
 
 	return { ok: true, value: out };
@@ -94,12 +94,12 @@ function parseNewsInput(body: Record<string, unknown>, partial: boolean): Parsed
  * articles are not public — the landing site reads `/api/public/v1/news` instead.
  */
 export async function GET(request: Request) {
-	const auth = await requireApp(request, 'news', 'kullan');
+	const auth = await requireApp(request, 'news', 'use');
 	if (!auth.authorized) return auth.response;
 
 	try {
-		const manager = can(auth.user, 'news', 'yonet');
-		const newsItems = await getNews(manager ? 'yonetim' : 'uye');
+		const manager = can(auth.user, 'news', 'manage');
+		const newsItems = await getNews(manager ? 'management' : 'member');
 		return NextResponse.json(newsItems, { headers: { 'Cache-Control': 'no-store' } });
 	} catch (error) {
 		console.error('API /api/haberler GET error:', error);
@@ -109,7 +109,7 @@ export async function GET(request: Request) {
 
 async function handlePOST(request: Request) {
 	try {
-		const auth = await requireApp(request, 'news', 'yonet');
+		const auth = await requireApp(request, 'news', 'manage');
 		if (!auth.authorized) {
 			return auth.response;
 		}
@@ -127,7 +127,7 @@ async function handlePOST(request: Request) {
 			summary: input.summary!,
 			content: input.content!,
 			category: input.category,
-			importantMi: input.importantMi,
+			isImportant: input.isImportant,
 			imageUrl: input.imageUrl ?? undefined,
 			publishStatus: input.publishStatus,
 			authorId: auth.user.id,
@@ -149,7 +149,7 @@ async function handlePOST(request: Request) {
 /** Edits an article — its text, category, image or who can read it. Body: `{ id, …fields to change }`. */
 async function handlePATCH(request: Request) {
 	try {
-		const auth = await requireApp(request, 'news', 'yonet');
+		const auth = await requireApp(request, 'news', 'manage');
 		if (!auth.authorized) {
 			return auth.response;
 		}
@@ -181,7 +181,7 @@ async function handlePATCH(request: Request) {
 
 async function handleDELETE(request: Request) {
 	try {
-		const auth = await requireApp(request, 'news', 'yonet');
+		const auth = await requireApp(request, 'news', 'manage');
 		if (!auth.authorized) {
 			return auth.response;
 		}

@@ -329,7 +329,7 @@ export function MediaViewerApp() {
 					preload="metadata"
 					onError={() => setMediaError(true)}
 				>
-					<source src={item.url} type={item.tip || undefined} />
+					<source src={item.url} type={item.type || undefined} />
 				</video>
 			);
 		}
@@ -343,7 +343,7 @@ export function MediaViewerApp() {
 					</div>
 					<div className={s.audioName}>{item.name}</div>
 					<audio className={s.audio} controls preload="metadata" onError={() => setMediaError(true)}>
-						<source src={item.url} type={item.tip || undefined} />
+						<source src={item.url} type={item.type || undefined} />
 					</audio>
 				</div>
 			);
@@ -462,7 +462,7 @@ export function MediaViewerApp() {
 					<div className={s.infoSection}>
 						<div className={s.infoSectionTitle}>{t('mediaViewerBasicInfo', 'Basic information')}</div>
 						<InfoRow label={t('mediaViewerFileName', 'File name')} value={item.name} />
-						<InfoRow label={t('mediaViewerFileType', 'Type')} value={item.tip || '—'} />
+						<InfoRow label={t('mediaViewerFileType', 'Type')} value={item.type || '—'} />
 						<InfoRow label={t('mediaViewerFileSize', 'Size')} value={formatBytes(bytes) || '—'} />
 						{kind === 'image' && (
 							<InfoRow

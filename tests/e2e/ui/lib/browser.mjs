@@ -48,7 +48,7 @@ export async function newContext(browser, { viewport = DESKTOP, prefs = null, co
 			try {
 				if (sessionStorage.getItem('e2e_prefs_seeded')) return;
 				sessionStorage.setItem('e2e_prefs_seeded', '1');
-				localStorage.setItem('kulup_theme', json);
+				localStorage.setItem('club_theme', json);
 			} catch {
 				// no storage
 			}

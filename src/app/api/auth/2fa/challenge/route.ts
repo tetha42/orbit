@@ -129,7 +129,7 @@ export async function POST(request: Request) {
 			);
 		}
 
-		if (user.status !== 'aktif') {
+		if (user.status !== 'active') {
 			return NextResponse.json(
 				{ error: 'Account is not active.', code: 'ACCOUNT_INACTIVE' },
 				{ status: 403 }

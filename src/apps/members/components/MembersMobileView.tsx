@@ -37,7 +37,7 @@ export function MembersMobileView({ m }: MembersMobileViewProps) {
 	const scrollAreaRef = useRef<HTMLDivElement>(null);
 
 	const pendingMembers = useMemo(
-		() => m.members.filter((mbr) => mbr.status === 'beklemede'),
+		() => m.members.filter((mbr) => mbr.status === 'pending'),
 		[m.members]
 	);
 
@@ -142,26 +142,26 @@ export function MembersMobileView({ m }: MembersMobileViewProps) {
 											{isMe && <span className={`${s.badge} ${s.badgeAccent}`} style={{ fontSize: '9.5px', padding: '1px 5px' }}>{t('you')}</span>}
 										</div>
 										<div className={s.memberSub}>
-											{member.department || member.department || t('membersDefaultDept')} {(member.grade || member.grade) ? `• ${fill(t('membersClassYear'), { year: member.grade || member.grade })}` : ''}
+											{member.department || t('membersDefaultDept')} {(member.grade) ? `• ${fill(t('membersClassYear'), { year: member.grade })}` : ''}
 										</div>
 									</div>
 								</div>
 
 								<div className={s.memberRight}>
 									<div className={s.memberActionRow}>
-										{(member.roleName || member.roleName) && (
+										{(member.roleName) && (
 											<span
 												className={s.badge}
 												style={{
-													background: (member.roleColor || member.roleColor) ? `${member.roleColor || member.roleColor}25` : 'rgba(10, 132, 255, 0.15)',
-													color: (member.roleColor || member.roleColor) || '#0a84ff',
+													background: (member.roleColor) ? `${member.roleColor}25` : 'rgba(10, 132, 255, 0.15)',
+													color: (member.roleColor) || '#0a84ff',
 													fontSize: '10.5px',
 												}}
 											>
-												{member.roleName || member.roleName}
+												{member.roleName}
 											</span>
 										)}
-										{!isMe && m.mailUser && member.status === 'aktif' && (
+										{!isMe && m.mailUser && member.status === 'active' && (
 											<button
 												type="button"
 												aria-label={fill(t('membersSendMessageTo'), { name: member.firstName })}
@@ -224,7 +224,7 @@ export function MembersMobileView({ m }: MembersMobileViewProps) {
 									{member.email}
 								</div>
 								<div style={{ fontSize: '11.5px', opacity: 0.55, marginTop: '2px' }}>
-									{member.department || member.department} {(member.grade || member.grade) ? `• ${fill(t('membersClassYear'), { year: member.grade || member.grade })}` : ''} {(member.handle || member.studentNo) ? `• ${member.handle || member.studentNo}` : ''}
+									{member.department} {(member.grade) ? `• ${fill(t('membersClassYear'), { year: member.grade })}` : ''} {(member.handle || member.studentNo) ? `• ${member.handle || member.studentNo}` : ''}
 								</div>
 							</div>
 						</div>
@@ -234,7 +234,7 @@ export function MembersMobileView({ m }: MembersMobileViewProps) {
 								<button
 									type="button"
 									className={s.btnApprove}
-									onClick={() => void m.handleUpdateMemberStatus(member.id, 'aktif')}
+									onClick={() => void m.handleUpdateMemberStatus(member.id, 'active')}
 								>
 									<Check size={16} strokeWidth={2.5} />
 									<span>{t('approve')}</span>
@@ -242,7 +242,7 @@ export function MembersMobileView({ m }: MembersMobileViewProps) {
 								<button
 									type="button"
 									className={s.btnReject}
-									onClick={() => void m.handleUpdateMemberStatus(member.id, 'reddedildi')}
+									onClick={() => void m.handleUpdateMemberStatus(member.id, 'rejected')}
 								>
 									<X size={16} strokeWidth={2.5} />
 									<span>{t('reject')}</span>

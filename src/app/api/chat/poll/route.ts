@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 const NO_CACHE = { 'Cache-Control': 'no-store' };
 
 export async function POST(request: Request) {
-	const auth = await requireApp(request, 'chat', 'kullan');
+	const auth = await requireApp(request, 'chat', 'use');
 	if (!auth.authorized) return auth.response;
 
 	const isAdmin = Boolean(auth.user.permission?.admin || auth.user.roleId === 'admin');

@@ -176,7 +176,7 @@ export async function POST(request: Request) {
 				service: 'database',
 				level: 'WARN',
 				message: `Tabloya yeni sütun eklendi: ${tableName}.${colName}`,
-				detail: { table: tableName, column: colName, tip: sqlType },
+				detail: { table: tableName, column: colName, type: sqlType },
 				userId: auth.user.id,
 			});
 

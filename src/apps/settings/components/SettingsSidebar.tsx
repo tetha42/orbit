@@ -65,19 +65,19 @@ export function SettingsSidebar({ visibleSections, activeTab, onSelectTab }: Set
 				overflowY: 'hidden',
 			}}
 		>
-			{(['kisisel', 'hesap', 'sistem'] as const).map((group) => {
+			{(['personal', 'account', 'system'] as const).map((group) => {
 				const tabs = visibleSections.filter((sec) => sec.group === group);
 				if (!tabs.length) return null;
 				return (
 					<div key={group} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-						{group === 'kisisel' ? (
+						{group === 'personal' ? (
 							<div style={{ fontSize: '11px', fontWeight: 700, opacity: 0.5, padding: '4px 8px', textTransform: 'uppercase' }}>
 								{t('settingsGroupPersonal')}
 							</div>
 						) : (
 							<>
 								<div style={{ height: '1px', background: 'var(--window-border)', margin: '6px 8px' }} />
-								{group === 'sistem' && (
+								{group === 'system' && (
 									<div style={{ fontSize: '11px', fontWeight: 700, opacity: 0.5, padding: '4px 8px', textTransform: 'uppercase' }}>
 										{t('settingsGroupSystem')}
 									</div>

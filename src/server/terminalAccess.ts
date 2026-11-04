@@ -32,5 +32,5 @@ export async function authorizeTerminal(request: Request): Promise<AccessResult>
 			),
 		};
 	}
-	return requireApp(request, 'terminal', 'kullan');
+	return requireApp(request, 'terminal', 'use');
 }

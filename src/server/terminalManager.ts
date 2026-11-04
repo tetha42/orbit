@@ -269,14 +269,14 @@ else:
 	try {
 		proc = spawn('python3', ['-u', '-c', ptyBridgeScript], {
 			env: buildTerminalEnv(),
-			stdio: ['pipe', 'pipe', 'pipe', 'pipe'],
+			stdio: ['pipe'],
 		});
 		controlStream = (proc.stdio[3] as unknown as Writable) || null;
 	} catch {
 		// Runtime path by design (validated in resolveShell); not a file to bundle.
 		proc = spawn(/*turbopackIgnore: true*/ shellPath, ['-i'], {
 			env: buildTerminalEnv(),
-			stdio: ['pipe', 'pipe', 'pipe'],
+			stdio: ['pipe'],
 		});
 	}
 

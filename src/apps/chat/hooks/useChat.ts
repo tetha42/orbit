@@ -474,7 +474,7 @@ export function useChat(initialRoomId?: string | null) {
 	const createDm = useCallback(async (targetUserId: string): Promise<string | null> => {
 		// Reuse a room the state already knows about; this also avoids a request
 		// when a member card is clicked twice before the rooms list refreshes.
-		const known = rooms.find((room) => room.typeValue === 'ozel' && room.peerUserId === targetUserId);
+		const known = rooms.find((room) => room.typeValue === 'private' && room.peerUserId === targetUserId);
 		if (known) {
 			setActiveRoomId(known.id);
 			return known.id;
@@ -643,7 +643,7 @@ export function useChat(initialRoomId?: string | null) {
 			} else if (section === 'compose' || kind === 'dm') {
 				if (itemId) {
 					const existingDm = rooms.find(
-						(r) => r.typeValue === 'ozel' && r.peerUserId === itemId
+						(r) => r.typeValue === 'private' && r.peerUserId === itemId
 					);
 					if (existingDm) {
 						setActiveRoomId(existingDm.id);

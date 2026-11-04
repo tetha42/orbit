@@ -63,7 +63,7 @@ export async function parseProjectInput(
 			const team = await getTeamById(teamId);
 			if (!team) return { ok: false, error: 'Takım bulunamadı.' };
 			// A member can credit a team they belong to or lead, not any team.
-			if (!can(user, 'projects', 'yonet') && team.leadId !== user.id) {
+			if (!can(user, 'projects', 'manage') && team.leadId !== user.id) {
 				const mine = await getUserTeamIds(user.id);
 				if (!mine.includes(teamId)) return { ok: false, error: 'Projeyi yalnızca üyesi olduğunuz bir takıma bağlayabilirsiniz.' };
 			}
@@ -75,7 +75,7 @@ export async function parseProjectInput(
 		if (ownerTeamId) {
 			const team = await getTeamById(ownerTeamId);
 			if (!team) return { ok: false, error: 'Sahip takım bulunamadı.' };
-			if (!can(user, 'projects', 'yonet') && team.leadId !== user.id) {
+			if (!can(user, 'projects', 'manage') && team.leadId !== user.id) {
 				const mine = await getUserTeamIds(user.id);
 				if (!mine.includes(ownerTeamId)) return { ok: false, error: 'Projenin sahibi yalnızca üyesi olduğunuz bir takım olabilir.' };
 			}
@@ -86,8 +86,8 @@ export async function parseProjectInput(
 		const ownerUserId = typeof body.ownerUserId === 'string' && body.ownerUserId ? body.ownerUserId : null;
 		if (ownerUserId) {
 			const owner = await getUserById(ownerUserId);
-			if (!owner || owner.status !== 'aktif') return { ok: false, error: 'Sahip üye bulunamadı.' };
-			if (!can(user, 'projects', 'yonet') && ownerUserId !== user.id) {
+			if (!owner || owner.status !== 'active') return { ok: false, error: 'Sahip üye bulunamadı.' };
+			if (!can(user, 'projects', 'manage') && ownerUserId !== user.id) {
 				return { ok: false, error: 'Bir üyeyi yalnızca kendiniz sahip olarak atayabilirsiniz.' };
 			}
 		}

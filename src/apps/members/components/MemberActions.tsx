@@ -7,7 +7,7 @@ import type { MemberRecord } from '../types';
 
 interface MemberActionsProps {
 	member: MemberRecord;
-	onUpdateStatus: (memberId: string, status: 'aktif' | 'reddedildi' | 'mezun') => void;
+	onUpdateStatus: (memberId: string, status: 'active' | 'rejected' | 'alumni') => void;
 	onOpenContextMenu?: (e: React.MouseEvent) => void;
 }
 
@@ -20,10 +20,10 @@ export function MemberActions({
 
 	return (
 		<div style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
-			{member.status === 'beklemede' && (
+			{member.status === 'pending' && (
 				<>
 					<button
-						onClick={() => onUpdateStatus(member.id, 'aktif')}
+						onClick={() => onUpdateStatus(member.id, 'active')}
 						title={t('membersCtxApprove')}
 						style={{
 							padding: '3px 8px',
@@ -42,7 +42,7 @@ export function MemberActions({
 						<Check size={12} /> {t('approve')}
 					</button>
 					<button
-						onClick={() => onUpdateStatus(member.id, 'reddedildi')}
+						onClick={() => onUpdateStatus(member.id, 'rejected')}
 						title={t('membersCtxReject')}
 						style={{
 							padding: '3px 8px',

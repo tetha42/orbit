@@ -154,9 +154,9 @@ export default async function suite(t) {
 	const admin = client(base, await sessionToken(context, base));
 
 	// ---- 6. Rol bazlı zorunluluk ---------------------------------------------------------
-	const roleManagement = await createRole(admin, { name: 'Yönetim Kurulu', color: '#ff9f0a', description: '', twoStepRequired: true, permissions: { news: 'yonet', events: 'yonet', members: 'kullan', settings: 'kullan' } });
-	const roleMember = await createRole(admin, { name: 'Üye', color: '#0a84ff', description: '', twoStepRequired: false, permissions: { news: 'kullan', events: 'kullan', settings: 'kullan' } });
-	const roleFollow = await createRole(admin, { name: 'Takip', color: '#30d158', description: '', twoStepRequired: false, permissions: { news: 'kullan', settings: 'kullan' } });
+	const roleManagement = await createRole(admin, { name: 'Yönetim Kurulu', color: '#ff9f0a', description: '', twoStepRequired: true, permissions: { news: 'manage', events: 'manage', members: 'use', settings: 'use' } });
+	const roleMember = await createRole(admin, { name: 'Üye', color: '#0a84ff', description: '', twoStepRequired: false, permissions: { news: 'use', events: 'use', settings: 'use' } });
+	const roleFollow = await createRole(admin, { name: 'Takip', color: '#30d158', description: '', twoStepRequired: false, permissions: { news: 'use', settings: 'use' } });
 	const yk = await createMember(admin, base, { name: 'Yasemin', surname: 'Kurul', email: 'yasemin@e2e.test', roleId: roleManagement });
 	const member = await createMember(admin, base, { name: 'Ugur', surname: 'Uye', email: 'ugur@e2e.test', roleId: roleMember });
 	const follow = await createMember(admin, base, { name: 'Tuna', surname: 'Takip', email: 'tuna@e2e.test', roleId: roleFollow });

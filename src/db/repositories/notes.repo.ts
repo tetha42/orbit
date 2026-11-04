@@ -5,7 +5,7 @@ export async function getUserNotes(userId: string): Promise<UserNote[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`SELECT id, user_id AS "userId", title AS title, content AS content, color AS color,
-		        is_pinned AS "pinnedMi", folder_id AS "folderId", is_trashed AS "trashedMi",
+		        is_pinned AS "isPinned", folder_id AS "folderId", is_trashed AS "isTrashed",
 		        updated_at AS update, created_at AS creation
 		 FROM user_notes
 		 WHERE user_id = $1 AND folder_id <> '__folder__'
@@ -15,7 +15,7 @@ export async function getUserNotes(userId: string): Promise<UserNote[]> {
 	return res.rows.map((r) => {
 		let body = (r.content as string) || '';
 		let folderId = (r.folderId as string) || (r.color as string) || 'quick';
-		let isDeleted = Boolean(r.trashedMi);
+		let isDeleted = Boolean(r.isTrashed);
 
 		if (typeof r.content === 'string' && r.content.startsWith('{') && r.content.includes('"body"')) {
 			try {
@@ -35,10 +35,10 @@ export async function getUserNotes(userId: string): Promise<UserNote[]> {
 			userId: r.userId as string,
 			title: (r.title as string) || 'Başlıksız Not',
 			content: body,
-			color: (r.color as string) || 'sari',
-			pinnedMi: Boolean(r.pinnedMi),
+			color: (r.color as string) || 'yellow',
+			isPinned: Boolean(r.isPinned),
 			folderId: folderId,
-			trashedMi: isDeleted,
+			isTrashed: isDeleted,
 			update: Number(r.update) || Date.now(),
 			creation: Number(r.creation) || Date.now(),
 		};
@@ -51,19 +51,19 @@ export async function saveUserNote(params: {
 	title: string;
 	content: string;
 	color?: string;
-	pinnedMi?: boolean;
+	isPinned?: boolean;
 	folderId?: string;
-	trashedMi?: boolean;
+	isTrashed?: boolean;
 }): Promise<UserNote> {
 	await ensurePostgresInit();
 	const pool = getPgPool();
 	const now = Date.now();
 	const noteId = params.id || `not_${now}_${Math.random().toString(36).substring(2, 6)}`;
-	const color = params.color || 'sari';
-	const pinnedMi = params.pinnedMi ? 1 : 0;
+	const color = params.color || 'yellow';
+	const isPinned = params.isPinned ? 1 : 0;
 	const rawFolder = params.folderId || params.color || 'quick';
 	const folderId = rawFolder === '__folder__' ? 'quick' : rawFolder;
-	const trashedMi = params.trashedMi ? 1 : 0;
+	const isTrashed = params.isTrashed ? 1 : 0;
 
 	// IDOR Protection: verify note ownership if existing id is provided
 	if (params.id) {
@@ -72,7 +72,7 @@ export async function saveUserNote(params: {
 			[params.id]
 		);
 		if (existing.rows.length > 0) {
-			const owner = String(existing.rows[0].userId ?? existing.rows[0].userid ?? existing.rows[0].userId);
+			const owner = String(existing.rows[0].userId ?? existing.rows[0].userid);
 			if (owner !== params.userId) {
 				throw new Error('Yetkisiz işlem: Bu not başka bir kullanıcıya aittir.');
 			}
@@ -92,7 +92,7 @@ export async function saveUserNote(params: {
 		   updated_at = EXCLUDED.updated_at
 		 WHERE user_notes.user_id = EXCLUDED.user_id
 		 RETURNING id`,
-		[noteId, params.userId, params.title, params.content, color, pinnedMi, folderId, trashedMi, now]
+		[noteId, params.userId, params.title, params.content, color, isPinned, folderId, isTrashed, now]
 	);
 
 	if (params.id && (res.rowCount ?? 0) === 0) {
@@ -105,9 +105,9 @@ export async function saveUserNote(params: {
 		title: params.title,
 		content: params.content,
 		color,
-		pinnedMi: Boolean(pinnedMi),
+		isPinned: Boolean(isPinned),
 		folderId: folderId,
-		trashedMi: Boolean(trashedMi),
+		isTrashed: Boolean(isTrashed),
 		update: now,
 		creation: now,
 	};
@@ -171,7 +171,7 @@ export async function saveUserNoteFolder(params: {
 			[params.id]
 		);
 		if (existing.rows.length > 0) {
-			const owner = String(existing.rows[0].userId ?? existing.rows[0].userid ?? existing.rows[0].userId);
+			const owner = String(existing.rows[0].userId ?? existing.rows[0].userid);
 			if (owner !== params.userId) {
 				throw new Error('Yetkisiz işlem: Bu klasör başka bir kullanıcıya aittir.');
 			}

@@ -87,7 +87,7 @@ async function ensurePgListener() {
 }
 
 export async function GET(request: Request) {
-	const auth = await requireApp(request, 'chat', 'kullan');
+	const auth = await requireApp(request, 'chat', 'use');
 	if (!auth.authorized) return auth.response;
 
 	const userId = auth.user.id;

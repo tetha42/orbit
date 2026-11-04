@@ -13,7 +13,7 @@ const bad = (error: string, status = 400) => NextResponse.json({ error }, { stat
 
 /** Full admin view of one member, including registration-only custom values. */
 export async function GET(request: Request, { params }: Params) {
-	const auth = await requireApp(request, 'members', 'yonet');
+	const auth = await requireApp(request, 'members', 'manage');
 	if (!auth.authorized) return auth.response;
 	const { id } = await params;
 	const detail = await getMemberAdminDetail(id);
@@ -27,9 +27,9 @@ export async function GET(request: Request, { params }: Params) {
  * person's profile and custom values, in one transaction with audit.
  */
 export async function PATCH(request: Request, { params }: Params) {
-	const auth = await requireApp(request, 'members', 'yonet');
+	const auth = await requireApp(request, 'members', 'manage');
 	if (!auth.authorized) return auth.response;
-	if (auth.user.status === 'mezun') return bad('Mezunlar sadece okuma erişimine sahiptir.', 403);
+	if (auth.user.status === 'alumni') return bad('Mezunlar sadece okuma erişimine sahiptir.', 403);
 
 	const { id } = await params;
 	const target = await getUserById(id);

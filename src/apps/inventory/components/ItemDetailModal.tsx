@@ -34,7 +34,7 @@ import { fill } from '@/lib/text';
 
 interface Movement {
 	id: string;
-	typeValue: 'ekle' | 'odunc' | 'iade' | 'uzat' | 'status' | 'duzenle';
+	typeValue: 'add' | 'loan' | 'return' | 'extend' | 'status' | 'edit';
 	actorNameSurname: string | null;
 	userNameSurname: string | null;
 	description: string | null;
@@ -42,12 +42,12 @@ interface Movement {
 }
 
 const EVENT_ICONS: Record<Movement['typeValue'], typeof History> = {
-	ekle: PlusCircle,
-	odunc: PackageOpen,
-	iade: PackageCheck,
-	uzat: CalendarClock,
+	add: PlusCircle,
+	loan: PackageOpen,
+	return: PackageCheck,
+	extend: CalendarClock,
 	status: Wrench,
-	duzenle: Pencil,
+	edit: Pencil,
 };
 
 /**
@@ -81,17 +81,17 @@ export function ItemDetailModal({
 
 	const getEventLabel = (h: Movement) => {
 		switch (h.typeValue) {
-			case 'ekle':
+			case 'add':
 				return fill(t('invItemAdded'), { code: item.code });
-			case 'odunc':
+			case 'loan':
 				return fill(t('invActionLoan'), { name: h.userNameSurname ?? t('invMemberFallback') });
-			case 'iade':
+			case 'return':
 				return fill(t('invActionReturned'), { name: h.userNameSurname ?? t('invBorrowerFallback') });
-			case 'uzat':
+			case 'extend':
 				return t('invActionExtend');
 			case 'status':
 				return t('invActionStatus');
-			case 'duzenle':
+			case 'edit':
 			default:
 				return t('invActionEdit');
 		}
@@ -103,10 +103,10 @@ export function ItemDetailModal({
 
 	const statusBadgeText = (d: InventoryStatus) => {
 		switch (d) {
-			case 'saglam': return t('invBadgeAvailable');
-			case 'oduncte': return t('invBadgeOnLoan');
-			case 'arizali': return t('invBadgeBroken');
-			case 'kayip': return t('invBadgeLost');
+			case 'available': return t('invBadgeAvailable');
+			case 'on_loan': return t('invBadgeOnLoan');
+			case 'faulty': return t('invBadgeBroken');
+			case 'lost': return t('invBadgeLost');
 		}
 	};
 
@@ -126,7 +126,7 @@ export function ItemDetailModal({
 	}, [item.status, item.returnDate, item.name, item.location, refetch]);
 
 	const mine = !!selfId && item.loanFieldId === selfId;
-	const due = item.status === 'oduncte' ? returnStatus(item.returnDate, now) : null;
+	const due = item.status === 'on_loan' ? returnStatus(item.returnDate, now) : null;
 
 	const confirm = async (message: string, tone: 'danger' | 'warning' = 'warning') => {
 		dialogOpen.current = true;
@@ -137,11 +137,11 @@ export function ItemDetailModal({
 		}
 	};
 
-	const setStatus = async (status: 'saglam' | 'arizali' | 'kayip') => {
-		const text = { saglam: t('invStatusAvailable'), arizali: t('invStatusFaulty'), kayip: t('invStatusLost') }[status];
+	const setStatus = async (status: 'available' | 'faulty' | 'lost') => {
+		const text = { available: t('invStatusAvailable'), faulty: t('invStatusFaulty'), lost: t('invStatusLost') }[status];
 		if (
 			!(await confirm(
-				`${fill(t('invStatusChangeConfirm'), { code: item.code, status: text })}${item.status === 'oduncte' && status === 'kayip' ? fill(t('invStatusLostLoanNotice'), { name: item.loanFieldNameSurname }) : ''}`,
+				`${fill(t('invStatusChangeConfirm'), { code: item.code, status: text })}${item.status === 'on_loan' && status === 'lost' ? fill(t('invStatusLostLoanNotice'), { name: item.loanFieldNameSurname }) : ''}`,
 			))
 		)
 			return;
@@ -228,8 +228,8 @@ export function ItemDetailModal({
 							</>
 						)}
 					</dl>
-					{item.status === 'oduncte' && (
-						<div className={`${s.loan} ${due?.gecikti ? s.loanOverdue : ''}`}>
+					{item.status === 'on_loan' && (
+						<div className={`${s.loan} ${due?.overdue ? s.loanOverdue : ''}`}>
 							<span>
 								<strong>{t('invAssigned')}:</strong> {item.loanFieldNameSurname ?? '—'}
 								{mine && ` (${t('invWithYou').toLowerCase()})`}
@@ -238,7 +238,7 @@ export function ItemDetailModal({
 								{item.loanDate ? `${trDate(item.loanDate)} → ` : ''}
 								{item.returnDate ? trDate(item.returnDate) : '—'}{' '}
 								<span
-									className={`${s.due} ${due?.gecikti ? s.dueLate : due && due.day <= 2 ? s.dueSoon : ''}`}
+									className={`${s.due} ${due?.overdue ? s.dueLate : due && due.day <= 2 ? s.dueSoon : ''}`}
 								>
 									· {returnText(item.returnDate, now)}
 								</span>
@@ -246,17 +246,17 @@ export function ItemDetailModal({
 						</div>
 					)}
 					<div className={ui.btnRow} style={{ justifyContent: 'flex-start', flexWrap: 'wrap' }}>
-						{item.status === 'saglam' && !isAlumni && (
+						{item.status === 'available' && !isAlumni && (
 							<button type="button" className={ui.primaryBtn} onClick={() => onLoan('borrow')}>
 								<PackageOpen size={14} /> {t('invBorrowBtn')}
 							</button>
 						)}
-						{item.status === 'saglam' && isManager && (
+						{item.status === 'available' && isManager && (
 							<button type="button" className={ui.btn} onClick={() => onLoan('lend')}>
 								<ArrowRightLeft size={14} /> {t('invLendForMember')}
 							</button>
 						)}
-						{item.status === 'oduncte' && (mine || isManager) && (
+						{item.status === 'on_loan' && (mine || isManager) && (
 							<>
 								<button type="button" className={ui.primaryBtn} onClick={() => onLoan('return')}>
 									<PackageCheck size={14} /> {t('invReturnBtn')}
@@ -295,18 +295,18 @@ export function ItemDetailModal({
 					<button type="button" className={ui.btn} onClick={onEdit}>
 						<Pencil size={13} /> {t('edit')}
 					</button>
-					{item.status !== 'saglam' && item.status !== 'oduncte' && (
-						<button type="button" className={ui.btn} onClick={() => setStatus('saglam')}>
+					{item.status !== 'available' && item.status !== 'on_loan' && (
+						<button type="button" className={ui.btn} onClick={() => setStatus('available')}>
 							<Wrench size={13} /> {t('invMarkRepaired')}
 						</button>
 					)}
-					{item.status === 'saglam' && (
-						<button type="button" className={ui.btn} onClick={() => setStatus('arizali')}>
+					{item.status === 'available' && (
+						<button type="button" className={ui.btn} onClick={() => setStatus('faulty')}>
 							<CircleAlert size={13} /> {t('invMarkBroken')}
 						</button>
 					)}
-					{item.status !== 'kayip' && (
-						<button type="button" className={ui.btn} onClick={() => setStatus('kayip')}>
+					{item.status !== 'lost' && (
+						<button type="button" className={ui.btn} onClick={() => setStatus('lost')}>
 							{t('invMarkLost')}
 						</button>
 					)}
@@ -315,8 +315,8 @@ export function ItemDetailModal({
 						type="button"
 						className={`${ui.btn} ${ui.btnDanger}`}
 						onClick={remove}
-						disabled={item.status === 'oduncte'}
-						title={item.status === 'oduncte' ? t('invCannotDeleteLoaned') : undefined}
+						disabled={item.status === 'on_loan'}
+						title={item.status === 'on_loan' ? t('invCannotDeleteLoaned') : undefined}
 					>
 						<Trash2 size={13} /> {t('delete')}
 					</button>

@@ -64,12 +64,7 @@ export function updateConfigIniSync(
 		const raw = fs.readFileSync(/*turbopackIgnore: true*/ iniPath, 'utf8');
 		lines = raw.split(/\r?\n/);
 	} else {
-		lines = [
-			'# ===========================================================================',
-			'# Orbit Community OS — System Configuration (config.ini)',
-			'# ===========================================================================',
-			'',
-		];
+		lines = ['# ===========================================================================', '# Orbit Community OS — System Configuration (config.ini)', ''];
 	}
 
 	const newLines: string[] = [];

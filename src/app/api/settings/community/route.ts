@@ -9,7 +9,7 @@ import { DEFAULT_ARCHETYPE, isOrganizationArchetype } from '@/lib/archetypes';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-	const auth = await requireApp(request, 'settings', 'kullan');
+	const auth = await requireApp(request, 'settings', 'use');
 	if (!auth.authorized) return auth.response;
 
 	try {
@@ -18,15 +18,15 @@ export async function GET(request: Request) {
 			? settings.organization_archetype
 			: DEFAULT_ARCHETYPE;
 		return NextResponse.json({
-			clubName: settings.club_Name || 'Orbit Community',
+			clubName: settings.club_name || 'Orbit Community',
 			university: settings.university || 'tetha42',
 			clubDomain: settings.club_domain || 'orbit.local',
 			archetype,
 			organizationArchetype: archetype,
-			signature1Name: settings.signature1_Name || '',
-			signature1Rank: settings.signature1_Rank || 'Topluluk Lideri',
-			signature2Name: settings.signature2_Name || '',
-			signature2Rank: settings.signature2_Rank || 'Stüdyo Koordinatörü',
+			signature1Name: settings.signature1_name || '',
+			signature1Rank: settings.signature1_rank || 'Topluluk Lideri',
+			signature2Name: settings.signature2_name || '',
+			signature2Rank: settings.signature2_rank || 'Stüdyo Koordinatörü',
 		});
 	} catch (error) {
 		console.error('API /api/settings/community GET error:', error);
@@ -35,7 +35,7 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-	const auth = await requireApp(request, 'settings', 'yonet');
+	const auth = await requireApp(request, 'settings', 'manage');
 	if (!auth.authorized) return auth.response;
 
 	try {
@@ -59,7 +59,7 @@ export async function PATCH(request: Request) {
 		if (clubName !== undefined) {
 			const name = clean(clubName);
 			if (!name) return NextResponse.json({ error: 'Topluluk adı boş bırakılamaz.' }, { status: 400 });
-			updates.club_Name = name;
+			updates.club_name = name;
 		}
 		if (university !== undefined) {
 			const studio = clean(university);
@@ -90,10 +90,10 @@ export async function PATCH(request: Request) {
 			}
 			updates.organization_archetype = rawArchetype;
 		}
-		if (signature1Name !== undefined) updates.signature1_Name = clean(signature1Name);
-		if (signature1Rank !== undefined) updates.signature1_Rank = clean(signature1Rank) || 'Topluluk Lideri';
-		if (signature2Name !== undefined) updates.signature2_Name = clean(signature2Name);
-		if (signature2Rank !== undefined) updates.signature2_Rank = clean(signature2Rank) || 'Stüdyo Koordinatörü';
+		if (signature1Name !== undefined) updates.signature1_name = clean(signature1Name);
+		if (signature1Rank !== undefined) updates.signature1_rank = clean(signature1Rank) || 'Topluluk Lideri';
+		if (signature2Name !== undefined) updates.signature2_name = clean(signature2Name);
+		if (signature2Rank !== undefined) updates.signature2_rank = clean(signature2Rank) || 'Stüdyo Koordinatörü';
 
 		if (Object.keys(updates).length === 0) {
 			return NextResponse.json({ ok: true, message: 'Güncellenecek alan bulunamadı.' });
@@ -111,13 +111,13 @@ export async function PATCH(request: Request) {
 		// Also sync with runtime configuration
 		try {
 			const clubPresetUpdates: Record<string, string> = {};
-			if (updates.club_Name !== undefined) clubPresetUpdates.name = updates.club_Name;
+			if (updates.club_name !== undefined) clubPresetUpdates.name = updates.club_name;
 			if (updates.club_domain !== undefined) clubPresetUpdates.domain = updates.club_domain;
 			if (updates.university !== undefined) clubPresetUpdates.university = updates.university;
-			if (updates.signature1_Name !== undefined) clubPresetUpdates.president_name = updates.signature1_Name;
-			if (updates.signature1_Rank !== undefined) clubPresetUpdates.president_title = updates.signature1_Rank;
-			if (updates.signature2_Name !== undefined) clubPresetUpdates.advisor_name = updates.signature2_Name;
-			if (updates.signature2_Rank !== undefined) clubPresetUpdates.advisor_title = updates.signature2_Rank;
+			if (updates.signature1_name !== undefined) clubPresetUpdates.president_name = updates.signature1_name;
+			if (updates.signature1_rank !== undefined) clubPresetUpdates.president_title = updates.signature1_rank;
+			if (updates.signature2_name !== undefined) clubPresetUpdates.advisor_name = updates.signature2_name;
+			if (updates.signature2_rank !== undefined) clubPresetUpdates.advisor_title = updates.signature2_rank;
 
 			if (Object.keys(clubPresetUpdates).length > 0) {
 				updateConfigIniSync({ club_preset: clubPresetUpdates });
@@ -126,7 +126,7 @@ export async function PATCH(request: Request) {
 			console.warn('Failed to sync community settings to runtime configuration:', iniErr);
 		}
 
-		invalidateCache('kulup_bilgileri');
+		invalidateCache('club_info');
 
 		const fresh = await getSystemSettings();
 		const freshArchetype = isOrganizationArchetype(fresh.organization_archetype)
@@ -137,15 +137,15 @@ export async function PATCH(request: Request) {
 			success: true,
 			archetype: freshArchetype,
 			settings: {
-				clubName: fresh.club_Name,
+				clubName: fresh.club_name,
 				university: fresh.university,
 				clubDomain: fresh.club_domain,
 				archetype: freshArchetype,
 				organizationArchetype: freshArchetype,
-				signature1Name: fresh.signature1_Name,
-				signature1Rank: fresh.signature1_Rank,
-				signature2Name: fresh.signature2_Name,
-				signature2Rank: fresh.signature2_Rank,
+				signature1Name: fresh.signature1_name,
+				signature1Rank: fresh.signature1_rank,
+				signature2Name: fresh.signature2_name,
+				signature2Rank: fresh.signature2_rank,
 			},
 		});
 	} catch (error) {

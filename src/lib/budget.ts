@@ -7,7 +7,7 @@ export interface VaultRow {
 	id: string;
 	date: number;
 	creation?: number;
-	typeValue: 'gelir' | 'gider';
+	typeValue: 'income' | 'expense';
 	category: string;
 	amountMinor: number;
 	description: string;
@@ -72,14 +72,14 @@ export function runningBalance(rows: VaultRow[]): Map<string, number> {
 	const out = new Map<string, number>();
 	let balance = 0;
 	for (const r of chronological(rows)) {
-		balance += r.typeValue === 'gelir' ? r.amountMinor : -r.amountMinor;
+		balance += r.typeValue === 'income' ? r.amountMinor : -r.amountMinor;
 		out.set(r.id, balance);
 	}
 	return out;
 }
 
 /** Spending per category, largest first, with each one's share of the total. */
-export function categoryBreakdown(rows: VaultRow[], type: 'gelir' | 'gider' = 'gider') {
+export function categoryBreakdown(rows: VaultRow[], type: 'income' | 'expense' = 'expense') {
 	const totals = new Map<string, number>();
 	for (const r of rows)
 		if (r.typeValue === type) totals.set(r.category, (totals.get(r.category) ?? 0) + r.amountMinor);
@@ -103,10 +103,10 @@ export function monthKey(ms: number): string {
 /** Income and expense of the last `count` calendar months up to `now`, oldest first. */
 export function monthlyFlow(rows: VaultRow[], now: number, count = 6) {
 	const d = new Date(now);
-	const months: { month: string; gelir: number; gider: number }[] = [];
+	const months: { month: string; income: number; expense: number }[] = [];
 	for (let i = count - 1; i >= 0; i--) {
 		const m = new Date(d.getFullYear(), d.getMonth() - i, 1);
-		months.push({ month: monthKey(m.getTime()), gelir: 0, gider: 0 });
+		months.push({ month: monthKey(m.getTime()), income: 0, expense: 0 });
 	}
 	const byKey = new Map(months.map((m) => [m.month, m]));
 	for (const r of rows) {
@@ -118,7 +118,7 @@ export function monthlyFlow(rows: VaultRow[], now: number, count = 6) {
 export const monthlyFeed = monthlyFlow;
 
 export interface VaultFilter {
-	typeValue?: 'hepsi' | 'gelir' | 'gider';
+	typeValue?: 'all' | 'income' | 'expense';
 	category?: string;
 	/** "2026-10"; empty for all months. */
 	month?: string;
@@ -132,7 +132,7 @@ export function filterRecords<T extends VaultRow>(rows: T[], f: VaultFilter): T[
 	const q = f.search?.trim() ? fold(f.search.trim()) : '';
 	return rows.filter(
 		(r) =>
-			(!f.typeValue || f.typeValue === 'hepsi' || r.typeValue === f.typeValue) &&
+			(!f.typeValue || f.typeValue === 'all' || r.typeValue === f.typeValue) &&
 			(!f.category || r.category === f.category) &&
 			(!f.month || monthKey(r.date) === f.month) &&
 			(!q || fold(`${r.description} ${r.category} ${r.recorderNameSurname ?? ''}`).includes(q)),

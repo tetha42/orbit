@@ -20,7 +20,7 @@ export async function POST(request: Request) {
 	}
 
 	const result = await anonymizeMember(userId, auditContext(request, auth.user));
-	if (result === 'yok') return NextResponse.json({ error: 'Üye bulunamadı.' }, { status: 404 });
+	if (result === 'none') return NextResponse.json({ error: 'Üye bulunamadı.' }, { status: 404 });
 	if (result === 'admin') {
 		return NextResponse.json({ error: 'Admin hesabı anonimleştirilemez.' }, { status: 409 });
 	}

@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic';
 const NO_CACHE = { 'Cache-Control': 'no-store' };
 
 export async function GET(request: Request) {
-	const auth = await requireApp(request, 'chat', 'kullan');
+	const auth = await requireApp(request, 'chat', 'use');
 	if (!auth.authorized) return auth.response;
 
 	const { searchParams } = new URL(request.url);
@@ -52,7 +52,7 @@ export async function GET(request: Request) {
 }
 
 async function handlePOST(request: Request) {
-	const auth = await requireApp(request, 'chat', 'kullan');
+	const auth = await requireApp(request, 'chat', 'use');
 	if (!auth.authorized) return auth.response;
 
 	try {

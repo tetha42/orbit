@@ -19,8 +19,8 @@ interface MembersToolbarProps {
 	onRoleFilterChange: (role: string) => void;
 	roleOptions: [string, string][];
 	hasRolelessMember: boolean;
-	activeFilter: 'all' | 'aktif' | 'beklemede' | 'mezun';
-	onActiveFilterChange: (filter: 'all' | 'aktif' | 'beklemede' | 'mezun') => void;
+	activeFilter: 'all' | 'active' | 'pending' | 'alumni';
+	onActiveFilterChange: (filter: 'all' | 'active' | 'pending' | 'alumni') => void;
 	totalMembersCount: number;
 	isAuthorizedToAdd: boolean;
 	isLoading: boolean;
@@ -168,9 +168,9 @@ export function MembersToolbar({
 				<div className={ui.segmented}>
 					{([
 						{ id: 'all', label: `${t('membersFilterAll')} (${totalMembersCount})` },
-						{ id: 'aktif', label: t('membersFilterActive') },
-						...(isAuthorizedToAdd ? [{ id: 'beklemede', label: t('membersFilterPending') } as const] : []),
-						{ id: 'mezun', label: t('membersFilterAlumni') },
+						{ id: 'active', label: t('membersFilterActive') },
+						...(isAuthorizedToAdd ? [{ id: 'pending', label: t('membersFilterPending') } as const] : []),
+						{ id: 'alumni', label: t('membersFilterAlumni') },
 					] as const).map((tab) => (
 						<button
 							key={tab.id}

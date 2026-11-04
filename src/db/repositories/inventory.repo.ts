@@ -11,7 +11,7 @@ export class InventoryCodeExistsError extends Error {
 	}
 }
 
-export type InventoryActivityType = 'ekle' | 'odunc' | 'iade' | 'uzat' | 'status' | 'duzenle';
+export type InventoryActivityType = 'add' | 'loan' | 'return' | 'extend' | 'status' | 'edit';
 
 export interface InventoryActivity {
 	id: string;
@@ -41,9 +41,9 @@ async function addMovement(
 }
 
 const INVENTORY_SELECT_COLUMNS = `
-	id, code AS kod, name AS ad, category AS kategori, status, location AS konum,
-	holder_user_id AS "oduncAlanId", due_at AS "iadeTarihi",
-	borrowed_at AS "oduncTarihi", description AS aciklama, serial_number AS "seriNo"
+	id, code AS code, name AS name, category AS category, status, location AS location,
+	holder_user_id AS "loanFieldId", due_at AS "returnDate",
+	borrowed_at AS "loanDate", description AS description, serial_number AS "seriesNo"
 `;
 
 /** Single inventory row, used to validate a borrow/return before writing. */
@@ -59,7 +59,7 @@ export async function getInventoryItems(): Promise<InventoryItem[]> {
 		SELECT e.id, e.code AS code, e.name AS name, e.category AS category, e.status, e.location AS location,
 		       e.holder_user_id AS "loanFieldId", e.due_at AS "returnDate",
 		       e.borrowed_at AS "loanDate", e.description AS description, e.serial_number AS "seriesNo",
-		       k.first_name || ' ' || k.last_name as "loanFieldNameSurname"
+		       k.first_name || ' ' || k.last_name AS "loanFieldNameSurname"
 		FROM inventory e
 		LEFT JOIN users k ON e.holder_user_id = k.id
 		ORDER BY e.code ASC
@@ -93,64 +93,64 @@ export async function getInventoryActivities(inventoryId: string, limit = 50): P
  * Lends an item that is on the shelf. The status check and the write are one
  * conditional UPDATE, so of two simultaneous requests exactly one wins.
  */
-export async function lendInventoryItem(p: { id: string; userId: string; returnDate: number; actorId: string }): Promise<'ok' | 'yok' | 'musait-degil'> {
+export async function lendInventoryItem(p: { id: string; userId: string; returnDate: number; actorId: string }): Promise<'ok' | 'none' | 'unavailable'> {
 	return withTransaction(async (client) => {
 		const res = await client.query(
-			`UPDATE inventory SET status = 'oduncte', holder_user_id = $2, due_at = $3, borrowed_at = $4
-			 WHERE id = $1 AND status = 'saglam' RETURNING id`,
+			`UPDATE inventory SET status = 'on_loan', holder_user_id = $2, due_at = $3, borrowed_at = $4
+			 WHERE id = $1 AND status = 'available' RETURNING id`,
 			[p.id, p.userId, p.returnDate, Date.now()]
 		);
 		if (res.rowCount === 0) {
 			const exists = await client.query('SELECT 1 FROM inventory WHERE id = $1', [p.id]);
-			return exists.rowCount ? 'musait-degil' : 'yok';
+			return exists.rowCount ? 'unavailable' : 'none';
 		}
-		await addMovement(client, { inventoryId: p.id, typeValue: 'odunc', actorId: p.actorId, userId: p.userId, description: `İade: ${new Date(p.returnDate).toLocaleDateString('tr-TR')}` });
+		await addMovement(client, { inventoryId: p.id, typeValue: 'loan', actorId: p.actorId, userId: p.userId, description: `İade: ${new Date(p.returnDate).toLocaleDateString('tr-TR')}` });
 		return 'ok';
 	});
 }
 
 /** Takes an item back. */
-export async function markReturned(p: { id: string; actorId: string; borrowerOnly?: string; failure?: boolean; not?: string }): Promise<'ok' | 'yok' | 'oduncte-degil' | 'permission'> {
+export async function markReturned(p: { id: string; actorId: string; borrowerOnly?: string; failure?: boolean; not?: string }): Promise<'ok' | 'none' | 'not_on_loan' | 'permission'> {
 	return withTransaction(async (client) => {
 		const found = await client.query('SELECT status, holder_user_id AS "loanFieldId" FROM inventory WHERE id = $1 FOR UPDATE', [p.id]);
 		const row = found.rows[0] as { status: string; loanFieldId: string | null } | undefined;
-		if (!row) return 'yok';
-		if (row.status !== 'oduncte') return 'oduncte-degil';
+		if (!row) return 'none';
+		if (row.status !== 'on_loan') return 'not_on_loan';
 		if (p.borrowerOnly && row.loanFieldId !== p.borrowerOnly) return 'permission';
 		await client.query(
 			`UPDATE inventory SET status = $2, holder_user_id = NULL, due_at = NULL, borrowed_at = NULL WHERE id = $1`,
-			[p.id, p.failure ? 'arizali' : 'saglam']
+			[p.id, p.failure ? 'faulty' : 'available']
 		);
 		const not = [p.failure ? 'Arızalı olarak iade edildi' : '', p.not?.trim() ?? ''].filter(Boolean).join(' — ');
-		await addMovement(client, { inventoryId: p.id, typeValue: 'iade', actorId: p.actorId, userId: row.loanFieldId, description: not || null });
+		await addMovement(client, { inventoryId: p.id, typeValue: 'return', actorId: p.actorId, userId: row.loanFieldId, description: not || null });
 		return 'ok';
 	});
 }
 
 /** Moves a loan's return date. */
-export async function extendLoan(p: { id: string; returnDate: number; actorId: string; borrowerOnly?: string }): Promise<'ok' | 'yok' | 'oduncte-degil' | 'permission'> {
+export async function extendLoan(p: { id: string; returnDate: number; actorId: string; borrowerOnly?: string }): Promise<'ok' | 'none' | 'not_on_loan' | 'permission'> {
 	return withTransaction(async (client) => {
 		const found = await client.query('SELECT status, holder_user_id AS "loanFieldId" FROM inventory WHERE id = $1 FOR UPDATE', [p.id]);
 		const row = found.rows[0] as { status: string; loanFieldId: string | null } | undefined;
-		if (!row) return 'yok';
-		if (row.status !== 'oduncte') return 'oduncte-degil';
+		if (!row) return 'none';
+		if (row.status !== 'on_loan') return 'not_on_loan';
 		if (p.borrowerOnly && row.loanFieldId !== p.borrowerOnly) return 'permission';
 		await client.query('UPDATE inventory SET due_at = $2 WHERE id = $1', [p.id, p.returnDate]);
-		await addMovement(client, { inventoryId: p.id, typeValue: 'uzat', actorId: p.actorId, userId: row.loanFieldId, description: `Yeni iade: ${new Date(p.returnDate).toLocaleDateString('tr-TR')}` });
+		await addMovement(client, { inventoryId: p.id, typeValue: 'extend', actorId: p.actorId, userId: row.loanFieldId, description: `Yeni iade: ${new Date(p.returnDate).toLocaleDateString('tr-TR')}` });
 		return 'ok';
 	});
 }
 
 /** Management's status change: in service, broken or lost. */
-export async function setInventoryStatus(p: { id: string; status: Exclude<InventoryStatus, 'oduncte'>; actorId: string; not?: string }): Promise<'ok' | 'yok' | 'oduncte'> {
+export async function setInventoryStatus(p: { id: string; status: Exclude<InventoryStatus, 'on_loan'>; actorId: string; not?: string }): Promise<'ok' | 'none' | 'on_loan'> {
 	return withTransaction(async (client) => {
 		const found = await client.query('SELECT status, holder_user_id AS "loanFieldId" FROM inventory WHERE id = $1 FOR UPDATE', [p.id]);
 		const row = found.rows[0] as { status: string; loanFieldId: string | null } | undefined;
-		if (!row) return 'yok';
+		if (!row) return 'none';
 		if (row.status === p.status) return 'ok';
-		if (row.status === 'oduncte' && p.status !== 'kayip') return 'oduncte';
+		if (row.status === 'on_loan' && p.status !== 'lost') return 'on_loan';
 		await client.query(`UPDATE inventory SET status = $2, holder_user_id = NULL, due_at = NULL, borrowed_at = NULL WHERE id = $1`, [p.id, p.status]);
-		const label: Record<string, string> = { saglam: 'Müsait', arizali: 'Arızalı', kayip: 'Kayıp' };
+		const label: Record<string, string> = { available: 'Müsait', faulty: 'Arızalı', lost: 'Kayıp' };
 		const parts = [`${label[row.status] ?? 'Ödünçte'} → ${label[p.status]}`, p.not?.trim() ?? ''].filter(Boolean);
 		await addMovement(client, { inventoryId: p.id, typeValue: 'status', actorId: p.actorId, userId: row.loanFieldId, description: parts.join(' — ') });
 		return 'ok';
@@ -162,12 +162,12 @@ export async function updateInventoryItem(
 	id: string,
 	changes: { code?: string; name?: string; category?: string; location?: string; description?: string | null; seriesNo?: string | null },
 	actorId: string
-): Promise<'ok' | 'yok' | 'kod-var'> {
+): Promise<'ok' | 'none' | 'code_exists'> {
 	try {
 		return await withTransaction(async (client) => {
 			const found = await client.query(`SELECT ${INVENTORY_SELECT_COLUMNS} FROM inventory WHERE id = $1 FOR UPDATE`, [id]);
 			const current = found.rows[0] as Record<string, unknown> | undefined;
-			if (!current) return 'yok';
+			if (!current) return 'none';
 			const fields = Object.entries(changes).filter(([k, v]) => v !== undefined && (current[k] ?? null) !== (v ?? null));
 			if (fields.length === 0) return 'ok';
 			const colMap: Record<string, string> = {
@@ -181,11 +181,11 @@ export async function updateInventoryItem(
 			const sets = fields.map(([k], i) => `${colMap[k] ?? k} = $${i + 2}`);
 			await client.query(`UPDATE inventory SET ${sets.join(', ')} WHERE id = $1`, [id, ...fields.map(([, v]) => v)]);
 			const names: Record<string, string> = { code: 'kod', name: 'ad', category: 'kategori', location: 'konum', description: 'açıklama', seriesNo: 'seri no' };
-			await addMovement(client, { inventoryId: id, typeValue: 'duzenle', actorId, description: `Değişen: ${fields.map(([k]) => names[k] ?? k).join(', ')}` });
+			await addMovement(client, { inventoryId: id, typeValue: 'edit', actorId, description: `Değişen: ${fields.map(([k]) => names[k] ?? k).join(', ')}` });
 			return 'ok';
 		});
 	} catch (err) {
-		if ((err as { code?: string }).code === '23505') return 'kod-var';
+		if ((err as { code?: string }).code === '23505') return 'code_exists';
 		throw err;
 	}
 }
@@ -208,7 +208,7 @@ export async function createInventoryItem(params: {
 		name: params.name.trim(),
 		category: params.category.trim(),
 		location: params.location.trim(),
-		status: params.status || 'saglam',
+		status: params.status || 'available',
 		description: params.description?.trim() || null,
 		seriesNo: params.seriesNo?.trim() || null,
 		loanFieldId: null,
@@ -222,7 +222,7 @@ export async function createInventoryItem(params: {
 				 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, '[]'::jsonb)`,
 				[item.id, item.code, item.name, item.category, item.location, item.status, item.description, item.seriesNo]
 			);
-			if (params.actorId) await addMovement(client, { inventoryId: id, typeValue: 'ekle', actorId: params.actorId, description: `Konum: ${item.location}` });
+			if (params.actorId) await addMovement(client, { inventoryId: id, typeValue: 'add', actorId: params.actorId, description: `Konum: ${item.location}` });
 		});
 	} catch (err) {
 		if ((err as { code?: string }).code === '23505') throw new InventoryCodeExistsError();
@@ -232,11 +232,11 @@ export async function createInventoryItem(params: {
 }
 
 /** Deletes an item that is not out on loan. */
-export async function deleteInventoryItem(id: string): Promise<'ok' | 'yok' | 'oduncte'> {
+export async function deleteInventoryItem(id: string): Promise<'ok' | 'none' | 'on_loan'> {
 	return withTransaction(async (client) => {
 		const found = await client.query('SELECT status FROM inventory WHERE id = $1 FOR UPDATE', [id]);
-		if (!found.rows[0]) return 'yok';
-		if (found.rows[0].status === 'oduncte') return 'oduncte';
+		if (!found.rows[0]) return 'none';
+		if (found.rows[0].status === 'on_loan') return 'on_loan';
 		await client.query('DELETE FROM inventory WHERE id = $1', [id]);
 		return 'ok';
 	});

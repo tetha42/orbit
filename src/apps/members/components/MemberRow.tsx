@@ -41,7 +41,7 @@ interface MemberRowProps {
 	onOpenProfile: (member: MemberRecord) => void;
 	onResetPassword: (memberId: string, name: string) => void;
 	onSendMessage: (memberId: string) => void;
-	onUpdateStatus: (memberId: string, status: 'aktif' | 'reddedildi' | 'mezun') => void;
+	onUpdateStatus: (memberId: string, status: 'active' | 'rejected' | 'alumni') => void;
 	onUpdateRole: (memberId: string, roleId: string) => void;
 	onAwardXp: (memberId: string, xp: number) => void;
 	onDelete: (memberId: string, name: string) => void;
@@ -69,7 +69,7 @@ export const MemberRow = React.memo(function MemberRow({
 	const { openApp } = useWindowActions();
 	const canSoc = canUseApp('soc');
 
-	const isAlumni = member.status === 'mezun' || isAlumniRole({ id: member.roleId, name: member.roleName });
+	const isAlumni = member.status === 'alumni' || isAlumniRole({ id: member.roleId, name: member.roleName });
 	const displayRole = isAlumni
 		? {
 				name: isAlumniRole({ id: member.roleId, name: member.roleName })
@@ -94,7 +94,7 @@ export const MemberRow = React.memo(function MemberRow({
 			},
 		];
 
-		if (mailUser && !isSelf && member.status === 'aktif' && isReachable) {
+		if (mailUser && !isSelf && member.status === 'active' && isReachable) {
 			items.push({
 				id: `send-mail-${member.id}`,
 				label: t('membersCtxSendMessage'),
@@ -122,7 +122,7 @@ export const MemberRow = React.memo(function MemberRow({
 				action: () => onOpenProfile(member),
 			});
 
-			if (member.status !== 'reddedildi') {
+			if (member.status !== 'rejected') {
 				items.push({
 					id: `change-role-${member.id}`,
 					label: t('membersCtxChangeRole'),
@@ -151,18 +151,18 @@ export const MemberRow = React.memo(function MemberRow({
 				action: () => onResetPassword(member.id, `${member.firstName} ${member.lastName}`),
 			});
 
-			if (member.status === 'beklemede') {
+			if (member.status === 'pending') {
 				items.push({
 					id: `approve-${member.id}`,
 					label: t('membersCtxApprove'),
 					icon: <CheckCircle2 size={14} />,
-					action: () => onUpdateStatus(member.id, 'aktif'),
+					action: () => onUpdateStatus(member.id, 'active'),
 				});
 				items.push({
 					id: `reject-${member.id}`,
 					label: t('membersCtxReject'),
 					icon: <XCircle size={14} />,
-					action: () => onUpdateStatus(member.id, 'reddedildi'),
+					action: () => onUpdateStatus(member.id, 'rejected'),
 				});
 			}
 
@@ -238,7 +238,7 @@ export const MemberRow = React.memo(function MemberRow({
 						</div>
 						<div style={{ fontSize: '11px', opacity: 0.6 }}>{member.email}</div>
 					</div>
-					{mailUser && member.id !== currentUserId && member.status === 'aktif' && isReachable && (
+					{mailUser && member.id !== currentUserId && member.status === 'active' && isReachable && (
 						<button
 							type="button"
 							className={ui.btn}
@@ -262,9 +262,9 @@ export const MemberRow = React.memo(function MemberRow({
 
 			{/* Major & Year */}
 			<td style={{ padding: '10px' }}>
-				<div>{member.department || member.department}</div>
+				<div>{member.department}</div>
 				<div style={{ fontSize: '11px', opacity: 0.6 }}>
-					{fill(t('membersClassAndNo'), { year: member.grade || member.grade, no: member.handle || member.studentNo || '-' })}
+					{fill(t('membersClassAndNo'), { year: member.grade, no: member.handle || member.studentNo || '-' })}
 				</div>
 			</td>
 
@@ -305,32 +305,32 @@ export const MemberRow = React.memo(function MemberRow({
 						padding: '2px 8px',
 						borderRadius: '6px',
 						background:
-							member.status === 'aktif'
+							member.status === 'active'
 								? 'rgba(52, 199, 89, 0.15)'
-								: member.status === 'mezun'
+								: member.status === 'alumni'
 								? 'rgba(10, 132, 255, 0.15)'
-								: member.status === 'beklemede'
+								: member.status === 'pending'
 								? 'rgba(255, 204, 0, 0.15)'
 								: 'rgba(255, 59, 48, 0.15)',
 						color:
-							member.status === 'aktif'
+							member.status === 'active'
 								? '#34c759'
-								: member.status === 'mezun'
+								: member.status === 'alumni'
 								? '#0a84ff'
-								: member.status === 'beklemede'
+								: member.status === 'pending'
 								? '#ffcc00'
 								: '#ff3b30',
 					}}
 				>
-					{member.status === 'aktif' && <CheckCircle2 size={12} />}
-					{member.status === 'beklemede' && <Clock size={12} />}
-					{member.status === 'reddedildi' && <XCircle size={12} />}
-					{member.status === 'mezun' && <GraduationCap size={12} />}
-					{member.status === 'aktif'
+					{member.status === 'active' && <CheckCircle2 size={12} />}
+					{member.status === 'pending' && <Clock size={12} />}
+					{member.status === 'rejected' && <XCircle size={12} />}
+					{member.status === 'alumni' && <GraduationCap size={12} />}
+					{member.status === 'active'
 						? t('membersStatusActive', 'Aktif')
-						: member.status === 'beklemede'
+						: member.status === 'pending'
 						? t('membersStatusPending', 'Onay Bekliyor')
-						: member.status === 'mezun'
+						: member.status === 'alumni'
 						? t('membersStatusAlumni', 'Mezun')
 						: t('membersStatusRejected', 'Reddedildi')}
 				</span>

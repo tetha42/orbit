@@ -57,7 +57,7 @@ export default async function suite(t) {
 		await toast(page, 'Öneriniz yönetime iletildi.');
 		const mine = (await authorApi.get('/api/projeler')).json.projects.find((p) => p.title === title);
 		id = mine?.id;
-		t.eq(mine?.status, 'oneri', 'durum: öneri');
+		t.eq(mine?.status, 'proposed', 'durum: öneri');
 		t.eq(mine?.technologies, ['Next.js', 'PostgreSQL'], 'teknolojiler tekilleştirildi');
 		t.eq(mine?.teamId, team.id, 'kendi takımına bağlandı');
 		const sheet = page.getByRole('dialog', { name: title });
@@ -73,7 +73,7 @@ export default async function suite(t) {
 		t.check(!(await fanApi.get('/api/projeler')).json.projects.some((p) => p.id === id), 'başka üyenin listesinde yok');
 		t.eq((await fanApi.post(`/api/projeler/${id}`, { action: 'star' })).status, 404, 'başka üye yıldızlayamaz (404)');
 		t.eq((await authorApi.post(`/api/projeler/${id}`, { action: 'star' })).status, 400, 'öneri yıldızlanamaz (400)');
-		t.eq((await authorApi.patch(`/api/projeler/${id}`, { status: 'yayinda' })).status, 403, 'sahibi kendi önerisini yayınlayamaz');
+		t.eq((await authorApi.patch(`/api/projeler/${id}`, { status: 'published' })).status, 403, 'sahibi kendi önerisini yayınlayamaz');
 	});
 
 	await step('üye: kendi önerisini düzenler', async () => {
@@ -95,7 +95,7 @@ export default async function suite(t) {
 		const sheet = ap.getByRole('dialog', { name: title });
 		await sheet.getByRole('button', { name: 'Yayınla' }).click();
 		await toast(ap, 'Proje yayınlandı.');
-		t.eq((await read()).status, 'yayinda', 'durum: yayında');
+		t.eq((await read()).status, 'published', 'durum: yayında');
 		t.check((await fanApi.get('/api/projeler')).json.projects.some((p) => p.id === id), 'artık başka üyeler de görüyor');
 		await t.shot(ap, 'yayinlandi');
 	});
@@ -113,7 +113,7 @@ export default async function suite(t) {
 		await star.click();
 		await t.waitFor(async () => (await read(fanApi)).likeCount === 1);
 		t.eq((await read(fanApi)).likeCount, 1, 'geri alınca 1');
-		t.eq((await read(fanApi)).iLikedMi, false, 'üyenin yıldızı kalktı');
+		t.eq((await read(fanApi)).likedByMe, false, 'üyenin yıldızı kalktı');
 	});
 
 	await step('öne çıkarma: yalnız yönetim; kartta "Öne çıkan" rozeti', async () => {
@@ -138,7 +138,7 @@ export default async function suite(t) {
 		await ap.getByRole('dialog', { name: title }).getByRole('button', { name: 'Arşivle' }).click();
 		await toast(ap, 'Değişiklikler kaydedildi.');
 		const p = await read();
-		t.eq(p.status, 'arsiv', 'durum: arşiv');
+		t.eq(p.status, 'archived', 'durum: arşiv');
 		t.eq(Number(p.oneLeaving), 0, 'öne çıkarma kalktı');
 		t.eq((await fanApi.get(`/api/projeler/${id}`)).status, 404, 'arşivdeki proje başka üyeye görünmez');
 		t.eq((await authorApi.post(`/api/projeler/${id}`, { action: 'star' })).status, 400, 'arşivdeki proje (sahibince bile) yıldızlanamaz');
@@ -151,13 +151,13 @@ export default async function suite(t) {
 		await ap.locator('[role=status] > div').filter({ hasText: 'Değişiklikler kaydedildi.' }).waitFor({ state: 'detached', timeout: 15_000 });
 		await ap.getByRole('dialog', { name: title }).getByRole('button', { name: 'Arşivden çıkar' }).click();
 		await toast(ap, 'Değişiklikler kaydedildi.');
-		t.eq((await read()).status, 'yayinda', 'arşivden çıkınca yayında');
+		t.eq((await read()).status, 'published', 'arşivden çıkınca yayında');
 		t.eq((await read()).likeCount, 1, 'yıldızlar korunmuş');
 	});
 
 	await step('yayından geri alma ve silme yetkisi', async () => {
 		t.eq((await authorApi.del(`/api/projeler/${id}`)).status, 403, 'sahibi yayındaki projeyi silemez');
-		t.eq((await admin.patch(`/api/projeler/${id}`, { status: 'oneri' })).status, 200, 'yönetim öneriye geri aldı');
+		t.eq((await admin.patch(`/api/projeler/${id}`, { status: 'proposed' })).status, 200, 'yönetim öneriye geri aldı');
 		t.eq((await fanApi.get(`/api/projeler/${id}`)).status, 404, 'öneriye dönünce başka üyeden gizlendi');
 		await page.reload();
 		await page.locator('[data-window-frame=projects]').waitFor();
@@ -172,10 +172,10 @@ export default async function suite(t) {
 	});
 
 	await step('yetkisiz rol: "Sadece Haberler" projeleri göremez ve öneremez', async () => {
-		const reader = await t.api('okur');
+		const reader = await t.api('reader');
 		t.eq((await reader.get('/api/projeler')).status, 403, 'GET /api/projeler 403');
 		t.eq((await reader.post('/api/projeler', { title: 'E2E sızma', summary: 'Yetkisiz kullanıcı önerisi', repoUrl: 'https://example.com', technologies: 'Go' })).status, 403, 'öneri 403');
-		const { page: op } = await t.open('okur');
+		const { page: op } = await t.open('reader');
 		t.eq(await op.locator('[data-dock-app=projects]').count(), 0, 'Dock\'ta Projeler yok');
 	});
 }

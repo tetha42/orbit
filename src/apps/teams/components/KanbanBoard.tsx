@@ -53,7 +53,7 @@ export function KanbanBoard({ team, currentUserId, isManager, mutateTasks, refet
 
 	useAppCommand('teams', (command) => {
 		if (command === 'new-task') {
-			if (canManage) setNewTaskCol('yapilacak');
+			if (canManage) setNewTaskCol('todo');
 			else notify(t('tmAddTaskCaptainOnly'), 'error');
 		} else if (command === 'kanban-refresh') {
 			void refetch().then(() => notify('Pano yenilendi.'));
@@ -61,7 +61,7 @@ export function KanbanBoard({ team, currentUserId, isManager, mutateTasks, refet
 	});
 
 	const members = useMemo(() => {
-		const active = (team.members ?? []).filter((u) => u.status === 'aktif');
+		const active = (team.members ?? []).filter((u) => u.status === 'active');
 		const list = active.map((u) => ({ id: u.userId, name: u.userNameSurname, role: u.teamRole }));
 		if (team.leadId && !list.some((m) => m.id === team.leadId)) {
 			list.unshift({ id: team.leadId, name: team.leaderNameSurname, role: '' });
@@ -98,9 +98,9 @@ export function KanbanBoard({ team, currentUserId, isManager, mutateTasks, refet
 
 	const stats = useMemo(() => {
 		const total = tasks.length;
-		const done = tasks.filter((g) => g.status === 'tamamlandi').length;
-		const overdue = tasks.filter((g) => dueStatus(g.dueDate, g.status, now) === 'gecikti').length;
-		const mine = tasks.filter((g) => g.assigneeMemberId === currentUserId && g.status !== 'tamamlandi').length;
+		const done = tasks.filter((g) => g.status === 'done').length;
+		const overdue = tasks.filter((g) => dueStatus(g.dueDate, g.status, now) === 'overdue').length;
+		const mine = tasks.filter((g) => g.assigneeMemberId === currentUserId && g.status !== 'done').length;
 		return { total, done, overdue, mine };
 	}, [tasks, currentUserId, now]);
 
@@ -109,8 +109,8 @@ export function KanbanBoard({ team, currentUserId, isManager, mutateTasks, refet
 	});
 
 	const dueText = (state: ReturnType<typeof dueStatus>, ts: number) => {
-		if (state === 'gecikti') return t('kbDueOverdue');
-		if (state === 'bugun') return t('kbDueToday');
+		if (state === 'overdue') return t('kbDueOverdue');
+		if (state === 'today') return t('kbDueToday');
 		return new Date(ts).toLocaleDateString(language === 'en' ? 'en-GB' : 'tr-TR', { day: 'numeric', month: 'short' });
 	};
 
@@ -129,7 +129,7 @@ export function KanbanBoard({ team, currentUserId, isManager, mutateTasks, refet
 				sort={sort}
 				setSort={setSort}
 				canManage={canManage}
-				onNewTask={() => setNewTaskCol('yapilacak')}
+				onNewTask={() => setNewTaskCol('todo')}
 				stats={stats}
 				tasks={tasks}
 				filtersActive={filtersActive}

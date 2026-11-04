@@ -37,7 +37,7 @@ export default async function suite(t) {
 		await win.locator('[data-mail-section=portal]').waitFor();
 		t.eq(await win.locator('[data-mail-section]').count(), 1, 'tek bölüm');
 		t.eq(await win.locator('[data-mail-section=kulup]').count(), 0, 'Kulüp Kutusu bölümü yok');
-		t.eq(await win.locator('[data-mail-folder]').evaluateAll((els) => els.map((e) => e.getAttribute('data-mail-folder'))), ['gelen', 'gonderilen', 'arsiv', 'cop'], 'klasörler');
+		t.eq(await win.locator('[data-mail-folder]').evaluateAll((els) => els.map((e) => e.getAttribute('data-mail-folder'))), ['inbox', 'sent', 'archived', 'trash'], 'klasörler');
 		await t.shot(page, 'posta-yalniz-portal');
 	});
 }

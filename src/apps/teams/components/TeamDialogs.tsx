@@ -86,7 +86,7 @@ export function NewTeamModal({
 	const [capacity, setCapacity] = useState('6');
 	const [repoUrl, setRepoUrl] = useState('');
 	const [leadId, setLeadId] = useState('');
-	const [participationType, setParticipationType] = useState<ParticipationType>('acik');
+	const [participationType, setParticipationType] = useState<ParticipationType>('open');
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
 
@@ -217,8 +217,8 @@ export function NewTeamModal({
 						<input
 							type="radio"
 							name="yeni-katilim"
-							checked={participationType === 'acik'}
-							onChange={() => setParticipationType('acik')}
+							checked={participationType === 'open'}
+							onChange={() => setParticipationType('open')}
 						/>
 						{t('tmJoinOpen')}
 					</label>
@@ -226,8 +226,8 @@ export function NewTeamModal({
 						<input
 							type="radio"
 							name="yeni-katilim"
-							checked={participationType === 'onayli'}
-							onChange={() => setParticipationType('onayli')}
+							checked={participationType === 'approval'}
+							onChange={() => setParticipationType('approval')}
 						/>
 						{t('tmJoinApproval')}
 					</label>
@@ -368,9 +368,9 @@ export function EditTeamModal({
 							value={status}
 							onChange={(e) => setStatus(e.target.value as typeof team.status)}
 						>
-							<option value="aktif">{t('tmStatusActive')}</option>
-							<option value="askida">{t('tmStatusPaused')}</option>
-							<option value="tamamlandi">{t('tmStatusFinished')}</option>
+							<option value="active">{t('tmStatusActive')}</option>
+							<option value="suspended">{t('tmStatusPaused')}</option>
+							<option value="done">{t('tmStatusFinished')}</option>
 						</select>
 					</label>
 					<label className={ui.field}>
@@ -420,8 +420,8 @@ export function EditTeamModal({
 						<input
 							type="radio"
 							name="duzenle-katilim"
-							checked={participationType === 'acik'}
-							onChange={() => setParticipationType('acik')}
+							checked={participationType === 'open'}
+							onChange={() => setParticipationType('open')}
 						/>
 						{t('tmJoinOpen')}
 					</label>
@@ -429,8 +429,8 @@ export function EditTeamModal({
 						<input
 							type="radio"
 							name="duzenle-katilim"
-							checked={participationType === 'onayli'}
-							onChange={() => setParticipationType('onayli')}
+							checked={participationType === 'approval'}
+							onChange={() => setParticipationType('approval')}
 						/>
 						{t('tmJoinApproval')}
 					</label>

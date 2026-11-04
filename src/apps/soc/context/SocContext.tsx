@@ -1032,7 +1032,7 @@ export function SocProvider({ children }: { children: ReactNode }) {
 		const confirmed = await dialog.confirm({
 			title: isEn ? 'Create Integrity Baseline' : 'Dosya Bütünlüğü Başlangıç Profili Oluştur',
 			message: isEn
-				? 'All current SHA-256 hashes across the codebase will be committed as the trusted baseline profile. Proceed?'
+				? 'All current SHA-256 hashes across the codebase will be committed AS the trusted baseline profile. Proceed?'
 				: 'Tüm mevcut kod tabanı SHA-256 hash profili güvenilir referans (baseline) olarak kaydedilecektir. Devam edilsin mi?',
 			confirmLabel: isEn ? 'Create Baseline' : 'Profili Kaydet',
 			cancelLabel: isEn ? 'Cancel' : 'Vazgeç',
@@ -1489,7 +1489,7 @@ export function SocProvider({ children }: { children: ReactNode }) {
 				title: isEn ? 'Execute SOAR Automated Playbook?' : 'SOAR Otomatik Tecrit Playbook Çalıştırılsın mı?',
 				message: isEn
 					? `Executing playbook '${playbookId}'. Automated isolation actions will take immediate effect on target: ${target.ip || target.userId || target.path || 'system'}.`
-					: `'${playbookId}' playbook'u derhal yürütülecektir. Hedef (${target.ip || target.userId || target.path || 'sistem'}) için tecrit aksiyonları devreye alınacaktır.`,
+					: `'${playbookId}' playbook'u derhal yürütülecektir. Hedef (${target.ip || target.userId || target.path || 'system'}) için tecrit aksiyonları devreye alınacaktır.`,
 				tone: 'danger',
 				confirmLabel: isEn ? 'Execute Playbook' : 'Playbook Çalıştır',
 				cancelLabel: isEn ? 'Cancel' : 'Vazgeç',

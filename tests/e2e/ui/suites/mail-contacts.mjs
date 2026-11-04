@@ -28,7 +28,7 @@ export default async function suite(t) {
 	const [iApi, sApi, yApi, hApi] = await Promise.all([ipek.api(), isil.api(), yan.api(), news.api()]);
 
 	const roleId = must(
-		await admin.post('/api/roller', { name: `E2E Rehber ${tag}`, color: '#8e8e93', description: 'Üye Rehberi var, Posta yok', twoStepRequired: false, permissions: { members: 'kullan', news: 'kullan', settings: 'kullan' } }),
+		await admin.post('/api/roller', { name: `E2E Rehber ${tag}`, color: '#8e8e93', description: 'Üye Rehberi var, Posta yok', twoStepRequired: false, permissions: { members: 'use', news: 'use', settings: 'use' } }),
 		'rol'
 	).id;
 	t.cleanup(() => admin.del('/api/roller', { id: roleId, move: fx.roles.member }));
@@ -90,10 +90,10 @@ export default async function suite(t) {
 		t.excludes(reach.ids, news.id, 'Posta’sız rol listede yok');
 		t.excludes(reach.ids, ipek.id, 'kendisi yok');
 		// Aktif olmayan üye bulunmaz.
-		const mezun = await newMember(t, admin, { label: 'kisi-m', name: 'Mezun', surname: 'Eski', roleId: fx.roles.member });
-		t.includes(ids(await lookup(iApi, mezun.surname)), mezun.id, 'aktif üye bulunur');
-		t.eq((await admin.patch('/api/uyeler', { id: mezun.id, status: 'mezun' })).status, 200, 'üye mezun yapıldı');
-		t.eq(ids(await lookup(iApi, mezun.surname)), [], 'mezun (aktif değil) bulunmaz');
+		const alumni = await newMember(t, admin, { label: 'kisi-m', name: 'Mezun', surname: 'Eski', roleId: fx.roles.member });
+		t.includes(ids(await lookup(iApi, alumni.surname)), alumni.id, 'aktif üye bulunur');
+		t.eq((await admin.patch('/api/uyeler', { id: alumni.id, status: 'alumni' })).status, 200, 'üye mezun yapıldı');
+		t.eq(ids(await lookup(iApi, alumni.surname)), [], 'mezun (aktif değil) bulunmaz');
 	});
 
 	await t.step('API: Posta’sız rol arama uçlarının hiçbirine giremez (403); aramada kişi önerisi çıkmaz', async () => {
@@ -117,17 +117,17 @@ export default async function suite(t) {
 
 	await t.step('API: öneriler son yazışılanlardır; kimseyle yazışılmadıysa dizin başı listelenir', async () => {
 		const empty = await lookup(yApi, '');
-		t.eq(empty.oneri, false, 'yazışma yokken öneri değil, dizin başı');
+		t.eq(empty.proposed, false, 'yazışma yokken öneri değil, dizin başı');
 		t.check(empty.recipients.length > 0 && empty.recipients.length <= 20, 'yine de liste boş değil');
-		t.eq((await lookup(iApi, '')).oneri, false, 'ipek: henüz yazışma yok');
+		t.eq((await lookup(iApi, '')).proposed, false, 'ipek: henüz yazışma yok');
 		must(await iApi.post('/api/posta', { topic: `Öneri ${tag}`, body: 'ilk', recipients: [isil.id] }), 'ilk mesaj');
 		await t.sleep(20);
 		const first = await lookup(iApi, '');
-		t.eq([first.oneri, ids(first)], [true, [isil.id]], 'ilk yazışmadan sonra öneri: Işıl');
+		t.eq([first.proposed, ids(first)], [true, [isil.id]], 'ilk yazışmadan sonra öneri: Işıl');
 		await t.sleep(20);
 		must(await iApi.post('/api/posta', { topic: `Öneri 2 ${tag}`, body: 'ikinci', recipients: [yan.id, isil.id] }), 'ikinci mesaj');
 		const second = await lookup(iApi, '');
-		t.eq(second.oneri, true, 'öneri işaretli');
+		t.eq(second.proposed, true, 'öneri işaretli');
 		t.sameSet(ids(second), [yan.id, isil.id], 'iki kişi öneride');
 		t.includes(ids(await lookup(sApi, '')), ipek.id, 'Işıl için de kendisine yazan kişi öneride');
 	});

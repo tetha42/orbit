@@ -42,7 +42,7 @@ export interface TeamsMobileViewProps {
 }
 
 type TeamsMobileTab = 'discover' | 'my_teams' | 'board' | 'add';
-type MobileWorkspaceTab = 'kanban' | 'members' | 'chat' | 'kasa';
+type MobileWorkspaceTab = 'kanban' | 'members' | 'chat' | 'vault';
 
 export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 	const { t, language } = useI18n();
@@ -52,7 +52,7 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 
 	const [activeTab, setActiveTab] = useState<TeamsMobileTab>('discover');
 	const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<MobileWorkspaceTab>('kanban');
-	const [selectedKanbanCol, setSelectedKanbanCol] = useState<TaskStatus>('yapilacak');
+	const [selectedKanbanCol, setSelectedKanbanCol] = useState<TaskStatus>('todo');
 	const [newTaskCol, setNewTaskCol] = useState<TaskStatus | null>(null);
 	const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -60,7 +60,7 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 	const myTeamsList = useMemo(
 		() =>
 			state.visibleTeams.filter(
-				(tm) => tm.myMyStatus === 'aktif' || tm.leadId === state.currentUserId
+				(tm) => tm.myMyStatus === 'active' || tm.leadId === state.currentUserId
 			),
 		[state.visibleTeams, state.currentUserId]
 	);
@@ -158,8 +158,8 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 	}, [teamTasks]);
 
 	const dueText = (stateDue: ReturnType<typeof dueStatus>, ts: number) => {
-		if (stateDue === 'gecikti') return t('kbDueOverdue');
-		if (stateDue === 'bugun') return t('kbDueToday');
+		if (stateDue === 'overdue') return t('kbDueOverdue');
+		if (stateDue === 'today') return t('kbDueToday');
 		return new Date(ts).toLocaleDateString(language === 'en' ? 'en-GB' : 'tr-TR', {
 			day: 'numeric',
 			month: 'short',
@@ -213,8 +213,8 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 	];
 
 	const renderTeamCard = (team: (typeof state.visibleTeams)[number]) => {
-		const isMember = team.myMyStatus === 'aktif';
-		const hasApplied = team.myMyStatus === 'basvurdu';
+		const isMember = team.myMyStatus === 'active';
+		const hasApplied = team.myMyStatus === 'applied';
 		const canEnter = state.canEnter(team);
 
 		return (
@@ -556,9 +556,9 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 										<button
 											type="button"
 											className={`${s.workspaceTabBtn} ${
-												activeWorkspaceTab === 'kasa' ? s.workspaceTabBtnActive : ''
+												activeWorkspaceTab === 'vault' ? s.workspaceTabBtnActive : ''
 											}`}
-											onClick={() => setActiveWorkspaceTab('kasa')}
+											onClick={() => setActiveWorkspaceTab('vault')}
 										>
 											<Wallet size={13} />
 											<span>{t('tmTabKasa')}</span>
@@ -782,7 +782,7 @@ export function TeamsMobileView({ state }: TeamsMobileViewProps) {
 								)}
 
 								{/* 4. KASA TAB */}
-								{activeWorkspaceTab === 'kasa' && state.canSeeVault(activeBoardTeam) && (
+								{activeWorkspaceTab === 'vault' && state.canSeeVault(activeBoardTeam) && (
 									<VaultPanel
 										key={activeBoardTeam.id}
 										teamId={activeBoardTeam.id}

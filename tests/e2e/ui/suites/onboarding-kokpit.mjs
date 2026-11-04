@@ -12,10 +12,10 @@ export default async function suite(t) {
 	const admin = await t.api('admin');
 	const ege = await t.api('ege');
 	const can = await t.api('can');
-	const reader = await t.api('okur');
+	const reader = await t.api('reader');
 
 	// A team of our own, open to everyone: the showcase must still turn a join into an application.
-	const team = await makeTeam(t, admin, { label: 'Kokpit', leadId: fx.users.ege.id, participationType: 'acik' });
+	const team = await makeTeam(t, admin, { label: 'Kokpit', leadId: fx.users.ege.id, participationType: 'open' });
 	const event = await makeEvent(t, admin, { label: 'Kokpit', startMin: -10, lengthMin: 90 });
 
 	await t.step('kokpit: alt gezinme ve dört sekme (can, 390×844)', async () => {
@@ -71,7 +71,7 @@ export default async function suite(t) {
 
 		// Canlı: kaptan görevi tamamlandı yapınca kart sayfa yenilenmeden güncellenir.
 		const doneTask = (await can.get(`/api/takimlar?teamId=${team.id}`)).json.tasks.find((g) => g.title === 'Kokpit test görevi');
-		t.eq((await ege.post('/api/takimlar', { action: 'updateTask', taskId: doneTask.id, status: 'tamamlandi' })).status, 200, 'görev tamamlandı');
+		t.eq((await ege.post('/api/takimlar', { action: 'updateTask', taskId: doneTask.id, status: 'done' })).status, 200, 'görev tamamlandı');
 		const ms = await t.waitFor(async () => (await card.getByText('Kokpit test görevi').count()) === 0, { timeout: 15_000 });
 		t.check(ms >= 0, `tamamlanan görev kartan canlı düştü (${ms} ms)`);
 
@@ -86,7 +86,7 @@ export default async function suite(t) {
 		t.cleanup(() => admin.patch('/api/uyeler', { id: fx.users.reader.id, roleId: fx.roles.news }));
 		t.eq((await admin.patch('/api/uyeler', { id: fx.users.reader.id, roleId: null })).status, 200, 'okur’un rolü kaldırıldı');
 
-		const { page } = await t.open('okur', { mobile: true });
+		const { page } = await t.open('reader', { mobile: true });
 		const notice = page.locator('[data-no-role-notice]');
 		await notice.waitFor();
 		const card = notice.locator(`[data-team-id="${team.id}"]`);
@@ -125,7 +125,7 @@ export default async function suite(t) {
 	});
 
 	await t.step('rolsüz üye (masaüstü): uyarı kartının altında vitrin', async () => {
-		const { page } = await t.open('okur');
+		const { page } = await t.open('reader');
 		const notice = page.locator('[data-no-role-notice]');
 		await notice.waitFor();
 		t.eq(await notice.locator('[data-onboarding-teams]').count(), 1, 'uyarı kartında vitrin var');

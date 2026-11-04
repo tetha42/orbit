@@ -61,7 +61,7 @@ function formatDateTime(ts?: number): string {
 }
 
 function RoomIcon({ room }: { room: ChatRoomItem }) {
-	const isGroup = room.typeValue === 'takim' || (room.typeValue === 'ozel' && (room.memberCount || 0) > 2);
+	const isGroup = room.typeValue === 'team' || (room.typeValue === 'private' && (room.memberCount || 0) > 2);
 	return (
 		<div className={s.roomIcon}>
 			{room.avatar ? (
@@ -69,7 +69,7 @@ function RoomIcon({ room }: { room: ChatRoomItem }) {
 				<img src={room.avatar} alt={room.name} />
 			) : isGroup ? (
 				<Users size={19} />
-			) : room.typeValue === 'ozel' ? (
+			) : room.typeValue === 'private' ? (
 				<span className={s.roomIconInitial}>{(room.name || '?').slice(0, 1).toUpperCase()}</span>
 			) : (
 				<MessageSquare size={19} />
@@ -234,15 +234,15 @@ export function ChatMobileView() {
 
 	// Split rooms into categories matching desktop ChatRoomList
 	const generalRooms = useMemo(
-		() => filteredRooms.filter((r) => r.typeValue !== 'takim' && r.typeValue !== 'ozel'),
+		() => filteredRooms.filter((r) => r.typeValue !== 'team' && r.typeValue !== 'private'),
 		[filteredRooms]
 	);
 	const teamRooms = useMemo(
-		() => filteredRooms.filter((r) => r.typeValue === 'takim'),
+		() => filteredRooms.filter((r) => r.typeValue === 'team'),
 		[filteredRooms]
 	);
 	const customRooms = useMemo(
-		() => filteredRooms.filter((r) => r.typeValue === 'ozel'),
+		() => filteredRooms.filter((r) => r.typeValue === 'private'),
 		[filteredRooms]
 	);
 
@@ -317,7 +317,7 @@ export function ChatMobileView() {
 
 	const isGroupOrTeam =
 		!!activeRoom &&
-		(activeRoom.typeValue === 'takim' || (activeRoom.typeValue === 'ozel' && (activeRoom.memberCount || 0) > 2));
+		(activeRoom.typeValue === 'team' || (activeRoom.typeValue === 'private' && (activeRoom.memberCount || 0) > 2));
 
 	const openRoom = (id: string) => {
 		selectRoom(id);
@@ -410,9 +410,9 @@ export function ChatMobileView() {
 	};
 
 	const subtitle = (room: ChatRoomItem) =>
-		room.typeValue === 'genel'
+		room.typeValue === 'general'
 			? t('chatPublicSub')
-			: room.typeValue === 'takim'
+			: room.typeValue === 'team'
 			? t('chatTeamSub')
 			: room.memberCount && room.memberCount > 2
 			? fill(t('chatTotalMembers'), { n: room.memberCount })
@@ -702,7 +702,7 @@ export function ChatMobileView() {
 							<img src={activeRoom.avatar} alt={activeRoom.name} />
 						) : isGroupOrTeam ? (
 							<Users size={18} />
-						) : activeRoom.typeValue === 'ozel' ? (
+						) : activeRoom.typeValue === 'private' ? (
 							<span className={s.convIconInitial}>
 								{activeRoom.name.slice(0, 1).toUpperCase()}
 							</span>
@@ -761,7 +761,7 @@ export function ChatMobileView() {
 						</div>
 					)}
 					{messages.map((msg) => {
-						if (msg.senderId === 'sistem') {
+						if (msg.senderId === 'system') {
 							return (
 								<div key={msg.id} className={s.systemMsg}>
 									<span className={s.systemPill}>{msg.content}</span>
@@ -820,7 +820,7 @@ export function ChatMobileView() {
 												}}
 											>
 												{/* Forwarded Header */}
-												{msg.deliveredMi && !isDeleted && (
+												{msg.isDelivered && !isDeleted && (
 													<div className={`${s.forwardedTag} ${isMine ? s.forwardedTagMine : ''}`}>
 														<Forward size={11} />
 														<span>{t('chatForwarded')}</span>

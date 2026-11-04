@@ -1,7 +1,7 @@
 // An HTTP client that keeps the session cookie, like a browser tab would.
 import { totpCode } from './totp.mjs';
 
-export const SESSION_COOKIE = 'kulup_session_token';
+export const SESSION_COOKIE = 'club_session_token';
 
 export function client(base, token = '') {
 	let cookie = token ? `${SESSION_COOKIE}=${token}` : '';

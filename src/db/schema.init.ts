@@ -23,7 +23,7 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 			avatar_url TEXT,
 			bio TEXT,
 			xp INTEGER NOT NULL DEFAULT 0,
-			status TEXT NOT NULL DEFAULT 'beklemede',
+			status TEXT NOT NULL DEFAULT 'pending',
 			archetype TEXT NOT NULL DEFAULT 'academic_club',
 			custom_fields JSONB NOT NULL DEFAULT '{}'::jsonb,
 			workspace_state JSONB NOT NULL DEFAULT '{}'::jsonb,
@@ -498,7 +498,7 @@ export async function runSchemaMigrations(client: PoolClient): Promise<void> {
 	const now = Date.now();
 	await client.query(
 		`INSERT INTO chat_rooms (id, room_type, team_id, name, created_by, created_at)
-		 VALUES ('oda_genel', 'genel', NULL, 'Orbit General Chat', NULL, $1)
+		 VALUES ('room_general', 'general', NULL, 'Orbit General Chat', NULL, $1)
 		 ON CONFLICT (id) DO NOTHING`,
 		[now]
 	);

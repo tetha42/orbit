@@ -122,9 +122,9 @@ export function TaskMetaSidebar({
 			<label className={ui.field}>
 				<span className={ui.fieldLabel}>
 					{t('kbDue')}
-					{due && (due === 'gecikti' || due === 'bugun') && (
+					{due && (due === 'overdue' || due === 'today') && (
 						<span className={`${styles.badge} ${styles[`due_${due}`]}`} style={{ marginLeft: 6 }}>
-							{t(due === 'gecikti' ? 'kbDueOverdue' : 'kbDueToday')}
+							{t(due === 'overdue' ? 'kbDueOverdue' : 'kbDueToday')}
 						</span>
 					)}
 				</span>

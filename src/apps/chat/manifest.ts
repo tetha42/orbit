@@ -31,7 +31,7 @@ const manifest = {
 	hotkey: '9',
 	order: 12,
 	dock: 12,
-	notifications: { message: 'kullan' },
+	notifications: { message: 'use' },
 	permission: {
 		order: 10,
 		name: 'Mesajlar',
@@ -41,13 +41,13 @@ const manifest = {
 	},
 	menu: {
 		title: { tr: 'Mesajlar', en: 'Messages' },
-		about: { id: 'about-chat', label: { tr: 'Mesajlar Hakkında', en: 'About Messages' }, permission: 'kullan', ac: true },
+		about: { id: 'about-chat', label: { tr: 'Mesajlar Hakkında', en: 'About Messages' }, permission: 'use', ac: true },
 		categories: [
 			{
 				id: 'file',
 				title: { tr: 'Mesajlar', en: 'Messages' },
 				items: [
-					{ id: 'chat-refresh', label: { tr: 'Sohbeti Yenile', en: 'Refresh Chat' }, shortcut: '⌘R', permission: 'kullan', command: 'chat-refresh' },
+					{ id: 'chat-refresh', label: { tr: 'Sohbeti Yenile', en: 'Refresh Chat' }, shortcut: '⌘R', permission: 'use', command: 'chat-refresh' },
 				],
 			},
 		],

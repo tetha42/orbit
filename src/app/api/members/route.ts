@@ -36,10 +36,10 @@ const bad = (error: string, status = 400) => NextResponse.json({ error }, { stat
 const readOnly = () => bad('Mezunlar sadece okuma erişimine sahiptir.', 403);
 
 export async function GET(request: Request) {
-	const auth = await requireApp(request, 'members', 'kullan');
+	const auth = await requireApp(request, 'members', 'use');
 	if (!auth.authorized) return auth.response;
 	try {
-		const isManager = can(auth.user, 'members', 'yonet');
+		const isManager = can(auth.user, 'members', 'manage');
 		const url = new URL(request.url);
 		const pageParam = url.searchParams.get('page');
 		const limitParam = url.searchParams.get('limit');
@@ -58,7 +58,7 @@ export async function GET(request: Request) {
 			});
 			const members = isManager
 				? result.members
-				: result.members.filter((m) => m.status === 'aktif' || m.status === 'mezun');
+				: result.members.filter((m) => m.status === 'active' || m.status === 'alumni');
 			return NextResponse.json({
 				success: true,
 				members,
@@ -75,7 +75,7 @@ export async function GET(request: Request) {
 		// Applications and rejected accounts are for those who manage members.
 		const members = isManager
 			? rows
-			: rows.filter((m) => m.status === 'aktif' || m.status === 'mezun');
+			: rows.filter((m) => m.status === 'active' || m.status === 'alumni');
 		return NextResponse.json({
 			success: true,
 			members,
@@ -95,9 +95,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
 	// Creating members issues credentials: managing members.
-	const auth = await requireApp(request, 'members', 'yonet');
+	const auth = await requireApp(request, 'members', 'manage');
 	if (!auth.authorized) return auth.response;
-	if (auth.user.status === 'mezun') return readOnly();
+	if (auth.user.status === 'alumni') return readOnly();
 	const policy = await getMembershipPolicy();
 	if (!policy.adminCreate) {
 		return bad('Yönetici üye oluşturma üyelik politikasında kapatılmış.', 403);
@@ -105,11 +105,11 @@ export async function POST(request: Request) {
 
 	try {
 		const body = await request.json();
-		const email = body.email ?? body.email;
+		const email = body.email;
 		const name = body.firstName ?? body.name;
 		const surname = body.lastName ?? body.surname;
-		const department = body.department ?? body.department;
-		const grade = body.grade ?? body.grade;
+		const department = body.department;
+		const grade = body.grade;
 		const studentNo = body.handle ?? body.memberId ?? body.studentNo;
 		const bio = body.bio;
 		const password = body.password;
@@ -174,7 +174,7 @@ export async function POST(request: Request) {
 			grade: parsedGrade,
 			roleId,
 			bio: bio?.trim() || '',
-			status: isAlumniRole(rolePermission?.role) ? 'mezun' : 'aktif',
+			status: isAlumniRole(rolePermission?.role) ? 'alumni' : 'active',
 		}, auditContext(request, auth.user));
 		if (Object.keys(customValidation.clean).length > 0) {
 			await setMemberFieldValues(newUser.id, customValidation.clean, memberFields);
@@ -215,14 +215,14 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-	const auth = await requireApp(request, 'members', 'yonet');
+	const auth = await requireApp(request, 'members', 'manage');
 	if (!auth.authorized) return auth.response;
-	if (auth.user.status === 'mezun') return readOnly();
+	if (auth.user.status === 'alumni') return readOnly();
 
 	try {
 		const body = await request.json();
 		const rawRoleId = body.roleId;
-		const status = body.status ?? body.status;
+		const status = body.status;
 		const { id, addXp } = body;
 		const rejectionReason =
 			typeof body.rejectionReason === 'string' ? body.rejectionReason.trim().slice(0, 500) : null;
@@ -253,23 +253,23 @@ export async function PATCH(request: Request) {
 			const limit = await roleLimitProblem(auth.user, roleId);
 			if (limit) return bad(limit, 403);
 			const r = await setUserRole(id, roleId, auditContext(request, auth.user));
-			if (r === 'role-yok') return bad('Role bulunamadı.', 404);
-			if (r === 'son-admin') return bad('Kulübün son admini roleünü bırakamaz; önce başka birini admin yapın.', 409);
-			if (r === 'yok') return bad('Üye bulunamadı.', 404);
+			if (r === 'no_role') return bad('Role bulunamadı.', 404);
+			if (r === 'last_admin') return bad('Kulübün son admini roleünü bırakamaz; önce başka birini admin yapın.', 409);
+			if (r === 'none') return bad('Üye bulunamadı.', 404);
 		}
 
 		if (status) {
-			if (!['aktif', 'beklemede', 'reddedildi', 'mezun'].includes(status)) return bad('Geçersiz status.');
-			if (target.roleId === ADMIN_ROLE_ID && status !== 'aktif' && (await countActiveAdmins()) <= 1) {
+			if (!['active', 'pending', 'rejected', 'alumni'].includes(status)) return bad('Geçersiz status.');
+			if (target.roleId === ADMIN_ROLE_ID && status !== 'active' && (await countActiveAdmins()) <= 1) {
 				return bad('Kulübün son admininin hesabı pasifleştirilemez.', 409);
 			}
 			// Approving someone without a role gives them the club's default role;
 			// setMemberStatus does both (and the welcome XP) in one transaction.
-			if ((await setMemberStatus(id, status, auditContext(request, auth.user))) === 'yok') return bad('Üye bulunamadı.', 404);
-			if (status === 'aktif' || status === 'reddedildi') {
+			if ((await setMemberStatus(id, status, auditContext(request, auth.user))) === 'none') return bad('Üye bulunamadı.', 404);
+			if (status === 'active' || status === 'rejected') {
 				await recordApplicationDecision(
 					id,
-					status === 'aktif' ? 'approved' : 'rejected',
+					status === 'active' ? 'approved' : 'rejected',
 					auth.user.id,
 					rejectionReason
 				);
@@ -281,9 +281,9 @@ export async function PATCH(request: Request) {
 				email: target.email,
 				preferredLanguage: target.preferredLanguage,
 			};
-			if ((target.status === 'beklemede' || target.status === 'reddedildi') && status === 'aktif') {
+			if ((target.status === 'pending' || target.status === 'rejected') && status === 'active') {
 				void notifyMembershipApproved(recipient);
-			} else if (target.status === 'beklemede' && status === 'reddedildi') {
+			} else if (target.status === 'pending' && status === 'rejected') {
 				void notifyMembershipRejected(recipient);
 			}
 		}
@@ -298,9 +298,9 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-	const auth = await requireApp(request, 'members', 'yonet');
+	const auth = await requireApp(request, 'members', 'manage');
 	if (!auth.authorized) return auth.response;
-	if (auth.user.status === 'mezun') return readOnly();
+	if (auth.user.status === 'alumni') return readOnly();
 
 	try {
 		const id = new URL(request.url).searchParams.get('id');

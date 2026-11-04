@@ -41,7 +41,7 @@ const manifest = {
 		about: {
 			id: 'about-decisions',
 			label: { tr: 'Yönetişim Hakkında', en: 'About Governance' },
-			permission: 'kullan',
+			permission: 'use',
 			ac: true,
 		},
 		categories: [
@@ -53,7 +53,7 @@ const manifest = {
 						id: 'new-committee',
 						label: { tr: 'Yeni Komite...', en: 'New Committee...' },
 						shortcut: '⇧⌘N',
-						permission: 'yonet',
+						permission: 'manage',
 						command: 'new-committee',
 					},
 				],

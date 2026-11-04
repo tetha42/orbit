@@ -70,8 +70,8 @@ export function EventDetail({
 	const live = isLive(e, now);
 	const ended = e.endTime < now;
 	const full = e.capacity > 0 && e.registeredCount >= e.capacity;
-	const canRegister = e.status === 'yayinda' && !ended && !e.myMyRecord;
-	const canCheckIn = e.status === 'yayinda' && Number(e.attendanceOpen) === 1 && !e.myMyAttendance && !ended;
+	const canRegister = e.status === 'published' && !ended && !e.myMyRecord;
+	const canCheckIn = e.status === 'published' && Number(e.attendanceOpen) === 1 && !e.myMyAttendance && !ended;
 
 	return (
 		<div style={{ '--type-color': meta.color } as React.CSSProperties} data-event-id={e.id}>
@@ -79,8 +79,8 @@ export function EventDetail({
 				<div className={styles.badges}>
 					<span className={`${styles.badge} ${styles.b_type}`}>{t(meta.key)}</span>
 					{live && <span className={`${styles.badge} ${styles.b_live}`}>{t('evLive')}</span>}
-					{e.status === 'taslak' && <span className={`${styles.badge} ${styles.b_draft}`}>{t('evDraft')}</span>}
-					{e.status === 'iptal' && <span className={`${styles.badge} ${styles.b_cancelled}`}>{t('evCancelled')}</span>}
+					{e.status === 'draft' && <span className={`${styles.badge} ${styles.b_draft}`}>{t('evDraft')}</span>}
+					{e.status === 'cancelled' && <span className={`${styles.badge} ${styles.b_cancelled}`}>{t('evCancelled')}</span>}
 					{e.myMyAttendance ? (
 						<span className={`${styles.badge} ${styles.b_attended}`}>
 							<CheckCircle2 size={10} /> {t('evAttended')}
@@ -178,17 +178,17 @@ export function EventDetail({
 							<QrCode size={16} /> {t('evCheckIn')}
 						</button>
 					)}
-					{e.myMyRecord && e.start > now && e.status === 'yayinda' && (
+					{e.myMyRecord && e.start > now && e.status === 'published' && (
 						<button type="button" className={`${ui.btn} ${styles.bigBtn}`} disabled={busy} onClick={() => onUnregister(e)}>
 							<X size={15} /> {t('evCancelRegistration')}
 						</button>
 					)}
-					{e.myMyRecord && e.start <= now && !ended && e.status === 'yayinda' && (
+					{e.myMyRecord && e.start <= now && !ended && e.status === 'published' && (
 						<span className={ui.muted} style={{ fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
 							<Info size={14} /> {t('evRegistrationLockedStarted')}
 						</span>
 					)}
-					{!canRegister && !e.myMyRecord && !ended && e.status !== 'taslak' && (
+					{!canRegister && !e.myMyRecord && !ended && e.status !== 'draft' && (
 						<span className={ui.muted}>{t('evRegisterClosed')}</span>
 					)}
 				</div>
@@ -209,35 +209,35 @@ export function EventDetail({
 							<button type="button" className={ui.btn} onClick={() => onEdit(e)}>
 								<Pencil size={14} /> {t('evEdit')}
 							</button>
-							{e.status === 'taslak' && (
+							{e.status === 'draft' && (
 								<button
 									type="button"
 									className={ui.primaryBtn}
 									style={{ height: 30 }}
 									onClick={() =>
-										onAct({ action: 'updateEvent', eventId: e.id, status: 'yayinda' }).then(
-											(ok) => ok && setTab(tabOf({ ...e, status: 'yayinda' }))
+										onAct({ action: 'updateEvent', eventId: e.id, status: 'published' }).then(
+											(ok) => ok && setTab(tabOf({ ...e, status: 'published' }))
 										)
 									}
 								>
 									<Send size={14} /> {t('evPublish')}
 								</button>
 							)}
-							{e.status === 'yayinda' && !ended && (
+							{e.status === 'published' && !ended && (
 								<button
 									type="button"
 									className={ui.btn}
 									onClick={async () => {
 										if (await dialog.confirm({ message: fill(t('evCancelEventConfirm'), { title: e.title }), tone: 'danger' })) {
-											await onAct({ action: 'updateEvent', eventId: e.id, status: 'iptal' });
+											await onAct({ action: 'updateEvent', eventId: e.id, status: 'cancelled' });
 										}
 									}}
 								>
 									<Ban size={14} /> {t('evCancelEvent')}
 								</button>
 							)}
-							{e.status === 'iptal' && (
-								<button type="button" className={ui.btn} onClick={() => onAct({ action: 'updateEvent', eventId: e.id, status: 'yayinda' })}>
+							{e.status === 'cancelled' && (
+								<button type="button" className={ui.btn} onClick={() => onAct({ action: 'updateEvent', eventId: e.id, status: 'published' })}>
 									<Send size={14} /> {t('evRestore')}
 								</button>
 							)}
@@ -256,7 +256,7 @@ export function EventDetail({
 								</button>
 							)}
 						</div>
-						{e.status !== 'taslak' && (
+						{e.status !== 'draft' && (
 							<AttendancePanel key={e.id} event={e} notify={notify} onChanged={refetch} onProjector={() => onProjector(e)} />
 						)}
 					</>

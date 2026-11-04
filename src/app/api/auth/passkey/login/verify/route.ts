@@ -86,7 +86,7 @@ export async function POST(request: Request) {
 		}
 
 		const user = await getUserById(pending.userId);
-		if (!user || user.status !== 'aktif') {
+		if (!user || user.status !== 'active') {
 			return NextResponse.json({ error: 'Hesabınız aktif durumda değildir.' }, { status: 403 });
 		}
 

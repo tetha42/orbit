@@ -29,7 +29,7 @@ export function InventoryCard({
 	onLoan,
 }: InventoryCardProps) {
 	const { t } = useI18n();
-	const due = item.status === 'oduncte' ? returnStatus(item.returnDate, now) : null;
+	const due = item.status === 'on_loan' ? returnStatus(item.returnDate, now) : null;
 	const mine = item.loanFieldId === currentUserId;
 
 	const menuItems = useMemo<MenuItem[]>(() => {
@@ -50,14 +50,14 @@ export function InventoryCard({
 			},
 		];
 
-		if (item.status === 'saglam' && !isAlumni) {
+		if (item.status === 'available' && !isAlumni) {
 			items.push({
 				id: `inv-loan-${item.id}`,
 				label: t('invActionBorrow'),
 				icon: <PackageCheck size={13} />,
 				action: () => onLoan({ id: item.id, mode: 'borrow' }),
 			});
-		} else if (item.status === 'oduncte' && (mine || isManager)) {
+		} else if (item.status === 'on_loan' && (mine || isManager)) {
 			items.push({
 				id: `inv-return-${item.id}`,
 				label: t('invActionReturn'),
@@ -73,16 +73,16 @@ export function InventoryCard({
 
 	const statusBadgeText = (d: InventoryStatus) => {
 		switch (d) {
-			case 'saglam': return t('invBadgeAvailable');
-			case 'oduncte': return t('invBadgeOnLoan');
-			case 'arizali': return t('invBadgeBroken');
-			case 'kayip': return t('invBadgeLost');
+			case 'available': return t('invBadgeAvailable');
+			case 'on_loan': return t('invBadgeOnLoan');
+			case 'faulty': return t('invBadgeBroken');
+			case 'lost': return t('invBadgeLost');
 		}
 	};
 
 	return (
 		<article
-			className={`${s.card} ${due?.gecikti ? s.cardOverdue : ''}`}
+			className={`${s.card} ${due?.overdue ? s.cardOverdue : ''}`}
 			data-focus-id={`item:${item.id}`}
 			data-item-Code={item.code}
 			{...contextMenuProps}
@@ -104,15 +104,15 @@ export function InventoryCard({
 					<MapPin size={12} /> {item.location}
 				</span>
 			</div>
-			{item.status === 'oduncte' && (
-				<div className={`${s.loan} ${due?.gecikti ? s.loanOverdue : ''}`}>
+			{item.status === 'on_loan' && (
+				<div className={`${s.loan} ${due?.overdue ? s.loanOverdue : ''}`}>
 					<span>
 						<User size={12} /> <strong>{mine ? t('invWithYou') : item.loanFieldNameSurname}</strong>
 					</span>
 					<span>
 						{t('invDueReturnPrefix')} {item.returnDate ? trDate(item.returnDate) : '—'}{' '}
 						<span
-							className={`${s.due} ${due?.gecikti ? s.dueLate : due && due.day <= 2 ? s.dueSoon : ''}`}
+							className={`${s.due} ${due?.overdue ? s.dueLate : due && due.day <= 2 ? s.dueSoon : ''}`}
 						>
 							· {returnText(item.returnDate, now)}
 						</span>
@@ -120,7 +120,7 @@ export function InventoryCard({
 				</div>
 			)}
 			<div className={s.actions}>
-				{item.status === 'saglam' && !isAlumni && (
+				{item.status === 'available' && !isAlumni && (
 					<button
 						type="button"
 						className={s.btnPrimary}
@@ -129,7 +129,7 @@ export function InventoryCard({
 						<PackageCheck size={14} /> {t('invActionBorrow')}
 					</button>
 				)}
-				{item.status === 'oduncte' && (mine || isManager) && (
+				{item.status === 'on_loan' && (mine || isManager) && (
 					<button
 						type="button"
 						className={s.btnSuccess}
@@ -138,7 +138,7 @@ export function InventoryCard({
 						<PackageOpen size={14} /> {t('invActionReturn')}
 					</button>
 				)}
-				{isManager && item.status === 'saglam' && (
+				{isManager && item.status === 'available' && (
 					<button
 						type="button"
 						className={s.btnSecondary}

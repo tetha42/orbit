@@ -199,8 +199,8 @@ async function run() {
 
 		// Verify penalty score and quarantine record in database
 		const banCheck = await client.query('SELECT * FROM security_blocks WHERE ip = $1', [testIp]);
-		if (banCheck.rowCount > 0 && (banCheck.rows[0].status === 'ban' || banCheck.rows[0].status === 'ban')) {
-			log.ok(`Test IP address (${testIp}) auto-quarantined. Threat score: ${banCheck.rows[0].threat_score ?? banCheck.rows[0].threatScore}, Reason: ${banCheck.rows[0].reason ?? banCheck.rows[0].reason}`);
+		if (banCheck.rowCount > 0 && (banCheck.rows[0].status === 'ban')) {
+			log.ok(`Test IP address (${testIp}) auto-quarantined. Threat score: ${banCheck.rows[0].threat_score ?? banCheck.rows[0].threatScore}, Reason: ${banCheck.rows[0].reason}`);
 		} else {
 			throw new Error(`Test IP was not quarantined in security_blocks table!`);
 		}
@@ -339,7 +339,7 @@ async function run() {
 		const dummySessionToken = crypto.randomBytes(32).toString('hex');
 		await client.query(
 			`INSERT INTO users (id, first_name, last_name, email, password_hash, department, grade, role_id, status, session_token, created_at)
-			 VALUES ($1, 'Test', 'Member', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Engineering', 2, 'role_member', 'aktif', $3, $4)`,
+			 VALUES ($1, 'Test', 'Member', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Engineering', 2, 'role_member', 'active', $3, $4)`,
 			[dummyUserId, `e2e_lockdown_${Date.now()}@orbit.local`, dummySessionToken, Date.now()]
 		);
 		log.ok(`Test standard member account and session created (Token: ${dummySessionToken.slice(0, 10)}...).`);
@@ -494,7 +494,7 @@ async function run() {
 		const sessionExpiry = Date.now() + 24 * 3600 * 1000;
 		await client.query(
 			`INSERT INTO users (id, first_name, last_name, email, password_hash, department, grade, role_id, status, session_token, session_expires_at, totp_enabled, created_at)
-			 VALUES ($1, 'Admin', 'SoC', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber Savunma', '4', 'role_admin', 'aktif', $3, $4, 1, $5)`,
+			 VALUES ($1, 'Admin', 'SoC', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber Savunma', '4', 'role_admin', 'active', $3, $4, 1, $5)`,
 			[adminUserId, `e2e_soc_inspector_${Date.now()}@orbit.local`, adminSessionToken, sessionExpiry, Date.now()]
 		);
 
@@ -748,7 +748,7 @@ async function run() {
 		// 7.1 Create User (Authorized with role_admin)
 		await client.query(
 			`INSERT INTO users (id, first_name, last_name, email, password_hash, department, grade, role_id, status, session_token, session_expires_at, totp_enabled, created_at)
-			 VALUES ($1, 'Hardening', 'User', $2, $3, 'Software Engineering', 3, 'role_admin', 'aktif', $4, $5, 0, $6)`,
+			 VALUES ($1, 'Hardening', 'User', $2, $3, 'Software Engineering', 3, 'role_admin', 'active', $4, $5, 0, $6)`,
 			[hardeningUserId, `hardening_${Date.now()}@orbit.local`, initialPasswordHash, initialSessionToken, hardeningExpiry, Date.now()]
 		);
 
@@ -937,7 +937,7 @@ async function run() {
 		const testAdminSessionToken = crypto.randomBytes(32).toString('hex');
 		await client.query(
 			`INSERT INTO users (id, first_name, last_name, email, password_hash, department, grade, role_id, status, session_token, session_expires_at, totp_enabled, created_at, last_login_ip)
-			 VALUES ($1, 'Admin', 'Hardening', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber Savunma', 4, 'role_admin', 'aktif', $3, $4, 1, $5, '127.0.0.1')`,
+			 VALUES ($1, 'Admin', 'Hardening', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber Savunma', 4, 'role_admin', 'active', $3, $4, 1, $5, '127.0.0.1')`,
 			[testAdminId, `e2e_hard_admin_${Date.now()}@orbit.local`, testAdminSessionToken, Date.now() + 24 * 3600 * 1000, Date.now()]
 		);
 
@@ -993,8 +993,8 @@ async function run() {
 
 			await client.query(
 				`INSERT INTO users (id, first_name, last_name, email, password_hash, department, grade, role_id, status, session_token, session_expires_at, created_at)
-				 VALUES ($1, 'User', 'A', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Bilgisayar', 3, 'role_member', 'aktif', $3, $4, $5),
-				        ($6, 'User', 'B', $7, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Elektrik', 2, 'role_member', 'aktif', $8, $4, $5)`,
+				 VALUES ($1, 'User', 'A', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Bilgisayar', 3, 'role_member', 'active', $3, $4, $5),
+				        ($6, 'User', 'B', $7, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Elektrik', 2, 'role_member', 'active', $8, $4, $5)`,
 				[
 					userAId, `user_a_${Date.now()}@orbit.local`, userASession, Date.now() + 3600000, Date.now(),
 					userBId, `user_b_${Date.now()}@orbit.local`, userBSession
@@ -1380,7 +1380,7 @@ async function run() {
 		const uploadAdminToken = crypto.randomBytes(32).toString('hex');
 		await client.query(
 			`INSERT INTO users (id, first_name, last_name, email, password_hash, department, grade, role_id, status, session_token, session_expires_at, totp_enabled, created_at)
-			 VALUES ($1, 'Upload', 'Admin', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber Savunma', 4, 'role_admin', 'aktif', $3, $4, 1, $5)`,
+			 VALUES ($1, 'Upload', 'Admin', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber Savunma', 4, 'role_admin', 'active', $3, $4, 1, $5)`,
 			[uploadAdminId, `e2e_uploader_${Date.now()}@orbit.local`, uploadAdminToken, Date.now() + 3600000, Date.now()]
 		);
 
@@ -1439,7 +1439,7 @@ async function run() {
 			const memberASession = crypto.randomBytes(32).toString('hex');
 			await client.query(
 				`INSERT INTO users (id, first_name, last_name, email, password_hash, department, grade, role_id, status, session_token, session_expires_at, created_at)
-				 VALUES ($1, 'Member', 'PostaA', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Bilgisayar', 2, 'role_member', 'aktif', $3, $4, $5)`,
+				 VALUES ($1, 'Member', 'PostaA', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Bilgisayar', 2, 'role_member', 'active', $3, $4, $5)`,
 				[memberAId, `member_a_${Date.now()}@orbit.local`, memberASession, Date.now() + 3600000, Date.now()]
 			);
 
@@ -1475,7 +1475,7 @@ async function run() {
 						Cookie: `kulup_session_token=${memberASession}`,
 						'Content-Type': 'application/json',
 					},
-					body: JSON.stringify({ action: 'cope' }),
+					body: JSON.stringify({ action: 'trash' }),
 				});
 				if (idorPatchRes.status !== 404) {
 					throw new Error(`Modifying foreign mail thread status did not return 404! HTTP: ${idorPatchRes.status}`);
@@ -1610,7 +1610,7 @@ async function run() {
 			throw new Error(`Canary trigger IP (${aiCanaryIp}) was not auto-quarantined!`);
 		}
 		const canaryBanRecord = canaryBanCheck.rows[0];
-		const banStatus = canaryBanRecord.status ?? canaryBanRecord.status;
+		const banStatus = canaryBanRecord.status;
 		const threatScore = Number(canaryBanRecord.threat_score ?? canaryBanRecord.threatScore);
 		if (banStatus !== 'ban' || threatScore < 100) {
 			throw new Error(`Quarantine record does not have expected threat score (>=100): ${JSON.stringify(canaryBanRecord)}`);
@@ -1663,7 +1663,7 @@ async function run() {
 		try {
 			await client.query(
 				`INSERT INTO users (id, first_name, last_name, email, password_hash, department, grade, role_id, status, session_token, session_expires_at, last_login_ip, created_at)
-				 VALUES ($1, 'Security', 'Admin14', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber Savunma', 4, 'role_admin', 'aktif', $3, $4, $5, $6)`,
+				 VALUES ($1, 'Security', 'Admin14', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber Savunma', 4, 'role_admin', 'active', $3, $4, $5, $6)`,
 				[test14UserId, `sec14_${Date.now()}@orbit.local`, test14TokenHash, session14Expiry, initialIp, Date.now()]
 			);
 
@@ -1734,7 +1734,7 @@ async function run() {
 		const s15AdminToken = crypto.randomBytes(32).toString('hex');
 		await client.query(
 			`INSERT INTO users (id, first_name, last_name, email, password_hash, department, grade, role_id, status, session_token, session_expires_at, totp_enabled, created_at, last_login_ip)
-			 VALUES ($1, 'Admin', 'KillSwitch', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber', 4, 'role_admin', 'aktif', $3, $4, 1, $5, '127.0.0.1')`,
+			 VALUES ($1, 'Admin', 'KillSwitch', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber', 4, 'role_admin', 'active', $3, $4, 1, $5, '127.0.0.1')`,
 			[s15AdminId, `e2e_killswitch_admin_${Date.now()}@orbit.local`, s15AdminToken, Date.now() + 86400000, Date.now()]
 		);
 
@@ -1899,7 +1899,7 @@ async function run() {
 		const s16AdminToken = crypto.randomBytes(32).toString('hex');
 		await client.query(
 			`INSERT INTO users (id, first_name, last_name, email, password_hash, department, grade, role_id, status, session_token, session_expires_at, totp_enabled, created_at, last_login_ip)
-			 VALUES ($1, 'SIEM', 'Admin', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber', 4, 'role_admin', 'aktif', $3, $4, 1, $5, '127.0.0.1')`,
+			 VALUES ($1, 'SIEM', 'Admin', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber', 4, 'role_admin', 'active', $3, $4, 1, $5, '127.0.0.1')`,
 			[s16AdminId, `e2e_siem_admin_${Date.now()}@orbit.local`, s16AdminToken, Date.now() + 86400000, Date.now()]
 		);
 

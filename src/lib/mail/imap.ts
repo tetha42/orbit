@@ -236,7 +236,7 @@ function classifyMailbox(box: { path: string; name: string; specialUse?: string 
 	if (special === '\\sent' || pathLower.includes('sent') || pathLower.includes('gönderilen')) {
 		return { role: 'sent', name: 'Gönderilenler' };
 	}
-	if (special === '\\drafts' || pathLower.includes('draft') || pathLower.includes('taslak')) {
+	if (special === '\\drafts' || pathLower.includes('draft')) {
 		return { role: 'drafts', name: 'Taslaklar' };
 	}
 	if (special === '\\trash' || pathLower.includes('trash') || pathLower.includes('çöp') || pathLower.includes('bin')) {

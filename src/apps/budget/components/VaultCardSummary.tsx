@@ -6,6 +6,7 @@ import { useI18n } from '@/core/i18n';
 import { formatMinor } from '@/lib/budget';
 import type { CashTotals } from '../types';
 import k from './Vault.module.css';
+import { categoryLabel } from '../categoryLabel';
 
 interface VaultCardSummaryProps {
 	teamId: string | null;
@@ -57,7 +58,7 @@ export function VaultCardSummary({
 				<div className={k.cardNote}>
 					{distributionFirstCategory
 						? t('kasaMostSpent')
-								.replace('{cat}', distributionFirstCategory.category)
+								.replace('{cat}', categoryLabel(t, distributionFirstCategory.category))
 								.replace('{pct}', String(Math.round(distributionFirstCategory.ratio * 100)))
 						: t('kasaNoSpendingYet')}
 				</div>

@@ -17,9 +17,9 @@ export async function getCertificates(userId?: string): Promise<Certificate[]> {
 		       s.event_id AS "eventId", s.title AS "title", s.issued_at AS "issuanceDate",
 		       s.pdf_url AS "pdfUrl", s.created_at AS "creation", s.category AS "category",
 		       s.locale AS "language", s.description AS "description",
-		       k.first_name || ' ' || k.last_name as "userNameSurname",
-		       k.handle as "studentNo",
-		       e.title as "eventTitle"
+		       k.first_name || ' ' || k.last_name AS "userNameSurname",
+		       k.handle AS "studentNo",
+		       e.title AS "eventTitle"
 		FROM certificates s
 		JOIN users k ON s.user_id = k.id
 		LEFT JOIN events e ON s.event_id = e.id
@@ -43,10 +43,10 @@ export async function getCertificateByCode(code: string): Promise<Certificate | 
 		       s.event_id AS "eventId", s.title AS "title", s.issued_at AS "issuanceDate",
 		       s.pdf_url AS "pdfUrl", s.created_at AS "creation", s.category AS "category",
 		       s.locale AS "language", s.description AS "description",
-		       k.first_name || ' ' || k.last_name as "userNameSurname",
-		       k.handle as "studentNo",
-		       k.department as "userDepartment",
-		       e.title as "eventTitle"
+		       k.first_name || ' ' || k.last_name AS "userNameSurname",
+		       k.handle AS "studentNo",
+		       k.department AS "userDepartment",
+		       e.title AS "eventTitle"
 		FROM certificates s
 		JOIN users k ON s.user_id = k.id
 		LEFT JOIN events e ON s.event_id = e.id
@@ -112,7 +112,7 @@ export async function createEventCertificates(
 	let given = 0;
 	let alreadyVar = 0;
 	for (const row of res.rows) {
-		if (row.var) {
+		if (row.set) {
 			alreadyVar += 1;
 			continue;
 		}
@@ -138,18 +138,18 @@ export interface CommunityProfile {
 export async function getCommunityProfile(): Promise<CommunityProfile> {
 	const setting = await getSystemSettings();
 	let lead = '';
-	if (!setting.signature1_Name) {
+	if (!setting.signature1_name) {
 		const res = await getPgPool().query(
-			"SELECT first_name || ' ' || last_name AS name FROM users WHERE role_id = 'rol_admin' AND status = 'aktif' ORDER BY created_at ASC LIMIT 1"
+			"SELECT first_name || ' ' || last_name AS name FROM users WHERE role_id = 'role_admin' AND status = 'active' ORDER BY created_at ASC LIMIT 1"
 		);
 		lead = res.rows[0]?.name ?? '';
 	}
 	return {
 		university: setting.university,
-		clubName: setting.club_Name,
+		clubName: setting.club_name,
 		signatures: [
-			{ name: setting.signature1_Name || lead, rank: setting.signature1_Rank },
-			{ name: setting.signature2_Name, rank: setting.signature2_Rank },
+			{ name: setting.signature1_name || lead, rank: setting.signature1_rank },
+			{ name: setting.signature2_name, rank: setting.signature2_rank },
 		],
 	};
 }

@@ -6,10 +6,10 @@ export const dynamic = 'force-dynamic';
 export const OPTIONS = publicPreflight;
 
 const TYPE_LABELS: Record<string, string> = {
-	atolye: 'Atölye',
-	seminer: 'Seminer',
-	yarisma: 'Yarışma',
-	toplanti: 'Toplantı',
+	workshop: 'Atölye',
+	seminar: 'Seminer',
+	competition: 'Yarışma',
+	meeting: 'Toplantı',
 };
 
 /**

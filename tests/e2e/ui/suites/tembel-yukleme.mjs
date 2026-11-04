@@ -84,7 +84,7 @@ const rendered = (page, appId) =>
 
 export default async function suite(t) {
 	await t.step('okur: uygulama kodu açılınca gelir, yeniden açılınca gelmez, izinsiz kod hiç gelmez', async () => {
-		const { page, js } = await openTracked(t, 'okur');
+		const { page, js } = await openTracked(t, 'reader');
 		await js.settle(page);
 		t.eq(await openWindows(page), [], 'okur masaüstü boş açıldı (kurulum)');
 		const atStart = new Set(js.urls);
@@ -128,7 +128,7 @@ export default async function suite(t) {
 		const open = await openWindows(page);
 		if (js.defined.size > 0 || open.length > 0) {
 			const extra = [...js.defined].filter((id) => !open.includes(id));
-			t.sameSet(extra, [], `açılışta yalnız açık pencerelerin (${open.join(', ') || 'yok'}) kodu tanımlandı`);
+			t.sameSet(extra, [], `açılışta yalnız açık pencerelerin (${open.join(', ') || 'none'}) kodu tanımlandı`);
 		}
 		const apps = await page.locator('[data-dock-app]').evaluateAll((els) => els.map((e) => e.getAttribute('data-dock-app')));
 		t.check(apps.length >= 10, `admin Dock'ta ${apps.length} uygulama`);

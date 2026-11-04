@@ -137,11 +137,11 @@ export function OnboardingTeamExplorer({ compact = false }: { compact?: boolean 
 									{team.description}
 								</p>
 
-								{team.myMyStatus === 'aktif' ? (
+								{team.myMyStatus === 'active' ? (
 									<div style={{ fontSize: '12px', color: '#30d158', display: 'inline-flex', gap: 5, alignItems: 'center' }}>
-										<Check size={13} aria-hidden="true" /> {team.myMyDecision === 'kabul' ? t('obAccepted') : t('tmMember')}
+										<Check size={13} aria-hidden="true" /> {team.myMyDecision === 'accepted' ? t('obAccepted') : t('tmMember')}
 									</div>
-								) : team.myMyStatus === 'basvurdu' ? (
+								) : team.myMyStatus === 'applied' ? (
 									<div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
 										<span style={{ fontSize: '12px', color: '#ff9f0a', display: 'inline-flex', gap: 5, alignItems: 'center' }}>
 											<Clock size={13} aria-hidden="true" /> {t('obApplied')}

@@ -10,6 +10,7 @@ import { copyToClipboard } from '@/lib/clipboard';
 import type { MenuItem } from '@/types/workspace';
 import type { VaultRecord } from '../types';
 import k from './Vault.module.css';
+import { categoryLabel } from '../categoryLabel';
 
 interface VaultLedgerTableProps {
 	records: VaultRecord[];
@@ -94,23 +95,23 @@ function VaultTableRow({ r, balance, lockedForMe, language, onEdit, onDelete }: 
 			<td>
 				{transfer ? (
 					<span className={`${k.tag} ${k.tagTransfer}`}>
-						<ArrowRightLeft size={11} /> {r.typeValue === 'gelir' ? t('kasaTagTransferIn') : t('kasaTagTransferOut')}
+						<ArrowRightLeft size={11} /> {r.typeValue === 'income' ? t('kasaTagTransferIn') : t('kasaTagTransferOut')}
 					</span>
 				) : (
-					<span className={`${k.tag} ${r.typeValue === 'gelir' ? k.tagIn : k.tagOut}`}>
-						{r.typeValue === 'gelir' ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
-						{r.typeValue === 'gelir' ? t('kasaTagIncome') : t('kasaTagExpense')}
+					<span className={`${k.tag} ${r.typeValue === 'income' ? k.tagIn : k.tagOut}`}>
+						{r.typeValue === 'income' ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
+						{r.typeValue === 'income' ? t('kasaTagIncome') : t('kasaTagExpense')}
 					</span>
 				)}
 			</td>
-			<td style={{ fontWeight: 650, whiteSpace: 'nowrap' }}>{r.category}</td>
+			<td style={{ fontWeight: 650, whiteSpace: 'nowrap' }}>{categoryLabel(t, r.category)}</td>
 			<td>
 				<div className={k.desc}>{r.description}</div>
 				{(transfer || r.receiptPhotoUrl || r.update) && (
 					<div className={k.sub}>
 						{transfer && (
 							<span>
-								{r.typeValue === 'gelir'
+								{r.typeValue === 'income'
 									? `${t('kasaSource')} ${r.counterpartVaultName}`
 									: `${t('kasaTarget')} ${r.counterpartVaultName}`}
 							</span>
@@ -136,8 +137,8 @@ function VaultTableRow({ r, balance, lockedForMe, language, onEdit, onDelete }: 
 			<td className={k.colUser} style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
 				{r.recorderNameSurname ?? '—'}
 			</td>
-			<td className={`${k.num} ${r.typeValue === 'gelir' ? k.pos : k.neg}`} style={{ fontWeight: 750 }}>
-				{r.typeValue === 'gelir' ? '+' : '−'}
+			<td className={`${k.num} ${r.typeValue === 'income' ? k.pos : k.neg}`} style={{ fontWeight: 750 }}>
+				{r.typeValue === 'income' ? '+' : '−'}
 				{tl(r.amountMinor)}
 			</td>
 			<td className={`${k.num} ${k.colBalance}`} style={{ color: 'var(--text-secondary)' }}>
@@ -238,12 +239,12 @@ function VaultMobileCard({ r, lockedForMe, onEdit, onDelete }: Omit<VaultRowProp
 			<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
 				{transfer ? (
 					<span className={`${k.tag} ${k.tagTransfer}`}>
-						<ArrowRightLeft size={11} /> {r.typeValue === 'gelir' ? t('kasaTagTransferIn') : t('kasaTagTransferOut')}
+						<ArrowRightLeft size={11} /> {r.typeValue === 'income' ? t('kasaTagTransferIn') : t('kasaTagTransferOut')}
 					</span>
 				) : (
-					<span className={`${k.tag} ${r.typeValue === 'gelir' ? k.tagIn : k.tagOut}`}>
-						{r.typeValue === 'gelir' ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
-						{r.typeValue === 'gelir' ? t('kasaTagIncome') : t('kasaTagExpense')}
+					<span className={`${k.tag} ${r.typeValue === 'income' ? k.tagIn : k.tagOut}`}>
+						{r.typeValue === 'income' ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
+						{r.typeValue === 'income' ? t('kasaTagIncome') : t('kasaTagExpense')}
 					</span>
 				)}
 				<span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{dateFmt(r.date)}</span>
@@ -254,9 +255,9 @@ function VaultMobileCard({ r, lockedForMe, onEdit, onDelete }: Omit<VaultRowProp
 			</div>
 
 			<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-secondary)' }}>
-				<span>{r.category} · {r.recorderNameSurname ?? '—'}</span>
-				<span className={`${r.typeValue === 'gelir' ? k.pos : k.neg}`} style={{ fontWeight: 800, fontSize: '15px' }}>
-					{r.typeValue === 'gelir' ? '+' : '−'}{tl(r.amountMinor)}
+				<span>{categoryLabel(t, r.category)} · {r.recorderNameSurname ?? '—'}</span>
+				<span className={`${r.typeValue === 'income' ? k.pos : k.neg}`} style={{ fontWeight: 800, fontSize: '15px' }}>
+					{r.typeValue === 'income' ? '+' : '−'}{tl(r.amountMinor)}
 				</span>
 			</div>
 
@@ -265,7 +266,7 @@ function VaultMobileCard({ r, lockedForMe, onEdit, onDelete }: Omit<VaultRowProp
 					<div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
 						{transfer && (
 							<span>
-								{r.typeValue === 'gelir' ? `${t('kasaSource')} ${r.counterpartVaultName}` : `${t('kasaTarget')} ${r.counterpartVaultName}`}
+								{r.typeValue === 'income' ? `${t('kasaSource')} ${r.counterpartVaultName}` : `${t('kasaTarget')} ${r.counterpartVaultName}`}
 							</span>
 						)}
 						{r.receiptPhotoUrl && (

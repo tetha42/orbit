@@ -70,7 +70,7 @@ export function LoanModal({
 		mode === 'lend' ? '/api/members' : null,
 	);
 	const activeMembers = (members?.members ?? []).filter(
-		(m) => (m.status ?? 'aktif') === 'aktif' && m.id !== selfId,
+		(m) => (m.status ?? 'active') === 'active' && m.id !== selfId,
 	);
 
 	const title = {

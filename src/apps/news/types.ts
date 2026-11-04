@@ -7,7 +7,7 @@ export interface NewsEntry {
 	summary: string;
 	content: string;
 	category: string;
-	importantMi: number;
+	isImportant: number;
 	imageUrl?: string;
 	publishStatus: NewsVisibility;
 	publishDate: number | null;

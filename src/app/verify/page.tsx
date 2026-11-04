@@ -12,7 +12,7 @@ export default async function VerifyIndexPage({
 	searchParams: Promise<{ code?: string;}>;
 }) {
 	const params = await searchParams;
-	const targetCode = (params.code || params.code || '').trim();
+	const targetCode = (params.code || '').trim();
 
 	if (targetCode) {
 		redirect(`/verify/${encodeURIComponent(targetCode)}`);

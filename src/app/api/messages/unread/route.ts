@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 /** How many inbox conversations have something unread. */
 export async function GET(request: Request) {
-	const auth = await requireApp(request, 'mail', 'kullan');
+	const auth = await requireApp(request, 'mail', 'use');
 	if (!auth.authorized) return auth.response;
 	try {
 		const count = await getUnreadMailCount(auth.user.id);

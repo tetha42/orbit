@@ -26,7 +26,7 @@ function formatBytes(bytes?: number): string {
 }
 
 function kindOf(attachment: ChatAttachmentItem): 'image' | 'video' | 'audio' | 'pdf' | 'markdown' | 'text' | 'archive' | 'file' {
-	const mime = (attachment.tip || '').toLowerCase();
+	const mime = (attachment.type || '').toLowerCase();
 	const name = attachment.name.toLowerCase();
 	if (mime.startsWith('image/')) return 'image';
 	if (mime.startsWith('video/')) return 'video';
@@ -320,7 +320,7 @@ function VideoAttachment({
 	return (
 		<div className={s.mediaPlayer}>
 			<video controls preload="metadata" className={s.mediaElement}>
-				<source src={attachment.url} type={attachment.tip || undefined} />
+				<source src={attachment.url} type={attachment.type || undefined} />
 			</video>
 			<div className={s.mediaCaption}>
 				<Film size={12} />
@@ -363,7 +363,7 @@ function AudioAttachment({
 				</button>
 			</div>
 			<audio controls preload="metadata" className={s.audioElement}>
-				<source src={attachment.url} type={attachment.tip || undefined} />
+				<source src={attachment.url} type={attachment.type || undefined} />
 			</audio>
 		</div>
 	);

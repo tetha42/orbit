@@ -32,7 +32,7 @@ type Params = { params: Promise<{ id: string }> };
 
 /** The task with its checklist, discussion and history — for whoever can see the board. */
 export async function GET(request: Request, { params }: Params) {
-	const auth = await requireApp(request, 'teams', 'kullan');
+	const auth = await requireApp(request, 'teams', 'use');
 	if (!auth.authorized) return auth.response;
 	try {
 		const { id } = await params;
@@ -57,9 +57,9 @@ export async function GET(request: Request, { params }: Params) {
  * it is due.
  */
 async function handlePATCH(request: Request, { params }: Params) {
-	const auth = await requireApp(request, 'teams', 'kullan');
+	const auth = await requireApp(request, 'teams', 'use');
 	if (!auth.authorized) return auth.response;
-	if (auth.user.status === 'mezun') return forbidden('Mezunlar sadece okuma erişimine sahiptir.');
+	if (auth.user.status === 'alumni') return forbidden('Mezunlar sadece okuma erişimine sahiptir.');
 	try {
 		const { id } = await params;
 		const access = await getTaskAccess(auth.user, id);
@@ -132,9 +132,9 @@ async function handlePATCH(request: Request, { params }: Params) {
 
 /** Checklist lines and comments: `{ action: 'addItem' | 'updateItem' | 'deleteItem' | 'addComment' | 'deleteComment' }`. */
 async function handlePOST(request: Request, { params }: Params) {
-	const auth = await requireApp(request, 'teams', 'kullan');
+	const auth = await requireApp(request, 'teams', 'use');
 	if (!auth.authorized) return auth.response;
-	if (auth.user.status === 'mezun') return forbidden('Mezunlar sadece okuma erişimine sahiptir.');
+	if (auth.user.status === 'alumni') return forbidden('Mezunlar sadece okuma erişimine sahiptir.');
 	try {
 		const { id } = await params;
 		// The task, and through it the team, comes from the URL — never from the body.
@@ -167,16 +167,16 @@ async function handlePOST(request: Request, { params }: Params) {
 				return NextResponse.json({ success: true });
 			}
 
-			const patch: { text?: string; doneMi?: boolean } = {};
+			const patch: { text?: string; isDone?: boolean } = {};
 			if (body.text !== undefined) {
 				const text = typeof body.text === 'string' ? body.text.trim() : '';
 				if (!text) return badRequest('Madde metni boş olamaz.');
 				if (text.length > ITEM_MAX) return badRequest(`Madde en fazla ${ITEM_MAX} karakter olabilir.`);
 				patch.text = text;
 			}
-			if (body.doneMi !== undefined) {
-				if (typeof body.doneMi !== 'boolean') return badRequest('Geçersiz değer.');
-				patch.doneMi = body.doneMi;
+			if (body.isDone !== undefined) {
+				if (typeof body.isDone !== 'boolean') return badRequest('Geçersiz değer.');
+				patch.isDone = body.isDone;
 			}
 			await updateTaskItem(itemId, patch, auth.user.id);
 			await publishEventQuiet(getPgPool(), { k: 'team_updated', teamId: access.task.teamId });

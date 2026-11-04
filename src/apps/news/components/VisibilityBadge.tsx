@@ -12,9 +12,9 @@ export function VisibilityBadge({ visibility }: { visibility: NewsVisibility }) 
 		NewsVisibility,
 		{ color: string; icon: React.ComponentType<{ size?: number; color?: string }>; hint: string; label: string }
 	> = {
-		taslak: { color: '#8e8e93', icon: FilePen, hint: t('newsVisDraftHint'), label: t('newsVisDraft') },
-		uyeler: { color: '#0a84ff', icon: Lock, hint: t('newsVisMembersHint'), label: t('newsVisMembers') },
-		yayinda: { color: '#30d158', icon: Globe, hint: t('newsVisPublicHint'), label: t('newsVisPublic') },
+		draft: { color: '#8e8e93', icon: FilePen, hint: t('newsVisDraftHint'), label: t('newsVisDraft') },
+		members: { color: '#0a84ff', icon: Lock, hint: t('newsVisMembersHint'), label: t('newsVisMembers') },
+		published: { color: '#30d158', icon: Globe, hint: t('newsVisPublicHint'), label: t('newsVisPublic') },
 	};
 
 	const b = visibilityBadges[visibility];

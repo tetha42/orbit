@@ -36,10 +36,10 @@ export interface NewAssignment {
 type TaskWriter = Pick<PoolClient, 'query'> | Pool;
 
 const TASK_COLUMNS = `
-	tg.id, tg.team_id AS "teamId", tg.title AS "baslik", tg.description AS "aciklama", tg.status, tg.priority AS "oncelik",
-	tg.assignee_id AS "atananUyeId", tg.due_at AS "teslimTarihi",
-	tg.labels AS "etiketler", tg.created_by AS "olusturanId", tg.updated_at AS "guncellenme", tg.completed_at AS "tamamlanma",
-	tg.xp_awarded AS "xpVerildi", tg.created_at AS "olusturma"
+	tg.id, tg.team_id AS "teamId", tg.title AS "title", tg.description AS "description", tg.status, tg.priority AS "priority",
+	tg.assignee_id AS "assigneeMemberId", tg.due_at AS "dueDate",
+	tg.labels AS "tags", tg.created_by AS "creatorId", tg.updated_at AS "update", tg.completed_at AS "completion",
+	tg.xp_awarded AS "xpGiven", tg.created_at AS "creation"
 `;
 
 const TASK_SELECT = `
@@ -48,7 +48,7 @@ const TASK_SELECT = `
 	       k.first_name || ' ' || k.last_name AS "assigneeNameSurname",
 	       o.first_name || ' ' || o.last_name AS "creatorNameSurname",
 	       jsonb_array_length(COALESCE(tg.checklist, '[]'::jsonb))::int AS "itemCount",
-	       (SELECT COUNT(*)::int FROM jsonb_array_elements(COALESCE(tg.checklist, '[]'::jsonb)) AS elem WHERE COALESCE((elem->>'doneMi')::int, 0) = 1) AS "doneItemCount",
+	       (SELECT COUNT(*)::int FROM jsonb_array_elements(COALESCE(tg.checklist, '[]'::jsonb)) AS elem WHERE COALESCE((elem->>'isDone')::int, 0) = 1) AS "doneItemCount",
 	       jsonb_array_length(COALESCE(tg.comments, '[]'::jsonb))::int AS "commentCount"
 	FROM team_tasks tg
 	LEFT JOIN users k ON tg.assignee_id = k.id
@@ -118,7 +118,7 @@ export async function getUserUpcomingTasks(
 		FROM team_tasks tg
 		JOIN teams t ON t.id = tg.team_id
 		WHERE tg.assignee_id = $1
-		  AND tg.status <> 'tamamlandi'
+		  AND tg.status <> 'done'
 		  AND tg.due_at IS NOT NULL
 		  AND tg.due_at <= $2
 		ORDER BY tg.due_at ASC
@@ -142,21 +142,21 @@ export async function createTeamTask(params: {
 	await ensurePostgresInit();
 	const id = `task_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
 	const now = Date.now();
-	const status = params.status ?? 'yapilacak';
+	const status = params.status ?? 'todo';
 	const task: TeamTask = {
 		id,
 		teamId: params.teamId,
 		title: params.title.trim(),
 		description: params.description?.trim() || '',
 		status,
-		priority: params.priority || 'orta',
+		priority: params.priority || 'medium',
 		assigneeMemberId: params.assigneeMemberId || undefined,
 		dueDate: params.dueDate,
 		tags: params.tags ?? [],
 		order: -now,
 		creatorId: params.creatorId ?? null,
 		update: now,
-		completion: status === 'tamamlandi' ? now : null,
+		completion: status === 'done' ? now : null,
 		creation: now,
 	};
 
@@ -183,9 +183,9 @@ export async function createTeamTask(params: {
 				task.completion,
 			]
 		);
-		await logTaskActivity(client, id, params.creatorId, 'olusturuldu', { status });
+		await logTaskActivity(client, id, params.creatorId, 'created', { status });
 		if (task.assigneeMemberId) {
-			await logTaskActivity(client, id, params.creatorId, 'atandi', { to: task.assigneeMemberId });
+			await logTaskActivity(client, id, params.creatorId, 'assigned', { to: task.assigneeMemberId });
 			await publishEvent(client, notificationEvents([task.assigneeMemberId]));
 		}
 	});
@@ -222,7 +222,7 @@ export async function updateTeamTaskStatus(params: {
 			 SET status = $1,
 			     position = COALESCE($2, position),
 			     updated_at = $3,
-			     completed_at = CASE WHEN $1 = 'tamamlandi' THEN COALESCE(CASE WHEN status = 'tamamlandi' THEN completed_at END, $3) ELSE NULL END
+			     completed_at = CASE WHEN $1 = 'done' THEN COALESCE(CASE WHEN status = 'done' THEN completed_at END, $3) ELSE NULL END
 			 WHERE id = $4`,
 			[params.status, Number.isFinite(params.order) ? params.order : null, now, params.taskId]
 		);
@@ -236,13 +236,13 @@ export async function updateTeamTaskStatus(params: {
 			);
 		}
 		if (statusChanged) {
-			await logTaskActivity(client, params.taskId, params.actorId, 'tasindi', {
+			await logTaskActivity(client, params.taskId, params.actorId, 'moved', {
 				from: row.status,
 				to: params.status,
 			});
 		}
 
-		if (params.status === 'tamamlandi' && row.assigneeMemberId && !Number(row.xpGiven)) {
+		if (params.status === 'done' && row.assigneeMemberId && !Number(row.xpGiven)) {
 			await client.query('UPDATE team_tasks SET xp_awarded = 1 WHERE id = $1', [params.taskId]);
 			await client.query('UPDATE users SET xp = COALESCE(xp, 0) + 100 WHERE id = $1', [
 				row.assigneeMemberId,
@@ -296,10 +296,10 @@ export async function updateTeamTask(
 
 		const edited = changed.filter((f) => f !== 'assigneeMemberId');
 		if (edited.length) {
-			await logTaskActivity(client, taskId, actorId, 'duzenlendi', { fields: edited.join(',') });
+			await logTaskActivity(client, taskId, actorId, 'edited', { fields: edited.join(',') });
 		}
 		if (assigneeChanged) {
-			await logTaskActivity(client, taskId, actorId, 'atandi', {
+			await logTaskActivity(client, taskId, actorId, 'assigned', {
 				from: row.assigneeMemberId ?? null,
 				to: patch.assigneeMemberId ?? null,
 			});
@@ -319,7 +319,7 @@ export async function getTeamTaskDetail(taskId: string): Promise<TeamTaskDetail 
 			`SELECT elem->>'id' AS id,
 			        tg.id AS "taskId",
 			        COALESCE(elem->>'text', '') AS text,
-			        COALESCE((elem->>'doneMi')::int, 0) AS "doneMi",
+			        COALESCE((elem->>'isDone')::int, 0) AS "isDone",
 			        COALESCE((elem->>'order')::float8, 0) AS "order",
 			        COALESCE((elem->>'creation')::bigint, 0) AS creation
 			 FROM team_tasks tg,
@@ -363,7 +363,7 @@ export async function getTeamTaskDetail(taskId: string): Promise<TeamTaskDetail 
 		task,
 		items: items.rows.map((r) => ({
 			...r,
-			doneMi: Number(r.doneMi),
+			isDone: Number(r.isDone),
 			order: Number(r.order),
 			creation: Number(r.creation),
 		})) as TeamTaskItem[],
@@ -405,7 +405,7 @@ export async function addTaskItem(taskId: string, text: string, actorId?: string
 			id: randomUUID(),
 			taskId,
 			text,
-			doneMi: 0,
+			isDone: 0,
 			order: Number(max.rows[0]?.m ?? 0) + 1,
 			creation: Date.now(),
 		};
@@ -416,7 +416,7 @@ export async function addTaskItem(taskId: string, text: string, actorId?: string
 			 WHERE id = $3`,
 			[JSON.stringify(item), item.creation, taskId]
 		);
-		await logTaskActivity(client, taskId, actorId, 'madde_eklendi', { text: text.slice(0, 80) });
+		await logTaskActivity(client, taskId, actorId, 'item_added', { text: text.slice(0, 80) });
 		return item;
 	});
 }
@@ -427,7 +427,7 @@ export async function getTaskItem(id: string): Promise<TeamTaskItem | null> {
 		`SELECT elem->>'id' AS id,
 		        tg.id AS "taskId",
 		        COALESCE(elem->>'text', '') AS text,
-		        COALESCE((elem->>'doneMi')::int, 0) AS "doneMi",
+		        COALESCE((elem->>'isDone')::int, 0) AS "isDone",
 		        COALESCE((elem->>'order')::float8, 0) AS "order",
 		        COALESCE((elem->>'creation')::bigint, 0) AS creation
 		 FROM team_tasks tg,
@@ -442,7 +442,7 @@ export async function getTaskItem(id: string): Promise<TeamTaskItem | null> {
 		id: String(r.id),
 		taskId: String(r.taskId),
 		text: String(r.text),
-		doneMi: Number(r.doneMi),
+		isDone: Number(r.isDone),
 		order: Number(r.order),
 		creation: Number(r.creation),
 	};
@@ -450,7 +450,7 @@ export async function getTaskItem(id: string): Promise<TeamTaskItem | null> {
 
 export async function updateTaskItem(
 	id: string,
-	patch: { text?: string; doneMi?: boolean },
+	patch: { text?: string; isDone?: boolean },
 	actorId?: string
 ): Promise<boolean> {
 	await ensurePostgresInit();
@@ -473,24 +473,24 @@ export async function updateTaskItem(
 		if (idx === -1) return false;
 
 		const currentItem = checklist[idx];
-		const prevDoneMi = Number(currentItem.doneMi ?? 0);
+		const prevIsDone = Number(currentItem.isDone ?? 0);
 		const text = patch.text ?? String(currentItem.text ?? '');
-		const doneMi = patch.doneMi === undefined ? prevDoneMi : patch.doneMi ? 1 : 0;
+		const isDone = patch.isDone === undefined ? prevIsDone : patch.isDone ? 1 : 0;
 
 		const nextChecklist = [...checklist];
 		nextChecklist[idx] = {
 			...currentItem,
 			taskId,
 			text,
-			doneMi,
+			isDone,
 		};
 
 		await client.query(
 			'UPDATE team_tasks SET checklist = $1::jsonb, updated_at = $2 WHERE id = $3',
 			[JSON.stringify(nextChecklist), Date.now(), taskId]
 		);
-		if (doneMi === 1 && prevDoneMi !== 1) {
-			await logTaskActivity(client, taskId, actorId, 'madde_tamamlandi', {
+		if (isDone === 1 && prevIsDone !== 1) {
+			await logTaskActivity(client, taskId, actorId, 'item_completed', {
 				text: String(text).slice(0, 80),
 			});
 		}
@@ -532,7 +532,7 @@ export async function addTaskComment(taskId: string, userId: string, content: st
 			 WHERE id = $3`,
 			[JSON.stringify(comment), comment.creation, taskId]
 		);
-		await logTaskActivity(client, taskId, userId, 'yorum');
+		await logTaskActivity(client, taskId, userId, 'comment');
 		return comment;
 	});
 }
@@ -593,12 +593,12 @@ export async function unassignTeamMemberTasks(
 ): Promise<void> {
 	const open = await db.query(
 		`UPDATE team_tasks SET assignee_id = NULL, updated_at = $3
-		 WHERE team_id = $1 AND assignee_id = $2 AND status <> 'tamamlandi'
+		 WHERE team_id = $1 AND assignee_id = $2 AND status <> 'done'
 		 RETURNING id`,
 		[teamId, userId, Date.now()]
 	);
 	for (const row of open.rows) {
-		await logTaskActivity(db, row.id as string, actorId, 'atandi', {
+		await logTaskActivity(db, row.id as string, actorId, 'assigned', {
 			from: userId,
 			to: null,
 		});
@@ -615,12 +615,12 @@ export async function getUserNewAssignments(userId: string, since: number): Prom
 		 CROSS JOIN LATERAL jsonb_array_elements(COALESCE(tg.activities, '[]'::jsonb)) AS elem
 		 JOIN teams t ON t.id = tg.team_id
 		 LEFT JOIN users k ON k.id = (elem->>'actorId')
-		 WHERE elem->>'typeValue' = 'atandi'
+		 WHERE elem->>'typeValue' = 'assigned'
 		   AND (elem->'detail'->>'to') = $1
 		   AND ((elem->>'actorId') IS NULL OR (elem->>'actorId') <> $1)
 		   AND COALESCE((elem->>'creation')::bigint, 0) >= $2
 		   AND tg.assignee_id = $1
-		   AND tg.status <> 'tamamlandi'
+		   AND tg.status <> 'done'
 		 ORDER BY tg.id, COALESCE((elem->>'creation')::bigint, 0) DESC`,
 		[userId, since]
 	);

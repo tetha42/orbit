@@ -94,7 +94,7 @@ export function KanbanCard({
 		<article
 			data-focus-id={`task:${task.id}`}
 			data-task-id={task.id}
-			className={`${styles.card} ${dragId === task.id ? styles.cardDragging : ''} ${task.status === 'tamamlandi' ? styles.cardDone : ''}`}
+			className={`${styles.card} ${dragId === task.id ? styles.cardDragging : ''} ${task.status === 'done' ? styles.cardDone : ''}`}
 			style={{ '--prio': prio.color, cursor: canWork ? 'grab' : 'pointer' } as React.CSSProperties}
 			draggable={canWork}
 			tabIndex={0}

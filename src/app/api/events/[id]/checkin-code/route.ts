@@ -12,12 +12,12 @@ export const dynamic = 'force-dynamic';
  * minted in advance and passed around.
  */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
-	const auth = await requireApp(request, 'events', 'yonet');
+	const auth = await requireApp(request, 'events', 'manage');
 	if (!auth.authorized) return auth.response;
 	const { id } = await params;
 	const ev = await getEventById(id);
 	if (!ev) return NextResponse.json({ error: 'CommunityEvent bulunamadı.' }, { status: 404 });
-	if (ev.status !== 'yayinda' || !Number(ev.attendanceOpen)) {
+	if (ev.status !== 'published' || !Number(ev.attendanceOpen)) {
 		return NextResponse.json({ error: 'Önce yoklamayı açın.', code: 'YOKLAMA_KAPALI' }, { status: 409 });
 	}
 	const now = Date.now();

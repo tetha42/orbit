@@ -26,13 +26,13 @@ export const SYSTEM_SETTINGS_DEFAULTS: Record<string, string> = {
 	signatory_2_name: process.env.CLUB_ADVISOR_NAME || '',
 	signatory_2_title: process.env.CLUB_ADVISOR_TITLE || 'Studio Coordinator',
 	// Fallback mappings for legacy callers
-	club_Name: process.env.CLUB_NAME || process.env.COMMUNITY_NAME || 'Orbit Community',
+	club_name: process.env.CLUB_NAME || process.env.COMMUNITY_NAME || 'Orbit Community',
 	club_domain: process.env.CLUB_DOMAIN || process.env.COMMUNITY_DOMAIN || 'orbit.local',
 	university: process.env.CLUB_UNIVERSITY || process.env.COMMUNITY_PARENT || 'tetha42',
-	signature1_Name: process.env.CLUB_PRESIDENT_NAME || '',
-	signature1_Rank: process.env.CLUB_PRESIDENT_TITLE || 'Community Leader',
-	signature2_Name: process.env.CLUB_ADVISOR_NAME || '',
-	signature2_Rank: process.env.CLUB_ADVISOR_TITLE || 'Studio Coordinator',
+	signature1_name: process.env.CLUB_PRESIDENT_NAME || '',
+	signature1_rank: process.env.CLUB_PRESIDENT_TITLE || 'Community Leader',
+	signature2_name: process.env.CLUB_ADVISOR_NAME || '',
+	signature2_rank: process.env.CLUB_ADVISOR_TITLE || 'Studio Coordinator',
 };
 
 /**
@@ -72,13 +72,13 @@ export const MEMBER_ROSTER_SQL = `
 		(
 			SELECT STRING_AGG(DISTINCT t.name, ', ' ORDER BY t.name)
 			FROM teams t
-			LEFT JOIN team_members tu ON tu.team_id = t.id AND (tu.status = 'aktif' OR tu.status = 'active' OR tu.status IS NULL)
+			LEFT JOIN team_members tu ON tu.team_id = t.id AND (tu.status = 'active' OR tu.status = 'active' OR tu.status IS NULL)
 			WHERE tu.user_id = k.id OR t.lead_id = k.id
 		) AS "teamName",
 		(
 			SELECT STRING_AGG(DISTINCT t.name, ', ' ORDER BY t.name)
 			FROM teams t
-			LEFT JOIN team_members tu ON tu.team_id = t.id AND (tu.status = 'aktif' OR tu.status = 'active' OR tu.status IS NULL)
+			LEFT JOIN team_members tu ON tu.team_id = t.id AND (tu.status = 'active' OR tu.status = 'active' OR tu.status IS NULL)
 			WHERE tu.user_id = k.id OR t.lead_id = k.id
 		) AS "teamName",
 		(
@@ -106,7 +106,7 @@ export const MEMBER_ROSTER_SQL = `
 				FROM teams t
 				LEFT JOIN team_members tu ON tu.team_id = t.id
 					AND tu.user_id = k.id
-					AND (tu.status = 'aktif' OR tu.status = 'active' OR tu.status IS NULL)
+					AND (tu.status = 'active' OR tu.status = 'active' OR tu.status IS NULL)
 				WHERE tu.user_id = k.id OR t.lead_id = k.id
 				ORDER BY t.id, (t.lead_id = k.id) DESC, tu.joined_at ASC NULLS LAST
 			) x
@@ -131,7 +131,7 @@ export const MEMBER_ROSTER_SQL = `
 				FROM teams t
 				LEFT JOIN team_members tu ON tu.team_id = t.id
 					AND tu.user_id = k.id
-					AND (tu.status = 'aktif' OR tu.status = 'active' OR tu.status IS NULL)
+					AND (tu.status = 'active' OR tu.status = 'active' OR tu.status IS NULL)
 				WHERE tu.user_id = k.id OR t.lead_id = k.id
 				ORDER BY t.id, (t.lead_id = k.id) DESC, tu.joined_at ASC NULLS LAST
 			) x
@@ -185,7 +185,7 @@ export interface User {
 	profilePhoto?: string;
 	bio?: string;
 	xp: number;
-	status: 'active' | 'pending' | 'suspended' | 'alumni' | 'rejected' | 'aktif' | 'beklemede' | 'reddedildi' | 'mezun';
+	status: 'active' | 'pending' | 'suspended' | 'alumni' | 'rejected';
 	createdAt?: number;
 	creation?: number;
 	preferredLanguage?: 'tr' | 'en';
@@ -225,9 +225,9 @@ export interface Team {
 	capacity: number;
 	activeMemberCount?: number;
 	repoUrl?: string;
-	status: 'aktif' | 'tamamlandi' | 'askida';
+	status: 'active' | 'done' | 'suspended';
 	/** `acik`: join at once; `onayli`: apply, and the captain decides. */
-	participationType?: 'acik' | 'onayli';
+	participationType?: 'open' | 'approval';
 	/** `working_group` (default) or the decision body `committee`. */
 	type?: 'working_group' | 'committee';
 	/** Quorum for a committee, 0 when unspecified. */
@@ -242,7 +242,7 @@ export interface TeamMember {
 	userNameSurname?: string;
 	userDepartment?: string;
 	teamRole: string;
-	status: 'aktif' | 'basvurdu';
+	status: 'active' | 'applied';
 	/** What the applicant wrote with an application. */
 	applicationNote?: string | null;
 	participationDate: number;
@@ -286,7 +286,7 @@ export interface TeamTaskItem {
 	id: string;
 	taskId: string;
 	text: string;
-	doneMi: number;
+	isDone: number;
 	order: number;
 	creation: number;
 }
@@ -306,13 +306,13 @@ export interface TeamTaskComment {
  * a small JSON object whose shape depends on `tur` (e.g. `{ "from": "suruyor", "to": "inceleme" }`).
  */
 export type TaskActivityType =
-	| 'olusturuldu'
-	| 'tasindi'
-	| 'duzenlendi'
-	| 'atandi'
-	| 'madde_eklendi'
-	| 'madde_tamamlandi'
-	| 'yorum';
+	| 'created'
+	| 'moved'
+	| 'edited'
+	| 'assigned'
+	| 'item_added'
+	| 'item_completed'
+	| 'comment';
 
 export interface TeamTaskActivity {
 	id: string;
@@ -354,14 +354,14 @@ export interface CommunityEvent {
 	id: string;
 	slug: string;
 	title: string;
-	typeValue: 'atolye' | 'seminer' | 'yarisma' | 'toplanti';
+	typeValue: 'workshop' | 'seminar' | 'competition' | 'meeting';
 	description: string;
 	location: string;
 	start: number;
 	endTime: number;
 	capacity: number;
 	registeredCount?: number;
-	status: 'taslak' | 'yayinda' | 'tamamlandi' | 'iptal';
+	status: 'draft' | 'published' | 'done' | 'cancelled';
 	creatorId: string;
 	ownerTeamId?: string | null;
 	ownerUserId?: string | null;
@@ -375,14 +375,14 @@ export interface Attendance {
 	id: string;
 	eventId: string;
 	userId: string;
-	method: 'qr' | 'manuel';
+	method: 'qr' | 'manual';
 	participationTime: number;
 }
 
 export interface BudgetRecord {
 	id: string;
 	date: number;
-	typeValue: 'gelir' | 'gider';
+	typeValue: 'income' | 'expense';
 	category: BudgetRecordCategory;
 	amountMinor: number; // Kuruş cinsinden (150000 = 1.500,00 TL)
 	description: string;
@@ -423,8 +423,8 @@ export interface Decision {
 	date: number;
 	agenda: string;
 	content: string; // Markdown destekli karar metni
-	publicOpenMi: number; // 1: Üyeler görebilir, 0: Sadece YK
-	lockedMi: number;
+	isPublicOpen: number; // 1: Üyeler görebilir, 0: Sadece YK
+	isLocked: number;
 	creatorId: string;
 	creatorNameSurname?: string;
 	creation: number;
@@ -447,7 +447,7 @@ export interface NewsItem {
 	summary: string;
 	content: string;
 	category: string;
-	importantMi: number;
+	isImportant: number;
 	imageUrl?: string;
 	/** Who can read it: `taslak` (management), `uyeler` (signed-in members), `yayinda` (everyone). */
 	publishStatus: NewsVisibility;
@@ -497,9 +497,9 @@ export interface UserNote {
 	title: string;
 	content: string;
 	color?: string;
-	pinnedMi?: boolean;
+	isPinned?: boolean;
 	folderId?: string;
-	trashedMi?: boolean;
+	isTrashed?: boolean;
 	update: number;
 	creation: number;
 }
@@ -575,7 +575,7 @@ export interface Project {
 	oneLeaving: number;
 	likeCount?: number;
 	/** Whether the member asking has starred it. */
-	iLikedMi?: boolean;
+	likedByMe?: boolean;
 	creation: number;
 	update: number;
 }

@@ -188,22 +188,22 @@
 	letter-spacing: 0.02em;
 }
 
-.b_saglam {
+.b_available {
 	color: var(--green);
 	background: color-mix(in srgb, #30d158 15%, transparent);
 }
 
-.b_oduncte {
+.b_on_loan {
 	color: var(--orange);
 	background: color-mix(in srgb, #ff9f0a 16%, transparent);
 }
 
-.b_arizali {
+.b_faulty {
 	color: var(--red);
 	background: color-mix(in srgb, #ff453a 14%, transparent);
 }
 
-.b_kayip {
+.b_lost {
 	color: var(--gray);
 	background: var(--fill-soft);
 }

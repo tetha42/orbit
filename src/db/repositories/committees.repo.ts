@@ -48,7 +48,7 @@ export async function listCommittees(): Promise<Team[]> {
 		        t.capacity AS "capacity", t.repo_url AS "repoUrl", t.status, t.join_policy AS "participationType",
 		        t.type, t.quorum, t.created_at AS "creation",
 		        k.first_name || ' ' || k.last_name AS "leaderNameSurname",
-		        (SELECT COUNT(*) FROM team_members tu WHERE tu.team_id = t.id AND tu.status = 'aktif')::int AS "activeMemberCount"
+		        (SELECT COUNT(*) FROM team_members tu WHERE tu.team_id = t.id AND tu.status = 'active')::int AS "activeMemberCount"
 		 FROM teams t LEFT JOIN users k ON k.id = t.lead_id
 		 WHERE t.type = 'committee'
 		 ORDER BY t.created_at DESC`
@@ -67,7 +67,7 @@ export async function getCommitteeDetail(id: string): Promise<CommitteeDetail | 
 			        k.department AS "userDepartment", k.avatar_url AS "userProfilePhoto",
 			        tu.voting_right AS "votingRight", tu.term_start AS "termStart", tu.term_end AS "termEnd"
 			 FROM team_members tu JOIN users k ON tu.user_id = k.id
-			 WHERE tu.team_id = $1 AND tu.status = 'aktif'
+			 WHERE tu.team_id = $1 AND tu.status = 'active'
 			 ORDER BY tu.voting_right DESC, tu.joined_at ASC`,
 			[id]
 		),
@@ -78,7 +78,7 @@ export async function getCommitteeDetail(id: string): Promise<CommitteeDetail | 
 		),
 		getPgPool().query(
 			`SELECT d.id, d.reference_no AS "decisionNo", d.record_type AS "documentType", d.title AS "title", d.date,
-			        d.agenda AS "agenda", d.content AS "content", d.is_public AS "publicOpenMi", d.is_locked AS "lockedMi",
+			        d.agenda AS "agenda", d.content AS "content", d.is_public AS "isPublicOpen", d.is_locked AS "isLocked",
 			        d.created_by AS "creatorId", d.created_at AS "creation",
 			        d.body_id, d.body_id AS "bodyId",
 			        d.decision_type, d.decision_type AS "decisionType",
@@ -101,8 +101,8 @@ export async function getCommitteeDetail(id: string): Promise<CommitteeDetail | 
 		meetings: meetings.rows.map(mapMeeting),
 		decisions: decisions.rows.map((row) => ({
 			...row,
-			publicOpenMi: Number(row.publicOpenMi),
-			lockedMi: Number(row.lockedMi),
+			isPublicOpen: Number(row.isPublicOpen),
+			isLocked: Number(row.isLocked),
 		})) as Decision[],
 	};
 }
@@ -118,7 +118,7 @@ export async function createCommittee(input: {
 	return createTeam({
 		...input,
 		type: 'committee',
-		participationType: 'onayli',
+		participationType: 'approval',
 	});
 }
 
@@ -137,9 +137,9 @@ export async function addCommitteeMember(input: {
 	const id = `tu_${randomUUID().replace(/-/g, '').slice(0, 14)}`;
 	const res = await getPgPool().query(
 		`INSERT INTO team_members (id, team_id, user_id, role_title, status, joined_at, voting_right, term_start, term_end)
-		 VALUES ($1, $2, $3, $4, 'aktif', $5, $6, $7, $8)
+		 VALUES ($1, $2, $3, $4, 'active', $5, $6, $7, $8)
 		 ON CONFLICT (team_id, user_id) DO UPDATE SET
-			role_title = EXCLUDED.role_title, status = 'aktif',
+			role_title = EXCLUDED.role_title, status = 'active',
 			voting_right = EXCLUDED.voting_right, term_start = EXCLUDED.term_start, term_end = EXCLUDED.term_end`,
 		[
 			id,

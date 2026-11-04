@@ -101,9 +101,9 @@ const reader = await login(U.reader.email, U.reader.password);
 // ---- session carries the role ------------------------------------------------
 {
 	const me = (await reader.call('GET', '/api/auth/me')).json.user;
-	ok(me.roleInfo?.name === 'Sadece Haberler' && me.permissions.news === 'kullan' && !me.permissions.events && me.admin === false, 'okur: session has role + permissions');
+	ok(me.roleInfo?.name === 'Sadece Haberler' && me.permissions.news === 'use' && !me.permissions.events && me.admin === false, 'okur: session has role + permissions');
 	const am = (await admin.call('GET', '/api/auth/me')).json.user;
-	ok(am.admin === true && am.permissions.budget === 'yonet' && am.twoFactorRequired && !am.mustSetup2fa, 'admin: full permissions, 2FA enrolled');
+	ok(am.admin === true && am.permissions.budget === 'manage' && am.twoFactorRequired && !am.mustSetup2fa, 'admin: full permissions, 2FA enrolled');
 }
 
 // ---- per-app reads ------------------------------------------------------------
@@ -137,9 +137,9 @@ ok((await st(zeynep, 'POST', '/api/terminal/session', {})) === 403, 'kurul (term
 	ok((await st(ege, 'GET', '/api/budget')) === 403, 'captain → general kasa 403');
 	const own = (await ege.call('GET', `/api/budget?teamId=${teamId}`)).json;
 	ok(own?.permission?.write === true && own.permission.manage === false, 'captain may write own kasa, not transfer');
-	ok((await st(ege, 'POST', '/api/budget', { teamId: teamId, typeValue: 'gelir', category: 'Diğer', amountMinor: 1000, description: 'Kaptan geliri' })) < 300, 'captain adds income to own kasa');
-	ok((await st(ege, 'POST', '/api/budget', { typeValue: 'gelir', category: 'Diğer', amountMinor: 1000, description: 'Genel kasaya' })) === 403, 'captain → general kasa write 403');
-	ok((await st(ege, 'POST', '/api/budget', { action: 'aktar', source: null, target: teamId, amountMinor: 100, description: 'aktarım' })) === 403, 'captain → transfer 403');
+	ok((await st(ege, 'POST', '/api/budget', { teamId: teamId, typeValue: 'income', category: 'Diğer', amountMinor: 1000, description: 'Kaptan geliri' })) < 300, 'captain adds income to own kasa');
+	ok((await st(ege, 'POST', '/api/budget', { typeValue: 'income', category: 'Diğer', amountMinor: 1000, description: 'Genel kasaya' })) === 403, 'captain → general kasa write 403');
+	ok((await st(ege, 'POST', '/api/budget', { action: 'transfer', source: null, target: teamId, amountMinor: 100, description: 'aktarım' })) === 403, 'captain → transfer 403');
 	const z = (await zeynep.call('GET', '/api/budget')).json;
 	ok(z?.permission?.write === true && z.permission.manage === true, 'kurul manages general kasa');
 }
@@ -150,15 +150,15 @@ ok((await st(zeynep, 'POST', '/api/terminal/session', {})) === 403, 'kurul (term
 	const reg = await pend.call('POST', '/api/auth/register', { name: 'Bekleyen', surname: 'Aday', email: `aday${Date.now()}@kulup.test`, password: 'Aday-Sifre-2026!', department: 'İşletme', grade: 1 });
 	ok(reg.status < 300, 'registration accepted', JSON.stringify(reg.json));
 	const asMember = (await can.call('GET', '/api/members')).json.members;
-	ok(asMember.every((m) => m.status === 'aktif' || m.status === 'mezun'), 'üye does not see applications');
+	ok(asMember.every((m) => m.status === 'active' || m.status === 'alumni'), 'üye does not see applications');
 	const asManager = (await zeynep.call('GET', '/api/members')).json.members;
-	const candidate = asManager.find((m) => m.name === 'Bekleyen' && m.status === 'beklemede');
+	const candidate = asManager.find((m) => m.name === 'Bekleyen' && m.status === 'pending');
 	ok(!!candidate && candidate.roleId === null, 'kurul sees the pending applicant (no role yet)');
-	ok((await st(can, 'POST', '/api/admin/approve', { userId: candidate?.id, action: 'onayla' })) === 403, 'üye cannot approve');
-	ok((await st(zeynep, 'POST', '/api/admin/approve', { userId: candidate?.id, action: 'onayla' })) === 200, 'kurul approves');
+	ok((await st(can, 'POST', '/api/admin/approve', { userId: candidate?.id, action: 'approve' })) === 403, 'üye cannot approve');
+	ok((await st(zeynep, 'POST', '/api/admin/approve', { userId: candidate?.id, action: 'approve' })) === 200, 'kurul approves');
 	const after = (await admin.call('GET', '/api/members')).json.members.find((m) => m.id === candidate?.id);
-	ok(after?.status === 'aktif' && after.roleId === R.member && after.roleName === 'Üye', 'approved member gets the default role');
-	ok((await st(zeynep, 'POST', '/api/admin/approve', { userId: candidate?.id, action: 'reddet' })) === 409, 'approval endpoint refuses non-pending accounts');
+	ok(after?.status === 'active' && after.roleId === R.member && after.roleName === 'Üye', 'approved member gets the default role');
+	ok((await st(zeynep, 'POST', '/api/admin/approve', { userId: candidate?.id, action: 'reject' })) === 409, 'approval endpoint refuses non-pending accounts');
 }
 
 // ---- roles: who may manage them, escalation, admin role ----------------------
@@ -168,19 +168,19 @@ ok((await st(zeynep, 'POST', '/api/terminal/session', {})) === 403, 'kurul (term
 	ok(zr.json.roles.find((r) => r.id === 'role_admin')?.assignable === false, 'kurul may not hand out Admin');
 	ok((await st(zeynep, 'POST', '/api/roles', { name: 'Yeni', color: '#30d158', permissions: {} })) === 403, 'settings:kullan cannot create roles');
 	ok((await st(can, 'GET', '/api/roles')) === 403, 'üye cannot list roles');
-	ok((await st(zeynep, 'PATCH', '/api/members', { id: U.ege.id, roleId: 'rol_admin' })) === 403, 'kurul cannot make someone admin');
+	ok((await st(zeynep, 'PATCH', '/api/members', { id: U.ege.id, roleId: 'role_admin' })) === 403, 'kurul cannot make someone admin');
 	ok((await st(zeynep, 'PATCH', '/api/members', { id: U.can.id, roleId: R.management })) === 200, 'kurul may give an equal role');
 	ok((await st(zeynep, 'PATCH', '/api/members', { id: U.can.id, roleId: R.member })) === 200, '…and take it back');
 	const adminId = (await admin.call('GET', '/api/auth/me')).json.user.id;
 	ok((await st(zeynep, 'DELETE', `/api/members?id=${adminId}`)) === 403, 'kurul cannot delete the admin');
-	ok((await st(zeynep, 'PATCH', '/api/members', { id: adminId, status: 'mezun' })) === 403, 'kurul cannot deactivate the admin');
+	ok((await st(zeynep, 'PATCH', '/api/members', { id: adminId, status: 'alumni' })) === 403, 'kurul cannot deactivate the admin');
 	ok((await st(admin, 'PATCH', '/api/members', { id: adminId, roleId: R.member })) === 409, 'last admin cannot drop the role');
-	ok((await st(admin, 'PATCH', '/api/members', { id: adminId, status: 'mezun' })) === 409, 'last admin cannot be deactivated');
+	ok((await st(admin, 'PATCH', '/api/members', { id: adminId, status: 'alumni' })) === 409, 'last admin cannot be deactivated');
 	ok((await st(admin, 'DELETE', `/api/members?id=${adminId}`)) === 400, 'admin cannot delete self');
-	ok((await st(admin, 'PATCH', '/api/roles', { id: 'rol_admin', name: 'X', color: '#000000', permissions: {} })) === 409, 'Admin role is fixed');
-	ok((await st(admin, 'DELETE', '/api/roles', { id: 'rol_admin' })) === 409, 'Admin role cannot be deleted');
+	ok((await st(admin, 'PATCH', '/api/roles', { id: 'role_admin', name: 'X', color: '#000000', permissions: {} })) === 409, 'Admin role is fixed');
+	ok((await st(admin, 'DELETE', '/api/roles', { id: 'role_admin' })) === 409, 'Admin role cannot be deleted');
 	ok((await st(admin, 'POST', '/api/roles', { name: 'üye', color: '#000000', permissions: {} })) === 409, 'role names are unique (case-insensitive)');
-	ok((await st(admin, 'POST', '/api/roles', { name: 'Kötü', color: '#000000', permissions: { hack: 'yonet' } })) === 400, 'unknown app rejected');
+	ok((await st(admin, 'POST', '/api/roles', { name: 'Kötü', color: '#000000', permissions: { hack: 'manage' } })) === 400, 'unknown app rejected');
 	ok((await st(admin, 'POST', '/api/roles', { action: 'setDefault', roleId: 'role_admin' })) === 400, 'Admin cannot be the default role');
 }
 
@@ -205,8 +205,8 @@ ok((await st(zeynep, 'POST', '/api/terminal/session', {})) === 403, 'kurul (term
 	ok((await st(zeynep, 'GET', '/api/messages')) === 200, 'kurul (mail: yonet) reads mail');
 	ok((await st(can, 'GET', '/api/messages')) === 200, 'üye (mail: kullan) reads mail');
 	ok((await st(reader, 'POST', '/api/messages', { subject: 'x', body: 'y', recipients: [U.can.id] })) === 403, 'okur (mail yok) cannot send');
-	ok((await st(reader, 'PATCH', '/api/messages/baska', { action: 'okundu' })) === 403, 'okur → mail thread action 403');
-	const lookup = (await can.call('GET', `/api/messages/recipients?q=${encodeURIComponent('okur')}`)).json?.recipients ?? [];
+	ok((await st(reader, 'PATCH', '/api/messages/baska', { action: 'read' })) === 403, 'okur → mail thread action 403');
+	const lookup = (await can.call('GET', `/api/messages/recipients?q=${encodeURIComponent('reader')}`)).json?.recipients ?? [];
 	const readerHit = lookup.find((a) => a.id === U.reader.id);
 	ok(!!readerHit && readerHit.reachable === false && Object.keys(readerHit).sort().join() === 'ad,id,soyad,ulasilabilir', 'recipient lookup: id and name only, flags a role without Mail');
 	// Finding people: by name, e-mail (from its start), department and student number; the answer is names only.
@@ -249,8 +249,8 @@ ok((await st(zeynep, 'POST', '/api/terminal/session', {})) === 403, 'kurul (term
 	ok((await found(zeynep)).includes('message') && !(await found(ege)).includes('message') && !(await found(reader)).includes('message'), 'search finds only your own conversations');
 	// Tidy: each side trashes and removes its copy.
 	for (const c of [can, zeynep]) {
-		await c.call('PATCH', `/api/messages/${id}`, { action: 'cope' });
-		await c.call('PATCH', `/api/messages/${id}`, { action: 'sil' });
+		await c.call('PATCH', `/api/messages/${id}`, { action: 'trash' });
+		await c.call('PATCH', `/api/messages/${id}`, { action: 'delete' });
 	}
 }
 
@@ -259,11 +259,11 @@ ok((await st(zeynep, 'POST', '/api/terminal/session', {})) === 403, 'kurul (term
 	const roles = (await admin.call('GET', '/api/roles')).json.roles;
 	const news = roles.find((r) => r.id === R.news);
 	const edit = (permissions) => admin.call('PATCH', '/api/roles', { id: news.id, name: news.name, color: news.color, description: news.description, twoStepRequired: false, permissions });
-	ok((await edit({ news: 'kullan', events: 'kullan', settings: 'kullan' })).status === 200, 'admin adds Etkinlikler to the role');
+	ok((await edit({ news: 'use', events: 'use', settings: 'use' })).status === 200, 'admin adds Etkinlikler to the role');
 	await new Promise((r) => setTimeout(r, 5500)); // permission cache TTL
 	ok((await st(reader, 'GET', '/api/events')) === 200, 'okur now reads events (same session)');
-	ok((await reader.call('GET', '/api/auth/me')).json.user.permissions.events === 'kullan', 'session payload updated');
-	await edit({ news: 'kullan', settings: 'kullan' });
+	ok((await reader.call('GET', '/api/auth/me')).json.user.permissions.events === 'use', 'session payload updated');
+	await edit({ news: 'use', settings: 'use' });
 	await new Promise((r) => setTimeout(r, 5500));
 	ok((await st(reader, 'GET', '/api/events')) === 403, 'and loses it again');
 }

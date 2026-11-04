@@ -85,7 +85,7 @@ export function useNotes() {
 							loadedNotes = serverNotes.map((sn: ServerNoteRecord) => {
 								let parsedBody = sn.content || '';
 								let folderId = sn.folderId || sn.color || 'quick';
-								let isDeleted = Boolean(sn.trashedMi);
+								let isDeleted = Boolean(sn.isTrashed);
 
 								if (typeof sn.content === 'string' && sn.content.startsWith('{') && sn.content.includes('"body"')) {
 									try {
@@ -103,7 +103,7 @@ export function useNotes() {
 									title: sn.title || t('notesUntitledNote'),
 									body: parsedBody,
 									folderId,
-									isPinned: Boolean(sn.pinnedMi),
+									isPinned: Boolean(sn.isPinned),
 									isDeleted,
 									createdAt: Number(sn.creation) || Date.now(),
 									updatedAt: Number(sn.update) || Date.now(),
@@ -162,8 +162,8 @@ export function useNotes() {
 				content: note.body,
 				folderId: note.folderId,
 				color: note.folderId,
-				pinnedMi: note.isPinned,
-				trashedMi: Boolean(note.isDeleted),
+				isPinned: note.isPinned,
+				isTrashed: Boolean(note.isDeleted),
 			};
 
 			const res = await fetch('/api/notes', {

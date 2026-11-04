@@ -21,13 +21,13 @@ export function ChatRoomList({ rooms, activeRoomId, onSelectRoom }: ChatRoomList
 		return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 	};
 
-	const generalRooms = rooms.filter((r) => r.typeValue !== 'takim' && r.typeValue !== 'ozel');
-	const teamRooms = rooms.filter((r) => r.typeValue === 'takim');
-	const customRooms = rooms.filter((r) => r.typeValue === 'ozel');
+	const generalRooms = rooms.filter((r) => r.typeValue !== 'team' && r.typeValue !== 'private');
+	const teamRooms = rooms.filter((r) => r.typeValue === 'team');
+	const customRooms = rooms.filter((r) => r.typeValue === 'private');
 
 	const renderRoomItem = (room: ChatRoomItem) => {
 		const isActive = room.id === activeRoomId;
-		const isGroupDm = room.typeValue === 'ozel' && (room.memberCount || 0) > 2;
+		const isGroupDm = room.typeValue === 'private' && (room.memberCount || 0) > 2;
 
 		return (
 			<button
@@ -44,9 +44,9 @@ export function ChatRoomList({ rooms, activeRoomId, onSelectRoom }: ChatRoomList
 							alt={room.name}
 							style={{ width: '100%', height: '100%', objectFit: 'cover' }}
 						/>
-					) : room.typeValue === 'takim' || isGroupDm ? (
+					) : room.typeValue === 'team' || isGroupDm ? (
 						<Users size={18} />
-					) : room.typeValue === 'ozel' ? (
+					) : room.typeValue === 'private' ? (
 						<span style={{ fontSize: '13px', fontWeight: 700 }}>
 							{(room.name || '?').slice(0, 1).toUpperCase()}
 						</span>

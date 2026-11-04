@@ -82,7 +82,7 @@ export function TeamChatEmbed({ teamId, teamName }: TeamChatEmbedProps) {
 			activeRoom ||
 			rooms.find((r) => r.id === targetRoomId) || {
 				id: targetRoomId,
-				typeValue: 'takim' as const,
+				typeValue: 'team' as const,
 				name: `${teamName} ${t('chatTeamChatSuffix')}`,
 				teamId,
 				creation: 0,

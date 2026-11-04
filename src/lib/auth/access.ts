@@ -60,18 +60,18 @@ export async function authenticateEnrolled(request: Request): Promise<AccessResu
 }
 
 /** `can(user, 'events', 'manage')` — the role's level, and the second factor where required. */
-export function can(user: AuthorizedUser, appId: string, level: PermissionLevel | 'kullan' | 'yonet' = 'use'): boolean {
+export function can(user: AuthorizedUser, appId: string, level: PermissionLevel | 'use' | 'manage' = 'use'): boolean {
 	if (twoStepPending(user)) return false;
-	const permissions = user.permission.permissions ?? user.permission.permissions;
-	return level === 'manage' || level === 'yonet' ? canManage(permissions, appId) : canUse(permissions, appId);
+	const permissions = user.permission.permissions;
+	return level === 'manage' ? canManage(permissions, appId) : canUse(permissions, appId);
 }
 
-export async function requireApp(request: Request, appId: string, level: PermissionLevel | 'kullan' | 'yonet' = 'use'): Promise<AccessResult> {
+export async function requireApp(request: Request, appId: string, level: PermissionLevel | 'use' | 'manage' = 'use'): Promise<AccessResult> {
 	const auth = await authenticateEnrolled(request);
 	if (!auth.authorized) return auth;
 	const user = auth.user;
-	const permissions = user.permission.permissions ?? user.permission.permissions;
-	const isManage = level === 'manage' || level === 'yonet';
+	const permissions = user.permission.permissions;
+	const isManage = level === 'manage';
 	const ok = isManage ? canManage(permissions, appId) : canUse(permissions, appId);
 	if (!ok) {
 		const name = isPermissionApp(appId) ? PERMISSION_DESCRIPTIONS[appId].name : appId;
@@ -87,7 +87,7 @@ export async function requireApp(request: Request, appId: string, level: Permiss
 					appId,
 					requiredLevel: isManage ? 'manage' : 'use',
 					currentLevel: has,
-					role: user.permission.role?.name ?? user.permission.role?.name ?? null,
+					role: user.permission.role?.name ?? null,
 				},
 				userId: user.id,
 				ip,

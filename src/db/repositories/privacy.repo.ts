@@ -109,7 +109,7 @@ export async function exportCommunityData(): Promise<CommunityExport> {
 export async function anonymizeMember(
 	userId: string,
 	audit: AuditContext
-): Promise<'ok' | 'yok' | 'admin'> {
+): Promise<'ok' | 'none' | 'admin'> {
 	await ensurePostgresInit();
 	return withTransaction(async (client) => {
 		const target = await client.query(
@@ -119,8 +119,8 @@ export async function anonymizeMember(
 			[userId]
 		);
 		const user = target.rows[0];
-		if (!user) return 'yok';
-		if (String(user.role_id ?? user.roleId ?? '') === 'rol_admin') return 'admin';
+		if (!user) return 'none';
+		if (String(user.role_id ?? user.roleId ?? '') === 'role_admin') return 'admin';
 
 		const suffix = randomUUID().replace(/-/g, '').slice(0, 12);
 		const email = `anon_${suffix}@anonymized.invalid`;
@@ -145,7 +145,7 @@ export async function anonymizeMember(
 			`UPDATE users SET
 				first_name = 'Anonim', last_name = 'Üye', email = $2, handle = $3,
 				password_hash = $4, email_verified_at = NULL, avatar_url = NULL, bio = NULL,
-				department = '—', grade = 1, role_id = NULL, status = 'reddedildi',
+				department = '—', grade = 1, role_id = NULL, status = 'rejected',
 				custom_fields = '{}'::jsonb, workspace_state = '{}'::jsonb, oauth_consents = '{}'::jsonb,
 				legal_consents = $5::jsonb, application_history = $6::jsonb,
 				session_token = NULL, session_expires_at = NULL, last_login_at = NULL,
@@ -174,7 +174,7 @@ export async function anonymizeMember(
 				handle: user.handle ? String(user.handle) : null,
 				status: String(user.status),
 			},
-			after: { name: 'Anonim Üye', status: 'reddedildi', anonymizedAt: now },
+			after: { name: 'Anonim Üye', status: 'rejected', anonymizedAt: now },
 		});
 		return 'ok';
 	});

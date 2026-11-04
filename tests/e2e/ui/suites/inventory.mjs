@@ -13,7 +13,7 @@ export default async function suite(t) {
 	const zeynep = await t.api('zeynep');
 	const can = await t.api('can');
 	const ege = await t.api('ege');
-	const reader = await t.api('okur');
+	const reader = await t.api('reader');
 	const tag = uniq().toUpperCase();
 	const CODE = `E2E-${tag}`;
 	const CODE_2 = `E2E-${tag}-B`;
@@ -49,7 +49,7 @@ export default async function suite(t) {
 		t.check(it, 'eşya API listesinde (kod büyük harfle kaydedildi)');
 		id = it?.id ?? null;
 		if (id) ids.push(id);
-		t.eq(it?.status, 'saglam', 'yeni eşya müsait');
+		t.eq(it?.status, 'available', 'yeni eşya müsait');
 		t.eq(it?.location, 'E2E Test Rafı', 'konum kaydedildi');
 		t.includes((await card(zWin).textContent()).toLocaleLowerCase('tr'), 'müsait', 'kart "Müsait" diyor');
 		await t.shot(zPage, 'eşya-eklendi');
@@ -70,7 +70,7 @@ export default async function suite(t) {
 		await m.getByRole('button', { name: 'Ödünç Al' }).click();
 		await card(cWin).getByText('Sende').waitFor();
 		const it = await item();
-		t.eq(it?.status, 'oduncte', 'eşya ödünçte');
+		t.eq(it?.status, 'on_loan', 'eşya ödünçte');
 		t.eq(it?.loanFieldId, t.fx.users.can.id, 'ödünç alan Can');
 		const days = Math.round((it.returnDate - Date.now()) / DAY);
 		t.check(days >= 13 && days <= 15, `varsayılan süre 14 gün (${days})`);
@@ -130,7 +130,7 @@ export default async function suite(t) {
 		t.eq(await popup.locator('.label img').count(), 1, 'etikette karekod görseli var');
 		await popup.close();
 		const hist = (await zeynep.get(`/api/envanter?gecmis=${encodeURIComponent(id)}`)).json.movements.map((h) => h.typeValue);
-		for (const typeValue of ['ekle', 'odunc', 'extend']) t.includes(hist, typeValue, `geçmişte "${typeValue}" kaydı var`);
+		for (const typeValue of ['add', 'loan', 'extend']) t.includes(hist, typeValue, `geçmişte "${typeValue}" kaydı var`);
 		await detail.getByRole('button', { name: 'Kapat' }).click();
 	});
 
@@ -142,14 +142,14 @@ export default async function suite(t) {
 		await m.getByRole('textbox').fill('Kanal 2 probu sinyal vermiyor');
 		await m.getByRole('button', { name: 'İade Et' }).click();
 		await m.waitFor({ state: 'detached' });
-		await t.waitFor(async () => (await item())?.status === 'arizali');
+		await t.waitFor(async () => (await item())?.status === 'faulty');
 		const it = await item();
-		t.eq(it?.status, 'arizali', 'arıza bildirilen eşya "arızalı"');
+		t.eq(it?.status, 'faulty', 'arıza bildirilen eşya "arızalı"');
 		t.eq(it?.loanFieldId, null, 'zimmet kapandı');
 		t.eq(await card(cWin).getByRole('button', { name: 'Ödünç Al' }).count(), 0, 'arızalı eşya ödünç alınamıyor');
 		const o = await can.post('/api/envanter', { action: 'borrow', inventoryId: id });
 		t.eq(o.status, 409, 'arızalı eşya API ile de ödünç alınamaz (409)');
-		await t.shot(canPage, 'arizali');
+		await t.shot(canPage, 'faulty');
 	});
 
 	await t.step('Yönetim Kurulu: onarıldı → üye adına ödünç → kayıp → bulundu → sil', async () => {
@@ -162,8 +162,8 @@ export default async function suite(t) {
 		await detail.getByRole('button', { name: 'Onarıldı / bulundu' }).click();
 		const said = await dialogReply(zPage, true);
 		t.includes(said, `${CODE} kullanıma hazır`, 'onay penceresi durumu söylüyor');
-		await t.waitFor(async () => (await item())?.status === 'saglam');
-		t.eq((await item())?.status, 'saglam', 'onarılan eşya müsait');
+		await t.waitFor(async () => (await item())?.status === 'available');
+		t.eq((await item())?.status, 'available', 'onarılan eşya müsait');
 
 		await detail.getByRole('button', { name: 'Üye adına ödünç ver' }).click();
 		const lend = sheet(zPage, 'Üye Adına Ödünç Ver');
@@ -180,17 +180,17 @@ export default async function suite(t) {
 		await detail.getByRole('button', { name: 'Kayıp işaretle' }).click();
 		const lost = await dialogReply(zPage, true);
 		t.includes(lost, 'Ödünç kaydı kapanır', 'kayıp onayı zimmetin kapanacağını söylüyor');
-		await t.waitFor(async () => (await item())?.status === 'kayip');
-		t.eq((await item())?.status, 'kayip', 'eşya kayıp');
+		await t.waitFor(async () => (await item())?.status === 'lost');
+		t.eq((await item())?.status, 'lost', 'eşya kayıp');
 		t.eq((await item())?.loanFieldId, null, 'kayıpta zimmet kapandı');
-		await t.shot(zPage, 'kayip');
+		await t.shot(zPage, 'lost');
 
 		await detail.getByRole('button', { name: 'Onarıldı / bulundu' }).click();
 		await dialogReply(zPage, true);
-		await t.waitFor(async () => (await item())?.status === 'saglam');
-		t.eq((await item())?.status, 'saglam', 'bulunan eşya müsait');
+		await t.waitFor(async () => (await item())?.status === 'available');
+		t.eq((await item())?.status, 'available', 'bulunan eşya müsait');
 		const hist = (await zeynep.get(`/api/envanter?gecmis=${encodeURIComponent(id)}`)).json.movements.map((h) => h.typeValue);
-		for (const typeValue of ['iade', 'durum']) t.includes(hist, typeValue, `geçmişte "${typeValue}" kaydı var`);
+		for (const typeValue of ['return', 'durum']) t.includes(hist, typeValue, `geçmişte "${typeValue}" kaydı var`);
 
 		const second = await zeynep.post('/api/envanter', { action: 'create', code: CODE_2, name: `${NAME} B`, category: 'Sensör', location: 'E2E Test Rafı' });
 		if (second.json?.item?.id) ids.push(second.json.item.id);
@@ -201,8 +201,8 @@ export default async function suite(t) {
 		await detail2.waitFor();
 		await detail2.getByRole('button', { name: 'Arızalı işaretle' }).click();
 		await dialogReply(zPage, true);
-		await t.waitFor(async () => (await item(CODE_2))?.status === 'arizali');
-		t.eq((await item(CODE_2))?.status, 'arizali', '"Arızalı işaretle" eşyayı arızalı yaptı');
+		await t.waitFor(async () => (await item(CODE_2))?.status === 'faulty');
+		t.eq((await item(CODE_2))?.status, 'faulty', '"Arızalı işaretle" eşyayı arızalı yaptı');
 		await detail2.getByRole('button', { name: 'Sil' }).click();
 		const del = await dialogReply(zPage, true);
 		t.includes(del, 'kalıcı olarak silinsin mi', 'silme onayı soruluyor');
@@ -223,7 +223,7 @@ export default async function suite(t) {
 		const f = { code: 'E2E-UYE', name: 'Üye ekleyemez', category: 'Sensör', location: 'Raf' };
 		t.eq((await can.post('/api/envanter', { action: 'create', ...f })).status, 403, 'Üye eşya ekleyemez (403)');
 		t.eq((await can.post('/api/envanter', { action: 'update', inventoryId: id, ...f })).status, 403, 'Üye eşya düzenleyemez (403)');
-		t.eq((await can.post('/api/envanter', { action: 'updateStatus', inventoryId: id, status: 'kayip' })).status, 403, 'Üye durum değiştiremez (403)');
+		t.eq((await can.post('/api/envanter', { action: 'updateStatus', inventoryId: id, status: 'lost' })).status, 403, 'Üye durum değiştiremez (403)');
 		t.eq((await can.post('/api/envanter', { action: 'delete', inventoryId: id })).status, 403, 'Üye eşya silemez (403)');
 		// "Üye adına" alanı yönetim dışında yok sayılır: ödünç kendi adına yazılır.
 		const o = await can.post('/api/envanter', { action: 'borrow', inventoryId: id, userId: t.fx.users.ege.id });
@@ -233,7 +233,7 @@ export default async function suite(t) {
 	});
 
 	await t.step('Sadece Haberler: Envanter hiç görünmez, API kapalı', async () => {
-		const { page } = await t.open('okur');
+		const { page } = await t.open('reader');
 		t.eq(await dockApps(page), ['news', 'settings'], 'Dock\'ta Envanter yok');
 		t.eq((await reader.get('/api/envanter')).status, 403, 'liste 403');
 		t.eq((await reader.post('/api/envanter', { action: 'borrow', inventoryId: id })).status, 403, 'ödünç alma 403');

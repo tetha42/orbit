@@ -39,7 +39,7 @@ export function PollMessageCard({
 	const [closing, setClosing] = useState(false);
 
 	const isClosed =
-		Boolean(poll.kapali) ||
+		Boolean(poll.closed) ||
 		(typeof poll.endsAt === 'number' && now > poll.endsAt);
 
 	const canClose = (isAdmin || poll.creatorId === currentUserId) && !isClosed;

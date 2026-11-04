@@ -60,8 +60,8 @@ function safeMember(user: User, role: MemberAdminMember['roleInfo']): MemberAdmi
 	const firstName = user.firstName ?? user.name;
 	const lastName = user.lastName ?? user.surname;
 	const handle = user.handle ?? user.studentNo ?? '';
-	const department = user.department ?? user.department;
-	const grade = Number(user.grade ?? user.grade) || 1;
+	const department = user.department;
+	const grade = Number(user.grade) || 1;
 	const avatarUrl = user.avatarUrl ?? user.profilePhoto ?? null;
 	return {
 		id: user.id,
@@ -135,8 +135,8 @@ export async function updateMemberForAdmin(
 	const surname = readString(input.lastName ?? input.surname, target.lastName ?? target.surname);
 	const email = readString(input.email, target.email).toLowerCase();
 	const handle = readString(input.handle ?? input.studentNo, target.handle ?? target.studentNo ?? '');
-	const department = readString(input.department ?? input.department, target.department ?? target.department) || defaultTrackValue(core);
-	const rawLevel = input.grade !== undefined ? Number(input.grade) : (input.grade === undefined ? (target.grade ?? target.grade) : Number(input.grade));
+	const department = readString(input.department, target.department) || defaultTrackValue(core);
+	const rawLevel = input.grade !== undefined ? Number(input.grade) : (input.grade === undefined ? (target.grade) : Number(input.grade));
 	const bio = input.bio === undefined ? target.bio ?? '' : readString(input.bio);
 
 	if (
@@ -311,7 +311,7 @@ export async function updateSelfProfile(
 ): Promise<SelfUpdateResult> {
 	const user = await getUserById(userId);
 	if (!user) return { ok: false, status: 404, error: 'Üye bulunamadı.' };
-	if (user.status === 'mezun') {
+	if (user.status === 'alumni') {
 		return { ok: false, status: 403, error: 'Mezunlar sadece okuma erişimine sahiptir.' };
 	}
 

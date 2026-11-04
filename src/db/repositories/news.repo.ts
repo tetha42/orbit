@@ -6,16 +6,16 @@ import { slugify, uniqueSlug } from '@/lib/text';
 import type { NewsVisibility } from '@/types/news';
 
 const NEWS_COLUMNS = `
-	h.id, h.slug, h.title AS baslik, h.summary AS ozet, h.content AS icerik, h.category AS kategori,
-	h.is_pinned AS "onemliMi", h.cover_url AS "resimUrl",
-	h.publish_status AS "publishStatus", h.published_at AS "yayinTarihi",
-	h.author_id AS "yazarId", h.created_at AS olusturma, h.updated_at AS guncellenme
+	h.id, h.slug, h.title AS title, h.summary AS summary, h.content AS content, h.category AS category,
+	h.is_pinned AS "isImportant", h.cover_url AS "imageUrl",
+	h.publish_status AS "publishStatus", h.published_at AS "publishDate",
+	h.author_id AS "authorId", h.created_at AS creation, h.updated_at AS update
 `;
 
 function mapNews(r: Record<string, unknown>): NewsItem {
 	return {
 		...(r as unknown as NewsItem),
-		importantMi: Number(r.importantMi),
+		isImportant: Number(r.isImportant),
 		creation: Number(r.creation),
 		update: Number(r.update),
 		publishDate: r.publishDate === null || r.publishDate === undefined ? null : Number(r.publishDate),
@@ -26,14 +26,14 @@ function mapNews(r: Record<string, unknown>): NewsItem {
  * The articles a reader may see, headlines first. `yonetim` (management) also gets
  * drafts; everyone else only what has been published to members or to the public.
  */
-export async function getNews(audience: 'yonetim' | 'uye' = 'yonetim'): Promise<NewsItem[]> {
+export async function getNews(audience: 'management' | 'member' = 'management'): Promise<NewsItem[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(`
 		SELECT ${NEWS_COLUMNS},
-		       k.first_name || ' ' || k.last_name as "authorNameSurname"
+		       k.first_name || ' ' || k.last_name AS "authorNameSurname"
 		FROM news h
 		LEFT JOIN users k ON h.author_id = k.id
-		${audience === 'yonetim' ? '' : "WHERE h.publish_status <> 'taslak'"}
+		${audience === 'management' ? '' : "WHERE h.publish_status <> 'draft'"}
 		ORDER BY h.is_pinned DESC, COALESCE(h.published_at, h.created_at) DESC
 	`);
 	return res.rows.map(mapNews);
@@ -44,7 +44,7 @@ export async function getNewsById(id: string): Promise<NewsItem | null> {
 	const res = await getPgPool().query(
 		`
 		SELECT ${NEWS_COLUMNS},
-		       k.first_name || ' ' || k.last_name as "authorNameSurname"
+		       k.first_name || ' ' || k.last_name AS "authorNameSurname"
 		FROM news h
 		LEFT JOIN users k ON h.author_id = k.id
 		WHERE h.id = $1
@@ -60,7 +60,7 @@ async function newsSlug(client: Pool | PoolClient, title: string, exceptId?: str
 		slugify(title),
 		async (candidate) =>
 			((await client.query('SELECT 1 FROM news WHERE slug = $1 AND id <> $2', [candidate, exceptId ?? ''])).rowCount ?? 0) > 0,
-		'haber'
+		'news'
 	);
 }
 
@@ -69,7 +69,7 @@ export async function createNews(params: {
 	summary: string;
 	content: string;
 	category?: string;
-	importantMi?: boolean | number;
+	isImportant?: boolean | number;
 	imageUrl?: string;
 	publishStatus?: NewsVisibility;
 	authorId: string;
@@ -78,7 +78,7 @@ export async function createNews(params: {
 	const p = getPgPool();
 	const id = `hbr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
 	const now = Date.now();
-	const publishStatus: NewsVisibility = params.publishStatus ?? 'yayinda';
+	const publishStatus: NewsVisibility = params.publishStatus ?? 'published';
 
 	for (let attempt = 0; ; attempt += 1) {
 		const slug = await newsSlug(p, params.title.trim());
@@ -92,11 +92,11 @@ export async function createNews(params: {
 					params.title.trim(),
 					params.summary.trim(),
 					params.content.trim(),
-					params.category || 'genel',
-					params.importantMi ? 1 : 0,
+					params.category || 'general',
+					params.isImportant ? 1 : 0,
 					params.imageUrl || null,
 					publishStatus,
-					publishStatus === 'taslak' ? null : now,
+					publishStatus === 'draft' ? null : now,
 					params.authorId,
 					now,
 				]
@@ -108,7 +108,7 @@ export async function createNews(params: {
 		}
 	}
 
-	if (publishStatus !== 'taslak') await publishEventQuiet(p, notificationEvents());
+	if (publishStatus !== 'draft') await publishEventQuiet(p, notificationEvents());
 	return (await getNewsById(id)) as NewsItem;
 }
 
@@ -119,7 +119,7 @@ export async function updateNews(
 		summary: string;
 		content: string;
 		category: string;
-		importantMi: boolean | number;
+		isImportant: boolean | number;
 		imageUrl: string | null;
 		publishStatus: NewsVisibility;
 	}>
@@ -136,12 +136,12 @@ export async function updateNews(
 	if (patch.summary !== undefined) add('summary', patch.summary.trim());
 	if (patch.content !== undefined) add('content', patch.content.trim());
 	if (patch.category !== undefined) add('category', patch.category);
-	if (patch.importantMi !== undefined) add('is_pinned', patch.importantMi ? 1 : 0);
+	if (patch.isImportant !== undefined) add('is_pinned', patch.isImportant ? 1 : 0);
 	if (patch.imageUrl !== undefined) add('cover_url', patch.imageUrl || null);
 	if (patch.publishStatus !== undefined) {
 		add('publish_status', patch.publishStatus);
-		if (patch.publishStatus !== 'taslak') sets.push('published_at = COALESCE(published_at, $' + (values.length + 1) + ')');
-		if (patch.publishStatus !== 'taslak') values.push(Date.now());
+		if (patch.publishStatus !== 'draft') sets.push('published_at = COALESCE(published_at, $' + (values.length + 1) + ')');
+		if (patch.publishStatus !== 'draft') values.push(Date.now());
 	}
 	add('updated_at', Date.now());
 
@@ -162,7 +162,7 @@ export interface PublicNewsQuery {
 
 export async function getPublicNews(query: PublicNewsQuery): Promise<{ rows: NewsItem[]; total: number }> {
 	await ensurePostgresInit();
-	const conditions = ["h.publish_status = 'yayinda'", 'h.published_at <= $1'];
+	const conditions = ["h.publish_status = 'published'", 'h.published_at <= $1'];
 	const values: unknown[] = [Date.now()];
 	if (query.category) {
 		values.push(query.category);
@@ -185,7 +185,7 @@ export async function getPublicNews(query: PublicNewsQuery): Promise<{ rows: New
 export async function getPublicNewsBySlug(slug: string): Promise<NewsItem | null> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT ${NEWS_COLUMNS} FROM news h WHERE h.slug = $1 AND h.publish_status = 'yayinda' AND h.published_at <= $2`,
+		`SELECT ${NEWS_COLUMNS} FROM news h WHERE h.slug = $1 AND h.publish_status = 'published' AND h.published_at <= $2`,
 		[slug, Date.now()]
 	);
 	return res.rows.length === 0 ? null : mapNews(res.rows[0]);
@@ -195,7 +195,7 @@ export async function getPublicNewsCategoryCounts(): Promise<{ category: string;
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`SELECT category AS category, count(*)::int AS count FROM news
-		 WHERE publish_status = 'yayinda' AND published_at <= $1 GROUP BY category`,
+		 WHERE publish_status = 'published' AND published_at <= $1 GROUP BY category`,
 		[Date.now()]
 	);
 	return res.rows;

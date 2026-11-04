@@ -77,7 +77,7 @@ export async function GET(request: Request) {
 				try {
 					const active = await getUserBySessionToken(token).catch(() => undefined);
 					if (active === undefined) return;
-					if (!active || (active.status !== 'aktif' && active.status !== 'mezun')) {
+					if (!active || (active.status !== 'active' && active.status !== 'alumni')) {
 						emit('session-ended');
 						finish();
 					}

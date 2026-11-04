@@ -79,7 +79,7 @@ function EventSidebarItem({
 			type="button"
 			data-focus-id={`event:${e.id}`}
 			className={`${styles.item} ${isSelected ? styles.itemActive : ''} ${
-				e.status === 'iptal' ? styles.itemCancelled : ''
+				e.status === 'cancelled' ? styles.itemCancelled : ''
 			}`}
 			style={{ '--type-color': meta.color } as React.CSSProperties}
 			{...contextMenuProps}
@@ -97,8 +97,8 @@ function EventSidebarItem({
 				<span className={styles.badges}>
 					<span className={`${styles.badge} ${styles.b_type}`}>{t(meta.key)}</span>
 					{isLive(e, now) && <span className={`${styles.badge} ${styles.b_live}`}>{t('evLive')}</span>}
-					{e.status === 'taslak' && <span className={`${styles.badge} ${styles.b_draft}`}>{t('evDraft')}</span>}
-					{e.status === 'iptal' && <span className={`${styles.badge} ${styles.b_cancelled}`}>{t('evCancelled')}</span>}
+					{e.status === 'draft' && <span className={`${styles.badge} ${styles.b_draft}`}>{t('evDraft')}</span>}
+					{e.status === 'cancelled' && <span className={`${styles.badge} ${styles.b_cancelled}`}>{t('evCancelled')}</span>}
 					{e.myMyAttendance ? (
 						<span className={`${styles.badge} ${styles.b_attended}`}>
 							<CheckCircle2 size={10} /> {t('evAttended')}

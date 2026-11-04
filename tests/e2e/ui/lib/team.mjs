@@ -15,7 +15,7 @@ export async function sweepStale(admin) {
 const DESC ='E2E sınaması için kurulan geçici takım; paket bitince silinir.';
 
 /** Creates a team (management's `createTeam`) and deletes it when the suite ends. Returns the team row. */
-export async function makeTeam(t, admin, { label, leadId, capacity = 6, participationType = 'acik', category = 'Web & Mobil' }) {
+export async function makeTeam(t, admin, { label, leadId, capacity = 6, participationType = 'open', category = 'Web & Mobil' }) {
 	const res = await admin.post('/api/takimlar', {
 		action: 'createTeam',
 		name: `E2E ${label} ${runTag()}`,

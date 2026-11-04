@@ -12,7 +12,7 @@ export default async function suite(t) {
 	await t.step('yeni giriş: rol kaldırılmış kullanıcıda uyarı görünüyor', async () => {
 		const res = await admin.patch('/api/uyeler', { id: readerId, roleId: null });
 		t.eq(res.status, 200, 'PATCH /api/uyeler {rolId: null} 200');
-		const { page } = await t.open('okur');
+		const { page } = await t.open('reader');
 		await page.locator('[data-no-role-notice]').waitFor();
 		t.eq(await page.locator('[data-no-role-notice]').count(), 1, '[data-no-role-notice] görünüyor');
 		const text = await page.locator('[data-no-role-notice]').innerText();
@@ -32,7 +32,7 @@ export default async function suite(t) {
 
 	await t.step('canlı: açık oturumda rol kaldırılınca uyarı ≤15 sn içinde çıkıyor', async () => {
 		await admin.patch('/api/uyeler', { id: readerId, roleId: fx.roles.news });
-		const { page } = await t.open('okur');
+		const { page } = await t.open('reader');
 		await page.locator('[data-dock-app=news]').waitFor();
 		t.eq(await page.locator('[data-no-role-notice]').count(), 0, 'rolü varken uyarı yok');
 		await admin.patch('/api/uyeler', { id: readerId, roleId: null });
@@ -42,7 +42,7 @@ export default async function suite(t) {
 	});
 
 	await t.step('mobil (390×844): rolsüz kullanıcıda uyarı ve yalnız Ayarlar', async () => {
-		const { page } = await t.open('okur', { mobile: true });
+		const { page } = await t.open('reader', { mobile: true });
 		await page.locator('[data-no-role-notice]').waitFor();
 		t.check(await page.locator('[data-role-badge=""]').count() === 1, 'rol rozeti "Rol atanmadı" diyor');
 		await page.locator('[data-mobile-tab=apps]').click();

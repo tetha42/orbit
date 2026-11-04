@@ -52,27 +52,27 @@ export function createShortCode(signature: string): string {
  * Accepts a short code for the event's current or previous window. The short code
  * is only a prefix of a signature, so it is matched by recomputing both windows.
  */
-export async function verifyShortCode(eventId: string, short: string, now = Date.now()): Promise<'gecerli' | 'suresi-doldu' | 'gecersiz'> {
+export async function verifyShortCode(eventId: string, short: string, now = Date.now()): Promise<'valid' | 'expired' | 'invalid'> {
 	const searched = short.trim().toUpperCase();
-	if (!new RegExp(`^[A-Z0-9]{${SHORT_CODE_LENGTH}}$`).test(searched)) return 'gecersiz';
+	if (!new RegExp(`^[A-Z0-9]{${SHORT_CODE_LENGTH}}$`).test(searched)) return 'invalid';
 	const current = attendanceWindow(now);
 	// The current window is valid; the one before it is accepted too (rollover grace).
 	// Any older window is a real code that has simply expired.
 	for (const windowIndex of [current, current - 1]) {
 		const signature = await sign('qr', [eventId, String(windowIndex)]);
-		if (createShortCode(signature) === searched) return 'gecerli';
+		if (createShortCode(signature) === searched) return 'valid';
 	}
 	for (let back = 2; back <= 6; back++) {
 		const signature = await sign('qr', [eventId, String(current - back)]);
-		if (createShortCode(signature) === searched) return 'suresi-doldu';
+		if (createShortCode(signature) === searched) return 'expired';
 	}
-	return 'gecersiz';
+	return 'invalid';
 }
 
 export async function createTicketCode(eventId: string, userId: string): Promise<string> {
-	return ticketCodeText({ eventId, userId, signature: await sign('bilet', [eventId, userId]) });
+	return ticketCodeText({ eventId, userId, signature: await sign('ticket', [eventId, userId]) });
 }
 
 export async function verifyTicketCode(code: TicketCode): Promise<boolean> {
-	return sameSignature(await sign('bilet', [code.eventId, code.userId]), code.signature);
+	return sameSignature(await sign('ticket', [code.eventId, code.userId]), code.signature);
 }

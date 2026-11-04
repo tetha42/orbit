@@ -46,8 +46,8 @@ const manifest = {
 				id: 'file',
 				title: { tr: 'Kayıtlar', en: 'Records' },
 				items: [
-					{ id: 'new-entry', label: { tr: 'Gelir / Gider Ekle...', en: 'Add Ledger Entry...' }, shortcut: '⌘N', permission: 'yonet', command: 'new-entry' },
-					{ id: 'export-pdf', label: { tr: 'Mali Denetim Raporu Yazdır', en: 'Print Audit Report' }, shortcut: '⌘P', permission: 'kullan', command: 'print-report' },
+					{ id: 'new-entry', label: { tr: 'Gelir / Gider Ekle...', en: 'Add Ledger Entry...' }, shortcut: '⌘N', permission: 'manage', command: 'new-entry' },
+					{ id: 'export-pdf', label: { tr: 'Mali Denetim Raporu Yazdır', en: 'Print Audit Report' }, shortcut: '⌘P', permission: 'use', command: 'print-report' },
 				],
 			},
 		],

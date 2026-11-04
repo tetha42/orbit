@@ -28,7 +28,7 @@ export async function GET(request: Request) {
 				teams,
 				myTeamCount: activeTeams.length,
 				limits: { team: TEAM_LIMIT, pendingApplication: PENDING_APPLICATION_MAX },
-				saltReadable: auth.user.status === 'mezun',
+				saltReadable: auth.user.status === 'alumni',
 			},
 			{ headers: NO_STORE }
 		);
@@ -41,7 +41,7 @@ export async function GET(request: Request) {
 async function handlePOST(request: Request) {
 	const auth = await authenticateEnrolled(request);
 	if (!auth.authorized) return auth.response;
-	if (auth.user.status === 'mezun') {
+	if (auth.user.status === 'alumni') {
 		return NextResponse.json({ error: 'Mezunlar sadece okuma erişimine sahiptir.' }, { status: 403 });
 	}
 
@@ -56,7 +56,7 @@ async function handlePOST(request: Request) {
 		if (action === 'withdraw') {
 			// Only an application can be withdrawn here; leaving a team is the Teams app's job.
 			const mine = (await getTeamShowcase(auth.user.id)).find((t) => t.id === teamId);
-			if (mine?.myMyStatus !== 'basvurdu') {
+			if (mine?.myMyStatus !== 'applied') {
 				return NextResponse.json({ error: 'Geri çekilecek bir başvuru bulunamadı.' }, { status: 404 });
 			}
 			const r = await leaveTeam({ teamId, userId: auth.user.id });

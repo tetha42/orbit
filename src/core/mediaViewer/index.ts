@@ -7,7 +7,7 @@ export interface MediaViewerItem {
 	name: string;
 	url: string;
 	size?: number;
-	tip?: string;
+	type?: string;
 }
 
 let current: MediaViewerItem | null = null;
@@ -89,7 +89,7 @@ function extensionOf(name: string): string {
 }
 
 function mimeOf(item: MediaViewerItem): string {
-	const declared = (item.tip || '').toLowerCase().trim();
+	const declared = (item.type || '').toLowerCase().trim();
 	if (declared) return declared;
 	return EXTENSION_TYPES[extensionOf(item.name)] || '';
 }

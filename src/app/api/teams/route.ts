@@ -46,7 +46,7 @@ import { getBoardAccess, getTaskAccess, isAssignable } from '@/server/taskAccess
 
 export async function GET(request: Request) {
 	// Team composition and task lists are internal to the club.
-	const auth = await requireApp(request, 'teams', 'kullan');
+	const auth = await requireApp(request, 'teams', 'use');
 	if (!auth.authorized) return auth.response;
 
 	try {
@@ -58,25 +58,25 @@ export async function GET(request: Request) {
 		const enrichedTeams = await Promise.all(
 			teams.map(async (team) => {
 				const all = await getTeamMembers(team.id);
-				const aktif = all.filter((u) => u.status === 'aktif');
-				const manage = can(auth.user, 'teams', 'yonet') || team.leadId === auth.user.id;
+				const active = all.filter((u) => u.status === 'active');
+				const manage = can(auth.user, 'teams', 'manage') || team.leadId === auth.user.id;
 				// A team's task board belongs to the team: management, its leader and its
 				// active members. Everyone else sees the team card, not the work items.
-				const canSeeTasks = manage || aktif.some((u) => u.userId === auth.user.id);
+				const canSeeTasks = manage || active.some((u) => u.userId === auth.user.id);
 				const tasks = canSeeTasks ? await getTeamTasks(team.id) : [];
 				const my = all.find((u) => u.userId === auth.user.id);
 				return {
 					...team,
-					participationType: team.participationType ?? 'acik',
+					participationType: team.participationType ?? 'open',
 					// The roster is active members only; applications are for whoever decides on them.
-					members: aktif,
-					applications: manage ? all.filter((u) => u.status === 'basvurdu') : [],
+					members: active,
+					applications: manage ? all.filter((u) => u.status === 'applied') : [],
 					myMyStatus: my?.status ?? null,
-					permissions: { manage, editAll: can(auth.user, 'teams', 'yonet') },
+					permissions: { manage, editAll: can(auth.user, 'teams', 'manage') },
 					tasks: tasks,
-					fullCapacity: aktif.length,
-					remainingCapacity: Math.max(0, team.capacity - aktif.length),
-					occupancyRatio: Math.min(100, Math.round((aktif.length / team.capacity) * 100)),
+					fullCapacity: active.length,
+					remainingCapacity: Math.max(0, team.capacity - active.length),
+					occupancyRatio: Math.min(100, Math.round((active.length / team.capacity) * 100)),
 				};
 			})
 		);
@@ -95,7 +95,7 @@ export async function GET(request: Request) {
 }
 
 async function handlePOST(request: Request) {
-	const auth = await requireApp(request, 'teams', 'kullan');
+	const auth = await requireApp(request, 'teams', 'use');
 	if (!auth.authorized) return auth.response;
 
 	try {
@@ -103,7 +103,7 @@ async function handlePOST(request: Request) {
 		const { action } = body;
 
 		const teamId: string = typeof body.teamId === 'string' ? body.teamId : '';
-		const graduate = auth.user.status === 'mezun';
+		const graduate = auth.user.status === 'alumni';
 
 		if (action === 'join') {
 			if (graduate) return NextResponse.json({ error: 'Mezunlar sadece okuma erişimine sahiptir.' }, { status: 403 });
@@ -169,7 +169,7 @@ async function handlePOST(request: Request) {
 
 			if (action === 'addMember') {
 				// Management only: placing someone on a team without an application.
-				if (!can(auth.user, 'teams', 'yonet')) {
+				if (!can(auth.user, 'teams', 'manage')) {
 					return NextResponse.json({ error: 'Üye eklemek yönetime aittir.' }, { status: 403 });
 				}
 				if (!userId) return NextResponse.json({ error: 'Üye belirtilmedi.' }, { status: 400 });
@@ -182,7 +182,7 @@ async function handlePOST(request: Request) {
 
 			// action === 'updateTeam'. The captain runs the team day to day; renaming,
 			// re-filing, pausing it or handing it to someone else is management's call.
-			const editAll = can(auth.user, 'teams', 'yonet');
+			const editAll = can(auth.user, 'teams', 'manage');
 			const patch: TeamPatch = {};
 			const restricted = ['name', 'category', 'status', 'leadId'].filter((k) => body[k] !== undefined);
 			if (restricted.length && !editAll) {
@@ -208,7 +208,7 @@ async function handlePOST(request: Request) {
 				patch.category = body.category;
 			}
 			if (body.capacity !== undefined) {
-				const err = capacityProblem(body.capacity, board.members.filter((u) => u.status === 'aktif').length);
+				const err = capacityProblem(body.capacity, board.members.filter((u) => u.status === 'active').length);
 				if (err) return NextResponse.json({ error: err }, { status: 400 });
 				patch.capacity = Number(body.capacity);
 			}
@@ -227,7 +227,7 @@ async function handlePOST(request: Request) {
 			}
 			if (body.leadId !== undefined) {
 				const leader = typeof body.leadId === 'string' ? await getUserById(body.leadId) : null;
-				if (!leader || leader.status !== 'aktif') return NextResponse.json({ error: 'Kaptan olarak seçilen üye bulunamadı.' }, { status: 400 });
+				if (!leader || leader.status !== 'active') return NextResponse.json({ error: 'Kaptan olarak seçilen üye bulunamadı.' }, { status: 400 });
 				patch.leadId = leader.id;
 			}
 			await updateTeam(teamId, patch);
@@ -237,7 +237,7 @@ async function handlePOST(request: Request) {
 
 		// Graduates keep read access only.
 		const taskWrite = ['addTask', 'updateTask', 'moveTask', 'deleteTask'].includes(action);
-		if (taskWrite && auth.user.status === 'mezun') {
+		if (taskWrite && auth.user.status === 'alumni') {
 			return NextResponse.json({ error: 'Mezunlar sadece okuma erişimine sahiptir.' }, { status: 403 });
 		}
 
@@ -264,11 +264,11 @@ async function handlePOST(request: Request) {
 					{ status: 403 }
 				);
 			}
-			const priority = rawPriority === undefined ? 'orta' : normalizePriority(rawPriority);
+			const priority = rawPriority === undefined ? 'medium' : normalizePriority(rawPriority);
 			if (!priority) {
 				return NextResponse.json({ error: 'Geçersiz öncelik.' }, { status: 400 });
 			}
-			const column = status === undefined ? 'yapilacak' : normalizeStatus(status);
+			const column = status === undefined ? 'todo' : normalizeStatus(status);
 			if (!column) {
 				return NextResponse.json({ error: 'Geçersiz status.' }, { status: 400 });
 			}
@@ -348,7 +348,7 @@ async function handlePOST(request: Request) {
 		}
 
 		if (action === 'createTeam') {
-			if (!can(auth.user, 'teams', 'yonet')) {
+			if (!can(auth.user, 'teams', 'manage')) {
 				return NextResponse.json(
 					{ error: 'Takım oluşturma yetkisi yalnızca yönetim kurulundadır.' },
 					{ status: 403 }
@@ -376,14 +376,14 @@ async function handlePOST(request: Request) {
 				capacity: Number(capacity ?? 6),
 				repoUrl: repo ?? undefined,
 				leadId,
-				participationType: isParticipationType(participationType) ? participationType : 'acik',
+				participationType: isParticipationType(participationType) ? participationType : 'open',
 			});
 			await publishEventQuiet(getPgPool(), { k: 'team_updated', teamId: newTeam.id });
 			return NextResponse.json({ success: true, team: newTeam });
 		}
 
 		if (action === 'deleteTeam') {
-			if (!can(auth.user, 'teams', 'yonet')) {
+			if (!can(auth.user, 'teams', 'manage')) {
 				return NextResponse.json(
 					{ error: 'Takım silme yetkisi yalnızca yönetim kurulundadır.' },
 					{ status: 403 }

@@ -199,7 +199,7 @@ export async function POST(request: Request) {
 		}
 
 		const user = await getUserById(codeResult.userId);
-		if (!user || user.status !== 'aktif') {
+		if (!user || user.status !== 'active') {
 			return NextResponse.json(
 				{ error: 'invalid_grant', error_description: 'Kullanıcı hesabı aktif durumda değil.' },
 				{ status: 400 }

@@ -33,7 +33,7 @@ const manifest = {
 	hotkey: '1',
 	order: 0,
 	dock: 0,
-	notifications: { teamApplication: 'kullan', teamDecision: 'kullan', task: 'kullan', assigned: 'kullan' },
+	notifications: { teamApplication: 'use', teamDecision: 'use', task: 'use', assigned: 'use' },
 	permission: {
 		order: 2,
 		name: 'Takımlar',
@@ -42,22 +42,22 @@ const manifest = {
 	},
 	menu: {
 		title: { tr: 'Takımlar', en: 'Teams' },
-		about: { id: 'about-teams', label: { tr: 'Takımlar Hakkında', en: 'About Teams' }, permission: 'kullan', ac: true },
+		about: { id: 'about-teams', label: { tr: 'Takımlar Hakkında', en: 'About Teams' }, permission: 'use', ac: true },
 		categories: [
 			{
 				id: 'file',
 				title: { tr: 'İşlemler', en: 'Actions' },
 				items: [
-					{ id: 'new-team', label: { tr: 'Yeni Takım Oluştur...', en: 'Create New Team...' }, shortcut: '⇧⌘N', permission: 'yonet', command: 'new-team' },
-					{ id: 'new-task', label: { tr: 'Yeni Görev Ekle', en: 'Add New Task' }, shortcut: '⌘N', permission: 'kullan', command: 'new-task' },
-					{ id: 'kanban-refresh', label: { tr: 'Panoyu ve Listeyi Yenile', en: 'Refresh Board & Catalog' }, shortcut: '⌘R', permission: 'kullan', command: 'kanban-refresh' },
+					{ id: 'new-team', label: { tr: 'Yeni Takım Oluştur...', en: 'Create New Team...' }, shortcut: '⇧⌘N', permission: 'manage', command: 'new-team' },
+					{ id: 'new-task', label: { tr: 'Yeni Görev Ekle', en: 'Add New Task' }, shortcut: '⌘N', permission: 'use', command: 'new-task' },
+					{ id: 'kanban-refresh', label: { tr: 'Panoyu ve Listeyi Yenile', en: 'Refresh Board & Catalog' }, shortcut: '⌘R', permission: 'use', command: 'kanban-refresh' },
 				],
 			},
 			{
 				id: 'view',
 				title: { tr: 'Görünüm', en: 'View' },
 				items: [
-					{ id: 'view-teams', label: { tr: 'Ar-Ge Takımları Paneli', en: 'R&D Teams' }, shortcut: '⌥1', permission: 'kullan', command: 'view-teams' },
+					{ id: 'view-teams', label: { tr: 'Ar-Ge Takımları Paneli', en: 'R&D Teams' }, shortcut: '⌥1', permission: 'use', command: 'view-teams' },
 				],
 			},
 		],

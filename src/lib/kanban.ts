@@ -4,15 +4,15 @@
  * Kept free of imports so `scripts/check-pure.mjs` can load it directly.
  */
 
-/** Board columns, in order. `inceleme` is "waiting for review". */
-export const TASK_STATUSES = ['yapilacak', 'suruyor', 'inceleme', 'tamamlandi'] as const;
+/** Board columns, in order. `review` is "waiting for review". */
+export const TASK_STATUSES = ['todo', 'in_progress', 'review', 'done'] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 
-export const TASK_PRIORITIES = ['dusuk', 'orta', 'yuksek', 'kritik'] as const;
+export const TASK_PRIORITIES = ['low', 'medium', 'high', 'critical'] as const;
 export type TaskPriority = (typeof TASK_PRIORITIES)[number];
 
 /** Higher means more urgent; used for sorting. */
-export const PRIORITY_WEIGHT: Record<TaskPriority, number> = { dusuk: 0, orta: 1, yuksek: 2, kritik: 3 };
+export const PRIORITY_WEIGHT: Record<TaskPriority, number> = { low: 0, medium: 1, high: 2, critical: 3 };
 
 export const TITLE_MAX = 160;
 export const DESCRIPTION_MAX = 4000;
@@ -23,23 +23,11 @@ export const COMMENT_MAX = 2000;
 export const TAG_MAX = LABEL_MAX;
 export const TAG_COUNT_MAX = LABEL_COUNT_MAX;
 
-/**
- * Older clients sent `'bitti'` for "done" while the column stores `'tamamlandi'`.
- * Known aliases are mapped instead of persisting a value no client can filter on.
- */
-const STATUS_ALIASES: Record<string, TaskStatus> = {
-	bitti: 'tamamlandi',
-	done: 'tamamlandi',
-	ongoing: 'suruyor',
-	bekliyor: 'yapilacak',
-	review: 'inceleme',
-};
-
 export function normalizeStatus(value: unknown): TaskStatus | null {
 	if (typeof value !== 'string') return null;
 	const key = value.trim().toLowerCase();
 	if ((TASK_STATUSES as readonly string[]).includes(key)) return key as TaskStatus;
-	return STATUS_ALIASES[key] ?? null;
+	return null;
 }
 
 export function normalizePriority(value: unknown): TaskPriority | null {
@@ -125,7 +113,7 @@ export const ORDER_STEP = 1024;
 export const ORDER_MAX = 500;
 export const RANKING_MAX = ORDER_MAX;
 
-export type DueStatus = 'gecikti' | 'bugun' | 'yakin' | 'ileri';
+export type DueStatus = 'overdue' | 'today' | 'upcoming' | 'next';
 
 const DAY = 86_400_000;
 
@@ -135,12 +123,12 @@ export function dueStatus(
 	status: TaskStatus,
 	now: number
 ): DueStatus | null {
-	if (!dueDate || status === 'tamamlandi') return null;
-	if (dueDate < now) return 'gecikti';
+	if (!dueDate || status === 'done') return null;
+	if (dueDate < now) return 'overdue';
 	const start = new Date(now);
 	start.setHours(0, 0, 0, 0);
 	const endOfToday = start.getTime() + DAY;
-	if (dueDate < endOfToday) return 'bugun';
-	if (dueDate < endOfToday + 2 * DAY) return 'yakin';
-	return 'ileri';
+	if (dueDate < endOfToday) return 'today';
+	if (dueDate < endOfToday + 2 * DAY) return 'upcoming';
+	return 'next';
 }

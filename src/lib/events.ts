@@ -5,23 +5,16 @@
  * signing itself lives in `src/lib/server/attendanceToken.ts`.
  */
 
-export const EVENT_TYPES = ['atolye', 'seminer', 'yarisma', 'toplanti'] as const;
+export const EVENT_TYPES = ['workshop', 'seminar', 'competition', 'meeting'] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
 export const EVENT_TYPE_ALIASES: Record<string, EventType> = {
-	atolye: 'atolye',
-	seminer: 'seminer',
-	yarisma: 'yarisma',
-	toplanti: 'toplanti',
-	atölye: 'atolye',
-	yarışma: 'yarisma',
-	toplantı: 'toplanti',
-	workshop: 'atolye',
-	seminar: 'seminer',
-	hackathon: 'yarisma',
-	competition: 'yarisma',
-	contest: 'yarisma',
-	meeting: 'toplanti',
+	workshop: 'workshop',
+	seminar: 'seminar',
+	competition: 'competition',
+	meeting: 'meeting',
+	hackathon: 'competition',
+	contest: 'competition',
 };
 
 export function normalizeEventType(value: unknown): EventType | null {
@@ -34,23 +27,18 @@ export function isEventType(value: unknown): value is EventType {
 	return typeof value === 'string' && (EVENT_TYPES as readonly string[]).includes(value);
 }
 
-/** `taslak` is visible to management only; `iptal` stays listed, marked as cancelled. */
-export const EVENT_STATUSES = ['taslak', 'yayinda', 'tamamlandi', 'iptal'] as const;
+/** `draft` is visible to management only; `cancelled` stays listed, marked as cancelled. */
+export const EVENT_STATUSES = ['draft', 'published', 'done', 'cancelled'] as const;
 export type EventStatus = (typeof EVENT_STATUSES)[number];
 
 export const EVENT_STATUS_ALIASES: Record<string, EventStatus> = {
-	taslak: 'taslak',
-	yayinda: 'yayinda',
-	yayında: 'yayinda',
-	tamamlandi: 'tamamlandi',
-	tamamlandı: 'tamamlandi',
-	iptal: 'iptal',
-	draft: 'taslak',
-	published: 'yayinda',
-	live: 'yayinda',
-	completed: 'tamamlandi',
-	cancelled: 'iptal',
-	canceled: 'iptal',
+	draft: 'draft',
+	published: 'published',
+	done: 'done',
+	cancelled: 'cancelled',
+	live: 'published',
+	completed: 'done',
+	canceled: 'cancelled',
 };
 
 export function normalizeEventStatus(value: unknown): EventStatus | null {
@@ -60,7 +48,7 @@ export function normalizeEventStatus(value: unknown): EventStatus | null {
 }
 
 /** How attendance was recorded: the rotating projector QR, a ticket scanned at the door, or by hand. */
-export type AttendanceMethod = 'qr' | 'bilet' | 'manuel';
+export type AttendanceMethod = 'qr' | 'ticket' | 'manual';
 
 /** XP for attending, paid once per member and event. Registering pays nothing. */
 export const PARTICIPATION_XP = 150;

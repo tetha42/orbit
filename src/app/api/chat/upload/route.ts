@@ -21,7 +21,7 @@ export const dynamic = 'force-dynamic';
  * never from the client, and the original name is display metadata only.
  */
 async function handlePOST(request: Request) {
-	const auth = await requireApp(request, 'chat', 'kullan');
+	const auth = await requireApp(request, 'chat', 'use');
 	if (!auth.authorized) return auth.response;
 
 	const emergency = await getEmergencyKillSwitches();
@@ -102,7 +102,7 @@ async function handlePOST(request: Request) {
 			name: originalName,
 			url: `/api/uploads/${name}`,
 			size: buffer.length,
-			tip: media.mime,
+			type: media.mime,
 		},
 	});
 }

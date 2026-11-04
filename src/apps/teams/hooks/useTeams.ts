@@ -33,7 +33,7 @@ export function useTeams() {
 	const teams = useMemo(() => teamsData ?? [], [teamsData]);
 
 	const { data: rosterData } = useJsonResource<{ members: Array<{ id: string; name: string; surname: string; status?: string }> }>('/api/members');
-	const roster = useMemo(() => (rosterData?.members ?? []).filter((m) => !m.status || m.status === 'aktif'), [rosterData]);
+	const roster = useMemo(() => (rosterData?.members ?? []).filter((m) => !m.status || m.status === 'active'), [rosterData]);
 
 	const [activeHubTab, setActiveHubTab] = useState<HubTab>('teams');
 	const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
@@ -67,8 +67,8 @@ export function useTeams() {
 			if (teamId) setSelectedTeamId(teamId);
 			if (target.kind === 'task' && target.itemId) setOpenTaskId(target.itemId);
 			setActiveTab(
-				target.section === 'kasa' || target.kind === 'kasa' || target.kind === 'ledger'
-					? 'kasa'
+				target.section === 'vault' || target.kind === 'vault' || target.kind === 'ledger'
+					? 'vault'
 					: target.section === 'members'
 						? 'members'
 						: 'kanban'
@@ -86,7 +86,7 @@ export function useTeams() {
 		});
 	};
 
-	const myTeams = teams.filter((tm) => tm.myMyStatus === 'aktif').length;
+	const myTeams = teams.filter((tm) => tm.myMyStatus === 'active').length;
 	const selectedTeam = teams.find((tm) => tm.id === selectedTeamId) ?? null;
 
 	const visibleTeams = useMemo(() => {
@@ -116,10 +116,10 @@ export function useTeams() {
 		return res.ok;
 	};
 
-	const join = (team: Team) => (team.participationType === 'onayli' ? setApplyTo(team) : void post({ action: 'join', teamId: team.id }));
+	const join = (team: Team) => (team.participationType === 'approval' ? setApplyTo(team) : void post({ action: 'join', teamId: team.id }));
 
 	const leave = async (team: Team) => {
-		const applied = team.myMyStatus === 'basvurdu';
+		const applied = team.myMyStatus === 'applied';
 		const message = fill(t(applied ? 'tmWithdrawConfirm' : 'tmLeaveConfirm'), { team: team.name });
 		if (!(await dialog.confirm({ message, tone: 'warning', confirmLabel: t(applied ? 'tmWithdraw' : 'tmLeave') }))) return;
 		await post({ action: 'leave', teamId: team.id });
@@ -130,10 +130,10 @@ export function useTeams() {
 		if (await post({ action: 'deleteTeam', teamId: team.id })) showTeam(null);
 	};
 
-	const canEnter = (tm: Team) => tm.permissions.manage || tm.myMyStatus === 'aktif';
+	const canEnter = (tm: Team) => tm.permissions.manage || tm.myMyStatus === 'active';
 	const canSeeVault = (tm: Team) => tm.permissions.manage;
 	const visibleTab: TeamWorkspaceTab =
-		selectedTeam && ((activeTab === 'kasa' && !canSeeVault(selectedTeam)) || (activeTab === 'settings' && !selectedTeam.permissions.manage))
+		selectedTeam && ((activeTab === 'vault' && !canSeeVault(selectedTeam)) || (activeTab === 'settings' && !selectedTeam.permissions.manage))
 			? 'kanban'
 			: activeTab;
 

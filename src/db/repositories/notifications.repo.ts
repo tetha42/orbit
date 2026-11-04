@@ -6,7 +6,7 @@ export async function getPendingProjectProposals(): Promise<{ id: string; title:
 	const res = await getPgPool().query(
 		`SELECT p.id, p.title AS title, k.first_name || ' ' || k.last_name AS "creatorNameSurname", p.created_at AS creation
 		 FROM projects p LEFT JOIN users k ON k.id = p.created_by
-		 WHERE p.status = 'oneri'
+		 WHERE p.status = 'proposed'
 		 ORDER BY p.created_at DESC
 		 LIMIT 20`
 	);
@@ -24,9 +24,9 @@ export async function getPendingAttendanceEvents(
 		`SELECT e.id, e.title AS title, e.location AS location, e.starts_at AS start, e.ends_at AS "endTime"
 		 FROM events e
 		 JOIN event_participants r ON r.event_id = e.id AND r.user_id = $1
-		 WHERE e.status = 'yayinda' AND e.checkin_open = 1
+		 WHERE e.status = 'published' AND e.checkin_open = 1
 		   AND e.starts_at - $3 <= $2 AND e.ends_at + $3 >= $2
-		   AND r.registered_at > 0 AND r.status <> 'iptal'
+		   AND r.registered_at > 0 AND r.status <> 'cancelled'
 		   AND r.status <> 'attended' AND r.attended_at IS NULL
 		 ORDER BY e.starts_at ASC`,
 		[userId, now, tolerance]

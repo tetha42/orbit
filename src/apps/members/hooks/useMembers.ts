@@ -52,7 +52,7 @@ export function useMembers() {
 	useAppEvent('roster-changed', () => void fetchMembers());
 
 	const [searchQuery, setSearchQuery] = useState('');
-	const [activeFilter, setActiveFilter] = useState<'all' | 'aktif' | 'beklemede' | 'mezun'>('all');
+	const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'pending' | 'alumni'>('all');
 	const [roleFilter, setRoleFilter] = useState<string>('');
 	const [selectedDepartment, setSelectedDepartment] = useState<string>('');
 	const [selectedGrade, setSelectedGrade] = useState<number>(0);
@@ -72,9 +72,9 @@ export function useMembers() {
 		if (command === 'add-member' && isAuthorizedToAdd) setShowAddModal(true);
 		else if (command === 'refresh') void fetchMembers();
 		else if (command === 'filter-all') setActiveFilter('all');
-		else if (command === 'filter-active') setActiveFilter('aktif');
-		else if (command === 'filter-pending' && isAuthorizedToAdd) setActiveFilter('beklemede');
-		else if (command === 'filter-alumni') setActiveFilter('mezun');
+		else if (command === 'filter-active') setActiveFilter('active');
+		else if (command === 'filter-pending' && isAuthorizedToAdd) setActiveFilter('pending');
+		else if (command === 'filter-alumni') setActiveFilter('alumni');
 	});
 
 	// New member state
@@ -261,7 +261,7 @@ export function useMembers() {
 	);
 
 	const handleUpdateMemberStatus = useCallback(
-		async (id: string, status: 'aktif' | 'reddedildi' | 'mezun') => {
+		async (id: string, status: 'active' | 'rejected' | 'alumni') => {
 			try {
 				const res = await fetch('/api/members', {
 					method: 'PATCH',
@@ -405,9 +405,9 @@ export function useMembers() {
 			if (selectedGrade !== 0 && String(m.grade) !== String(selectedGrade)) return false;
 			if (roleFilter && (m.roleId ?? '') !== (roleFilter === '-' ? '' : roleFilter)) return false;
 
-			if (activeFilter === 'aktif') return matchesSearch && m.status === 'aktif';
-			if (activeFilter === 'beklemede') return matchesSearch && m.status === 'beklemede';
-			if (activeFilter === 'mezun') return matchesSearch && (m.status === 'mezun' || m.roleId === 'rol_mezun');
+			if (activeFilter === 'active') return matchesSearch && m.status === 'active';
+			if (activeFilter === 'pending') return matchesSearch && m.status === 'pending';
+			if (activeFilter === 'alumni') return matchesSearch && (m.status === 'alumni' || m.roleId === 'role_alumni');
 			return matchesSearch;
 		});
 	}, [members, searchQuery, selectedDepartment, selectedGrade, roleFilter, activeFilter]);

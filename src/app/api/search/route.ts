@@ -68,8 +68,8 @@ export async function GET(request: Request) {
 	if (!auth.authorized) return auth.response;
 	const user = auth.user;
 	// `can` is false for every app while a required second factor is missing.
-	const uses = (app: string) => can(user, app, 'kullan');
-	const manages = (app: string) => can(user, app, 'yonet');
+	const uses = (app: string) => can(user, app, 'use');
+	const manages = (app: string) => can(user, app, 'manage');
 	const when = <T,>(ok: boolean, load: () => Promise<T[]>): Promise<T[]> => (ok ? load() : Promise.resolve([]));
 
 	const q = (new URL(request.url).searchParams.get('q') ?? '').trim();
@@ -94,7 +94,7 @@ export async function GET(request: Request) {
 				when(uses('members'), () => getMemberRoster()),
 				when(uses('teams'), () => getTeams()),
 				when(uses('events'), () => getEvents()),
-				when(uses('news'), () => getNews(manages('news') ? 'yonetim' : 'uye')),
+				when(uses('news'), () => getNews(manages('news') ? 'management' : 'member')),
 				when(uses('inventory'), () => getInventoryItems()),
 				when(uses('certificates'), () => getCertificates(manages('certificates') ? undefined : user.id)),
 				when(uses('teams') && !manages('teams'), () => getUserTeamIds(user.id)),
@@ -114,7 +114,7 @@ export async function GET(request: Request) {
 
 		const memberManager = manages('members');
 		for (const m of roster) {
-			if (!memberManager && m.status !== 'aktif') continue;
+			if (!memberManager && m.status !== 'active') continue;
 			add(
 				{
 					id: `member:${m.id}`,
@@ -185,7 +185,7 @@ export async function GET(request: Request) {
 		}
 
 		for (const e of events) {
-			if (!manages('events') && e.status === 'taslak') continue;
+			if (!manages('events') && e.status === 'draft') continue;
 			add(
 				{
 					id: `event:${e.id}`,
@@ -278,8 +278,8 @@ export async function GET(request: Request) {
 						title: r.description,
 						subtitle: [formatTL(r.amountMinor), r.category, vault.name].join(' · '),
 						target: vaultApp
-							? { kind: 'ledger', itemId: r.id, parentId: vault.teamId ?? 'genel' }
-							: { section: 'kasa', kind: 'ledger', itemId: r.id, parentId: vault.teamId ?? undefined },
+							? { kind: 'ledger', itemId: r.id, parentId: vault.teamId ?? 'general' }
+							: { section: 'vault', kind: 'ledger', itemId: r.id, parentId: vault.teamId ?? undefined },
 					},
 					[
 						{ text: r.description, weight: 4 },

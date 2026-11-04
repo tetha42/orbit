@@ -33,16 +33,16 @@ export function ProjectsApp() {
 	}
 
 	const tabs: { id: ProjectStatus; label: string; count: number; show: boolean }[] = [
-		{ id: 'yayinda', label: t('pjTabShowcase'), count: p.counts.yayinda, show: true },
-		{ id: 'oneri', label: t('pjTabProposals'), count: p.counts.oneri, show: p.manage || p.counts.oneri > 0 },
-		{ id: 'arsiv', label: t('pjTabArchive'), count: p.counts.arsiv, show: p.counts.arsiv > 0 },
+		{ id: 'published', label: t('pjTabShowcase'), count: p.counts.published, show: true },
+		{ id: 'proposed', label: t('pjTabProposals'), count: p.counts.proposed, show: p.manage || p.counts.proposed > 0 },
+		{ id: 'archived', label: t('pjTabArchive'), count: p.counts.archived, show: p.counts.archived > 0 },
 	];
 
 	return (
 		<div className={styles.root}>
 			<ProjectsHeader
 				manage={p.manage}
-				countPublished={p.counts.yayinda}
+				countPublished={p.counts.published}
 				onOpenForm={() => p.setForm({ project: null })}
 			/>
 
@@ -75,8 +75,8 @@ export function ProjectsApp() {
 			) : p.visible.length === 0 ? (
 				<div className={styles.emptyState}>
 					<FolderGit2 size={30} />
-					<strong>{p.tab === 'oneri' ? t('pjEmptyProposals') : t('pjEmpty')}</strong>
-					{p.tab === 'yayinda' && !p.query && <span>{t('pjEmptyHint')}</span>}
+					<strong>{p.tab === 'proposed' ? t('pjEmptyProposals') : t('pjEmpty')}</strong>
+					{p.tab === 'published' && !p.query && <span>{t('pjEmptyHint')}</span>}
 				</div>
 			) : viewMode === 'kanban' ? (
 				<ProjectKanbanBoard
@@ -126,7 +126,7 @@ export function ProjectsApp() {
 						playSystemSound();
 						notify(
 							created
-								? saved.status === 'yayinda'
+								? saved.status === 'published'
 									? t('pjPublished')
 									: t('pjProposalSent')
 								: t('pjSaved')

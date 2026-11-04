@@ -15,16 +15,16 @@ const clean = (value: unknown, max = 120) =>
 	typeof value === 'string' ? value.trim().slice(0, max) : '';
 
 export async function GET(request: Request) {
-	const auth = await requireApp(request, 'settings', 'kullan');
+	const auth = await requireApp(request, 'settings', 'use');
 	if (!auth.authorized) return auth.response;
 	const [identity, settings] = await Promise.all([getPublicIdentity(), getSystemSettings()]);
 	return NextResponse.json({ ok: true, identity, settings: { siteIcon: settings.site_icon || null } });
 }
 
 export async function PATCH(request: Request) {
-	const auth = await requireApp(request, 'settings', 'yonet');
+	const auth = await requireApp(request, 'settings', 'manage');
 	if (!auth.authorized) return auth.response;
-	if (auth.user.status === 'mezun') {
+	if (auth.user.status === 'alumni') {
 		return NextResponse.json({ error: 'Alumni accounts are read-only.' }, { status: 403 });
 	}
 
@@ -47,7 +47,7 @@ export async function PATCH(request: Request) {
 		if (!siteName) {
 			return NextResponse.json({ error: 'Site name cannot be empty.', code: 'SITE_NAME_REQUIRED' }, { status: 400 });
 		}
-		updates.club_Name = siteName;
+		updates.club_name = siteName;
 	}
 	if (body.shortName !== undefined) updates.site_short_name = clean(body.shortName, 32);
 	if (body.descriptionTr !== undefined) updates.site_description_tr = clean(body.descriptionTr, 400);

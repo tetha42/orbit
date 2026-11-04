@@ -33,7 +33,7 @@ const manifest = {
 	hotkey: '6',
 	order: 5,
 	dock: 7,
-	notifications: { loan: 'kullan' },
+	notifications: { loan: 'use' },
 	permission: {
 		order: 5,
 		name: 'Envanter',
@@ -42,7 +42,7 @@ const manifest = {
 	},
 	menu: {
 		title: { tr: 'Envanter', en: 'Assets' },
-		about: { id: 'about-inventory', label: { tr: 'Donanım Envanteri Hakkında', en: 'About Asset Inventory' }, permission: 'kullan', ac: true },
+		about: { id: 'about-inventory', label: { tr: 'Donanım Envanteri Hakkında', en: 'About Asset Inventory' }, permission: 'use', ac: true },
 	},
 } as const satisfies AppManifest;
 

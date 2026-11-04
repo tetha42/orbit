@@ -40,7 +40,7 @@ export async function POST(request: Request) {
 
 	const auth = await verifyAuth(request);
 	if (!auth.authorized) return auth.response;
-	if (auth.user.status === 'mezun') {
+	if (auth.user.status === 'alumni') {
 		return NextResponse.json({ error: 'Mezunlar sadece okuma erişimine sahiptir.' }, { status: 403 });
 	}
 	const limit = consumeRateLimit(`avatar:${auth.user.id}`, 10, 60 * 60_000);

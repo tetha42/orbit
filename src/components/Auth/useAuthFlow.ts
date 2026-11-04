@@ -67,7 +67,7 @@ export function useAuthFlow() {
 				return;
 			}
 
-			if (result.status === 'beklemede') {
+			if (result.status === 'pending') {
 				setPendingNotice(
 					result.error || 'Your membership application is awaiting administrator approval.'
 				);

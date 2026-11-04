@@ -18,6 +18,6 @@ export async function vaultRecords(api, teamId = null) {
  */
 export async function vaultClear(admin, teamId) {
 	const rows = await vaultRecords(admin, teamId);
-	const order = [...rows.filter((r) => r.typeValue === 'gider' && !r.transferId), ...rows.filter((r) => r.typeValue === 'gider'), ...rows];
+	const order = [...rows.filter((r) => r.typeValue === 'expense' && !r.transferId), ...rows.filter((r) => r.typeValue === 'expense'), ...rows];
 	for (const r of order) await admin.del(`/api/butce?id=${encodeURIComponent(r.id)}`);
 }
