@@ -1,25 +1,29 @@
+'use client';
+
 import Link from 'next/link';
+import { useI18n } from '@/core/i18n';
 
 export default function NotFound() {
+  const { t } = useI18n();
   return (
     <main
       style={{
         minHeight: '100dvh',
-        backgroundColor: '#09090b',
-        color: '#fafafa',
+        backgroundColor: 'var(--ink-bg)',
+        color: 'var(--ink-text)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         padding: '24px',
-        fontFamily: 'var(--font-sans, Inter, system-ui, sans-serif)',
+        fontFamily: 'var(--font-sans)',
       }}
     >
       <div
         style={{
           width: '100%',
           maxWidth: '480px',
-          backgroundColor: '#111113',
-          border: '1px solid #27272a',
+          backgroundColor: 'var(--ink-elevated)',
+          border: '1px solid var(--ink-border)',
           borderRadius: '8px',
           overflow: 'hidden',
         }}
@@ -30,17 +34,17 @@ export default function NotFound() {
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '12px 16px',
-            borderBottom: '1px solid #27272a',
-            backgroundColor: '#0c0c0e',
-            fontFamily: 'var(--font-mono, JetBrains Mono, monospace)',
+            borderBottom: '1px solid var(--ink-border)',
+            backgroundColor: 'var(--ink-surface)',
+            fontFamily: 'var(--font-mono)',
             fontSize: '11px',
             letterSpacing: '0.08em',
-            color: '#a1a1aa',
+            color: 'var(--ink-text-muted)',
             textTransform: 'uppercase',
           }}
         >
           <span>ORBIT // TETHA42</span>
-          <span style={{ color: '#fafafa' }}>HTTP 404</span>
+          <span style={{ color: 'var(--ink-text)' }}>HTTP 404</span>
         </div>
 
         <div style={{ padding: '28px 24px' }}>
@@ -48,12 +52,12 @@ export default function NotFound() {
             style={{
               display: 'inline-block',
               padding: '4px 8px',
-              backgroundColor: '#18181b',
-              border: '1px solid #27272a',
+              backgroundColor: 'var(--ink-card)',
+              border: '1px solid var(--ink-border)',
               borderRadius: '4px',
-              fontFamily: 'var(--font-mono, JetBrains Mono, monospace)',
+              fontFamily: 'var(--font-mono)',
               fontSize: '11px',
-              color: '#a1a1aa',
+              color: 'var(--ink-text-muted)',
               marginBottom: '16px',
             }}
           >
@@ -69,7 +73,7 @@ export default function NotFound() {
               color: '#fafafa',
             }}
           >
-            404 — Resource Not Found
+            {t('notFoundTitle')}
           </h1>
 
           <p
@@ -80,7 +84,7 @@ export default function NotFound() {
               color: '#a1a1aa',
             }}
           >
-            The requested route, verification ledger, or workspace asset could not be located on this Orbit node. Verify the URL or return to the primary console.
+            {t('notFoundDesc')}
           </p>
 
           <div
@@ -106,7 +110,7 @@ export default function NotFound() {
                 textDecoration: 'none',
               }}
             >
-              Return to Console
+              {t('verifyReturnConsole')}
             </Link>
             <Link
               href="/verify"
@@ -124,7 +128,7 @@ export default function NotFound() {
                 textDecoration: 'none',
               }}
             >
-              Verify Document
+              {t('notFoundVerifyBtn')}
             </Link>
           </div>
         </div>

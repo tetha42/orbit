@@ -34,14 +34,14 @@ const manifest = {
 	notifications: { message: 'use' },
 	permission: {
 		order: 10,
-		name: 'Mesajlar',
-		use: 'Sohbet odalarını görüntüler ve mesaj yazar (herkese açık).',
-		manage: 'Sohbet odalarını ve mesajları yönetir.',
+		name: 'Messages & Chat',
+		use: 'View chat rooms and post messages (open to everyone).',
+		manage: 'Manage chat rooms, moderate messages, and manage participants.',
 		everyoneOpen: true,
 	},
 	menu: {
 		title: { tr: 'Mesajlar', en: 'Messages' },
-		about: { id: 'about-chat', label: { tr: 'Mesajlar Hakkında', en: 'About Messages' }, permission: 'use', ac: true },
+		about: { id: 'about-chat', label: { tr: 'Mesajlar Hakkında', en: 'About Messages' }, permission: 'use', open: true },
 		categories: [
 			{
 				id: 'file',

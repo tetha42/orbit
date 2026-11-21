@@ -189,9 +189,9 @@ export function SmtpSettingsPanel() {
 					style={{
 						padding: '12px 16px',
 						borderRadius: '10px',
-						background: status.type === 'success' ? 'rgba(52, 199, 89, 0.15)' : 'rgba(255, 69, 58, 0.15)',
-						border: `1px solid ${status.type === 'success' ? 'rgba(52, 199, 89, 0.4)' : 'rgba(255, 69, 58, 0.4)'}`,
-						color: status.type === 'success' ? '#34c759' : '#ff453a',
+						background: status.type === 'success' ? 'color-mix(in srgb, var(--success) 15%, transparent)' : 'color-mix(in srgb, var(--danger) 15%, transparent)',
+						border: `1px solid ${status.type === 'success' ? 'color-mix(in srgb, var(--success) 40%, transparent)' : 'color-mix(in srgb, var(--danger) 40%, transparent)'}`,
+						color: status.type === 'success' ? 'var(--success)' : 'var(--danger)',
 						fontSize: '13px',
 						fontWeight: 600,
 						display: 'flex',

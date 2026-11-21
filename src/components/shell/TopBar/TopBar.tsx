@@ -9,11 +9,13 @@ import { ClockApplet } from './ClockApplet';
 import { NotificationBell } from '@/components/shell/NotificationCenter/NotificationBell';
 import { useShell } from '@/core/shell';
 import { useSession } from '@/core/session';
+import { useI18n } from '@/core/i18n';
 import { Search } from 'lucide-react';
 
 export function TopBar() {
 	const { isSpotlightOpen, setIsSpotlightOpen } = useShell();
 	const { connectionState } = useSession();
+	const { t } = useI18n();
 
 	return (
 		<header
@@ -55,10 +57,10 @@ export function TopBar() {
 					data-live-status={connectionState}
 					title={
 						connectionState === 'live'
-							? 'Canlı Bağlantı (SSE Bağlı)'
+							? t('topbarConnLive')
 							: connectionState === 'reconnecting'
-								? 'Yeniden Bağlanıyor...'
-								: 'Çevrimdışı'
+								? t('topbarConnReconnecting')
+								: t('topbarConnOffline')
 					}
 					style={{
 						display: 'flex',
@@ -75,15 +77,15 @@ export function TopBar() {
 							borderRadius: '50%',
 							backgroundColor:
 								connectionState === 'live'
-									? 'var(--color-success, #30d158)'
+									? 'var(--color-success, var(--success))'
 									: connectionState === 'reconnecting'
-										? 'var(--color-warning, #ff9f0a)'
-										: 'var(--color-danger, #ff453a)',
+										? 'var(--color-warning, var(--warning))'
+										: 'var(--color-danger, var(--danger))',
 							boxShadow:
 								connectionState === 'live'
-									? '0 0 6px rgba(48, 209, 88, 0.6)'
+									? '0 0 6px color-mix(in srgb, var(--success) 60%, transparent)'
 									: connectionState === 'reconnecting'
-										? '0 0 6px rgba(255, 159, 10, 0.6)'
+										? '0 0 6px color-mix(in srgb, var(--warning) 60%, transparent)'
 										: 'none',
 							transition: 'background-color 0.3s ease, box-shadow 0.3s ease',
 						}}
@@ -96,7 +98,7 @@ export function TopBar() {
 				{/* Spotlight Search Icon */}
 				<button
 					onClick={() => setIsSpotlightOpen(!isSpotlightOpen)}
-					title="Spotlight Search (Shift+Space / ⌘Space)"
+					title={t('topbarSpotlightTitle')}
 					style={{
 						background: isSpotlightOpen ? 'var(--fill-strong)' : 'transparent',
 						border: 'none',

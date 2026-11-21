@@ -1,0 +1,67 @@
+{
+  "id": "terminal",
+  "name": "Terminal & Cloud Shell",
+  "version": "1.0.0",
+  "description": "Web-based interactive Linux shell, PTY sessions, and cloud command execution.",
+  "tables": [],
+  "api": {
+    "base": "/api/terminal",
+    "endpoints": [
+      {
+        "path": "/api/terminal/session",
+        "methods": [
+          "POST",
+          "DELETE"
+        ],
+        "description": "Allocate or terminate a terminal PTY session."
+      },
+      {
+        "path": "/api/terminal/input",
+        "methods": [
+          "POST"
+        ],
+        "description": "Send stdin input to an active PTY session."
+      },
+      {
+        "path": "/api/terminal/resize",
+        "methods": [
+          "POST"
+        ],
+        "description": "Resize an active PTY terminal viewport."
+      },
+      {
+        "path": "/api/terminal/stream",
+        "methods": [
+          "GET"
+        ],
+        "description": "Stream PTY stdout/stderr events over SSE."
+      }
+    ]
+  },
+  "limits": {
+    "maxConcurrentShellsPerUser": 5,
+    "sessionTimeoutSeconds": 3600
+  },
+  "errorCodes": [
+    {
+      "code": "TERMINAL_SESSION_LIMIT",
+      "status": 429,
+      "i18nKey": "terminalLimitExceeded",
+      "description": "Max concurrent terminal sessions reached."
+    }
+  ],
+  "files": {
+    "actions": [
+      "src/app/api/terminal/session/route.ts"
+    ],
+    "queries": [
+      "src/apps/terminal/hooks/useTerminalSession.ts"
+    ],
+    "ui": [
+      "src/apps/terminal/index.tsx"
+    ],
+    "i18n": [
+      "src/lib/i18nApps.ts"
+    ]
+  }
+}

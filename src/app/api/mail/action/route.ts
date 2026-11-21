@@ -27,14 +27,14 @@ async function handlePOST(request: Request) {
 		const { folder = 'INBOX', uid: rawUid, uids: rawUids, action } = body;
 
 		if (!action || !ALLOWED_ACTIONS.includes(action as ActionType)) {
-			return NextResponse.json({ error: 'Geçersiz e-posta eylemi.' }, { status: 400 });
+			return NextResponse.json({ error: 'Invalid email action.' }, { status: 400 });
 		}
 
 		if (action === 'emptyTrash') {
 			const result = await emptyTrashFolder(folder);
 			if (!result.success) {
 				return NextResponse.json(
-					{ error: result.message || 'Çöp kutusu boşaltılamadı.' },
+					{ error: result.message || 'Failed to empty trash folder.' },
 					{ status: 500 }
 				);
 			}
@@ -54,14 +54,14 @@ async function handlePOST(request: Request) {
 		}
 
 		if (uids.length === 0) {
-			return NextResponse.json({ error: 'Geçersiz ileti numarası (UID).' }, { status: 400 });
+			return NextResponse.json({ error: 'Invalid message number (UID).' }, { status: 400 });
 		}
 
 		type MessageActionType = Exclude<ActionType, 'emptyTrash'>;
 		const result = await performMailAction(folder, uids, action as MessageActionType);
 		if (!result.success) {
 			return NextResponse.json(
-				{ error: result.message || 'İşlem gerçekleştirilemedi.' },
+				{ error: result.message || 'Action could not be completed.' },
 				{ status: 500 }
 			);
 		}
@@ -69,7 +69,7 @@ async function handlePOST(request: Request) {
 		return NextResponse.json({ success: true, action, uids, count: uids.length });
 	} catch (error) {
 		return NextResponse.json(
-			{ error: errorMessage(error) || 'E-posta işlemi sırasında bir hata oluştu.' },
+			{ error: errorMessage(error) || 'An error occurred while processing the email action.' },
 			{ status: 500 }
 		);
 	}

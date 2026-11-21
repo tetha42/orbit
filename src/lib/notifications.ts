@@ -14,7 +14,7 @@ const DAY = 86_400_000;
 export const FIRST_LOOK_LOOKBACK_MS = 3 * DAY;
 
 export interface NotificationGroups {
-	/** The recent announcement marked "önemli", shown above everything else. */
+	/** The recent announcement marked urgent, shown above everything else. */
 	pinned: NotificationItem | null;
 	/** To-dos, the most pressing first. Never "read": they stay until done. */
 	action: NotificationItem[];

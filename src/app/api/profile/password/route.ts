@@ -27,7 +27,7 @@ export async function POST(request: Request) {
 	const gate = isRateLimited(key, MAX_ATTEMPTS);
 	if (!gate.allowed) {
 		return NextResponse.json(
-			{ error: 'Çok fazla hatalı deneme. Lütfen daha sonra tekrar deneyin.' },
+			{ error: 'Too many invalid attempts. Please try again later.' },
 			{ status: 429, headers: { 'Retry-After': String(gate.retryAfter) } }
 		);
 	}
@@ -40,33 +40,37 @@ export async function POST(request: Request) {
 			await logSystemEvent({
 				service: 'auth',
 				level: 'WARN',
-				message: `Şifre değiştirme hatalı mevcut şifre denemesi: ${auth.user.email}`,
+				message: `Invalid current password attempt during password change: ${auth.user.email}`,
 				userId: auth.user.id,
 				detail: { attemptCount: attempts },
 				ip,
 			});
-			return NextResponse.json({ error: 'Mevcut şifre hatalı.' }, { status: 400 });
+			return NextResponse.json({ error: 'Current password is incorrect.', code: 'CURRENT_PASSWORD_WRONG' }, { status: 400 });
 		}
 		const problem = passwordProblem(fresh, { current, email: auth.user.email });
 		if (problem) return NextResponse.json({ error: problem }, { status: 400 });
 		await updateUserPassword(auth.user.id, await bcrypt.hash(String(fresh), 12), true);
-		try { closeUserTerminalSessions(auth.user.id); } catch {}
+		try {
+			closeUserTerminalSessions(auth.user.id);
+		} catch (termErr) {
+			console.warn('[PasswordChange] Best-effort terminal session cleanup failed:', termErr);
+		}
 		clearRateLimit(key);
 		const newSessionToken = await establishSession(auth.user, request, auth.user.authMethod ?? 'password');
 		await logSystemEvent({
 			service: 'auth',
 			level: 'INFO',
-			message: `Kullanıcı şifresini değiştirdi: ${auth.user.email}`,
+			message: `User changed password: ${auth.user.email}`,
 			userId: auth.user.id,
 			ip,
 		});
 		const response = NextResponse.json({
 			success: true,
-			message: 'Şifreniz değiştirildi ve diğer açık oturumlar güvenle sonlandırıldı.',
+			message: 'Your password has been changed and other active sessions were signed out.',
 		});
 		return attachSessionCookie(response, newSessionToken);
 	} catch (error) {
 		console.error('API /api/profile/password error:', error);
-		return NextResponse.json({ error: 'Şifre değiştirilemedi.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to change password.' }, { status: 500 });
 	}
 }

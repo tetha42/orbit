@@ -2,7 +2,7 @@
 
 import React, { useRef } from 'react';
 import { Archive, ArchiveRestore, ExternalLink, FolderGit2, Pencil, Pin, PinOff, Send, Star, Trash2, Undo2, Users } from 'lucide-react';
-import { useI18n } from '@/core/i18n';
+import { getLocaleDefinition, useI18n } from '@/core/i18n';
 import { useDialog } from '@/components/Common/DialogProvider';
 import { Linkified } from '@/components/Common/Linkified';
 import { Sheet } from '@/core/ui/Sheet';
@@ -30,12 +30,12 @@ export function ProjectDetailModal({ project, currentUserId, manage, onClose, on
 	const { t, language } = useI18n();
 	const dialog = useDialog();
 	const confirmOpen = useRef(false);
-	const locale = language === 'en' ? 'en-GB' : 'tr-TR';
+	const locale = getLocaleDefinition(language).dateLocale;
 
 	const owner = project.creatorId === currentUserId;
 	const canEdit = manage || (owner && project.status !== 'archived');
 	const canDelete = manage || (owner && project.status === 'proposed');
-	const statusKey = project.status === 'proposed' ? 'pjStatusOneri' : project.status === 'archived' ? 'pjStatusArsiv' : 'pjStatusYayinda';
+	const statusKey = project.status === 'proposed' ? 'pjStatusProposal' : project.status === 'archived' ? 'pjStatusArchived' : 'pjStatusPublished';
 
 	const remove = async () => {
 		confirmOpen.current = true;
@@ -62,7 +62,7 @@ export function ProjectDetailModal({ project, currentUserId, manage, onClose, on
 					<h3 style={{ margin: 0, fontSize: 18, fontWeight: 760 }}>{project.title}</h3>
 					<div className={styles.cardTop} style={{ marginTop: 6 }}>
 						<span className={`${styles.pill} ${styles[`pill_${project.status}`]}`}>{t(statusKey)}</span>
-						{Number(project.oneLeaving) === 1 && (
+						{Number(project.isFeatured) === 1 && (
 							<span className={`${styles.pill} ${styles.pillFeatured}`}>
 								<Pin size={11} /> {t('pjFeatured')}
 							</span>
@@ -77,9 +77,9 @@ export function ProjectDetailModal({ project, currentUserId, manage, onClose, on
 								<Users size={11} /> {project.teamName}
 							</button>
 						)}
-						{(project.ownerUserNameSurname || project.ownerTeamName) && (
+						{(project.ownerUserName || project.ownerTeamName) && (
 							<span className={styles.pill} title={t('pjOwner')}>
-								{t('pjOwner')}: {project.ownerUserNameSurname || project.ownerTeamName}
+								{t('pjOwner')}: {project.ownerUserName || project.ownerTeamName}
 							</span>
 						)}
 					</div>
@@ -103,10 +103,10 @@ export function ProjectDetailModal({ project, currentUserId, manage, onClose, on
 								<button
 									type="button"
 									className={ui.btn}
-									onClick={() => onPatch({ oneLeaving: Number(project.oneLeaving) !== 1 }, t('pjSaved'))}
+									onClick={() => onPatch({ isFeatured: Number(project.isFeatured) !== 1 }, t('pjSaved'))}
 								>
-									{Number(project.oneLeaving) === 1 ? <PinOff size={14} /> : <Pin size={14} />}
-									{Number(project.oneLeaving) === 1 ? t('pjActUnpin') : t('pjActPin')}
+									{Number(project.isFeatured) === 1 ? <PinOff size={14} /> : <Pin size={14} />}
+									{Number(project.isFeatured) === 1 ? t('pjActUnpin') : t('pjActPin')}
 								</button>
 								<button type="button" className={ui.btn} onClick={() => onPatch({ status: 'proposed' }, t('pjSaved'))}>
 									<Undo2 size={14} /> {t('pjActUnpublish')}
@@ -181,13 +181,13 @@ export function ProjectDetailModal({ project, currentUserId, manage, onClose, on
 
 			<div className={styles.author}>
 				<span className={ui.avatar} style={{ marginLeft: 0, width: 26, height: 26, fontSize: 10.5 }}>
-					{initials(project.creatorNameSurname)}
+					{initials(project.creatorName)}
 				</span>
 				<span style={{ fontSize: 12.5 }}>
-					<strong>{project.creatorNameSurname || '—'}</strong>
+					<strong>{project.creatorName || '—'}</strong>
 					<span className={ui.muted}>
 						{' · '}
-						{fill(t('pjAddedOn'), { date: new Date(project.creation).toLocaleDateString(locale) })}
+						{fill(t('pjAddedOn'), { date: new Date(project.createdAt ?? 0).toLocaleDateString(locale) })}
 					</span>
 				</span>
 			</div>

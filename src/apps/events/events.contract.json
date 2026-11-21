@@ -1,0 +1,77 @@
+{
+  "id": "events",
+  "name": "Events & Calendar",
+  "version": "1.0.0",
+  "description": "Community events, RSVP management, check-in QR codes, and attendance.",
+  "tables": [
+    "events",
+    "event_participants",
+    "users"
+  ],
+  "api": {
+    "base": "/api/events",
+    "endpoints": [
+      {
+        "path": "/api/events",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "description": "List community events or create new event."
+      },
+      {
+        "path": "/api/events/[id]/attendance",
+        "methods": [
+          "GET"
+        ],
+        "description": "List event RSVP and check-in attendance records."
+      },
+      {
+        "path": "/api/events/[id]/checkin-code",
+        "methods": [
+          "GET"
+        ],
+        "description": "Fetch time-bound QR check-in code for an event."
+      },
+      {
+        "path": "/api/public/v1/events",
+        "methods": [
+          "GET"
+        ],
+        "description": "Public events feed."
+      }
+    ]
+  },
+  "limits": {
+    "maxEventCapacity": 10000,
+    "maxTitleLength": 200
+  },
+  "errorCodes": [
+    {
+      "code": "EVENT_NOT_FOUND",
+      "status": 404,
+      "i18nKey": "eventNotFound",
+      "description": "Event not found."
+    },
+    {
+      "code": "EVENT_CAPACITY_FULL",
+      "status": 400,
+      "i18nKey": "eventFull",
+      "description": "Event capacity reached."
+    }
+  ],
+  "files": {
+    "actions": [
+      "src/db/repositories/events.repo.ts"
+    ],
+    "queries": [
+      "src/apps/events/hooks/useEvents.ts"
+    ],
+    "ui": [
+      "src/apps/events/index.tsx"
+    ],
+    "i18n": [
+      "src/lib/i18nApps.ts"
+    ]
+  }
+}

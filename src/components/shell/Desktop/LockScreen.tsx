@@ -56,7 +56,7 @@ export function LockScreen() {
 				alignItems: 'center',
 				justifyContent: 'center',
 				gap: '22px',
-				background: 'rgba(6, 10, 18, 0.86)',
+				background: 'color-mix(in srgb, var(--ink-bg) 86%, transparent)',
 				backdropFilter: 'var(--glass-blur-strong)',
 				color: '#ffffff',
 			}}
@@ -69,11 +69,11 @@ export function LockScreen() {
 					width: '62px',
 					height: '62px',
 					borderRadius: '50%',
-					background: 'rgba(56, 189, 248, 0.14)',
-					border: '1px solid rgba(56, 189, 248, 0.35)',
+					background: 'color-mix(in srgb, var(--cyan) 14%, transparent)',
+					border: '1px solid color-mix(in srgb, var(--cyan) 35%, transparent)',
 				}}
 			>
-				<Lock size={26} color="#38bdf8" />
+				<Lock size={26} color="var(--cyan)" />
 			</div>
 
 			<div style={{ textAlign: 'center' }}>
@@ -112,7 +112,7 @@ export function LockScreen() {
 				/>
 
 				{error && (
-					<div role="alert" style={{ fontSize: '12px', color: '#ff453a', textAlign: 'center' }}>
+					<div role="alert" style={{ fontSize: '12px', color: 'var(--danger)', textAlign: 'center' }}>
 						{error}
 					</div>
 				)}
@@ -128,7 +128,7 @@ export function LockScreen() {
 						padding: '12px 0',
 						borderRadius: '12px',
 						border: 'none',
-						background: 'linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)',
+						background: 'linear-gradient(135deg, #0284c7 0%, var(--cyan) 100%)',
 						color: '#ffffff',
 						fontSize: '14px',
 						fontWeight: 700,

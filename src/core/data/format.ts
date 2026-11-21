@@ -9,7 +9,7 @@ const tag = (l: Locale | string | undefined) => (l === 'en' || l === 'en-US' ? '
 /** 06.10.2026 */
 export const formatDate = (ms: number, locale?: Locale | string) => new Date(ms).toLocaleDateString(tag(locale), { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-/** 6 Ekim 2026 */
+/** 6 October 2026 */
 export const formatDateLong = (ms: number, locale?: Locale | string) => new Date(ms).toLocaleDateString(tag(locale), { day: 'numeric', month: 'long', year: 'numeric' });
 
 /** 06.10.2026 14:05 */
@@ -31,7 +31,7 @@ export function dayOffset(ts: number, now: number): number {
 	return Math.round((a.getTime() - b.getTime()) / DAY);
 }
 
-/** "2 saat önce" / "in 3 days" — the coarsest unit that still reads naturally. */
+/** "2 hours ago" / "in 3 days" — the coarsest unit that still reads naturally. */
 export function relativeTime(ts: number, now: number, locale: string): string {
 	const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
 	const diff = ts - now;

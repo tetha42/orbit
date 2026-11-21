@@ -13,7 +13,7 @@
 }
 
 /* ==========================================================================
-   1. Sol Kenar Çubuğu (Mailboxes Sidebar)
+   1. Left Sidebar (Mailboxes Sidebar)
    ========================================================================== */
 .sidebar {
 	width: 220px;
@@ -37,7 +37,7 @@
 	padding: 9px 14px;
 	border-radius: 9px;
 	background: var(--accent);
-	color: #ffffff;
+	color: var(--accent-contrast);
 	font-size: 13px;
 	font-weight: 600;
 	border: none;
@@ -93,7 +93,7 @@
 
 .folderItemActive {
 	background: var(--accent);
-	color: #ffffff;
+	color: var(--accent-contrast);
 	font-weight: 600;
 }
 
@@ -121,7 +121,7 @@
 
 .folderItemActive .folderBadge {
 	background: rgba(255, 255, 255, 0.25);
-	color: #ffffff;
+	color: var(--accent-contrast);
 }
 
 .sidebarFooter {
@@ -144,7 +144,7 @@
 }
 
 /* ==========================================================================
-   2. Orta İleti Listesi (Message List Pane)
+   2. Middle Message List (Message List Pane)
    ========================================================================== */
 .listPane {
 	width: 320px;
@@ -316,7 +316,7 @@
 }
 
 /* ==========================================================================
-   3. Sağ Detay Paneli (Message Detail Pane)
+   3. Right Detail Panel (Message Detail Pane)
    ========================================================================== */
 .detailPane {
 	flex: 1;
@@ -384,7 +384,7 @@
 
 .actionBtnPrimary {
 	background: var(--accent);
-	color: #ffffff;
+	color: var(--accent-contrast);
 	border-color: var(--accent);
 }
 
@@ -465,7 +465,7 @@
 
 .privacyBtn {
 	background: var(--accent);
-	color: #ffffff;
+	color: var(--accent-contrast);
 	border: none;
 	padding: 4px 10px;
 	border-radius: 6px;
@@ -478,14 +478,14 @@
 	flex: 1;
 	overflow-y: auto;
 	padding: 20px;
-	background: #ffffff;
-	color: #1a1a1a;
+	background: var(--surface-paper);
+	color: var(--ink-paper-text);
 	user-select: text;
 }
 
 :global([data-theme="dark"]) .bodyContainer {
-	background: #18191b;
-	color: #e0e0e0;
+	background: var(--ink-dark);
+	color: var(--ink-text-secondary);
 }
 
 .attachmentsBar {
@@ -625,7 +625,7 @@
 }
 
 /* ==========================================================================
-   5. Mobil Uyumluluk (<768px)
+   5. Mobile Compatibility (<768px)
    ========================================================================== */
 /* Multi-select Batch Toolbar */
 .batchToolbar {
@@ -676,12 +676,12 @@
 }
 
 .batchActionBtnDanger {
-	color: #ff453a;
+	color: var(--danger);
 }
 
 .batchActionBtnDanger:hover {
-	background: rgba(255, 69, 58, 0.12);
-	border-color: rgba(255, 69, 58, 0.4);
+	background: color-mix(in srgb, var(--danger) 12%, transparent);
+	border-color: color-mix(in srgb, var(--danger) 40%, transparent);
 }
 
 .selectionCheckbox {
@@ -696,7 +696,7 @@
 	cursor: pointer;
 	padding: 0;
 	flex-shrink: 0;
-	color: #ffffff;
+	color: var(--accent-contrast);
 	transition: border-color 0.12s ease, background-color 0.12s ease;
 }
 
@@ -753,9 +753,9 @@
 	gap: 5px;
 	padding: 3px 8px;
 	border-radius: 6px;
-	border: 1px solid rgba(255, 69, 58, 0.3);
-	background: rgba(255, 69, 58, 0.08);
-	color: #ff453a;
+	border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+	background: color-mix(in srgb, var(--danger) 8%, transparent);
+	color: var(--danger);
 	font-size: 11px;
 	font-weight: 500;
 	cursor: pointer;
@@ -763,8 +763,8 @@
 }
 
 .emptyTrashHeaderBtn:hover {
-	background: rgba(255, 69, 58, 0.16);
-	border-color: rgba(255, 69, 58, 0.5);
+	background: color-mix(in srgb, var(--danger) 16%, transparent);
+	border-color: color-mix(in srgb, var(--danger) 50%, transparent);
 }
 
 @media (max-width: 768px) {

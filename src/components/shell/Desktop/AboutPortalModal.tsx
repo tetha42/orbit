@@ -71,11 +71,11 @@ export function AboutPortalModal() {
 						width: '68px',
 						height: '68px',
 						borderRadius: '18px',
-						background: 'linear-gradient(135deg, #007aff, #5856d6)',
+						background: 'linear-gradient(135deg, var(--accent), var(--indigo))',
 						display: 'grid',
 						placeItems: 'center',
 						color: '#fff',
-						boxShadow: '0 10px 24px rgba(0, 122, 255, 0.4)',
+						boxShadow: '0 10px 24px color-mix(in srgb, var(--accent) 40%, transparent)',
 						marginBottom: '16px',
 						overflow: 'hidden',
 					}}

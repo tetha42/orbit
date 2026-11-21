@@ -15,8 +15,9 @@ export async function getCertificates(userId?: string): Promise<Certificate[]> {
 	let query = `
 		SELECT s.id, s.verification_code AS "verificationCode", s.user_id AS "userId",
 		       s.event_id AS "eventId", s.title AS "title", s.issued_at AS "issuanceDate",
-		       s.pdf_url AS "pdfUrl", s.created_at AS "creation", s.category AS "category",
+		       s.pdf_url AS "pdfUrl", s.created_at AS "createdAt", s.category AS "category",
 		       s.locale AS "language", s.description AS "description",
+		       k.first_name || ' ' || k.last_name AS "userName",
 		       k.first_name || ' ' || k.last_name AS "userNameSurname",
 		       k.handle AS "studentNo",
 		       e.title AS "eventTitle"
@@ -41,8 +42,9 @@ export async function getCertificateByCode(code: string): Promise<Certificate | 
 		`
 		SELECT s.id, s.verification_code AS "verificationCode", s.user_id AS "userId",
 		       s.event_id AS "eventId", s.title AS "title", s.issued_at AS "issuanceDate",
-		       s.pdf_url AS "pdfUrl", s.created_at AS "creation", s.category AS "category",
+		       s.pdf_url AS "pdfUrl", s.created_at AS "createdAt", s.category AS "category",
 		       s.locale AS "language", s.description AS "description",
+		       k.first_name || ' ' || k.last_name AS "userName",
 		       k.first_name || ' ' || k.last_name AS "userNameSurname",
 		       k.handle AS "studentNo",
 		       k.department AS "userDepartment",
@@ -100,20 +102,20 @@ export async function createEventCertificates(
 	eventId: string,
 	title: string,
 	options?: { category?: string; language?: string; description?: string }
-): Promise<{ given: number; alreadyVar: number }> {
+): Promise<{ given: number; alreadyExists: number }> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`SELECT y.user_id AS "userId",
-		        EXISTS (SELECT 1 FROM certificates s WHERE s.user_id = y.user_id AND s.event_id = $1) AS "var"
+		        EXISTS (SELECT 1 FROM certificates s WHERE s.user_id = y.user_id AND s.event_id = $1) AS "exists"
 		 FROM event_participants y
 		 WHERE y.event_id = $1 AND y.status = 'attended'`,
 		[eventId]
 	);
 	let given = 0;
-	let alreadyVar = 0;
+	let alreadyExists = 0;
 	for (const row of res.rows) {
-		if (row.set) {
-			alreadyVar += 1;
+		if (row.exists) {
+			alreadyExists += 1;
 			continue;
 		}
 		await createCertificate({
@@ -126,7 +128,7 @@ export async function createEventCertificates(
 		});
 		given += 1;
 	}
-	return { given, alreadyVar };
+	return { given, alreadyExists };
 }
 
 export interface CommunityProfile {
@@ -138,18 +140,25 @@ export interface CommunityProfile {
 export async function getCommunityProfile(): Promise<CommunityProfile> {
 	const setting = await getSystemSettings();
 	let lead = '';
-	if (!setting.signature1_name) {
+	const sig1Name = setting.signatory_1_name || setting.signature1_name || '';
+	if (!sig1Name) {
 		const res = await getPgPool().query(
 			"SELECT first_name || ' ' || last_name AS name FROM users WHERE role_id = 'role_admin' AND status = 'active' ORDER BY created_at ASC LIMIT 1"
 		);
 		lead = res.rows[0]?.name ?? '';
 	}
 	return {
-		university: setting.university,
-		clubName: setting.club_name,
+		university: setting.parent_entity || setting.university || 'tetha42',
+		clubName: setting.organization_name || setting.club_name || 'Orbit Community',
 		signatures: [
-			{ name: setting.signature1_name || lead, rank: setting.signature1_rank },
-			{ name: setting.signature2_name, rank: setting.signature2_rank },
+			{
+				name: sig1Name || lead,
+				rank: setting.signatory_1_title || setting.signature1_rank || 'Community Leader',
+			},
+			{
+				name: setting.signatory_2_name || setting.signature2_name || '',
+				rank: setting.signatory_2_title || setting.signature2_rank || 'Studio Coordinator',
+			},
 		],
 	};
 }

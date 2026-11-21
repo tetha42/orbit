@@ -20,8 +20,10 @@ const arg = (name, fallback) => {
 	const i = process.argv.indexOf(name);
 	return i > 0 ? process.argv[i + 1] : fallback;
 };
+const hasFlag = (name) => process.argv.includes(name);
 const BASE = arg('--base', 'http://localhost:3000');
 const OUT = arg('--out', '.fixtures.json');
+const NO_TOTP_WAIT = hasFlag('--no-totp-wait') || process.env.E2E_FAST_FIXTURES === '1';
 const ADMIN_EMAIL = process.env.BOOTSTRAP_ADMIN_EMAIL;
 const ADMIN_PASSWORD = process.env.BOOTSTRAP_ADMIN_PASSWORD;
 if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
@@ -60,10 +62,15 @@ const must = (r, what) => {
 	return r.json;
 };
 
-/** Waits for the next 30-second window so a TOTP code is never reused. */
+/** Waits for the next 30-second window only when the same secret was already spent. */
 async function freshCode(secret) {
-	const last = state.totpUsedAt ?? 0;
-	if (Math.floor(last / 30000) === Math.floor(Date.now() / 30000)) await new Promise((r) => setTimeout(r, 30500 - (Date.now() % 30000)));
+	state.totpUsedBySecret = state.totpUsedBySecret ?? {};
+	const lastWindow = state.totpUsedBySecret[secret] ?? -1;
+	const nowWindow = Math.floor(Date.now() / 30000);
+	if (lastWindow >= nowWindow) {
+		await new Promise((r) => setTimeout(r, 30500 - (Date.now() % 30000)));
+	}
+	state.totpUsedBySecret[secret] = Math.floor(Date.now() / 30000);
 	state.totpUsedAt = Date.now();
 	return generate({ secret });
 }
@@ -87,16 +94,16 @@ async function loginAdmin() {
 }
 
 const ROLES = {
-	management: { name: 'Yönetim Kurulu', color: '#ff9f0a', description: 'Topluluk yönetim kurulu ve icra', twoStepRequired: true, permissions: { news: 'manage', events: 'manage', teams: 'manage', projects: 'manage', certificates: 'manage', inventory: 'manage', members: 'manage', budget: 'manage', notes: 'use', chat: 'manage', mail: 'manage', settings: 'use' } },
-	member: { name: 'Üye', color: '#0a84ff', description: 'Aktif topluluk üyesi', twoStepRequired: false, permissions: { news: 'use', events: 'use', teams: 'use', projects: 'use', certificates: 'use', inventory: 'use', members: 'use', notes: 'use', chat: 'use', mail: 'use', settings: 'use' } },
-	news: { name: 'Sadece Haberler', color: '#8e8e93', description: 'Salt okunur duyuru ve haber erişimi', twoStepRequired: false, permissions: { news: 'use' } },
+	management: { name: 'Management Board', color: '#ff9f0a', description: 'Community management board and operations', twoStepRequired: true, permissions: { news: 'manage', events: 'manage', teams: 'manage', projects: 'manage', certificates: 'manage', inventory: 'manage', members: 'manage', budget: 'manage', notes: 'use', chat: 'manage', mail: 'manage', decisions: 'manage', settings: 'use' } },
+	member: { name: 'Member', color: '#0a84ff', description: 'Active community member', twoStepRequired: false, permissions: { news: 'use', events: 'use', teams: 'use', projects: 'use', certificates: 'use', inventory: 'use', members: 'use', notes: 'use', chat: 'use', mail: 'use', decisions: 'use', settings: 'use' } },
+	news: { name: 'News Only', color: '#8e8e93', description: 'Read-only announcements and news access', twoStepRequired: false, permissions: { news: 'use' } },
 };
 
 const MEMBERS = [
-	{ key: 'zeynep', alias: 'alex', name: 'Zeynep', surname: 'Kaya', email: 'zeynep@club.test', role: 'management', department: 'Bilgisayar Mühendisliği', grade: 3 },
-	{ key: 'ege', alias: 'jordan', name: 'Ege', surname: 'Kılıç', email: 'ege@club.test', role: 'member', department: 'Yazılım Mühendisliği', grade: 3 },
-	{ key: 'can', alias: 'taylor', name: 'Can', surname: 'Demir', email: 'can@club.test', role: 'member', department: 'Bilgisayar Mühendisliği', grade: 2 },
-	{ key: 'reader', alias: 'sam', name: 'Okur', surname: 'Haber', email: 'okur@club.test', role: 'news', department: 'Endüstri Mühendisliği', grade: 1 },
+	{ key: 'zeynep', alias: 'alex', name: 'Alice', surname: 'Carter', email: 'zeynep@club.test', role: 'management', department: 'Software Engineering & Architecture', grade: 3 },
+	{ key: 'ege', alias: 'jordan', name: 'Jordan', surname: 'Blake', email: 'ege@club.test', role: 'member', department: 'Software Engineering & Architecture', grade: 3 },
+	{ key: 'can', alias: 'taylor', name: 'Taylor', surname: 'Reed', email: 'can@club.test', role: 'member', department: 'Software Engineering & Architecture', grade: 2 },
+	{ key: 'reader', alias: 'sam', name: 'Sam', surname: 'Hayes', email: 'okur@club.test', role: 'news', department: 'Industrial Engineering', grade: 1 },
 ];
 const PASSWORD = 'Orbit-Test-2026!';
 
@@ -110,6 +117,7 @@ state.admin = {
 const rolesRes = must(await admin.call('GET', '/api/roles'), 'list roles');
 const existing = rolesRes.roles;
 state.roles = {};
+state.roleNames = { management: ROLES.management.name, member: ROLES.member.name, news: ROLES.news.name };
 for (const [key, role] of Object.entries(ROLES)) {
 	const found = existing.find((r) => r.name === role.name);
 	if (found) {
@@ -138,7 +146,7 @@ if (dbUrl) {
 		await db.connect();
 		await db.query("DELETE FROM system_settings WHERE key LIKE 'smtp%'");
 		await db.query("TRUNCATE TABLE audit_logs CASCADE");
-		await db.query("DELETE FROM roles WHERE ad IN ('SilinemezRol', 'GeriAlinacak') OR ad LIKE 'Denetim Rolü%'");
+		await db.query("DELETE FROM roles WHERE name IN ('SilinemezRol', 'GeriAlinacak') OR name LIKE 'Denetim Rol\u00fc%'");
 		await db.end();
 	} catch {}
 }
@@ -152,7 +160,7 @@ for (const m of MEMBERS) {
 		await admin.call('PATCH', '/api/members', { id: inRoster.id, roleId: state.roles[m.role], status: 'active' });
 		continue;
 	}
-	const created = must(await admin.call('POST', '/api/members', { name: m.name, surname: m.surname, email: m.email, department: m.department, grade: m.grade, roleId: state.roles[m.role] }), `create ${m.email}`);
+	const created = must(await admin.call('POST', '/api/members', { name: m.name, surname: m.surname, email: m.email, department: m.department, grade: m.grade, roleId: state.roles[m.role], preferredLanguage: 'tr' }), `create ${m.email}`);
 	const u = client();
 	const initialPw = created.temporaryPassword;
 	must(await u.call('POST', '/api/auth/login', { email: m.email, password: initialPw }), `first login ${m.email}`);
@@ -167,6 +175,10 @@ for (const m of MEMBERS) {
 	const userRecord = {
 		id: created.member.id,
 		email: m.email,
+		name: m.name,
+		surname: m.surname,
+		nameSurname: `${m.name} ${m.surname}`,
+		department: m.department,
 		password: PASSWORD,
 		role: m.role,
 		...(totpSecret ? { totp: totpSecret } : {}),
@@ -191,21 +203,21 @@ await once('team', async () => {
 	}
 	return must(res, 'team');
 });
-await once('news', async () => must(await admin.call('POST', '/api/news', { title: 'Güz Dönemi Tanışma Toplantısı', content: 'Orbit topluluğu yeni dönem tanışma toplantısı ve platform tanıtımı.', category: 'general', publishStatus: 'published' }), 'news'));
-await once('event', async () => must(await admin.call('POST', '/api/events', { action: 'createEvent', title: 'Modern Web ve Git Atölyesi', description: 'Sürüm kontrolü ve açık kaynak işbirliği atölye çalışması', typeValue: 'workshop', location: 'Virtual Lab Stage A', start: Date.now() + 3 * 86400000, endTime: Date.now() + 3 * 86400000 + 2 * 3600000, capacity: 30, status: 'published' }), 'event'));
-await once('income', async () => must(await admin.call('POST', '/api/budget', { typeValue: 'income', category: 'sponsorship', amountMinor: 2500000, description: 'Açık Kaynak Ekosistem Sponsorluk Hibesi' }), 'income'));
+await once('news', async () => must(await admin.call('POST', '/api/news', { title: 'Autumn Term Meetup', content: 'Orbit community kickoff and platform introduction for the new term.', category: 'general', publishStatus: 'published' }), 'news'));
+await once('event', async () => must(await admin.call('POST', '/api/events', { action: 'createEvent', title: 'Modern Web and Git Workshop', description: 'Version control and open-source collaboration workshop', typeValue: 'workshop', location: 'Virtual Lab Stage A', start: Date.now() + 3 * 86400000, endTime: Date.now() + 3 * 86400000 + 2 * 3600000, capacity: 30, status: 'published' }), 'event'));
+await once('income', async () => must(await admin.call('POST', '/api/budget', { type: 'income', category: 'sponsorship', amountMinor: 2500000, description: 'Open Source Ecosystem Sponsorship Grant' }), 'income'));
 await once('item', async () => {
 	const res = await admin.call('POST', '/api/inventory', { action: 'create', code: 'LAB-RPI-001', name: 'Raspberry Pi 5 (8GB)', category: 'Development Board', location: 'Hardware Lab Rack B-1' });
 	if (res.status === 409) {
 		const all = await admin.call('GET', '/api/inventory');
 		const list = Array.isArray(all.json) ? all.json : (all.json?.items ?? []);
-		const found = list.find((i) => i.seriesNo === 'LAB-RPI-001' || i.code === 'LAB-RPI-001');
+		const found = list.find((i) => i.serialNo === 'LAB-RPI-001' || i.seriesNo === 'LAB-RPI-001' || i.code === 'LAB-RPI-001');
 		if (found) return found;
 	}
 	return must(res, 'item');
 });
 
-if (state.totpUsedAt) {
+if (!NO_TOTP_WAIT && state.totpUsedAt) {
 	const elapsed = Date.now() % 30000;
 	await new Promise((r) => setTimeout(r, 30500 - elapsed));
 }

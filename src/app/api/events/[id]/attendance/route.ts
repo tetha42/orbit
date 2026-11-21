@@ -10,7 +10,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 	if (!auth.authorized) return auth.response;
 	const { id } = await params;
 	const ev = await getEventById(id);
-	if (!ev) return NextResponse.json({ error: 'CommunityEvent bulunamadı.' }, { status: 404 });
+	if (!ev) return NextResponse.json({ error: 'Event not found.' }, { status: 404 });
 	const list = await getEventAttendeeList(id);
 	return NextResponse.json({ list }, { headers: { 'Cache-Control': 'no-store' } });
 }

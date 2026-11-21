@@ -3,7 +3,7 @@
 import React, { useRef } from 'react';
 import Image from 'next/image';
 import { Camera, Trash2 } from 'lucide-react';
-import { useI18n } from '@/core/i18n';
+import { useI18n, getLocaleDefinition } from '@/core/i18n';
 import { fill } from '@/lib/text';
 import { PROFILE_PHOTO_PX } from '@/lib/profile';
 import { RoleBadge } from '@/core/ui/RoleBadge';
@@ -58,7 +58,7 @@ export function AccountProfileHero({
 	note,
 }: AccountProfileHeroProps) {
 	const { t, language } = useI18n();
-	const locale = language === 'en' ? 'en-GB' : 'tr-TR';
+	const locale = getLocaleDefinition(language).dateLocale;
 	const fileRef = useRef<HTMLInputElement>(null);
 
 	const pickPhoto = async (file: File | undefined) => {
@@ -68,7 +68,7 @@ export function AccountProfileHero({
 			const blob = await squareImage(file);
 			const form = new FormData();
 			form.append('file', blob, blob.type === 'image/webp' ? 'avatar.webp' : 'avatar.jpg');
-			const res = await fetch('/api/profilee/photo', { method: 'POST', body: form });
+			const res = await fetch('/api/profile/photo', { method: 'POST', body: form });
 			const body = await res.json().catch(() => ({}));
 			onPhotoDone(res.ok, res.ok ? t('acPhotoSaved') : body.error || t('kbActionFailed'));
 		} catch {
@@ -79,7 +79,7 @@ export function AccountProfileHero({
 
 	const removePhoto = async () => {
 		onSetBusy('photo');
-		const res = await fetch('/api/profilee/photo', { method: 'DELETE' });
+		const res = await fetch('/api/profile/photo', { method: 'DELETE' });
 		onPhotoDone(res.ok, res.ok ? t('acPhotoRemoved') : t('kbActionFailed'));
 	};
 
@@ -109,7 +109,7 @@ export function AccountProfileHero({
 				</h3>
 				<div className={styles.meta}>
 					<RoleBadge role={user.roleInfo} emptyText={t('roleNone')} />{' '}
-					{user.email} · {fill(t('acMemberSince'), { date: new Date(user.createdAt || user.creation || 0).toLocaleDateString(locale, { month: 'long', year: 'numeric' }) })}
+					{user.email} · {fill(t('acMemberSince'), { date: new Date(user.createdAt || 0).toLocaleDateString(locale, { month: 'long', year: 'numeric' }) })}
 				</div>
 				<div className={styles.level}>
 					<strong>{fill(t('acLevel'), { n: level.level })}</strong>

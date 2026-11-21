@@ -1,0 +1,125 @@
+{
+  "id": "chat",
+  "name": "Chat & Messaging",
+  "version": "1.0.0",
+  "description": "Real-time multi-room chat, direct messages, polls, search, attachments, and WebRTC audio calls.",
+  "tables": [
+    "chat_rooms",
+    "chat_members",
+    "chat_messages",
+    "chat_polls",
+    "chat_calls",
+    "chat_call_signals"
+  ],
+  "api": {
+    "base": "/api/chat",
+    "endpoints": [
+      {
+        "path": "/api/chat/rooms",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "description": "List user accessible chat rooms or create a room."
+      },
+      {
+        "path": "/api/chat/messages",
+        "methods": [
+          "GET",
+          "POST",
+          "PATCH",
+          "DELETE"
+        ],
+        "description": "Fetch, post, edit, or delete room messages."
+      },
+      {
+        "path": "/api/chat/poll",
+        "methods": [
+          "POST"
+        ],
+        "description": "Cast a vote in a chat room poll."
+      },
+      {
+        "path": "/api/chat/search",
+        "methods": [
+          "GET"
+        ],
+        "description": "Search accessible chat room message history."
+      },
+      {
+        "path": "/api/chat/stream",
+        "methods": [
+          "GET"
+        ],
+        "description": "Stream real-time chat events over SSE."
+      },
+      {
+        "path": "/api/chat/upload",
+        "methods": [
+          "POST"
+        ],
+        "description": "Upload a quota-tracked attachment to a chat room."
+      },
+      {
+        "path": "/api/chat/call",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "description": "Inspect or manage room WebRTC voice call state."
+      },
+      {
+        "path": "/api/chat/call/ice",
+        "methods": [
+          "GET"
+        ],
+        "description": "Fetch ICE server configuration for WebRTC calls."
+      },
+      {
+        "path": "/api/chat/call/signal",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "description": "Exchange WebRTC SDP offers, answers, and ICE candidates."
+      }
+    ]
+  },
+  "limits": {
+    "maxMessageLength": 4000,
+    "maxBatchDelete": 200,
+    "maxPollOptions": 10
+  },
+  "errorCodes": [
+    {
+      "code": "ROOM_ACCESS_DENIED",
+      "status": 403,
+      "i18nKey": "chatAccessDenied",
+      "description": "User cannot access this chat room."
+    },
+    {
+      "code": "MESSAGE_NOT_FOUND",
+      "status": 404,
+      "i18nKey": "chatMessageNotFound",
+      "description": "Message not found or deleted."
+    }
+  ],
+  "files": {
+    "actions": [
+      "src/db/repositories/chat/messageActions.ts",
+      "src/db/repositories/chat/pollActions.ts",
+      "src/db/repositories/chat/dms.ts"
+    ],
+    "queries": [
+      "src/db/repositories/chat/messageQueries.ts",
+      "src/db/repositories/chat/pollQueries.ts",
+      "src/db/repositories/chat/rooms.ts"
+    ],
+    "ui": [
+      "src/apps/chat/index.tsx"
+    ],
+    "i18n": [
+      "src/lib/i18nApps.ts"
+    ]
+  }
+}

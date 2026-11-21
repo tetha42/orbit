@@ -36,8 +36,8 @@ export function getWebauthnConfig(request: Request): WebauthnConfig {
 		};
 	}
 
-	// Behind Caddy, `Host` is explicitly set via `header_up Host {host}` whereas
-	// `X-Forwarded-Host` is not stripped unless configured. Only read `Host` (and
+	// Behind a reverse proxy, `Host` is explicitly set by the proxy whereas
+	// `X-Forwarded-Host` may not be stripped unless configured. Only read `Host` (and
 	// strip any control/whitespace characters) so a client cannot spoof rpID/origin.
 	const rawHost = (request.headers.get('host') || 'localhost').replace(/[\r\n\s/\\]+/g, '');
 	const host = /^[a-zA-Z0-9.-]+(?::\d{1,5})?$/.test(rawHost) ? rawHost : 'localhost';

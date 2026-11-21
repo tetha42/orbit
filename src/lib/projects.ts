@@ -63,7 +63,7 @@ export function normalizeTechnologies(value: unknown): string[] | null {
 	return out;
 }
 
-/** "github.com/beuteknoloji/portal" — a repo URL without the noise, for display. */
+/** "github.com/tetha42/orbit" — a repo URL without the noise, for display. */
 export function shortRepo(url: string | null | undefined): string {
 	if (!url) return '';
 	try {

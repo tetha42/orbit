@@ -22,11 +22,11 @@ export async function POST(request: Request) {
 		void recordSecurityStrike({
 			ip,
 			points: 10,
-			reason: 'Karantinadaki IP Passkey options denemesi',
+			reason: 'Quarantined IP attempted Passkey options',
 			path: '/api/auth/passkey/login/options',
 		});
 		return NextResponse.json(
-			{ error: 'IP adresiniz güvenlik politikası nedeniyle karantinaya alınmıştır.' },
+			{ error: 'Your IP address has been temporarily quarantined due to security policy.' },
 			{ status: 403 }
 		);
 	}
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
 			path: '/api/auth/passkey/login/options',
 		});
 		return NextResponse.json(
-			{ error: 'Güvenlik duvarı (WAF) tarafından şüpheli istek engellendi.' },
+			{ error: 'Suspicious request blocked by the Web Application Firewall (WAF).' },
 			{ status: 403 }
 		);
 	}
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
 	const limit = consumeRateLimit(`passkey:options:ip:${ip}`, 20, 60_000);
 	if (!limit.allowed) {
 		return NextResponse.json(
-			{ error: 'Çok fazla istek, lütfen biraz bekleyin.' },
+			{ error: 'Too many requests. Please wait a moment.' },
 			{ status: 429, headers: { 'Retry-After': String(limit.retryAfter) } }
 		);
 	}
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
 				path: '/api/auth/passkey/login/options',
 			});
 			return NextResponse.json(
-				{ error: 'Güvenlik duvarı (WAF) tarafından şüpheli istek engellendi.' },
+				{ error: 'Suspicious request blocked by the Web Application Firewall (WAF).' },
 				{ status: 403 }
 			);
 		}
@@ -73,12 +73,12 @@ export async function POST(request: Request) {
 		const email = String(body.email ?? '').trim().toLowerCase();
 
 		if (!email || email.length > 254) {
-			return NextResponse.json({ error: 'E-posta zorunludur.' }, { status: 400 });
+			return NextResponse.json({ error: 'Email is required.' }, { status: 400 });
 		}
 
 		// Uniform message prevents distinguishing "not registered", "no passkey", and "pending/rejected"
 		const UNIFORM_NOT_AVAILABLE =
-			'Bu hesap için kullanılabilir bir passkey bulunamadı. Şifre ile giriş yapabilirsiniz.';
+			'No passkey is available for this account. You can sign in with your password.';
 
 		const user = await getUserByEmail(email);
 		if (!user || user.status !== 'active') {
@@ -94,13 +94,15 @@ export async function POST(request: Request) {
 
 		const options = await generateAuthenticationOptions({
 			rpID,
-			allowCredentials: credentials.map((c) => ({
-				id: c.id,
-				transports: parseTransports(c.transports),
-			})),
-			// The passkey itself is the second factor, so no extra user check is needed.
-			userVerification: 'preferred',
-			// Give password-manager extensions time to open their picker.
+			allowCredentials: credentials.map((c) => {
+				const parsed = parseTransports(c.transports) ?? [];
+				const transports = Array.from(new Set([...parsed, 'hybrid', 'internal'])) as typeof parsed;
+				return {
+					id: c.id,
+					transports,
+				};
+			}),
+			userVerification: 'required',
 			timeout: 120_000,
 		});
 
@@ -118,9 +120,9 @@ export async function POST(request: Request) {
 		await logSystemEvent({
 			service: 'auth',
 			level: 'WARN',
-			message: 'Passkey giriş seçenekleri oluşturulurken hata oluştu',
+			message: 'Failed to generate passkey sign-in options',
 			ip,
 		});
-		return NextResponse.json({ error: 'Passkey girişi başlatılamadı.' }, { status: 500 });
+		return NextResponse.json({ error: 'Could not start passkey sign-in.' }, { status: 500 });
 	}
 }

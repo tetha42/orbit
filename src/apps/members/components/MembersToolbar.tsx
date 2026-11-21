@@ -81,7 +81,7 @@ export function MembersToolbar({
 						display: 'flex',
 						alignItems: 'center',
 						gap: '8px',
-						background: 'rgba(120, 120, 130, 0.1)',
+						background: 'color-mix(in srgb, var(--neutral) 10%, transparent)',
 						padding: '6px 12px',
 						borderRadius: '8px',
 						border: '1px solid var(--input-border)',

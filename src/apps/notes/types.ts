@@ -24,8 +24,8 @@ export interface ServerNoteRecord {
 	isPinned?: number | boolean;
 	folderId?: string;
 	isTrashed?: number | boolean;
-	creation?: number | string;
-	update?: number | string;
+	createdAt?: number | string;
+	updatedAt?: number | string;
 }
 
 export interface NoteColors {

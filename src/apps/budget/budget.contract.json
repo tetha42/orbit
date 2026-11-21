@@ -1,0 +1,64 @@
+{
+  "id": "budget",
+  "name": "Budget & Treasury",
+  "version": "1.0.0",
+  "description": "Financial ledger, transactions, treasury management, and expenditure accounting.",
+  "tables": [
+    "budget_records",
+    "teams"
+  ],
+  "api": {
+    "base": "/api/budget",
+    "endpoints": [
+      {
+        "path": "/api/budget",
+        "methods": [
+          "GET",
+          "POST",
+          "PATCH",
+          "DELETE"
+        ],
+        "description": "List, create, update, or delete budget ledger records."
+      },
+      {
+        "path": "/api/budget/vaults",
+        "methods": [
+          "GET"
+        ],
+        "description": "List team and general treasury vaults."
+      }
+    ]
+  },
+  "limits": {
+    "maxAmountPerTransaction": 100000000,
+    "maxDescriptionLength": 500
+  },
+  "errorCodes": [
+    {
+      "code": "BUDGET_NOT_FOUND",
+      "status": 404,
+      "i18nKey": "budgetNotFound",
+      "description": "Transaction record not found."
+    },
+    {
+      "code": "INVALID_AMOUNT",
+      "status": 400,
+      "i18nKey": "budgetInvalidAmount",
+      "description": "Transaction amount is invalid."
+    }
+  ],
+  "files": {
+    "actions": [
+      "src/db/repositories/budget.repo.ts"
+    ],
+    "queries": [
+      "src/apps/budget/hooks/useBudget.ts"
+    ],
+    "ui": [
+      "src/apps/budget/index.tsx"
+    ],
+    "i18n": [
+      "src/lib/i18nApps.ts"
+    ]
+  }
+}

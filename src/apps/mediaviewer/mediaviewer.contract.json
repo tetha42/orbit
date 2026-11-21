@@ -1,0 +1,60 @@
+{
+  "id": "mediaviewer",
+  "name": "Media Viewer",
+  "version": "1.0.0",
+  "description": "Asset viewer, image inspector, metadata viewer, and document previewer.",
+  "tables": [
+    "files"
+  ],
+  "api": {
+    "base": "/api/upload",
+    "endpoints": [
+      {
+        "path": "/api/upload",
+        "methods": [
+          "POST"
+        ],
+        "description": "Upload media asset."
+      },
+      {
+        "path": "/api/uploads/[name]",
+        "methods": [
+          "GET"
+        ],
+        "description": "Stream uploaded file with RFC 9110 byte-range support."
+      }
+    ]
+  },
+  "limits": {
+    "maxFileSizeMb": 50,
+    "allowedMimeTypes": "image/*,application/pdf"
+  },
+  "errorCodes": [
+    {
+      "code": "FILE_TOO_LARGE",
+      "status": 413,
+      "i18nKey": "fileTooLarge",
+      "description": "Uploaded file exceeds max limit."
+    },
+    {
+      "code": "UNSUPPORTED_MEDIA_TYPE",
+      "status": 415,
+      "i18nKey": "unsupportedMediaType",
+      "description": "File format not supported."
+    }
+  ],
+  "files": {
+    "actions": [
+      "src/app/api/upload/route.ts"
+    ],
+    "queries": [
+      "src/apps/mediaviewer/exif.ts"
+    ],
+    "ui": [
+      "src/apps/mediaviewer/index.tsx"
+    ],
+    "i18n": [
+      "src/lib/i18nApps.ts"
+    ]
+  }
+}

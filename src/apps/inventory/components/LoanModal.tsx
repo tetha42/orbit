@@ -58,12 +58,12 @@ export function LoanModal({
 	const maxDate = toDateInput(start + maxDays * DAY);
 	const initial =
 		mode === 'extend'
-			? Math.min((item.returnDate ?? now) + 7 * DAY, start + maxDays * DAY)
+			? Math.min((item.dueDate ?? now) + 7 * DAY, start + maxDays * DAY)
 			: now + DEFAULT_LOAN_DAYS * DAY;
 	const [date, setDate] = useState(() => toDateInput(initial));
 	const [userId, setUserId] = useState('');
 	const [failure, setFailure] = useState(false);
-	const [not, setNot] = useState('');
+	const [note, setNote] = useState('');
 	const [error, setError] = useState('');
 	const [busy, setBusy] = useState(false);
 	const { data: members } = useJsonResource<{ members: Member[] }>(
@@ -86,16 +86,16 @@ export function LoanModal({
 		setError('');
 		let body: Record<string, unknown>;
 		if (mode === 'return') {
-			body = { action: 'return', inventoryId: item.id, failure, not: not.trim() };
+			body = { action: 'return', inventoryId: item.id, failure, note: note.trim() };
 		} else {
 			const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
 			if (!m) return setError(t('invSelectDate'));
-			const returnDate = endOfDay(new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getTime());
+			const dueDate = endOfDay(new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getTime());
 			if (mode === 'lend' && !userId) return setError(t('invSelectMemberPrompt'));
 			body = {
 				action: mode === 'extend' ? 'extend' : 'borrow',
 				inventoryId: item.id,
-				returnDate,
+				dueDate,
 				...(mode === 'lend' ? { userId } : {}),
 			};
 		}
@@ -119,7 +119,7 @@ export function LoanModal({
 				</>
 			}
 			label={title}
-			icon={<Icon size={18} color="#0a84ff" />}
+			icon={<Icon size={18} color="var(--accent)" />}
 			onClose={onClose}
 			onSubmit={submit}
 			maxWidth={480}
@@ -171,8 +171,8 @@ export function LoanModal({
 						/>
 					</label>
 					<div className={ui.hint}>
-						{mode === 'extend' && item.returnDate
-							? `${fill(t('invCurrentDue'), { date: trDate(item.returnDate) })} `
+						{mode === 'extend' && item.dueDate
+							? `${fill(t('invCurrentDue'), { date: trDate(item.dueDate) })} `
 							: ''}
 						{isManager
 							? fill(t('invManagerMaxDays'), { days: MANAGEMENT_MAX_LOAN_DAYS })
@@ -191,8 +191,8 @@ export function LoanModal({
 							className={ui.textarea}
 							rows={3}
 							maxLength={500}
-							value={not}
-							onChange={(e) => setNot(e.target.value)}
+							value={note}
+							onChange={(e) => setNote(e.target.value)}
 							required={failure}
 							placeholder={
 								failure

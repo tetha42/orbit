@@ -14,11 +14,15 @@ concurrency:
 
 jobs:
   # =========================================================================
-  # 1. Aşama: Kod Kalitesi, Güvenlik ve Testler (Her Push, PR ve Tag'de Koşar)
+  # 1. Stage: Static Gates, Go Security Guard (-race), Security & Build
   # =========================================================================
   verify-and-test:
-    name: Verify, Build & E2E Simulation
+    name: Verify, Go Guard & Build (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22, 26]
 
     services:
       postgres:
@@ -47,10 +51,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 22
+      - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ matrix.node-version }}
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache: false
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -72,10 +82,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Prepare runtime data directories
-        run: mkdir -p data/uploads data/custom
+      - name: Prepare runtime directories
+        run: mkdir -p data/uploads data/custom bin
 
-      - name: Verify Codebase (TSC, ESLint, Manifests)
+      - name: Test & Build Go Security Guard (-race)
+        run: cd services/security-guard && go test -count=1 -v -race ./... && go build -o ../../bin/security-guard .
+
+      - name: Verify Codebase (TSC, ESLint, Gates, Empty-Catch Ratchet)
         run: pnpm verify
 
       - name: Security audit
@@ -94,8 +107,13 @@ jobs:
         run: pnpm build
 
   fresh-db:
-    name: Fresh DB Migration & Contract Tests
+    name: Fresh DB Migration & Contract Tests (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22, 26]
+
     services:
       postgres:
         image: postgres:16-alpine
@@ -128,10 +146,130 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 22
+      - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ matrix.node-version }}
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prepare runtime data directories
+        run: mkdir -p data/uploads data/custom bin
+
+      - name: Build Next.js App
+        run: pnpm build
+
+      - name: Start Orbit Server
+        run: |
+          setsid pnpm start </dev/null > /tmp/orbit-fresh-db.log 2>&1 &
+          SERVER_PID=$!
+          echo "FRESH_SERVER_PID=${SERVER_PID}" >> $GITHUB_ENV
+          for i in $(seq 1 45); do
+            if ! kill -0 "${SERVER_PID}" 2>/dev/null; then
+              echo "Orbit server exited prematurely:"
+              cat /tmp/orbit-fresh-db.log || true
+              exit 1
+            fi
+            if curl -sf http://127.0.0.1:3000/api/healthz >/dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+          if ! curl -sf http://127.0.0.1:3000/api/healthz || ! curl -sf http://127.0.0.1:3000/api/setup >/dev/null; then
+            echo "Orbit server failed health/init check:"
+            cat /tmp/orbit-fresh-db.log || true
+            exit 1
+          fi
+
+      - name: Run Contract Tests
+        run: pnpm test
+
+      - name: Run Simulation E2E Tests
+        run: pnpm test:e2e
+
+      - name: Run E2E API Tests
+        run: |
+          node tests/fixtures/dev-fixtures.mjs --base http://127.0.0.1:3000 --out .fixtures.json
+          node tests/e2e/rbac-api.mjs --fixtures .fixtures.json --base http://127.0.0.1:3000
+          node tests/e2e/audit-api.mjs --fixtures .fixtures.json --base http://127.0.0.1:3000
+
+      - name: Print Fresh DB Server Logs on Failure
+        if: failure()
+        run: cat /tmp/orbit-fresh-db.log || true
+
+      - name: Stop Orbit Server
+        if: always()
+        run: |
+          if [ -n "${FRESH_SERVER_PID:-}" ]; then
+            kill -TERM -"${FRESH_SERVER_PID}" >/dev/null 2>&1 || kill "${FRESH_SERVER_PID}" >/dev/null 2>&1 || true
+          fi
+
+  ui-e2e:
+    name: Critical UI E2E Subset (Playwright)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: orbit
+          POSTGRES_USER: orbit
+          POSTGRES_PASSWORD: ci_ephemeral_ui_pw
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://orbit:ci_ephemeral_ui_pw@localhost:5432/orbit
+      PORT: 3100
+      HOSTNAME: localhost
+      MOCK_MAIL: 'true'
+      E2E_TRUSTED_AUTH: 'true'
+      NEXT_TELEMETRY_DISABLED: '1'
+      BOOTSTRAP_ADMIN_EMAIL: admin@orbit.local
+      BOOTSTRAP_ADMIN_PASSWORD: ci_ephemeral_admin_pw
+      BOOTSTRAP_ADMIN_FIRST_NAME: Orbit
+      BOOTSTRAP_ADMIN_LAST_NAME: Admin
+      ORBIT_DATA_DIR: ${{ github.workspace }}/data
+      ORBIT_CUSTOM_DIR: ${{ github.workspace }}/data/custom
+      UPLOAD_DIR: ${{ github.workspace }}/data/uploads
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 26
+        uses: actions/setup-node@v4
+        with:
+          node-version: 26
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -156,32 +294,79 @@ jobs:
       - name: Prepare runtime data directories
         run: mkdir -p data/uploads data/custom
 
-      - name: Build Next.js App
+      - name: Ensure Chrome/Chromium is available for Playwright
+        run: |
+          if [ ! -x /usr/bin/google-chrome ] && [ ! -x /usr/bin/google-chrome-stable ] && [ ! -x /usr/bin/chromium ]; then
+            pnpm exec playwright-core install --with-deps chromium
+            CHROME_BIN="$(find "${HOME}/.cache/ms-playwright" -name chrome -type f 2>/dev/null | head -n1 || true)"
+            if [ -z "${CHROME_BIN}" ]; then
+              CHROME_BIN="$(find "${HOME}/.cache/ms-playwright" -name chrome-headless-shell -type f 2>/dev/null | head -n1 || true)"
+            fi
+            if [ -n "${CHROME_BIN}" ]; then
+              sudo ln -sf "${CHROME_BIN}" /usr/bin/chromium
+            fi
+          fi
+
+      - name: Build Next.js App (Standalone)
         run: pnpm build
 
-      - name: Start Orbit Server
+      - name: Start Orbit Server for UI E2E
         run: |
-          pnpm start &
-          for i in {1..30}; do
-            curl -s http://127.0.0.1:3000/api/healthz && break || sleep 1
+          mkdir -p .next/standalone/.next
+          rm -rf .next/standalone/.next/static .next/standalone/public
+          ln -sfn "${{ github.workspace }}/.next/static" .next/standalone/.next/static
+          ln -sfn "${{ github.workspace }}/public" .next/standalone/public
+          setsid pnpm start </dev/null > /tmp/orbit-ui-server.log 2>&1 &
+          SERVER_PID=$!
+          echo "UI_SERVER_PID=${SERVER_PID}" >> $GITHUB_ENV
+          for i in $(seq 1 45); do
+            if ! kill -0 "${SERVER_PID}" 2>/dev/null; then
+              echo "Orbit server exited prematurely:"
+              cat /tmp/orbit-ui-server.log || true
+              exit 1
+            fi
+            if curl -sf http://localhost:3100/api/healthz >/dev/null 2>&1; then
+              break
+            fi
+            sleep 1
           done
+          if ! curl -sf http://localhost:3100/api/healthz >/dev/null || ! curl -sf http://localhost:3100/api/setup >/dev/null || ! curl -sf http://localhost:3100/ >/dev/null; then
+            echo "Orbit server failed readiness check:"
+            cat /tmp/orbit-ui-server.log || true
+            exit 1
+          fi
 
-      - name: Run Contract Tests
-        run: pnpm test
+      - name: Seed UI E2E Fixtures
+        run: node tests/fixtures/dev-fixtures.mjs --base http://localhost:3100 --out .e2e-fixtures.json
 
-      - name: Run E2E API Tests
+      - name: Run Critical UI E2E Suites
         run: |
-          node tests/fixtures/dev-fixtures.mjs --out .fixtures.json
-          node tests/e2e/rbac-api.mjs --fixtures .fixtures.json --base http://127.0.0.1:3000
-          node tests/e2e/audit-api.mjs --fixtures .fixtures.json --base http://127.0.0.1:3000
+          pnpm e2e window-manager sse notifications interaction-perf lazy-loading --base http://localhost:3100 --fixtures .e2e-fixtures.json
+
+      - name: Upload UI E2E Diagnostics on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-e2e-diagnostics
+          path: |
+            tests/e2e/shots/
+            tests/e2e/.tmp/
+            /tmp/orbit-ui-server.log
+          if-no-files-found: ignore
+
+      - name: Stop Orbit Server
+        if: always()
+        run: |
+          if [ -n "${UI_SERVER_PID:-}" ]; then
+            kill -TERM -"${UI_SERVER_PID}" >/dev/null 2>&1 || kill "${UI_SERVER_PID}" >/dev/null 2>&1 || true
+          fi
 
   # =========================================================================
-  # 2. Aşama: Docker Image Derleme & GHCR Push (SADECE Tag Varsa ve Test Geçtiyse)
+  # 2. Stage: Docker Image Build & GHCR Push (ONLY on Version Tag)
   # =========================================================================
   docker-publish:
     name: Build & Push Docker Image (GHCR)
-    needs: [verify-and-test, fresh-db]
-    # SADECE v* ile başlayan bir tag pushlandığında çalışır:
+    needs: [verify-and-test, fresh-db, ui-e2e]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
@@ -224,7 +409,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   # =========================================================================
-  # 3. Aşama: Release Paketleri & GitHub Release (Docker Başarıyla Yüklendiyse)
+  # 3. Stage: Release Packages & GitHub Release
   # =========================================================================
   create-release:
     name: Package Release & Publish GitHub Release
@@ -238,10 +423,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 22
+      - name: Setup Node.js 26
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 26
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -286,13 +471,7 @@ jobs:
             make up
             ```
             * The stack runs securely bound to `127.0.0.1:3000`.
-            * Add these 3 lines to your host reverse proxy (Caddy):
-              ```caddy
-              orbit.example.com {
-                  reverse_proxy 127.0.0.1:3000
-              }
-              ```
-            * Or for Nginx, include `proxy_buffering off;` and WebSocket upgrades.
+            * Point your host reverse proxy (e.g., Nginx) to `127.0.0.1:3000` with TLS termination, `proxy_buffering off;` (for SSE), and WebSocket upgrade headers (`Upgrade` / `Connection`).
 
             ---
 

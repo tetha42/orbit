@@ -29,7 +29,10 @@ export async function GET(request: Request) {
 			smtp_secure: config.secure,
 			smtp_user: config.user,
 			smtp_from: settings.smtp_from || '',
-			mail_welcome_template: settings.mail_welcome_template || 'Topluluk üyelik başvurunuz alındı. Yönetim incelemesinin ardından hesabınız etkinleştirilecek ve bu adrese bilgi verilecektir.',
+			mail_welcome_template:
+				settings.mail_welcome_template ||
+				'Your community membership application has been received. Following review by community ' +
+					'managers, your account will be activated and you will be informed.',
 			hasPassword,
 			// The panel never receives the credential itself, only this placeholder.
 			maskedPassword: hasPassword ? PASSWORD_MASK : '',
@@ -39,7 +42,7 @@ export async function GET(request: Request) {
 		});
 	} catch (error) {
 		console.error('API /api/settings/smtp GET error:', error);
-		return NextResponse.json({ error: 'Ayarlar okunamadı.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to read settings.' }, { status: 500 });
 	}
 }
 
@@ -54,7 +57,7 @@ export async function POST(request: Request) {
 		const cleanHost = String(smtp_host ?? '').replace(/[\r\n\s]+/g, '').trim();
 		if (cleanHost && isPrivateHost(cleanHost) && process.env.MAIL_ALLOW_PRIVATE_HOSTS !== '1') {
 			return NextResponse.json(
-				{ error: 'Güvenlik nedeniyle yerel ağ veya iç sunucu adresleri SMTP sunucusu olarak kaydedilemez.' },
+				{ error: 'Local network or internal server addresses cannot be saved as an SMTP server for security reasons.' },
 				{ status: 400 }
 			);
 		}
@@ -95,7 +98,7 @@ export async function POST(request: Request) {
 		};
 		await setSystemSettings(updates, {
 			ctx: auditContext(request, auth.user),
-			registration: { action: 'setting.smtp', targetType: 'setting', targetId: 'smtp', targetName: 'E-posta hesabı (SMTP)' },
+			registration: { action: 'setting.smtp', targetType: 'setting', targetId: 'smtp', targetName: 'Email account (SMTP)' },
 			diff: (before, fresh) => smtpDiff(before, fresh, defaultValue),
 		});
 
@@ -109,11 +112,11 @@ export async function POST(request: Request) {
 			hasPassword,
 			emailReady: hasPassword,
 			message: hasPassword
-				? 'E-posta hesabı ayarları kaydedildi.'
-				: 'Ayarlar kaydedildi ancak uygulama şifresi girilmediği için e-posta gönderilemez.',
+				? 'Email account settings saved.'
+				: 'Settings saved, but emails cannot be sent until an app password is provided.',
 		});
 	} catch (error) {
 		console.error('API /api/settings/smtp POST error:', error);
-		return NextResponse.json({ error: 'Ayarlar kaydedilemedi.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to save settings.' }, { status: 500 });
 	}
 }

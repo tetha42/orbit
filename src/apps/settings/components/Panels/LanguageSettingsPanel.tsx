@@ -4,13 +4,14 @@ import React from 'react';
 import { Check } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
 import type { Language } from '@/lib/i18n';
+import { getLocaleDefinition } from '@/locales/registry';
 
 export function LanguageSettingsPanel() {
 	const { language, setLanguage, t } = useI18n();
 
 	const languages: { id: Language; label: string; sublabel: string; flag: string }[] = [
-		{ id: 'tr', label: 'Türkçe', sublabel: t('settingsLangDefaultSystemLang'), flag: '🇹🇷' },
-		{ id: 'en', label: 'English', sublabel: 'United States', flag: '🇬🇧' },
+		{ id: 'en', label: 'English', sublabel: t('settingsLangDefaultSystemLang'), flag: '🇬🇧' },
+		{ id: 'tr', label: getLocaleDefinition('tr').nativeName, sublabel: 'Turkey', flag: '🇹🇷' },
 	];
 
 	return (
@@ -44,7 +45,7 @@ export function LanguageSettingsPanel() {
 								gap: '12px',
 								padding: '16px 18px',
 								borderRadius: '12px',
-								background: isSelected ? 'var(--accent-subtle, rgba(0, 122, 255, 0.12))' : 'var(--card-bg)',
+								background: isSelected ? 'var(--accent-subtle, color-mix(in srgb, var(--accent) 12%, transparent))' : 'var(--card-bg)',
 								border: isSelected ? '2px solid var(--accent)' : '1px solid var(--window-border)',
 								boxShadow: isSelected ? '0 0 0 2px var(--accent-muted)' : 'none',
 								color: 'inherit',

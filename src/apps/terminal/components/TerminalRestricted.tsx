@@ -20,7 +20,7 @@ export function TerminalRestricted({ isLight }: TerminalRestrictedProps) {
 				justifyContent: 'center',
 				height: '100%',
 				padding: '2rem',
-				background: isLight ? 'rgba(248, 250, 252, 0.98)' : 'rgba(15, 23, 42, 0.95)',
+				background: isLight ? 'color-mix(in srgb, var(--ink-text) 98%, transparent)' : 'color-mix(in srgb, var(--ink-bg) 95%, transparent)',
 				color: isLight ? '#0f172a' : '#f8fafc',
 				textAlign: 'center',
 			}}
@@ -30,13 +30,13 @@ export function TerminalRestricted({ isLight }: TerminalRestrictedProps) {
 					width: '64px',
 					height: '64px',
 					borderRadius: '16px',
-					background: 'rgba(239, 68, 68, 0.15)',
-					border: '1px solid rgba(239, 68, 68, 0.3)',
+					background: 'color-mix(in srgb, var(--danger) 15%, transparent)',
+					border: '1px solid color-mix(in srgb, var(--danger) 30%, transparent)',
 					display: 'flex',
 					alignItems: 'center',
 					justifyContent: 'center',
 					marginBottom: '1.25rem',
-					color: '#ef4444',
+					color: 'var(--danger)',
 				}}
 			>
 				<ShieldAlert size={36} />

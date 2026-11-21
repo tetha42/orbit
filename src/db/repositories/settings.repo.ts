@@ -1,20 +1,64 @@
 import { ensurePostgresInit, getPgPool, withTransaction } from '@/db/index';
+import { publishEvent, publishEventQuiet, registerEventHandler, startListener } from '@/db/events';
 import { SYSTEM_SETTINGS_DEFAULTS, type WebauthnCredential } from '@/db/schema';
 import { logAuditEvent, type AuditContext, type AuditEntry } from '@/db/audit';
 import type { Diff } from '@/lib/audit';
+import { invalidateCache } from '@/server/cache';
+
+registerEventHandler('settings-cache', (event) => {
+	if (event.k === 'settings_updated' || event.k === 'refresh') {
+		invalidateCache('club_info');
+		invalidateCache('roles_raw');
+	}
+});
+
+const PAIRED_SETTING_KEYS: readonly [string, string][] = [
+	['club_name', 'organization_name'],
+	['club_domain', 'organization_domain'],
+	['university', 'parent_entity'],
+	['signature1_name', 'signatory_1_name'],
+	['signature2_name', 'signatory_2_name'],
+	['signature1_rank', 'signatory_1_title'],
+	['signature2_rank', 'signatory_2_title'],
+];
+
+const SETTING_KEY_TWIN: Record<string, string> = Object.fromEntries(
+	PAIRED_SETTING_KEYS.flatMap(([a, b]) => [
+		[a, b],
+		[b, a],
+	])
+);
 
 export async function getSystemSettings(): Promise<Record<string, string>> {
+	void startListener();
 	await ensurePostgresInit();
 	const res = await getPgPool().query('SELECT key AS key, value AS value FROM system_settings');
-	const map: Record<string, string> = { ...SYSTEM_SETTINGS_DEFAULTS };
+	const dbRows: Record<string, string> = {};
 	for (const row of res.rows) {
-		map[row.key] = row.value;
+		dbRows[row.key] = row.value;
+	}
+	const map: Record<string, string> = { ...SYSTEM_SETTINGS_DEFAULTS, ...dbRows };
+	for (const [legacyKey, canonicalKey] of PAIRED_SETTING_KEYS) {
+		const hasLegacy = Object.prototype.hasOwnProperty.call(dbRows, legacyKey);
+		const hasCanonical = Object.prototype.hasOwnProperty.call(dbRows, canonicalKey);
+		if (hasLegacy && !hasCanonical) map[canonicalKey] = dbRows[legacyKey];
+		else if (hasCanonical && !hasLegacy) map[legacyKey] = dbRows[canonicalKey];
 	}
 	return map;
 }
 
 export async function getSystemSetting(key: string, defaultValue: string = ''): Promise<string> {
+	void startListener();
 	await ensurePostgresInit();
+	const twin = SETTING_KEY_TWIN[key];
+	if (twin) {
+		const res = await getPgPool().query(
+			'SELECT key AS key, value AS value FROM system_settings WHERE key = ANY($1)',
+			[[key, twin]]
+		);
+		const byKey = Object.fromEntries(res.rows.map((r) => [r.key as string, r.value as string]));
+		return byKey[key] ?? byKey[twin] ?? SYSTEM_SETTINGS_DEFAULTS[key] ?? defaultValue;
+	}
 	const res = await getPgPool().query('SELECT value AS value FROM system_settings WHERE key = $1', [key]);
 	return res.rows[0]?.value ?? SYSTEM_SETTINGS_DEFAULTS[key] ?? defaultValue;
 }
@@ -30,6 +74,7 @@ export async function setSystemSetting(key: string, value: string): Promise<void
 		   updated_at = EXCLUDED.updated_at`,
 		[key, value, now]
 	);
+	await publishEventQuiet(getPgPool(), { k: 'settings_updated', key });
 }
 
 /**
@@ -45,24 +90,28 @@ export async function setSystemSettings(
 	}
 ): Promise<void> {
 	const now = Date.now();
+	const entries = Object.entries(settings);
 	await withTransaction(async (client) => {
 		let previous: Record<string, string | undefined> = {};
 		if (audit) {
 			const res = await client.query('SELECT key AS key, value AS value FROM system_settings WHERE key = ANY($1) FOR UPDATE', [Object.keys(settings)]);
 			previous = Object.fromEntries(res.rows.map((r) => [r.key as string, r.value as string]));
 		}
-		for (const [key, value] of Object.entries(settings)) {
+		if (entries.length > 0) {
 			await client.query(
 				`INSERT INTO system_settings (key, value, updated_at)
-				 VALUES ($1, $2, $3)
-				 ON CONFLICT (key) DO UPDATE SET 
+				 SELECT UNNEST($1::text[]), UNNEST($2::text[]), $3
+				 ON CONFLICT (key) DO UPDATE SET
 				   value = EXCLUDED.value,
 				   updated_at = EXCLUDED.updated_at`,
-				[key, value, now]
+				[entries.map(([k]) => k), entries.map(([, v]) => String(v ?? '')), now]
 			);
 		}
 		const diff = audit?.diff(previous, settings);
 		if (audit && diff) await logAuditEvent(client, audit.ctx, { ...audit.registration, before: diff.before, after: diff.after });
+		if (entries.length > 0) {
+			await publishEvent(client, { k: 'settings_updated' });
+		}
 	});
 }
 
@@ -78,27 +127,29 @@ export async function createWebauthnChallenge(data: {
 	id: string;
 	userId?: string | null;
 	challenge: string;
-	typeValue: 'registration' | 'login';
+	type?: 'registration' | 'login';
+	typeValue?: 'registration' | 'login';
 }): Promise<void> {
 	await ensurePostgresInit();
 	await pruneWebauthnChallenges();
 	const now = Date.now();
+	const challengeType = data.type ?? data.typeValue ?? 'login';
 	await getPgPool().query(
 		`INSERT INTO verification_tokens (id, user_id, token_type, token_hash, payload, expires_at, created_at)
 		 VALUES ($1, $2, $3, $1, $4::jsonb, $5, $6)`,
-		[data.id, data.userId ?? null, `webauthn_${data.typeValue}`, JSON.stringify({ challenge: data.challenge }), now + CHALLENGE_TTL_MS, now]
+		[data.id, data.userId ?? null, `webauthn_${challengeType}`, JSON.stringify({ challenge: data.challenge }), now + CHALLENGE_TTL_MS, now]
 	);
 }
 
 export async function consumeWebauthnChallenge(
 	id: string,
-	typeValue: 'registration' | 'login'
+	type: 'registration' | 'login'
 ): Promise<{ challenge: string; userId: string | null } | null> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`DELETE FROM verification_tokens WHERE id = $1 AND token_type = $2 AND expires_at >= $3
 		 RETURNING payload->>'challenge' AS challenge, user_id AS "userId"`,
-		[id, `webauthn_${typeValue}`, Date.now()]
+		[id, `webauthn_${type}`, Date.now()]
 	);
 	const row = res.rows[0];
 	return row ? { challenge: row.challenge, userId: row.userId ?? null } : null;
@@ -113,8 +164,8 @@ const WEBAUTHN_CREDENTIAL_COLUMNS = `
 	device_type AS "deviceType",
 	backed_up AS "backedUp",
 	nickname,
-	last_used_at AS "lastUsed",
-	created_at AS creation
+	last_used_at AS "lastUsage",
+	created_at AS "createdAt"
 `;
 
 export async function getWebauthnCredentials(userId: string): Promise<WebauthnCredential[]> {
@@ -146,6 +197,7 @@ export async function saveWebauthnCredential(data: {
 	nickname?: string | null;
 }): Promise<WebauthnCredential> {
 	await ensurePostgresInit();
+	const now = Date.now();
 	const row: WebauthnCredential = {
 		id: data.id,
 		userId: data.userId,
@@ -155,7 +207,7 @@ export async function saveWebauthnCredential(data: {
 		deviceType: data.deviceType ?? null,
 		backedUp: data.backedUp ? 1 : 0,
 		nickname: data.nickname ?? null,
-		creation: Date.now(),
+		createdAt: now,
 	};
 	await getPgPool().query(
 		`INSERT INTO webauthn_credentials
@@ -170,7 +222,7 @@ export async function saveWebauthnCredential(data: {
 			row.deviceType,
 			row.backedUp,
 			row.nickname,
-			row.creation,
+			row.createdAt,
 		]
 	);
 	return row;

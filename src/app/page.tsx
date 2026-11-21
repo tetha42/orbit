@@ -16,6 +16,8 @@ import { AmbientSoundPlayer } from '@/components/Common/AmbientSoundPlayer';
 import { PWADownloadLanding } from '@/components/Common/PWADownloadLanding';
 import { isAuroraWallpaper } from '@/core/theme';
 import { DevToolsGuard } from '@/components/Common/DevToolsGuard';
+import { IncomingCallOverlay } from '@/apps/chat/call/IncomingCallOverlay';
+import { MobileLoginApprovalModal } from '@/domains/devices/MobileLoginApprovalModal';
 import dynamic from 'next/dynamic';
 
 const Background3D = dynamic(
@@ -58,7 +60,7 @@ export default function Home() {
 	// Outside development the portal only runs as an installed app; a browser tab
 	// gets the download page. The display mode is not known during server rendering
 	// or the hydration pass, so the first decision is 'checking' — a neutral splash.
-	// When setup is pending (hazir === false), the PWA wall is bypassed so the admin
+	// When setup is pending (ready === false), the PWA wall is bypassed so the admin
 	// can complete zero-touch setup directly in any desktop/mobile browser.
 	const gate = usePwaGate({ allowSetup: isSetupPending === true });
 
@@ -86,15 +88,9 @@ export default function Home() {
 
 	return (
 		<>
-			{hasMounted && !isMobile && (
+			{hasMounted && show3DBackground && !hasMaximizedWindow && (
 				<Background3D
-					mode={
-						!show3DBackground || (isAuthenticated && hasMaximizedWindow)
-							? 'off'
-							: isAuthenticated && isLocked
-								? 'freeze'
-								: 'run'
-					}
+					mode={isAuthenticated && isLocked ? 'freeze' : 'run'}
 				/>
 			)}
 
@@ -124,6 +120,8 @@ export default function Home() {
 			)}
 			{/* Authentic 3D Landing Ambient SFX: strictly restricted to desktop to conserve mobile battery/CPU */}
 			{!isMobile && <AmbientSoundPlayer showButton={true} />}
+			{isAuthenticated && <IncomingCallOverlay />}
+			{isAuthenticated && <MobileLoginApprovalModal eagerPoll={isMobile} />}
 			<DefconLockdownOverlay />
 			<DevToolsGuard />
 		</>

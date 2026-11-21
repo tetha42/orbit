@@ -17,14 +17,14 @@ async function handlePOST(request: Request) {
 		: [];
 	const unique = [...new Set(ids)];
 	if (unique.length === 0) {
-		return NextResponse.json({ error: 'Kabul edilecek belge seçilmedi.' }, { status: 400 });
+		return NextResponse.json({ error: 'No documents selected for acceptance.' }, { status: 400 });
 	}
 
 	const current = await getLegalDocuments({ enabledOnly: true });
 	const byId = new Map(current.map((doc) => [doc.id, doc]));
 	const documents = unique.map((id) => byId.get(id)).filter((doc): doc is NonNullable<typeof doc> => Boolean(doc));
 	if (documents.length !== unique.length) {
-		return NextResponse.json({ error: 'Belgelerden biri artık geçerli değil.' }, { status: 400 });
+		return NextResponse.json({ error: 'One of the selected documents is no longer valid.' }, { status: 400 });
 	}
 
 	await acceptLegalDocuments(auth.user.id, documents, {

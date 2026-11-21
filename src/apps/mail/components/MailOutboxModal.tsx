@@ -67,7 +67,7 @@ export function MailOutboxModal({ items, busyId, onClose, onApprove, onReject }:
 								</div>
 								<div style={{ fontSize: 11.5, opacity: 0.75 }}>{item.subject}</div>
 								{item.error && (
-									<div style={{ fontSize: 11, color: '#ff453a', display: 'flex', gap: 5, alignItems: 'center' }}>
+									<div style={{ fontSize: 11, color: 'var(--danger)', display: 'flex', gap: 5, alignItems: 'center' }}>
 										<AlertTriangle size={12} /> {item.error}
 									</div>
 								)}

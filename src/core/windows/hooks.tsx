@@ -1,10 +1,21 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import React, {
+	createContext,
+	useContext,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from 'react';
 import type { AppID, FocusTarget, WindowState } from '@/types/workspace';
 import { useSession, useSessionEvent } from '@/core/session';
 import { useSound } from '@/core/sound';
 import { createWindowStore, visibleWindows, type WindowActions, type WindowStore, type WindowsState } from './store';
+
+const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 const WindowsContext = createContext<WindowStore | null>(null);
 
@@ -16,11 +27,12 @@ const WindowsContext = createContext<WindowStore | null>(null);
  */
 export function WindowsProvider({ children }: { children: React.ReactNode }) {
 	const [store] = useState(createWindowStore);
-	const { canUseApp } = useSession();
+	const { canUseApp, isAuthLoading, isAuthenticated } = useSession();
 	const { playSystemSound } = useSound();
-	useEffect(() => {
+	useIsomorphicLayoutEffect(() => {
+		if (isAuthLoading || !isAuthenticated) return;
 		store.configure({ canOpen: canUseApp, onDenied: playSystemSound });
-	}, [store, canUseApp, playSystemSound]);
+	}, [store, canUseApp, playSystemSound, isAuthLoading, isAuthenticated]);
 
 	const savedOpenWindowsBeforeLockRef = useRef<AppID[]>([]);
 	const savedActiveAppBeforeLockRef = useRef<AppID | 'portal'>('portal');
@@ -104,16 +116,29 @@ export function useIsActive(id: AppID): boolean {
 }
 
 /** What a search or notification asked an app to reveal, and how to say it is done. */
-export function useWindowFocusTarget(): { focusTarget: FocusTarget | null; clearFocusTarget: (nonce: number) => void } {
-	const focusTarget = useWindowsSelector((s) => s.focusTarget);
+export function useWindowFocusTarget(
+	appId?: AppID
+): { focusTarget: FocusTarget | null; clearFocusTarget: (nonce: number) => void } {
+	const focusTarget = useWindowsSelector((s) => {
+		const target = s.focusTarget;
+		if (!appId) return target;
+		return target?.appId === appId ? target : null;
+	});
 	const { clearFocusTarget } = useWindowStore().actions;
-	return { focusTarget, clearFocusTarget };
+	return useMemo(() => ({ focusTarget, clearFocusTarget }), [focusTarget, clearFocusTarget]);
 }
 
 /** The Shift+Tab window switching setting. */
-export function useWindowCycleSetting(): { isWindowCycleEnabled: boolean; setIsWindowCycleEnabled: (enabled: boolean) => void } {
+export function useWindowCycleSetting(): {
+	isWindowCycleEnabled: boolean;
+	setIsWindowCycleEnabled: (enabled: boolean) => void;
+} {
 	const isWindowCycleEnabled = useWindowsSelector((s) => s.isWindowCycleEnabled);
-	return { isWindowCycleEnabled, setIsWindowCycleEnabled: useWindowStore().actions.setIsWindowCycleEnabled };
+	const { setIsWindowCycleEnabled } = useWindowStore().actions;
+	return useMemo(
+		() => ({ isWindowCycleEnabled, setIsWindowCycleEnabled }),
+		[isWindowCycleEnabled, setIsWindowCycleEnabled]
+	);
 }
 
 /**

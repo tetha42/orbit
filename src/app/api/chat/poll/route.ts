@@ -21,7 +21,7 @@ export async function POST(request: Request) {
 		if (action === 'create') {
 			if (!isAdmin) {
 				return NextResponse.json(
-					{ error: 'Yalnızca yöneticiler anket oluşturabilir.' },
+					{ error: 'Only administrators can create polls.' },
 					{ status: 403, headers: NO_CACHE }
 				);
 			}
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 
 			if (!roomId || !question || typeof question !== 'string' || !question.trim()) {
 				return NextResponse.json(
-					{ error: 'Anket sorusu boş olamaz.' },
+					{ error: 'Poll question cannot be empty.' },
 					{ status: 400, headers: NO_CACHE }
 				);
 			}
@@ -38,14 +38,14 @@ export async function POST(request: Request) {
 			const canAccess = await canUserAccessChatRoom(String(roomId), auth.user.id, isAdmin);
 			if (!canAccess) {
 				return NextResponse.json(
-					{ error: 'Bu sohbet odasına erişim yetkiniz yok.' },
+					{ error: 'You do not have permission to access this chat room.' },
 					{ status: 403, headers: NO_CACHE }
 				);
 			}
 
 			if (!Array.isArray(options) || options.length < 2 || options.length > 12) {
 				return NextResponse.json(
-					{ error: 'Ankette en az 2, en fazla 12 seçenek belirtilmelidir.' },
+					{ error: 'A poll must specify between 2 and 12 options.' },
 					{ status: 400, headers: NO_CACHE }
 				);
 			}
@@ -54,9 +54,9 @@ export async function POST(request: Request) {
 				roomId,
 				{
 					id: auth.user.id,
-					name: auth.user.name,
-					surname: auth.user.surname,
-					profilePhoto: auth.user.profilePhoto || null,
+					name: auth.user.firstName || auth.user.name || '',
+					surname: auth.user.lastName || auth.user.surname || '',
+					profilePhoto: auth.user.avatarUrl || auth.user.profilePhoto || null,
 				},
 				{
 					question: question.trim().slice(0, 500),
@@ -68,13 +68,13 @@ export async function POST(request: Request) {
 			);
 
 			if (!res.ok) {
-				return NextResponse.json({ error: res.error || 'Anket oluşturulamadı.' }, { status: 400, headers: NO_CACHE });
+				return NextResponse.json({ error: res.error || 'Failed to create poll.' }, { status: 400, headers: NO_CACHE });
 			}
 
 			void logSystemEvent({
 				service: 'chat',
 				level: 'INFO',
-				message: `Yeni anket oluşturuldu: "${question.trim().slice(0, 50)}" (${roomId})`,
+				message: `New poll created: "${question.trim().slice(0, 50)}" (${roomId})`,
 				detail: { roomId, pollId: res.message?.poll?.id, question: question.trim().slice(0, 120) },
 				userId: auth.user.id,
 				ip: clientAddress(request),
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
 			const { pollId, optionId } = body;
 			if (!pollId || !optionId) {
 				return NextResponse.json(
-					{ error: 'Anket veya seçenek kimliği belirtilmedi.' },
+					{ error: 'Poll or option ID is missing.' },
 					{ status: 400, headers: NO_CACHE }
 				);
 			}
@@ -97,15 +97,15 @@ export async function POST(request: Request) {
 				String(optionId),
 				{
 					id: auth.user.id,
-					name: auth.user.name,
-					surname: auth.user.surname,
-					profilePhoto: auth.user.profilePhoto || null,
+					name: auth.user.firstName || auth.user.name || '',
+					surname: auth.user.lastName || auth.user.surname || '',
+					profilePhoto: auth.user.avatarUrl || auth.user.profilePhoto || null,
 				},
 				isAdmin
 			);
 
 			if (!res.ok) {
-				return NextResponse.json({ error: res.error || 'Oy kullanılamadı.' }, { status: 400, headers: NO_CACHE });
+				return NextResponse.json({ error: res.error || 'Failed to cast vote.' }, { status: 400, headers: NO_CACHE });
 			}
 
 			return NextResponse.json(res, { headers: NO_CACHE });
@@ -115,20 +115,20 @@ export async function POST(request: Request) {
 			const { pollId } = body;
 			if (!pollId) {
 				return NextResponse.json(
-					{ error: 'Anket kimliği belirtilmedi.' },
+					{ error: 'Poll ID is missing.' },
 					{ status: 400, headers: NO_CACHE }
 				);
 			}
 
 			const res = await closePoll(pollId, auth.user.id, isAdmin);
 			if (!res.ok) {
-				return NextResponse.json({ error: res.error || 'Anket kapatılamadı.' }, { status: 400, headers: NO_CACHE });
+				return NextResponse.json({ error: res.error || 'Failed to close poll.' }, { status: 400, headers: NO_CACHE });
 			}
 
 			void logSystemEvent({
 				service: 'chat',
 				level: 'INFO',
-				message: `Anket sonlandırıldı: ${pollId}`,
+				message: `Poll closed: ${pollId}`,
 				detail: { pollId },
 				userId: auth.user.id,
 				ip: clientAddress(request),
@@ -137,9 +137,9 @@ export async function POST(request: Request) {
 			return NextResponse.json(res, { headers: NO_CACHE });
 		}
 
-		return NextResponse.json({ error: 'Geçersiz işlem.' }, { status: 400, headers: NO_CACHE });
+		return NextResponse.json({ error: 'Invalid action.' }, { status: 400, headers: NO_CACHE });
 	} catch (err) {
 		console.error('[Chat poll POST error]:', err);
-		return NextResponse.json({ error: 'İşlem sırasında bir hata oluştu.' }, { status: 500, headers: NO_CACHE });
+		return NextResponse.json({ error: 'An error occurred while processing the request.' }, { status: 500, headers: NO_CACHE });
 	}
 }

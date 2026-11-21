@@ -25,6 +25,7 @@ interface TeamWorkspaceBodyProps {
 	fetchTeams: () => Promise<void>;
 	setTeamsData: React.Dispatch<React.SetStateAction<Team[] | null>>;
 	onRemoveTeam: (team: Team) => void;
+	onRegisterBoardCommand?: (fn: ((command: string) => void) | null) => void;
 }
 
 export function TeamWorkspaceBody({
@@ -41,6 +42,7 @@ export function TeamWorkspaceBody({
 	fetchTeams,
 	setTeamsData,
 	onRemoveTeam,
+	onRegisterBoardCommand,
 }: TeamWorkspaceBodyProps) {
 	const { t } = useI18n();
 	return (
@@ -59,6 +61,7 @@ export function TeamWorkspaceBody({
 					refetch={fetchTeams}
 					openTaskId={openTaskId}
 					setOpenTaskId={setOpenTaskId}
+					onRegisterCommand={onRegisterBoardCommand}
 				/>
 			)}
 			{visibleTab === 'members' && (

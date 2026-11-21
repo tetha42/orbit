@@ -1,10 +1,11 @@
-// Passkey ile giriş: Chrome'un sanal WebAuthn kimlik doğrulayıcısıyla (CDP) gerçek kayıt ve giriş.
-// Rol 2FA'yı zorunlu kılıyorsa ve TOTP açıksa passkey'den sonra da TOTP istenir
-// (src/app/api/auth/passkey/login/verify/route.ts); zorunlu değilse passkey tek başına yeter.
-import { dockApps, logoutUi, openSettingsTab } from '../lib/browser.mjs';
-import { totpCode } from '../lib/totp.mjs';
+// Passkey sign-in: real registration and login with Chrome's virtual WebAuthn authenticator (CDP).
+// A verified passkey completes authentication directly without TOTP even for roles requiring 2FA
+// (src/app/api/auth/passkey/login/verify/route.ts), and passkey sessions unlock critical apps
+// (Database Studio and Terminal) automatically without secondary 2FA or password prompts.
+import { dockApps, logoutUi, openApp, openSettingsTab, waitDesktop } from '../lib/browser.mjs';
+import { tr } from '../lib/locale.mjs';
 
-export const meta = { title: 'Passkey: zorunlu 2FA rolünde TOTP isteniyor, diğerinde tek başına yetiyor' };
+export const meta = { title: 'Passkey: sign-in skips TOTP even for 2FA-required roles and unlocks critical apps automatically' };
 
 const NICK = 'e2e-passkey';
 
@@ -20,15 +21,15 @@ async function virtualAuthenticator(context, page) {
 
 async function addPasskey(page) {
 	const settings = await openSettingsTab(page, 'security');
-	await settings.getByPlaceholder('Örn. iPhone, YubiKey').fill(NICK);
-	await settings.getByRole('button', { name: 'Passkey Ekle' }).click();
-	await settings.getByText('Passkey eklendi').waitFor();
+	await settings.getByPlaceholder(tr('passkeyDeviceNamePh')).fill(NICK);
+	await settings.getByRole('button', { name: tr('passkeyAddBtn') }).click();
+	await settings.getByText(tr('passkeyAdded')).waitFor();
 	await settings.getByText(NICK, { exact: true }).waitFor();
 }
 
 async function signInWithPasskey(page, email) {
 	await page.locator('input[type=email]').fill(email);
-	await page.getByRole('button', { name: 'Passkey ile giriş yap' }).click();
+	await page.getByRole('button', { name: tr('authPasskeySignIn') }).click();
 }
 
 export default async function suite(t) {
@@ -41,47 +42,71 @@ export default async function suite(t) {
 	t.cleanup(() => removePasskeys('admin'));
 	t.cleanup(() => removePasskeys('ege'));
 
-	await t.step('admin (Admin rolü: 2FA zorunlu, TOTP açık): passkey kaydı', async () => {
+	await t.step('admin (Admin role: 2FA required, TOTP enabled): passkey opens desktop and critical apps without 2FA', async () => {
 		const { page, context } = await t.open('admin');
 		await virtualAuthenticator(context, page);
 		await addPasskey(page);
-		await t.shot(page, 'admin-passkey-eklendi');
-		t.check(true, 'sanal kimlik doğrulayıcıyla passkey kaydedildi (Ayarlar → Güvenlik)');
+		await t.shot(page, 'admin-passkey-added');
+		t.check(true, 'passkey registered with the virtual authenticator (Settings → Security)');
 
-		// Çıkış → yalnız e-posta + passkey → TOTP adımı istenmeli
+		// Logout → email + passkey only → desktop must open directly without a TOTP challenge
 		await logoutUi(page);
 		await signInWithPasskey(page, fx.admin.email);
 		const otp = page.locator('input[autocomplete=one-time-code]');
+		const failure = page
+			.getByText(tr('passkeyCancelled'))
+			.or(page.getByText(tr('passkeySaveFailed')))
+			.or(page.getByText(tr('passkeyAddFailed')))
+			.or(page.getByText(tr('twofactorVerifyError')));
 		const reached = await Promise.race([
 			otp.waitFor({ timeout: 15_000 }).then(() => 'totp'),
-			page.locator('[data-dock-app]').first().waitFor({ timeout: 15_000 }).then(() => 'desktop'),
-			page.getByText(/doğrulanamadı|yapılamadı|iptal/i).first().waitFor({ timeout: 15_000 }).then(() => 'error'),
+			page.locator('[data-dock-app=budget]').waitFor({ timeout: 15_000 }).then(() => 'desktop'),
+			failure.first().waitFor({ timeout: 15_000 }).then(() => 'error'),
 		]).catch(() => 'nothing');
-		await t.shot(page, 'admin-passkey-sonrasi');
-		t.eq(reached, 'totp', 'passkey sonrası TOTP adımı isteniyor (TwoFactorForm)');
-		t.eq(await dockApps(page), [], 'TOTP girilmeden masaüstü açılmadı');
-		if (reached === 'totp') {
-			await otp.fill(await totpCode(fx.adminTotp));
-			await page.getByRole('button', { name: 'Doğrula ve Giriş Yap' }).click();
-			await page.locator('[data-dock-app=budget]').waitFor();
-			t.check(true, 'passkey + TOTP ile giriş tamamlandı, bütün uygulamalar açık');
-			await t.adopt('admin', context);
+		await t.shot(page, 'admin-after-passkey');
+		t.eq(reached, 'desktop', 'desktop opened directly after passkey without requesting TOTP');
+		t.eq(await otp.count(), 0, 'no TwoFactorForm TOTP input rendered');
+		await waitDesktop(page);
+		await t.adopt('admin', context);
+
+		const adminApi = await t.api('admin');
+		const me = await adminApi.get('/api/auth/me');
+		t.eq(me.status, 200, 'GET /api/auth/me returns 200 for passkey session');
+		t.eq(me.json?.user?.authMethod, 'passkey', 'session authMethod is recorded as passkey');
+		t.eq(me.json?.user?.mustSetup2fa, false, 'mustSetup2fa is false for passkey session');
+
+		// Critical app 1: Database Studio opens directly without TOTP or manual unlock button
+		const dbWin = await openApp(page, 'database');
+		await dbWin.getByPlaceholder(tr('dbSearchTable')).waitFor({ timeout: 15_000 });
+		t.eq(await dbWin.locator('input[autocomplete=one-time-code]').count(), 0, 'Database Studio shows no TOTP prompt');
+		t.eq(await dbWin.getByRole('button', { name: tr('dbPasskeyOpen') }).count(), 0, 'Database Studio auto-unlocked without manual passkey prompt');
+		const tablesRes = await adminApi.get('/api/database/tables');
+		t.eq(tablesRes.status, 200, 'GET /api/database/tables succeeds for passkey admin even without x-db-token');
+
+		// Critical app 2: Terminal opens a session with no TOTP code on passkey session
+		const termRes = await adminApi.post('/api/terminal/session', { cols: 80, rows: 24 });
+		t.eq(termRes.status, 200, 'POST /api/terminal/session succeeds without TOTP code on passkey session');
+		t.eq(termRes.json?.authMethod, 'passkey', 'terminal session reports authMethod passkey');
+		if (termRes.json?.sessionId) {
+			await adminApi.del(`/api/terminal/session?sessionId=${encodeURIComponent(termRes.json.sessionId)}`);
 		}
 	});
 
-	await t.step('ege (Üye rolü: 2FA zorunlu değil): passkey tek başına yetiyor', async () => {
+	await t.step('ege (Member role: 2FA not required): passkey alone suffices', async () => {
 		const { page, context } = await t.open('ege');
 		await virtualAuthenticator(context, page);
 		await addPasskey(page);
 		await logoutUi(page);
 		await signInWithPasskey(page, fx.users.ege.email);
 		await page.locator('[data-dock-app]').first().waitFor();
-		t.check((await dockApps(page)).length > 0, 'passkey ile doğrudan masaüstü açıldı (TOTP istenmedi)');
-		t.eq(await page.locator('input[autocomplete=one-time-code]').count(), 0, 'TOTP adımı yok');
-		await t.shot(page, 'ege-passkey-giris');
+		t.check((await dockApps(page)).length > 0, 'desktop opened directly with the passkey (TOTP not requested)');
+		t.eq(await page.locator('input[autocomplete=one-time-code]').count(), 0, 'no TOTP step');
+		await t.shot(page, 'ege-passkey-login');
 		await t.adopt('ege', context);
-		// Kayıt satırı camelCase kolonlarını (deviceType, sonKullanma) doğru okuyor.
-		const mine = ((await (await t.api('ege')).get('/api/auth/passkey')).json?.passkeys ?? []).find((p) => p.nickname === NICK);
-		t.check(mine && mine.deviceType && Number(mine.lastUsage) > 0, 'passkey listesinde cihaz türü ve son kullanım dolu', JSON.stringify(mine));
+		const egeApi = await t.api('ege');
+		const me = await egeApi.get('/api/auth/me');
+		t.eq(me.json?.user?.authMethod, 'passkey', 'member session authMethod is recorded as passkey');
+		const mine = ((await egeApi.get('/api/auth/passkey')).json?.passkeys ?? []).find((p) => p.nickname === NICK);
+		t.check(mine && mine.deviceType && Number(mine.lastUsage) > 0, 'device type and last usage populated in the passkey list', JSON.stringify(mine));
 	});
 }

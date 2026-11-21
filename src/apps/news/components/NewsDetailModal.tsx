@@ -1,18 +1,12 @@
 'use client';
 
 import React from 'react';
-import {
-	Pencil,
-	Trash2,
-	Share2,
-	Check,
-	X,
-	ShieldAlert,
-} from 'lucide-react';
+import { ShieldAlert } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
 import { ModalOverlay, useDraggableSheet } from '@/core/ui/Sheet';
-import { NEWS_VISIBILITIES, type NewsVisibility } from '@/types/news';
+import type { NewsVisibility } from '@/types/news';
 import type { NewsEntry } from '../types';
+import { NewsDetailHeader } from './NewsDetailHeader';
 
 interface NewsDetailModalProps {
 	article: NewsEntry;
@@ -38,20 +32,6 @@ export function NewsDetailModal({
 	const { t, language } = useI18n();
 	const { offset, onHeaderMouseDown, onHeaderDoubleClick } = useDraggableSheet(true);
 
-	const categoryMap: Record<string, string> = {
-		general: t('newsCatGenel'),
-		teknofest: t('newsCatTeknofest'),
-		workshop: t('newsCatAtolye'),
-		collaboration: t('newsCatIsbirligi'),
-		official: t('newsCatResmi'),
-	};
-
-	const visibilityLabels: Record<NewsVisibility, string> = {
-		draft: t('newsVisDraft'),
-		members: t('newsVisMembers'),
-		published: t('newsVisPublic'),
-	};
-
 	return (
 		<ModalOverlay onClose={onClose}>
 			<div
@@ -70,148 +50,21 @@ export function NewsDetailModal({
 					display: 'flex',
 					flexDirection: 'column',
 					overflow: 'hidden',
-					...(offset.x !== 0 || offset.y !== 0
-						? { transform: `translate3d(${offset.x}px, ${offset.y}px, 0)` }
-						: {}),
+					...(offset.x !== 0 || offset.y !== 0 ? { transform: `translate3d(${offset.x}px, ${offset.y}px, 0)` } : {}),
 				}}
 			>
-				<div
-					onMouseDown={onHeaderMouseDown}
-					onDoubleClick={onHeaderDoubleClick}
-					style={{
-						padding: '16px 24px',
-						borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-						display: 'flex',
-						justifyContent: 'space-between',
-						alignItems: 'center',
-						background: 'rgba(255, 255, 255, 0.03)',
-						cursor: 'grab',
-						userSelect: 'none',
-					}}
-				>
-					<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-						<span
-							style={{
-								fontSize: '11px',
-								fontWeight: 800,
-								padding: '3px 8px',
-								borderRadius: '6px',
-								background: 'rgba(255, 45, 85, 0.2)',
-								color: '#ff2d55',
-							}}
-						>
-							{categoryMap[article.category] || t('newsCatGenel')}
-						</span>
-						<span style={{ fontSize: '12px', opacity: 0.65 }}>
-							{t('newsOfficialNotice')}
-						</span>
-					</div>
-
-					<div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-						{isAdmin && (
-							<select
-								value={article.publishStatus}
-								onChange={(e) => onChangeVisibility(e.target.value as NewsVisibility)}
-								aria-label={t('newsWhoCanSee')}
-								style={{
-									padding: '6px 8px',
-									borderRadius: '8px',
-									border: '1px solid rgba(255, 255, 255, 0.15)',
-									background: 'rgba(255, 255, 255, 0.06)',
-									color: 'inherit',
-									fontSize: '12px',
-									cursor: 'pointer',
-								}}
-							>
-								{NEWS_VISIBILITIES.map((value) => (
-									<option key={value} value={value}>
-										{visibilityLabels[value]}
-									</option>
-								))}
-							</select>
-						)}
-						{isAdmin && (
-							<button
-								onClick={onEdit}
-								title={t('newsEdit')}
-								style={{
-									display: 'flex',
-									alignItems: 'center',
-									gap: '6px',
-									padding: '6px 12px',
-									borderRadius: '8px',
-									border: '1px solid rgba(255, 255, 255, 0.15)',
-									background: 'transparent',
-									color: 'inherit',
-									fontSize: '12px',
-									fontWeight: 600,
-									cursor: 'pointer',
-								}}
-							>
-								<Pencil size={13} />
-								<span>{t('edit')}</span>
-							</button>
-						)}
-						{isAdmin && (
-							<button
-								onClick={onDelete}
-								title={t('newsDelete')}
-								style={{
-									display: 'flex',
-									alignItems: 'center',
-									gap: '6px',
-									padding: '6px 12px',
-									borderRadius: '8px',
-									border: '1px solid rgba(255, 69, 58, 0.3)',
-									background: 'rgba(255, 69, 58, 0.1)',
-									color: '#ff453a',
-									fontSize: '12px',
-									fontWeight: 600,
-									cursor: 'pointer',
-								}}
-							>
-								<Trash2 size={13} />
-								<span>{t('delete')}</span>
-							</button>
-						)}
-
-						<button
-							onClick={onShare}
-							style={{
-								display: 'flex',
-								alignItems: 'center',
-								gap: '6px',
-								padding: '6px 12px',
-								borderRadius: '8px',
-								border: '1px solid rgba(255, 255, 255, 0.15)',
-								background: 'transparent',
-								color: 'inherit',
-								fontSize: '12px',
-								cursor: 'pointer',
-							}}
-						>
-							{copied ? <Check size={13} color="#30d158" /> : <Share2 size={13} />}
-							<span>{copied ? t('newsShareCopied') : t('newsShare')}</span>
-						</button>
-
-						<button
-							onClick={onClose}
-							style={{
-								background: 'rgba(255, 255, 255, 0.1)',
-								border: 'none',
-								borderRadius: '50%',
-								width: '28px',
-								height: '28px',
-								color: '#fff',
-								cursor: 'pointer',
-								display: 'grid',
-								placeItems: 'center',
-							}}
-						>
-							<X size={15} />
-						</button>
-					</div>
-				</div>
+				<NewsDetailHeader
+					article={article}
+					isAdmin={isAdmin}
+					copied={copied}
+					onHeaderMouseDown={onHeaderMouseDown}
+					onHeaderDoubleClick={onHeaderDoubleClick}
+					onClose={onClose}
+					onEdit={onEdit}
+					onDelete={onDelete}
+					onShare={onShare}
+					onChangeVisibility={onChangeVisibility}
+				/>
 
 				<div style={{ flex: 1, overflowY: 'auto', padding: '32px 36px' }}>
 					{article.imageUrl && (
@@ -248,34 +101,24 @@ export function NewsDetailModal({
 						}}
 					>
 						<span>
-							{t('newsPublishedBy')} <strong>{article.authorNameSurname || t('newsAuthorDefault')}</strong>
+							{t('newsPublishedBy')} <strong>{article.authorName || t('newsAuthorDefault')}</strong>
 						</span>
 						<span>•</span>
 						<span>
 							{t('newsDate')}{' '}
-							{new Date(article.creation).toLocaleDateString(
-								language,
-								{ day: 'numeric', month: 'long', year: 'numeric' }
-							)}
+							{new Date(article.createdAt).toLocaleDateString(language, { day: 'numeric', month: 'long', year: 'numeric' })}
 						</span>
 						{article.isImportant === 1 && (
 							<>
 								<span>•</span>
-								<span style={{ color: '#ff2d55', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+								<span style={{ color: 'var(--danger)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
 									<ShieldAlert size={12} /> {t('newsUrgentBadge')}
 								</span>
 							</>
 						)}
 					</div>
 
-					<div
-						style={{
-							fontSize: '15px',
-							lineHeight: 1.75,
-							opacity: 0.9,
-							whiteSpace: 'pre-line',
-						}}
-					>
+					<div style={{ fontSize: '15px', lineHeight: 1.75, opacity: 0.9, whiteSpace: 'pre-line' }}>
 						{article.content}
 					</div>
 				</div>

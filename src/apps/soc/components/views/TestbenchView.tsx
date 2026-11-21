@@ -13,7 +13,7 @@ import type { TestbenchTab } from '../../types';
 import s from '../../Soc.module.css';
 
 export const TestbenchView = React.memo(function TestbenchView() {
-	const { activeTab, openLabTab, tb, canManage, isEn } = useSoc();
+	const { activeTab, openLabTab, tb, canManage } = useSoc();
 	const { t } = useI18n();
 
 	const labTab = (['oauth', 'api', 'fuzzer', 'health', 'session'].includes(activeTab)
@@ -23,7 +23,7 @@ export const TestbenchView = React.memo(function TestbenchView() {
 	return (
 		<div className={s.viewContainer}>
 			<div className={s.labSegmentBar}>
-				<nav className={s.labSegment} aria-label={isEn ? 'Test lab tabs' : 'Test laboratuvarı sekmeleri'}>
+				<nav className={s.labSegment} aria-label={t('tbLabTabs')}>
 					{LAB_SEGMENTS.filter((seg) => canManage || SOC_LAB_TABS.includes(seg.id)).map((seg) => (
 						<button
 							key={seg.id}
@@ -31,7 +31,7 @@ export const TestbenchView = React.memo(function TestbenchView() {
 							className={`${s.labSegmentBtn} ${labTab === seg.id ? s.labSegmentBtnActive : ''}`}
 							onClick={() => openLabTab(seg.id)}
 						>
-							{t(seg.key, isEn ? seg.en : seg.tr)}
+							{t(seg.key)}
 						</button>
 					))}
 				</nav>
@@ -57,9 +57,7 @@ export const TestbenchView = React.memo(function TestbenchView() {
 			{labTab === 'api' && (
 				<ApiSuiteTab items={tb.apiItems} isRunning={tb.isRunningSuite} onRunSuite={tb.runApiSuite} />
 			)}
-			{labTab === 'fuzzer' && (
-				<WafAttackSimulatorTab />
-			)}
+			{labTab === 'fuzzer' && <WafAttackSimulatorTab />}
 			{labTab === 'health' && (
 				<HealthDiagnosticsTab health={tb.health} isLoading={tb.isHealthLoading} onRefresh={tb.refetchHealth} />
 			)}

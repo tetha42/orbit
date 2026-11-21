@@ -1,7 +1,11 @@
+import { NextResponse } from 'next/server';
 import { getTerminalSession, getRecentlyClosedSession } from '@/server/terminalManager';
 import { authorizeTerminal } from '@/server/terminalAccess';
+import { acquireStreamSlot } from '@/server/sse/streamQuota';
 
 export const dynamic = 'force-dynamic';
+
+const MAX_HIGHWATER_BYTES = 512 * 1024;
 
 export async function GET(request: Request) {
 	// EventSource sends the session cookie on same-origin requests, so no token
@@ -41,50 +45,100 @@ export async function GET(request: Request) {
 	}
 
 	const encoder = new TextEncoder();
+	let closed = false;
+	let heartbeat: ReturnType<typeof setInterval> | null = null;
+	let releaseQuota: (() => void) | null = null;
+	let listenerRef: ((data: string) => void) | null = null;
+	let closeListenerRef: ((code: number | null) => void) | null = null;
+	let closeController: (() => void) | null = null;
+
+	const cleanup = () => {
+		if (closed) return;
+		closed = true;
+		if (heartbeat) clearInterval(heartbeat);
+		heartbeat = null;
+		if (listenerRef) session.listeners.delete(listenerRef);
+		if (closeListenerRef) session.closeListeners.delete(closeListenerRef);
+		listenerRef = null;
+		closeListenerRef = null;
+		const rel = releaseQuota;
+		releaseQuota = null;
+		if (rel) rel();
+		if (closeController) closeController();
+	};
+
+	const slot = acquireStreamSlot({
+		channel: 'terminal',
+		userId: auth.user.id,
+		maxPerUser: 6,
+		maxGlobal: 64,
+		onEvict: cleanup,
+	});
+	if (!slot.ok) {
+		return NextResponse.json(
+			{ error: slot.reason },
+			{ status: 429, headers: { 'Retry-After': String(slot.retryAfter) } }
+		);
+	}
+	releaseQuota = slot.release;
 
 	const stream = new ReadableStream({
 		start(controller) {
-			// Send buffered output
-			for (const chunk of session.outputBuffer) {
-				controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+			closeController = () => {
+				try {
+					controller.close();
+				} catch {
+					/* already closed */
+				}
+			};
+			if (request.signal.aborted) {
+				cleanup();
+				return;
 			}
 
-			const listener = (data: string) => {
+			const enqueueSafe = (bytes: Uint8Array) => {
+				if (closed) return;
+				if (
+					controller.desiredSize !== null &&
+					controller.desiredSize < -MAX_HIGHWATER_BYTES
+				) {
+					return;
+				}
 				try {
-					controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+					controller.enqueue(bytes);
 				} catch {
-					// Controller might be closed
+					cleanup();
 				}
 			};
 
-			const closeListener = (code: number | null) => {
-				clearInterval(heartbeat);
-				try {
-					controller.enqueue(encoder.encode(`event: exit\ndata: ${JSON.stringify({ code })}\n\n`));
-					controller.close();
-				} catch {}
+			// Send buffered output
+			for (const chunk of session.outputBuffer) {
+				enqueueSafe(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+			}
+
+			listenerRef = (data: string) => {
+				enqueueSafe(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
 			};
 
-			session.listeners.add(listener);
-			session.closeListeners.add(closeListener);
+			closeListenerRef = (code: number | null) => {
+				if (closed) return;
+				enqueueSafe(encoder.encode(`event: exit\ndata: ${JSON.stringify({ code })}\n\n`));
+				cleanup();
+			};
+
+			session.listeners.add(listenerRef);
+			session.closeListeners.add(closeListenerRef);
 
 			// Keepalive heartbeat every 15s to prevent proxy/browser timeout
-			const heartbeat = setInterval(() => {
-				try {
-					controller.enqueue(encoder.encode(`: ping\n\n`));
-				} catch {
-					clearInterval(heartbeat);
-				}
-			}, 15000);
+			heartbeat = setInterval(() => {
+				enqueueSafe(encoder.encode(`: ping\n\n`));
+			}, 15_000);
+			heartbeat.unref?.();
 
-			request.signal.addEventListener('abort', () => {
-				clearInterval(heartbeat);
-				session.listeners.delete(listener);
-				session.closeListeners.delete(closeListener);
-				try {
-					controller.close();
-				} catch {}
-			});
+			request.signal.addEventListener('abort', cleanup, { once: true });
+		},
+		cancel() {
+			cleanup();
 		},
 	});
 

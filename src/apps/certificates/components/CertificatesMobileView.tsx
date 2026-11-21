@@ -1,20 +1,8 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import {
-	Award,
-	Trophy,
-	Medal,
-	FileCheck,
-	PlusCircle,
-	ExternalLink,
-	Copy,
-	Check,
-	Zap,
-	ShieldCheck,
-} from 'lucide-react';
+import { Award, Trophy, Medal, FileCheck, PlusCircle } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
-import { formatDate } from '@/core/data/format';
 import type { useCertificates } from '../hooks/useCertificates';
 import type { Certificate } from '../types';
 import { LevelXpBanner } from './LevelXpBanner';
@@ -23,6 +11,7 @@ import { BadgesGrid } from './BadgesGrid';
 import { CertificateDetailModal } from './CertificateDetailModal';
 import { SignatoriesModal } from './SignatoriesModal';
 import { IssueCertificateModal } from './IssueCertificateModal';
+import { MobileCertCard } from './MobileCertCard';
 import s from './CertificatesMobile.module.css';
 
 export interface CertificatesMobileViewProps {
@@ -71,52 +60,13 @@ export function CertificatesMobileView({
 	];
 
 	const renderCertCard = (cert: Certificate) => (
-		<div
+		<MobileCertCard
 			key={cert.id}
-			className={s.certCard}
-			onClick={() => c.setSelectedCert(cert)}
-		>
-			<div className={s.certCardAccentLine} />
-			<div className={s.certHeader}>
-				<div style={{ flex: 1, minWidth: 0 }}>
-					<div className={s.certTitle}>{cert.title}</div>
-					<div className={s.certSub}>
-						<span>{cert.userNameSurname}</span>
-						<span>•</span>
-						<span>{formatDate(cert.issuanceDate)}</span>
-					</div>
-				</div>
-				<span className={`${s.badge} ${s.badgeGold}`}>
-					<ShieldCheck size={12} />
-					<span>{cert.verificationCode}</span>
-				</span>
-			</div>
-
-			<div style={{ fontSize: '11.5px', opacity: 0.65, display: 'flex', alignItems: 'center', gap: '6px' }}>
-				<Zap size={12} color="var(--accent)" />
-				<span>{cert.category || t('certDefaultCategory')}</span>
-			</div>
-
-			<div className={s.certActionsRow} onClick={(e) => e.stopPropagation()}>
-				<button
-					type="button"
-					className={s.certBtn}
-					onClick={() => void c.handleCopyVerification(cert.verificationCode)}
-				>
-					{c.copied ? <Check size={13} color="#34c759" /> : <Copy size={13} />}
-					<span>{c.copied ? t('copied') : t('certCopyCode')}</span>
-				</button>
-
-				<button
-					type="button"
-					className={`${s.certBtn} ${s.certBtnPrimary}`}
-					onClick={() => c.setSelectedCert(cert)}
-				>
-					<ExternalLink size={13} />
-					<span>{t('details')}</span>
-				</button>
-			</div>
-		</div>
+			cert={cert}
+			copied={c.copied}
+			onSelect={c.setSelectedCert}
+			onCopyVerification={c.handleCopyVerification}
+		/>
 	);
 
 	return (
@@ -152,7 +102,7 @@ export function CertificatesMobileView({
 
 				{activeTab === 'leaderboard' && (
 					<div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-						<LeaderboardTab topMembers={c.topMembers} currentUserId={currentUserId} />
+						<LeaderboardTab topMembers={c.topMembers} currentUserId={currentUserId ?? null} />
 					</div>
 				)}
 

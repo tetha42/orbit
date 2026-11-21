@@ -69,6 +69,13 @@ export async function PATCH(request: Request) {
 			return NextResponse.json({ error: 'Invalid reorder payload.' }, { status: 400 });
 		}
 		await reorderFormFields(ids);
+		void logSystemEvent({
+			service: 'settings',
+			level: 'INFO',
+			message: 'Custom member fields reordered.',
+			detail: { count: ids.length, ids },
+			userId: auth.user.id,
+		});
 		return NextResponse.json({ ok: true, fields: await getFormFields() });
 	}
 
@@ -81,6 +88,13 @@ export async function PATCH(request: Request) {
 	try {
 		const field = await updateFormField({ id, ...normalized.value });
 		if (!field) return NextResponse.json({ error: 'Field not found.' }, { status: 404 });
+		void logSystemEvent({
+			service: 'settings',
+			level: 'INFO',
+			message: `Custom member field updated: ${field.fieldKey}`,
+			detail: { fieldId: field.id, scope: field.scope, type: field.type },
+			userId: auth.user.id,
+		});
 		return NextResponse.json({ ok: true, field });
 	} catch (error) {
 		const code = (error as { code?: string }).code;
@@ -104,5 +118,12 @@ export async function DELETE(request: Request) {
 	if (!id) return NextResponse.json({ error: 'Field id is required.' }, { status: 400 });
 	const removed = await deleteFormField(id);
 	if (!removed) return NextResponse.json({ error: 'Field not found.' }, { status: 404 });
+	void logSystemEvent({
+		service: 'settings',
+		level: 'WARN',
+		message: `Custom member field deleted: ${id}`,
+		detail: { fieldId: id },
+		userId: auth.user.id,
+	});
 	return NextResponse.json({ ok: true, fields: await getFormFields() });
 }

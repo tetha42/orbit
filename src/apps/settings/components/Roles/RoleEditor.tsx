@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { useI18n } from '@/core/i18n';
+import { useI18n, resolveLocalizedText } from '@/core/i18n';
 import { manifestOf } from '@/apps';
 import { fill } from '@/lib/text';
 import { AlertTriangle, ShieldCheck, Lock } from 'lucide-react';
 import { Sheet } from '@/core/ui/Sheet';
 import { sendJson } from '@/core/data/http';
 import { invalidateResource } from '@/core/data/useJsonResource';
+import type { DesktopAuthPolicy } from '@/db/roles/types';
 import ui from '@/core/ui/ui.module.css';
 import {
 	ROLE_COLORS,
@@ -20,7 +21,20 @@ import {
 	type Level,
 	type PermissionApp,
 } from '@/core/permissions';
+import { RoleDevicePolicyFields } from './RoleDevicePolicyFields';
 import s from './Roles.module.css';
+
+const ADMIN_2FA_BADGE_STYLE: React.CSSProperties = {
+	display: 'inline-flex',
+	alignItems: 'center',
+	gap: '4px',
+	marginLeft: '8px',
+	fontSize: '11px',
+	padding: '1px 6px',
+	borderRadius: '4px',
+	background: 'var(--fill-medium, rgba(255,255,255,0.08))',
+	color: 'var(--color-warning, var(--warning))',
+};
 
 export interface RoleView {
 	id: string;
@@ -29,6 +43,9 @@ export interface RoleView {
 	description: string;
 	system: boolean;
 	twoStepRequired: boolean;
+	allowMobileAccess?: boolean;
+	allowDesktopAccess?: boolean;
+	desktopAuthPolicy?: DesktopAuthPolicy;
 	permissions: Permissions;
 	userCount: number;
 }
@@ -40,7 +57,6 @@ interface RoleEditorProps {
 	onSaved: (msg: string) => void;
 }
 
-
 function englishAppTitle(app: PermissionApp): string {
 	const manifest = manifestOf(app);
 	return manifest && 'en' in manifest ? manifest.en.shortTitle : PERMISSION_DESCRIPTIONS[app].name;
@@ -48,7 +64,6 @@ function englishAppTitle(app: PermissionApp): string {
 
 export function RoleEditor({ role, myPermissions, onClose, onSaved }: RoleEditorProps) {
 	const { t, language } = useI18n();
-	const isEn = language === 'en';
 	const LEVEL_NAME: Record<Level, string> = { none: t('rolesLevelNone'), use: t('rolesLevelUse'), manage: t('rolesLevelManage') };
 	const [name, setName] = useState(role?.name ?? '');
 	const [color, setColor] = useState(role?.color ?? ROLE_COLORS[0]);
@@ -56,18 +71,31 @@ export function RoleEditor({ role, myPermissions, onClose, onSaved }: RoleEditor
 	const [permissions, setPermissions] = useState<Permissions>(role?.permissions ?? { news: 'use', settings: 'use' });
 	const isManagement = hasManagementPermission(permissions);
 	const [twoStep, setTwoStep] = useState<boolean | null>(role ? role.twoStepRequired : null);
+	const [allowMobileAccess, setAllowMobileAccess] = useState(role?.allowMobileAccess ?? true);
+	const [allowDesktopAccess, setAllowDesktopAccess] = useState(role?.allowDesktopAccess ?? true);
+	const [desktopAuthPolicy, setDesktopAuthPolicy] = useState<DesktopAuthPolicy>(role?.desktopAuthPolicy ?? 'standard');
 	const twoStepActive = isManagement ? true : (twoStep ?? false);
 	const [error, setError] = useState('');
 	const [busy, setBusy] = useState(false);
 	const excess = useMemo(() => extraPermissions(permissions, myPermissions), [permissions, myPermissions]);
-
+	const invalidDeviceAccess = !allowMobileAccess && !allowDesktopAccess;
 	const set = (a: PermissionApp, v: Level) => setPermissions((cur) => ({ ...cur, [a]: v }));
 
 	const submit = async (e: React.FormEvent) => {
 		e.preventDefault();
+		if (invalidDeviceAccess) return setError(t('rolesDeviceAccessMinOneWarning'));
 		setError('');
 		setBusy(true);
-		const body = { name: name.trim(), color, description: description.trim(), permissions, twoStepRequired: twoStepActive };
+		const body = {
+			name: name.trim(),
+			color,
+			description: description.trim(),
+			permissions,
+			twoStepRequired: twoStepActive,
+			allowMobileAccess,
+			allowDesktopAccess,
+			desktopAuthPolicy,
+		};
 		const res = role ? await sendJson('/api/roles', 'PATCH', { id: role.id, ...body }) : await sendJson('/api/roles', 'POST', body);
 		setBusy(false);
 		if (!res.ok) return setError(res.error || t('rolesSaveFailed'));
@@ -87,10 +115,8 @@ export function RoleEditor({ role, myPermissions, onClose, onSaved }: RoleEditor
 			bodyStyle={{ overflowY: 'auto', padding: '20px' }}
 			footer={
 				<>
-					<button type="button" className={ui.btn} onClick={onClose}>
-						{t('cancel')}
-					</button>
-					<button type="submit" className={ui.primaryBtn} disabled={busy || excess.length > 0}>
+					<button type="button" className={ui.btn} onClick={onClose}>{t('cancel')}</button>
+					<button type="submit" className={ui.primaryBtn} disabled={busy || excess.length > 0 || invalidDeviceAccess}>
 						{busy ? t('saving') : t('save')}
 					</button>
 				</>
@@ -105,7 +131,11 @@ export function RoleEditor({ role, myPermissions, onClose, onSaved }: RoleEditor
 					<span className={ui.fieldLabel}>{t('rolesColorLabel')}</span>
 					<div className={s.swatches} role="radiogroup" aria-label={t('rolesColorLabel')}>
 						{ROLE_COLORS.map((c) => (
-							<button key={c} type="button" role="radio" aria-checked={color === c} aria-label={c} className={`${s.swatchBtn} ${color === c ? s.swatchActive : ''}`} style={{ background: c }} onClick={() => setColor(c)} />
+							<button
+								key={c} type="button" role="radio" aria-checked={color === c} aria-label={c}
+								className={`${s.swatchBtn} ${color === c ? s.swatchActive : ''}`}
+								style={{ background: c }} onClick={() => setColor(c)}
+							/>
 						))}
 						<input type="color" value={color} onChange={(e) => setColor(e.target.value)} aria-label={t('rolesCustomColor')} className={s.colorInput} />
 					</div>
@@ -121,26 +151,21 @@ export function RoleEditor({ role, myPermissions, onClose, onSaved }: RoleEditor
 					const meta = PERMISSION_DESCRIPTIONS[a];
 					const v = levelOf(permissions, a);
 					const options: Level[] = a === 'settings' ? ['use', 'manage'] : ['none', 'use', 'manage'];
+					const appTitle = resolveLocalizedText({ tr: meta.name, en: englishAppTitle(a) }, language);
+					const enDesc = fill(t(v === 'manage' ? 'rolesPermManageGeneric' : 'rolesPermUseGeneric'), { app: englishAppTitle(a) });
+					const permDesc = resolveLocalizedText({ tr: meta[v === 'manage' ? 'manage' : 'use'], en: enDesc }, language);
 					return (
 						<div key={a} className={s.matrixRow} role="row" data-app={a}>
 							<div className={s.matrixApp} role="cell">
-								<strong>{isEn ? englishAppTitle(a) : meta.name}</strong>
-								<span className={ui.muted}>
-									{v === 'none'
-										? t('rolesAppHidden')
-										: isEn
-											? fill(t(v === 'manage' ? 'rolesPermManageGeneric' : 'rolesPermUseGeneric'), {
-													app: englishAppTitle(a),
-												})
-											: meta[v === 'manage' ? 'manage' : 'use']}
-								</span>
+								<strong>{appTitle}</strong>
+								<span className={ui.muted}>{v === 'none' ? t('rolesAppHidden') : permDesc}</span>
 								{meta.warning && v !== 'none' && (
 									<span className={s.warn}>
-										<AlertTriangle size={12} /> {isEn ? t('rolesPermWarningGeneric') : meta.warning}
+										<AlertTriangle size={12} /> {resolveLocalizedText({ tr: meta.warning, en: t('rolesPermWarningGeneric') }, language)}
 									</span>
 								)}
 							</div>
-							<div className={ui.segmented} role="radiogroup" aria-label={`${meta.name} yetkisi`}>
+							<div className={ui.segmented} role="radiogroup" aria-label={fill(t('rolesAppPermissionAria'), { app: appTitle })}>
 								{options.map((o) => (
 									<button key={o} type="button" role="radio" aria-checked={v === o} className={`${ui.segment} ${v === o ? ui.segmentActive : ''}`} onClick={() => set(a, o)}>
 										{LEVEL_NAME[o]}
@@ -152,42 +177,26 @@ export function RoleEditor({ role, myPermissions, onClose, onSaved }: RoleEditor
 				})}
 			</div>
 
+			<RoleDevicePolicyFields
+				allowMobileAccess={allowMobileAccess}
+				allowDesktopAccess={allowDesktopAccess}
+				desktopAuthPolicy={desktopAuthPolicy}
+				onChangeMobile={setAllowMobileAccess}
+				onChangeDesktop={setAllowDesktopAccess}
+				onChangePolicy={setDesktopAuthPolicy}
+			/>
+
 			<label className={s.check} style={isManagement ? { cursor: 'not-allowed', opacity: 0.9 } : undefined}>
-				<input
-					type="checkbox"
-					checked={twoStepActive}
-					disabled={isManagement}
-					onChange={(e) => setTwoStep(e.target.checked)}
-				/>
+				<input type="checkbox" checked={twoStepActive} disabled={isManagement} onChange={(e) => setTwoStep(e.target.checked)} />
 				{t('roles2faRequired')}
 				{isManagement ? (
-					<span
-						style={{
-							display: 'inline-flex',
-							alignItems: 'center',
-							gap: '4px',
-							marginLeft: '8px',
-							fontSize: '11px',
-							padding: '1px 6px',
-							borderRadius: '4px',
-							background: 'var(--fill-medium, rgba(255,255,255,0.08))',
-							color: 'var(--color-warning, #ff9f0a)',
-						}}
-						title={t('roles2faAdminAutoNotice')}
-					>
-						<Lock size={11} />
-						{t('roles2faAdminAutoNotice')}
-					</span>
+					<span style={ADMIN_2FA_BADGE_STYLE} title={t('roles2faAdminAutoNotice')}><Lock size={11} />{t('roles2faAdminAutoNotice')}</span>
 				) : (
 					twoStep === null && <span className={ui.muted}> {t('roles2faAdminAutoNotice')}</span>
 				)}
 			</label>
 			<div className={ui.hint} style={{ marginTop: -4 }}>{t('roles2faHint')}</div>
-			{excess.length > 0 && (
-				<div className={ui.error}>
-					Kendinizde olmayan yetkileri veremezsiniz: {excess.map((a) => PERMISSION_DESCRIPTIONS[a].name).join(', ')}
-				</div>
-			)}
+			{excess.length > 0 && <div className={ui.error}>{fill(t('rolesPermExcess'), { list: excess.map((a) => PERMISSION_DESCRIPTIONS[a].name).join(', ') })}</div>}
 			{error && <div className={ui.error}>{error}</div>}
 		</Sheet>
 	);

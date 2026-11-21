@@ -14,7 +14,7 @@ export async function GET(request: Request) {
 		return NextResponse.json(folders);
 	} catch (error) {
 		console.error('Folders API error:', error);
-		return NextResponse.json({ error: 'Klasörler yüklenemedi.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to load folders.' }, { status: 500 });
 	}
 }
 
@@ -29,7 +29,7 @@ async function handlePOST(request: Request) {
 		const { id, name, color, order } = body;
 
 		if (!name || typeof name !== 'string' || !name.trim()) {
-			return NextResponse.json({ error: 'Klasör adı zorunludur.' }, { status: 400 });
+			return NextResponse.json({ error: 'Folder name is required.' }, { status: 400 });
 		}
 
 		const saved = await saveUserNoteFolder({
@@ -43,11 +43,11 @@ async function handlePOST(request: Request) {
 		return NextResponse.json(saved);
 	} catch (error) {
 		const msg = error instanceof Error ? error.message : '';
-		if (msg.includes('Yetkisiz işlem')) {
+		if (msg.includes('Unauthorized')) {
 			return NextResponse.json({ error: msg }, { status: 403 });
 		}
 		console.error('Folders API error:', error);
-		return NextResponse.json({ error: 'Klasör kaydedilemedi.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to save folder.' }, { status: 500 });
 	}
 }
 
@@ -62,14 +62,14 @@ async function handleDELETE(request: Request) {
 		const id = searchParams.get('id');
 
 		if (!id) {
-			return NextResponse.json({ error: 'Klasör ID zorunludur.' }, { status: 400 });
+			return NextResponse.json({ error: 'Folder ID is required.' }, { status: 400 });
 		}
 
 		const success = await deleteUserNoteFolder(id, auth.user.id);
 		return NextResponse.json({ success });
 	} catch (error) {
 		console.error('Folders API error:', error);
-		return NextResponse.json({ error: 'Klasör silinemedi.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to delete folder.' }, { status: 500 });
 	}
 }
 

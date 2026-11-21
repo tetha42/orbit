@@ -50,7 +50,9 @@ export async function enableUserTotp(
 export async function disableUserTotp(userId: string, audit: AuditContext): Promise<void> {
 	await withTransaction(async (client) => {
 		const res = await client.query(
-			'UPDATE users SET totp_enabled = 0, totp_secret = NULL, totp_recovery_codes = NULL, totp_confirmed_at = NULL, totp_last_step = NULL WHERE id = $1 RETURNING first_name AS name, last_name AS surname, email AS email',
+			'UPDATE users SET totp_enabled = 0, totp_secret = NULL, totp_recovery_codes = NULL, ' +
+				'totp_confirmed_at = NULL, totp_last_step = NULL WHERE id = $1 ' +
+				'RETURNING first_name AS name, last_name AS surname, email AS email',
 			[userId]
 		);
 		const u = res.rows[0];
@@ -197,7 +199,7 @@ export async function listUserWebauthnCredentials(userId: string): Promise<Webau
 	const res = await getPgPool().query(
 		`SELECT id, user_id AS "userId", public_key AS "publicKey", counter, transports,
 		        device_type AS "deviceType", backed_up AS "backedUp", nickname,
-		        created_at AS creation, last_used_at AS "lastUsage"
+		        created_at AS "createdAt", last_used_at AS "lastUsage"
 		 FROM webauthn_credentials
 		 WHERE user_id = $1
 		 ORDER BY created_at ASC`,

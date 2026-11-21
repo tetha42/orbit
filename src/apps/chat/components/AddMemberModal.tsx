@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useI18n } from '@/core/i18n';
-import { X, Search, UserPlus, Check, CheckSquare, Square, ShieldAlert } from 'lucide-react';
+import { X, UserPlus, Check, ShieldAlert } from 'lucide-react';
 import type { ChatRoomItem, ChatContactItem, ChatRoomMemberItem } from '../types';
-import s from '../Chat.module.css';
+import { ContactPickerList, filterChatContacts } from './ContactPickerList';
+import s from '../ChatModals.module.css';
 
 interface AddMemberModalProps {
 	isOpen: boolean;
@@ -45,7 +46,6 @@ export function AddMemberModal({
 		let isSubscribed = true;
 		setLoading(true);
 
-		// Fetch all contacts and current room members concurrently
 		Promise.all([
 			fetch('/api/chat/rooms?action=contacts').then((r) => r.json()),
 			fetch(`/api/chat/rooms?action=members&roomId=${encodeURIComponent(room.id)}`).then((r) => r.json()),
@@ -81,16 +81,10 @@ export function AddMemberModal({
 		});
 	}, [contacts, currentUserId, is1on1Dm, room.peerUserId, existingMemberIds]);
 
-	const filteredContacts = useMemo(() => {
-		const q = searchQuery.trim().toLowerCase();
-		if (!q) return eligibleContacts;
-		return eligibleContacts.filter((c) => {
-			const fullName = `${c.name} ${c.surname}`.toLowerCase();
-			const role = (c.roleName || '').toLowerCase();
-			const department = (c.department || '').toLowerCase();
-			return fullName.includes(q) || role.includes(q) || department.includes(q);
-		});
-	}, [eligibleContacts, searchQuery]);
+	const filteredContacts = useMemo(
+		() => filterChatContacts(eligibleContacts, searchQuery),
+		[eligibleContacts, searchQuery]
+	);
 
 	const toggleMemberSelection = (id: string) => {
 		setSelectedMemberIds((prev) =>
@@ -124,7 +118,6 @@ export function AddMemberModal({
 	return (
 		<div className={s.modalOverlay} onClick={onClose}>
 			<div className={s.modalDialog} onClick={(e) => e.stopPropagation()}>
-				{/* Modal Header */}
 				<div className={s.modalHeader}>
 					<div className={s.modalTitle}>
 						<UserPlus size={18} color="var(--accent)" />
@@ -140,17 +133,15 @@ export function AddMemberModal({
 					</button>
 				</div>
 
-				{/* Modal Body */}
 				<div className={s.modalBody}>
-					{/* 1-on-1 Privacy Notice Banner */}
 					{is1on1Dm && (
 						<div
 							style={{
 								display: 'flex',
 								alignItems: 'flex-start',
 								gap: '10px',
-								background: 'rgba(255, 159, 10, 0.12)',
-								border: '1px solid rgba(255, 159, 10, 0.3)',
+								background: 'color-mix(in srgb, var(--warning) 12%, transparent)',
+								border: '1px solid color-mix(in srgb, var(--warning) 30%, transparent)',
 								borderRadius: '10px',
 								padding: '10px 14px',
 								fontSize: '12px',
@@ -158,12 +149,11 @@ export function AddMemberModal({
 								lineHeight: 1.45,
 							}}
 						>
-							<ShieldAlert size={18} color="#ff9f0a" style={{ flexShrink: 0, marginTop: '2px' }} />
+							<ShieldAlert size={18} color="var(--warning)" style={{ flexShrink: 0, marginTop: '2px' }} />
 							<span>{t('chatPrivacyNotice')}</span>
 						</div>
 					)}
 
-					{/* Group Title (Optional) for 1-on-1 expansion */}
 					{is1on1Dm && (
 						<div>
 							<input
@@ -177,92 +167,18 @@ export function AddMemberModal({
 						</div>
 					)}
 
-					{/* Selected Member Chips */}
-					{selectedContacts.length > 0 && (
-						<div className={s.chipsContainer}>
-							{selectedContacts.map((sc) => (
-								<div key={sc.id} className={s.chip}>
-									<span>{sc.name}</span>
-									<button
-										type="button"
-										className={s.chipRemoveBtn}
-										onClick={() => toggleMemberSelection(sc.id)}
-									>
-										<X size={12} />
-									</button>
-								</div>
-							))}
-						</div>
-					)}
-
-					{/* Search Field */}
-					<div className={s.modalSearchRow}>
-						<Search size={15} className={s.modalSearchIcon} />
-						<input
-							type="text"
-							className={s.modalSearchInput}
-							placeholder={t('chatSearchPlaceholder')}
-							value={searchQuery}
-							onChange={(e) => setSearchQuery(e.target.value)}
-						/>
-					</div>
-
-					{/* Contacts List */}
-					<div className={s.contactsList}>
-						{loading ? (
-							<div style={{ padding: '24px', textAlign: 'center', opacity: 0.6, fontSize: '13px' }}>
-								{t('loading')}
-							</div>
-						) : filteredContacts.length === 0 ? (
-							<div style={{ padding: '24px', textAlign: 'center', opacity: 0.6, fontSize: '13px' }}>
-								{t('chatNoMembersFound')}
-							</div>
-						) : (
-							filteredContacts.map((contact) => {
-								const isSelected = selectedMemberIds.includes(contact.id);
-								return (
-									<button
-										key={contact.id}
-										type="button"
-										className={`${s.contactItem} ${isSelected ? s.contactItemActive : ''}`}
-										onClick={() => toggleMemberSelection(contact.id)}
-									>
-										<div style={{ color: isSelected ? 'var(--accent)' : 'rgba(255, 255, 255, 0.4)' }}>
-											{isSelected ? <CheckSquare size={18} /> : <Square size={18} />}
-										</div>
-
-										<div className={s.contactAvatar}>
-											{contact.profilePhoto ? (
-												// eslint-disable-next-line @next/next/no-img-element
-												<img
-													src={contact.profilePhoto}
-													alt={contact.name}
-													style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-												/>
-											) : (
-												contact.name.slice(0, 1).toUpperCase()
-											)}
-										</div>
-
-										<div className={s.contactInfo}>
-											<div className={s.contactName}>
-												{contact.name} {contact.surname}
-											</div>
-											<div className={s.contactMeta}>
-												{contact.roleName && (
-													<span className={s.contactRoleBadge}>{contact.roleName}</span>
-												)}
-												{contact.department && <span>{contact.department}</span>}
-											</div>
-										</div>
-									</button>
-								);
-							})
-						)}
-					</div>
+					<ContactPickerList
+						contacts={filteredContacts}
+						loading={loading}
+						searchQuery={searchQuery}
+						onSearchChange={setSearchQuery}
+						multiSelect
+						selectedIds={selectedMemberIds}
+						selectedContacts={selectedContacts}
+						onToggleOrSelect={toggleMemberSelection}
+					/>
 				</div>
 
-				{/* Modal Footer */}
 				<div className={s.modalFooter}>
 					<button
 						type="button"

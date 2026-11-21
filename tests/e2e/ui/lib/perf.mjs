@@ -1,5 +1,5 @@
 // Measuring the desktop: frames per second from requestAnimationFrame, React commits through
-// the DevTools hook, and long tasks. Used by the opt-in `performans` suite; the numbers are
+// the DevTools hook, and long tasks. Used by the opt-in `performance` suite; the numbers are
 // written as a table and as JSON (tests/e2e/.tmp/perf-<date>.json) for before/after comparisons.
 import os from 'node:os';
 import fs from 'node:fs';

@@ -33,14 +33,14 @@ const manifest = {
 	dock: 15,
 	permission: {
 		order: 15,
-		name: 'Posta',
-		use: 'Topluluk gelen/giden e-postalarını görüntüler.',
-		manage: 'E-posta gönderir, siler ve kutuları yönetir.',
-		warning: 'E-posta kutusuna doğrudan tam erişim verir; yalnızca sistem yöneticilerine açılmalıdır.',
+		name: 'Mail Center',
+		use: 'View organization incoming and outgoing emails.',
+		manage: 'Compose, send, and delete emails, and manage mailboxes.',
+		warning: 'Grants direct full access to mailboxes; restrict to system administrators only.',
 	},
 	menu: {
 		title: { tr: 'Posta', en: 'Mail' },
-		about: { id: 'about-mail', label: { tr: 'Posta Hakkında', en: 'About Mail' }, permission: 'use', ac: true },
+		about: { id: 'about-mail', label: { tr: 'Posta Hakkında', en: 'About Mail' }, permission: 'use', open: true },
 		categories: [
 			{
 				id: 'mailbox',

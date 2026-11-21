@@ -4,8 +4,8 @@
 //
 //   node scripts/dev-fixtures.mjs --out F.json && node tests/e2e/rbac-api.mjs --fixtures F.json [--base URL]
 //
-// Fixture accounts: admin (Admin), zeynep (Yönetim Kurulu, 2FA), ege (Üye, team
-// captain), can (Üye), okur (Sadece Haberler). Never run against production.
+// Fixture accounts: admin (Admin), zeynep (management board, 2FA), ege (member, team
+// captain), can (member), okur (news only). Never run against production.
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 
@@ -101,14 +101,14 @@ const reader = await login(U.reader.email, U.reader.password);
 // ---- session carries the role ------------------------------------------------
 {
 	const me = (await reader.call('GET', '/api/auth/me')).json.user;
-	ok(me.roleInfo?.name === 'Sadece Haberler' && me.permissions.news === 'use' && !me.permissions.events && me.admin === false, 'okur: session has role + permissions');
+	ok(me.roleInfo?.name === 'News Only' && me.permissions.news === 'use' && !me.permissions.events && me.admin === false, 'reader: session has role + permissions');
 	const am = (await admin.call('GET', '/api/auth/me')).json.user;
 	ok(am.admin === true && am.permissions.budget === 'manage' && am.twoFactorRequired && !am.mustSetup2fa, 'admin: full permissions, 2FA enrolled');
 }
 
 // ---- per-app reads ------------------------------------------------------------
 const st = async (c, m, p, b) => (await c.call(m, p, b)).status;
-ok((await st(reader, 'GET', '/api/news')) === 200, 'okur reads news');
+ok((await st(reader, 'GET', '/api/news')) === 200, 'reader reads news');
 for (const [path, name] of [
 	['/api/events', 'events'],
 	['/api/teams', 'teams'],
@@ -118,46 +118,46 @@ for (const [path, name] of [
 	['/api/certificates', 'certificates'],
 	['/api/projects', 'projects'],
 	['/api/notes', 'notes'],
-	['/api/budget/vaults', 'kasa list'],
+	['/api/budget/vaults', 'vault list'],
 	['/api/messages', 'mail inbox'],
 	['/api/messages/unread', 'mail unread count'],
 	['/api/messages/recipients', 'mail recipients'],
 ]) {
-	ok((await st(reader, 'GET', path)) === 403, `okur → ${name} 403`);
+	ok((await st(reader, 'GET', path)) === 403, `reader → ${name} 403`);
 }
-ok((await st(can, 'GET', '/api/events')) === 200, 'üye reads events');
-ok((await st(can, 'GET', '/api/budget/vaults')) === 403, 'üye (not captain) → kasa list 403');
-ok((await st(can, 'POST', '/api/terminal/session', {})) === 403, 'üye → terminal 403');
-ok((await st(zeynep, 'POST', '/api/terminal/session', {})) === 403, 'kurul (terminal yok) → terminal 403');
+ok((await st(can, 'GET', '/api/events')) === 200, 'member reads events');
+ok((await st(can, 'GET', '/api/budget/vaults')) === 403, 'member (not captain) → vault list 403');
+ok((await st(can, 'POST', '/api/terminal/session', {})) === 403, 'member → terminal 403');
+ok((await st(zeynep, 'POST', '/api/terminal/session', {})) === 403, 'management board (no terminal) → terminal 403');
 
-// ---- kasa: manager / captain / reader ----------------------------------------
+// ---- vault: manager / captain / reader ---------------------------------------
 {
 	const list = (await ege.call('GET', '/api/budget/vaults')).json;
-	ok(list?.vaults?.length === 1 && list.vaults[0].teamId === teamId, 'captain sees only own project kasa', JSON.stringify(list));
-	ok((await st(ege, 'GET', '/api/budget')) === 403, 'captain → general kasa 403');
+	ok(list?.vaults?.length === 1 && list.vaults[0].teamId === teamId, 'captain sees only the own project vault', JSON.stringify(list));
+	ok((await st(ege, 'GET', '/api/budget')) === 403, 'captain → general vault 403');
 	const own = (await ege.call('GET', `/api/budget?teamId=${teamId}`)).json;
-	ok(own?.permission?.write === true && own.permission.manage === false, 'captain may write own kasa, not transfer');
-	ok((await st(ege, 'POST', '/api/budget', { teamId: teamId, typeValue: 'income', category: 'other', amountMinor: 1000, description: 'Kaptan geliri' })) < 300, 'captain adds income to own kasa');
-	ok((await st(ege, 'POST', '/api/budget', { typeValue: 'income', category: 'other', amountMinor: 1000, description: 'Genel kasaya' })) === 403, 'captain → general kasa write 403');
-	ok((await st(ege, 'POST', '/api/budget', { action: 'transfer', source: null, target: teamId, amountMinor: 100, description: 'aktarım' })) === 403, 'captain → transfer 403');
+	ok(own?.permission?.write === true && own.permission.manage === false, 'captain may write the own vault, not transfer');
+	ok((await st(ege, 'POST', '/api/budget', { teamId: teamId, type: 'income', category: 'other', amountMinor: 1000, description: 'Captain income' })) < 300, 'captain adds income to the own vault');
+	ok((await st(ege, 'POST', '/api/budget', { type: 'income', category: 'other', amountMinor: 1000, description: 'General vault' })) === 403, 'captain → general vault write 403');
+	ok((await st(ege, 'POST', '/api/budget', { action: 'transfer', source: null, target: teamId, amountMinor: 100, description: 'transfer' })) === 403, 'captain → transfer 403');
 	const z = (await zeynep.call('GET', '/api/budget')).json;
-	ok(z?.permission?.write === true && z.permission.manage === true, 'kurul manages general kasa');
+	ok(z?.permission?.write === true && z.permission.manage === true, 'management board manages the general vault');
 }
 
 // ---- members: what a reader sees ---------------------------------------------
 {
 	const pend = client();
-	const reg = await pend.call('POST', '/api/auth/register', { name: 'Bekleyen', surname: 'Aday', email: `aday${Date.now()}@club.test`, password: 'Aday-Sifre-2026!', department: 'İşletme', grade: 1 });
+	const reg = await pend.call('POST', '/api/auth/register', { name: 'Pending', surname: 'Applicant', email: `applicant${Date.now()}@club.test`, password: 'Applicant-Pass-2026!', department: 'Software Engineering & Architecture', grade: 1 });
 	ok(reg.status < 300, 'registration accepted', JSON.stringify(reg.json));
 	const asMember = (await can.call('GET', '/api/members')).json.members;
-	ok(asMember.every((m) => m.status === 'active' || m.status === 'alumni'), 'üye does not see applications');
+	ok(asMember.every((m) => m.status === 'active' || m.status === 'alumni'), 'member does not see applications');
 	const asManager = (await zeynep.call('GET', '/api/members')).json.members;
-	const candidate = asManager.find((m) => m.name === 'Bekleyen' && m.status === 'pending');
-	ok(!!candidate && candidate.roleId === null, 'kurul sees the pending applicant (no role yet)');
-	ok((await st(can, 'POST', '/api/admin/approve', { userId: candidate?.id, action: 'approve' })) === 403, 'üye cannot approve');
-	ok((await st(zeynep, 'POST', '/api/admin/approve', { userId: candidate?.id, action: 'approve' })) === 200, 'kurul approves');
+	const candidate = asManager.find((m) => m.name === 'Pending' && m.status === 'pending');
+	ok(!!candidate && candidate.roleId === null, 'management board sees the pending applicant (no role yet)');
+	ok((await st(can, 'POST', '/api/admin/approve', { userId: candidate?.id, action: 'approve' })) === 403, 'member cannot approve');
+	ok((await st(zeynep, 'POST', '/api/admin/approve', { userId: candidate?.id, action: 'approve' })) === 200, 'management board approves');
 	const after = (await admin.call('GET', '/api/members')).json.members.find((m) => m.id === candidate?.id);
-	ok(after?.status === 'active' && after.roleId === R.member && after.roleName === 'Üye', 'approved member gets the default role');
+	ok(after?.status === 'active' && after.roleId === R.member && after.roleName === 'Member', 'approved member gets the default role');
 	ok((await st(zeynep, 'POST', '/api/admin/approve', { userId: candidate?.id, action: 'reject' })) === 409, 'approval endpoint refuses non-pending accounts');
 }
 
@@ -165,22 +165,22 @@ ok((await st(zeynep, 'POST', '/api/terminal/session', {})) === 403, 'kurul (term
 {
 	const zr = await zeynep.call('GET', '/api/roles');
 	ok(zr.status === 200 && zr.json.roles.every((r) => r.permissions === undefined) && zr.json.myPermissions === undefined, 'members manager gets names/colours only');
-	ok(zr.json.roles.find((r) => r.id === 'role_admin')?.assignable === false, 'kurul may not hand out Admin');
-	ok((await st(zeynep, 'POST', '/api/roles', { name: 'Yeni', color: '#30d158', permissions: {} })) === 403, 'settings:kullan cannot create roles');
-	ok((await st(can, 'GET', '/api/roles')) === 403, 'üye cannot list roles');
-	ok((await st(zeynep, 'PATCH', '/api/members', { id: U.ege.id, roleId: 'role_admin' })) === 403, 'kurul cannot make someone admin');
-	ok((await st(zeynep, 'PATCH', '/api/members', { id: U.can.id, roleId: R.management })) === 200, 'kurul may give an equal role');
+	ok(zr.json.roles.find((r) => r.id === 'role_admin')?.assignable === false, 'management board may not hand out Admin');
+	ok((await st(zeynep, 'POST', '/api/roles', { name: 'New Role', color: '#30d158', permissions: {} })) === 403, 'settings: use cannot create roles');
+	ok((await st(can, 'GET', '/api/roles')) === 403, 'member cannot list roles');
+	ok((await st(zeynep, 'PATCH', '/api/members', { id: U.ege.id, roleId: 'role_admin' })) === 403, 'management board cannot make someone admin');
+	ok((await st(zeynep, 'PATCH', '/api/members', { id: U.can.id, roleId: R.management })) === 200, 'management board may give an equal role');
 	ok((await st(zeynep, 'PATCH', '/api/members', { id: U.can.id, roleId: R.member })) === 200, '…and take it back');
 	const adminId = (await admin.call('GET', '/api/auth/me')).json.user.id;
-	ok((await st(zeynep, 'DELETE', `/api/members?id=${adminId}`)) === 403, 'kurul cannot delete the admin');
-	ok((await st(zeynep, 'PATCH', '/api/members', { id: adminId, status: 'alumni' })) === 403, 'kurul cannot deactivate the admin');
+	ok((await st(zeynep, 'DELETE', `/api/members?id=${adminId}`)) === 403, 'management board cannot delete the admin');
+	ok((await st(zeynep, 'PATCH', '/api/members', { id: adminId, status: 'alumni' })) === 403, 'management board cannot deactivate the admin');
 	ok((await st(admin, 'PATCH', '/api/members', { id: adminId, roleId: R.member })) === 409, 'last admin cannot drop the role');
 	ok((await st(admin, 'PATCH', '/api/members', { id: adminId, status: 'alumni' })) === 409, 'last admin cannot be deactivated');
 	ok((await st(admin, 'DELETE', `/api/members?id=${adminId}`)) === 400, 'admin cannot delete self');
 	ok((await st(admin, 'PATCH', '/api/roles', { id: 'role_admin', name: 'X', color: '#000000', permissions: {} })) === 409, 'Admin role is fixed');
 	ok((await st(admin, 'DELETE', '/api/roles', { id: 'role_admin' })) === 409, 'Admin role cannot be deleted');
-	ok((await st(admin, 'POST', '/api/roles', { name: 'üye', color: '#000000', permissions: {} })) === 409, 'role names are unique (case-insensitive)');
-	ok((await st(admin, 'POST', '/api/roles', { name: 'Kötü', color: '#000000', permissions: { hack: 'manage' } })) === 400, 'unknown app rejected');
+	ok((await st(admin, 'POST', '/api/roles', { name: 'member', color: '#000000', permissions: {} })) === 409, 'role names are unique (case-insensitive)');
+	ok((await st(admin, 'POST', '/api/roles', { name: 'Bad Role', color: '#000000', permissions: { hack: 'manage' } })) === 400, 'unknown app rejected');
 	ok((await st(admin, 'POST', '/api/roles', { action: 'setDefault', roleId: 'role_admin' })) === 400, 'Admin cannot be the default role');
 }
 
@@ -188,64 +188,65 @@ ok((await st(zeynep, 'POST', '/api/terminal/session', {})) === 403, 'kurul (term
 {
 	const kinds = (j) => [...new Set((j?.items ?? []).map((i) => i.kind))].sort();
 	const readerN = (await reader.call('GET', '/api/notifications')).json;
-	ok(kinds(readerN).join() === 'news', 'okur gets only news notifications', kinds(readerN).join());
+	ok(kinds(readerN).join() === 'news', 'reader gets only news notifications', kinds(readerN).join());
 	const adminN = (await admin.call('GET', '/api/notifications')).json;
 	ok(kinds(adminN).includes('news') && kinds(adminN).includes('event'), 'admin gets news and events', kinds(adminN).join());
 	const hits = async (c, q) => ((await c.call('GET', `/api/search?q=${encodeURIComponent(q)}`)).json?.hits ?? []).map((h) => h.kind);
-	ok((await hits(reader, 'Raspberry')).length === 0, 'okur: inventory not searchable');
-	ok((await hits(can, 'Raspberry')).includes('item'), 'üye finds the inventory item');
-	ok((await hits(reader, 'tanışma')).includes('news'), 'okur finds the news');
-	ok((await hits(reader, 'Atölyesi')).length === 0, 'okur: events not searchable');
-	ok((await hits(can, 'sponsorship')).length === 0 && (await hits(zeynep, 'sponsorluk')).includes('ledger'), 'kasa entries only for kasa readers');
+	ok((await hits(reader, 'Raspberry')).length === 0, 'reader: inventory not searchable');
+	ok((await hits(can, 'Raspberry')).includes('item'), 'member finds the inventory item');
+	ok((await hits(reader, 'Meetup')).includes('news'), 'reader finds the news');
+	ok((await hits(reader, 'Workshop')).length === 0, 'reader: events not searchable');
+	ok((await hits(can, 'sponsorship')).length === 0 && (await hits(zeynep, 'sponsorship')).includes('ledger'), 'vault entries only for vault readers');
 }
 
-// ---- Posta: portal mail follows mail:kullan ---------------------------------------
+// ---- Mail: portal mail follows the mail: use permission ---------------------------
 {
 	const tag = Date.now().toString(36);
-	ok((await st(zeynep, 'GET', '/api/messages')) === 200, 'kurul (mail: yonet) reads mail');
-	ok((await st(can, 'GET', '/api/messages')) === 200, 'üye (mail: kullan) reads mail');
-	ok((await st(reader, 'POST', '/api/messages', { subject: 'x', body: 'y', recipients: [U.can.id] })) === 403, 'okur (mail yok) cannot send');
-	ok((await st(reader, 'PATCH', '/api/messages/baska', { action: 'read' })) === 403, 'okur → mail thread action 403');
-	const lookup = (await can.call('GET', `/api/messages/recipients?q=${encodeURIComponent('okur')}`)).json?.recipients ?? [];
+	ok((await st(zeynep, 'GET', '/api/messages')) === 200, 'management board (mail: manage) reads mail');
+	ok((await st(can, 'GET', '/api/messages')) === 200, 'member (mail: use) reads mail');
+	ok((await st(reader, 'POST', '/api/messages', { subject: 'x', body: 'y', recipients: [U.can.id] })) === 403, 'reader (no mail) cannot send');
+	ok((await st(reader, 'PATCH', '/api/messages/baska', { action: 'read' })) === 403, 'reader → mail thread action 403');
+	const lookup = (await can.call('GET', `/api/messages/recipients?q=${encodeURIComponent('sam')}`)).json?.recipients ?? [];
 	const readerHit = lookup.find((a) => a.id === U.reader.id);
 	ok(!!readerHit && readerHit.reachable === false && Object.keys(readerHit).sort().join() === 'id,name,reachable,surname', 'recipient lookup: id and name only, flags a role without Mail');
 	// Finding people: by name, e-mail (from its start), department and student number; the answer is names only.
-	for (const path of ['/api/messages/recipients', '/api/messages/recipients?q=zeynep', `/api/messages/recipients?id=${U.zeynep.id}`, '/api/messages/recipients?ulasilabilir=1']) {
-		ok((await st(reader, 'GET', path)) === 403, `okur (mail yok) → ${path} 403`);
+	for (const path of ['/api/messages/recipients', '/api/messages/recipients?q=alice', `/api/messages/recipients?id=${U.zeynep.id}`, '/api/messages/recipients?reachable=1']) {
+		ok((await st(reader, 'GET', path)) === 403, `reader (no mail) → ${path} 403`);
 	}
 	const zeynepNo = ((await admin.call('GET', '/api/members')).json?.members ?? []).find((m) => m.id === U.zeynep.id)?.studentNo ?? '';
 	const find = async (q) => (await can.call('GET', `/api/messages/recipients?q=${encodeURIComponent(q)}`)).json?.recipients ?? [];
-	ok((await find('zeynep kaya')).some((a) => a.id === U.zeynep.id), 'recipient search finds a member by name');
-	ok((await find('KILIC')).some((a) => a.id === U.ege.id), 'recipient search folds Turkish letters (KILIC → Kılıç)');
+	ok((await find('alice carter')).some((a) => a.id === U.zeynep.id), 'recipient search finds a member by name');
+	// Turkish dotless i in the query folds to "i" while the fixture data stays English: Al\u0131ce finds Alice.
+	ok((await find('Al\u0131ce')).some((a) => a.id === U.zeynep.id), 'recipient search folds Turkish letters (Al\u0131ce → Alice)');
 	ok((await find(U.zeynep.email)).map((a) => a.id).join() === U.zeynep.id, 'recipient search finds a member by e-mail address');
-	ok((await find('Yazılım Mühendisliği')).some((a) => a.id === U.ege.id), 'recipient search finds a member by department');
+	ok((await find('Software Engineering')).some((a) => a.id === U.ege.id), 'recipient search finds a member by department');
 	ok(zeynepNo !== '' && (await find(zeynepNo)).map((a) => a.id).join() === U.zeynep.id, 'recipient search finds a member by student number');
-	const leak = JSON.stringify([await find(U.zeynep.email), await find(zeynepNo), await find('Bilgisayar')]);
-	ok(!leak.includes(U.zeynep.email) && !leak.includes(zeynepNo) && !/bolum|ogrenciNo|eposta|sifre|rolId/i.test(leak), 'recipient search never returns e-mail, student number, department, role or secrets');
+	const leak = JSON.stringify([await find(U.zeynep.email), await find(zeynepNo), await find('Industrial')]);
+	ok(!leak.includes(U.zeynep.email) && !leak.includes(zeynepNo) && !/bolum|ogrenciNo|eposta|sifre|rolId|department|studentNo|email|password|roleId/i.test(leak), 'recipient search never returns e-mail, student number, department, role or secrets');
 	ok((await find('%')).length === 0 && (await find('_')).length === 0, 'recipient search: % and _ are not wildcards');
-	ok((await find('zeynep'.repeat(40))).length === 0, 'recipient search: oversized text is cut, not an error');
+	ok((await find('alice'.repeat(40))).length === 0, 'recipient search: oversized text is cut, not an error');
 	ok((await find('e')).length <= 20, 'recipient search returns at most 20 people');
 	const reach = (await can.call('GET', '/api/messages/recipients?reachable=1')).json;
 	const reachableList = reach?.ids ?? [];
 	ok(reachableList.includes(U.zeynep.id) && !reachableList.includes(U.reader.id), 'reachable ids list holds only ids, without the Mail-less role');
 	const composeHit = async (c, q) => ((await c.call('GET', `/api/search?q=${encodeURIComponent(q)}`)).json?.hits ?? []).filter((h) => h.id.startsWith('compose:'));
-	ok((await composeHit(can, 'Zeynep Kaya')).some((h) => h.id === `compose:${U.zeynep.id}` && h.appId === 'mail' && h.target.section === 'compose'), 'search offers "send a message" to a person for a Mail role');
-	ok((await composeHit(can, 'Okur Haber')).length === 0, 'search does not offer a message to someone whose role has no Mail');
-	ok((await composeHit(reader, 'Zeynep Kaya')).length === 0, 'okur (mail yok): search offers no "send a message"');
-	const sent = await can.call('POST', '/api/messages', { subject: `RBAC posta ${tag}`, body: 'Rol testi.', recipients: [U.zeynep.id, U.reader.id] });
+	ok((await composeHit(can, 'Alice Carter')).some((h) => h.id === `compose:${U.zeynep.id}` && h.appId === 'mail' && h.target.section === 'compose'), 'search offers "send a message" to a person for a Mail role');
+	ok((await composeHit(can, 'Sam Hayes')).length === 0, 'search does not offer a message to someone whose role has no Mail');
+	ok((await composeHit(reader, 'Alice Carter')).length === 0, 'reader (no mail): search offers no "send a message"');
+	const sent = await can.call('POST', '/api/messages', { subject: `RBAC mail ${tag}`, body: 'Role test.', recipients: [U.zeynep.id, U.reader.id] });
 	ok(sent.status === 201 && sent.json.skipped.length === 1 && sent.json.skipped[0].id === U.reader.id && sent.json.skipped[0].reason === 'role', 'send reaches the Mail role and reports the one without', JSON.stringify(sent.json));
 	const only = await can.call('POST', '/api/messages', { subject: 'x', body: 'y', recipients: [U.reader.id] });
-	ok(only.status === 422 && /Posta'yı açmıyor/.test(only.json?.error ?? ''), 'only a Mail-less recipient: 422 with the reason');
+	ok(only.status === 422 && /does not open Mail/.test(only.json?.error ?? ''), 'only a Mail-less recipient: 422 with the reason');
 	const id = sent.json.threadId;
 	ok((await st(zeynep, 'GET', `/api/messages/${id}`)) === 200, 'recipient opens the conversation');
 	ok((await st(ege, 'GET', `/api/messages/${id}`)) === 404, "someone else's conversation is 404 (not 403)");
-	ok((await st(ege, 'POST', `/api/messages/${id}`, { body: 'sızma' })) === 404, "…also for replying");
+	ok((await st(ege, 'POST', `/api/messages/${id}`, { body: 'intrusion' })) === 404, "…also for replying");
 	const kinds = (j) => [...new Set((j?.items ?? []).map((i) => i.kind))];
 	const zN = (await zeynep.call('GET', '/api/notifications')).json;
 	ok(zN.items.some((i) => i.id === `message:${id}` && i.kind === 'message') && zN.counts.unreadMessages >= 1, 'recipient gets a message notification');
-	ok(!kinds((await reader.call('GET', '/api/notifications')).json).includes('message'), 'okur gets no message notification');
+	ok(!kinds((await reader.call('GET', '/api/notifications')).json).includes('message'), 'reader gets no message notification');
 	ok(!kinds((await ege.call('GET', '/api/notifications')).json).includes('message'), 'a bystander gets no message notification');
-	const found = async (c) => ((await c.call('GET', `/api/search?q=${encodeURIComponent(`RBAC posta ${tag}`)}`)).json?.hits ?? []).map((h) => h.kind);
+	const found = async (c) => ((await c.call('GET', `/api/search?q=${encodeURIComponent(`RBAC mail ${tag}`)}`)).json?.hits ?? []).map((h) => h.kind);
 	ok((await found(zeynep)).includes('message') && !(await found(ege)).includes('message') && !(await found(reader)).includes('message'), 'search finds only your own conversations');
 	// Tidy: each side trashes and removes its copy.
 	for (const c of [can, zeynep]) {
@@ -259,9 +260,9 @@ ok((await st(zeynep, 'POST', '/api/terminal/session', {})) === 403, 'kurul (term
 	const roles = (await admin.call('GET', '/api/roles')).json.roles;
 	const news = roles.find((r) => r.id === R.news);
 	const edit = (permissions) => admin.call('PATCH', '/api/roles', { id: news.id, name: news.name, color: news.color, description: news.description, twoStepRequired: false, permissions });
-	ok((await edit({ news: 'use', events: 'use', settings: 'use' })).status === 200, 'admin adds Etkinlikler to the role');
+	ok((await edit({ news: 'use', events: 'use', settings: 'use' })).status === 200, 'admin adds the events app to the role');
 	await new Promise((r) => setTimeout(r, 5500)); // permission cache TTL
-	ok((await st(reader, 'GET', '/api/events')) === 200, 'okur now reads events (same session)');
+	ok((await st(reader, 'GET', '/api/events')) === 200, 'reader now reads events (same session)');
 	ok((await reader.call('GET', '/api/auth/me')).json.user.permissions.events === 'use', 'session payload updated');
 	await edit({ news: 'use', settings: 'use' });
 	await new Promise((r) => setTimeout(r, 5500));
@@ -270,7 +271,7 @@ ok((await st(zeynep, 'POST', '/api/terminal/session', {})) === 403, 'kurul (term
 
 // ---- the role's second-factor rule ---------------------------------------------
 {
-	const created = (await admin.call('POST', '/api/members', { name: 'Yeni', surname: 'Kurul', email: `kurul${Date.now()}@club.test`, department: 'İşletme', grade: 2, roleId: R.management })).json;
+	const created = (await admin.call('POST', '/api/members', { name: 'New', surname: 'Board', email: `board${Date.now()}@club.test`, department: 'Software Engineering & Architecture', grade: 2, roleId: R.management })).json;
 	const k = client();
 	await k.call('POST', '/api/auth/login', { email: created.member.email, password: created.temporaryPassword });
 	const me = (await k.call('GET', '/api/auth/me')).json.user;

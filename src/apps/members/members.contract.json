@@ -1,0 +1,87 @@
+{
+  "id": "members",
+  "name": "Member Directory",
+  "version": "1.0.0",
+  "description": "Member profiles, directory listings, custom attributes, and role assignments.",
+  "tables": [
+    "users",
+    "form_fields"
+  ],
+  "api": {
+    "base": "/api/members",
+    "endpoints": [
+      {
+        "path": "/api/members",
+        "methods": [
+          "GET",
+          "POST",
+          "PATCH",
+          "DELETE"
+        ],
+        "description": "Browse directory or manage member profiles."
+      },
+      {
+        "path": "/api/members/[id]",
+        "methods": [
+          "GET",
+          "PATCH"
+        ],
+        "description": "Read or update a single member profile."
+      },
+      {
+        "path": "/api/members/[id]/password-reset",
+        "methods": [
+          "POST"
+        ],
+        "description": "Trigger password reset link for a member."
+      },
+      {
+        "path": "/api/committees",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "description": "List or create governance committees."
+      },
+      {
+        "path": "/api/committees/members",
+        "methods": [
+          "GET"
+        ],
+        "description": "List members eligible for committee assignment."
+      }
+    ]
+  },
+  "limits": {
+    "maxBioLength": 1000,
+    "maxCustomFields": 30
+  },
+  "errorCodes": [
+    {
+      "code": "MEMBER_NOT_FOUND",
+      "status": 404,
+      "i18nKey": "memberNotFound",
+      "description": "Member profile not found."
+    },
+    {
+      "code": "EMAIL_ALREADY_EXISTS",
+      "status": 409,
+      "i18nKey": "emailExists",
+      "description": "Email address already registered."
+    }
+  ],
+  "files": {
+    "actions": [
+      "src/db/repositories/customization/memberFields.ts"
+    ],
+    "queries": [
+      "src/apps/members/hooks/useMembers.ts"
+    ],
+    "ui": [
+      "src/apps/members/index.tsx"
+    ],
+    "i18n": [
+      "src/lib/i18nApps.ts"
+    ]
+  }
+}

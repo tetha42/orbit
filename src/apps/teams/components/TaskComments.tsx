@@ -48,13 +48,13 @@ export function TaskComments({
 			{comments.map((y) => (
 				<div key={y.id} className={styles.comment} data-comment-id={y.id}>
 					<span className={ui.avatar} style={{ marginLeft: 0, width: 28, height: 28, fontSize: 11 }}>
-						{initials(y.userNameSurname)}
+						{initials(y.userName)}
 					</span>
 					<div className={styles.commentBody}>
 						<div className={styles.commentHead}>
-							<strong>{y.userNameSurname || t('kbSomeone')}</strong>
-							<time className={ui.muted} style={{ fontSize: 11 }} dateTime={new Date(y.creation).toISOString()}>
-								{when(y.creation)}
+							<strong>{y.userName || t('kbSomeone')}</strong>
+							<time className={ui.muted} style={{ fontSize: 11 }} dateTime={new Date(y.createdAt ?? 0).toISOString()}>
+								{when(y.createdAt ?? 0)}
 							</time>
 							{(y.userId === currentUserId || canManage) && (
 								<button

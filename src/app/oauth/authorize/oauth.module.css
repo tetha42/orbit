@@ -1,8 +1,8 @@
 .viewport {
   min-height: 100dvh;
-  background-color: #09090b;
-  color: #fafafa;
-  font-family: var(--font-sans, Inter, system-ui, -apple-system, sans-serif);
+  background-color: var(--ink-bg);
+  color: var(--ink-text);
+  font-family: var(--font-sans);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -12,8 +12,8 @@
 .panel {
   width: 100%;
   max-width: 520px;
-  background-color: #111113;
-  border: 1px solid #27272a;
+  background-color: var(--ink-elevated);
+  border: 1px solid var(--ink-border);
   border-radius: 8px;
   overflow: hidden;
   display: flex;
@@ -25,12 +25,12 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 18px;
-  background-color: #0c0c0e;
-  border-bottom: 1px solid #27272a;
-  font-family: var(--font-mono, JetBrains Mono, monospace);
+  background-color: var(--ink-surface);
+  border-bottom: 1px solid var(--ink-border);
+  font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.08em;
-  color: #a1a1aa;
+  color: var(--ink-text-muted);
   text-transform: uppercase;
 }
 
@@ -46,15 +46,15 @@
   align-items: center;
   gap: 12px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #18181b;
+  border-bottom: 1px solid var(--ink-card);
 }
 
 .brandIcon {
   width: 38px;
   height: 38px;
   border-radius: 6px;
-  background-color: #09090b;
-  border: 1px solid #27272a;
+  background-color: var(--ink-bg);
+  border: 1px solid var(--ink-border);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -65,19 +65,19 @@
   font-size: 15px;
   font-weight: 600;
   letter-spacing: -0.01em;
-  color: #fafafa;
+  color: var(--ink-text);
 }
 
 .brandSub {
   font-size: 12px;
-  color: #a1a1aa;
+  color: var(--ink-text-muted);
 }
 
 .clientCard {
   padding: 14px 16px;
   border-radius: 6px;
-  background-color: #09090b;
-  border: 1px solid #27272a;
+  background-color: var(--ink-bg);
+  border: 1px solid var(--ink-border);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -87,22 +87,22 @@
   width: 36px;
   height: 36px;
   border-radius: 6px;
-  background-color: #18181b;
-  border: 1px solid #27272a;
+  background-color: var(--ink-card);
+  border: 1px solid var(--ink-border);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: #fafafa;
+  color: var(--ink-text);
 }
 
 .notice {
   padding: 10px 12px;
   border-radius: 6px;
-  background-color: #09090b;
-  border: 1px solid #27272a;
+  background-color: var(--ink-bg);
+  border: 1px solid var(--ink-border);
   font-size: 12px;
-  color: #a1a1aa;
+  color: var(--ink-text-muted);
   line-height: 1.5;
 }
 
@@ -115,15 +115,15 @@
 .scopeCard {
   padding: 12px 14px;
   border-radius: 6px;
-  background-color: #09090b;
-  border: 1px solid #27272a;
+  background-color: var(--ink-bg);
+  border: 1px solid var(--ink-border);
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
 .scopeCardActive {
-  border-color: #52525b;
+  border-color: var(--ink-text-subtle);
 }
 
 .scopeHeader {
@@ -138,35 +138,35 @@
   gap: 8px;
   font-weight: 600;
   font-size: 13px;
-  color: #fafafa;
+  color: var(--ink-text);
 }
 
 .scopeTag {
-  font-family: var(--font-mono, JetBrains Mono, monospace);
+  font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
   padding: 2px 6px;
   border-radius: 4px;
-  background-color: #18181b;
-  border: 1px solid #27272a;
-  color: #a1a1aa;
+  background-color: var(--ink-card);
+  border: 1px solid var(--ink-border);
+  color: var(--ink-text-muted);
 }
 
 .scopePreview {
-  background-color: #111113;
-  border: 1px solid #18181b;
+  background-color: var(--ink-elevated);
+  border: 1px solid var(--ink-card);
   border-radius: 4px;
   padding: 8px 10px;
   font-size: 11.5px;
-  color: #a1a1aa;
+  color: var(--ink-text-muted);
 }
 
 .sessionBar {
   padding: 10px 12px;
   border-radius: 6px;
-  background-color: #09090b;
-  border: 1px solid #27272a;
+  background-color: var(--ink-bg);
+  border: 1px solid var(--ink-border);
   font-size: 12px;
   display: flex;
   justify-content: space-between;
@@ -181,9 +181,9 @@
 
 .denyBtn {
   flex: 1;
-  background-color: #18181b;
-  border: 1px solid #27272a;
-  color: #fafafa;
+  background-color: var(--ink-card);
+  border: 1px solid var(--ink-border);
+  color: var(--ink-text);
   border-radius: 6px;
   padding: 10px 14px;
   font-size: 13px;
@@ -192,14 +192,14 @@
 }
 
 .denyBtn:hover {
-  background-color: #27272a;
+  background-color: var(--ink-border);
 }
 
 .approveBtn {
   flex: 1.6;
-  background-color: #fafafa;
-  border: 1px solid #fafafa;
-  color: #09090b;
+  background-color: var(--ink-text);
+  border: 1px solid var(--ink-text);
+  color: var(--ink-bg);
   border-radius: 6px;
   padding: 10px 14px;
   font-size: 13px;
@@ -212,19 +212,19 @@
 }
 
 .approveBtn:hover {
-  background-color: #e4e4e7;
+  background-color: var(--ink-text-secondary);
 }
 
 .input {
-  background-color: #09090b;
-  border: 1px solid #27272a;
+  background-color: var(--ink-bg);
+  border: 1px solid var(--ink-border);
   border-radius: 6px;
   padding: 9px 12px;
-  color: #fafafa;
+  color: var(--ink-text);
   font-size: 13.5px;
   outline: none;
 }
 
 .input:focus {
-  border-color: #fafafa;
+  border-color: var(--ink-text);
 }

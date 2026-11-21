@@ -6,7 +6,7 @@ import { requireApp } from '@/lib/auth/access';
 import { hashOtpCode } from '@/lib/auth/otp';
 import { clientAddress } from '@/lib/http';
 import { consumeRateLimit } from '@/lib/rateLimit';
-import { notifyPasswordResetCode } from '@/lib/mail/notifications';
+import { notifyPasswordResetCode } from '@/lib/mail/notifications/securityAndPortalEmails';
 import { wasDelivered } from '@/lib/mail/mailer';
 import { logSystemEvent } from '@/db/repositories/logs.repo';
 import { ADMIN_ROLE_ID } from '@/core/permissions';
@@ -23,18 +23,18 @@ export async function POST(request: Request, { params }: Params) {
 	const auth = await requireApp(request, 'members', 'manage');
 	if (!auth.authorized) return auth.response;
 	if (auth.user.status === 'alumni') {
-		return NextResponse.json({ error: 'Mezunlar sadece okuma erişimine sahiptir.' }, { status: 403 });
+		return NextResponse.json({ error: 'Alumni accounts have read-only access.' }, { status: 403 });
 	}
 
 	const { id } = await params;
 	const target = await getUserById(id);
-	if (!target) return NextResponse.json({ error: 'Üye bulunamadı.' }, { status: 404 });
+	if (!target) return NextResponse.json({ error: 'Member not found.' }, { status: 404 });
 	if (target.roleId === ADMIN_ROLE_ID && !auth.user.permission.admin) {
-		return NextResponse.json({ error: 'Admin hesabı için yalnızca bir admin işlem yapabilir.' }, { status: 403 });
+		return NextResponse.json({ error: 'Only an administrator can perform actions on an Admin account.' }, { status: 403 });
 	}
 	if (target.roleId === ADMIN_ROLE_ID) {
 		return NextResponse.json(
-			{ error: 'Admin hesabı için e-posta ile şifre sıfırlama kapalıdır; güvenli yönetim akışını kullanın.' },
+			{ error: 'Email password reset is disabled for Admin accounts; use the secure administration workflow.' },
 			{ status: 409 }
 		);
 	}
@@ -42,7 +42,7 @@ export async function POST(request: Request, { params }: Params) {
 	const limit = consumeRateLimit(`pwd_admin:${auth.user.id}:${target.id}`, 3, 15 * 60_000);
 	if (!limit.allowed) {
 		return NextResponse.json(
-			{ error: 'Bu üye için çok sık sıfırlama e-postası gönderildi.' },
+			{ error: 'Too many password reset emails sent for this member.' },
 			{ status: 429, headers: { 'Retry-After': String(limit.retryAfter) } }
 		);
 	}
@@ -85,7 +85,7 @@ export async function POST(request: Request, { params }: Params) {
 		await enqueueMail({
 			kind: 'password_reset',
 			recipient: target.email,
-			subject: `Şifre Sıfırlama Kodu — ${target.name} ${target.surname}`.trim(),
+			subject: `Password Reset Code — ${target.name} ${target.surname}`.trim(),
 			payload: { code },
 			targetUserId: target.id,
 			requestedBy: auth.user.id,
@@ -95,7 +95,7 @@ export async function POST(request: Request, { params }: Params) {
 	await logSystemEvent({
 		service: 'auth',
 		level: 'INFO',
-		message: `Yönetici şifre sıfırlama e-postası gönderdi: ${target.email}`,
+		message: `Administrator triggered password reset email: ${target.email}`,
 		detail: { actorId: auth.user.id, targetId: target.id },
 		userId: auth.user.id,
 		ip,
@@ -105,7 +105,7 @@ export async function POST(request: Request, { params }: Params) {
 		success: true,
 		mailQueued,
 		message: mailQueued
-			? 'E-posta servisi kullanılamıyor; sıfırlama kodu yönetici onay kuyruğuna alındı.'
-			: 'Şifre sıfırlama kodu üyenin e-posta adresine gönderildi.',
+			? 'Email service is unavailable; the reset code has been queued for administrator approval.'
+			: 'Password reset code sent to the member email address.',
 	});
 }

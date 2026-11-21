@@ -26,8 +26,8 @@
 }
 
 .card {
-	background: var(--card-bg, #f5f5f7);
-	border: 1px solid var(--card-border, rgba(0, 0, 0, 0.08));
+	background: var(--card-bg);
+	border: 1px solid var(--card-border);
 	border-radius: 12px;
 	padding: 15px 16px;
 	display: flex;
@@ -57,13 +57,13 @@
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	color: var(--text-primary, #1d1d1f);
+	color: var(--text-primary);
 	letter-spacing: -0.01em;
 }
 
 .cardSub {
 	font-size: 11.5px;
-	color: var(--text-secondary, #6e6e73);
+	color: var(--text-secondary);
 	margin: 0;
 }
 
@@ -80,11 +80,11 @@
 	gap: 5px;
 	padding: 4px 9px;
 	border-radius: 6px;
-	background: var(--fill-soft, rgba(0, 0, 0, 0.05));
-	border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.1));
+	background: var(--fill-soft);
+	border: 1px solid var(--border-subtle);
 	font-size: 11.5px;
 	font-weight: 600;
-	color: var(--text-secondary, #6e6e73);
+	color: var(--text-secondary);
 	font-variant-numeric: tabular-nums;
 }
 
@@ -97,16 +97,16 @@
 	font-size: 11.5px;
 	font-weight: 600;
 	cursor: pointer;
-	border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.12));
-	background: var(--fill-soft, rgba(0, 0, 0, 0.05));
-	color: var(--text-primary, #1d1d1f);
+	border: 1px solid var(--border-subtle);
+	background: var(--fill-soft);
+	color: var(--text-primary);
 	transition: all 120ms ease;
 	white-space: nowrap;
 	min-height: 28px;
 }
 
 .actionBtn:hover:not(:disabled) {
-	background: var(--fill-strong, rgba(0, 0, 0, 0.1));
+	background: var(--fill-strong);
 }
 
 .actionBtn:disabled {
@@ -115,13 +115,13 @@
 }
 
 .actionBtnDanger {
-	border-color: color-mix(in srgb, var(--danger, #d70015) 35%, transparent);
-	background: color-mix(in srgb, var(--danger, #d70015) 12%, transparent);
-	color: var(--danger, #d70015);
+	border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+	background: color-mix(in srgb, var(--danger) 12%, transparent);
+	color: var(--danger);
 }
 
 .actionBtnDanger:hover:not(:disabled) {
-	background: color-mix(in srgb, var(--danger, #d70015) 20%, transparent);
+	background: color-mix(in srgb, var(--danger) 20%, transparent);
 }
 
 .spin {
@@ -147,8 +147,8 @@
 	gap: 10px;
 	padding: 12px;
 	border-radius: 10px;
-	background: var(--fill-softer, rgba(0, 0, 0, 0.025));
-	border: 1px solid var(--card-border, rgba(0, 0, 0, 0.08));
+	background: var(--fill-softer);
+	border: 1px solid var(--card-border);
 }
 
 .filterRowMain {
@@ -169,7 +169,7 @@
 .searchIcon {
 	position: absolute;
 	left: 10px;
-	color: var(--text-secondary, #6e6e73);
+	color: var(--text-secondary);
 	pointer-events: none;
 }
 
@@ -177,9 +177,9 @@
 	width: 100%;
 	padding: 7px 30px 7px 32px;
 	border-radius: 8px;
-	border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.15));
-	background: var(--window-bg, #ffffff);
-	color: var(--text-primary, #1d1d1f);
+	border: 1px solid var(--border-subtle);
+	background: var(--window-bg);
+	color: var(--text-primary);
 	font-size: 12.5px;
 	outline: none;
 	transition: border-color 140ms ease, box-shadow 140ms ease;
@@ -187,7 +187,7 @@
 
 .searchInput:focus {
 	border-color: var(--accent);
-	box-shadow: 0 0 0 2px var(--accent-subtle, rgba(0, 113, 227, 0.15));
+	box-shadow: 0 0 0 2px var(--accent-subtle);
 }
 
 .clearSearchBtn {
@@ -197,7 +197,7 @@
 	border: none;
 	padding: 4px;
 	cursor: pointer;
-	color: var(--text-secondary, #6e6e73);
+	color: var(--text-secondary);
 	border-radius: 50%;
 	display: flex;
 	align-items: center;
@@ -205,8 +205,8 @@
 }
 
 .clearSearchBtn:hover {
-	color: var(--text-primary, #1d1d1f);
-	background: var(--fill-soft, rgba(0, 0, 0, 0.08));
+	color: var(--text-primary);
+	background: var(--fill-soft);
 }
 
 /* Category segmented pills */
@@ -227,25 +227,25 @@
 	font-weight: 600;
 	cursor: pointer;
 	border: 1px solid transparent;
-	background: var(--fill-soft, rgba(0, 0, 0, 0.04));
-	color: var(--text-secondary, #6e6e73);
+	background: var(--fill-soft);
+	color: var(--text-secondary);
 	transition: all 120ms ease;
 }
 
 .categoryBtn:hover {
-	background: var(--fill-strong, rgba(0, 0, 0, 0.08));
-	color: var(--text-primary, #1d1d1f);
+	background: var(--fill-strong);
+	color: var(--text-primary);
 }
 
 .categoryBtnActive {
 	background: var(--accent);
-	color: #ffffff;
+	color: var(--accent-contrast);
 	border-color: var(--accent);
 }
 
 .categoryBtnActive:hover {
 	background: var(--accent);
-	color: #ffffff;
+	color: var(--accent-contrast);
 }
 
 /* Secondary filter row */
@@ -259,9 +259,9 @@
 .selectInput {
 	padding: 6px 10px;
 	border-radius: 7px;
-	border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.15));
-	background: var(--window-bg, #ffffff);
-	color: var(--text-primary, #1d1d1f);
+	border: 1px solid var(--border-subtle);
+	background: var(--window-bg);
+	color: var(--text-primary);
 	font-size: 12px;
 	outline: none;
 	cursor: pointer;
@@ -277,10 +277,10 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 3px;
-	background: var(--fill-soft, rgba(0, 0, 0, 0.05));
+	background: var(--fill-soft);
 	padding: 2px;
 	border-radius: 7px;
-	border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+	border: 1px solid var(--border-subtle);
 }
 
 .datePresetBtn {
@@ -290,18 +290,18 @@
 	border-radius: 5px;
 	font-size: 11px;
 	font-weight: 600;
-	color: var(--text-secondary, #6e6e73);
+	color: var(--text-secondary);
 	cursor: pointer;
 	transition: all 120ms ease;
 }
 
 .datePresetBtn:hover {
-	color: var(--text-primary, #1d1d1f);
+	color: var(--text-primary);
 }
 
 .datePresetBtnActive {
-	background: var(--window-bg, #ffffff);
-	color: var(--text-primary, #1d1d1f);
+	background: var(--window-bg);
+	color: var(--text-primary);
 	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
@@ -314,9 +314,9 @@
 .dateInput {
 	padding: 5px 8px;
 	border-radius: 6px;
-	border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.15));
-	background: var(--window-bg, #ffffff);
-	color: var(--text-primary, #1d1d1f);
+	border: 1px solid var(--border-subtle);
+	background: var(--window-bg);
+	color: var(--text-primary);
 	font-size: 11.5px;
 	font-family: inherit;
 	outline: none;
@@ -324,7 +324,7 @@
 }
 
 .dateSep {
-	color: var(--text-secondary, #6e6e73);
+	color: var(--text-secondary);
 	font-size: 11.5px;
 	font-weight: 600;
 }
@@ -335,9 +335,9 @@
 	gap: 4px;
 	padding: 5px 9px;
 	border-radius: 6px;
-	border: 1px dashed var(--border-subtle, rgba(0, 0, 0, 0.2));
+	border: 1px dashed var(--border-subtle);
 	background: transparent;
-	color: var(--text-secondary, #6e6e73);
+	color: var(--text-secondary);
 	font-size: 11px;
 	font-weight: 600;
 	cursor: pointer;
@@ -346,9 +346,9 @@
 }
 
 .resetFilterBtn:hover {
-	border-color: var(--danger, #d70015);
-	color: var(--danger, #d70015);
-	background: color-mix(in srgb, var(--danger, #d70015) 8%, transparent);
+	border-color: var(--danger);
+	color: var(--danger);
+	background: color-mix(in srgb, var(--danger) 8%, transparent);
 }
 
 /* ========================================================================= */
@@ -360,8 +360,8 @@
 	overflow-x: auto;
 	-webkit-overflow-scrolling: touch;
 	border-radius: 10px;
-	border: 1px solid var(--card-border, rgba(0, 0, 0, 0.1));
-	background: var(--window-bg, #ffffff);
+	border: 1px solid var(--card-border);
+	background: var(--window-bg);
 }
 
 .auditTable {
@@ -373,21 +373,21 @@
 
 .auditTable th {
 	padding: 9px 12px;
-	background: var(--fill-soft, rgba(0, 0, 0, 0.04));
-	color: var(--text-secondary, #6e6e73);
+	background: var(--fill-soft);
+	color: var(--text-secondary);
 	font-size: 10.5px;
 	font-weight: 700;
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
-	border-bottom: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+	border-bottom: 1px solid var(--border-subtle);
 	white-space: nowrap;
 }
 
 .auditTable td {
 	padding: 10px 12px;
-	border-bottom: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06));
+	border-bottom: 1px solid var(--border-subtle);
 	vertical-align: middle;
-	color: var(--text-primary, #1d1d1f);
+	color: var(--text-primary);
 }
 
 .auditTableRow {
@@ -396,7 +396,7 @@
 }
 
 .auditTableRow:hover td {
-	background: var(--fill-softer, rgba(0, 0, 0, 0.035));
+	background: var(--fill-softer);
 }
 
 .auditTableRow:last-child td {
@@ -420,33 +420,33 @@
 }
 
 .badgeCreate {
-	background: color-mix(in srgb, var(--success, #248a3d) 14%, transparent);
-	border: 1px solid color-mix(in srgb, var(--success, #248a3d) 32%, transparent);
-	color: var(--success, #248a3d);
+	background: color-mix(in srgb, var(--success) 14%, transparent);
+	border: 1px solid color-mix(in srgb, var(--success) 32%, transparent);
+	color: var(--success);
 }
 
 .badgeUpdate {
-	background: color-mix(in srgb, var(--info, #0a6cdc) 14%, transparent);
-	border: 1px solid color-mix(in srgb, var(--info, #0a6cdc) 32%, transparent);
-	color: var(--info, #0a6cdc);
+	background: color-mix(in srgb, var(--info) 14%, transparent);
+	border: 1px solid color-mix(in srgb, var(--info) 32%, transparent);
+	color: var(--info);
 }
 
 .badgeDelete {
-	background: color-mix(in srgb, var(--danger, #d70015) 14%, transparent);
-	border: 1px solid color-mix(in srgb, var(--danger, #d70015) 32%, transparent);
-	color: var(--danger, #d70015);
+	background: color-mix(in srgb, var(--danger) 14%, transparent);
+	border: 1px solid color-mix(in srgb, var(--danger) 32%, transparent);
+	color: var(--danger);
 }
 
 .badgeSecurity {
-	background: color-mix(in srgb, var(--warning, #c45500) 14%, transparent);
-	border: 1px solid color-mix(in srgb, var(--warning, #c45500) 32%, transparent);
-	color: var(--warning, #c45500);
+	background: color-mix(in srgb, var(--warning) 14%, transparent);
+	border: 1px solid color-mix(in srgb, var(--warning) 32%, transparent);
+	color: var(--warning);
 }
 
 .badgeNeutral {
-	background: var(--fill-soft, rgba(0, 0, 0, 0.05));
-	border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.1));
-	color: var(--text-secondary, #6e6e73);
+	background: var(--fill-soft);
+	border: 1px solid var(--border-subtle);
+	color: var(--text-secondary);
 }
 
 /* User & Target Pills */
@@ -461,15 +461,15 @@
 	width: 24px;
 	height: 24px;
 	border-radius: 50%;
-	background: var(--fill-strong, rgba(0, 0, 0, 0.08));
+	background: var(--fill-strong);
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
 	font-size: 10px;
 	font-weight: 700;
-	color: var(--text-secondary, #6e6e73);
+	color: var(--text-secondary);
 	flex-shrink: 0;
-	border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.1));
+	border: 1px solid var(--border-subtle);
 }
 
 .userName {
@@ -486,10 +486,10 @@
 	gap: 4px;
 	padding: 2px 7px;
 	border-radius: 5px;
-	background: var(--fill-soft, rgba(0, 0, 0, 0.04));
-	border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+	background: var(--fill-soft);
+	border: 1px solid var(--border-subtle);
 	font-size: 11.5px;
-	color: var(--text-primary, #1d1d1f);
+	color: var(--text-primary);
 	max-width: 170px;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -516,9 +516,9 @@
 	font-size: 11px;
 	padding: 2px 6px;
 	border-radius: 4px;
-	background: var(--fill-soft, rgba(0, 0, 0, 0.04));
-	border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
-	color: var(--text-secondary, #6e6e73);
+	background: var(--fill-soft);
+	border: 1px solid var(--border-subtle);
+	color: var(--text-secondary);
 	display: inline-flex;
 	align-items: center;
 	gap: 4px;
@@ -526,7 +526,7 @@
 
 .timeText {
 	font-size: 11px;
-	color: var(--text-secondary, #6e6e73);
+	color: var(--text-secondary);
 	font-variant-numeric: tabular-nums;
 	white-space: nowrap;
 }
@@ -547,8 +547,8 @@
 	gap: 8px;
 	padding: 12px;
 	border-radius: 10px;
-	background: var(--window-bg, #ffffff);
-	border: 1px solid var(--card-border, rgba(0, 0, 0, 0.1));
+	background: var(--window-bg);
+	border: 1px solid var(--card-border);
 	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 	cursor: pointer;
 	text-align: left;
@@ -561,8 +561,8 @@
 
 .auditCardItem:hover,
 .auditCardItem:active {
-	background: var(--fill-soft, rgba(0, 0, 0, 0.03));
-	border-color: var(--border-subtle, rgba(0, 0, 0, 0.2));
+	background: var(--fill-soft);
+	border-color: var(--border-subtle);
 }
 
 .cardTopRow {
@@ -581,7 +581,7 @@
 }
 
 .flowArrow {
-	color: var(--text-secondary, #6e6e73);
+	color: var(--text-secondary);
 	opacity: 0.6;
 	display: flex;
 	align-items: center;
@@ -593,7 +593,7 @@
 	justify-content: space-between;
 	gap: 6px;
 	padding-top: 4px;
-	border-top: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06));
+	border-top: 1px solid var(--border-subtle);
 }
 
 .inspectHint {
@@ -682,7 +682,7 @@
 
 .pageInfo {
 	font-size: 12px;
-	color: var(--text-secondary, #6e6e73);
+	color: var(--text-secondary);
 	font-variant-numeric: tabular-nums;
 }
 
@@ -699,15 +699,15 @@
 	width: 30px;
 	height: 30px;
 	border-radius: 6px;
-	border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.12));
-	background: var(--fill-soft, rgba(0, 0, 0, 0.05));
-	color: var(--text-primary, #1d1d1f);
+	border: 1px solid var(--border-subtle);
+	background: var(--fill-soft);
+	color: var(--text-primary);
 	cursor: pointer;
 	transition: all 120ms ease;
 }
 
 .pagerBtn:hover:not(:disabled) {
-	background: var(--fill-strong, rgba(0, 0, 0, 0.1));
+	background: var(--fill-strong);
 }
 
 .pagerBtn:disabled {
@@ -718,7 +718,7 @@
 .emptyState {
 	padding: 36px 16px;
 	text-align: center;
-	color: var(--text-secondary, #6e6e73);
+	color: var(--text-secondary);
 	font-size: 13px;
 	display: flex;
 	flex-direction: column;
@@ -736,8 +736,8 @@
 	gap: 10px;
 	padding: 12px 14px;
 	border-radius: 10px;
-	background: var(--fill-softer, rgba(0, 0, 0, 0.03));
-	border: 1px solid var(--card-border, rgba(0, 0, 0, 0.08));
+	background: var(--fill-softer);
+	border: 1px solid var(--card-border);
 	margin-bottom: 14px;
 }
 
@@ -753,13 +753,13 @@
 	font-weight: 600;
 	text-transform: uppercase;
 	letter-spacing: 0.03em;
-	color: var(--text-secondary, #6e6e73);
+	color: var(--text-secondary);
 }
 
 .summaryValue {
 	font-size: 12.5px;
 	font-weight: 600;
-	color: var(--text-primary, #1d1d1f);
+	color: var(--text-primary);
 	word-break: break-word;
 	display: flex;
 	align-items: center;
@@ -771,7 +771,7 @@
 	border: none;
 	padding: 2px;
 	cursor: pointer;
-	color: var(--text-secondary, #6e6e73);
+	color: var(--text-secondary);
 	border-radius: 4px;
 	display: inline-flex;
 	align-items: center;
@@ -779,8 +779,8 @@
 }
 
 .copyMiniBtn:hover {
-	color: var(--text-primary, #1d1d1f);
-	background: var(--fill-soft, rgba(0, 0, 0, 0.08));
+	color: var(--text-primary);
+	background: var(--fill-soft);
 }
 
 .pivotBtn {
@@ -807,7 +807,7 @@
 	align-items: center;
 	gap: 6px;
 	margin-bottom: 12px;
-	border-bottom: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.1));
+	border-bottom: 1px solid var(--border-subtle);
 	padding-bottom: 8px;
 }
 
@@ -822,24 +822,24 @@
 	cursor: pointer;
 	border: none;
 	background: transparent;
-	color: var(--text-secondary, #6e6e73);
+	color: var(--text-secondary);
 	transition: all 120ms ease;
 }
 
 .modalTabBtn:hover {
-	color: var(--text-primary, #1d1d1f);
-	background: var(--fill-soft, rgba(0, 0, 0, 0.04));
+	color: var(--text-primary);
+	background: var(--fill-soft);
 }
 
 .modalTabBtnActive {
-	background: var(--fill-strong, rgba(0, 0, 0, 0.08));
-	color: var(--text-primary, #1d1d1f);
+	background: var(--fill-strong);
+	color: var(--text-primary);
 }
 
 /* Diff Table */
 .diffTableWrap {
 	border-radius: 8px;
-	border: 1px solid var(--card-border, rgba(0, 0, 0, 0.1));
+	border: 1px solid var(--card-border);
 	overflow: hidden;
 }
 
@@ -851,18 +851,18 @@
 
 .diffTable th {
 	padding: 8px 12px;
-	background: var(--fill-soft, rgba(0, 0, 0, 0.04));
-	color: var(--text-secondary, #6e6e73);
+	background: var(--fill-soft);
+	color: var(--text-secondary);
 	font-size: 10.5px;
 	font-weight: 700;
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
-	border-bottom: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+	border-bottom: 1px solid var(--border-subtle);
 }
 
 .diffTable td {
 	padding: 9px 12px;
-	border-bottom: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06));
+	border-bottom: 1px solid var(--border-subtle);
 	vertical-align: top;
 	word-break: break-word;
 }
@@ -872,8 +872,8 @@
 }
 
 .diffOldVal {
-	color: var(--danger, #d70015);
-	background: color-mix(in srgb, var(--danger, #d70015) 8%, transparent);
+	color: var(--danger);
+	background: color-mix(in srgb, var(--danger) 8%, transparent);
 	padding: 3px 6px;
 	border-radius: 4px;
 	display: inline-block;
@@ -882,8 +882,8 @@
 }
 
 .diffNewVal {
-	color: var(--success, #248a3d);
-	background: color-mix(in srgb, var(--success, #248a3d) 8%, transparent);
+	color: var(--success);
+	background: color-mix(in srgb, var(--success) 8%, transparent);
 	padding: 3px 6px;
 	border-radius: 4px;
 	font-weight: 600;
@@ -905,14 +905,14 @@
 	gap: 6px;
 	padding: 10px;
 	border-radius: 8px;
-	border: 1px solid var(--card-border, rgba(0, 0, 0, 0.1));
-	background: var(--fill-softer, rgba(0, 0, 0, 0.025));
+	border: 1px solid var(--card-border);
+	background: var(--fill-softer);
 }
 
 .diffFieldName {
 	font-size: 12px;
 	font-weight: 700;
-	color: var(--text-primary, #1d1d1f);
+	color: var(--text-primary);
 }
 
 .diffComparison {
@@ -931,7 +931,7 @@
 	font-size: 10px;
 	font-weight: 700;
 	text-transform: uppercase;
-	color: var(--text-secondary, #6e6e73);
+	color: var(--text-secondary);
 }
 
 @media (max-width: 560px) {
@@ -948,11 +948,11 @@
 	margin: 0;
 	padding: 12px;
 	border-radius: 8px;
-	background: var(--fill-softer, rgba(0, 0, 0, 0.04));
-	border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+	background: var(--fill-softer);
+	border: 1px solid var(--border-subtle);
 	font-family: 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
 	font-size: 11.5px;
-	color: var(--text-primary, #1d1d1f);
+	color: var(--text-primary);
 	overflow-x: auto;
 	max-height: 380px;
 	white-space: pre-wrap;

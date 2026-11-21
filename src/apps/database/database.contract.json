@@ -1,0 +1,105 @@
+{
+  "id": "database",
+  "name": "Database Explorer",
+  "version": "1.0.0",
+  "description": "SQL console, schema browser, and administrative data mutating interface.",
+  "tables": [
+    "system_settings"
+  ],
+  "api": {
+    "base": "/api/database",
+    "endpoints": [
+      {
+        "path": "/api/database/audit",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "description": "Fetch or record Database Studio audit log entries."
+      },
+      {
+        "path": "/api/database/auth",
+        "methods": [
+          "POST"
+        ],
+        "description": "Verify 2FA or Passkey step-up for Database Studio access."
+      },
+      {
+        "path": "/api/database/data",
+        "methods": [
+          "GET"
+        ],
+        "description": "Browse paginated and filtered rows in a database table."
+      },
+      {
+        "path": "/api/database/import",
+        "methods": [
+          "POST"
+        ],
+        "description": "Import validated JSON or CSV rows into an allowlisted table."
+      },
+      {
+        "path": "/api/database/mutate",
+        "methods": [
+          "POST"
+        ],
+        "description": "Execute audited row mutation operation."
+      },
+      {
+        "path": "/api/database/query",
+        "methods": [
+          "POST"
+        ],
+        "description": "Execute read-only SQL query."
+      },
+      {
+        "path": "/api/database/schema",
+        "methods": [
+          "GET"
+        ],
+        "description": "Inspect table columns, indexes, and foreign-key schema metadata."
+      },
+      {
+        "path": "/api/database/tables",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "description": "List database tables or create a new allowlisted table."
+      }
+    ]
+  },
+  "limits": {
+    "maxQueryLimit": 500,
+    "maxQueryExecutionTimeoutMs": 10000
+  },
+  "errorCodes": [
+    {
+      "code": "SQL_SYNTAX_ERROR",
+      "status": 400,
+      "i18nKey": "sqlSyntaxError",
+      "description": "Invalid SQL syntax."
+    },
+    {
+      "code": "UNAUTHORIZED_MUTATION",
+      "status": 403,
+      "i18nKey": "sqlUnauthorizedMutation",
+      "description": "Admin permission required for mutation."
+    }
+  ],
+  "files": {
+    "actions": [
+      "src/app/api/database/mutate/route.ts"
+    ],
+    "queries": [
+      "src/app/api/database/tables/route.ts",
+      "src/app/api/database/query/route.ts"
+    ],
+    "ui": [
+      "src/apps/database/index.tsx"
+    ],
+    "i18n": [
+      "src/lib/i18nApps.ts"
+    ]
+  }
+}

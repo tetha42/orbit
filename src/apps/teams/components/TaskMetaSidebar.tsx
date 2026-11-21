@@ -86,9 +86,9 @@ export function TaskMetaSidebar({
 				) : (
 					<div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
 						<span className={`${ui.avatar} ${task.assigneeMemberId ? '' : styles.avatarEmpty}`} style={{ marginLeft: 0 }}>
-							{task.assigneeMemberId ? initials(task.assigneeNameSurname) : '?'}
+							{task.assigneeMemberId ? initials(task.assigneeName) : '?'}
 						</span>
-						{task.assigneeNameSurname || t('kbUnassigned')}
+						{task.assigneeName || t('kbUnassigned')}
 					</div>
 				)}
 				{canClaim && (
@@ -153,13 +153,13 @@ export function TaskMetaSidebar({
 				<span style={{ color: prio.color, fontWeight: 700 }}>● {t(prio.key)}</span>
 				<span>
 					{fill(t('kbCreatedBy'), {
-						name: task.creatorNameSurname || t('kbSomeone'),
-						when: new Date(task.creation).toLocaleDateString(locale),
+						name: task.creatorName || t('kbSomeone'),
+						when: new Date(task.createdAt).toLocaleDateString(locale),
 					})}
 				</span>
-				{task.update ? <span>{fill(t('kbUpdated'), { when: when(task.update) })}</span> : null}
-				{task.completion ? (
-					<span>{fill(t('kbCompletedAt'), { when: new Date(task.completion).toLocaleDateString(locale) })}</span>
+				{task.updatedAt ? <span>{fill(t('kbUpdated'), { when: when(task.updatedAt) })}</span> : null}
+				{task.completedAt ? (
+					<span>{fill(t('kbCompletedAt'), { when: new Date(task.completedAt).toLocaleDateString(locale) })}</span>
 				) : null}
 			</div>
 

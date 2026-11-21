@@ -19,16 +19,15 @@ import { getLockdownState, isIpBanned, recordSecurityStrike } from '@/db/reposit
  * Second step of a passkey sign-in: verifies the assertion and issues a session.
  *
  * A passkey assertion is already multi-factor (the device plus its biometric/PIN
- * unlock), so it completes authentication on its own — except for a role that
- * requires two-factor auth and a member who enrolled it: they get the login
- * challenge and still enter the authenticator code (see below).
+ * unlock), so it completes authentication directly without a secondary TOTP
+ * challenge and marks the session with `authMethod = 'passkey'`.
  */
 export async function POST(request: Request) {
 	const ip = clientAddress(request);
 	const ban = await isIpBanned(ip);
 	if (ban.banned) {
 		return NextResponse.json(
-			{ error: 'IP adresiniz siber güvenlik politikası nedeniyle geçici olarak karantinaya alınmıştır.' },
+			{ error: 'Your IP address has been temporarily quarantined due to security policy.' },
 			{ status: 403 }
 		);
 	}
@@ -38,7 +37,7 @@ export async function POST(request: Request) {
 		void logSystemEvent({
 			service: 'security',
 			level: 'ERROR',
-			message: `[WAF] Saldırı imzası engellendi (${waf.signature}): POST /api/auth/passkey/login/verify`,
+			message: `[WAF] Attack signature blocked (${waf.signature}): POST /api/auth/passkey/login/verify`,
 			detail: { category: waf.category, signature: waf.signature },
 			ip,
 		});
@@ -49,7 +48,7 @@ export async function POST(request: Request) {
 			path: '/api/auth/passkey/login/verify',
 		});
 		return NextResponse.json(
-			{ error: 'Güvenlik duvarı (WAF) tarafından şüpheli istek engellendi.' },
+			{ error: 'Suspicious request blocked by the Web Application Firewall (WAF).' },
 			{ status: 403 }
 		);
 	}
@@ -59,11 +58,11 @@ export async function POST(request: Request) {
 		void recordSecurityStrike({
 			ip,
 			points: 25,
-			reason: 'Passkey doğrulama hız sınırı aşımı',
+			reason: 'Passkey verification rate limit exceeded',
 			path: '/api/auth/passkey/login/verify',
 		});
 		return NextResponse.json(
-			{ error: 'Çok fazla istek, lütfen biraz bekleyin.' },
+			{ error: 'Too many requests. Please wait a moment.' },
 			{ status: 429, headers: { 'Retry-After': String(limit.retryAfter) } }
 		);
 	}
@@ -73,21 +72,21 @@ export async function POST(request: Request) {
 		const { challengeId, response } = body;
 
 		if (!challengeId || !response) {
-			return NextResponse.json({ error: 'Eksik parametreler.' }, { status: 400 });
+			return NextResponse.json({ error: 'Missing required parameters.' }, { status: 400 });
 		}
 
 		// Consumed before verification so a replayed response cannot be reused.
 		const pending = await consumeWebauthnChallenge(String(challengeId), 'login');
 		if (!pending || !pending.userId) {
 			return NextResponse.json(
-				{ error: 'Doğrulama oturumu geçersiz veya süresi dolmuş. Lütfen tekrar deneyin.' },
+				{ error: 'Verification session is invalid or has expired. Please try again.' },
 				{ status: 400 }
 			);
 		}
 
 		const user = await getUserById(pending.userId);
 		if (!user || user.status !== 'active') {
-			return NextResponse.json({ error: 'Hesabınız aktif durumda değildir.' }, { status: 403 });
+			return NextResponse.json({ error: 'Your account is not active.' }, { status: 403 });
 		}
 
 		const credentialRow = await getWebauthnCredentialById(String(response.id));
@@ -96,18 +95,18 @@ export async function POST(request: Request) {
 			void recordSecurityStrike({
 				ip,
 				points: 25,
-				reason: `Farklı hesaba ait Passkey denemesi (${user.email})`,
+				reason: `Passkey attempt for a different account (${user.email})`,
 				path: '/api/auth/passkey/login/verify',
 				userId: user.id,
 			});
 			await logSystemEvent({
 				service: 'auth',
 				level: 'WARN',
-				message: `Passkey doğrulama hatası (farklı hesaba ait anahtar): ${user.email}`,
+				message: `Passkey verification error (key belongs to another account): ${user.email}`,
 				userId: user.id,
 				ip,
 			});
-			return NextResponse.json({ error: 'Passkey bu hesaba ait değil.' }, { status: 401 });
+			return NextResponse.json({ error: 'This passkey does not belong to this account.' }, { status: 401 });
 		}
 
 		const { rpID, origin } = getWebauthnConfig(request);
@@ -118,24 +117,25 @@ export async function POST(request: Request) {
 			expectedOrigin: origin,
 			expectedRPID: rpID,
 			credential: toAuthenticatorDevice(credentialRow),
+			requireUserVerification: true,
 		});
 
 		if (!verification.verified) {
 			void recordSecurityStrike({
 				ip,
 				points: 20,
-				reason: `Başarısız Passkey imza doğrulaması (${user.email})`,
+				reason: `Failed passkey signature verification (${user.email})`,
 				path: '/api/auth/passkey/login/verify',
 				userId: user.id,
 			});
 			await logSystemEvent({
 				service: 'auth',
 				level: 'WARN',
-				message: `Başarısız Passkey imza doğrulaması: ${user.email}`,
+				message: `Failed passkey signature verification: ${user.email}`,
 				userId: user.id,
 				ip,
 			});
-			return NextResponse.json({ error: 'Passkey doğrulanamadı.' }, { status: 401 });
+			return NextResponse.json({ error: 'Passkey verification failed.' }, { status: 401 });
 		}
 
 		const { newCounter } = verification.authenticationInfo;
@@ -151,20 +151,20 @@ export async function POST(request: Request) {
 			void recordSecurityStrike({
 				ip,
 				points: 50,
-				reason: `Passkey klonlama şüphesi (${user.email})`,
+				reason: `Suspected passkey cloning (${user.email})`,
 				path: '/api/auth/passkey/login/verify',
 				userId: user.id,
 			});
 			await logSystemEvent({
 				service: 'auth',
 				level: 'ERROR',
-				message: `Passkey klonlama şüphesi (sayaç ilerlemedi): ${user.email}`,
+				message: `Suspected passkey cloning (counter did not advance): ${user.email}`,
 				detail: { credentialId: credentialRow.id, storedCounter, newCounter },
 				userId: user.id,
 				ip,
 			});
 			return NextResponse.json(
-				{ error: 'Passkey doğrulanamadı. Güvenlik nedeniyle yöneticiyle iletişime geçin.' },
+				{ error: 'Passkey could not be verified. Contact an administrator for security review.' },
 				{ status: 401 }
 			);
 		}
@@ -177,18 +177,20 @@ export async function POST(request: Request) {
 		if (lockdown.active && user.roleId !== ADMIN_ROLE_ID) {
 			return NextResponse.json(
 				{
-					error: 'Sistem şu anda siber saldırı savunması kapsamında Kalkan Modundadır (Lockdown). Yalnızca yöneticiler giriş yapabilir.',
+					error: 'Workspace is currently in Lockdown Mode under active cyber defense. Only administrators may sign in.',
 					code: 'LOCKDOWN_ACTIVE',
 				},
 				{ status: 503 }
 			);
 		}
 
+		// A verified WebAuthn passkey is itself cryptographic multi-factor authentication;
+		// issue the passkey session directly without prompting for a secondary TOTP code.
 		const sessionToken = await establishSession(user, request, 'passkey');
 		await logSystemEvent({
 			service: 'auth',
 			level: 'INFO',
-			message: `Kullanıcı Passkey ile giriş yaptı: ${user.name} ${user.surname} (${user.email})`,
+			message: `User signed in with passkey: ${user.name} ${user.surname} (${user.email})`,
 			userId: user.id,
 			ip,
 		});
@@ -196,6 +198,6 @@ export async function POST(request: Request) {
 		return attachSessionCookie(res, sessionToken);
 	} catch (error) {
 		console.error('API /api/auth/passkey/login/verify error:', error);
-		return NextResponse.json({ error: 'Passkey ile giriş yapılamadı.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to sign in with passkey.' }, { status: 500 });
 	}
 }

@@ -1,0 +1,81 @@
+{
+  "id": "teams",
+  "name": "Teams & Working Groups",
+  "version": "1.0.0",
+  "description": "Organization teams, member assignments, roles, kanban tasks, and voting rights.",
+  "tables": [
+    "teams",
+    "team_members",
+    "team_tasks",
+    "users"
+  ],
+  "api": {
+    "base": "/api/teams",
+    "endpoints": [
+      {
+        "path": "/api/teams",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "description": "List or manage organization teams."
+      },
+      {
+        "path": "/api/teams/discover",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "description": "Browse open teams or submit a join request."
+      },
+      {
+        "path": "/api/teams/tasks/[id]",
+        "methods": [
+          "GET",
+          "POST",
+          "PATCH"
+        ],
+        "description": "List, create, or update team Kanban tasks."
+      },
+      {
+        "path": "/api/team-categories",
+        "methods": [
+          "GET"
+        ],
+        "description": "List configured team categories."
+      }
+    ]
+  },
+  "limits": {
+    "maxTeamCapacity": 50,
+    "maxTasksPerTeam": 1000
+  },
+  "errorCodes": [
+    {
+      "code": "TEAM_NOT_FOUND",
+      "status": 404,
+      "i18nKey": "teamNotFound",
+      "description": "Team not found."
+    },
+    {
+      "code": "ALREADY_MEMBER",
+      "status": 409,
+      "i18nKey": "alreadyMember",
+      "description": "User already in team."
+    }
+  ],
+  "files": {
+    "actions": [
+      "src/db/repositories/teams.repo.ts"
+    ],
+    "queries": [
+      "src/apps/teams/hooks/useTeams.ts"
+    ],
+    "ui": [
+      "src/apps/teams/index.tsx"
+    ],
+    "i18n": [
+      "src/lib/i18nApps.ts"
+    ]
+  }
+}

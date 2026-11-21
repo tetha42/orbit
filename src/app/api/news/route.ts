@@ -10,6 +10,8 @@ import {
 	isSafeImageUrl,
 	type NewsVisibility,
 } from '@/types/news';
+import newsContract from '@/apps/news/news.contract.json';
+import { contractErrorResponse } from '@/contracts/helpers';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,12 +32,12 @@ type Parsed = { ok: true; value: NewsInput; error?: never } | { ok: false; error
 
 function text(raw: unknown, label: string, max: number, required: boolean): { value?: string; error?: string } {
 	if (raw === undefined || raw === null) {
-		return required ? { error: `${label} zorunludur.` } : {};
+		return required ? { error: `${label} is required.` } : {};
 	}
-	if (typeof raw !== 'string') return { error: `${label} metin olmalıdır.` };
+	if (typeof raw !== 'string') return { error: `${label} must be text.` };
 	const value = raw.trim();
-	if (required && !value) return { error: `${label} zorunludur.` };
-	if (value.length > max) return { error: `${label} en fazla ${max} karakter olabilir.` };
+	if (required && !value) return { error: `${label} is required.` };
+	if (value.length > max) return { error: `${label} can be at most ${max} characters.` };
 	return { value };
 }
 
@@ -47,22 +49,23 @@ function text(raw: unknown, label: string, max: number, required: boolean): { va
 function parseNewsInput(body: Record<string, unknown>, partial: boolean): Parsed {
 	const out: NewsInput = {};
 
-	const title = text(body.title, 'Başlık', NEWS_LIMITS.title, !partial);
+	const title = text(body.title, 'Title', Math.min(NEWS_LIMITS.title, newsContract.limits.maxTitleLength), !partial);
 	if (title.error) return { ok: false, error: title.error };
 	if (title.value !== undefined) out.title = title.value;
 
-	const content = text(body.content, 'NewsItem metni', NEWS_LIMITS.content, !partial);
+	const content = text(body.content, 'Content', NEWS_LIMITS.content, !partial);
 	if (content.error) return { ok: false, error: content.error };
 	if (content.value !== undefined) out.content = content.value;
 
-	const summary = text(body.summary, 'Özet', NEWS_LIMITS.summary, false);
+	const maxSummary = Math.min(NEWS_LIMITS.summary, newsContract.limits.maxSummaryLength);
+	const summary = text(body.summary, 'Summary', maxSummary, false);
 	if (summary.error) return { ok: false, error: summary.error };
 	if (summary.value) out.summary = summary.value;
 	// A create without a summary uses the title, as the form always did.
-	else if (!partial && out.title) out.summary = out.title.slice(0, NEWS_LIMITS.summary);
+	else if (!partial && out.title) out.summary = out.title.slice(0, maxSummary);
 
 	if (body.category !== undefined) {
-		if (!isNewsCategory(body.category)) return { ok: false, error: 'Geçersiz kategori.' };
+		if (!isNewsCategory(body.category)) return { ok: false, error: 'Invalid category.' };
 		out.category = body.category;
 	} else if (!partial) {
 		out.category = 'general';
@@ -73,13 +76,13 @@ function parseNewsInput(body: Record<string, unknown>, partial: boolean): Parsed
 	if (body.imageUrl !== undefined) {
 		const url = typeof body.imageUrl === 'string' ? body.imageUrl.trim() : '';
 		if (url && !isSafeImageUrl(url)) {
-			return { ok: false, error: 'Görsel adresi https:// ile başlamalı veya hazır şablonlardan biri olmalıdır.' };
+			return { ok: false, error: 'Image URL must start with https:// or be one of the preset templates.' };
 		}
 		out.imageUrl = url || null;
 	}
 
 	if (body.publishStatus !== undefined) {
-		if (!isNewsVisibility(body.publishStatus)) return { ok: false, error: 'Geçersiz görünürlük.' };
+		if (!isNewsVisibility(body.publishStatus)) return { ok: false, error: 'Invalid visibility.' };
 		out.publishStatus = body.publishStatus;
 	} else if (!partial) {
 		out.publishStatus = 'published';
@@ -103,7 +106,7 @@ export async function GET(request: Request) {
 		return NextResponse.json(newsItems, { headers: { 'Cache-Control': 'no-store' } });
 	} catch (error) {
 		console.error('API /api/news GET error:', error);
-		return NextResponse.json({ error: 'Haberler okunamadı.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to load news.' }, { status: 500 });
 	}
 }
 
@@ -116,7 +119,7 @@ async function handlePOST(request: Request) {
 
 		const body = await request.json().catch(() => null);
 		if (!body || typeof body !== 'object') {
-			return NextResponse.json({ error: 'Geçersiz istek.' }, { status: 400 });
+			return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
 		}
 		const parsed = parseNewsInput(body as Record<string, unknown>, false);
 		if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
@@ -137,12 +140,14 @@ async function handlePOST(request: Request) {
 
 		return NextResponse.json({
 			...result,
-			authorNameSurname: `${auth.user.firstName || auth.user.name || ''} ${auth.user.lastName || auth.user.surname || ''}`.trim(),
 			authorName: `${auth.user.firstName || auth.user.name || ''} ${auth.user.lastName || auth.user.surname || ''}`.trim(),
 		});
 	} catch (error) {
+		if ((error as { code?: string })?.code === '23505') {
+			return contractErrorResponse(newsContract, 'SLUG_ALREADY_EXISTS');
+		}
 		console.error('API /api/news POST error:', error);
-		return NextResponse.json({ error: 'NewsItem ve duyuru yayınlanamadı.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to publish news.' }, { status: 500 });
 	}
 }
 
@@ -156,26 +161,26 @@ async function handlePATCH(request: Request) {
 
 		const body = await request.json().catch(() => null);
 		if (!body || typeof body !== 'object' || typeof (body as { id?: unknown }).id !== 'string') {
-			return NextResponse.json({ error: 'Düzenlenecek haber ID zorunludur.' }, { status: 400 });
+			return NextResponse.json({ error: 'News ID to update is required.' }, { status: 400 });
 		}
 		const { id, ...fields } = body as { id: string } & Record<string, unknown>;
 
 		const parsed = parseNewsInput(fields, true);
 		if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
 		if (Object.keys(parsed.value).length === 0) {
-			return NextResponse.json({ error: 'Değiştirilecek bir alan belirtilmedi.' }, { status: 400 });
+			return NextResponse.json({ error: 'No fields to update were specified.' }, { status: 400 });
 		}
 
 		if (!(await getNewsById(id))) {
-			return NextResponse.json({ error: 'NewsItem bulunamadı.' }, { status: 404 });
+			return contractErrorResponse(newsContract, 'NEWS_NOT_FOUND');
 		}
 		const updated = await updateNews(id, parsed.value);
-		if (!updated) return NextResponse.json({ error: 'NewsItem bulunamadı.' }, { status: 404 });
+		if (!updated) return contractErrorResponse(newsContract, 'NEWS_NOT_FOUND');
 		await publishEventQuiet(getPgPool(), [{ k: 'news_updated' }, ...notificationEvents()]);
 		return NextResponse.json(updated);
 	} catch (error) {
 		console.error('API /api/news PATCH error:', error);
-		return NextResponse.json({ error: 'NewsItem güncellenemedi.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to update news.' }, { status: 500 });
 	}
 }
 
@@ -190,7 +195,7 @@ async function handleDELETE(request: Request) {
 		const id = searchParams.get('id');
 
 		if (!id) {
-			return NextResponse.json({ error: 'Silinecek haber ID zorunludur.' }, { status: 400 });
+			return NextResponse.json({ error: 'News ID to delete is required.' }, { status: 400 });
 		}
 
 		const success = await deleteNews(id);
@@ -198,7 +203,7 @@ async function handleDELETE(request: Request) {
 		return NextResponse.json({ success });
 	} catch (error) {
 		console.error('API /api/news DELETE error:', error);
-		return NextResponse.json({ error: 'NewsItem silinemedi.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to delete news.' }, { status: 500 });
 	}
 }
 

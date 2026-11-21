@@ -44,8 +44,8 @@ export function normalizeBudgetCategory(value: unknown): BudgetCategory | null {
 }
 
 /**
- * The category of the two rows an allocation writes (one in each kasa). It is not
- * in BUTCE_KATEGORILERI on purpose: an ordinary entry cannot claim to be one.
+ * The category of the two rows an allocation writes (one in each vault). It is not
+ * in BUDGET_CATEGORIES on purpose: an ordinary entry cannot claim to be one.
  */
 export const TRANSFER_CATEGORY = 'allowance_transfer' as const;
 
@@ -57,14 +57,15 @@ export function isBudgetCategory(value: unknown): value is BudgetCategory {
 }
 
 /**
- * Largest single entry: 20,000,000 TL in kuruş. `amountMinor` is a 32-bit INTEGER
- * column, so this also keeps a sum of entries from ever overflowing it.
+ * Largest single entry: 20,000,000 TRY in minor units (1/100 of a lira).
+ * `amountMinor` is a 32-bit INTEGER column, so this also keeps a sum of entries
+ * from ever overflowing it.
  */
 export const MAX_AMOUNT_CENTS = 2_000_000_000;
 
-/** One cash box: the club's general kasa, or the kasa of a single project (takım). */
+/** One cash box: the club's general vault, or the vault of a single project (team). */
 export interface VaultSummary {
-	/** `null` is the general kasa. */
+	/** `null` is the general vault. */
 	teamId: string | null;
 	name: string;
 	kind: 'general' | 'project';

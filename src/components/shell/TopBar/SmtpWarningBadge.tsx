@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useI18n } from '@/core/i18n';
 import { useSession } from '@/core/session';
 import { useWindowActions } from '@/core/windows';
 import { AlertTriangle } from 'lucide-react';
 
 export function SmtpWarningBadge() {
+	const { t } = useI18n();
 	const { currentUser, canManageApp } = useSession();
 	const { openApp } = useWindowActions();
 	const [smtpMissing, setSmtpMissing] = useState(false);
@@ -38,13 +40,13 @@ export function SmtpWarningBadge() {
 		<button
 			type="button"
 			onClick={() => openApp('settings')}
-			title="E-posta sunucusu (SMTP) henüz yapılandırılmadı. Ayarları açmak için tıklayın."
+			title={t('smtpBadgeTitle')}
 			style={{
 				display: 'inline-flex',
 				alignItems: 'center',
 				gap: '4px',
-				background: 'rgba(255, 189, 46, 0.15)',
-				border: '1px solid rgba(255, 189, 46, 0.35)',
+				background: 'color-mix(in srgb, var(--gold) 15%, transparent)',
+				border: '1px solid color-mix(in srgb, var(--gold) 35%, transparent)',
 				color: '#ffbd2e',
 				borderRadius: '12px',
 				padding: '1px 8px',
@@ -56,7 +58,7 @@ export function SmtpWarningBadge() {
 			}}
 		>
 			<AlertTriangle size={12} />
-			<span>SMTP Kurulumu Gerekli</span>
+			<span>{t('smtpBadgeLabel')}</span>
 		</button>
 	);
 }

@@ -1,0 +1,92 @@
+{
+  "id": "mail",
+  "name": "Mail & Communications",
+  "version": "1.0.0",
+  "description": "Internal messaging, outbound mail delivery queue, and transactional templates.",
+  "tables": [
+    "mail_outbox",
+    "chat_rooms",
+    "chat_messages"
+  ],
+  "api": {
+    "base": "/api/mail",
+    "endpoints": [
+      {
+        "path": "/api/mail",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "description": "Fetch mail messages or send message."
+      },
+      {
+        "path": "/api/mail/[uid]",
+        "methods": [
+          "GET"
+        ],
+        "description": "Read a single IMAP message by UID."
+      },
+      {
+        "path": "/api/mail/action",
+        "methods": [
+          "POST"
+        ],
+        "description": "Perform folder/flag actions on mailbox messages."
+      },
+      {
+        "path": "/api/mail/groups",
+        "methods": [
+          "GET"
+        ],
+        "description": "List mail distribution groups."
+      },
+      {
+        "path": "/api/mail/outbox",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "description": "Inspect or trigger transactional mail outbox delivery."
+      },
+      {
+        "path": "/api/mail/test",
+        "methods": [
+          "GET"
+        ],
+        "description": "Verify mailbox configuration connectivity."
+      }
+    ]
+  },
+  "limits": {
+    "maxSubjectLength": 250,
+    "maxBodyLength": 100000
+  },
+  "errorCodes": [
+    {
+      "code": "MAIL_SEND_FAILED",
+      "status": 500,
+      "i18nKey": "mailSendFailed",
+      "description": "Failed to queue or deliver email."
+    },
+    {
+      "code": "INVALID_RECIPIENT",
+      "status": 400,
+      "i18nKey": "invalidRecipient",
+      "description": "Recipient email address is invalid."
+    }
+  ],
+  "files": {
+    "actions": [
+      "src/db/messages.ts"
+    ],
+    "queries": [
+      "src/app/api/mail/route.ts"
+    ],
+    "ui": [
+      "src/apps/mail/index.tsx"
+    ],
+    "i18n": [
+      "src/lib/i18nApps.ts"
+    ]
+  }
+}

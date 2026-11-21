@@ -69,8 +69,8 @@ export function TwoFactorEnforcementModal() {
 							height: '40px',
 							flexShrink: 0,
 							borderRadius: '10px',
-							background: 'rgba(255, 159, 10, 0.15)',
-							color: '#ff9f0a',
+							background: 'color-mix(in srgb, var(--warning) 15%, transparent)',
+							color: 'var(--warning)',
 						}}
 					>
 						<ShieldAlert size={20} />

@@ -1,46 +1,16 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { SYSTEM_SSE_EVENTS, type SystemSseEventName } from '@/lib/sse/protocol';
 
 /**
  * The live connection to `/api/stream` (Server-Sent Events): the server tells
  * the browser as soon as something changed on the database via PostgreSQL
  * NOTIFY, so nothing polls while the stream is open.
- *
- * Events:
- *   permission-changed  — a role (or this member's role) changed
- *   session-ended       — the session is over (signed in elsewhere, suspended…)
- *   notification        — a notification was recorded for this member
- *   team_updated        — team roster, settings, or kanban tasks changed
- *   budget_updated      — budget ledger or balance changed
- *   inventory_updated   — inventory item status, custody, or details changed
  */
-export type LiveEvent =
-	| 'permission-changed'
-	| 'session-ended'
-	| 'notification'
-	| 'team_updated'
-	| 'budget_updated'
-	| 'inventory_updated'
-	| 'news_updated'
-	| 'event_updated'
-	| 'project_updated'
-	| 'decision_updated'
-	| 'note_updated';
+export type LiveEvent = SystemSseEventName;
 
-const LIVE_EVENTS: readonly LiveEvent[] = [
-	'permission-changed',
-	'session-ended',
-	'notification',
-	'team_updated',
-	'budget_updated',
-	'inventory_updated',
-	'news_updated',
-	'event_updated',
-	'project_updated',
-	'decision_updated',
-	'note_updated',
-];
+const LIVE_EVENTS: readonly LiveEvent[] = SYSTEM_SSE_EVENTS;
 
 /** Hands an event to everything that listens through `useLiveEvent` (and `startLiveConnection`'s own callback). */
 const listeners = new Set<(event: LiveEvent) => void>();
@@ -143,6 +113,7 @@ export function startLiveConnection({ onState, onEvent, onConnectionState }: Liv
 					onConnectionState?.('offline');
 					onState(false, true);
 				} else if (
+					name === 'permission-changed' ||
 					name === 'team_updated' ||
 					name === 'budget_updated' ||
 					name === 'inventory_updated' ||
@@ -150,7 +121,8 @@ export function startLiveConnection({ onState, onEvent, onConnectionState }: Liv
 					name === 'event_updated' ||
 					name === 'project_updated' ||
 					name === 'decision_updated' ||
-					name === 'note_updated'
+					name === 'note_updated' ||
+					name === 'soc_updated'
 				) {
 					window.dispatchEvent(new CustomEvent('orbit:resource-invalidate', { detail: { kind: name } }));
 				}

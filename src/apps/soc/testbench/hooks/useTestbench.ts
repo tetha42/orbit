@@ -7,6 +7,7 @@ import { useToast } from '@/core/ui/Toast';
 import { useI18n } from '@/core/i18n';
 import { useSession } from '@/core/session';
 import { levelOf } from '@/core/permissions';
+import { translate } from '@/lib/i18n';
 import { fill } from '@/lib/text';
 import type {
 	SystemDiagnostics,
@@ -18,24 +19,23 @@ import type {
 
 const SUITE_ENDPOINTS: Array<{
 	id: string;
-	name: string;
-	nameEn: string;
+	nameKey: string;
 	endpoint: string;
 	appId: string;
 	requiredLevel: 'use' | 'manage' | 'admin' | 'public';
 }> = [
-	{ id: 'butce', name: 'Bütçe & Kasa', nameEn: 'Budget & Vault', endpoint: '/api/budget', appId: 'budget', requiredLevel: 'use' },
-	{ id: 'etkinlikler', name: 'Etkinlikler', nameEn: 'Events', endpoint: '/api/events', appId: 'events', requiredLevel: 'use' },
-	{ id: 'projeler', name: 'Projeler', nameEn: 'Projects', endpoint: '/api/projects', appId: 'projects', requiredLevel: 'use' },
-	{ id: 'haberler', name: 'Haberler & Duyurular', nameEn: 'News & Announcements', endpoint: '/api/news', appId: 'news', requiredLevel: 'use' },
-	{ id: 'envanter', name: 'Donanım & Envanter', nameEn: 'Hardware & Inventory', endpoint: '/api/inventory', appId: 'inventory', requiredLevel: 'use' },
-	{ id: 'members', name: 'Üye Rehberi', nameEn: 'Member Directory', endpoint: '/api/members', appId: 'members', requiredLevel: 'use' },
-	{ id: 'takimlar', name: 'Takımlar', nameEn: 'Teams', endpoint: '/api/teams', appId: 'teams', requiredLevel: 'use' },
-	{ id: 'sohbet', name: 'Sohbet Odaları', nameEn: 'Chat Rooms', endpoint: '/api/chat/rooms', appId: 'chat', requiredLevel: 'use' },
-	{ id: 'roller', name: 'Roller & Yetkiler', nameEn: 'Roles & Permissions', endpoint: '/api/roles', appId: 'settings', requiredLevel: 'admin' },
-	{ id: 'denetim', name: 'Denetim Kayıtları', nameEn: 'Audit Logs', endpoint: '/api/audit', appId: 'settings', requiredLevel: 'admin' },
-	{ id: 'jwks', name: 'OAuth 2.0 JWKS', nameEn: 'OAuth 2.0 JWKS', endpoint: '/api/oauth/jwks', appId: 'settings', requiredLevel: 'public' },
-	{ id: 'oauth_clients', name: 'Entegre Uygulamalar', nameEn: 'Integrated Apps', endpoint: '/api/oauth/clients', appId: 'settings', requiredLevel: 'admin' },
+	{ id: 'budget', nameKey: 'tbEndpointBudget', endpoint: '/api/budget', appId: 'budget', requiredLevel: 'use' },
+	{ id: 'events', nameKey: 'tbEndpointEvents', endpoint: '/api/events', appId: 'events', requiredLevel: 'use' },
+	{ id: 'projects', nameKey: 'tbEndpointProjects', endpoint: '/api/projects', appId: 'projects', requiredLevel: 'use' },
+	{ id: 'news', nameKey: 'tbEndpointNews', endpoint: '/api/news', appId: 'news', requiredLevel: 'use' },
+	{ id: 'inventory', nameKey: 'tbEndpointInventory', endpoint: '/api/inventory', appId: 'inventory', requiredLevel: 'use' },
+	{ id: 'members', nameKey: 'tbEndpointMembers', endpoint: '/api/members', appId: 'members', requiredLevel: 'use' },
+	{ id: 'teams', nameKey: 'tbEndpointTeams', endpoint: '/api/teams', appId: 'teams', requiredLevel: 'use' },
+	{ id: 'chat', nameKey: 'tbEndpointChat', endpoint: '/api/chat/rooms', appId: 'chat', requiredLevel: 'use' },
+	{ id: 'roles', nameKey: 'tbEndpointRoles', endpoint: '/api/roles', appId: 'settings', requiredLevel: 'admin' },
+	{ id: 'audit', nameKey: 'tbEndpointAudit', endpoint: '/api/audit', appId: 'settings', requiredLevel: 'admin' },
+	{ id: 'jwks', nameKey: 'tbEndpointJwks', endpoint: '/api/oauth/jwks', appId: 'settings', requiredLevel: 'public' },
+	{ id: 'oauth_clients', nameKey: 'tbEndpointOAuthClients', endpoint: '/api/oauth/clients', appId: 'settings', requiredLevel: 'admin' },
 ];
 
 /**
@@ -96,19 +96,24 @@ export function useTestbench(canManage: boolean) {
 					try {
 						const res = await fetch(item.endpoint, { cache: 'no-store' });
 						status = res.status;
-						statusText = res.statusText || (res.ok ? 'OK' : 'Hata');
+						statusText = res.statusText || (res.ok ? 'OK' : 'Error');
 						const text = await res.text();
 						snippet = text.slice(0, 180);
 					} catch (fetchErr) {
 						status = 0;
-						statusText = fetchErr instanceof Error ? fetchErr.message : 'Ağ Hatası';
+						statusText = fetchErr instanceof Error ? fetchErr.message : 'Network Error';
 					}
 
 					const latencyMs = Math.round((performance.now() - start) * 10) / 10;
 					const pass = status === expectedStatus || (status >= 200 && status < 300 && expectedStatus === 200);
 
 					return {
-						...item,
+						id: item.id,
+						name: translate('tr', item.nameKey),
+						nameEn: translate('en', item.nameKey),
+						endpoint: item.endpoint,
+						appId: item.appId,
+						requiredLevel: item.requiredLevel,
 						status,
 						statusText,
 						latencyMs,

@@ -67,15 +67,15 @@ export function TerminalHeader({
 					background:
 						status === 'connected'
 							? isLight
-								? 'rgba(5, 150, 105, 0.14)'
-								: 'rgba(0, 230, 118, 0.18)'
+								? 'color-mix(in srgb, var(--success) 14%, transparent)'
+								: 'color-mix(in srgb, var(--success) 18%, transparent)'
 							: status === 'connecting'
 								? isLight
-									? 'rgba(217, 119, 6, 0.14)'
-									: 'rgba(255, 190, 11, 0.18)'
+									? 'color-mix(in srgb, var(--warning) 14%, transparent)'
+									: 'color-mix(in srgb, var(--gold) 18%, transparent)'
 								: isLight
-									? 'rgba(225, 29, 72, 0.14)'
-									: 'rgba(255, 77, 109, 0.2)',
+									? 'color-mix(in srgb, var(--danger) 14%, transparent)'
+									: 'color-mix(in srgb, var(--danger) 20%, transparent)',
 					color:
 						status === 'connected'
 							? isLight

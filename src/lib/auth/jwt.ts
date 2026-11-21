@@ -83,23 +83,23 @@ export function verifyJwt<T extends JwtPayload = JwtPayload>(
 ): { valid: true; payload: T } | { valid: false; error: string } {
 	try {
 		if (!token || typeof token !== 'string' || token.length > 4096) {
-			return { valid: false, error: 'Geçersiz token formatı.' };
+			return { valid: false, error: 'Invalid token format.' };
 		}
 
 		const parts = token.split('.');
 		if (parts.length !== 3) {
-			return { valid: false, error: 'Geçersiz token formatı.' };
+			return { valid: false, error: 'Invalid token format.' };
 		}
 
 		const [encodedHeader, encodedPayload, encodedSignature] = parts;
 		if (!encodedHeader || !encodedPayload || !encodedSignature) {
-			return { valid: false, error: 'Geçersiz token bileşenleri.' };
+			return { valid: false, error: 'Invalid token components.' };
 		}
 
 		// Strictly enforce algorithm in header to prevent algorithm-confusion / alg:none attacks
 		const header = JSON.parse(base64UrlDecode(encodedHeader)) as Partial<JwtHeader>;
 		if (!header || header.alg !== 'HS256' || (header.typ && header.typ !== 'JWT')) {
-			return { valid: false, error: 'Desteklenmeyen imzalama algoritması.' };
+			return { valid: false, error: 'Unsupported signing algorithm.' };
 		}
 
 		const data = `${encodedHeader}.${encodedPayload}`;
@@ -109,22 +109,22 @@ export function verifyJwt<T extends JwtPayload = JwtPayload>(
 		const sigBuf = Buffer.from(encodedSignature, 'utf8');
 		const expBuf = Buffer.from(expectedSignature, 'utf8');
 		if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
-			return { valid: false, error: 'Geçersiz imza.' };
+			return { valid: false, error: 'Invalid signature.' };
 		}
 
 		const payload = JSON.parse(base64UrlDecode(encodedPayload)) as T;
 		const now = Math.floor(Date.now() / 1000);
 
 		if (typeof payload.exp !== 'number' || payload.exp < now) {
-			return { valid: false, error: 'Token süresi dolmuş.' };
+			return { valid: false, error: 'Token has expired.' };
 		}
 		if (typeof payload.nbf === 'number' && payload.nbf > now) {
-			return { valid: false, error: 'Token henüz aktif değil.' };
+			return { valid: false, error: 'Token is not active yet.' };
 		}
 
 		return { valid: true, payload };
 	} catch {
-		return { valid: false, error: 'Token çözümlenemedi.' };
+		return { valid: false, error: 'Token could not be decoded.' };
 	}
 }
 

@@ -34,9 +34,9 @@ const manifest = {
 	dock: 3,
 	permission: {
 		order: 8,
-		name: 'Finans',
-		use: 'Kasaları ve hareketleri salt okunur görür.',
-		manage: 'Gelir/gider girer, düzeltir, siler, kasalar arası ödenek aktarır.',
+		name: 'Budget & Finance',
+		use: 'View vaults and ledger transactions in read-only mode.',
+		manage: 'Create, edit, delete ledger transactions, and transfer funds between vaults.',
 	},
 	menu: {
 		title: { tr: 'Finans', en: 'Finance' },

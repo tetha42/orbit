@@ -6,7 +6,7 @@ import { requireApp } from '@/lib/auth/access';
 import {
 	notifyMembershipApproved,
 	notifyMembershipRejected,
-} from '@/lib/mail/notifications';
+} from '@/lib/mail/notifications/membershipStatusEmails';
 
 export async function POST(request: Request) {
 	// Deciding applications is managing members (the guard also enforces the role's 2FA rule).
@@ -23,19 +23,19 @@ export async function POST(request: Request) {
 		const isApproval = action === 'approve';
 		const isRejection = action === 'reject';
 		if (!userId || (!isApproval && !isRejection)) {
-			return NextResponse.json({ error: 'Geçersiz parametreler' }, { status: 400 });
+			return NextResponse.json({ error: 'Invalid parameters.' }, { status: 400 });
 		}
 
 		const targetUser = await getUserById(userId);
 		if (!targetUser) {
-			return NextResponse.json({ error: 'Kullanıcı bulunamadı' }, { status: 404 });
+			return NextResponse.json({ error: 'User not found.' }, { status: 404 });
 		}
 
 		// This endpoint decides membership applications, nothing else. Without the
 		// check it could be pointed at any account — including an admin's.
 		if (targetUser.status !== 'pending') {
 			return NextResponse.json(
-				{ error: 'Bu kayıt için onay işlemi yapılamaz: başvuru beklemede değil.' },
+				{ error: 'This account cannot be decided: application is not pending.' },
 				{ status: 409 }
 			);
 		}
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
 		// An approved member starts with the club's default role (none if unset:
 		// they then see only their own settings until someone assigns one).
 		if ((await setMemberStatus(userId, newStatus, auditContext(request, auth.user))) === 'none') {
-			return NextResponse.json({ error: 'Kullanıcı bulunamadı' }, { status: 404 });
+			return NextResponse.json({ error: 'User not found.' }, { status: 404 });
 		}
 		await recordApplicationDecision(
 			userId,
@@ -70,13 +70,13 @@ export async function POST(request: Request) {
 		return NextResponse.json({
 			success: true,
 			message: isApproval
-				? `${targetUser.name} ${targetUser.surname} adlı üyenin başvurusu onaylandı ve hesabı aktifleşti.`
-				: `${targetUser.name} ${targetUser.surname} adlı kişinin başvurusu reddedildi.`,
+				? `Application approved and account activated for ${targetUser.name} ${targetUser.surname}.`
+				: `Application rejected for ${targetUser.name} ${targetUser.surname}.`,
 			userId,
 			status: newStatus,
 		});
 	} catch (error) {
 		console.error('API error:', error);
-		return NextResponse.json({ error: 'İşlem tamamlanamadı.' }, { status: 500 });
+		return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 });
 	}
 }

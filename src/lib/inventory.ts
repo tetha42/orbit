@@ -18,8 +18,8 @@ export function normalizeCode(value: unknown): string {
 /** Why an inventory code is not acceptable, or null. Codes go on printed labels, so: short, upper case, no spaces. */
 export function codeProblem(code: string): string | null {
 	if (!/^[A-Z0-9]+(-[A-Z0-9]+)*$/.test(code))
-		return 'Kod yalnızca büyük harf, rakam ve tire içerebilir (örn. LAB-RPI-006).';
-	if (code.length < 3 || code.length > 24) return 'Kod 3-24 karakter olmalıdır.';
+		return 'Kod yaln\u0131zca b\u00fcy\u00fck harf, rakam ve tire i\u00e7erebilir (\u00f6rn. LAB-RPI-006).';
+	if (code.length < 3 || code.length > 24) return 'Kod 3-24 karakter olmal\u0131d\u0131r.';
 	return null;
 }
 
@@ -40,18 +40,18 @@ export function returnStatus(
 
 /**
  * Checks a requested return date. Members may borrow for up to
- * EN_UZUN_ODUNC_GUN days counted from when the loan started (so extending
- * cannot stretch a loan forever); management up to YONETIM_EN_UZUN_ODUNC_GUN.
+ * MAX_LOAN_DAYS days counted from when the loan started (so extending
+ * cannot stretch a loan forever); management up to MANAGEMENT_MAX_LOAN_DAYS.
  */
 export function returnDateProblem(
 	returnValue: number,
 	opts: { now: number; start?: number; management: boolean },
 ): string | null {
-	if (!Number.isFinite(returnValue)) return 'Geçerli bir iade tarihi seçin.';
-	if (returnValue < opts.now + 60 * 60 * 1000) return 'İade tarihi en az bir saat sonrası olmalıdır.';
+	if (!Number.isFinite(returnValue)) return 'Ge\u00e7erli bir iade tarihi se\u00e7in.';
+	if (returnValue < opts.now + 60 * 60 * 1000) return '\u0130ade tarihi en az bir saat sonras\u0131 olmal\u0131d\u0131r.';
 	const limitDays = opts.management ? MANAGEMENT_MAX_LOAN_DAYS : MAX_LOAN_DAYS;
 	const from = opts.start ?? opts.now;
-	if (returnValue > from + limitDays * DAY + DAY) return `Ödünç süresi en fazla ${limitDays} gün olabilir.`;
+	if (returnValue > from + limitDays * DAY + DAY) return `\u00d6d\u00fcn\u00e7 s\u00fcresi en fazla ${limitDays} g\u00fcn olabilir.`;
 	return null;
 }
 
@@ -62,12 +62,12 @@ export function endOfDay(ms: number): number {
 	return d.getTime();
 }
 
-/** Text for a loan's state, e.g. "3 gün gecikti", "Bugün iade", "5 gün kaldı". */
+/** Localized text for a loan state (overdue/today/tomorrow/days left). */
 export function returnText(returnDate: number | null | undefined, now: number): string {
 	const d = returnStatus(returnDate, now);
 	if (!d) return '';
-	if (d.overdue) return `${d.day} gün gecikti`;
-	if (d.day === 0) return 'Bugün iade';
-	if (d.day === 1) return 'Yarın iade';
-	return `${d.day} gün kaldı`;
+	if (d.overdue) return `${d.day} g\u00fcn gecikti`;
+	if (d.day === 0) return 'Bug\u00fcn iade';
+	if (d.day === 1) return 'Yar\u0131n iade';
+	return `${d.day} g\u00fcn kald\u0131`;
 }

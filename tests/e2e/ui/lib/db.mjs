@@ -45,6 +45,72 @@ export async function resetDatabase(url) {
 	}
 }
 
+/** Clones an already-migrated/seeded test database (`templateUrl`) into `targetUrl`. */
+export async function cloneDatabase(templateUrl, targetUrl) {
+	const src = assertTestDatabase(templateUrl);
+	const dst = assertTestDatabase(targetUrl);
+	const client = new Client({ connectionString: dst.admin });
+	await client.connect();
+	try {
+		await client.query(
+			`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()`,
+			[src.name]
+		);
+		await client.query(`DROP DATABASE IF EXISTS "${dst.name}" WITH (FORCE)`);
+		await client.query(`CREATE DATABASE "${dst.name}" TEMPLATE "${src.name}"`);
+	} finally {
+		await client.end();
+	}
+}
+
+/** Drops a temporary test database created during sharded E2E runs. */
+export async function dropDatabase(url) {
+	const { name, admin } = assertTestDatabase(url);
+	const client = new Client({ connectionString: admin });
+	await client.connect();
+	try {
+		await client.query(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`);
+	} finally {
+		await client.end();
+	}
+}
+
+/** Reads active fixture session tokens from `users` so workers skip initial TOTP waits. */
+export async function readActiveSessionTokens(url) {
+	assertTestDatabase(url);
+	const client = new Client({ connectionString: url });
+	await client.connect();
+	try {
+		const res = await client.query(`SELECT email, session_token FROM users WHERE session_token IS NOT NULL`);
+		const tokens = new Map();
+		for (const row of res.rows) {
+			if (row.email && row.session_token) tokens.set(String(row.email).toLowerCase(), String(row.session_token));
+		}
+		return tokens;
+	} finally {
+		await client.end();
+	}
+}
+
+/**
+ * Forgets every member's roamed workspace (open windows, dock order) in `url`.
+ *
+ * The workspace roams through `users.workspace_state`, so without this a suite would inherit
+ * the previous suite's maximised window — which covers the Dock and makes the next suite's
+ * first click on a dock icon time out. Suites are otherwise independent; give them a clean
+ * desktop each.
+ */
+export async function clearWorkspaceStates(url) {
+	assertTestDatabase(url);
+	const client = new Client({ connectionString: url });
+	await client.connect();
+	try {
+		await client.query("UPDATE users SET workspace_state = '{}'::jsonb");
+	} finally {
+		await client.end();
+	}
+}
+
 /** The same server, another database: `t_e2e` → `t_e2e_2fa`. */
 export function siblingDatabase(url, suffix) {
 	const u = new URL(url);

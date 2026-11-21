@@ -20,7 +20,7 @@ async function handlePOST(request: Request) {
 	const limit = consumeRateLimit(`passkey:reg:options:${auth.user.id}`, 10, 15 * 60_000);
 	if (!limit.allowed) {
 		return NextResponse.json(
-			{ error: 'Çok fazla Passkey kayıt denemesi. Lütfen daha sonra tekrar deneyin.' },
+			{ error: 'Too many passkey registration attempts. Please try again later.' },
 			{ status: 429, headers: { 'Retry-After': String(limit.retryAfter) } }
 		);
 	}
@@ -50,10 +50,8 @@ async function handlePOST(request: Request) {
 				transports: parseTransports(c.transports),
 			})),
 			authenticatorSelection: {
-				// A passkey is a second factor here, so the authenticator itself does
-				// not need to verify the user — the session already did.
 				residentKey: 'preferred',
-				userVerification: 'preferred',
+				userVerification: 'required',
 			},
 		});
 
@@ -68,7 +66,7 @@ async function handlePOST(request: Request) {
 		return NextResponse.json({ success: true, challengeId, options });
 	} catch (error) {
 		console.error('API /api/auth/passkey/register/options error:', error);
-		return NextResponse.json({ error: 'Passkey kaydı başlatılamadı.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to start passkey registration.' }, { status: 500 });
 	}
 }
 

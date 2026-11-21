@@ -1,44 +1,25 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
-import { AppID, FocusTarget, FocusTargetInput, WindowState } from '@/types/workspace';
-import { DEFAULT_DOCK_APPS, type ExtendedAppMetadata } from '@/configs/apps.config';
-import { I18nProvider, useI18n, type I18nContextValue } from '@/core/i18n';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { DEFAULT_DOCK_APPS } from '@/configs/apps.config';
+import { I18nProvider, useI18n } from '@/core/i18n';
+import { LanguageSync } from '@/core/i18n/LanguageSync';
 import { IdentityProvider } from '@/core/identity';
-import { SessionProvider, useSession, useSessionEvent, type SessionContextValue } from '@/core/session';
-import { DEFAULT_WALLPAPER, WALLPAPERS, ThemeSync, nextWallpaper, useTheme } from '@/core/theme';
-import { SoundProvider, useSound, type SoundContextValue } from '@/core/sound';
-import { WindowsProvider, useActiveApp, useWindowActions, useWindowCycleSetting, useWindowFocusTarget, useWindows, useWindowStore, type WindowActions } from '@/core/windows';
+import { SessionProvider, useSession } from '@/core/session';
+import { DEFAULT_WALLPAPER, ThemeSync, useTheme } from '@/core/theme';
+import { SoundProvider, useSound } from '@/core/sound';
+import { WindowsProvider, useActiveApp, useWindowActions, useWindowCycleSetting, useWindowFocusTarget, useWindows, useWindowStore } from '@/core/windows';
 import { NotificationClickBridge } from '@/components/shell/NotificationCenter/NotificationClickBridge';
-import { ShellActionsContext, ShellStateContext, useShell, type ShellActions, type ShellState } from '@/core/shell/shell';
+import { ShellActionsContext, ShellStateContext, ShellStoreContext, useShell, type ShellActions, type ShellState, type ShellStore } from '@/core/shell/shell';
 import { useContextMenus } from '@/core/contextMenu/useContextMenus';
 import { useDock } from '@/core/dock/useDock';
 import { useWorkspacePersistence } from '@/core/persistence/useWorkspacePersistence';
 import { useGlobalShortcuts } from '@/core/shortcuts/useGlobalShortcuts';
 import { clearWorkspaceSession } from '@/lib/client/indexedDB';
+import { useShellUiState } from './useShellUiState';
+import type { WorkspaceContextType } from './workspaceTypes';
 
 export type { RegisterPayload } from '@/core/session';
-
-/**
- * The old all-in-one value, for code that has not moved to the focused hooks
- * (`useSession`, `useI18n`, `useSound`, `useWindow`, `useShell`… in src/core).
- * It is the union of those modules' values and re-renders on any change of them.
- */
-type WorkspaceContextType = SessionContextValue &
-	I18nContextValue &
-	SoundContextValue &
-	WindowActions &
-	ShellState &
-	ShellActions & {
-		windows: Record<AppID, WindowState>;
-		activeApp: AppID | 'portal';
-		focusTarget: FocusTarget | null;
-		isWindowCycleEnabled: boolean;
-		setIsWindowCycleEnabled: (enabled: boolean) => void;
-		/** Opens an app, optionally at a record: `openApp('events', { section, kind, itemId })`. */
-		openApp: (id: AppID, target?: FocusTargetInput) => void;
-		getAppMeta: (appId: AppID) => ExtendedAppMetadata;
-	};
 
 /**
  * The workspace: the core modules (language, sound, session, windows) side by
@@ -54,6 +35,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 				<ThemeSync />
 				<SoundProvider>
 					<SessionProvider>
+						<LanguageSync />
 						<WindowsProvider>
 							<NotificationClickBridge />
 							<ShellProvider>{children}</ShellProvider>
@@ -71,94 +53,20 @@ function ShellProvider({ children }: { children: React.ReactNode }) {
 	const windowStore = useWindowStore();
 	const { resetTheme } = useTheme();
 	const menus = useContextMenus();
-	const { closeDockContextMenu, closeDesktopContextMenu } = menus;
+	const {
+		dockContextMenu, globalContextMenu, appCustomMenus, registerAppContextMenu,
+		closeContextMenu, openContextMenu, openDockContextMenu, closeDockContextMenu,
+		openDesktopContextMenu, closeDesktopContextMenu,
+	} = menus;
 
-	const [activeWallpaper, setActiveWallpaper] = useState<string>(() => {
-		if (typeof window !== 'undefined') {
-			try {
-				const saved = localStorage.getItem('club_active_wallpaper');
-				// Custom wallpapers live under the custom asset route and are not in the
-				// compile-time catalogue, so accept any well-formed image path here.
-				if (
-					saved &&
-					(WALLPAPERS.some((w) => w.src === saved) ||
-						saved.startsWith('/wallpapers/') ||
-						saved.startsWith('/api/custom-assets/wallpapers/'))
-				)
-					return saved;
-			} catch {}
-		}
-		return DEFAULT_WALLPAPER;
-	});
-	const [brightness, setBrightness] = useState<number>(100);
-
-	const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
-	const [isSpotlightOpen, setIsSpotlightOpen] = useState(false);
-	const [isWorkspaceAppletOpen, setWorkspaceAppletOpen] = useState(false);
-	const [isControlCenterOpen, setControlCenterOpen] = useState(false);
-	const [isNotificationCenterOpen, setNotificationCenterOpen] = useState<boolean>(false);
-	const [isCalendarOpen, setCalendarOpen] = useState(false);
-
-	// Only one menu-bar panel is open at a time: opening one closes the others (clicks and keys alike).
-	const setIsWorkspaceAppletOpen = useCallback((open: boolean) => {
-		setWorkspaceAppletOpen(open);
-		if (open) {
-			setControlCenterOpen(false);
-			setNotificationCenterOpen(false);
-			setCalendarOpen(false);
-		}
-	}, []);
-	const setIsControlCenterOpen = useCallback((open: boolean) => {
-		setControlCenterOpen(open);
-		if (open) {
-			setWorkspaceAppletOpen(false);
-			setNotificationCenterOpen(false);
-			setCalendarOpen(false);
-		}
-	}, []);
-	const setIsNotificationCenterOpen = useCallback((open: boolean) => {
-		setNotificationCenterOpen(open);
-		if (open) {
-			setWorkspaceAppletOpen(false);
-			setControlCenterOpen(false);
-			setCalendarOpen(false);
-		}
-	}, []);
-	const setIsCalendarOpen = useCallback((open: boolean) => {
-		setCalendarOpen(open);
-		if (open) {
-			setWorkspaceAppletOpen(false);
-			setControlCenterOpen(false);
-			setNotificationCenterOpen(false);
-		}
-	}, []);
-
-	// The panel lists people's names and deadlines; it must not stay readable over the lock screen or after signing out.
-	useSessionEvent(() => {
-		setNotificationCenterOpen(false);
-		setCalendarOpen(false);
-	});
-
-	const cycleWallpaper = useCallback(() => {
-		setActiveWallpaper((prev) => {
-			const nextWp = nextWallpaper(prev);
-			if (typeof window !== 'undefined') {
-				try {
-					localStorage.setItem('club_active_wallpaper', nextWp);
-				} catch {}
-			}
-			return nextWp;
-		});
-	}, []);
-
-	const setWallpaper = useCallback((url: string) => {
-		setActiveWallpaper(url);
-		if (typeof window !== 'undefined') {
-			try {
-				localStorage.setItem('club_active_wallpaper', url);
-			} catch {}
-		}
-	}, []);
+	const ui = useShellUiState();
+	const {
+		activeWallpaper, brightness, setBrightness, cycleWallpaper, setWallpaper,
+		setIsNotificationCenterOpen, setIsWorkspaceAppletOpen, setIsControlCenterOpen,
+		setIsCalendarOpen, setIsAboutModalOpen, setIsSpotlightOpen, isAboutModalOpen,
+		isSpotlightOpen, isWorkspaceAppletOpen, isControlCenterOpen,
+		isNotificationCenterOpen, isCalendarOpen,
+	} = ui;
 
 	useWorkspacePersistence(
 		{ activeWallpaper, brightness, volume, isMuted, isDockAutoHide, dockApps },
@@ -175,7 +83,7 @@ function ShellProvider({ children }: { children: React.ReactNode }) {
 		setIsMuted(false);
 		setIsDockAutoHide(false);
 		setDockApps(DEFAULT_DOCK_APPS);
-	}, [windowStore, resetTheme, setWallpaper, setVolume, setIsMuted, setIsDockAutoHide, setDockApps]);
+	}, [windowStore, resetTheme, setWallpaper, setBrightness, setVolume, setIsMuted, setIsDockAutoHide, setDockApps]);
 
 	const closeContextMenus = useCallback(() => {
 		closeDockContextMenu();
@@ -197,57 +105,66 @@ function ShellProvider({ children }: { children: React.ReactNode }) {
 		toggleDockAutoHide,
 	});
 
-	const { dockContextMenu, globalContextMenu, appCustomMenus, registerAppContextMenu, closeContextMenu, openContextMenu, openDockContextMenu, openDesktopContextMenu } = menus;
-
 	// Every action is stable, so this object — and everything that only acts — never re-renders.
 	const actions = useMemo<ShellActions>(
 		() => ({
-			setIsNotificationCenterOpen,
-			openDockContextMenu,
-			closeDockContextMenu,
-			openDesktopContextMenu,
-			closeDesktopContextMenu,
-			openContextMenu,
-			closeContextMenu,
-			registerAppContextMenu,
-			cycleWallpaper,
-			setWallpaper,
-			setBrightness,
-			setIsDockAutoHide,
-			toggleDockAutoHide,
-			resetWorkspaceSession,
-			setIsAboutModalOpen,
-			setIsSpotlightOpen,
-			setIsWorkspaceAppletOpen,
-			setIsControlCenterOpen,
-			setIsCalendarOpen,
+			setIsNotificationCenterOpen, openDockContextMenu, closeDockContextMenu,
+			openDesktopContextMenu, closeDesktopContextMenu, openContextMenu,
+			closeContextMenu, registerAppContextMenu, cycleWallpaper, setWallpaper,
+			setBrightness, setIsDockAutoHide, toggleDockAutoHide, resetWorkspaceSession,
+			setIsAboutModalOpen, setIsSpotlightOpen, setIsWorkspaceAppletOpen,
+			setIsControlCenterOpen, setIsCalendarOpen,
 		}),
-		[setIsNotificationCenterOpen, setIsWorkspaceAppletOpen, setIsControlCenterOpen, setIsCalendarOpen, openDockContextMenu, closeDockContextMenu, openDesktopContextMenu, closeDesktopContextMenu, openContextMenu, closeContextMenu, registerAppContextMenu, cycleWallpaper, setWallpaper, setIsDockAutoHide, toggleDockAutoHide, resetWorkspaceSession]
+		[
+			setIsNotificationCenterOpen, setIsWorkspaceAppletOpen, setIsControlCenterOpen,
+			setIsCalendarOpen, setIsAboutModalOpen, setIsSpotlightOpen, setBrightness,
+			openDockContextMenu, closeDockContextMenu, openDesktopContextMenu,
+			closeDesktopContextMenu, openContextMenu, closeContextMenu,
+			registerAppContextMenu, cycleWallpaper, setWallpaper, setIsDockAutoHide,
+			toggleDockAutoHide, resetWorkspaceSession,
+		]
 	);
 
 	const state = useMemo<ShellState>(
 		() => ({
-			dockApps,
-			activeWallpaper,
-			brightness,
-			isDockAutoHide,
-			dockContextMenu,
-			desktopContextMenu: globalContextMenu,
-			contextMenu: globalContextMenu,
-			appCustomMenus,
-			isAboutModalOpen,
-			isSpotlightOpen,
-			isWorkspaceAppletOpen,
-			isControlCenterOpen,
-			isNotificationCenterOpen,
-			isCalendarOpen,
+			dockApps, activeWallpaper, brightness, isDockAutoHide, dockContextMenu,
+			desktopContextMenu: globalContextMenu, contextMenu: globalContextMenu,
+			appCustomMenus, isAboutModalOpen, isSpotlightOpen, isWorkspaceAppletOpen,
+			isControlCenterOpen, isNotificationCenterOpen, isCalendarOpen,
 		}),
-		[dockApps, activeWallpaper, brightness, isDockAutoHide, dockContextMenu, globalContextMenu, appCustomMenus, isAboutModalOpen, isSpotlightOpen, isWorkspaceAppletOpen, isControlCenterOpen, isNotificationCenterOpen, isCalendarOpen]
+		[
+			dockApps, activeWallpaper, brightness, isDockAutoHide, dockContextMenu,
+			globalContextMenu, appCustomMenus, isAboutModalOpen, isSpotlightOpen,
+			isWorkspaceAppletOpen, isControlCenterOpen, isNotificationCenterOpen,
+			isCalendarOpen,
+		]
+	);
+
+	const stateRef = useRef<ShellState>(state);
+	const listenersRef = useRef(new Set<() => void>());
+	useEffect(() => {
+		stateRef.current = state;
+		listenersRef.current.forEach((fn) => fn());
+	}, [state]);
+
+	const shellStore = useMemo<ShellStore>(
+		() => ({
+			getState: () => stateRef.current,
+			subscribe: (listener) => {
+				listenersRef.current.add(listener);
+				return () => {
+					listenersRef.current.delete(listener);
+				};
+			},
+		}),
+		[]
 	);
 
 	return (
 		<ShellActionsContext.Provider value={actions}>
-			<ShellStateContext.Provider value={state}>{children}</ShellStateContext.Provider>
+			<ShellStoreContext.Provider value={shellStore}>
+				<ShellStateContext.Provider value={state}>{children}</ShellStateContext.Provider>
+			</ShellStoreContext.Provider>
 		</ShellActionsContext.Provider>
 	);
 }

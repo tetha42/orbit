@@ -26,7 +26,6 @@ export interface MemberRecord {
 	xp: number;
 	status: 'active' | 'pending' | 'rejected' | 'alumni';
 	createdAt: number;
-	creation: number;
 	teamName?: string;
 	teams?: MemberTeamInfo[];
 	attendanceCount?: number;

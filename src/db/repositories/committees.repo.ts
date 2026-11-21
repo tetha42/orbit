@@ -46,8 +46,8 @@ export async function listCommittees(): Promise<Team[]> {
 	const res = await getPgPool().query(
 		`SELECT t.id, t.name AS "name", t.slug, t.description AS "description", t.category AS "category", t.lead_id AS "leadId",
 		        t.capacity AS "capacity", t.repo_url AS "repoUrl", t.status, t.join_policy AS "participationType",
-		        t.type, t.quorum, t.created_at AS "creation",
-		        k.first_name || ' ' || k.last_name AS "leaderNameSurname",
+		        t.type, t.quorum, t.created_at AS "createdAt",
+		        k.first_name || ' ' || k.last_name AS "leaderName",
 		        (SELECT COUNT(*) FROM team_members tu WHERE tu.team_id = t.id AND tu.status = 'active')::int AS "activeMemberCount"
 		 FROM teams t LEFT JOIN users k ON k.id = t.lead_id
 		 WHERE t.type = 'committee'
@@ -62,9 +62,9 @@ export async function getCommitteeDetail(id: string): Promise<CommitteeDetail | 
 	const [members, meetings, decisions] = await Promise.all([
 		getPgPool().query(
 			`SELECT tu.id, tu.team_id AS "teamId", tu.user_id AS "userId", tu.role_title AS "teamRole",
-			        tu.status, tu.application_note AS "applicationNote", tu.joined_at AS "participationDate",
-			        k.first_name || ' ' || k.last_name AS "userNameSurname",
-			        k.department AS "userDepartment", k.avatar_url AS "userProfilePhoto",
+			        tu.status, tu.application_note AS "applicationNote", tu.joined_at AS "joinedAt",
+			        k.first_name || ' ' || k.last_name AS "userName",
+			        k.department AS "userDepartment", k.avatar_url AS "avatarUrl",
 			        tu.voting_right AS "votingRight", tu.term_start AS "termStart", tu.term_end AS "termEnd"
 			 FROM team_members tu JOIN users k ON tu.user_id = k.id
 			 WHERE tu.team_id = $1 AND tu.status = 'active'
@@ -77,9 +77,9 @@ export async function getCommitteeDetail(id: string): Promise<CommitteeDetail | 
 			[id]
 		),
 		getPgPool().query(
-			`SELECT d.id, d.reference_no AS "decisionNo", d.record_type AS "documentType", d.title AS "title", d.date,
-			        d.agenda AS "agenda", d.content AS "content", d.is_public AS "isPublicOpen", d.is_locked AS "isLocked",
-			        d.created_by AS "creatorId", d.created_at AS "creation",
+			`SELECT d.id, d.reference_no AS "referenceNumber", d.record_type AS "documentType", d.title AS "title", d.date,
+			        d.agenda AS "agenda", d.content AS "content", d.is_public AS "isPublic", d.is_locked AS "isLocked",
+			        d.created_by AS "creatorId", d.created_at AS "createdAt",
 			        d.body_id, d.body_id AS "bodyId",
 			        d.decision_type, d.decision_type AS "decisionType",
 			        d.quorum_met, d.quorum_met AS "quorumMet",
@@ -87,7 +87,7 @@ export async function getCommitteeDetail(id: string): Promise<CommitteeDetail | 
 			        d.votes_against, d.votes_against AS "votesAgainst",
 			        d.votes_abstain, d.votes_abstain AS "votesAbstain",
 			        d.published_at, d.published_at AS "publishedAt",
-			        b.name AS "bodyName", k.first_name || ' ' || k.last_name AS "creatorNameSurname"
+			        b.name AS "bodyName", k.first_name || ' ' || k.last_name AS "creatorName"
 			 FROM decisions d
 			 LEFT JOIN teams b ON b.id = d.body_id
 			 LEFT JOIN users k ON k.id = d.created_by
@@ -101,7 +101,7 @@ export async function getCommitteeDetail(id: string): Promise<CommitteeDetail | 
 		meetings: meetings.rows.map(mapMeeting),
 		decisions: decisions.rows.map((row) => ({
 			...row,
-			isPublicOpen: Number(row.isPublicOpen),
+			isPublic: Number(row.isPublic),
 			isLocked: Number(row.isLocked),
 		})) as Decision[],
 	};
@@ -134,7 +134,7 @@ export async function addCommitteeMember(input: {
 	const committee = await getCommitteeDetail(input.committeeId);
 	if (!committee) return false;
 	const now = Date.now();
-	const id = `tu_${randomUUID().replace(/-/g, '').slice(0, 14)}`;
+	const id = `tm_${randomUUID().replace(/-/g, '').slice(0, 14)}`;
 	const res = await getPgPool().query(
 		`INSERT INTO team_members (id, team_id, user_id, role_title, status, joined_at, voting_right, term_start, term_end)
 		 VALUES ($1, $2, $3, $4, 'active', $5, $6, $7, $8)

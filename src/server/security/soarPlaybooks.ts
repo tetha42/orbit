@@ -105,7 +105,11 @@ export async function executeSoarPlaybook(
 					await sendMail({
 						to: userRes.rows[0].email,
 						subject: '[Security Alert] Account Quarantined - Unusual Activity Detected',
-						html: `<p>Hello ${userRes.rows[0].name},</p><p>Your account was quarantined by the Security Operations Center due to suspected credential compromise. All active sessions and shell access have been terminated. Please contact your community administrator immediately.</p>`,
+						html:
+							`<p>Hello ${userRes.rows[0].name},</p>` +
+							'<p>Your account was quarantined by the Security Operations Center due to suspected ' +
+							'credential compromise. All active sessions and shell access have been terminated. ' +
+							'Please contact your community administrator immediately.</p>',
 						text: `Security Alert: Your account #${target.userId} was quarantined by SOC. Contact administrator.`,
 					});
 					actionsTaken.push(`Dispatched security notification email to ${userRes.rows[0].email}`);

@@ -12,7 +12,7 @@ import {
 	Shield,
 	Zap,
 } from 'lucide-react';
-import { useI18n } from '@/core/i18n';
+import { useI18n, getLocaleDefinition } from '@/core/i18n';
 import { fill } from '@/lib/text';
 import s from './Testbench.module.css';
 import type { SystemDiagnostics } from '../types';
@@ -38,10 +38,7 @@ export function HealthDiagnosticsTab({ health, isLoading, onRefresh }: HealthDia
 		const h = Math.floor(seconds / 3600);
 		const m = Math.floor((seconds % 3600) / 60);
 		const s = seconds % 60;
-		if (language === 'en') {
-			return `${h}h ${m}m ${s}s`;
-		}
-		return `${h}s ${m}d ${s}sn`;
+		return fill(t('tbUptimeFormat'), { h, m, s });
 	};
 
 	return (
@@ -71,7 +68,7 @@ export function HealthDiagnosticsTab({ health, isLoading, onRefresh }: HealthDia
 				<div className={s.card}>
 					<div className={s.cardHeader}>
 						<span className={s.cardTitle}>
-							<Database size={16} color="#0a84ff" /> {t('tbHealthDb')}
+							<Database size={16} color="var(--accent)" /> {t('tbHealthDb')}
 						</span>
 						<span className={`${s.badge} ${health.database.connected ? s.badgeOk : s.badgeFail}`}>
 							{health.database.connected ? t('tbHealthDbConnected') : t('tbHealthDbDisconnected')}
@@ -86,11 +83,11 @@ export function HealthDiagnosticsTab({ health, isLoading, onRefresh }: HealthDia
 					</div>
 					<div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: 4 }}>
 						<span className={s.miniBadge}>
-							<Users size={12} color="#0a84ff" />
+							<Users size={12} color="var(--accent)" />
 							<span>{fill(t('tbHealthMembers'), { count: health.database.counts.users })}</span>
 						</span>
 						<span className={s.miniBadge}>
-							<Shield size={12} color="#34c759" />
+							<Shield size={12} color="var(--success)" />
 							<span>{fill(t('tbHealthRoles'), { count: health.database.counts.roles })}</span>
 						</span>
 						<span className={s.miniBadge}>
@@ -104,7 +101,7 @@ export function HealthDiagnosticsTab({ health, isLoading, onRefresh }: HealthDia
 				<div className={s.card}>
 					<div className={s.cardHeader}>
 						<span className={s.cardTitle}>
-							<ShieldCheck size={16} color="#34c759" /> {t('tbHealthOAuthJwks')}
+							<ShieldCheck size={16} color="var(--success)" /> {t('tbHealthOAuthJwks')}
 						</span>
 						<span className={`${s.badge} ${s.badgeOk}`}>{t('tbHealthActive')}</span>
 					</div>
@@ -115,7 +112,17 @@ export function HealthDiagnosticsTab({ health, isLoading, onRefresh }: HealthDia
 						{t('tbHealthOidcSignature')}
 					</div>
 					<div style={{ fontSize: '11px', marginTop: 4 }}>
-						<code style={{ opacity: 0.85, padding: '2px 6px', background: 'var(--fill-soft, rgba(0,0,0,0.06))', border: '1px solid var(--border-subtle, rgba(0,0,0,0.08))', borderRadius: 4 }}>/api/oauth/jwks</code>
+						<code
+							style={{
+								opacity: 0.85,
+								padding: '2px 6px',
+								background: 'var(--fill-soft, rgba(0,0,0,0.06))',
+								border: '1px solid var(--border-subtle, rgba(0,0,0,0.08))',
+								borderRadius: 4,
+							}}
+						>
+							/api/oauth/jwks
+						</code>
 					</div>
 				</div>
 
@@ -166,7 +173,7 @@ export function HealthDiagnosticsTab({ health, isLoading, onRefresh }: HealthDia
 			<div className={s.card} style={{ marginTop: 4 }}>
 				<div className={s.cardHeader}>
 					<span className={s.cardTitle}>
-						<Cpu size={16} color="#30d158" /> {t('tbHealthRuntime')}
+						<Cpu size={16} color="var(--success)" /> {t('tbHealthRuntime')}
 					</span>
 				</div>
 				<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginTop: 6 }}>
@@ -190,7 +197,7 @@ export function HealthDiagnosticsTab({ health, isLoading, onRefresh }: HealthDia
 						<span style={{ fontSize: '11.5px', opacity: 0.65, display: 'block' }}>{t('tbHealthServerTime')}</span>
 						<strong style={{ fontSize: '13.5px' }}>
 							{new Date(health.runtime.serverTime).toLocaleTimeString(
-								language === 'en' ? 'en-US' : 'tr-TR'
+								getLocaleDefinition(language).dateLocale
 							)}
 						</strong>
 					</div>

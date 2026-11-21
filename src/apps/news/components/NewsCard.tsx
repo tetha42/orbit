@@ -1,25 +1,12 @@
 'use client';
 
 import React from 'react';
-import {
-	Clock,
-	Pencil,
-	Trash2,
-	Megaphone,
-	Rocket,
-	GraduationCap,
-	Handshake,
-	ShieldAlert,
-	Eye,
-	Copy,
-	ExternalLink,
-} from 'lucide-react';
+import { Clock, Pencil, Trash2 } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
 import { useContextMenu } from '@/core/shell/useContextMenu';
-import { copyToClipboard } from '@/lib/clipboard';
 import { VisibilityBadge } from './VisibilityBadge';
+import { buildNewsCardMenu, getNewsCategoryMeta } from './NewsCardHelpers';
 import type { NewsEntry } from '../types';
-import type { MenuItem } from '@/types/workspace';
 
 interface NewsCardProps {
 	article: NewsEntry;
@@ -39,64 +26,9 @@ export function NewsCard({
 	onDelete,
 }: NewsCardProps) {
 	const { t, language } = useI18n();
-
-	const menuItems: MenuItem[] = [
-		{
-			id: 'read-news',
-			label: t('ctxNewsRead'),
-			icon: <Eye size={13} />,
-			action: () => onSelect(),
-		},
-		{
-			id: 'copy-title',
-			label: t('ctxNewsCopyTitle'),
-			icon: <Copy size={13} />,
-			action: () => copyToClipboard(article.title),
-		},
-		{
-			id: 'copy-link',
-			label: t('ctxNewsCopyLink'),
-			icon: <ExternalLink size={13} />,
-			action: () => {
-				const origin = typeof window !== 'undefined' ? window.location.origin : '';
-				copyToClipboard(`${origin}/haberler/${article.slug || article.id}`);
-			},
-		},
-	];
-
-	if (isAdmin) {
-		menuItems.push(
-			{ id: 'sep-news-admin', label: '', separator: true },
-			{
-				id: 'edit-news',
-				label: t('newsEdit'),
-				icon: <Pencil size={13} />,
-				action: () => onEdit({ stopPropagation: () => {} } as React.MouseEvent),
-			},
-			{
-				id: 'delete-news',
-				label: t('newsDelete'),
-				icon: <Trash2 size={13} />,
-				danger: true,
-				action: () => onDelete({ stopPropagation: () => {} } as React.MouseEvent),
-			}
-		);
-	}
-
+	const menuItems = buildNewsCardMenu(article, isAdmin, t, onSelect, onEdit, onDelete);
 	const contextMenuProps = useContextMenu({ items: menuItems });
-
-	const categoryMap: Record<
-		string,
-		{ label: string; color: string; icon: React.ComponentType<{ size?: number; color?: string }> }
-	> = {
-		general: { label: t('newsCatGenel'), color: '#0a84ff', icon: Megaphone },
-		teknofest: { label: t('newsCatTeknofest'), color: '#ff9500', icon: Rocket },
-		workshop: { label: t('newsCatAtolye'), color: '#30d158', icon: GraduationCap },
-		collaboration: { label: t('newsCatIsbirligi'), color: '#af52de', icon: Handshake },
-		official: { label: t('newsCatResmi'), color: '#ff2d55', icon: ShieldAlert },
-	};
-
-	const cat = categoryMap[article.category] || categoryMap.general;
+	const cat = getNewsCategoryMeta(article.category, t);
 	const CategoryIcon = cat.icon;
 
 	return (
@@ -105,10 +37,7 @@ export function NewsCard({
 			{...contextMenuProps}
 			style={{
 				background: 'rgba(255, 255, 255, 0.04)',
-				border:
-					article.isImportant === 1
-						? '1px solid rgba(255, 45, 85, 0.35)'
-						: '1px solid rgba(255, 255, 255, 0.08)',
+				border: article.isImportant === 1 ? '1px solid color-mix(in srgb, var(--danger) 35%, transparent)' : '1px solid rgba(255, 255, 255, 0.08)',
 				borderRadius: '14px',
 				padding: '20px',
 				cursor: 'pointer',
@@ -137,14 +66,7 @@ export function NewsCard({
 			)}
 
 			<div>
-				<div
-					style={{
-						display: 'flex',
-						justifyContent: 'space-between',
-						alignItems: 'center',
-						marginBottom: '10px',
-					}}
-				>
+				<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
 					<span
 						style={{
 							display: 'inline-flex',
@@ -154,7 +76,7 @@ export function NewsCard({
 							fontWeight: 700,
 							padding: '3px 8px',
 							borderRadius: '6px',
-							background: `${cat.color}20`,
+							background: `color-mix(in srgb, ${cat.color} 13%, transparent)`,
 							color: cat.color,
 						}}
 					>
@@ -166,44 +88,26 @@ export function NewsCard({
 						{isAdmin && <VisibilityBadge visibility={article.publishStatus} />}
 						{article.isImportant === 1 && (
 							<span
-								style={{
-									fontSize: '9.5px',
-									fontWeight: 800,
-									padding: '2px 6px',
-									borderRadius: '4px',
-									background: 'rgba(255, 45, 85, 0.25)',
-									color: '#ff2d55',
-								}}
-							>
+						style={{
+							fontSize: '9.5px',
+							fontWeight: 800,
+							padding: '2px 6px',
+							borderRadius: '4px',
+							background: 'color-mix(in srgb, var(--danger) 25%, transparent)',
+							color: 'var(--danger)',
+						}}
+					>
 								{t('newsImportant')}
 							</span>
 						)}
-						<span
-							style={{
-								fontSize: '11px',
-								opacity: 0.6,
-								display: 'flex',
-								alignItems: 'center',
-								gap: '4px',
-							}}
-						>
+						<span style={{ fontSize: '11px', opacity: 0.6, display: 'flex', alignItems: 'center', gap: '4px' }}>
 							<Clock size={11} />
-							{new Date(article.creation).toLocaleDateString(
-								language,
-								{ day: 'numeric', month: 'short' }
-							)}
+							{new Date(article.createdAt).toLocaleDateString(language, { day: 'numeric', month: 'short' })}
 						</span>
 					</div>
 				</div>
 
-				<h4
-					style={{
-						fontSize: '15px',
-						fontWeight: 700,
-						margin: '0 0 8px 0',
-						lineHeight: 1.35,
-					}}
-				>
+				<h4 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 8px 0', lineHeight: 1.35 }}>
 					{article.title}
 				</h4>
 
@@ -234,7 +138,7 @@ export function NewsCard({
 				}}
 			>
 				<span style={{ fontSize: '11.5px', opacity: 0.6 }}>
-					{article.authorNameSurname || t('newsAuthorDefault')}
+					{article.authorName || t('newsAuthorDefault')}
 				</span>
 
 				<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -266,7 +170,7 @@ export function NewsCard({
 							style={{
 								background: 'transparent',
 								border: 'none',
-								color: '#ff453a',
+								color: 'var(--danger)',
 								cursor: 'pointer',
 								padding: '4px',
 								borderRadius: '4px',

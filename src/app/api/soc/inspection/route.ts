@@ -2,6 +2,7 @@ import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
 import { requireApp } from '@/lib/auth/access';
 import { canManage } from '@/core/permissions';
+import { checkSecurityGuardHealth } from '@/server/security/securityGuardClient';
 import {
 	runFimScan,
 	runApiSecurityScan,
@@ -29,26 +30,28 @@ export async function GET(request: Request) {
 	const baseUrl = `${url.protocol}//${url.host}`;
 
 	try {
-		const [fim, appSec] = await Promise.all([
+		const [fim, appSec, securityGuard] = await Promise.all([
 			runFimScan(target, { force }),
 			runApiSecurityScan(baseUrl, { force }),
+			checkSecurityGuardHealth(),
 		]);
 
 		const targets = [
-			{ id: 'repo', label: 'Repo Kodları (src/, scripts/, configs/)' },
-			{ id: 'uploads', label: 'Yüklemeler (data/uploads/)' },
-			{ id: 'tmp', label: 'Geçici Dizin (/tmp/)' },
+			{ id: 'repo', label: 'Repo Code (src/, scripts/, configs/)' },
+			{ id: 'uploads', label: 'Uploads (data/uploads/)' },
+			{ id: 'tmp', label: 'Temporary Directory (/tmp/)' },
 		];
 
 		return NextResponse.json({
 			fim,
 			appSec,
+			securityGuard,
 			targets,
 			activeTarget: target,
 		});
 	} catch (error: unknown) {
-		const message = error instanceof Error ? error.message : 'Teftiş telemetrisi alınamadı.';
-		const status = message.includes('Erişim reddedildi') ? 400 : 500;
+		const message = error instanceof Error ? error.message : 'Inspection telemetry could not be retrieved.';
+		const status = message.includes('Access denied') ? 400 : 500;
 		return NextResponse.json({ error: message }, { status });
 	}
 }
@@ -79,7 +82,7 @@ async function handlePOST(request: Request) {
 			const isManager = canManage(auth.user.permission?.permissions, 'soc') || auth.user.roleId === 'role_admin';
 			if (!isManager) {
 				return NextResponse.json(
-					{ error: 'Bütünlük başlangıç profili (baseline) oluşturmak için yönetici yetkisi gereklidir.' },
+					{ error: 'Manager permissions are required to create an integrity baseline.' },
 					{ status: 403 }
 				);
 			}
@@ -92,7 +95,7 @@ async function handlePOST(request: Request) {
 		if (action === 'probe_route') {
 			const endpoint = String(body.endpoint || '').trim();
 			if (!endpoint) {
-				return NextResponse.json({ error: 'Endpoint parametresi zorunludur.' }, { status: 400 });
+				return NextResponse.json({ error: 'Endpoint parameter is required.' }, { status: 400 });
 			}
 			const report = await probeSingleRoute(baseUrl, endpoint);
 			return NextResponse.json({ success: true, route: report });
@@ -107,16 +110,16 @@ async function handlePOST(request: Request) {
 		if (action === 'fim_diff') {
 			const path = String(body.path || '').trim();
 			if (!path) {
-				return NextResponse.json({ error: 'Dosya yolu zorunludur.' }, { status: 400 });
+				return NextResponse.json({ error: 'File path is required.' }, { status: 400 });
 			}
 			const diff = await getFimFileDiff(path);
 			return NextResponse.json({ diff });
 		}
 
-		return NextResponse.json({ error: `Bilinmeyen işlem eylemi: ${action}` }, { status: 400 });
+		return NextResponse.json({ error: `Unknown inspection action: ${action}` }, { status: 400 });
 	} catch (error: unknown) {
-		const message = error instanceof Error ? error.message : 'Teftiş işlemi başarısız oldu.';
-		const status = message.includes('Erişim reddedildi') ? 400 : 500;
+		const message = error instanceof Error ? error.message : 'Inspection action failed.';
+		const status = message.includes('Access denied') ? 400 : 500;
 		return NextResponse.json({ error: message }, { status });
 	}
 }

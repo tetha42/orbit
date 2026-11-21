@@ -9,6 +9,7 @@ import ui from '@/core/ui/ui.module.css';
 import styles from './Projects.module.css';
 import { sendJson } from '@/core/data/http';
 import { Sheet } from '@/core/ui/Sheet';
+import contract from '../projects.contract.json';
 
 interface Props {
 	/** Editing an existing project, or adding a new one. */
@@ -67,7 +68,7 @@ export function ProjectFormModal({ project, teams, manage, onClose, onSaved }: P
 	return (
 		<Sheet
 			title={project ? t('pjFormTitleEdit') : t('pjFormTitleNew')}
-			icon={<FolderPlus size={20} color="#0a84ff" />}
+			icon={<FolderPlus size={20} color="var(--accent)" />}
 			onClose={onClose}
 			onSubmit={submit}
 			maxWidth={620}
@@ -89,7 +90,7 @@ export function ProjectFormModal({ project, teams, manage, onClose, onSaved }: P
 					className={ui.input}
 					value={title}
 					autoFocus
-					maxLength={PROJECT_TITLE_MAX}
+					maxLength={Math.min(PROJECT_TITLE_MAX, contract.limits.maxTitleLength)}
 					onChange={(e) => setTitle(e.target.value)}
 					required
 					minLength={3}

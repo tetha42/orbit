@@ -5,7 +5,7 @@ import Image from 'next/image';
 import QRCode from 'qrcode';
 import { Ticket, X } from 'lucide-react';
 import { useSession } from '@/core/session';
-import { useI18n } from '@/core/i18n';
+import { resolveLocalizedText, useI18n } from '@/core/i18n';
 import { ModalOverlay, useDraggableSheet } from '@/core/ui/Sheet';
 import styles from './Events.module.css';
 import { formatRange, typeMeta, type EventView } from './eventsShared';
@@ -25,7 +25,7 @@ export function TicketModal({ event, onClose }: { event: EventView; onClose: () 
 			live = false;
 		};
 	}, [event.ticketCode]);
-	const locale = language === 'en' ? 'en-GB' : 'tr-TR';
+	const locale = resolveLocalizedText({ en: 'en-GB', tr: 'tr-TR' }, language, 'tr-TR');
 
 	return (
 		<ModalOverlay onClose={onClose}>

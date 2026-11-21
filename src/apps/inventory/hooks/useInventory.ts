@@ -7,10 +7,13 @@ import { useNow } from '@/lib/client/useSheet';
 import { returnStatus } from '@/lib/inventory';
 import { foldTr } from '@/lib/text';
 import { useToast } from '@/core/ui/Toast';
+import { useI18n } from '@/core/i18n';
+import inventoryContract from '../inventory.contract.json';
 import type { Filter, InventoryItem } from '../types';
 import type { LoanMode } from '../components/LoanModal';
 
 export function useInventory() {
+	const { t } = useI18n();
 	const { currentUserId, currentUser, canManageApp } = useSession();
 	const { playSystemSound } = useSound();
 	const isManager = canManageApp('inventory');
@@ -39,7 +42,12 @@ export function useInventory() {
 	});
 
 	const notify = useToast();
-	const flash = (text: string, error = false) => notify(text, error ? 'error' : 'success');
+	const mapContractError = (message: string) => {
+		const matched = inventoryContract.errorCodes.find((entry) => message.includes(entry.code));
+		return matched ? t(matched.i18nKey, matched.description) : message;
+	};
+	const flash = (text: string, error = false) =>
+		notify(error ? mapContractError(text) : text, error ? 'error' : 'success');
 
 	const done = async (message: string, error = false) => {
 		setLoan(null);
@@ -50,7 +58,7 @@ export function useInventory() {
 	};
 
 	const overdue = (i: InventoryItem) =>
-		i.status === 'on_loan' && !!returnStatus(i.returnDate, now)?.overdue;
+		i.status === 'on_loan' && !!returnStatus(i.dueDate, now)?.overdue;
 
 	const counts = {
 		all: items.length,
@@ -59,7 +67,7 @@ export function useInventory() {
 		overdue: items.filter(overdue).length,
 		faulty: items.filter((i) => i.status === 'faulty').length,
 		lost: items.filter((i) => i.status === 'lost').length,
-		mine: items.filter((i) => i.status === 'on_loan' && i.loanFieldId === currentUserId).length,
+		mine: items.filter((i) => i.status === 'on_loan' && i.holderUserId === currentUserId).length,
 	};
 
 	const categories = useMemo(
@@ -71,7 +79,7 @@ export function useInventory() {
 	const visible = items
 		.filter((i) => {
 			if (filter === 'overdue' && !overdue(i)) return false;
-			if (filter === 'mine' && !(i.status === 'on_loan' && i.loanFieldId === currentUserId))
+			if (filter === 'mine' && !(i.status === 'on_loan' && i.holderUserId === currentUserId))
 				return false;
 			if (filter !== 'all' && filter !== 'overdue' && filter !== 'mine' && i.status !== filter)
 				return false;
@@ -79,14 +87,14 @@ export function useInventory() {
 			return (
 				!q ||
 				foldTr(
-					`${i.code} ${i.name} ${i.category} ${i.location} ${i.seriesNo ?? ''} ${i.loanFieldNameSurname ?? ''}`
+					`${i.code} ${i.name} ${i.category} ${i.location} ${i.serialNo ?? ''} ${i.holderName ?? ''}`
 				).includes(q)
 			);
 		})
 		.sort(
 			(a, b) =>
 				Number(overdue(b)) - Number(overdue(a)) ||
-				(a.returnDate ?? Infinity) - (b.returnDate ?? Infinity) ||
+				(a.dueDate ?? Infinity) - (b.dueDate ?? Infinity) ||
 				a.code.localeCompare(b.code)
 		);
 

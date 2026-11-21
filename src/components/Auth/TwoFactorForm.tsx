@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
+import { DesktopMobileApprovalView } from '@/domains/devices/DesktopMobileApprovalView';
 import { InlineLink, SubmitButton, TextInput } from './AuthControls';
 import type { AuthFlow } from './useAuthFlow';
 import { useI18n } from '@/core/i18n';
@@ -51,6 +52,13 @@ export function TwoFactorForm({ flow }: { flow: AuthFlow }) {
 				label={t('auth2faVerifyBtn', 'Verify & Sign In')}
 				loadingLabel={t('authVerifying', 'Verifying...')}
 			/>
+
+			{flow.challengeToken && (
+				<DesktopMobileApprovalView
+					challengeToken={flow.challengeToken}
+					onError={(msg) => flow.setErrorMessage(msg)}
+				/>
+			)}
 
 			<InlineLink onClick={flow.cancelTwoFactor}>
 				{t('auth2faCancelLink', 'Cancel and start over')}

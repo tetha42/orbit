@@ -14,13 +14,13 @@ import { VaultEntryModal } from './VaultEntryModal';
 import { TransferModal } from './TransferModal';
 
 export interface VaultPanelProps {
-	/** The project whose kasa to show; `null` is the club's general kasa. */
+	/** The project whose vault to show; `null` is the community's general vault. */
 	teamId: string | null;
 	/** Called after an entry is added or removed, so a surrounding list can refresh its balances. */
 	onChanged?: () => void;
 	/** Drops the outer padding when the panel sits inside another screen. */
 	embedded?: boolean;
-	/** Every kasa the viewer may open; when given (management), allocations between them are offered. */
+	/** Every vault the viewer may open; when given (management), allocations between them are offered. */
 	vaults?: VaultSummary[];
 }
 
@@ -34,8 +34,8 @@ export function VaultPanel({ teamId, onChanged, embedded = false, vaults }: Vaul
 		canWrite,
 		isManagement,
 		canTransfer,
-		typeValue,
-		setType,
+		typeFilter,
+		setTypeFilter,
 		category,
 		setCategory,
 		month,
@@ -65,18 +65,18 @@ export function VaultPanel({ teamId, onChanged, embedded = false, vaults }: Vaul
 				<div
 					style={{
 						maxWidth: 420,
-						background: 'rgba(255, 59, 48, 0.08)',
-						border: '1px solid rgba(255, 59, 48, 0.25)',
+						background: 'color-mix(in srgb, var(--danger) 8%, transparent)',
+						border: '1px solid color-mix(in srgb, var(--danger) 25%, transparent)',
 						borderRadius: 16,
 						padding: '28px 24px',
 					}}
 				>
-					<ShieldAlert size={40} color="#ff453a" style={{ marginBottom: 12 }} />
+					<ShieldAlert size={40} color="var(--danger)" style={{ marginBottom: 12 }} />
 					<h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 8px 0' }}>
-						{t('kasaNoAccessTitle')}
+						{t('treasuryNoAccessTitle')}
 					</h3>
 					<p style={{ fontSize: 13, opacity: 0.75, lineHeight: 1.5, margin: 0 }}>
-						{t('kasaNoAccessBody')}
+						{t('treasuryNoAccessBody')}
 					</p>
 				</div>
 			</div>
@@ -84,7 +84,7 @@ export function VaultPanel({ teamId, onChanged, embedded = false, vaults }: Vaul
 	}
 
 	return (
-		<div className={`${k.panel} ${embedded ? k.embedded : ''}`} data-focus-id={`kasa:${teamId ?? 'general'}`}>
+		<div className={`${k.panel} ${embedded ? k.embedded : ''}`} data-focus-id={`vault:${teamId ?? 'general'}`}>
 			<VaultCardSummary
 				teamId={teamId}
 				summary={summary}
@@ -107,8 +107,8 @@ export function VaultPanel({ teamId, onChanged, embedded = false, vaults }: Vaul
 			<VaultToolbar
 				search={search}
 				onSearchChange={setSearch}
-				typeValue={typeValue}
-				onTypeChange={setType}
+				typeFilter={typeFilter}
+				onTypeChange={setTypeFilter}
 				category={category}
 				onCategoryChange={setCategory}
 				month={month}
@@ -124,7 +124,7 @@ export function VaultPanel({ teamId, onChanged, embedded = false, vaults }: Vaul
 
 			{anyFilter && (
 				<div className={k.filterNote}>
-					{t('kasaFilteredCount')
+					{t('treasuryFilteredCount')
 						.replace('{count}', String(filtered.length))
 						.replace('{total}', String(records.length))
 						.replace('{in}', `₺${filteredIn / 100}`)
@@ -135,7 +135,7 @@ export function VaultPanel({ teamId, onChanged, embedded = false, vaults }: Vaul
 						style={{ padding: '2px 8px', fontSize: 11.5 }}
 						onClick={clearFilter}
 					>
-						{t('kasaClearFilter')}
+						{t('treasuryClearFilter')}
 					</button>
 				</div>
 			)}

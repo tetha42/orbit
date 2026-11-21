@@ -132,13 +132,13 @@
 }
 
 .pMine {
-	background: color-mix(in srgb, #30d158 16%, transparent);
-	color: #248a3d;
+	background: color-mix(in srgb, var(--success) 16%, transparent);
+	color: var(--success);
 }
 
 .pApplied {
-	background: color-mix(in srgb, #ff9f0a 17%, transparent);
-	color: #c76a00;
+	background: color-mix(in srgb, var(--warning) 17%, transparent);
+	color: var(--warning);
 }
 
 .pMode {
@@ -147,8 +147,8 @@
 }
 
 .pPaused {
-	background: color-mix(in srgb, #ff453a 13%, transparent);
-	color: #ff453a;
+	background: color-mix(in srgb, var(--danger) 13%, transparent);
+	color: var(--danger);
 }
 
 .cardTitle {
@@ -310,7 +310,7 @@
 
 .tabActive {
 	background: var(--accent);
-	color: #fff;
+	color: var(--accent-contrast);
 }
 
 .tabActive:hover {
@@ -323,7 +323,7 @@
 	padding: 0 6px;
 	border-radius: 8px;
 	background: var(--warning);
-	color: #fff;
+	color: var(--accent-contrast);
 }
 
 .wsBody {
@@ -410,7 +410,7 @@
 	border-radius: 14px 14px 4px 14px;
 	background: var(--accent);
 	border-color: transparent;
-	color: #ffffff;
+	color: var(--accent-contrast);
 }
 
 .chatComposer {

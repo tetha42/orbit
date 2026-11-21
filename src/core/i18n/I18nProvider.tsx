@@ -4,7 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import type { AppID } from '@/types/workspace';
 import { ExtendedAppMetadata, getAppMeta as getAppMetaConfig } from '@/configs/apps.config';
 import { Language, TRANSLATIONS } from '@/lib/i18n';
-import { DEFAULT_LOCALE, getLocaleDefinition, isSupportedLocale } from '@/locales/registry';
+import { DEFAULT_LOCALE, getLocaleDefinition, isSupportedLocale, normalizeLocale } from '@/locales/registry';
 
 export interface I18nContextValue {
 	language: Language;
@@ -34,7 +34,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 	});
 
 	const setLanguage = useCallback((lang: Language) => {
-		const nextLang = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
+		const nextLang = normalizeLocale(lang, DEFAULT_LOCALE);
 		setLanguageState(nextLang);
 		if (typeof window !== 'undefined') {
 			try {

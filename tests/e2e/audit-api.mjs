@@ -116,16 +116,16 @@ async function recorded(fn) {
 	const afterRecords = after.records;
 	return { res, fresh: afterRecords.slice(0, afterTotal - before) };
 }
-const rolePayload = (permissions, extra = {}) => ({ name: 'Denetim Rolü', color: '#30d158', description: 'test', twoStepRequired: false, permissions, ...extra });
+const rolePayload = (permissions, extra = {}) => ({ name: 'Audit Role', color: '#30d158', description: 'test', twoStepRequired: false, permissions, ...extra });
 
 // ---- who may read the log -----------------------------------------------------
 {
 	ok((await client().call('GET', '/api/audit')).status === 401, 'anonymous → 401');
-	ok((await zeynep.call('GET', '/api/audit')).status === 403, 'Yönetim Kurulu (settings: kullan) → 403');
-	ok((await can.call('GET', '/api/audit')).status === 403, 'üye → 403');
-	ok((await reader.call('GET', '/api/audit')).status === 403, 'okur → 403');
+	ok((await zeynep.call('GET', '/api/audit')).status === 403, 'management board (settings: use) → 403');
+	ok((await can.call('GET', '/api/audit')).status === 403, 'member → 403');
+	ok((await reader.call('GET', '/api/audit')).status === 403, 'reader → 403');
 	ok((await zeynep.call('GET', '/api/audit?all=1')).status === 403, 'export → 403 for them too');
-	ok((await admin.call('GET', '/api/audit')).status === 200, 'admin (settings: yonet) → 200');
+	ok((await admin.call('GET', '/api/audit')).status === 200, 'admin (settings: manage) → 200');
 	ok((await admin.call('POST', '/api/audit', {})).status === 405, 'the log is read-only (POST → 405)');
 }
 
@@ -136,25 +136,25 @@ let roleId;
 	roleId = res.json?.id;
 	const k = fresh[0];
 	ok(res.status === 201 && fresh.length === 1, 'create role → exactly one record', `status ${res.status}, ${fresh.length} records`);
-	ok(k?.action === 'role.create' && k?.targetType === 'role' && k?.targetId === roleId && k?.targetName === 'Denetim Rolü', 'create: action / target');
+	ok(k?.action === 'role.create' && k?.targetType === 'role' && k?.targetId === roleId && k?.targetName === 'Audit Role', 'create: action / target');
 	ok(k?.actorId === adminMe.id && k?.actorName === `${adminMe.name} ${adminMe.surname}`.trim() && !!k.ip && k.ip !== 'unknown', 'create: actor and address recorded', JSON.stringify(k));
 	ok(k?.before === null && canon(k?.after?.permissions) === canon({ budget: 'use', news: 'use', settings: 'use' }), 'create: after = the permission matrix', JSON.stringify(k?.after));
 	ok(Math.abs((k.timestamp) - Date.now()) < 60000, 'create: timestamp is now');
 }
 {
-	const { res, fresh } = await recorded(() => admin.call('PATCH', '/api/roles', { id: roleId, ...rolePayload({ news: 'none', settings: 'use', budget: 'manage', events: 'use' }, { name: 'Denetim Rolü 2' }) }));
+	const { res, fresh } = await recorded(() => admin.call('PATCH', '/api/roles', { id: roleId, ...rolePayload({ news: 'none', settings: 'use', budget: 'manage', events: 'use' }, { name: 'Audit Role 2' }) }));
 	const k = fresh[0];
 	ok(res.status === 200 && fresh.length === 1 && k.action === 'role.edit', 'edit role → exactly one record');
 	const beforeSnap = k.before;
 	const afterSnap = k.after;
 	ok(
 		k?.targetId === roleId &&
-			canon(beforeSnap) === canon({ name: 'Denetim Rolü', permissions: { budget: 'use', events: 'none', news: 'use' } }) &&
-			canon(afterSnap) === canon({ name: 'Denetim Rolü 2', permissions: { budget: 'manage', events: 'use', news: 'none' } }),
+			canon(beforeSnap) === canon({ name: 'Audit Role', permissions: { budget: 'use', events: 'none', news: 'use' } }) &&
+			canon(afterSnap) === canon({ name: 'Audit Role 2', permissions: { budget: 'manage', events: 'use', news: 'none' } }),
 		'edit: before/after hold only what changed (name + permission diff)',
 		JSON.stringify([beforeSnap, afterSnap])
 	);
-	const same = await recorded(() => admin.call('PATCH', '/api/roles', { id: roleId, ...rolePayload({ budget: 'manage', events: 'use', settings: 'use' }, { name: 'Denetim Rolü 2' }) }));
+	const same = await recorded(() => admin.call('PATCH', '/api/roles', { id: roleId, ...rolePayload({ budget: 'manage', events: 'use', settings: 'use' }, { name: 'Audit Role 2' }) }));
 	ok(same.res.status === 200 && same.fresh.length === 0, 'edit without a change → no record');
 }
 {
@@ -162,7 +162,7 @@ let roleId;
 	ok(a.res.status === 200 && a.fresh.length === 1 && a.fresh[0].action === 'role.default', 'default role change → one record');
 	const aBefore = a.fresh[0]?.before;
 	const aAfter = a.fresh[0]?.after;
-	ok(aBefore?.roleId === R.member && aAfter?.roleId === roleId && aAfter?.roleName === 'Denetim Rolü 2', 'default: before = Üye, after = new role', JSON.stringify(a.fresh[0]));
+	ok(aBefore?.roleId === R.member && aAfter?.roleId === roleId && aAfter?.roleName === 'Audit Role 2', 'default: before = the member role, after = the new role', JSON.stringify(a.fresh[0]));
 	const again = await recorded(() => admin.call('POST', '/api/roles', { action: 'setDefault', roleId }));
 	ok(again.fresh.length === 0, 'default role set to the same role → no record');
 	const back = await recorded(() => admin.call('POST', '/api/roles', { action: 'setDefault', roleId: R.member }));
@@ -178,7 +178,7 @@ let roleId;
 	ok(grant.res.status === 200 && grant.fresh.length === 1 && k.action === 'member.role_grant', 'give a role → one record', JSON.stringify(grant.fresh));
 	const kBefore = k.before;
 	const kAfter = k.after;
-	ok(k?.targetType === 'member' && k?.targetId === canId && kBefore?.roleId === R.member && kAfter?.roleId === roleId && kAfter?.roleName === 'Denetim Rolü 2', 'give a role: before/after', JSON.stringify(k));
+	ok(k?.targetType === 'member' && k?.targetId === canId && kBefore?.roleId === R.member && kAfter?.roleId === roleId && kAfter?.roleName === 'Audit Role 2', 'give a role: before/after', JSON.stringify(k));
 	ok((grant.fresh[0]?.targetName).includes(U.can.email), 'target names the member (name and e-mail)');
 	const again = await recorded(() => admin.call('PATCH', '/api/members', { id: canId, roleId }));
 	ok(again.fresh.length === 0, 'giving the same role again → no record');
@@ -187,7 +187,7 @@ let roleId;
 	ok(del.res.status === 200 && del.fresh.length === 1 && d.action === 'role.delete', 'delete role → exactly one record', JSON.stringify(del.res));
 	const dBefore = d.before;
 	const dAfter = d.after;
-	ok(d?.targetId === roleId && dBefore?.name === 'Denetim Rolü 2' && dBefore?.permissions?.budget === 'manage' && dAfter?.movedCount === 1 && dAfter?.movedToRoleId === R.member && dAfter?.movedToRoleName === 'Üye', 'delete: the role as it was + number of members moved', JSON.stringify(d));
+	ok(d?.targetId === roleId && dBefore?.name === 'Audit Role 2' && dBefore?.permissions?.budget === 'manage' && dAfter?.movedCount === 1 && dAfter?.movedToRoleId === R.member && dAfter?.movedToRoleName === 'Member', 'delete: the role as it was + number of members moved', JSON.stringify(d));
 	const me = (await admin.call('GET', '/api/members')).json.members.find((m) => m.id === canId);
 	ok(me?.roleId === R.member, 'the member really moved to the target role');
 
@@ -211,25 +211,25 @@ let roleId;
 }
 {
 	const apply = async (name) => {
-		const reg = await client().call('POST', '/api/auth/register', { name, surname: 'Aday', email: `${name.toLowerCase()}${Date.now()}@club.test`, password: 'Aday-Sifre-2026!', department: 'İşletme', grade: 1 });
+		const reg = await client().call('POST', '/api/auth/register', { name, surname: 'Applicant', email: `${name.toLowerCase()}${Date.now()}@club.test`, password: 'Applicant-Pass-2026!', department: 'Software Engineering & Architecture', grade: 1 });
 		if (reg.status >= 300) throw new Error(`register: ${JSON.stringify(reg.json)}`);
 		return (await admin.call('GET', '/api/members')).json.members.find((m) => m.name === name && m.status === 'pending');
 	};
-	const a = await apply('Onayli');
+	const a = await apply('Approved');
 	const approval = await recorded(() => admin.call('POST', '/api/admin/approve', { userId: a.id, action: 'approve' }));
 	const k = approval.fresh[0];
 	ok(approval.res.status === 200 && approval.fresh.length === 1 && k.action === 'application.approve', 'approve application → exactly ONE record (the default role is part of it)', JSON.stringify(approval.fresh));
 	const kBefore = k.before;
 	const kAfter = k.after;
-	ok(kBefore?.status === 'pending' && kBefore?.roleId === null && kAfter?.status === 'active' && kAfter?.roleId === R.member && kAfter?.roleName === 'Üye', 'approve: before/after (status and default role)', JSON.stringify(k));
-	const b = await apply('Redli');
+	ok(kBefore?.status === 'pending' && kBefore?.roleId === null && kAfter?.status === 'active' && kAfter?.roleId === R.member && kAfter?.roleName === 'Member', 'approve: before/after (status and default role)', JSON.stringify(k));
+	const b = await apply('Rejected');
 	const red = await recorded(() => admin.call('POST', '/api/admin/approve', { userId: b.id, action: 'reject' }));
 	const redAfter = red.fresh[0]?.after;
 	ok(red.fresh.length === 1 && red.fresh[0].action === 'application.reject' && redAfter?.status === 'rejected' && red.fresh[0].targetId === b.id, 'reject application → one record', JSON.stringify(red.fresh));
 	const refused = await recorded(() => admin.call('POST', '/api/admin/approve', { userId: a.id, action: 'reject' }));
 	ok(refused.res.status === 409 && refused.fresh.length === 0, 'refused decision (not pending) → no record');
 	// Approving through the member endpoint with an explicit role keeps that role.
-	const c = await apply('Acik');
+	const c = await apply('Open');
 	const via = await recorded(() => admin.call('PATCH', '/api/members', { id: c.id, roleId: R.news, status: 'active' }));
 	const after = (await admin.call('GET', '/api/members')).json.members.find((m) => m.id === c.id);
 	ok(via.res.status === 200 && after?.roleId === R.news, 'approve via members + explicit role: the explicit role wins over the default');
@@ -241,8 +241,8 @@ let roleId;
 
 // ---- deleting a member keeps only name and e-mail of the target ----------------
 {
-	const email = `silinecek${Date.now()}@club.test`;
-	const add = await recorded(() => admin.call('POST', '/api/members', { name: 'Silinecek', surname: 'Üye', email, department: 'Mimarlık', grade: 3, studentNo: '2401099', roleId: R.member, bio: 'özel bilgi' }));
+	const email = `deletable${Date.now()}@club.test`;
+	const add = await recorded(() => admin.call('POST', '/api/members', { name: 'Deletable', surname: 'Member', email, department: 'Architecture', grade: 3, studentNo: '2401099', roleId: R.member, bio: 'private note' }));
 	const m = add.res.json?.member;
 	const addAfter = add.fresh[0]?.after;
 	ok(add.fresh.length === 1 && add.fresh[0].action === 'member.role_grant' && addAfter?.memberAdded === true && addAfter?.roleId === R.member, 'adding a member with a role → the grant is recorded', JSON.stringify(add.fresh));
@@ -251,23 +251,23 @@ let roleId;
 	ok(del.res.status === 200 && del.fresh.length === 1 && k.action === 'member.delete' && k.targetId === m.id, 'delete member → exactly one record');
 	const kBefore = k.before;
 	const kAfter = k.after;
-	ok(sameKeys(kBefore, ['name', 'email', 'status', 'roleId', 'roleName']) && kBefore.name === 'Silinecek Üye' && kBefore.email === email && kBefore.roleName === 'Üye' && kAfter === null, 'delete: only name, e-mail, status, role — nothing else', JSON.stringify(kBefore));
+	ok(sameKeys(kBefore, ['name', 'email', 'status', 'roleId', 'roleName']) && kBefore.name === 'Deletable Member' && kBefore.email === email && kBefore.roleName === 'Member' && kAfter === null, 'delete: only name, e-mail, status, role — nothing else', JSON.stringify(kBefore));
 	const text = JSON.stringify(k);
-	ok(!text.includes('2401099') && !text.includes('Mimarlık') && !text.includes('özel bilgi'), 'delete: no student number, department or bio');
+	ok(!text.includes('2401099') && !text.includes('Architecture') && !text.includes('private note'), 'delete: no student number, department or bio');
 	const gone = await recorded(() => admin.call('DELETE', `/api/members?id=${m.id}`));
 	ok(gone.res.status === 404 && gone.fresh.length === 0, 'deleting a member who is gone → no record');
 }
 
 // ---- SMTP settings: the password is never recorded -----------------------------
-const SMTP_SECRET = 'GizliUygulamaSifresi-9f8e7d6c';
+const SMTP_SECRET = 'MailSecret-9f8e7d6c';
 {
-	const body = { smtp_host: 'smtp.audit.test', smtp_port: 587, smtp_secure: false, smtp_user: 'audit@club.test', smtp_from: 'Denetim <audit@club.test>' };
+	const body = { smtp_host: 'smtp.audit.test', smtp_port: 587, smtp_secure: false, smtp_user: 'audit@club.test', smtp_from: 'Audit <audit@club.test>' };
 	const a = await recorded(() => admin.call('POST', '/api/settings/smtp', { ...body, smtp_pass: SMTP_SECRET }));
 	const k = a.fresh[0];
 	ok(a.res.status === 200 && a.fresh.length === 1 && k.action === 'setting.smtp', 'SMTP change → exactly one record', JSON.stringify(a.res));
 	const kAfter = k.after;
 	const kBefore = k.before;
-	ok(kAfter?.smtp_host === 'smtp.audit.test' && kAfter?.smtp_port === '587' && kAfter?.smtp_user === 'audit@club.test' && kAfter?.appKey === 'changed' && kBefore?.appKey === 'none', 'SMTP: changed fields, password only as "degisti"', JSON.stringify(k));
+	ok(kAfter?.smtp_host === 'smtp.audit.test' && kAfter?.smtp_port === '587' && kAfter?.smtp_user === 'audit@club.test' && kAfter?.appKey === 'changed' && kBefore?.appKey === 'none', 'SMTP: changed fields, password only as a "changed" marker', JSON.stringify(k));
 	ok(!JSON.stringify(a.fresh).includes(SMTP_SECRET), 'SMTP: the password is not in the record');
 	const same = await recorded(() => admin.call('POST', '/api/settings/smtp', body));
 	ok(same.res.status === 200 && same.fresh.length === 0, 'saving the same SMTP settings again → no record');
@@ -278,18 +278,18 @@ const SMTP_SECRET = 'GizliUygulamaSifresi-9f8e7d6c';
 	const clear = await recorded(() => admin.call('POST', '/api/settings/smtp', { ...body, smtp_host: 'smtp2.audit.test', clearPassword: true }));
 	const clearBefore = clear.fresh[0]?.before;
 	const clearAfter = clear.fresh[0]?.after;
-	ok(clear.fresh.length === 1 && clearBefore?.appKey === 'set' && clearAfter?.appKey === 'deleted', 'SMTP: removing the password → "silindi"', JSON.stringify(clear.fresh));
+	ok(clear.fresh.length === 1 && clearBefore?.appKey === 'set' && clearAfter?.appKey === 'deleted', 'SMTP: removing the password → a "deleted" marker', JSON.stringify(clear.fresh));
 	// The IMAP mailbox is gone; fields an old client may still send are ignored and leave no record.
 	const legacy = await recorded(() => admin.call('POST', '/api/settings/smtp', { ...body, smtp_host: 'smtp2.audit.test', imap_host: 'imap.audit.test', imap_port: 143, imap_secure: false }));
 	ok(legacy.res.status === 200 && legacy.fresh.length === 0, 'legacy imap_* fields in a save are ignored (no record)', JSON.stringify(legacy.fresh));
-	ok((await zeynep.call('POST', '/api/settings/smtp', body)).status === 403, 'SMTP: settings: kullan cannot change it');
+	ok((await zeynep.call('POST', '/api/settings/smtp', body)).status === 403, 'SMTP: a role with settings: use cannot change it');
 }
 
 // ---- 2FA off ---------------------------------------------------------------------
 let twoFaSecret;
 {
-	const email = `iki${Date.now()}@club.test`;
-	const created = (await admin.call('POST', '/api/members', { name: 'İki', surname: 'Adım', email, department: 'Fizik', grade: 1, roleId: R.member })).json;
+	const email = `twofa${Date.now()}@club.test`;
+	const created = (await admin.call('POST', '/api/members', { name: 'Two', surname: 'Factor', email, department: 'Physics', grade: 1, roleId: R.member })).json;
 	const u = await login(created.member.email, created.temporaryPassword);
 	const setup = (await u.call('POST', '/api/auth/2fa/setup', {})).json;
 	twoFaSecret = setup.secret;
@@ -343,9 +343,9 @@ let twoFaSecret;
 	const byActorRecords = byActor.records;
 	const byActorTotal = byActor.total;
 	ok(byActorTotal >= 20 && byActorRecords.every((k) => k.actorId === adminMe.id || k.targetId === adminMe.id), 'filter: person (id) matches the actor');
-	const byName = (await admin.call('GET', `/api/audit?user=${encodeURIComponent('silinecek')}&limit=200`)).json;
+	const byName = (await admin.call('GET', `/api/audit?user=${encodeURIComponent('deletable')}&limit=200`)).json;
 	const byNameRecords = byName.records;
-	ok(byNameRecords.length >= 2 && byNameRecords.every((k) => /silinecek/i.test(`${k.targetName}${k.actorName}`)), 'filter: person (part of a name), also after the member was deleted');
+	ok(byNameRecords.length >= 2 && byNameRecords.every((k) => /deletable/i.test(`${k.targetName}${k.actorName}`)), 'filter: person (part of a name), also after the member was deleted');
 	const today = new Date().toLocaleDateString('sv-SE');
 	const day = (await admin.call('GET', `/api/audit?from=${today}&to=${today}&limit=1`)).json;
 	const dayTotal = day.total;
@@ -370,7 +370,7 @@ let twoFaSecret;
 	});
 	const bad = keys.filter((k) => /pass|parola|sifre|hash|totp|secret|token|recovery|kurtarma|cookie|oturum/i.test(k));
 	ok(bad.length === 0, 'no key in any record looks like a credential', bad.join());
-	ok(!/password|hash|totp|secret|token/i.test(text.replace(/uygulamaAnahtari/g, '')), 'no record mentions password / hash / totp / secret / token', (text.match(/.{20}(password|hash|totp|secret|token).{20}/i) || [''])[0]);
+	ok(!/password|hash|totp|secret|token/i.test(text.replace(/appKey/g, '')), 'no record mentions password / hash / totp / secret / token', (text.match(/.{20}(password|hash|totp|secret|token).{20}/i) || [''])[0]);
 	const values = [SMTP_SECRET, twoFaSecret, FX.adminTotp, FX.admin.password, U.can.password, U.zeynep.password, ...[admin, zeynep, can, reader].map((c) => c.cookie().split('=')[1])];
 	ok(values.every((v) => v && !text.includes(v)), 'no password, TOTP secret or session token value appears in the log');
 	ok(!/\$2[aby]\$/.test(text), 'no bcrypt hash');
@@ -394,18 +394,18 @@ if (!DATABASE_URL) {
 		// 1. The operation fails at COMMIT (deferred constraint trigger) after the record was written:
 		//    neither the role nor its record may remain.
 		await q(`CREATE OR REPLACE FUNCTION audit_test_fail() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'audit-test: commit refused'; END $$`);
-		await q(`CREATE CONSTRAINT TRIGGER audit_test_commit AFTER INSERT ON ${roleTable} DEFERRABLE INITIALLY DEFERRED FOR EACH ROW WHEN (NEW.name = 'GeriAlinacak') EXECUTE FUNCTION audit_test_fail()`);
+		await q(`CREATE CONSTRAINT TRIGGER audit_test_commit AFTER INSERT ON ${roleTable} DEFERRABLE INITIALLY DEFERRED FOR EACH ROW WHEN (NEW.name = 'RollbackRole') EXECUTE FUNCTION audit_test_fail()`);
 		const before = await count();
-		const r = await admin.call('POST', '/api/roles', rolePayload({ news: 'use', settings: 'use' }, { name: 'GeriAlinacak' }));
+		const r = await admin.call('POST', '/api/roles', rolePayload({ news: 'use', settings: 'use' }, { name: 'RollbackRole' }));
 		ok(r.status === 500, 'create refused at COMMIT → 500', String(r.status));
-		ok((await q(`SELECT 1 FROM ${roleTable} WHERE name = 'GeriAlinacak'`)).length === 0, 'rollback: the role is not there');
+		ok((await q(`SELECT 1 FROM ${roleTable} WHERE name = 'RollbackRole'`)).length === 0, 'rollback: the role is not there');
 		ok((await count()) === before, 'rollback: and neither is its record');
 		await q(`DROP TRIGGER audit_test_commit ON ${roleTable}`);
 
 		// 2. Deleting a role fails at COMMIT: role, its members and the log stay as they were.
-		const ok1 = await admin.call('POST', '/api/roles', rolePayload({ news: 'use', settings: 'use' }, { name: 'SilinemezRol' }));
+		const ok1 = await admin.call('POST', '/api/roles', rolePayload({ news: 'use', settings: 'use' }, { name: 'UndeletableRole' }));
 		await admin.call('PATCH', '/api/members', { id: U.can.id, roleId: ok1.json.id });
-		await q(`CREATE CONSTRAINT TRIGGER audit_test_commit AFTER DELETE ON ${roleTable} DEFERRABLE INITIALLY DEFERRED FOR EACH ROW WHEN (OLD.name = 'SilinemezRol') EXECUTE FUNCTION audit_test_fail()`);
+		await q(`CREATE CONSTRAINT TRIGGER audit_test_commit AFTER DELETE ON ${roleTable} DEFERRABLE INITIALLY DEFERRED FOR EACH ROW WHEN (OLD.name = 'UndeletableRole') EXECUTE FUNCTION audit_test_fail()`);
 		const before2 = await count();
 		const d = await admin.call('DELETE', '/api/roles', { id: ok1.json.id, move: R.member });
 		ok(d.status === 500, 'delete refused at COMMIT → 500', String(d.status));
@@ -427,9 +427,9 @@ if (!DATABASE_URL) {
 		await q(`CREATE TRIGGER audit_test_block BEFORE INSERT ON ${auditTable} FOR EACH ROW WHEN (NEW.action = 'setting.smtp') EXECUTE FUNCTION audit_test_block()`);
 		const keyCol = 'key';
 		const valCol = 'value';
-		const before4 = (await q(`SELECT ${valCol} AS deger FROM ${settingsTable} WHERE ${keyCol} = 'smtp_host'`))[0]?.value;
+		const before4 = (await q(`SELECT ${valCol} AS value FROM ${settingsTable} WHERE ${keyCol} = 'smtp_host'`))[0]?.value;
 		const s = await admin.call('POST', '/api/settings/smtp', { smtp_host: 'smtp.never.test', smtp_port: 465, smtp_user: 'x@club.test' });
-		ok(s.status === 500 && (await q(`SELECT ${valCol} AS deger FROM ${settingsTable} WHERE ${keyCol} = 'smtp_host'`))[0]?.value === before4, 'SMTP: no record possible → settings unchanged');
+		ok(s.status === 500 && (await q(`SELECT ${valCol} AS value FROM ${settingsTable} WHERE ${keyCol} = 'smtp_host'`))[0]?.value === before4, 'SMTP: no record possible → settings unchanged');
 		await q(`DROP TRIGGER audit_test_block ON ${auditTable}`);
 	} finally {
 		if (roleTable) await q(`DROP TRIGGER IF EXISTS audit_test_commit ON ${roleTable}`).catch(() => {});

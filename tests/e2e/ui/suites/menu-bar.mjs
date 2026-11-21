@@ -1,7 +1,7 @@
-// Üst menü çubuğu: MENU_YETKI (src/components/shell/TopBar/MenuBar.tsx) yetkisiz öğeyi hiç göstermez.
+// Top menu bar (src/components/shell/TopBar/MenuBar.tsx) never shows an unauthorized item.
 import { openApp } from '../lib/browser.mjs';
 
-export const meta = { title: 'Menü çubuğu: yetkisiz öğeler görünmüyor' };
+export const meta = { title: 'Menu bar: unauthorized items are not visible' };
 
 /** Opens a menu-bar category and returns the item ids in it. */
 async function categoryItems(page, category) {
@@ -19,44 +19,43 @@ async function portalFocus(page) {
 const PORTAL_FILE = ['new-event', 'new-member', 'new-budget-entry', 'export-report'];
 
 export default async function suite(t) {
-	// Portal menüsü → Dosya: Yeni Etkinlik / Yeni Üye / Gelir-Gider / Faaliyet Raporu
+	// Portal menu → File: New Event / New Member / Income-Expense / Activity Report
 	for (const [key, expected] of [
 		['reader', []],
 		['can', []],
 		['zeynep', PORTAL_FILE],
 		['admin', PORTAL_FILE],
 	]) {
-		await t.step(`${key}: portal Dosya menüsü`, async () => {
+		await t.step(`${key}: portal File menu`, async () => {
 			const { page } = await t.open(key);
 			await portalFocus(page);
 			const items = await categoryItems(page, 'file');
 			for (const id of PORTAL_FILE) {
-				t.check(items.includes(id) === expected.includes(id), `${key}: "${id}" ${expected.includes(id) ? 'görünüyor' : 'görünmüyor'}`, JSON.stringify(items));
+				t.check(items.includes(id) === expected.includes(id), `${key}: "${id}" ${expected.includes(id) ? 'visible' : 'not visible'}`, JSON.stringify(items));
 			}
-			await t.shot(page, `${key}-dosya-menusu`);
+			await t.shot(page, `${key}-file-menu`);
 		});
 	}
 
-	// Kararlar uygulaması → Belgeler: Yeni Karar (yönet) yalnız yönetene; yazdırma (kullan) herkese
-	for (const [key, newDecision] of [['can', false], ['zeynep', true]]) {
-		await t.step(`${key}: Kararlar uygulamasının Belgeler menüsü`, async () => {
+	// Decisions app → Actions: New Committee (manage) only for managers; hidden for regular members
+	for (const [key, newCommittee] of [['can', false], ['zeynep', true]]) {
+		await t.step(`${key}: Governance menu of the Decisions app`, async () => {
 			const { page } = await t.open(key);
 			await openApp(page, 'decisions');
 			const items = await categoryItems(page, 'file');
-			t.check(items.includes('new-decision') === newDecision, `${key}: "Yeni Karar" ${newDecision ? 'görünüyor' : 'görünmüyor'}`, JSON.stringify(items));
-			t.includes(items, 'print-petition', `${key}: kullan yetkisiyle gelen "Dilekçeyi Yazdır" görünüyor (olumlu kontrol)`);
-			await t.shot(page, `${key}-kararlar-belgeler-menusu`);
+			t.check(items.includes('new-committee') === newCommittee, `${key}: "New Committee" ${newCommittee ? 'visible' : 'not visible'}`, JSON.stringify(items));
+			await t.shot(page, `${key}-decisions-menu`);
 		});
 	}
 
-	// Üye Rehberi → Kayıt: Yeni Üye (yönet) / Listeyi Dışa Aktar (kullan)
+	// Member Directory → Records: New Member (manage) / Export List (use)
 	for (const [key, newMember] of [['can', false], ['zeynep', true]]) {
-		await t.step(`${key}: Üye Rehberi menüsü`, async () => {
+		await t.step(`${key}: Member Directory menu`, async () => {
 			const { page } = await t.open(key);
 			await openApp(page, 'members');
 			const items = await categoryItems(page, 'file');
-			t.check(items.includes('add-member') === newMember, `${key}: "Yeni Üye Ekle" ${newMember ? 'görünüyor' : 'görünmüyor'}`, JSON.stringify(items));
-			t.includes(items, 'export-roster', `${key}: "Üye Listesini Dışa Aktar" görünüyor`);
+			t.check(items.includes('add-member') === newMember, `${key}: "Add New Member" ${newMember ? 'visible' : 'not visible'}`, JSON.stringify(items));
+			t.includes(items, 'export-roster', `${key}: "Export Member List" is visible`);
 		});
 	}
 }

@@ -2,6 +2,7 @@
 
 import { useRef, useEffect } from 'react';
 import { useSession } from '@/core/session';
+import { useI18n } from '@/core/i18n';
 import { useShell } from '@/core/shell';
 import { useWindowActions, useWindows } from '@/core/windows';
 import { APPS_CONFIG } from '@/configs/apps.config';
@@ -14,14 +15,16 @@ import { appShortcut } from '@/apps';
 
 export function WorkspaceApplet() {
 	const { canUseApp } = useSession();
+	const { t } = useI18n();
 	const { openApp, tileWindows, minimizeAll, closeAll } = useWindowActions();
 	const windows = useWindows();
 	const { isWorkspaceAppletOpen, setIsWorkspaceAppletOpen, setIsAboutModalOpen } = useShell();
 
 	const ref = useRef<HTMLDivElement>(null);
 
-	// Close on click outside
+	// Close on click outside (only attach when open)
 	useEffect(() => {
+		if (!isWorkspaceAppletOpen) return;
 		const handlePointerDown = (e: MouseEvent) => {
 			if (ref.current && !ref.current.contains(e.target as Node)) {
 				setIsWorkspaceAppletOpen(false);
@@ -29,13 +32,13 @@ export function WorkspaceApplet() {
 		};
 		window.addEventListener('pointerdown', handlePointerDown);
 		return () => window.removeEventListener('pointerdown', handlePointerDown);
-	}, [setIsWorkspaceAppletOpen]);
+	}, [isWorkspaceAppletOpen, setIsWorkspaceAppletOpen]);
 
 	const openAppsCount = Object.values(windows || {}).filter((w) => w?.isOpen).length;
 
 	// Build authentic macOS Status Extra Context Menu items
 	const menuItems: MenuItem[] = [
-		{ id: 'hdr-apps', label: 'Community Management Tools', header: true },
+		{ id: 'hdr-apps', label: t('workspaceMenuToolsHeader'), header: true },
 		...(Object.keys(APPS_CONFIG) as AppID[])
 			.filter((appId) => canUseApp(appId))
 			.map((appId) => {
@@ -59,35 +62,35 @@ export function WorkspaceApplet() {
 		{ id: 'sep-quick', label: '', separator: true },
 		{
 			id: 'quick-actions',
-			label: 'Quick Operations',
+			label: t('workspaceMenuQuickOps'),
 			children: [
 				{
 					id: 'act-new-team',
-					label: 'Ar-Ge Takımlarını İncele...',
+					label: t('workspaceMenuTeams'),
 					shortcut: '⇧⌘T',
 					action: () => openApp('teams'),
 				},
 				{
 					id: 'act-new-event',
-					label: 'Events & QR Attendance...',
+					label: t('workspaceMenuEvents'),
 					shortcut: '⇧⌘E',
 					action: () => openApp('events'),
 				},
 				{
 					id: 'act-new-cert',
-					label: 'Sertifikalarım & Rozetler...',
+					label: t('workspaceMenuCertificates'),
 					shortcut: '⇧⌘S',
 					action: () => openApp('certificates'),
 				},
 				{
 					id: 'act-new-inventory',
-					label: 'Laboratuvar Donanım Talebi...',
+					label: t('workspaceMenuInventory'),
 					shortcut: '⇧⌘L',
 					action: () => openApp('inventory'),
 				},
 				{
 					id: 'act-new-budget',
-					label: 'Kasa Hareketi Kaydet (Başkan)...',
+					label: t('workspaceMenuBudget'),
 					shortcut: '⇧⌘B',
 					action: () => openApp('budget'),
 				},
@@ -95,23 +98,23 @@ export function WorkspaceApplet() {
 		},
 		{
 			id: 'window-arrangements',
-			label: 'Workspace Arrangement',
+			label: t('workspaceMenuArrangement'),
 			children: [
 				{
 					id: 'tile-all',
-					label: 'Tile All Workspace Windows',
+					label: t('workspaceTileAll'),
 					shortcut: '⌃⌘T',
 					action: () => tileWindows(),
 				},
 				{
 					id: 'minimize-all',
-					label: 'Minimize All Windows',
+					label: t('workspaceMinimizeAll'),
 					shortcut: '⌘M',
 					action: () => minimizeAll(),
 				},
 				{
 					id: 'close-all',
-					label: 'Close All Windows',
+					label: t('workspaceCloseAll'),
 					shortcut: '⌥⌘W',
 					action: () => closeAll(),
 				},
@@ -120,7 +123,7 @@ export function WorkspaceApplet() {
 		{ id: 'sep-bottom', label: '', separator: true },
 		{
 			id: 'portal-about',
-			label: 'About Orbit Community OS...',
+			label: t('workspaceAbout'),
 			action: () => setIsAboutModalOpen(true),
 		},
 	];
@@ -130,7 +133,7 @@ export function WorkspaceApplet() {
 			{/* Menu Bar Status Icon */}
 			<button
 				onClick={() => setIsWorkspaceAppletOpen(!isWorkspaceAppletOpen)}
-				title="Community Management Suite"
+				title={t('workspaceAppletTitle')}
 				style={{
 					display: 'flex',
 					alignItems: 'center',

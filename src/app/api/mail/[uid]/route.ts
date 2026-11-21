@@ -18,7 +18,7 @@ export async function GET(
 		const { uid: rawUid } = await params;
 		const uid = parseInt(rawUid, 10);
 		if (isNaN(uid) || uid <= 0) {
-			return NextResponse.json({ error: 'Geçersiz ileti numarası (UID).' }, { status: 400 });
+			return NextResponse.json({ error: 'Invalid message number (UID).' }, { status: 400 });
 		}
 
 		const url = new URL(request.url);
@@ -29,7 +29,7 @@ export async function GET(
 	} catch (error) {
 		console.error('[API /api/mail/[uid] GET Error]:', error);
 		return NextResponse.json(
-			{ error: errorMessage(error) || 'İleti ayrıntıları alınırken bir hata oluştu.' },
+			{ error: errorMessage(error) || 'Failed to retrieve message details.' },
 			{ status: 500, headers: NO_STORE }
 		);
 	}

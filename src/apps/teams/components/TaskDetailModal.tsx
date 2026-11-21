@@ -2,14 +2,13 @@
 
 import React, { useRef } from 'react';
 import { X } from 'lucide-react';
-import { useI18n } from '@/core/i18n';
+import { useI18n, getLocaleDefinition } from '@/core/i18n';
 import { useJsonResource } from '@/core/data/useJsonResource';
 import { relativeTime } from '@/core/data/format';
 import { TITLE_MAX, dueStatus } from '@/lib/kanban';
-import type { TeamTaskActivity, TeamTaskItem, TeamTaskComment } from '@/db/schema';
 import styles from './Kanban.module.css';
 import ui from '@/core/ui/ui.module.css';
-import { columnMeta, type TeamTask } from '../types';
+import { columnMeta, type TeamTaskDetail } from '../types';
 import { useNow } from '@/lib/client/useSheet';
 import { ModalOverlay, useDraggableSheet } from '@/core/ui/Sheet';
 import { TaskChecklist } from './TaskChecklist';
@@ -18,14 +17,6 @@ import { TaskActivityHistory } from './TaskActivityHistory';
 import { TaskMetaSidebar } from './TaskMetaSidebar';
 import { TaskDescription } from './TaskDescription';
 import { useTaskDetail } from '../hooks/useTaskDetail';
-
-interface Detail {
-	task: TeamTask;
-	items: TeamTaskItem[];
-	comments: TeamTaskComment[];
-	activity: TeamTaskActivity[];
-	permissions: { manage: boolean; work: boolean; comment: boolean };
-}
 
 interface Props {
 	taskId: string;
@@ -39,9 +30,9 @@ interface Props {
 
 export function TaskDetailModal({ taskId, currentUserId, members, allLabels, notify, onClose, onChanged }: Props) {
 	const { t, language } = useI18n();
-	const locale = language === 'en' ? 'en-GB' : 'tr-TR';
+	const locale = getLocaleDefinition(language).dateLocale;
 	const url = `/api/teams/tasks/${encodeURIComponent(taskId)}`;
-	const { data, setData, refetch, httpStatus } = useJsonResource<Detail>(url);
+	const { data, setData, refetch, httpStatus } = useJsonResource<TeamTaskDetail>(url);
 	const now = useNow();
 
 	const confirmOpen = useRef(false);
@@ -102,7 +93,7 @@ export function TaskDetailModal({ taskId, currentUserId, members, allLabels, not
 	const due = dueStatus(task.dueDate, task.status, now);
 	const doneItems = items.filter((m) => Number(m.isDone) === 1).length;
 	const canClaim = !task.assigneeMemberId && !permissions.manage && members.some((m) => m.id === currentUserId);
-	const when = (ts: number) => relativeTime(ts, now, language === 'en' ? 'en' : 'tr');
+	const when = (ts: number) => relativeTime(ts, now, language);
 
 	return (
 		<ModalOverlay onClose={onClose} pausedRef={confirmOpen}>

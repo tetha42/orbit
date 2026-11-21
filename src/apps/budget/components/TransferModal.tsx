@@ -47,29 +47,29 @@ export function TransferModal({
 	const submit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setError('');
-		if (sourceKey === targetKey) return setError(t('kasaTransferSameError'));
-		if (minor === null) return setError(t('kasaInvalidAmount'));
+		if (sourceKey === targetKey) return setError(t('treasuryTransferSameError'));
+		if (minor === null) return setError(t('treasuryInvalidAmount'));
 		const ms = dateInputToMs(date, now);
-		if (ms === null) return setError(t('kasaInvalidDate'));
+		if (ms === null) return setError(t('treasuryInvalidDate'));
 		setBusy(true);
 		const res = await sendJson('/api/budget', 'POST', {
 			action: 'transfer',
-			source,
-			target,
+			source: sourceKey,
+			target: targetKey,
 			amountMinor: minor,
 			description: description.trim() || undefined,
 			date: ms,
 		});
 		setBusy(false);
-		if (!res.ok) return setError(res.error || t('kasaTransferFailed'));
-		onSaved(t('kasaTransferSuccess'));
+		if (!res.ok) return setError(res.error || t('treasuryTransferFailed'));
+		onSaved(t('treasuryTransferSuccess'));
 	};
 
 	return (
 		<Sheet
-			title={t('kasaTransferTitle')}
-			label={t('kasaTransferTitle')}
-			icon={<ArrowRightLeft size={18} color="#5856d6" />}
+			title={t('treasuryTransferTitle')}
+			label={t('treasuryTransferTitle')}
+			icon={<ArrowRightLeft size={18} color="var(--indigo)" />}
 			onClose={onClose}
 			onSubmit={submit}
 			maxWidth={540}
@@ -79,17 +79,17 @@ export function TransferModal({
 						{t('cancel')}
 					</button>
 					<button type="submit" className={ui.primaryBtn} disabled={busy || tooMuch}>
-						{busy ? t('saving') : t('kasaTransferSubmit')}
+						{busy ? t('saving') : t('treasuryTransferSubmit')}
 					</button>
 				</>
 			}
 		>
 			<p className={ui.muted} style={{ margin: '0 0 16px 0', fontSize: 13, lineHeight: 1.45 }}>
-				{t('kasaTransferBody')}
+				{t('treasuryTransferBody')}
 			</p>
 			<div className={k.grid2}>
 				<label className={ui.field}>
-					<span className={ui.fieldLabel}>{t('kasaSource')}</span>
+					<span className={ui.fieldLabel}>{t('treasurySource')}</span>
 					<select
 						className={ui.select}
 						style={{ maxWidth: 'none', width: '100%' }}
@@ -104,7 +104,7 @@ export function TransferModal({
 					</select>
 				</label>
 				<label className={ui.field}>
-					<span className={ui.fieldLabel}>{t('kasaTarget')}</span>
+					<span className={ui.fieldLabel}>{t('treasuryTarget')}</span>
 					<select
 						className={ui.select}
 						style={{ maxWidth: 'none', width: '100%' }}
@@ -125,11 +125,11 @@ export function TransferModal({
 			</div>
 			{source && (
 				<div className={k.balanceHint}>
-					{source.name}: {t('kasaCurrentBalance')} <strong>{formatMinor(source.netBalanceMinor)} ₺</strong>
+					{source.name}: {t('treasuryCurrentBalance')} <strong>{formatMinor(source.netBalanceMinor)} ₺</strong>
 					{minor !== null && (
 						<>
 							{' '}
-							· {t('kasaAfterTransfer')}{' '}
+							· {t('treasuryAfterTransfer')}{' '}
 							<strong className={tooMuch ? k.neg : undefined}>
 								{formatMinor(source.netBalanceMinor - minor)} ₺
 							</strong>
@@ -146,7 +146,7 @@ export function TransferModal({
 							)}
 						</div>
 					)}
-					{tooMuch && <span className={k.neg}> {t('kasaSourceCannotCover')}</span>}
+					{tooMuch && <span className={k.neg}> {t('treasurySourceCannotCover')}</span>}
 				</div>
 			)}
 			<div className={k.grid2}>
@@ -163,7 +163,7 @@ export function TransferModal({
 					/>
 				</label>
 				<label className={ui.field}>
-					<span className={ui.fieldLabel}>{t('kasaDateLabel')}</span>
+					<span className={ui.fieldLabel}>{t('treasuryDateLabel')}</span>
 					<input
 						className={ui.input}
 						type="date"
@@ -175,11 +175,11 @@ export function TransferModal({
 				</label>
 			</div>
 			<label className={ui.field}>
-				<span className={ui.fieldLabel}>{t('kasaTransferDescLabel')}</span>
+				<span className={ui.fieldLabel}>{t('treasuryTransferDescLabel')}</span>
 				<input
 					className={ui.input}
 					maxLength={200}
-					placeholder={t('kasaTransferDescPlaceholder')}
+					placeholder={t('treasuryTransferDescPlaceholder')}
 					value={description}
 					onChange={(e) => setDescription(e.target.value)}
 				/>

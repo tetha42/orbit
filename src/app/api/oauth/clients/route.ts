@@ -19,7 +19,7 @@ export async function GET(request: Request) {
 		return NextResponse.json({ clients });
 	} catch (error) {
 		console.error('API /api/oauth/clients GET error:', error);
-		return NextResponse.json({ error: 'Uygulamalar listelenemedi.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to list applications.' }, { status: 500 });
 	}
 }
 
@@ -38,21 +38,21 @@ export async function POST(request: Request) {
 
 		let redirectUris: string[] = [];
 		if (Array.isArray(body.redirectUris)) {
-			redirectUris = body.redirectUris.map(String).map((u) => u.trim()).filter(Boolean);
+			redirectUris = (body.redirectUris as unknown[]).map(String).map((u: string) => u.trim()).filter(Boolean);
 		} else if (typeof body.redirectUris === 'string') {
-			redirectUris = body.redirectUris.split('\n').map((u) => u.trim()).filter(Boolean);
+			redirectUris = body.redirectUris.split('\n').map((u: string) => u.trim()).filter(Boolean);
 		}
 
 		let allowedScopes: string[] | undefined = undefined;
 		if (Array.isArray(body.allowedScopes)) {
-			allowedScopes = body.allowedScopes.map(String).map((s) => s.trim()).filter(Boolean);
+			allowedScopes = (body.allowedScopes as unknown[]).map(String).map((s: string) => s.trim()).filter(Boolean);
 		}
 
 		if (!name) {
-			return NextResponse.json({ error: 'Uygulama adı zorunludur.' }, { status: 400 });
+			return NextResponse.json({ error: 'Application name is required.' }, { status: 400 });
 		}
 		if (redirectUris.length === 0) {
-			return NextResponse.json({ error: 'En az bir geçerli Yönlendirme URL (redirect_uri) girilmelidir.' }, { status: 400 });
+			return NextResponse.json({ error: 'At least one valid redirect URI (redirect_uri) is required.' }, { status: 400 });
 		}
 
 		const result = await createOAuthClient(
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
 		await logSystemEvent({
 			service: 'oauth',
 			level: 'INFO',
-			message: `Yeni OAuth istemcisi oluşturuldu: ${name} (${result.client.id})`,
+			message: `New OAuth client created: ${name} (${result.client.id})`,
 			detail: { clientId: result.client.id, name, redirectUris, trusted },
 			userId: auth.user.id,
 			ip,
@@ -76,11 +76,11 @@ export async function POST(request: Request) {
 		});
 	} catch (error) {
 		const msg = error instanceof Error ? error.message : '';
-		if (msg.includes('Geçersiz Yönlendirme URL')) {
+		if (msg.includes('Invalid redirect URI')) {
 			return NextResponse.json({ error: msg }, { status: 400 });
 		}
 		console.error('API /api/oauth/clients POST error:', error);
-		return NextResponse.json({ error: 'Uygulama oluşturulamadı.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to create application.' }, { status: 500 });
 	}
 }
 
@@ -95,16 +95,16 @@ export async function PATCH(request: Request) {
 		const id = typeof body.id === 'string' ? body.id : '';
 
 		if (!id) {
-			return NextResponse.json({ error: 'İstemci kimliği zorunludur.' }, { status: 400 });
+			return NextResponse.json({ error: 'Client ID is required.' }, { status: 400 });
 		}
 
 		if (body.action === 'regenerate_secret') {
 			const regen = await regenerateOAuthClientSecret(id);
-			if (!regen) return NextResponse.json({ error: 'Uygulama bulunamadı.' }, { status: 404 });
+			if (!regen) return NextResponse.json({ error: 'Application not found.' }, { status: 404 });
 			await logSystemEvent({
 				service: 'oauth',
 				level: 'WARN',
-				message: `OAuth istemci gizli anahtarı (client_secret) yenilendi: ${id}`,
+				message: `OAuth client secret regenerated: ${id}`,
 				detail: { clientId: id },
 				userId: auth.user.id,
 				ip,
@@ -119,19 +119,19 @@ export async function PATCH(request: Request) {
 		if (body.trusted !== undefined) updateData.trusted = body.trusted === true;
 		if (body.active !== undefined) updateData.active = body.active === true;
 		if (Array.isArray(body.redirectUris)) {
-			updateData.redirectUris = body.redirectUris.map(String).map((u) => u.trim()).filter(Boolean);
+			updateData.redirectUris = (body.redirectUris as unknown[]).map(String).map((u: string) => u.trim()).filter(Boolean);
 		}
 		if (Array.isArray(body.allowedScopes)) {
-			updateData.allowedScopes = body.allowedScopes.map(String).map((s) => s.trim()).filter(Boolean);
+			updateData.allowedScopes = (body.allowedScopes as unknown[]).map(String).map((s: string) => s.trim()).filter(Boolean);
 		}
 
 		const ok = await updateOAuthClient(id, updateData);
-		if (!ok) return NextResponse.json({ error: 'Uygulama bulunamadı.' }, { status: 404 });
+		if (!ok) return NextResponse.json({ error: 'Application not found.' }, { status: 404 });
 
 		await logSystemEvent({
 			service: 'oauth',
 			level: 'INFO',
-			message: `OAuth istemcisi güncellendi: ${id}`,
+			message: `OAuth client updated: ${id}`,
 			detail: { clientId: id, changes: updateData },
 			userId: auth.user.id,
 			ip,
@@ -140,11 +140,11 @@ export async function PATCH(request: Request) {
 		return NextResponse.json({ success: true });
 	} catch (error) {
 		const msg = error instanceof Error ? error.message : '';
-		if (msg.includes('Geçersiz Yönlendirme URL')) {
+		if (msg.includes('Invalid redirect URI')) {
 			return NextResponse.json({ error: msg }, { status: 400 });
 		}
 		console.error('API /api/oauth/clients PATCH error:', error);
-		return NextResponse.json({ error: 'Uygulama güncellenemedi.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to update application.' }, { status: 500 });
 	}
 }
 
@@ -159,16 +159,16 @@ export async function DELETE(request: Request) {
 		const id = url.searchParams.get('id');
 
 		if (!id) {
-			return NextResponse.json({ error: 'İstemci kimliği zorunludur.' }, { status: 400 });
+			return NextResponse.json({ error: 'Client ID is required.' }, { status: 400 });
 		}
 
 		const ok = await deleteOAuthClient(id);
-		if (!ok) return NextResponse.json({ error: 'Uygulama bulunamadı.' }, { status: 404 });
+		if (!ok) return NextResponse.json({ error: 'Application not found.' }, { status: 404 });
 
 		await logSystemEvent({
 			service: 'oauth',
 			level: 'WARN',
-			message: `OAuth istemcisi silindi: ${id}`,
+			message: `OAuth client deleted: ${id}`,
 			detail: { clientId: id },
 			userId: auth.user.id,
 			ip,
@@ -177,6 +177,6 @@ export async function DELETE(request: Request) {
 		return NextResponse.json({ success: true });
 	} catch (error) {
 		console.error('API /api/oauth/clients DELETE error:', error);
-		return NextResponse.json({ error: 'Uygulama silinemedi.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to delete application.' }, { status: 500 });
 	}
 }

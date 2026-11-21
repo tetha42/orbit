@@ -61,7 +61,7 @@ export function TeamsCatalog({
 						<div className={styles.statLabel}>{t('tmStatTeams')}</div>
 					</div>
 					<div className={styles.stat}>
-						<div className={styles.statValue} style={{ color: '#30d158' }}>
+						<div className={styles.statValue} style={{ color: 'var(--success)' }}>
 							{teams.reduce((n, tm) => n + tm.fullCapacity, 0)}/{teams.reduce((n, tm) => n + tm.capacity, 0)}
 						</div>
 						<div className={styles.statLabel}>{t('tmStatMembers')}</div>

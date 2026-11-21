@@ -90,13 +90,13 @@ export async function POST(request: Request) {
 		await logSystemEvent({
 			service: 'auth',
 			level: 'WARN',
-			message: `Kullanıcı iki adımlı doğrulamayı (2FA) kapattı: ${user.email}`,
+			message: `User disabled two-factor authentication (2FA): ${user.email}`,
 			userId: user.id,
 			ip,
 		});
-		return NextResponse.json({ success: true, message: 'İki adımlı doğrulama kapatıldı.' });
+		return NextResponse.json({ success: true, message: 'Two-factor authentication disabled.' });
 	} catch (error) {
 		console.error('API /api/auth/2fa/disable error:', error);
-		return NextResponse.json({ error: 'İki adımlı doğrulama kapatılamadı.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to disable two-factor authentication.' }, { status: 500 });
 	}
 }

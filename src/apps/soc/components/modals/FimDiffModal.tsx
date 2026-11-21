@@ -3,16 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import { X, FileCode, GitCompare, Copy, Check, Columns, FileText } from 'lucide-react';
 import { useI18n } from '@/core/i18n/I18nProvider';
+import { MODALS_I18N } from './i18nModals';
+import { FimDiffViewport, type FimDiffData } from './FimDiffViewport';
 import styles from './SocModals.module.css';
-
-interface FimDiffData {
-	path: string;
-	status: 'modified' | 'added' | 'deleted' | 'unchanged' | 'not_found';
-	originalContent: string;
-	currentContent: string;
-	diff: string;
-	error?: string;
-}
 
 interface FimDiffModalProps {
 	filePath: string;
@@ -21,7 +14,7 @@ interface FimDiffModalProps {
 
 export const FimDiffModal: React.FC<FimDiffModalProps> = ({ filePath, onClose }) => {
 	const { language } = useI18n();
-	const isEn = language === 'en';
+	const copy = MODALS_I18N[language] ?? MODALS_I18N.en;
 
 	const [loading, setLoading] = useState(true);
 	const [data, setData] = useState<FimDiffData | null>(null);
@@ -35,40 +28,36 @@ export const FimDiffModal: React.FC<FimDiffModalProps> = ({ filePath, onClose })
 		fetch(`/api/soc/inspection?action=diff&path=${encodeURIComponent(filePath)}`)
 			.then((res) => res.json())
 			.then((json) => {
-				if (isMounted) {
-					if (json.diff) {
-						setData(json.diff);
-					} else {
-						setData({
-							path: filePath,
-							status: 'not_found',
-							originalContent: '',
-							currentContent: '',
-							diff: '',
-							error: json.error || 'Diff verisi alınamadı.',
-						});
-					}
-					setLoading(false);
-				}
-			})
-			.catch((err) => {
-				if (isMounted) {
-					setData({
+				if (!isMounted) return;
+				setData(
+					json.diff ?? {
 						path: filePath,
 						status: 'not_found',
 						originalContent: '',
 						currentContent: '',
 						diff: '',
-						error: String(err),
-					});
-					setLoading(false);
-				}
+						error: json.error || copy.fimDiffFetchError,
+					}
+				);
+				setLoading(false);
+			})
+			.catch((err) => {
+				if (!isMounted) return;
+				setData({
+					path: filePath,
+					status: 'not_found',
+					originalContent: '',
+					currentContent: '',
+					diff: '',
+					error: String(err),
+				});
+				setLoading(false);
 			});
 
 		return () => {
 			isMounted = false;
 		};
-	}, [filePath]);
+	}, [filePath, copy.fimDiffFetchError]);
 
 	const handleCopy = () => {
 		const textToCopy = data?.diff || data?.currentContent || '';
@@ -78,52 +67,18 @@ export const FimDiffModal: React.FC<FimDiffModalProps> = ({ filePath, onClose })
 		setTimeout(() => setCopied(false), 2000);
 	};
 
-	const renderLines = (content: string, type: 'orig' | 'curr') => {
-		if (!content) {
-			return (
-				<div style={{ padding: '16px', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
-					{type === 'orig'
-						? isEn ? 'No baseline (New file)' : 'Başlangıç kopyası yok (Yeni dosya)'
-						: isEn ? 'File deleted on disk' : 'Diskte dosya bulunamadı (Silinmiş)'}
-				</div>
-			);
-		}
-
-		const lines = content.split('\n');
-		return lines.map((line, idx) => (
-			<div key={idx} className={styles.diffLine}>
-				<span className={styles.diffLineNumber}>{idx + 1}</span>
-				<span>{line || ' '}</span>
-			</div>
-		));
-	};
-
-	const renderUnifiedDiff = () => {
-		if (!data?.diff) {
-			return (
-				<div style={{ padding: '16px', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
-					{isEn ? 'No diff hunks recorded.' : 'Herhangi bir diff farkı bulunamadı.'}
-				</div>
-			);
-		}
-
-		const lines = data.diff.split('\n');
-		return lines.map((line, idx) => {
-			let lineClass = styles.diffLine;
-			if (line.startsWith('+') && !line.startsWith('+++')) {
-				lineClass = `${styles.diffLine} ${styles.diffLineAdd}`;
-			} else if (line.startsWith('-') && !line.startsWith('---')) {
-				lineClass = `${styles.diffLine} ${styles.diffLineDel}`;
-			}
-
-			return (
-				<div key={idx} className={lineClass}>
-					<span className={styles.diffLineNumber}>{idx + 1}</span>
-					<span>{line || ' '}</span>
-				</div>
-			);
-		});
-	};
+	const statusBg =
+		data?.status === 'modified'
+			? 'color-mix(in srgb, var(--warning) 15%, transparent)'
+			: data?.status === 'added'
+			? 'color-mix(in srgb, var(--success) 15%, transparent)'
+			: 'color-mix(in srgb, var(--danger) 15%, transparent)';
+	const statusColor =
+		data?.status === 'modified'
+			? 'var(--warning)'
+			: data?.status === 'added'
+			? 'var(--success)'
+			: 'var(--danger)';
 
 	return (
 		<div className={styles.backdrop} onClick={onClose}>
@@ -131,25 +86,15 @@ export const FimDiffModal: React.FC<FimDiffModalProps> = ({ filePath, onClose })
 				<div className={styles.modalHeader}>
 					<div className={styles.modalHeaderTitle}>
 						<GitCompare size={15} style={{ color: 'var(--accent)' }} />
-						<span>{isEn ? 'FIM Visual Diff Inspection' : 'FIM Görsel Değişiklik İncelemesi'}</span>
+						<span>{copy.fimDiffTitle}</span>
 						<span
 							style={{
 								fontSize: '11px',
 								fontWeight: 600,
 								padding: '2px 8px',
 								borderRadius: '4px',
-								background:
-									data?.status === 'modified'
-										? 'rgba(255, 149, 0, 0.15)'
-										: data?.status === 'added'
-										? 'rgba(52, 199, 89, 0.15)'
-										: 'rgba(255, 59, 48, 0.15)',
-								color:
-									data?.status === 'modified'
-										? '#b25000'
-										: data?.status === 'added'
-										? '#248a3d'
-										: '#d70015',
+								background: statusBg,
+								color: statusColor,
 							}}
 						>
 							{data?.status?.toUpperCase() || 'INSPECTING'}
@@ -161,10 +106,10 @@ export const FimDiffModal: React.FC<FimDiffModalProps> = ({ filePath, onClose })
 							type="button"
 							className={styles.btn}
 							onClick={() => setViewMode(viewMode === 'split' ? 'unified' : 'split')}
-							title={isEn ? 'Toggle view mode' : 'Görünüm modunu değiştir'}
+							title={copy.fimDiffToggleTitle}
 						>
 							{viewMode === 'split' ? <FileText size={13} /> : <Columns size={13} />}
-							<span>{viewMode === 'split' ? (isEn ? 'Unified' : 'Birleşik') : (isEn ? 'Split' : 'Yan Yana')}</span>
+							<span>{viewMode === 'split' ? copy.fimDiffUnified : copy.fimDiffSplit}</span>
 						</button>
 
 						<button
@@ -172,71 +117,46 @@ export const FimDiffModal: React.FC<FimDiffModalProps> = ({ filePath, onClose })
 							className={styles.btn}
 							onClick={handleCopy}
 							disabled={loading || !data}
-							title={isEn ? 'Copy diff' : 'Farkı kopyala'}
+							title={copy.fimDiffCopyTitle}
 						>
-							{copied ? <Check size={13} style={{ color: '#248a3d' }} /> : <Copy size={13} />}
-							<span>{copied ? (isEn ? 'Copied' : 'Kopyalandı') : (isEn ? 'Copy' : 'Kopyala')}</span>
+							{copied ? <Check size={13} style={{ color: 'var(--success)' }} /> : <Copy size={13} />}
+							<span>{copied ? copy.fimDiffCopied : copy.fimDiffCopy}</span>
 						</button>
 
-						<button type="button" className={styles.closeBtn} onClick={onClose} aria-label={isEn ? 'Close' : 'Kapat'}>
+						<button type="button" className={styles.closeBtn} onClick={onClose} aria-label={copy.fimDiffClose}>
 							<X size={15} />
 						</button>
 					</div>
 				</div>
 
-				<div style={{ padding: '8px 18px', background: 'var(--fill-soft)', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', fontFamily: 'monospace' }}>
+				<div
+					style={{
+						padding: '8px 18px',
+						background: 'var(--fill-soft)',
+						borderBottom: '1px solid var(--border-subtle)',
+						display: 'flex',
+						alignItems: 'center',
+						gap: '6px',
+						fontSize: '11.5px',
+						fontFamily: 'monospace',
+					}}
+				>
 					<FileCode size={13} style={{ color: 'var(--text-secondary)' }} />
 					<span style={{ fontWeight: 600 }}>{filePath}</span>
 				</div>
 
 				<div className={styles.modalBody} style={{ flex: 1, minHeight: 0, padding: '14px' }}>
-					{loading ? (
-						<div style={{ display: 'grid', placeItems: 'center', height: '100%', color: 'var(--text-secondary)' }}>
-							<span>{isEn ? 'Analyzing git & disk hunks...' : 'Git ve disk blokları karşılaştırılıyor...'}</span>
-						</div>
-					) : data?.error ? (
-						<div style={{ padding: '16px', background: 'rgba(255, 59, 48, 0.1)', color: '#d70015', borderRadius: '8px', fontSize: '12px' }}>
-							{data.error}
-						</div>
-					) : viewMode === 'split' ? (
-						<div className={styles.diffPanes}>
-							<div className={styles.diffPane}>
-								<div className={styles.diffPaneHeader}>
-									<span>{isEn ? 'Git Baseline (HEAD)' : 'Git Başlangıç (HEAD)'}</span>
-								</div>
-								<div className={styles.diffCodeContainer}>
-									{renderLines(data?.originalContent || '', 'orig')}
-								</div>
-							</div>
-
-							<div className={styles.diffPane}>
-								<div className={styles.diffPaneHeader}>
-									<span>{isEn ? 'Current Disk Content' : 'Mevcut Disk İçeriği'}</span>
-								</div>
-								<div className={styles.diffCodeContainer}>
-									{renderLines(data?.currentContent || '', 'curr')}
-								</div>
-							</div>
-						</div>
-					) : (
-						<div className={styles.diffPane} style={{ flex: 1, minHeight: 0 }}>
-							<div className={styles.diffPaneHeader}>
-								<span>{isEn ? 'Unified Git Patch / Diff' : 'Birleşik Git Yaması / Fark'}</span>
-							</div>
-							<div className={styles.diffCodeContainer}>
-								{renderUnifiedDiff()}
-							</div>
-						</div>
-					)}
+					<FimDiffViewport loading={loading} data={data} viewMode={viewMode} copy={copy} />
 				</div>
 
 				<div className={styles.modalFooter}>
 					<button type="button" className={styles.btn} onClick={onClose}>
-						{isEn ? 'Close' : 'Kapat'}
+						{copy.fimDiffClose}
 					</button>
 				</div>
 			</div>
 		</div>
 	);
 };
+
 export default FimDiffModal;

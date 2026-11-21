@@ -48,6 +48,6 @@ export function isAssignable(board: TeamBoardAccess, userId: string): boolean {
 	);
 }
 
-export const notFound = () => NextResponse.json({ error: 'Görev bulunamadı.' }, { status: 404 });
+export const notFound = () => NextResponse.json({ error: 'Task not found.' }, { status: 404 });
 export const forbidden = (error: string) => NextResponse.json({ error }, { status: 403 });
 export const badRequest = (error: string) => NextResponse.json({ error }, { status: 400 });

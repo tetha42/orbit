@@ -1,0 +1,70 @@
+{
+  "generatedAt": "2026-11-16T20:06:33.388Z",
+  "buildId": "RafjI0KaTahbv5qk3z_c5",
+  "totals": {
+    "totalStaticJsBytes": 4237340,
+    "totalStaticJsGzipBytes": 1199649,
+    "totalStaticCssBytes": 343492,
+    "totalStaticCssGzipBytes": 63556,
+    "largestStaticJsChunkBytes": 418745,
+    "largestInitialJsChunkBytes": 326853
+  },
+  "routes": {
+    "/_global-error": {
+      "initialJsChunks": 7,
+      "initialJsBytes": 572286,
+      "initialJsGzipBytes": 175896,
+      "initialCssBytes": 0,
+      "initialCssGzipBytes": 0
+    },
+    "/_not-found": {
+      "initialJsChunks": 13,
+      "initialJsBytes": 998119,
+      "initialJsGzipBytes": 316188,
+      "initialCssBytes": 137526,
+      "initialCssGzipBytes": 23228
+    },
+    "/checkin/[code]": {
+      "initialJsChunks": 14,
+      "initialJsBytes": 1009536,
+      "initialJsGzipBytes": 320851,
+      "initialCssBytes": 139888,
+      "initialCssGzipBytes": 23923
+    },
+    "/oauth/authorize": {
+      "initialJsChunks": 14,
+      "initialJsBytes": 1013948,
+      "initialJsGzipBytes": 320717,
+      "initialCssBytes": 141206,
+      "initialCssGzipBytes": 24040
+    },
+    "/": {
+      "initialJsChunks": 17,
+      "initialJsBytes": 1375896,
+      "initialJsGzipBytes": 419809,
+      "initialCssBytes": 158630,
+      "initialCssGzipBytes": 27440
+    },
+    "/setup": {
+      "initialJsChunks": 15,
+      "initialJsBytes": 1055646,
+      "initialJsGzipBytes": 333595,
+      "initialCssBytes": 158630,
+      "initialCssGzipBytes": 27440
+    },
+    "/verify/[code]": {
+      "initialJsChunks": 13,
+      "initialJsBytes": 998119,
+      "initialJsGzipBytes": 316188,
+      "initialCssBytes": 140967,
+      "initialCssGzipBytes": 24128
+    },
+    "/verify": {
+      "initialJsChunks": 13,
+      "initialJsBytes": 998119,
+      "initialJsGzipBytes": 316188,
+      "initialCssBytes": 140967,
+      "initialCssGzipBytes": 24128
+    }
+  }
+}

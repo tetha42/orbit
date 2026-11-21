@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { X, Send, AlertCircle } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
+import mailContract from '../mail.contract.json';
 import styles from '../Mail.module.css';
 
 interface MailComposeModalProps {
@@ -77,7 +78,11 @@ export const MailComposeModal: React.FC<MailComposeModalProps> = ({
 			setError(t('mailErrSubject'));
 			return;
 		}
-		if (!body.trim()) {
+		if (subject.trim().length > mailContract.limits.maxSubjectLength) {
+			setError(t('mailErrSubject'));
+			return;
+		}
+		if (!body.trim() || body.length > mailContract.limits.maxBodyLength) {
 			setError(t('mailErrBody'));
 			return;
 		}
@@ -87,9 +92,10 @@ export const MailComposeModal: React.FC<MailComposeModalProps> = ({
 
 		try {
 			// Convert plain text breaks into HTML paragraphs/breaks
-			const formattedHtml = `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #222;">
-				${body.replace(/\n/g, '<br/>')}
-			</div>`;
+			const formattedHtml =
+				`<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', ` +
+				`Roboto, Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #222;">` +
+				`${body.replace(/\n/g, '<br/>')}</div>`;
 
 			const res = await fetch('/api/mail', {
 				method: 'POST',
@@ -104,7 +110,10 @@ export const MailComposeModal: React.FC<MailComposeModalProps> = ({
 
 			const data = await res.json();
 			if (!res.ok) {
-				throw new Error(data.error || t('mailErrSend'));
+				const matched = mailContract.errorCodes.find(
+					(entry) => data.code === entry.code || (typeof data.error === 'string' && data.error.includes(entry.code))
+				);
+				throw new Error(matched ? t(matched.i18nKey, matched.description) : data.error || t('mailErrSend'));
 			}
 
 			onSendSuccess();
@@ -134,8 +143,8 @@ export const MailComposeModal: React.FC<MailComposeModalProps> = ({
 						<div
 							style={{
 								padding: '8px 16px',
-								background: 'rgba(255, 69, 58, 0.1)',
-								color: '#ff453a',
+								background: 'color-mix(in srgb, var(--danger) 10%, transparent)',
+								color: 'var(--danger)',
 								fontSize: 12,
 								display: 'flex',
 								alignItems: 'center',
@@ -152,7 +161,7 @@ export const MailComposeModal: React.FC<MailComposeModalProps> = ({
 						<input
 							type="text"
 							className={styles.composeFieldInput}
-							placeholder="alici@example.com"
+							placeholder="recipient@example.com"
 							value={to}
 							onChange={(e) => setTo(e.target.value)}
 							required
@@ -182,6 +191,7 @@ export const MailComposeModal: React.FC<MailComposeModalProps> = ({
 							type="text"
 							className={styles.composeFieldInput}
 							placeholder={t('mailSubjectPh')}
+							maxLength={mailContract.limits.maxSubjectLength}
 							value={subject}
 							onChange={(e) => setSubject(e.target.value)}
 							required

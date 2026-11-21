@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { clientAddress } from '@/lib/http';
+import { isAuthorizedAppSecProbe } from '@/lib/auth/guard/probeAuth';
 import { logSystemEvent } from '@/db/repositories/logs.repo';
 import { recordSecurityStrike } from '@/db/repositories/security.repo';
 
@@ -16,7 +17,7 @@ export const dynamic = 'force-dynamic';
 async function handleHoneypot(request: Request) {
 	const ip = clientAddress(request);
 	const ua = request.headers.get('user-agent') || 'unknown';
-	const isProbe = !!request.headers.get('x-appsec-probe');
+	const isProbe = await isAuthorizedAppSecProbe(request);
 
 	const origPath = request.headers.get('x-canary-original-path') || '/api/admin/config';
 	const signature = request.headers.get('x-canary-signature') || 'Honeypot canary endpoint';

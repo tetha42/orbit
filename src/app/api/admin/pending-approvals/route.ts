@@ -27,13 +27,12 @@ export async function GET(request: Request) {
 			studentNo: u.handle ?? u.studentNo,
 			department: u.department,
 			grade: u.grade,
-			createdAt: u.createdAt ?? u.creation ?? 0,
-			creation: u.createdAt ?? u.creation ?? 0,
+			createdAt: u.createdAt ?? 0,
 		}));
 
 		return NextResponse.json({ count: users.length, users });
 	} catch (error) {
-		console.error('API /api/admin/onay-bekleyenler GET error:', error);
-		return NextResponse.json({ error: 'Başvurular okunamadı.' }, { status: 500 });
+		console.error('API /api/admin/pending-approvals GET error:', error);
+		return NextResponse.json({ error: 'Failed to load applications.' }, { status: 500 });
 	}
 }

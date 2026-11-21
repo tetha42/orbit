@@ -1,10 +1,11 @@
-// Envanter: ekleme, ödünç, iade, süre uzatma, etiket yazdırma, arızalı/kayıp ve rol sınırları.
+// Inventory: adding, borrowing, returning, extending, label printing, faulty/lost, and role boundaries.
 import { client } from '../lib/api.mjs';
 import { dockApps, openApp } from '../lib/browser.mjs';
-import { dialogReply } from '../lib/diyalog.mjs';
+import { dialogReply } from '../lib/dialog.mjs';
 import { uniq } from '../lib/temporary.mjs';
+import { tr } from '../lib/locale.mjs';
 
-export const meta = { title: 'Envanter: ekleme, ödünç/iade/uzatma, etiket, arızalı/kayıp, roller' };
+export const meta = { title: 'Inventory: add, borrow/return/extend, label, faulty/lost, roles' };
 
 const DAY = 86_400_000;
 
@@ -17,7 +18,8 @@ export default async function suite(t) {
 	const tag = uniq().toUpperCase();
 	const CODE = `E2E-${tag}`;
 	const CODE_2 = `E2E-${tag}-B`;
-	const NAME = `E2E Osiloskop ${tag}`;
+	const NAME = `E2E Oscilloscope ${tag}`;
+	const LOCATION = 'E2E Test Shelf';
 	const ids = [];
 
 	// The items go: a borrowed one is returned first (the server refuses to delete it).
@@ -29,214 +31,217 @@ export default async function suite(t) {
 	});
 	const items = async (c = admin) => (await c.get('/api/inventory')).json;
 	const item = async (code = CODE) => (await items()).find((i) => i.code === code);
-	const card = (win, code = CODE) => win.locator(`[data-item-kod="${code}"]`);
+	const card = (win, code = CODE) => win.locator(`[data-item-code="${code}"]`);
 	const sheet = (page, name) => page.getByRole('dialog', { name });
+	const detailLabel = (code = CODE) => `${code} ${tr('invDetailsBtn').toLocaleLowerCase('tr')}`;
 
 	let id = null;
-	const zPage = (await t.open('zeynep')).page;
-	const zWin = await openApp(zPage, 'inventory');
 
-	await t.step('Yönetim Kurulu arayüzden eşya ekliyor; kod büyük harfe çevrilir', async () => {
-		await zWin.getByRole('button', { name: 'Yeni Ekipman' }).click();
-		const form = sheet(zPage, 'Yeni ekipman');
+	await t.step('Board adds an item through the UI; the code is uppercased', async () => {
+		const zPage = (await t.open('zeynep')).page;
+		const zWin = await openApp(zPage, 'inventory');
+		await zWin.getByRole('button', { name: tr('invNewEquipment') }).click();
+		const form = sheet(zPage, tr('invNewEquipment'));
 		await form.waitFor();
 		await form.getByPlaceholder('LAB-RPI-006').fill(CODE.toLowerCase());
-		await form.getByPlaceholder('Örn: Raspberry Pi 5 8GB Starter Kit').fill(NAME);
-		await form.getByPlaceholder('Örn: Teknoloji Lab Dolap B, Raf 2').fill('E2E Test Rafı');
-		await form.getByRole('button', { name: 'Envantere Ekle' }).click();
+		await form.getByPlaceholder(tr('invItemNamePh')).fill(NAME);
+		await form.getByPlaceholder(tr('invLocationPh')).fill(LOCATION);
+		await form.getByRole('button', { name: tr('invNewEquipment') }).click();
 		await card(zWin).waitFor();
 		const it = await item();
-		t.check(it, 'eşya API listesinde (kod büyük harfle kaydedildi)');
+		t.check(it, 'item is in the API list (code stored uppercased)');
 		id = it?.id ?? null;
 		if (id) ids.push(id);
-		t.eq(it?.status, 'available', 'yeni eşya müsait');
-		t.eq(it?.location, 'E2E Test Rafı', 'konum kaydedildi');
-		t.includes((await card(zWin).textContent()).toLocaleLowerCase('tr'), 'müsait', 'kart "Müsait" diyor');
-		await t.shot(zPage, 'eşya-eklendi');
+		t.eq(it?.status, 'available', 'new item is available');
+		t.eq(it?.location, LOCATION, 'location was stored');
+		t.includes((await card(zWin).textContent()).toLocaleLowerCase('tr'), tr('reportInvAvailable'), 'the card shows the item as available');
+		await t.shot(zPage, 'item-added');
 
-		const dup = await zeynep.post('/api/inventory', { action: 'create', code: CODE, name: NAME, category: 'Sensör', location: 'Başka raf' });
-		t.eq(dup.status, 409, 'aynı kod ikinci kez eklenemez (409)');
-		const badCode = await zeynep.post('/api/inventory', { action: 'create', code: 'küçük harf!', name: NAME, category: 'Sensör', location: 'Raf' });
-		t.eq(badCode.status, 400, 'geçersiz kod reddedilir (400)');
+		const dup = await zeynep.post('/api/inventory', { action: 'create', code: CODE, name: NAME, category: tr('invCatSensor'), location: 'Another shelf' });
+		t.eq(dup.status, 409, 'the same code cannot be added twice (409)');
+		const badCode = await zeynep.post('/api/inventory', { action: 'create', code: 'lower case!', name: NAME, category: tr('invCatSensor'), location: 'Shelf' });
+		t.eq(badCode.status, 400, 'an invalid code is rejected (400)');
 	});
 
-	const canPage = (await t.open('can')).page;
+	const { page: canPage, context: canCtx } = await t.open('can');
 	const cWin = await openApp(canPage, 'inventory');
 
-	await t.step('Üye eşyayı ödünç alıyor (Ödünç Al → Sende)', async () => {
-		await card(cWin).getByRole('button', { name: 'Ödünç Al' }).click();
-		const m = sheet(canPage, 'Ödünç Al');
+	await t.step('Member borrows the item (borrow action → on-loan badge)', async () => {
+		await card(cWin).getByRole('button', { name: tr('invActionBorrow') }).click();
+		const m = sheet(canPage, tr('invActionBorrow'));
 		await m.waitFor();
-		await m.getByRole('button', { name: 'Ödünç Al' }).click();
-		await card(cWin).getByText('Sende').waitFor();
+		await m.getByRole('button', { name: tr('invActionBorrow') }).click();
+		await card(cWin).getByText(tr('invWithYou')).waitFor();
 		const it = await item();
-		t.eq(it?.status, 'on_loan', 'eşya ödünçte');
-		t.eq(it?.loanFieldId, t.fx.users.can.id, 'ödünç alan Can');
-		const days = Math.round((it.returnDate - Date.now()) / DAY);
-		t.check(days >= 13 && days <= 15, `varsayılan süre 14 gün (${days})`);
-		t.eq(await card(cWin).getByRole('button', { name: 'İade Et' }).count(), 1, 'kartta "İade Et" çıktı');
-		t.includes(await cWin.getByRole('button', { name: /Bendekiler/ }).innerText(), '(1)', '"Bendekiler" sayacı 1');
+		t.eq(it?.status, 'on_loan', 'item is on loan');
+		t.eq(it?.holderUserId, t.fx.users.can.id, 'borrowed by Can');
+		const days = Math.round((it.dueDate - Date.now()) / DAY);
+		t.check(days >= 13 && days <= 15, `default loan period is 14 days (${days})`);
+		t.eq(await card(cWin).getByRole('button', { name: tr('invActionReturn') }).count(), 1, 'the return button appears on the card');
+		t.includes(await cWin.getByRole('button', { name: tr('invMyItems', { n: 1 }) }).innerText(), '(1)', 'held-items counter shows 1');
 		await t.shot(canPage, 'odunc-alindi');
 	});
 
-	await t.step('başkası iade edemez, uzatamaz, ödünç alamaz', async () => {
+	await t.step('someone else cannot return, extend, or borrow it', async () => {
 		const r = await ege.post('/api/inventory', { action: 'return', inventoryId: id });
-		t.eq(r.status, 403, 'başka üye iade edemez (403)');
-		const u = await ege.post('/api/inventory', { action: 'extend', inventoryId: id, returnDate: Date.now() + 20 * DAY });
-		t.eq(u.status, 403, 'başka üye süre uzatamaz (403)');
+		t.eq(r.status, 403, 'another member cannot return it (403)');
+		const u = await ege.post('/api/inventory', { action: 'extend', inventoryId: id, dueDate: Date.now() + 20 * DAY });
+		t.eq(u.status, 403, 'another member cannot extend it (403)');
 		const o = await ege.post('/api/inventory', { action: 'borrow', inventoryId: id });
-		t.eq(o.status, 409, 'ödünçteki eşya ödünç alınamaz (409)');
-		t.eq((await item())?.loanFieldId, t.fx.users.can.id, 'eşya hâlâ Can\'da');
+		t.eq(o.status, 409, 'an item on loan cannot be borrowed (409)');
+		t.eq((await item())?.holderUserId, t.fx.users.can.id, 'item is still with Can');
 		const { page } = await t.open('ege');
 		const win = await openApp(page, 'inventory');
 		await card(win).waitFor();
-		t.eq(await card(win).getByRole('button', { name: 'İade Et' }).count(), 0, 'Ege\'nin ekranında "İade Et" yok');
-		t.includes(await card(win).innerText(), 'Can', 'Ege kimde olduğunu görüyor');
+		t.eq(await card(win).getByRole('button', { name: tr('invActionReturn') }).count(), 0, 'no return button on Ege\'s screen');
+		t.includes(await card(win).innerText(), t.fx.users.can.name, 'Ege can see who is holding it');
 	});
 
-	await t.step('süre uzatma: üye 30 günü aşamaz', async () => {
-		const before = (await item()).returnDate;
-		await card(cWin).getByRole('button', { name: 'Ayrıntılar' }).click();
-		const detail = sheet(canPage, `${CODE} ayrıntıları`);
+	await t.step('extension: a member cannot go beyond 30 days', async () => {
+		const before = (await item()).dueDate;
+		await card(cWin).getByRole('button', { name: tr('invDetailsBtn') }).click();
+		const detail = sheet(canPage, detailLabel());
 		await detail.waitFor();
-		await detail.getByRole('button', { name: 'Süreyi uzat' }).click();
-		const m = sheet(canPage, 'Süreyi Uzat');
+		await detail.getByRole('button', { name: tr('invExtendLoan') }).click();
+		const m = sheet(canPage, tr('invExtendLoan'));
 		await m.waitFor();
-		await m.getByRole('button', { name: 'Süreyi Uzat' }).click();
+		await m.getByRole('button', { name: tr('invExtendLoan') }).click();
 		await m.waitFor({ state: 'detached' });
-		await t.waitFor(async () => (await item()).returnDate > before);
-		const after = (await item()).returnDate;
-		t.check(after > before, 'iade tarihi ileri alındı', `${before} → ${after}`);
-		const tooLong = await can.post('/api/inventory', { action: 'extend', inventoryId: id, returnDate: Date.now() + 60 * DAY });
-		t.eq(tooLong.status, 400, '60 gün isteyen üye reddedildi (400)');
-		const past = await can.post('/api/inventory', { action: 'extend', inventoryId: id, returnDate: Date.now() - DAY });
-		t.eq(past.status, 400, 'geçmiş tarih reddedildi (400)');
+		await t.waitFor(async () => (await item()).dueDate > before);
+		const after = (await item()).dueDate;
+		t.check(after > before, 'due date moved later', `${before} → ${after}`);
+		const tooLong = await can.post('/api/inventory', { action: 'extend', inventoryId: id, dueDate: Date.now() + 60 * DAY });
+		t.eq(tooLong.status, 400, 'a member asking for 60 days is rejected (400)');
+		const past = await can.post('/api/inventory', { action: 'extend', inventoryId: id, dueDate: Date.now() - DAY });
+		t.eq(past.status, 400, 'a past date is rejected (400)');
 	});
 
-	await t.step('etiket: karekod görünür, "Etiket yazdır" kodu basan pencere açar', async () => {
-		const detail = sheet(canPage, `${CODE} ayrıntıları`);
+	await t.step('label: the QR code is visible and the print action opens a window that prints the code', async () => {
+		const detail = sheet(canPage, detailLabel());
 		if (!(await detail.count())) {
-			await card(cWin).getByRole('button', { name: 'Ayrıntılar' }).click();
+			await card(cWin).getByRole('button', { name: tr('invDetailsBtn') }).click();
 			await detail.waitFor();
 		}
-		await detail.getByRole('img', { name: `${CODE} karekodu` }).waitFor();
-		const printBtn = detail.getByRole('button', { name: 'Etiket yazdır' });
+		await detail.getByRole('img', { name: `${CODE} QR` }).waitFor();
+		const printBtn = detail.getByRole('button', { name: tr('invPrintQr') });
 		await t.waitFor(async () => await printBtn.isEnabled());
 		const [popup] = await Promise.all([canPage.context().waitForEvent('page'), printBtn.click()]);
 		await popup.waitForLoadState('domcontentloaded');
 		const label = await popup.locator('.label').innerText();
-		t.includes(label, CODE, 'etiket eşyanın kodunu basıyor');
-		t.includes(label, NAME, 'etiket eşyanın adını basıyor');
-		t.eq(await popup.locator('.label img').count(), 1, 'etikette karekod görseli var');
+		t.includes(label, CODE, 'the label prints the item code');
+		t.includes(label, NAME, 'the label prints the item name');
+		t.eq(await popup.locator('.label img').count(), 1, 'the label includes a QR code image');
 		await popup.close();
-		const hist = (await zeynep.get(`/api/inventory?gecmis=${encodeURIComponent(id)}`)).json.movements.map((h) => h.typeValue);
-		for (const typeValue of ['add', 'loan', 'extend']) t.includes(hist, typeValue, `geçmişte "${typeValue}" kaydı var`);
-		await detail.getByRole('button', { name: 'Kapat' }).click();
+		const hist = (await zeynep.get(`/api/inventory?history=${encodeURIComponent(id)}`)).json.movements.map((h) => h.type);
+		for (const itemType of ['add', 'loan', 'extend']) t.includes(hist, itemType, `history contains a "${itemType}" entry`);
+		await detail.getByRole('button', { name: 'Close' }).click();
 	});
 
-	await t.step('iade: arıza bildirilirse eşya servis dışına alınır', async () => {
-		await card(cWin).getByRole('button', { name: 'İade Et' }).click();
-		const m = sheet(canPage, 'İade Et');
+	await t.step('return: reporting a fault takes the item out of service', async () => {
+		await card(cWin).getByRole('button', { name: tr('invActionReturn') }).click();
+		const m = sheet(canPage, tr('invActionReturn'));
 		await m.waitFor();
 		await m.getByRole('checkbox').check();
-		await m.getByRole('textbox').fill('Kanal 2 probu sinyal vermiyor');
-		await m.getByRole('button', { name: 'İade Et' }).click();
+		await m.getByRole('textbox').fill('Channel 2 probe is not sending a signal');
+		await m.getByRole('button', { name: tr('invActionReturn') }).click();
 		await m.waitFor({ state: 'detached' });
 		await t.waitFor(async () => (await item())?.status === 'faulty');
 		const it = await item();
-		t.eq(it?.status, 'faulty', 'arıza bildirilen eşya "arızalı"');
-		t.eq(it?.loanFieldId, null, 'zimmet kapandı');
-		t.eq(await card(cWin).getByRole('button', { name: 'Ödünç Al' }).count(), 0, 'arızalı eşya ödünç alınamıyor');
+		t.eq(it?.status, 'faulty', 'the item with a reported fault is marked faulty');
+		t.eq(it?.holderUserId, null, 'custody was closed');
+		t.eq(await card(cWin).getByRole('button', { name: tr('invActionBorrow') }).count(), 0, 'a faulty item cannot be borrowed');
 		const o = await can.post('/api/inventory', { action: 'borrow', inventoryId: id });
-		t.eq(o.status, 409, 'arızalı eşya API ile de ödünç alınamaz (409)');
+		t.eq(o.status, 409, 'a faulty item cannot be borrowed through the API either (409)');
 		await t.shot(canPage, 'faulty');
 	});
+	await t.close(canCtx);
 
-	await t.step('Yönetim Kurulu: onarıldı → üye adına ödünç → kayıp → bulundu → sil', async () => {
-		await zPage.reload();
+	await t.step('Board: repaired → lend on behalf of a member → lost → found → delete', async () => {
+		const zPage = (await t.open('zeynep')).page;
 		const win = await openApp(zPage, 'inventory');
-		await card(win).getByRole('button', { name: 'Ayrıntılar' }).click();
-		const detail = sheet(zPage, `${CODE} ayrıntıları`);
+		await card(win).getByRole('button', { name: tr('invDetailsBtn') }).click();
+		const detail = sheet(zPage, detailLabel());
 		await detail.waitFor();
 
-		await detail.getByRole('button', { name: 'Onarıldı / bulundu' }).click();
+		await detail.getByRole('button', { name: tr('invMarkRepaired') }).click();
 		const said = await dialogReply(zPage, true);
-		t.includes(said, `${CODE} kullanıma hazır`, 'onay penceresi durumu söylüyor');
+		t.includes(said, tr('invStatusChangeConfirm', { code: CODE, status: tr('invStatusAvailable') }), 'the confirmation dialog states the status');
 		await t.waitFor(async () => (await item())?.status === 'available');
-		t.eq((await item())?.status, 'available', 'onarılan eşya müsait');
+		t.eq((await item())?.status, 'available', 'the repaired item is available');
 
-		await detail.getByRole('button', { name: 'Üye adına ödünç ver' }).click();
-		const lend = sheet(zPage, 'Üye Adına Ödünç Ver');
+		await detail.getByRole('button', { name: tr('invLendForMember') }).click();
+		const lend = sheet(zPage, tr('invLendForMember'));
 		await lend.waitFor();
-		await lend.getByRole('combobox').selectOption({ label: 'Ege Kılıç' });
-		await lend.getByRole('button', { name: 'Üye Adına Ödünç Ver' }).click();
+		await lend.getByRole('combobox').selectOption({ label: t.fx.users.ege.nameSurname });
+		await lend.getByRole('button', { name: tr('invLendForMember') }).click();
 		await lend.waitFor({ state: 'detached' });
-		await t.waitFor(async () => (await item())?.loanFieldId === t.fx.users.ege.id);
-		t.eq((await item())?.loanFieldId, t.fx.users.ege.id, 'eşya Ege adına ödünç verildi');
+		await t.waitFor(async () => (await item())?.holderUserId === t.fx.users.ege.id);
+		t.eq((await item())?.holderUserId, t.fx.users.ege.id, 'the item was lent on Ege\'s behalf');
 
+		await card(win).getByRole('button', { name: tr('invDetailsBtn') }).click();
 		await detail.waitFor();
-		t.eq(await detail.getByRole('button', { name: 'Sil' }).isDisabled(), true, 'ödünçteki eşyanın "Sil" düğmesi kapalı');
-		t.eq((await zeynep.post('/api/inventory', { action: 'delete', inventoryId: id })).status, 409, 'ödünçteki eşya API ile de silinemez (409)');
-		await detail.getByRole('button', { name: 'Kayıp işaretle' }).click();
+		t.eq(await detail.getByRole('button', { name: tr('delete') }).isDisabled(), true, 'the delete button is disabled for an item on loan');
+		t.eq((await zeynep.post('/api/inventory', { action: 'delete', inventoryId: id })).status, 409, 'an item on loan cannot be deleted through the API either (409)');
+		await detail.getByRole('button', { name: tr('invMarkLost') }).click();
 		const lost = await dialogReply(zPage, true);
-		t.includes(lost, 'Ödünç kaydı kapanır', 'kayıp onayı zimmetin kapanacağını söylüyor');
+		t.includes(lost, tr('invStatusLostLoanNotice').split('{name}')[0], 'the loss confirmation says the custody record will be closed');
 		await t.waitFor(async () => (await item())?.status === 'lost');
-		t.eq((await item())?.status, 'lost', 'eşya kayıp');
-		t.eq((await item())?.loanFieldId, null, 'kayıpta zimmet kapandı');
+		t.eq((await item())?.status, 'lost', 'item is lost');
+		t.eq((await item())?.holderUserId, null, 'custody was closed on loss');
 		await t.shot(zPage, 'lost');
 
-		await detail.getByRole('button', { name: 'Onarıldı / bulundu' }).click();
+		await detail.getByRole('button', { name: tr('invMarkRepaired') }).click();
 		await dialogReply(zPage, true);
 		await t.waitFor(async () => (await item())?.status === 'available');
-		t.eq((await item())?.status, 'available', 'bulunan eşya müsait');
-		const hist = (await zeynep.get(`/api/inventory?gecmis=${encodeURIComponent(id)}`)).json.movements.map((h) => h.typeValue);
-		for (const typeValue of ['return', 'durum']) t.includes(hist, typeValue, `geçmişte "${typeValue}" kaydı var`);
+		t.eq((await item())?.status, 'available', 'the found item is available');
+		const hist = (await zeynep.get(`/api/inventory?history=${encodeURIComponent(id)}`)).json.movements.map((h) => h.type);
+		for (const itemType of ['return', 'status']) t.includes(hist, itemType, `history contains a "${itemType}" entry`);
 
-		const second = await zeynep.post('/api/inventory', { action: 'create', code: CODE_2, name: `${NAME} B`, category: 'Sensör', location: 'E2E Test Rafı' });
+		const second = await zeynep.post('/api/inventory', { action: 'create', code: CODE_2, name: `${NAME} B`, category: tr('invCatSensor'), location: LOCATION });
 		if (second.json?.item?.id) ids.push(second.json.item.id);
 		await zPage.reload();
 		const win2 = await openApp(zPage, 'inventory');
-		await card(win2, CODE_2).getByRole('button', { name: 'Ayrıntılar' }).click();
-		const detail2 = sheet(zPage, `${CODE_2} ayrıntıları`);
+		await card(win2, CODE_2).getByRole('button', { name: tr('invDetailsBtn') }).click();
+		const detail2 = sheet(zPage, detailLabel(CODE_2));
 		await detail2.waitFor();
-		await detail2.getByRole('button', { name: 'Arızalı işaretle' }).click();
+		await detail2.getByRole('button', { name: tr('invMarkBroken') }).click();
 		await dialogReply(zPage, true);
 		await t.waitFor(async () => (await item(CODE_2))?.status === 'faulty');
-		t.eq((await item(CODE_2))?.status, 'faulty', '"Arızalı işaretle" eşyayı arızalı yaptı');
-		await detail2.getByRole('button', { name: 'Sil' }).click();
+		t.eq((await item(CODE_2))?.status, 'faulty', 'the mark-as-faulty action set the item to faulty');
+		await detail2.getByRole('button', { name: tr('delete') }).click();
 		const del = await dialogReply(zPage, true);
-		t.includes(del, 'kalıcı olarak silinsin mi', 'silme onayı soruluyor');
+		t.includes(del, tr('invDeleteConfirm', { code: CODE_2, name: `${NAME} B` }), 'a delete confirmation is prompted');
 		await t.waitFor(async () => !(await item(CODE_2)));
-		t.check(!(await item(CODE_2)), 'eşya silindi');
+		t.check(!(await item(CODE_2)), 'item was deleted');
 	});
 
-	await t.step('Üye (Kullan): ekleyemez, düzenleyemez, durum değiştiremez', async () => {
-		await canPage.reload();
+	await t.step('Member (use only): cannot add, edit, or change status', async () => {
+		const canPage = (await t.open('can')).page;
 		const win = await openApp(canPage, 'inventory');
 		await card(win).waitFor();
-		t.eq(await win.getByRole('button', { name: 'Yeni Ekipman' }).count(), 0, 'Üye: "Yeni Ekipman" yok');
-		await card(win).getByRole('button', { name: 'Ayrıntılar' }).click();
-		const detail = sheet(canPage, `${CODE} ayrıntıları`);
+		t.eq(await win.getByRole('button', { name: tr('invNewEquipment') }).count(), 0, 'member: no new-equipment button');
+		await card(win).getByRole('button', { name: tr('invDetailsBtn') }).click();
+		const detail = sheet(canPage, detailLabel());
 		await detail.waitFor();
-		t.eq(await detail.locator('[aria-label="Yönetim"]').count(), 0, 'Üye: "Yönetim" bölümü yok');
-		t.eq(await detail.getByRole('button', { name: 'Üye adına ödünç ver' }).count(), 0, 'Üye: "Üye adına ödünç ver" yok');
-		const f = { code: 'E2E-UYE', name: 'Üye ekleyemez', category: 'Sensör', location: 'Raf' };
-		t.eq((await can.post('/api/inventory', { action: 'create', ...f })).status, 403, 'Üye eşya ekleyemez (403)');
-		t.eq((await can.post('/api/inventory', { action: 'update', inventoryId: id, ...f })).status, 403, 'Üye eşya düzenleyemez (403)');
-		t.eq((await can.post('/api/inventory', { action: 'updateStatus', inventoryId: id, status: 'lost' })).status, 403, 'Üye durum değiştiremez (403)');
-		t.eq((await can.post('/api/inventory', { action: 'delete', inventoryId: id })).status, 403, 'Üye eşya silemez (403)');
-		// "Üye adına" alanı yönetim dışında yok sayılır: ödünç kendi adına yazılır.
+		t.eq(await detail.locator(`[aria-label="${tr('invManageSection').replace(':', '')}"]`).count(), 0, 'member: no management section');
+		t.eq(await detail.getByRole('button', { name: tr('invLendForMember') }).count(), 0, 'member: no lend-on-behalf action');
+		const f = { code: 'E2E-UYE', name: 'Member cannot add', category: tr('invCatSensor'), location: 'Shelf' };
+		t.eq((await can.post('/api/inventory', { action: 'create', ...f })).status, 403, 'a member cannot add items (403)');
+		t.eq((await can.post('/api/inventory', { action: 'update', inventoryId: id, ...f })).status, 403, 'a member cannot edit items (403)');
+		t.eq((await can.post('/api/inventory', { action: 'updateStatus', inventoryId: id, status: 'lost' })).status, 403, 'a member cannot change the status (403)');
+		t.eq((await can.post('/api/inventory', { action: 'delete', inventoryId: id })).status, 403, 'a member cannot delete items (403)');
+		// The lend-on-behalf field is ignored outside management: the loan is recorded in the member's own name.
 		const o = await can.post('/api/inventory', { action: 'borrow', inventoryId: id, userId: t.fx.users.ege.id });
-		t.eq(o.status, 200, 'Üye ödünç alabiliyor');
-		t.eq((await item())?.loanFieldId, t.fx.users.can.id, 'başkası adına verilmek istenen ödünç kendi adına yazıldı');
+		t.eq(o.status, 200, 'a member can borrow');
+		t.eq((await item())?.holderUserId, t.fx.users.can.id, 'a loan requested for someone else was recorded under the member\'s own name');
 		await can.post('/api/inventory', { action: 'return', inventoryId: id });
 	});
 
-	await t.step('Sadece Haberler: Envanter hiç görünmez, API kapalı', async () => {
+	await t.step('News-only user: Inventory is never visible and the API is closed', async () => {
 		const { page } = await t.open('reader');
-		t.eq(await dockApps(page), ['news', 'settings'], 'Dock\'ta Envanter yok');
-		t.eq((await reader.get('/api/inventory')).status, 403, 'liste 403');
-		t.eq((await reader.post('/api/inventory', { action: 'borrow', inventoryId: id })).status, 403, 'ödünç alma 403');
-		t.eq((await client(t.base).get('/api/inventory')).status, 401, 'oturumsuz istek 401');
+		t.excludes(await dockApps(page), 'inventory', 'no Inventory app in the dock');
+		t.eq((await reader.get('/api/inventory')).status, 403, 'list request returns 403');
+		t.eq((await reader.post('/api/inventory', { action: 'borrow', inventoryId: id })).status, 403, 'borrow request returns 403');
+		t.eq((await client(t.base).get('/api/inventory')).status, 401, 'unauthenticated request returns 401');
 	});
 }

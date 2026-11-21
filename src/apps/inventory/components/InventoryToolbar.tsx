@@ -60,7 +60,7 @@ export function InventoryToolbar({
 			<header className={s.header}>
 				<div>
 					<h2 className={s.title}>
-						<Cpu size={20} color="#0a84ff" /> {t('invHeader')}
+						<Cpu size={20} color="var(--accent)" /> {t('invHeader')}
 					</h2>
 					<p className={s.subtitle}>{t('invSubtitle')}</p>
 				</div>
@@ -86,13 +86,13 @@ export function InventoryToolbar({
 					placeholder={t('invSearchInputPlaceholder')}
 					value={search}
 					onChange={(e) => setSearch(e.target.value)}
-					aria-label="Envanterde ara"
+					aria-label={t('invSearchInputPlaceholder')}
 				/>
 				<select
 					className={ui.select}
 					value={category}
 					onChange={(e) => setCategory(e.target.value)}
-					aria-label="Kategori"
+					aria-label={t('invColCategory')}
 				>
 					<option value="">{t('invAllCategoriesOpt')}</option>
 					{categories.map((c) => (

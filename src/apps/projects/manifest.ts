@@ -34,9 +34,9 @@ const manifest = {
 	notifications: { projectProposal: 'manage' },
 	permission: {
 		order: 3,
-		name: 'Projeler',
-		use: 'Proje vitrinini görür, yıldızlar, proje önerir.',
-		manage: 'Önerileri onaylar, yayınlar, arşivler, öne çıkarır.',
+		name: 'Project Showcase',
+		use: 'Browse project showcase, star projects, and submit project proposals.',
+		manage: 'Review proposals, publish, archive, and feature projects.',
 	},
 } as const satisfies AppManifest;
 

@@ -27,14 +27,14 @@ export function TeamJoinButton({
 }: TeamJoinButtonProps) {
 	const { t } = useI18n();
 
-	if (tm.myMyStatus === 'active') {
+	if (tm.myStatus === 'active') {
 		return tm.leadId === currentUserId ? null : (
 			<button type="button" className={`${ui.btn} ${ui.btnDanger}`} disabled={busy} onClick={() => onLeave(tm)}>
 				{t('tmLeave')}
 			</button>
 		);
 	}
-	if (tm.myMyStatus === 'applied') {
+	if (tm.myStatus === 'applied') {
 		return (
 			<button type="button" className={ui.btn} disabled={busy} onClick={() => onLeave(tm)}>
 				{t('tmWithdraw')}

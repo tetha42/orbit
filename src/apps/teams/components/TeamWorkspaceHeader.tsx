@@ -43,7 +43,7 @@ export function TeamWorkspaceHeader({
 						)}
 					</div>
 					<div className={styles.wsMeta}>
-						{t('tmCaptain')}: {team.leaderNameSurname || t('tmNoCaptain')} · {t('tmQuota')}: {team.fullCapacity}/{team.capacity}
+						{t('tmCaptain')}: {team.leaderName || t('tmNoCaptain')} · {t('tmQuota')}: {team.fullCapacity}/{team.capacity}
 					</div>
 				</div>
 			</div>
@@ -79,7 +79,7 @@ export function TeamWorkspaceHeader({
 						onClick={() => setActiveTab('vault')}
 						data-focus-section="vault"
 					>
-						<Wallet size={14} /> {t('tmTabKasa')}
+						<Wallet size={14} /> {t('tmTabTreasury')}
 					</button>
 				)}
 				{team.permissions.manage && (

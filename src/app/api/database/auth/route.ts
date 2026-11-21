@@ -17,7 +17,7 @@ export async function POST(request: Request) {
 
 	if (!auth.user.permission.admin) {
 		return NextResponse.json(
-			{ error: 'Veritabanı stüdyosuna yalnızca yöneticiler erişebilir.', code: 'ADMIN_REQUIRED' },
+			{ error: 'Only administrators can access Database Studio.', code: 'ADMIN_REQUIRED' },
 			{ status: 403 }
 		);
 	}
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
 	if (isUserDatabaseFrozen(auth.user.id)) {
 		return NextResponse.json(
 			{
-				error: 'Veritabanı erişimi SoC güvenlik tecrit protokolü kapsamında dondurulmuştur.',
+				error: 'Database access is frozen under the SoC security isolation protocol.',
 				code: 'DATABASE_ACCESS_FROZEN',
 			},
 			{ status: 403 }
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
 	if (!gate.allowed) {
 		return NextResponse.json(
 			{
-				error: `Çok fazla hatalı 2FA denemesi. ${Math.ceil(gate.retryAfter / 60)} dakika sonra tekrar deneyin.`,
+				error: `Too many failed 2FA attempts. Please try again in ${Math.ceil(gate.retryAfter / 60)} minute(s).`,
 				code: 'RATE_LIMITED',
 			},
 			{ status: 429, headers: { 'Retry-After': String(gate.retryAfter) } }
@@ -47,29 +47,23 @@ export async function POST(request: Request) {
 
 	const user = await getUserById(auth.user.id);
 	if (!user) {
-		return NextResponse.json({ error: 'Kullanıcı bulunamadı.' }, { status: 404 });
+		return NextResponse.json({ error: 'User not found.' }, { status: 404 });
 	}
 
 	try {
-		const body = await request.json().catch(() => ({}));
+		const body = await request.json().catch(() => {
+			/* Fallback to empty object when body is absent or malformed JSON */
+			return {};
+		});
 
 		// A passkey session already satisfies the second-factor requirement, so it
-		// receives the short-lived database token without a fresh TOTP code.
-		if (String(body.method || '') === 'passkey') {
-			if ((auth.user.authMethod ?? 'password') !== 'passkey') {
-				return NextResponse.json(
-					{
-						error: 'This session was not authenticated with a passkey. Sign in with your passkey or enter a TOTP code.',
-						code: 'PASSKEY_SESSION_REQUIRED',
-					},
-					{ status: 403 }
-				);
-			}
+		// receives the short-lived database token directly without a TOTP code.
+		if ((auth.user.authMethod ?? 'password') === 'passkey') {
 			const token = await createDatabaseSessionToken(auth.user.id);
 			await logSystemEvent({
 				service: 'database',
 				level: 'INFO',
-				message: 'Veritabanı Yöneticisi passkey oturumu ile açıldı',
+				message: 'Database Studio unlocked via passkey session',
 				detail: { email: auth.user.email },
 				userId: auth.user.id,
 				ip,
@@ -77,10 +71,20 @@ export async function POST(request: Request) {
 			return NextResponse.json({ success: true, token, expiresInMs: 30 * 60 * 1000, method: 'passkey' });
 		}
 
+		if (String(body.method || '') === 'passkey') {
+			return NextResponse.json(
+				{
+					error: 'This session was not authenticated with a passkey. Sign in with your passkey or enter a TOTP code.',
+					code: 'PASSKEY_SESSION_REQUIRED',
+				},
+				{ status: 403 }
+			);
+		}
+
 		if (Number(user.totpEnabled) !== 1 || !user.totpSecret) {
 			return NextResponse.json(
 				{
-					error: 'Veritabanı yöneticisini kullanabilmek için iki adımlı doğrulamayı (2FA) Ayarlar bölümünden etkinleştirmeniz gerekmektedir.',
+					error: 'You must enable two-factor authentication (2FA) in Settings before using Database Studio.',
 					code: '2FA_SETUP_REQUIRED',
 				},
 				{ status: 403 }
@@ -91,7 +95,7 @@ export async function POST(request: Request) {
 
 		if (!code) {
 			return NextResponse.json(
-				{ error: '2FA doğrulama kodu gereklidir.', code: '2FA_CODE_REQUIRED' },
+				{ error: '2FA verification code is required.', code: '2FA_CODE_REQUIRED' },
 				{ status: 400 }
 			);
 		}
@@ -103,19 +107,19 @@ export async function POST(request: Request) {
 			await recordSecurityStrike({
 				ip,
 				points: 20,
-				reason: 'Veritabanı Stüdyosu hatalı 2FA doğrulama denemesi',
+				reason: 'Invalid 2FA verification attempt in Database Studio',
 				userId: user.id,
 			});
 			await logSystemEvent({
 				service: 'database',
 				level: 'WARN',
-				message: 'Geçersiz 2FA kodu ile veritabanı erişim denemesi',
+				message: 'Database access attempt with invalid 2FA code',
 				detail: { email: user.email },
 				userId: user.id,
 				ip,
 			});
 			return NextResponse.json(
-				{ error: 'Geçersiz veya süresi dolmuş 2FA kodu.', code: 'INVALID_2FA_CODE' },
+				{ error: 'Invalid or expired 2FA code.', code: 'INVALID_2FA_CODE' },
 				{ status: 401 }
 			);
 		}
@@ -131,7 +135,7 @@ export async function POST(request: Request) {
 		await logSystemEvent({
 			service: 'database',
 			level: 'INFO',
-			message: 'Veritabanı Yöneticisi 2FA oturumu başlatıldı',
+			message: 'Database Studio 2FA session started',
 			detail: { email: user.email },
 			userId: user.id,
 			ip,
@@ -144,6 +148,6 @@ export async function POST(request: Request) {
 		});
 	} catch (error) {
 		console.error('API /api/database/auth error:', error);
-		return NextResponse.json({ error: '2FA doğrulama işlemi başarısız.' }, { status: 500 });
+		return NextResponse.json({ error: '2FA verification failed.' }, { status: 500 });
 	}
 }

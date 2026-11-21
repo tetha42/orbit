@@ -9,7 +9,9 @@ import ui from '@/core/ui/ui.module.css';
 import { CertificateTitlePresets } from './CertificateTitlePresets';
 import { IssueModeToggle } from './IssueModeToggle';
 import { IssueModalFooter } from './IssueModalFooter';
+import contract from '../certificates.contract.json';
 import type { MemberRankItem } from '../types';
+import { getLocaleDefinition } from '@/locales/registry';
 
 interface IssueCertificateModalProps {
 	isOpen: boolean;
@@ -64,7 +66,7 @@ export function IssueCertificateModal({
 		<Sheet
 			title={t('certsIssueModalTitle')}
 			label={t('certsIssueModalTitle')}
-			icon={<Award size={20} color="#ff9500" />}
+			icon={<Award size={20} color="var(--warning)" />}
 			onClose={onClose}
 			onSubmit={onSubmit}
 			maxWidth={520}
@@ -85,7 +87,7 @@ export function IssueCertificateModal({
 						<option value="">{t('certsIssueSelectMember')}</option>
 						{members.map((m) => (
 							<option key={m.id} value={m.id}>
-								{m.name} {m.surname} ({m.department} - {fill(t('membersClassYear'), { year: m.grade })})
+								{m.name} {m.surname} ({m.department} - {fill(t('membersClassYear'), { year: m.grade ?? 0 })})
 							</option>
 						))}
 					</select>
@@ -97,6 +99,7 @@ export function IssueCertificateModal({
 				<input
 					type="text"
 					required
+					maxLength={contract.limits.maxTitleLength}
 					className={ui.input}
 					placeholder={t('certsIssueTitlePh')}
 					value={issueTitle}
@@ -158,7 +161,7 @@ export function IssueCertificateModal({
 							className={ui.select}
 							style={{ maxWidth: 'none', width: '100%' }}
 						>
-							<option value="tr">🇹🇷 Türkçe (TR)</option>
+							<option value="tr">🇹🇷 {getLocaleDefinition('tr').nativeName} (TR)</option>
 							<option value="en">🇬🇧 English (EN)</option>
 						</select>
 					</div>
@@ -168,9 +171,9 @@ export function IssueCertificateModal({
 			{setIssueContext && (
 				<div className={ui.field}>
 					<label className={ui.fieldLabel}>{t('certsCustomContextLabel')}</label>
-					<input
-						type="text"
+					<textarea
 						className={ui.input}
+						style={{ minHeight: 52, resize: 'vertical' }}
 						placeholder={t('certsCustomContextPh')}
 						value={issueContext}
 						onChange={(e) => setIssueContext(e.target.value)}

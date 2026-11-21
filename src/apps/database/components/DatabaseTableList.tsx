@@ -48,14 +48,14 @@ export function DatabaseTableList({
 								style={{
 									background: 'transparent',
 									border: 'none',
-									color: 'var(--accent, #3b82f6)',
+									color: 'var(--accent)',
 									cursor: 'pointer',
 									padding: '2px',
 									display: 'flex',
 									alignItems: 'center',
 									opacity: 0.85,
 								}}
-								title="Yeni Tablo Oluştur"
+								title={t('dbCreateTable')}
 							>
 								<Plus size={14} />
 							</button>

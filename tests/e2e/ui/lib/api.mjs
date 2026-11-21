@@ -20,6 +20,7 @@ export function client(base, token = '') {
 				});
 				break;
 			} catch (e) {
+				if (process.env.__E2E_ABORTING === '1') throw new Error(`${method} ${path}: aborted`);
 				const code = e.cause?.code ?? '';
 				const repeatable = method === 'GET' || path === '/api/auth/login';
 				const safe = code === 'ECONNREFUSED' || (repeatable && ['ECONNRESET', 'UND_ERR_SOCKET', 'UND_ERR_CONNECT_TIMEOUT'].includes(code));
@@ -48,7 +49,7 @@ export function client(base, token = '') {
 }
 
 /**
- * Signs `eposta` in over the API (answering the 2FA step with `totp` when asked)
+ * Signs `email` in over the API (answering the 2FA step with `totp` when asked)
  * and returns the client. Throws with the server's answer when it does not work.
  */
 export async function loginApi(base, email, password, totp) {
@@ -56,11 +57,17 @@ export async function loginApi(base, email, password, totp) {
 	const r = await c.post('/api/auth/login', { email, password });
 	if (r.json?.require2fa) {
 		if (!totp) throw new Error(`${email} needs a second factor but no TOTP secret was given.`);
-		let v = await c.post('/api/auth/2fa/challenge', { challengeToken: r.json.challengeToken, code: await totpCode(totp) });
+		let v = await c.post('/api/auth/2fa/challenge', {
+			challengeToken: r.json.challengeToken,
+			code: await totpCode(totp, base),
+		});
 		// Another script may have spent this window's code; totpCode now waits for the next one.
 		if (v.status !== 200) {
 			const again = await c.post('/api/auth/login', { email, password });
-			v = await c.post('/api/auth/2fa/challenge', { challengeToken: again.json?.challengeToken, code: await totpCode(totp) });
+			v = await c.post('/api/auth/2fa/challenge', {
+				challengeToken: again.json?.challengeToken,
+				code: await totpCode(totp, base),
+			});
 		}
 		if (v.status !== 200) throw new Error(`2FA for ${email}: ${v.status} ${JSON.stringify(v.json)}`);
 	} else if (r.status !== 200) throw new Error(`login ${email}: ${r.status} ${JSON.stringify(r.json)}`);

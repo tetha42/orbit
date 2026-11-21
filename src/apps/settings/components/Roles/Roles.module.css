@@ -226,7 +226,7 @@
 	gap: 4px;
 	font-size: 11.5px;
 	font-weight: 650;
-	color: #c45500;
+	color: var(--warning);
 }
 
 .check {
@@ -259,7 +259,7 @@
 	}
 }
 
-/* ---- Değişiklik geçmişi ---- */
+/* ---- Change history ---- */
 
 .audit {
 	display: flex;
@@ -432,11 +432,11 @@
 }
 
 .auditOld {
-	color: #c4423a;
+	color: var(--danger);
 }
 
 .auditNew {
-	color: #1f9d55;
+	color: var(--success);
 	font-weight: 650;
 }
 
@@ -482,7 +482,7 @@
 	padding: 10px;
 	border: 1px solid var(--window-border);
 	border-radius: 10px;
-	background: var(--fill-softer, rgba(255, 255, 255, 0.025));
+	background: var(--fill-softer);
 }
 
 .auditSoc .auditList {
@@ -495,12 +495,12 @@
 	padding: 9px 11px;
 	border-radius: 8px;
 	border-color: var(--window-border);
-	background: var(--fill-soft, rgba(255, 255, 255, 0.035));
+	background: var(--fill-soft);
 	font-size: 12px;
 }
 
 .auditSoc .auditRow:hover {
-	background: var(--fill-softer, rgba(255, 255, 255, 0.06));
+	background: var(--fill-softer);
 }
 
 .auditSoc .auditOp {

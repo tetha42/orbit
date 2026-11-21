@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { getCertificates, createCertificate, deleteCertificate, createEventCertificates, getEventById, getUserById } from '@/db';
 import { can, requireApp } from '@/lib/auth/access';
 import { withAudit } from '@/lib/audit/withAudit';
+import certificatesContract from '@/apps/certificates/certificates.contract.json';
+import { contractErrorResponse } from '@/contracts/helpers';
+
+const MAX_TITLE_LENGTH = certificatesContract.limits.maxTitleLength;
 
 export async function GET(request: Request) {
 	// Previously unauthenticated: with no `userId` this returned every
@@ -20,7 +24,7 @@ export async function GET(request: Request) {
 		return NextResponse.json(certs);
 	} catch (error) {
 		console.error('API /api/certificates GET error:', error);
-		return NextResponse.json({ error: 'Sertifikalar okunamadı.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to load certificates.' }, { status: 500 });
 	}
 }
 
@@ -34,14 +38,17 @@ async function handlePOST(request: Request) {
 		const body = await request.json();
 		const { userId, eventId, pdfUrl, category, language, description } = body;
 		const title = typeof body.title === 'string' ? body.title.trim() : '';
-		if (!title || title.length > 160) {
-			return NextResponse.json({ error: 'Başlık zorunludur (en fazla 160 karakter).' }, { status: 400 });
+		if (!title || title.length > MAX_TITLE_LENGTH) {
+			return NextResponse.json(
+				{ error: `Title is required (max ${MAX_TITLE_LENGTH} characters).` },
+				{ status: 400 }
+			);
 		}
 
 		// Everyone who attended an event, in one go; those who already hold one are skipped.
 		if (body.action === 'bulk') {
 			const ev = typeof eventId === 'string' ? await getEventById(eventId) : null;
-			if (!ev) return NextResponse.json({ error: 'CommunityEvent bulunamadı.' }, { status: 404 });
+			if (!ev) return NextResponse.json({ error: 'Event not found.' }, { status: 404 });
 			const r = await createEventCertificates(ev.id, title, {
 				category: typeof category === 'string' ? category : undefined,
 				language: typeof language === 'string' ? language : undefined,
@@ -51,19 +58,21 @@ async function handlePOST(request: Request) {
 				success: true,
 				...r,
 				message: r.given
-					? `${r.given} katılımcıya sertifika verildi${r.alreadyVar ? `, ${r.alreadyVar} kişide zaten vardı` : ''}.`
-					: 'Yeni sertifika verilecek katılımcı yok.',
+					? `Issued certificates to ${r.given} participant(s)${r.alreadyExists ? ` (${r.alreadyExists} already held one)` : ''}.`
+					: 'No new participants eligible for a certificate.',
 			});
 		}
 
 		if (!userId) {
-			return NextResponse.json({ error: 'Kullanıcı ve Başlık zorunludur.' }, { status: 400 });
+			return NextResponse.json({ error: 'User and title are required.' }, { status: 400 });
 		}
-		if (!(await getUserById(userId))) return NextResponse.json({ error: 'Üye bulunamadı.' }, { status: 404 });
+		if (!(await getUserById(userId))) {
+			return NextResponse.json({ error: 'Member not found.' }, { status: 404 });
+		}
 
 		const result = await createCertificate({
 			userId,
-			title: title,
+			title,
 			eventId: eventId || undefined,
 			pdfUrl: pdfUrl || undefined,
 			category: typeof category === 'string' ? category : undefined,
@@ -74,7 +83,7 @@ async function handlePOST(request: Request) {
 		return NextResponse.json({ success: true, id: result.id, verificationCode: result.verificationCode });
 	} catch (error) {
 		console.error('API /api/certificates POST error:', error);
-		return NextResponse.json({ error: 'Certificate oluşturulamadı.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to create certificate.' }, { status: 500 });
 	}
 }
 
@@ -89,18 +98,22 @@ async function handleDELETE(request: Request) {
 		const id = searchParams.get('id');
 
 		if (!id) {
-			return NextResponse.json({ error: 'Certificate ID zorunludur.' }, { status: 400 });
+			return NextResponse.json({ error: 'Certificate ID is required.' }, { status: 400 });
 		}
 
 		const deleted = await deleteCertificate(id);
 		if (!deleted) {
-			return NextResponse.json({ error: 'Certificate bulunamadı veya silinemedi.' }, { status: 404 });
+			return contractErrorResponse(
+				certificatesContract,
+				'CERTIFICATE_NOT_FOUND',
+				'Certificate not found or could not be deleted.'
+			);
 		}
 
-		return NextResponse.json({ success: true, message: 'Certificate iptal edildi.' });
+		return NextResponse.json({ success: true, message: 'Certificate revoked.' });
 	} catch (error) {
 		console.error('API /api/certificates DELETE error:', error);
-		return NextResponse.json({ error: 'İşlem tamamlanamadı.' }, { status: 500 });
+		return NextResponse.json({ error: 'Operation could not be completed.' }, { status: 500 });
 	}
 }
 

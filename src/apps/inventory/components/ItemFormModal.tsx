@@ -6,10 +6,11 @@ import { codeProblem, normalizeCode } from '@/lib/inventory';
 import ui from '@/core/ui/ui.module.css';
 import { sendJson } from '@/core/data/http';
 import s from './Inventory.module.css';
-import { CATEGORY_SUGGESTIONS, type InventoryItem } from '../types';
+import { CATEGORY_SUGGESTION_KEYS, type InventoryItem } from '../types';
 import { Sheet } from '@/core/ui/Sheet';
 import { useI18n } from '@/core/i18n';
 import { fill } from '@/lib/text';
+import inventoryContract from '../inventory.contract.json';
 
 /** Adds an item (management) or edits one's code, name, category, place, serial and notes. */
 export function ItemFormModal({
@@ -24,27 +25,34 @@ export function ItemFormModal({
 	const { t } = useI18n();
 	const [code, setCode] = useState(item?.code ?? '');
 	const [name, setName] = useState(item?.name ?? '');
-	const [category, setCategory] = useState(item?.category ?? t('kasaCatHardware'));
+	const [category, setCategory] = useState(item?.category ?? t('treasuryCatHardware'));
 	const [location, setLocation] = useState(item?.location ?? '');
-	const [seriesNo, setSeriesNo] = useState(item?.seriesNo ?? '');
+	const [serialNo, setSerialNo] = useState(item?.serialNo ?? '');
 	const [description, setDescription] = useState(item?.description ?? '');
 	const [status, setStatus] = useState<'available' | 'faulty'>('available');
 	const [error, setError] = useState('');
 	const [busy, setBusy] = useState(false);
 	const normalizedCode = normalizeCode(code);
-	const codeError = code ? codeProblem(normalizedCode) : null;
+	const codeError = code
+		? normalizedCode.length > inventoryContract.limits.maxCodeLength
+			? `Max ${inventoryContract.limits.maxCodeLength}`
+			: codeProblem(normalizedCode)
+		: null;
 
 	const submit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setError('');
 		if (codeError) return setError(codeError);
+		if (name.trim().length > inventoryContract.limits.maxNameLength) {
+			return setError(`Max ${inventoryContract.limits.maxNameLength}`);
+		}
 		setBusy(true);
 		const fields = {
 			code: normalizedCode,
 			name: name.trim(),
 			category: category.trim(),
 			location: location.trim(),
-			seriesNo: seriesNo.trim(),
+			serialNo: serialNo.trim(),
 			description: description.trim(),
 		};
 		const res = item
@@ -55,7 +63,7 @@ export function ItemFormModal({
 				})
 			: await sendJson('/api/inventory', 'POST', { action: 'create', ...fields, status });
 		setBusy(false);
-		if (!res.ok) return setError(res.error || 'Kaydedilemedi.');
+		if (!res.ok) return setError(res.error || t('error'));
 		onSaved(item ? t('invItemUpdated') : fill(t('invItemAdded'), { code: normalizedCode }));
 	};
 
@@ -63,7 +71,7 @@ export function ItemFormModal({
 		<Sheet
 			title={<>{item ? `${item.code} · ${t('edit')}` : t('invNewEquipment')}</>}
 			label={item ? t('edit') : t('invNewEquipment')}
-			icon={<Cpu size={18} color="#0a84ff" />}
+			icon={<Cpu size={18} color="var(--accent)" />}
 			onClose={onClose}
 			onSubmit={submit}
 			maxWidth={620}
@@ -84,6 +92,7 @@ export function ItemFormModal({
 					<input
 						className={ui.input}
 						value={code}
+						maxLength={inventoryContract.limits.maxCodeLength}
 						onChange={(e) => setCode(e.target.value)}
 						placeholder="LAB-RPI-006"
 						required
@@ -99,9 +108,9 @@ export function ItemFormModal({
 					<span className={ui.fieldLabel}>{t('invSerialOptional')}</span>
 					<input
 						className={ui.input}
-						value={seriesNo}
+						value={serialNo}
 						maxLength={80}
-						onChange={(e) => setSeriesNo(e.target.value)}
+						onChange={(e) => setSerialNo(e.target.value)}
 						placeholder={t('invSerialPh')}
 					/>
 				</label>
@@ -112,7 +121,7 @@ export function ItemFormModal({
 					className={ui.input}
 					value={name}
 					minLength={3}
-					maxLength={120}
+					maxLength={inventoryContract.limits.maxNameLength}
 					onChange={(e) => setName(e.target.value)}
 					placeholder={t('invItemNamePh')}
 					required
@@ -131,8 +140,8 @@ export function ItemFormModal({
 						required
 					/>
 					<datalist id="inventory-categories">
-						{CATEGORY_SUGGESTIONS.map((k) => (
-							<option key={k} value={k} />
+						{CATEGORY_SUGGESTION_KEYS.map((k) => (
+							<option key={k} value={t(k)} />
 						))}
 					</datalist>
 				</label>

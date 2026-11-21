@@ -1,59 +1,21 @@
 import { NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth/access';
-import { createAuthCode, getOAuthClientById, recordUserConsent } from '@/db/oauth';
+import { getOAuthClientById, recordUserConsent } from '@/db/oauth';
 import { clientAddress } from '@/lib/http';
 import { logSystemEvent } from '@/db/repositories/logs.repo';
-import { isIpBanned, recordSecurityStrike } from '@/db/repositories/security.repo';
-import { inspectRequestPayload } from '@/lib/waf';
-
-function isRedirectUriRegistered(registeredUris: string[], targetUri: string): boolean {
-	return registeredUris.some((registered) => {
-		try {
-			const u1 = new URL(registered);
-			const u2 = new URL(targetUri);
-			return u1.origin === u2.origin && u1.pathname === u2.pathname;
-		} catch {
-			return registered === targetUri;
-		}
-	});
-}
+import {
+	buildAuthorizeUserPayload,
+	guardAuthorizeRequest,
+	intersectScopes,
+	isRedirectUriRegistered,
+	mintAuthorizeRedirectUrl,
+	resolveAllowedScopes,
+} from './authorizeHelpers';
 
 export async function GET(request: Request) {
 	const ip = clientAddress(request);
-	const ban = await isIpBanned(ip);
-	if (ban.banned) {
-		void recordSecurityStrike({
-			ip,
-			points: 10,
-			reason: 'Karantinadaki IP OAuth authorize denemesi',
-			path: '/api/oauth/authorize',
-		});
-		return NextResponse.json(
-			{ error: 'access_denied', error_description: 'IP adresiniz siber güvenlik politikası nedeniyle karantinaya alınmıştır.' },
-			{ status: 403 }
-		);
-	}
-
-	const waf = inspectRequestPayload(request);
-	if (waf.matched) {
-		void logSystemEvent({
-			service: 'security',
-			level: 'ERROR',
-			message: `[WAF] OAuth authorize saldırı imzası engellendi (${waf.signature})`,
-			detail: { category: waf.category, signature: waf.signature },
-			ip,
-		});
-		void recordSecurityStrike({
-			ip,
-			points: waf.points,
-			reason: `WAF: ${waf.signature}`,
-			path: '/api/oauth/authorize',
-		});
-		return NextResponse.json(
-			{ error: 'access_denied', error_description: 'Güvenlik duvarı (WAF) tarafından şüpheli istek engellendi.' },
-			{ status: 403 }
-		);
-	}
+	const blocked = await guardAuthorizeRequest(request, ip, undefined, 'GET');
+	if (blocked) return blocked;
 
 	const url = new URL(request.url);
 	const clientId = url.searchParams.get('client_id');
@@ -66,7 +28,7 @@ export async function GET(request: Request) {
 
 	if (!clientId || !redirectUri) {
 		return NextResponse.json(
-			{ error: 'invalid_request', error_description: 'client_id ve redirect_uri parametreleri zorunludur.' },
+			{ error: 'invalid_request', error_description: 'client_id and redirect_uri parameters are required.' },
 			{ status: 400 }
 		);
 	}
@@ -74,27 +36,25 @@ export async function GET(request: Request) {
 	const client = await getOAuthClientById(clientId);
 	if (!client || !client.active) {
 		return NextResponse.json(
-			{ error: 'unauthorized_client', error_description: 'Geçersiz veya devre dışı bırakılmış istemci.' },
+			{ error: 'unauthorized_client', error_description: 'Invalid or disabled client.' },
 			{ status: 400 }
 		);
 	}
 
-	// Validate redirect_uri matches registered URIs
 	if (!isRedirectUriRegistered(client.redirectUris, redirectUri)) {
 		return NextResponse.json(
-			{ error: 'invalid_request', error_description: 'Yönlendirme URL (redirect_uri) bu istemci için kayıtlı değil.' },
+			{ error: 'invalid_request', error_description: 'The redirect_uri is not registered for this client.' },
 			{ status: 400 }
 		);
 	}
 
 	if (responseType !== 'code') {
 		return NextResponse.json(
-			{ error: 'unsupported_response_type', error_description: 'Yalnızca response_type=code desteklenmektedir.' },
+			{ error: 'unsupported_response_type', error_description: 'Only response_type=code is supported.' },
 			{ status: 400 }
 		);
 	}
 
-	// Check user session
 	const auth = await authenticate(request);
 	if (!auth.authorized) {
 		return NextResponse.json({
@@ -110,68 +70,31 @@ export async function GET(request: Request) {
 	}
 
 	const user = auth.user;
-
-	// Tier 1 & Tier 2: Intersect client allowed scopes with requested scopes
-	const clientAllowedScopes = client.allowedScopes && client.allowedScopes.length > 0
-		? client.allowedScopes
-		: ['openid', 'profile', 'email', 'academic', 'roles'];
-
+	const clientAllowedScopes = resolveAllowedScopes(client.allowedScopes);
 	const rawRequested = scope.split(/\s+/).filter(Boolean);
-	const requestedScopes = rawRequested.length > 0 ? rawRequested : ['openid', 'profile', 'email', 'academic', 'roles'];
-	const effectiveScopes = requestedScopes.filter((s) => clientAllowedScopes.includes(s));
-	if (!effectiveScopes.includes('openid')) {
-		effectiveScopes.unshift('openid');
-	}
+	const requestedScopes = rawRequested.length > 0 ? rawRequested : resolveAllowedScopes(null);
+	const effectiveScopes = intersectScopes(clientAllowedScopes, requestedScopes);
 	const effectiveScopeString = effectiveScopes.join(' ');
 
-	// Güvenilmeyen (untrusted) harici uygulamalar her yetkilendirmede kullanıcının açık onayını (consent) almak zorundadır.
-	// Yalnızca yönetici tarafından 'Güvenilir' olarak onaylanan dahili uygulamalar onay ekranını atlayabilir.
-	// prompt=consent parametresi verilmişse güvenilir uygulamalarda dahi onay ekranı zorunlu tutulur.
+	// Untrusted external apps always require explicit user consent; trusted internal apps may skip unless prompt=consent.
 	const prompt = url.searchParams.get('prompt') || '';
-	const autoApprove = client.trusted && prompt !== 'consent';
-
-	if (autoApprove) {
-		const code = await createAuthCode({
+	if (client.trusted && prompt !== 'consent') {
+		const redirectUrl = await mintAuthorizeRedirectUrl({
 			clientId: client.id,
 			userId: user.id,
 			redirectUri,
 			scope: effectiveScopeString,
+			state,
 			codeChallenge,
 			codeChallengeMethod,
 		});
-
-		const redirectUrl = new URL(redirectUri);
-		redirectUrl.searchParams.set('code', code);
-		if (state) redirectUrl.searchParams.set('state', state);
-
-		return NextResponse.json({
-			authorized: true,
-			autoApproved: true,
-			redirectUrl: redirectUrl.toString(),
-		});
+		return NextResponse.json({ authorized: true, autoApproved: true, redirectUrl });
 	}
 
 	return NextResponse.json({
 		authorized: true,
 		requiresConsent: true,
-		user: {
-			id: user.id,
-			firstName: user.firstName || user.name,
-			lastName: user.lastName || user.surname,
-			name: `${user.firstName || user.name || ''} ${user.lastName || user.surname || ''}`.trim(),
-			surname: user.lastName || user.surname,
-			nameSurname: `${user.firstName || user.name || ''} ${user.lastName || user.surname || ''}`.trim(),
-			email: user.email,
-			handle: user.handle || user.studentNo,
-			studentNo: user.handle || user.studentNo,
-			department: user.department,
-			grade: user.grade,
-			avatarUrl: user.avatarUrl || user.profilePhoto || null,
-			profilePhoto: user.avatarUrl || user.profilePhoto || null,
-			bio: user.bio || null,
-			roleName: user.permission?.role?.name || 'Member',
-			xp: user.xp,
-		},
+		user: buildAuthorizeUserPayload(user),
 		client: {
 			id: client.id,
 			name: client.name,
@@ -188,41 +111,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
 	const ip = clientAddress(request);
-	const ban = await isIpBanned(ip);
-	if (ban.banned) {
-		void recordSecurityStrike({
-			ip,
-			points: 10,
-			reason: 'Karantinadaki IP OAuth authorize POST denemesi',
-			path: '/api/oauth/authorize',
-		});
-		return NextResponse.json(
-			{ error: 'access_denied', error_description: 'IP adresiniz siber güvenlik politikası nedeniyle karantinaya alınmıştır.' },
-			{ status: 403 }
-		);
-	}
-
 	const rawBody = await request.text().catch(() => '');
-	const waf = inspectRequestPayload(request, rawBody);
-	if (waf.matched) {
-		void logSystemEvent({
-			service: 'security',
-			level: 'ERROR',
-			message: `[WAF] OAuth authorize POST saldırı imzası engellendi (${waf.signature})`,
-			detail: { category: waf.category, signature: waf.signature },
-			ip,
-		});
-		void recordSecurityStrike({
-			ip,
-			points: waf.points,
-			reason: `WAF: ${waf.signature}`,
-			path: '/api/oauth/authorize',
-		});
-		return NextResponse.json(
-			{ error: 'access_denied', error_description: 'Güvenlik duvarı (WAF) tarafından şüpheli istek engellendi.' },
-			{ status: 403 }
-		);
-	}
+	const blocked = await guardAuthorizeRequest(request, ip, rawBody, 'POST');
+	if (blocked) return blocked;
 
 	const auth = await authenticate(request);
 	if (!auth.authorized) return auth.response;
@@ -232,7 +123,7 @@ export async function POST(request: Request) {
 		try {
 			body = JSON.parse(rawBody || '{}');
 		} catch {
-			return NextResponse.json({ error: 'Geçersiz JSON verisi.' }, { status: 400 });
+			return NextResponse.json({ error: 'Invalid JSON payload.' }, { status: 400 });
 		}
 		interface AuthorizeBody {
 			clientId?: string;
@@ -246,66 +137,49 @@ export async function POST(request: Request) {
 		const { clientId, redirectUri, state, codeChallenge, codeChallengeMethod, approved, grantedScopes } = body as AuthorizeBody;
 
 		if (!clientId || !redirectUri || typeof redirectUri !== 'string') {
-			return NextResponse.json({ error: 'Eksik parametreler.' }, { status: 400 });
+			return NextResponse.json({ error: 'Missing required parameters.' }, { status: 400 });
 		}
 
 		const client = await getOAuthClientById(clientId);
 		if (!client || !client.active) {
-			return NextResponse.json({ error: 'Geçersiz istemci.' }, { status: 400 });
+			return NextResponse.json({ error: 'Invalid client.' }, { status: 400 });
 		}
 
-		// Critical security check: prevent Open Redirect / authorization code theft by verifying redirectUri on POST
 		if (!isRedirectUriRegistered(client.redirectUris, redirectUri)) {
 			await logSystemEvent({
 				service: 'oauth',
 				level: 'ERROR',
-				message: `Kayıtsız redirect_uri ile OAuth onay denemesi engellendi (${client.name})`,
+				message: `OAuth authorization attempt blocked with unregistered redirect_uri (${client.name})`,
 				detail: { clientId, redirectUri },
 				userId: auth.user.id,
 				ip,
 			});
-			return NextResponse.json(
-				{ error: 'Yönlendirme URL (redirect_uri) bu istemci için kayıtlı değil.' },
-				{ status: 400 }
-			);
+			return NextResponse.json({ error: 'The redirect_uri is not registered for this client.' }, { status: 400 });
 		}
 
 		if (!approved) {
 			const redirectUrl = new URL(redirectUri);
 			redirectUrl.searchParams.set('error', 'access_denied');
-			redirectUrl.searchParams.set('error_description', 'Kullanıcı erişim isteğini reddetti.');
+			redirectUrl.searchParams.set('error_description', 'User denied the access request.');
 			if (state) redirectUrl.searchParams.set('state', state);
-
 			return NextResponse.json({ redirectUrl: redirectUrl.toString() });
 		}
 
-		// User approved -> filter granted scopes by client.allowedScopes
-		const clientAllowed = client.allowedScopes && client.allowedScopes.length > 0
-			? client.allowedScopes
-			: ['openid', 'profile', 'email', 'academic', 'roles'];
+		const clientAllowed = resolveAllowedScopes(client.allowedScopes);
+		const requested = Array.isArray(grantedScopes)
+			? grantedScopes.map(String)
+			: typeof body.scope === 'string'
+			? body.scope.split(/\s+/)
+			: clientAllowed;
+		const approvedScope = intersectScopes(clientAllowed, requested).join(' ');
 
-		let approvedList: string[] = [];
-		if (Array.isArray(grantedScopes)) {
-			approvedList = grantedScopes.map(String).filter((s) => clientAllowed.includes(s));
-		} else if (typeof body.scope === 'string') {
-			approvedList = body.scope.split(/\s+/).filter((s: string) => clientAllowed.includes(s));
-		} else {
-			approvedList = clientAllowed;
-		}
-
-		if (!approvedList.includes('openid')) {
-			approvedList.unshift('openid');
-		}
-
-		const approvedScope = approvedList.join(' ');
 		await recordUserConsent(auth.user.id, clientId, approvedScope);
-
-		// Mint code
-		const code = await createAuthCode({
+		const redirectUrl = await mintAuthorizeRedirectUrl({
 			clientId,
 			userId: auth.user.id,
 			redirectUri,
 			scope: approvedScope,
+			state,
 			codeChallenge,
 			codeChallengeMethod,
 		});
@@ -313,19 +187,15 @@ export async function POST(request: Request) {
 		await logSystemEvent({
 			service: 'oauth',
 			level: 'INFO',
-			message: `OAuth erişim onayı verildi: ${client.name}`,
+			message: `OAuth access consent granted: ${client.name}`,
 			detail: { clientId: client.id, scope: approvedScope },
 			userId: auth.user.id,
 			ip,
 		});
 
-		const redirectUrl = new URL(redirectUri);
-		redirectUrl.searchParams.set('code', code);
-		if (state) redirectUrl.searchParams.set('state', state);
-
-		return NextResponse.json({ redirectUrl: redirectUrl.toString() });
+		return NextResponse.json({ redirectUrl });
 	} catch (error) {
 		console.error('API /api/oauth/authorize POST error:', error);
-		return NextResponse.json({ error: 'Yetkilendirme işlemi tamamlanamadı.' }, { status: 500 });
+		return NextResponse.json({ error: 'Authorization request could not be completed.' }, { status: 500 });
 	}
 }

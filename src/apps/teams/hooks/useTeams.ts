@@ -7,11 +7,12 @@ import { useI18n } from '@/core/i18n';
 import { useDialog } from '@/components/Common/DialogProvider';
 import { useFocusTarget } from '@/lib/client/useFocusTarget';
 import { useJsonResource } from '@/core/data/useJsonResource';
-import { foldTr, fill } from '@/lib/text';
+import { foldSearchText, fill } from '@/lib/text';
 import { TEAM_CATEGORIES } from '@/lib/teams';
 import { sendJson } from '@/core/data/http';
 import { useToast } from '@/core/ui/Toast';
 import { useOrbitEvent } from '@/core/ipc/orbitBus';
+import teamsContract from '../teams.contract.json';
 import type { Team } from '../types';
 import type { TeamWorkspaceTab } from '../components/TeamWorkspaceHeader';
 
@@ -86,15 +87,15 @@ export function useTeams() {
 		});
 	};
 
-	const myTeams = teams.filter((tm) => tm.myMyStatus === 'active').length;
+	const myTeams = teams.filter((tm) => tm.myStatus === 'active').length;
 	const selectedTeam = teams.find((tm) => tm.id === selectedTeamId) ?? null;
 
 	const visibleTeams = useMemo(() => {
-		const q = foldTr(query.trim());
+		const q = foldSearchText(query.trim());
 		return teams.filter(
 			(tm) =>
 				(!category || tm.category === category) &&
-				(!q || foldTr([tm.name, tm.description, tm.category, tm.leaderNameSurname, ...tm.members.map((u) => u.userNameSurname)].join(' ')).includes(q))
+				(!q || foldSearchText([tm.name, tm.description, tm.category, tm.leaderName, ...tm.members.map((u) => u.userName)].join(' ')).includes(q))
 		);
 	}, [teams, query, category]);
 
@@ -103,34 +104,44 @@ export function useTeams() {
 		return [...teamCategories.filter((c) => used.has(c)), ...[...used].filter((c) => !teamCategories.includes(c))];
 	}, [teams, teamCategories]);
 
-	const post = async (body: Record<string, unknown>) => {
+	const mapTeamError = (message?: string) => {
+		if (!message) return t('kbActionFailed');
+		const matched = teamsContract.errorCodes.find((entry) => message.includes(entry.code));
+		return matched ? t(matched.i18nKey, matched.description) : message;
+	};
+
+	const post = async (body: Record<string, unknown>, success?: string) => {
 		setBusy(true);
 		const res = await sendJson<{ message?: string }>('/api/teams', 'POST', body);
 		setBusy(false);
-		if (!res.ok) notify(res.error || t('kbActionFailed'), 'error');
+		if (!res.ok) notify(mapTeamError(res.error), 'error');
 		else {
 			playSystemSound();
-			if (res.data.message) notify(res.data.message);
+			if (success) notify(success);
+			else if (res.data.message) notify(res.data.message);
 		}
 		await fetchTeams();
 		return res.ok;
 	};
 
-	const join = (team: Team) => (team.participationType === 'approval' ? setApplyTo(team) : void post({ action: 'join', teamId: team.id }));
+	const join = (team: Team) =>
+		team.participationType === 'approval'
+			? setApplyTo(team)
+			: void post({ action: 'join', teamId: team.id }, t('tmJoinedToast'));
 
 	const leave = async (team: Team) => {
-		const applied = team.myMyStatus === 'applied';
+		const applied = team.myStatus === 'applied';
 		const message = fill(t(applied ? 'tmWithdrawConfirm' : 'tmLeaveConfirm'), { team: team.name });
 		if (!(await dialog.confirm({ message, tone: 'warning', confirmLabel: t(applied ? 'tmWithdraw' : 'tmLeave') }))) return;
-		await post({ action: 'leave', teamId: team.id });
+		await post({ action: 'leave', teamId: team.id }, t(applied ? 'tmWithdrawnToast' : 'tmLeftToast'));
 	};
 
 	const remove = async (team: Team) => {
 		if (!(await dialog.confirm({ message: fill(t('tmDeleteConfirm'), { team: team.name }), tone: 'danger' }))) return;
-		if (await post({ action: 'deleteTeam', teamId: team.id })) showTeam(null);
+		if (await post({ action: 'deleteTeam', teamId: team.id }, t('tmDeletedToast'))) showTeam(null);
 	};
 
-	const canEnter = (tm: Team) => tm.permissions.manage || tm.myMyStatus === 'active';
+	const canEnter = (tm: Team) => tm.permissions.manage || tm.myStatus === 'active';
 	const canSeeVault = (tm: Team) => tm.permissions.manage;
 	const visibleTab: TeamWorkspaceTab =
 		selectedTeam && ((activeTab === 'vault' && !canSeeVault(selectedTeam)) || (activeTab === 'settings' && !selectedTeam.permissions.manage))

@@ -40,7 +40,7 @@ export function DeleteRoleSheet({
 		<Sheet
 			title={fill(t('rolesDeleteTitle'), { name: role.name })}
 			label={fill(t('rolesDeleteTitle'), { name: role.name })}
-			icon={<Trash2 size={18} color="#ff453a" />}
+			icon={<Trash2 size={18} color="var(--danger)" />}
 			tone="danger"
 			onClose={onClose}
 			onSubmit={async (e) => {

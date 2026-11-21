@@ -1,0 +1,56 @@
+.rowCard {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 8px 12px;
+	border-radius: 8px;
+	background: var(--surface-hover);
+	border: 1px solid var(--border-subtle);
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+.topBar {
+	padding: 10px 14px;
+	border-bottom: 1px solid var(--border-subtle);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+}
+
+.folderBar {
+	padding: 8px 14px;
+	border-bottom: 1px solid var(--border-subtle);
+	display: flex;
+	gap: 8px;
+}
+
+.itemBtn {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	background: transparent;
+	border: none;
+	color: var(--text-primary);
+	font-size: 12.5px;
+	cursor: pointer;
+	text-align: left;
+}
+
+.iconBtn {
+	background: transparent;
+	border: none;
+	color: var(--text-secondary);
+	cursor: pointer;
+}
+
+.quotaCard {
+	padding: 10px;
+	border-radius: 8px;
+	background: var(--surface-hover);
+	border: 1px solid var(--border-subtle);
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}

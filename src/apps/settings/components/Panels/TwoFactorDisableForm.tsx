@@ -96,7 +96,7 @@ export function TwoFactorDisableForm({
 						padding: '10px 16px',
 						borderRadius: '8px',
 						border: 'none',
-						background: '#ff453a',
+						background: 'var(--danger)',
 						color: '#fff',
 						fontSize: '13px',
 						fontWeight: 600,

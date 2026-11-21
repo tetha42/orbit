@@ -29,8 +29,8 @@ export function InventoryCard({
 	onLoan,
 }: InventoryCardProps) {
 	const { t } = useI18n();
-	const due = item.status === 'on_loan' ? returnStatus(item.returnDate, now) : null;
-	const mine = item.loanFieldId === currentUserId;
+	const due = item.status === 'on_loan' ? returnStatus(item.dueDate, now) : null;
+	const mine = item.holderUserId === currentUserId;
 
 	const menuItems = useMemo<MenuItem[]>(() => {
 		const items: MenuItem[] = [
@@ -84,7 +84,7 @@ export function InventoryCard({
 		<article
 			className={`${s.card} ${due?.overdue ? s.cardOverdue : ''}`}
 			data-focus-id={`item:${item.id}`}
-			data-item-Code={item.code}
+			data-item-code={item.code}
 			{...contextMenuProps}
 		>
 			<div className={s.cardTop}>
@@ -107,14 +107,14 @@ export function InventoryCard({
 			{item.status === 'on_loan' && (
 				<div className={`${s.loan} ${due?.overdue ? s.loanOverdue : ''}`}>
 					<span>
-						<User size={12} /> <strong>{mine ? t('invWithYou') : item.loanFieldNameSurname}</strong>
+						<User size={12} /> <strong>{mine ? t('invWithYou') : item.holderName}</strong>
 					</span>
 					<span>
-						{t('invDueReturnPrefix')} {item.returnDate ? trDate(item.returnDate) : '—'}{' '}
+						{t('invDueReturnPrefix')} {item.dueDate ? trDate(item.dueDate) : '—'}{' '}
 						<span
 							className={`${s.due} ${due?.overdue ? s.dueLate : due && due.day <= 2 ? s.dueSoon : ''}`}
 						>
-							· {returnText(item.returnDate, now)}
+							· {returnText(item.dueDate, now)}
 						</span>
 					</span>
 				</div>

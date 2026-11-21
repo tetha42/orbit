@@ -1,5 +1,5 @@
 import { withAudit } from '@/lib/audit/withAudit';
-import { handleSetupSubmission } from '../route';
+import { handleSetupSubmission } from '../setupService';
 
 export const dynamic = 'force-dynamic';
 

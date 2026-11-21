@@ -34,8 +34,10 @@ High-priority areas:
 
 ## Deployment warning
 
-The default PostgreSQL password in the example Compose files is for **local
-development only**. Production deployments must set unique credentials,
-restrict the database port to the private network, enable TLS at the reverse
-proxy, and configure `AUTH_SECRET` plus WebAuthn origin/RP ID for the final
-domain.
+Only the isolated local development profile (`infra/docker/docker-compose.dev.yml`)
+sets a default PostgreSQL password (`orbit_dev_2026`). Production deployments using
+`infra/docker/docker-compose.yml` require an explicit `POSTGRES_PASSWORD` with no
+default, and should restrict the database port to the private network, enable TLS
+at the reverse proxy, configure `AUTH_SECRET` plus WebAuthn origin/RP ID for the
+final domain, keep `data/orbit.setup.token` private, and never enable
+`ORBIT_DEV_AUTO_UNLOCK=1` outside local loopback development.

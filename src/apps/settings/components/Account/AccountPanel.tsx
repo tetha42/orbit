@@ -1,312 +1,50 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { useSession } from '@/core/session';
-import { useSound } from '@/core/sound';
-import { resolveLocalizedText, useI18n } from '@/core/i18n';
-import { useJsonResource } from '@/core/data/useJsonResource';
-import { BIO_MAX } from '@/lib/profile';
-import { DEFAULT_REGISTRATION_CORE_CONFIG } from '@/lib/registrationConfig';
-import {
-	fieldLabel,
-	fieldPlaceholder,
-	fieldRequiredForSelf,
-	optionLabel,
-	type FormField,
-	type FormFieldOption,
-} from '@/lib/formFields';
-import type { UserSummary } from '@/db';
+import React from 'react';
 import ui from '@/core/ui/ui.module.css';
 import styles from './Account.module.css';
 import { AccountProfileHero } from './AccountProfileHero';
 import { AccountStatsCards } from './AccountStatsCards';
 import { AccountPasswordForm } from './AccountPasswordForm';
-import { HardDrive, Laptop, LogOut, RotateCcw } from 'lucide-react';
-import { useShell } from '@/core/shell';
-import { useDialog } from '@/components/Common/DialogProvider';
-import { formatBytes } from '@/core/data/format';
-import {
-	LegalDocumentModal,
-	type LegalDocumentContent,
-} from '@/components/Auth/LegalDocumentModal';
-
-interface ProfileResponse {
-	user: {
-		id: string;
-		name: string;
-		surname: string;
-		email: string;
-		studentNo: string | null;
-		department: string;
-		grade: number;
-		roleInfo: { id: string; name: string; color: string } | null;
-		profilePhoto?: string | null;
-		bio?: string | null;
-		xp: number;
-		creation: number;
-	};
-	level: { level: number; progress: number; next: number };
-	summary: UserSummary;
-	fields?: FormField[];
-	customFields?: Record<string, string>;
-	diskUsage?: { bytes: number; count: number };
-}
+import { AccountProfileForm } from './AccountProfileForm';
+import { AccountStorageCard } from './AccountStorageCard';
+import { AccountLegalConsents } from './AccountLegalConsents';
+import { useAccountPanel } from './useAccountPanel';
 
 export function AccountPanel() {
-	const { refreshSession, logout } = useSession();
-	const { resetWorkspaceSession } = useShell();
-	const dialog = useDialog();
-	const { t, language } = useI18n();
-	const { playSystemSound } = useSound();
-	const { data, refetch } = useJsonResource<ProfileResponse>('/api/profilee');
-	const [resetMessage, setResetMessage] = useState<string | null>(null);
-
-	const handleResetWorkspace = async () => {
-		const confirmed = await dialog.confirm({
-			message: t('settingsResetConfirm'),
-			tone: 'warning',
-			confirmLabel: t('dlgReset'),
-		});
-		if (confirmed) {
-			await resetWorkspaceSession();
-			setResetMessage(t('settingsResetDone'));
-			setTimeout(() => setResetMessage(null), 3000);
-		}
-	};
-
-	const [department, setDepartment] = useState<string | null>(null);
-	const [grade, setGrade] = useState<number | null>(null);
-	const [bio, setBio] = useState<string | null>(null);
-	const [levelOptions, setLevelOptions] = useState<FormFieldOption[]>(
-		DEFAULT_REGISTRATION_CORE_CONFIG.level.options
-	);
-	const [trackOptions, setTrackOptions] = useState<FormFieldOption[]>(
-		DEFAULT_REGISTRATION_CORE_CONFIG.track.options
-	);
-	const [busy, setBusy] = useState<'' | 'profile' | 'photo' | 'password'>('');
-	const [msg, setMsg] = useState<{ area: 'profile' | 'photo' | 'password'; text: string; tone: 'ok' | 'err' } | null>(null);
-	const [customValues, setCustomValues] = useState<Record<string, string>>({});
-	const [customErrors, setCustomErrors] = useState<Record<string, string>>({});
-	const [emailOpen, setEmailOpen] = useState(false);
-	const [emailStep, setEmailStep] = useState<'request' | 'verify'>('request');
-	const [newEmail, setNewEmail] = useState('');
-	const [emailCode, setEmailCode] = useState('');
-	const [emailBusy, setEmailBusy] = useState(false);
-	const [emailMsg, setEmailMsg] = useState<{ text: string; tone: 'ok' | 'err' } | null>(null);
-	const [missingLegal, setMissingLegal] = useState<LegalDocumentContent[]>([]);
-	const [activeLegal, setActiveLegal] = useState<LegalDocumentContent | null>(null);
-	const [legalBusy, setLegalBusy] = useState(false);
-
-	useEffect(() => {
-		if (!msg || msg.tone === 'err') return;
-		const id = setTimeout(() => setMsg(null), 3500);
-		return () => clearTimeout(id);
-	}, [msg]);
-
-	useEffect(() => {
-		let cancelled = false;
-		fetch('/api/registration-config', { cache: 'no-store' })
-			.then((res) => (res.ok ? res.json() : null))
-			.then((data) => {
-				if (cancelled) return;
-				if (Array.isArray(data?.config?.level?.options)) {
-					setLevelOptions(data.config.level.options);
-				}
-				if (Array.isArray(data?.config?.track?.options)) {
-					setTrackOptions(data.config.track.options);
-				}
-			})
-			.catch(() => {});
-		return () => {
-			cancelled = true;
-		};
-	}, []);
-
-	useEffect(() => {
-		if (data?.customFields) setCustomValues(data.customFields);
-	}, [data]);
-
-	useEffect(() => {
-		if (!emailOpen) return;
-		let cancelled = false;
-		fetch('/api/profilee/email', { cache: 'no-store' })
-			.then((res) => (res.ok ? res.json() : null))
-			.then((payload) => {
-				if (cancelled || !payload?.pending) return;
-				setEmailStep('verify');
-				setNewEmail(payload.pending.newEmail ?? '');
-				setEmailMsg({ text: t('acEmailPending'), tone: 'ok' });
-			})
-			.catch(() => {});
-		return () => {
-			cancelled = true;
-		};
-	}, [emailOpen, t]);
-
-	useEffect(() => {
-		let cancelled = false;
-		fetch('/api/legal/status', { cache: 'no-store' })
-			.then((res) => (res.ok ? res.json() : null))
-			.then((payload) => {
-				if (!cancelled && Array.isArray(payload?.documents)) setMissingLegal(payload.documents);
-			})
-			.catch(() => {});
-		return () => {
-			cancelled = true;
-		};
-	}, []);
+	const account = useAccountPanel();
+	const { data, msg } = account;
 
 	if (!data) return <div className={ui.muted}>…</div>;
+
 	const { user, level, summary } = data;
 	const selfFields = data.fields ?? [];
-	const values = { department: department ?? user.department, grade: grade ?? user.grade, bio: bio ?? user.bio ?? '' };
+	const values = {
+		department: account.department ?? user.department,
+		grade: account.grade ?? user.grade,
+		bio: account.bio ?? user.bio ?? '',
+	};
 	const customDirty = selfFields.some(
-		(field) => (customValues[field.fieldKey] ?? '') !== (data.customFields?.[field.fieldKey] ?? '')
+		(field) =>
+			(account.customValues[field.fieldKey] ?? '') !== (data.customFields?.[field.fieldKey] ?? '')
 	);
 	const dirty =
 		values.department !== user.department ||
 		values.grade !== user.grade ||
 		values.bio !== (user.bio ?? '') ||
 		customDirty;
-	const trackOptionsForUser = trackOptions.some((option) => option.value === values.department)
-		? trackOptions
+	const trackOptionsForUser = account.trackOptions.some((option) => option.value === values.department)
+		? account.trackOptions
 		: [
-				...trackOptions,
+				...account.trackOptions,
 				{ value: values.department, labelTr: values.department, labelEn: values.department },
-		  ];
-	const levelOptionsForUser = levelOptions.some((option) => Number(option.value) === values.grade)
-		? levelOptions
+			];
+	const levelOptionsForUser = account.levelOptions.some((option) => Number(option.value) === values.grade)
+		? account.levelOptions
 		: [
-				...levelOptions,
+				...account.levelOptions,
 				{ value: String(values.grade), labelTr: `${values.grade}`, labelEn: `${values.grade}` },
-		  ];
-
-	const done = async (area: 'profile' | 'photo' | 'password', ok: boolean, text: string) => {
-		setBusy('');
-		setMsg({ area, text, tone: ok ? 'ok' : 'err' });
-		if (ok) {
-			playSystemSound();
-			await Promise.all([refetch(), refreshSession()]);
-		}
-	};
-
-	const saveProfile = async (e: React.FormEvent) => {
-		e.preventDefault();
-		setBusy('profile');
-		setCustomErrors({});
-		let ok = false;
-		let message = t('kbActionFailed');
-		try {
-			const res = await fetch('/api/profilee', {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ ...values, customFields: customValues }),
-			});
-			const payload = await res.json().catch(() => null);
-			ok = res.ok;
-			message = payload?.error || message;
-			if (!ok && payload?.fieldErrors) setCustomErrors(payload.fieldErrors);
-			if (ok) {
-				setDepartment(null);
-				setGrade(null);
-				setBio(null);
-			}
-		} catch {
-			ok = false;
-		}
-		await done('profile', ok, ok ? t('acSaved') : message);
-	};
-
-	const closeEmailChange = () => {
-		setEmailOpen(false);
-		setEmailStep('request');
-		setNewEmail('');
-		setEmailCode('');
-		setEmailMsg(null);
-	};
-
-	const requestEmailCode = async () => {
-		if (!newEmail.trim()) {
-			setEmailMsg({ text: t('acEmailChangeFailed'), tone: 'err' });
-			return;
-		}
-		setEmailBusy(true);
-		setEmailMsg(null);
-		try {
-			const res = await fetch('/api/profilee/email', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ newEmail: newEmail.trim() }),
-			});
-			const payload = await res.json().catch(() => null);
-			if (!res.ok) throw new Error(payload?.error || t('acEmailChangeFailed'));
-			setEmailStep('verify');
-			setEmailCode('');
-			setEmailMsg({ text: t('acEmailCodeSent'), tone: 'ok' });
-		} catch (error) {
-			setEmailMsg({
-				text: error instanceof Error ? error.message : t('acEmailChangeFailed'),
-				tone: 'err',
-			});
-		} finally {
-			setEmailBusy(false);
-		}
-	};
-
-	const confirmEmailCode = async () => {
-		if (!/^\d{6}$/.test(emailCode.trim())) {
-			setEmailMsg({ text: t('acVerificationCode'), tone: 'err' });
-			return;
-		}
-		setEmailBusy(true);
-		setEmailMsg(null);
-		try {
-			const res = await fetch('/api/profilee/email/confirm', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ code: emailCode.trim() }),
-			});
-			const payload = await res.json().catch(() => null);
-			if (!res.ok) throw new Error(payload?.error || t('acEmailChangeFailed'));
-			closeEmailChange();
-			setMsg({ area: 'profile', text: t('acEmailChanged'), tone: 'ok' });
-			playSystemSound();
-			await Promise.all([refetch(), refreshSession()]);
-		} catch (error) {
-			setEmailMsg({
-				text: error instanceof Error ? error.message : t('acEmailChangeFailed'),
-				tone: 'err',
-			});
-		} finally {
-			setEmailBusy(false);
-		}
-	};
-
-	const acceptLegalDocument = async () => {
-		if (!activeLegal || legalBusy) return;
-		setLegalBusy(true);
-		try {
-			const res = await fetch('/api/legal/accept', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ documentIds: [activeLegal.id] }),
-			});
-			const payload = await res.json().catch(() => null);
-			if (!res.ok) throw new Error(payload?.error || t('acConsentFailed'));
-			setMissingLegal(Array.isArray(payload?.documents) ? payload.documents : []);
-			setActiveLegal(null);
-			playSystemSound();
-			setMsg({ area: 'profile', text: t('acConsentAccepted'), tone: 'ok' });
-		} catch (error) {
-			setMsg({
-				area: 'profile',
-				text: error instanceof Error ? error.message : t('acConsentFailed'),
-				tone: 'err',
-			});
-		} finally {
-			setLegalBusy(false);
-		}
-	};
+			];
 
 	const note = (area: 'profile' | 'photo' | 'password') =>
 		msg?.area === area ? (
@@ -320,360 +58,59 @@ export function AccountPanel() {
 			<AccountProfileHero
 				user={user}
 				level={level}
-				busy={busy}
-				onPhotoDone={(ok, text) => done('photo', ok, text)}
-				onSetBusy={setBusy}
+				busy={account.busy}
+				onPhotoDone={(ok, text) => account.done('photo', ok, text)}
+				onSetBusy={account.setBusy}
 				note={note('photo')}
 			/>
 
 			<AccountStatsCards summary={summary} />
 
-			<form className={styles.card} onSubmit={saveProfile} aria-label={t('acProfile')}>
-				<h4 className={styles.cardTitle}>{t('acProfile')}</h4>
-				<div className={styles.grid2}>
-					<label className={ui.field}>
-						<span className={ui.fieldLabel}>{t('acEmail')}</span>
-						<div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-							<input className={ui.input} value={user.email} disabled style={{ flex: 1, minWidth: 0 }} />
-							<button
-								type="button"
-								className={ui.btn}
-								onClick={() => setEmailOpen((open) => !open)}
-								disabled={emailBusy}
-							>
-								{t('acChangeEmail')}
-							</button>
-						</div>
-					</label>
-					<label className={ui.field}>
-						<span className={ui.fieldLabel}>{t('acStudentNo')}</span>
-						<input className={ui.input} value={user.studentNo ?? '—'} disabled />
-					</label>
-					<label className={ui.field}>
-						<span className={ui.fieldLabel}>{t('acDepartment')}</span>
-						<select className={ui.select} style={{ maxWidth: 'none' }} value={values.department} onChange={(e) => setDepartment(e.target.value)}>
-							{trackOptionsForUser.map((option) => (
-								<option key={option.value} value={option.value}>
-									{optionLabel(option, language)}
-								</option>
-							))}
-						</select>
-					</label>
-					<label className={ui.field}>
-						<span className={ui.fieldLabel}>{t('acYear')}</span>
-						<select className={ui.select} style={{ maxWidth: 'none' }} value={values.grade} onChange={(e) => setGrade(Number(e.target.value))}>
-							{levelOptionsForUser.map((option) => (
-								<option key={option.value} value={Number(option.value)}>
-									{optionLabel(option, language)}
-								</option>
-							))}
-						</select>
-					</label>
-				</div>
-
-				{emailOpen && (
-					<div
-						style={{
-							border: '1px solid var(--window-border)',
-							borderRadius: '10px',
-							padding: '12px',
-							display: 'flex',
-							flexDirection: 'column',
-							gap: '10px',
-							background: 'var(--fill-soft, rgba(255,255,255,0.04))',
-						}}
-					>
-						<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-							<div style={{ fontSize: '12.5px', fontWeight: 700 }}>{t('acChangeEmail')}</div>
-							<button type="button" className={ui.btn} onClick={closeEmailChange} disabled={emailBusy}>
-								{t('acEmailChangeCancel')}
-							</button>
-						</div>
-						{emailMsg && (
-							<div className={emailMsg.tone === 'ok' ? styles.ok : ui.error} role={emailMsg.tone === 'ok' ? 'status' : 'alert'}>
-								{emailMsg.text}
-							</div>
-						)}
-						{emailStep === 'request' ? (
-							<div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-								<label className={ui.field} style={{ flex: 1, minWidth: '200px' }}>
-									<span className={ui.fieldLabel}>{t('acNewEmail')}</span>
-									<input
-										className={ui.input}
-										type="email"
-										autoComplete="email"
-										value={newEmail}
-										onChange={(event) => setNewEmail(event.target.value)}
-										placeholder="yeni@ornek.com"
-									/>
-								</label>
-								<button type="button" className={ui.primaryBtn} onClick={() => void requestEmailCode()} disabled={emailBusy}>
-									{emailBusy ? t('saving') : t('acSendCode')}
-								</button>
-							</div>
-						) : (
-							<div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-								<label className={ui.field} style={{ flex: 1, minWidth: '200px' }}>
-									<span className={ui.fieldLabel}>{t('acVerificationCode')}</span>
-									<input
-										className={ui.input}
-										inputMode="numeric"
-										maxLength={6}
-										value={emailCode}
-										onChange={(event) => setEmailCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
-										placeholder="123456"
-									/>
-								</label>
-								<button type="button" className={ui.primaryBtn} onClick={() => void confirmEmailCode()} disabled={emailBusy}>
-									{emailBusy ? t('saving') : t('acVerifyCode')}
-								</button>
-							</div>
-						)}
-						<div style={{ fontSize: '11px', opacity: 0.6 }}>{newEmail || user.email}</div>
-					</div>
-				)}
-
-				<label className={ui.field}>
-					<span className={ui.fieldLabel} style={{ display: 'flex' }}>
-						{t('acBio')}
-						<span style={{ marginLeft: 'auto', fontWeight: 500 }}>
-							{values.bio.length}/{BIO_MAX}
-						</span>
-					</span>
-					<textarea className={ui.textarea} rows={3} maxLength={BIO_MAX} value={values.bio} placeholder={t('acBioPh')} onChange={(e) => setBio(e.target.value)} />
-				</label>
-
-				{selfFields.length > 0 && (
-					<div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-						<h4 className={styles.cardTitle}>{t('membersAdditionalFields')}</h4>
-						{selfFields.map((field) => {
-							const value = customValues[field.fieldKey] ?? '';
-							const setValue = (next: string) =>
-								setCustomValues((previous) => ({ ...previous, [field.fieldKey]: next }));
-							const errorText = customErrors[field.fieldKey];
-							const required = fieldRequiredForSelf(field);
-							return (
-								<label key={field.id} className={ui.field}>
-									<span className={ui.fieldLabel}>
-										{fieldLabel(field, language)}
-										{required ? ' *' : ''}
-									</span>
-									{field.type === 'textarea' ? (
-										<textarea
-											className={ui.textarea}
-											rows={3}
-											value={value}
-											placeholder={fieldPlaceholder(field, language)}
-											onChange={(event) => setValue(event.target.value)}
-											aria-invalid={Boolean(errorText)}
-										/>
-									) : field.type === 'select' ? (
-										<select
-											className={ui.select}
-											style={{ maxWidth: 'none' }}
-											value={value}
-											onChange={(event) => setValue(event.target.value)}
-											aria-invalid={Boolean(errorText)}
-										>
-											<option value="">{t('authSelectOption')}</option>
-											{field.options.map((option) => (
-												<option key={option.value} value={option.value}>
-													{optionLabel(option, language)}
-												</option>
-											))}
-										</select>
-									) : (
-										<input
-											className={ui.input}
-											type={
-												field.type === 'email'
-													? 'email'
-													: field.type === 'tel'
-														? 'tel'
-														: field.type === 'number'
-															? 'number'
-															: field.type === 'date'
-																? 'date'
-																: 'text'
-											}
-											value={value}
-											placeholder={fieldPlaceholder(field, language)}
-											onChange={(event) => setValue(event.target.value)}
-											aria-invalid={Boolean(errorText)}
-										/>
-									)}
-									{errorText && <span style={{ fontSize: 11, color: '#ff453a' }}>{errorText}</span>}
-								</label>
-							);
-						})}
-					</div>
-				)}
-
-				<div className={ui.btnRow} style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-					<span className={ui.hint}>{t('acIdentityHint')}</span>
-					<button type="submit" className={ui.primaryBtn} disabled={!dirty || busy === 'profile'}>
-						{t('acSave')}
-					</button>
-				</div>
-				{note('profile')}
-			</form>
+			<AccountProfileForm
+				email={user.email}
+				studentNo={user.studentNo}
+				values={values}
+				trackOptions={trackOptionsForUser}
+				levelOptions={levelOptionsForUser}
+				selfFields={selfFields}
+				customValues={account.customValues}
+				customErrors={account.customErrors}
+				dirty={dirty}
+				busy={account.busy === 'profile'}
+				note={note('profile')}
+				emailChange={account.emailChange}
+				onDepartmentChange={account.setDepartment}
+				onGradeChange={account.setGrade}
+				onBioChange={account.setBio}
+				onCustomChange={(fieldKey, next) =>
+					account.setCustomValues((previous) => ({ ...previous, [fieldKey]: next }))
+				}
+				onSubmit={(e) => void account.saveProfile(e, values)}
+			/>
 
 			<AccountPasswordForm
 				userEmail={user.email}
-				busy={busy}
-				onPasswordDone={(ok, text) => done('password', ok, text)}
-				onSetBusy={setBusy}
+				busy={account.busy}
+				onPasswordDone={(ok, text) => account.done('password', ok, text)}
+				onSetBusy={account.setBusy}
 				note={note('password')}
 			/>
 
-			{/* Storage & Active Session Management */}
-			<div className={styles.card}>
-				<h4 className={styles.cardTitle} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-					<HardDrive size={16} /> {t('settingsStorageTitle', 'Depolama ve Oturum')}
-				</h4>
-				<p style={{ margin: 0, fontSize: '12px', opacity: 0.65 }}>
-					{t('settingsStorageDesc', 'Kullanılan depolama alanı, çalışma alanı tercihleri ve aktif oturum denetimi.')}
-				</p>
+			<AccountStorageCard
+				email={user.email}
+				diskUsage={data.diskUsage}
+				resetMessage={account.resetMessage}
+				onLogout={() => void account.logout()}
+				onResetWorkspace={() => void account.handleResetWorkspace()}
+			/>
 
-				<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginTop: '4px' }}>
-					<div
-						style={{
-							padding: '12px',
-							background: 'rgba(255, 255, 255, 0.03)',
-							borderRadius: '8px',
-							border: '1px solid var(--window-border)',
-						}}
-					>
-						<div style={{ fontSize: '11px', opacity: 0.6, display: 'flex', alignItems: 'center', gap: '5px' }}>
-							<HardDrive size={12} color="var(--accent)" />
-							<span>{t('membersColStorage', 'Kullanılan Depolama')}</span>
-						</div>
-						<div style={{ fontSize: '16px', fontWeight: 700, marginTop: '4px' }}>
-							{formatBytes(data?.diskUsage?.bytes)}
-						</div>
-						<div style={{ fontSize: '11.5px', opacity: 0.6, marginTop: '2px' }}>
-							{data?.diskUsage?.count ?? 0} {t('filesCountUnit', 'yüklenmiş dosya')}
-						</div>
-					</div>
-
-					<div
-						style={{
-							padding: '12px',
-							background: 'rgba(255, 255, 255, 0.03)',
-							borderRadius: '8px',
-							border: '1px solid var(--window-border)',
-							display: 'flex',
-							flexDirection: 'column',
-							justifyContent: 'space-between',
-						}}
-					>
-						<div>
-							<div style={{ fontSize: '11px', opacity: 0.6, display: 'flex', alignItems: 'center', gap: '5px' }}>
-								<Laptop size={12} />
-								<span>{t('settingsActiveSession', 'Aktif Oturum')}</span>
-							</div>
-							<div style={{ fontSize: '13px', fontWeight: 600, marginTop: '4px' }}>
-								{user.email}
-							</div>
-						</div>
-						<div style={{ marginTop: '8px' }}>
-							<button
-								type="button"
-								onClick={() => void logout()}
-								className={ui.btn}
-								style={{ fontSize: '12px', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-							>
-								<LogOut size={12} /> {t('navLogout', 'Çıkış Yap')}
-							</button>
-						</div>
-					</div>
-				</div>
-
-				<div style={{ height: '1px', background: 'var(--border-subtle)', margin: '4px 0' }} />
-
-				<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-					<div>
-						<div style={{ fontSize: '13.5px', fontWeight: 600 }}>{t('settingsResetWorkspace')}</div>
-						<div style={{ fontSize: '12px', opacity: 0.65 }}>{t('settingsResetWorkspaceDesc')}</div>
-					</div>
-					<button
-						type="button"
-						onClick={() => void handleResetWorkspace()}
-						style={{
-							background: 'rgba(255, 59, 48, 0.12)',
-							color: '#ff3b30',
-							border: '1px solid rgba(255, 59, 48, 0.3)',
-							padding: '6px 14px',
-							borderRadius: '6px',
-							fontSize: '13px',
-							fontWeight: 600,
-							display: 'flex',
-							alignItems: 'center',
-							gap: '6px',
-							cursor: 'pointer',
-						}}
-					>
-						<RotateCcw size={14} />
-						{t('dlgReset')}
-					</button>
-				</div>
-				{resetMessage && (
-					<div
-						style={{
-							fontSize: '12px',
-							color: '#34c759',
-							background: 'rgba(52, 199, 89, 0.1)',
-							padding: '6px 10px',
-							borderRadius: '6px',
-						}}
-					>
-						{resetMessage}
-					</div>
-				)}
-			</div>
-
-			{missingLegal.length > 0 && (
-				<div className={styles.card}>
-					<h4 className={styles.cardTitle}>{t('acConsentsTitle')}</h4>
-					<p style={{ margin: 0, fontSize: '12px', opacity: 0.65 }}>{t('acConsentsDesc')}</p>
-					<div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-						{missingLegal.map((document) => (
-							<div
-								key={document.id}
-								style={{
-									display: 'flex',
-									alignItems: 'center',
-									gap: '10px',
-									padding: '8px 10px',
-									borderRadius: '8px',
-									border: '1px solid var(--window-border)',
-								}}
-							>
-								<div style={{ flex: 1, minWidth: 0, fontSize: '12px', fontWeight: 600 }}>
-									{resolveLocalizedText(
-										{ en: document.titleEn, tr: document.titleTr },
-										language,
-										document.titleEn || document.titleTr
-									)}
-								</div>
-								<button
-									type="button"
-									className={ui.btn}
-									onClick={() => setActiveLegal(document)}
-									disabled={legalBusy}
-								>
-									{t('acConsentReview')}
-								</button>
-							</div>
-						))}
-					</div>
-				</div>
-			)}
-
-			<LegalDocumentModal
-				document={activeLegal}
-				onClose={() => setActiveLegal(null)}
-				onAccept={() => void acceptLegalDocument()}
+			<AccountLegalConsents
+				missingLegal={account.missingLegal}
+				activeLegal={account.activeLegal}
+				legalBusy={account.legalBusy}
+				onReview={account.setActiveLegal}
+				onClose={() => account.setActiveLegal(null)}
+				onAccept={() => void account.acceptLegalDocument()}
 			/>
 		</div>
 	);

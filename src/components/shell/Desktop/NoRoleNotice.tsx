@@ -4,7 +4,7 @@ import { KeyRound, Settings } from 'lucide-react';
 import { useSession } from '@/core/session';
 import { useI18n } from '@/core/i18n';
 import { useWindowActions } from '@/core/windows';
-import { PERMISSION_APPS, canUse } from '@/core/permissions';
+import { ALWAYS_OPEN, PERMISSION_APPS, canUse } from '@/core/permissions';
 import { OnboardingTeamExplorer } from './OnboardingTeamExplorer';
 
 /**
@@ -21,7 +21,10 @@ export function NoRoleNotice({ compact = false }: { compact?: boolean }) {
 	const { t } = useI18n();
 	const { openApp } = useWindowActions();
 	if (!currentUser || currentUser.mustSetup2fa) return null;
-	const anyApp = PERMISSION_APPS.some((a) => a !== 'settings' && canUse(currentUser.permissions, a));
+	// Apps every member has anyway (Settings, Messages) do not make a role look assigned.
+	const anyApp = PERMISSION_APPS.some(
+		(a) => a !== 'settings' && !(ALWAYS_OPEN as readonly string[]).includes(a) && canUse(currentUser.permissions, a)
+	);
 	if (anyApp) return null;
 
 	const hasNoRole = !currentUser.roleInfo;
@@ -53,7 +56,17 @@ export function NoRoleNotice({ compact = false }: { compact?: boolean }) {
 			}}
 			onClick={(e) => e.stopPropagation()}
 		>
-			<div style={{ width: 44, height: 44, borderRadius: '50%', display: 'grid', placeItems: 'center', background: 'rgba(10, 132, 255, 0.15)', color: '#0a84ff' }}>
+			<div
+				style={{
+					width: 44,
+					height: 44,
+					borderRadius: '50%',
+					display: 'grid',
+					placeItems: 'center',
+					background: 'color-mix(in srgb, var(--accent) 15%, transparent)',
+					color: 'var(--accent)',
+				}}
+			>
 				<KeyRound size={22} />
 			</div>
 			<div style={{ fontSize: '15px', fontWeight: 700 }}>{hasNoRole ? t('noRoleTitle') : t('noAppsTitle')}</div>

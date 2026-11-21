@@ -46,16 +46,20 @@ export const INTERNAL_WINDOW_MANIFESTS: readonly WindowManifest[] = ALL_WINDOW_M
 /** The apps pinned in a fresh dock, left to right. */
 export const DEFAULT_DOCK_ORDER: readonly AppID[] = [...WINDOW_MANIFESTS].sort(byPosition<WindowManifest>((m) => m.dock)).map((m) => m.id as AppID);
 
-export const manifestOf = (id: string): AppManifest | undefined => ALL_MANIFESTS.find((m) => m.id === id);
+const MANIFEST_MAP = new Map<string, AppManifest>(ALL_MANIFESTS.map((m) => [m.id, m]));
+const ALL_WINDOW_MAP = new Map<string, WindowManifest>(ALL_WINDOW_MANIFESTS.map((m) => [m.id, m]));
+const WINDOW_MAP = new Map<string, WindowManifest>(WINDOW_MANIFESTS.map((m) => [m.id, m]));
+
+export const manifestOf = (id: string): AppManifest | undefined => MANIFEST_MAP.get(id);
 
 /** The tint of an app's icon: its `colors` entry for that place, else its accent colour. */
 export function appColor(id: string, where: 'icon' | 'menu' | 'search' = 'icon'): string {
-	const m = ALL_WINDOW_MANIFESTS.find((w) => w.id === id);
+	const m = ALL_WINDOW_MAP.get(id);
 	return m ? ((m.colors as Partial<Record<typeof where, string>> | undefined)?.[where] ?? m.accentColor) : '#8e8e93';
 }
 
 /** The shortcut shown next to an app in the menus ("⌘1"), if it has one. */
-export const appShortcut = (id: string): string | undefined => WINDOW_MANIFESTS.find((m) => m.id === id)?.shortcut;
+export const appShortcut = (id: string): string | undefined => WINDOW_MAP.get(id)?.shortcut;
 
 /** The dock icon image of an app, if its manifest names one. */
-export const appDockIcon = (id: string): string | undefined => WINDOW_MANIFESTS.find((m) => m.id === id)?.dockIcon;
+export const appDockIcon = (id: string): string | undefined => WINDOW_MAP.get(id)?.dockIcon;

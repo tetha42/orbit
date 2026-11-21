@@ -110,7 +110,7 @@ export const SAVE_MS = 900;
 export async function reloadDesktop(page, appId) {
 	await page.reload({ waitUntil: 'domcontentloaded' });
 	await waitDesktop(page);
-	if (appId) await page.locator(`[data-window-frame=${appId}]`).waitFor({ timeout: 15_000 });
+	if (appId) await page.locator(`[data-window-frame=${appId}]`).waitFor({ timeout: 12_000 });
 }
 
 /** The menu items on screen, by id (`data-menu-item`), submenus included once they are open. */
@@ -126,7 +126,11 @@ export async function windowControl(page, appId, control) {
 	for (let x = box.x + 100; x < box.x + box.width - 10; x += 20) {
 		if ((await windowAt(page, x, y)) === appId) {
 			await page.mouse.click(x, y);
-			await page.locator(`[data-window-frame=${appId}] [data-window-control=${control}]`).click();
+			try {
+				await page.locator(`[data-window-frame=${appId}] [data-window-control=${control}]`).click();
+			} catch (e) {
+				throw new Error(`${appId}/${control}: ${String(e.message).split('\n')[0]}`);
+			}
 			return;
 		}
 	}

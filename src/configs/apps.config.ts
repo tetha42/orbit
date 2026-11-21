@@ -11,11 +11,35 @@ import { ALL_WINDOW_MANIFESTS, DEFAULT_DOCK_ORDER, WINDOW_MANIFESTS } from '@/ap
  */
 export type ExtendedAppMetadata = AppMetadata;
 
-export function getAppMeta(appId: AppID, lang: Language = 'en'): ExtendedAppMetadata {
-	const base = ALL_APPS_CONFIG[appId];
-	const manifest = ALL_WINDOW_MANIFESTS.find((m) => m.id === appId);
-	if (!base || !manifest) return base;
-	const localized = lang === 'tr' ? (manifest.tr ?? undefined) : (lang === 'en' ? manifest.en : undefined);
+export const ALL_APPS_CONFIG = Object.fromEntries(
+	ALL_WINDOW_MANIFESTS.map((m): [AppID, ExtendedAppMetadata] => [
+		m.id as AppID,
+		{
+			id: m.id as AppID,
+			title: m.title,
+			shortTitle: m.shortTitle,
+			description: m.description,
+			category: m.category,
+			icon: m.icon,
+			accentColor: m.accentColor,
+			...(m.badge ? { badge: typeof m.badge === 'object' ? m.badge.en : m.badge } : {}),
+			defaultWidth: m.window.width,
+			defaultHeight: m.window.height,
+			...(m.window.minWidth ? { minWidth: m.window.minWidth, minHeight: m.window.minHeight } : {}),
+		},
+	])
+) as Record<AppID, ExtendedAppMetadata>;
+
+const buildLocalizedAppMeta = (
+	base: ExtendedAppMetadata,
+	manifest: (typeof ALL_WINDOW_MANIFESTS)[number],
+	lang: Language
+): ExtendedAppMetadata => {
+	const manifestByLang: Partial<Record<Language, typeof manifest.tr>> = {
+		tr: manifest.tr,
+		en: manifest.en,
+	};
+	const localized = manifestByLang[lang] ?? undefined;
 	const badge = typeof manifest.badge === 'object' ? manifest.badge[lang] : manifest.badge;
 	return {
 		...base,
@@ -28,26 +52,24 @@ export function getAppMeta(appId: AppID, lang: Language = 'en'): ExtendedAppMeta
 			: {}),
 		...(badge !== undefined ? { badge } : {}),
 	};
-}
+};
 
-export const ALL_APPS_CONFIG = Object.fromEntries(
-	ALL_WINDOW_MANIFESTS.map((m): [AppID, ExtendedAppMetadata] => [
-		m.id as AppID,
-		{
-			id: m.id as AppID,
-			title: m.title,
-			shortTitle: m.shortTitle,
-			description: m.description,
-			category: m.category,
-			icon: m.icon,
-			accentColor: m.accentColor,
-			...(m.badge ? { badge: typeof m.badge === 'object' ? m.badge.tr : m.badge } : {}),
-			defaultWidth: m.window.width,
-			defaultHeight: m.window.height,
-			...(m.window.minWidth ? { minWidth: m.window.minWidth, minHeight: m.window.minHeight } : {}),
-		},
-	])
-) as Record<AppID, ExtendedAppMetadata>;
+const buildLangMap = (lang: Language): Record<AppID, ExtendedAppMetadata> =>
+	Object.fromEntries(
+		ALL_WINDOW_MANIFESTS.map((m) => [
+			m.id as AppID,
+			buildLocalizedAppMeta(ALL_APPS_CONFIG[m.id as AppID], m, lang),
+		])
+	) as Record<AppID, ExtendedAppMetadata>;
+
+const LOCALIZED_APPS_CONFIG: Record<Language, Record<AppID, ExtendedAppMetadata>> = {
+	tr: buildLangMap('tr'),
+	en: buildLangMap('en'),
+};
+
+export function getAppMeta(appId: AppID, lang: Language = 'en'): ExtendedAppMetadata {
+	return LOCALIZED_APPS_CONFIG[lang]?.[appId] ?? ALL_APPS_CONFIG[appId];
+}
 
 /** Launcher, dock, Spotlight and context menus only list user-facing apps. */
 export const APPS_CONFIG = Object.fromEntries(

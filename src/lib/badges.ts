@@ -28,14 +28,14 @@ export interface Badge {
 type Definition = Omit<Badge, 'value' | 'earned'> & { measure: (g: BadgeInput) => number };
 
 const DEFINITIONS: Definition[] = [
-	{ id: 'first-step', name: 'bdgFirstStep', description: 'bdgFirstStepHow', color: '#0a84ff', icon: 'rocket', target: 1, measure: (g) => g.attendedEvent },
-	{ id: 'regular', name: 'bdgRegular', description: 'bdgRegularHow', color: '#30d158', icon: 'calendar', target: 5, measure: (g) => g.attendedEvent },
-	{ id: 'team-player', name: 'bdgTeamPlayer', description: 'bdgTeamPlayerHow', color: '#5e5ce6', icon: 'users', target: 1, measure: (g) => g.team },
-	{ id: 'captain', name: 'bdgCaptain', description: 'bdgCaptainHow', color: '#ff9f0a', icon: 'crown', target: 1, measure: (g) => (g.captain ? 1 : 0) },
-	{ id: 'task-hunter', name: 'bdgTaskHunter', description: 'bdgTaskHunterHow', color: '#bf5af2', icon: 'check', target: 10, measure: (g) => g.completedTask },
-	{ id: 'certified', name: 'bdgCertified', description: 'bdgCertifiedHow', color: '#ff375f', icon: 'award', target: 1, measure: (g) => g.certificate },
-	{ id: 'maker', name: 'bdgMaker', description: 'bdgMakerHow', color: '#64d2ff', icon: 'folder', target: 1, measure: (g) => g.project },
-	{ id: 'star', name: 'bdgStar', description: 'bdgStarHow', color: '#ffd60a', icon: 'star', target: 1000, measure: (g) => g.xp },
+	{ id: 'first-step', name: 'bdgFirstStep', description: 'bdgFirstStepHow', color: 'var(--info)', icon: 'rocket', target: 1, measure: (g) => g.attendedEvent },
+	{ id: 'regular', name: 'bdgRegular', description: 'bdgRegularHow', color: 'var(--success)', icon: 'calendar', target: 5, measure: (g) => g.attendedEvent },
+	{ id: 'team-player', name: 'bdgTeamPlayer', description: 'bdgTeamPlayerHow', color: 'var(--indigo)', icon: 'users', target: 1, measure: (g) => g.team },
+	{ id: 'captain', name: 'bdgCaptain', description: 'bdgCaptainHow', color: 'var(--warning)', icon: 'crown', target: 1, measure: (g) => (g.captain ? 1 : 0) },
+	{ id: 'task-hunter', name: 'bdgTaskHunter', description: 'bdgTaskHunterHow', color: 'var(--purple)', icon: 'check', target: 10, measure: (g) => g.completedTask },
+	{ id: 'certified', name: 'bdgCertified', description: 'bdgCertifiedHow', color: 'var(--danger)', icon: 'award', target: 1, measure: (g) => g.certificate },
+	{ id: 'maker', name: 'bdgMaker', description: 'bdgMakerHow', color: 'var(--cyan)', icon: 'folder', target: 1, measure: (g) => g.project },
+	{ id: 'star', name: 'bdgStar', description: 'bdgStarHow', color: 'var(--gold)', icon: 'star', target: 1000, measure: (g) => g.xp },
 ];
 
 /** Every badge with progress; earned ones first, then the closest to being earned. */

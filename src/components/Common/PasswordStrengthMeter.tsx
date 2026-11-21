@@ -1,4 +1,5 @@
 import React from 'react';
+import { useI18n } from '@/core/i18n';
 
 /**
  * Estimate password strength based on macOS‑style rules:
@@ -19,13 +20,14 @@ function estimateStrength(password: string): number {
 }
 
 // macOS‑style colors: weak (red), medium (orange), strong (green)
-const strengthColors = ['#ff3b30', '#ff9500', '#ffcc00', '#34c759'];
-const strengthLabels = ['Çok Zayıf', 'Zayıf', 'Orta', 'İyi', 'Mükemmel'];
+const strengthColors = ['var(--danger)', 'var(--warning)', '#ffcc00', 'var(--success)'];
+const strengthLabels = ['pwStrengthVeryWeak', 'pwStrengthWeak', 'pwStrengthMedium', 'pwStrengthGood', 'pwStrengthStrong'];
 
 export const PasswordStrengthMeter: React.FC<{ password: string }> = ({ password }) => {
+  const { t } = useI18n();
   const strength = estimateStrength(password);
   const color = strengthColors[strength];
-  const label = strengthLabels[strength];
+  const label = t(strengthLabels[strength]);
 
   return (
     <div style={{ marginTop: '4px' }} aria-live="polite">

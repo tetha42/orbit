@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useSound } from '@/core/sound';
-import { useI18n } from '@/core/i18n';
+import { getLocaleDefinition, useI18n } from '@/core/i18n';
 import { useDialog } from '@/components/Common/DialogProvider';
 import { useJsonResource } from '@/core/data/useJsonResource';
 import { useFocusTarget } from '@/lib/client/useFocusTarget';
@@ -9,13 +9,14 @@ import { useNow } from '@/lib/client/useSheet';
 import { foldTr, fill } from '@/lib/text';
 import { sendJson } from '@/core/data/http';
 import { useToast } from '@/core/ui/Toast';
+import contract from '../events.contract.json';
 import type { EventView, EventsResponse, Tab } from '../types';
 
 export function useEvents() {
 	const { t, language } = useI18n();
 	const { playSystemSound } = useSound();
 	const dialog = useDialog();
-	const locale = language === 'en' ? 'en-GB' : 'tr-TR';
+	const locale = getLocaleDefinition(language).dateLocale;
 	const { data, setData, refetch, error, httpStatus } = useJsonResource<EventsResponse>('/api/events');
 	const events = useMemo(() => data?.events ?? [], [data]);
 	const manage = data?.permissions.manage ?? false;
@@ -78,10 +79,13 @@ export function useEvents() {
 
 	const act = async (body: Record<string, unknown>, success?: string) => {
 		setBusy(true);
-		const res = await sendJson<{ message?: string }>('/api/events', 'POST', body);
+		const res = await sendJson<{ message?: string; errorCode?: string }>('/api/events', 'POST', body);
 		setBusy(false);
-		if (!res.ok) notify(res.error || t('kbActionFailed'), 'error');
-		else {
+		if (!res.ok) {
+			const errCode = (res as { errorCode?: string }).errorCode;
+			const entry = errCode ? contract.errorCodes.find((item) => item.code === errCode) : undefined;
+			notify(entry ? t(entry.i18nKey) : res.error || t('kbActionFailed'), 'error');
+		} else {
 			playSystemSound();
 			notify(success ?? res.data.message ?? t('evSaved'));
 		}
@@ -90,33 +94,38 @@ export function useEvents() {
 	};
 
 	const register = async (e: EventView) => {
+		const maxCap = e.capacity > 0 ? Math.min(e.capacity, contract.limits.maxEventCapacity) : contract.limits.maxEventCapacity;
+		if (e.registeredCount >= maxCap) {
+			notify(t('eventFull'), 'error');
+			return;
+		}
 		setData((d) =>
 			d
 				? {
 						...d,
 						events: d.events.map((x) =>
-							x.id === e.id ? { ...x, myMyRecord: true, registeredCount: x.registeredCount + 1 } : x
+							x.id === e.id ? { ...x, myRecord: true, registeredCount: x.registeredCount + 1 } : x
 						),
 				  }
 				: d
 		);
-		await act({ action: 'register', eventId: e.id });
+		await act({ action: 'register', eventId: e.id }, t('evRegisteredToast'));
 	};
 
 	const unregister = async (e: EventView) => {
 		if (!(await dialog.confirm({ message: fill(t('evCancelConfirm'), { title: e.title }), tone: 'warning' }))) return;
-		await act({ action: 'cancelRegistration', eventId: e.id });
+		await act({ action: 'cancelRegistration', eventId: e.id }, t('evUnregisteredToast'));
 	};
 
 	// Camera scan and typed entry both send the 6-character code shown on the projector.
 	// The member's identity comes from the session; the code only says which window is live.
 	const checkIn = async (code: string) => {
 		const shortCode = code.trim().toUpperCase();
-		const res = await sendJson<{ message: string; already: boolean }>('/api/events', 'POST', { action: 'attend', shortCode });
+		const res = await sendJson<{ message: string; already: boolean }>('/api/events', 'POST', { action: 'attend', code: shortCode });
 		if (!res.ok) notify(res.error || t('kbActionFailed'), 'error');
 		else {
 			playSystemSound();
-			notify(res.data.message, res.data.already ? 'error' : 'success');
+			notify(res.data.already ? t('evAttendanceAlready') : t('evAttendanceRecorded'), res.data.already ? 'error' : 'success');
 		}
 		await refetch();
 	};

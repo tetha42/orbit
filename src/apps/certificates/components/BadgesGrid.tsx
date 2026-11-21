@@ -18,10 +18,10 @@ const ICONS: Record<Badge['icon'], React.ComponentType<{ size?: number; color?: 
 	star: Star,
 };
 
-/** Badges earned from the member's real record (`/api/profilee`), with progress towards the rest. */
+/** Badges earned from the member's real record (`/api/profile`), with progress towards the rest. */
 export function BadgesGrid() {
 	const { t } = useI18n();
-	const { data } = useJsonResource<{ user: { xp: number }; summary: UserSummary }>('/api/profilee');
+	const { data } = useJsonResource<{ user: { xp: number }; summary: UserSummary }>('/api/profile');
 	if (!data) return null;
 	const list = badges({
 		xp: Number(data.user.xp) || 0,
@@ -53,7 +53,7 @@ export function BadgesGrid() {
 								alignItems: 'center',
 								padding: 12,
 								borderRadius: 12,
-								border: `1px solid ${r.earned ? `${r.color}66` : 'var(--card-border)'}`,
+								border: `1px solid ${r.earned ? `color-mix(in srgb, ${r.color} 40%, transparent)` : 'var(--card-border)'}`,
 								background: r.earned ? `color-mix(in srgb, ${r.color} 10%, var(--card-bg))` : 'var(--card-bg)',
 								opacity: r.earned ? 1 : 0.75,
 							}}
@@ -67,7 +67,7 @@ export function BadgesGrid() {
 									placeItems: 'center',
 									flexShrink: 0,
 									background: r.earned ? r.color : 'color-mix(in srgb, var(--text-primary) 8%, transparent)',
-									color: r.earned ? '#fff' : 'var(--text-secondary)',
+									color: r.earned ? 'var(--accent-contrast)' : 'var(--text-secondary)',
 								}}
 							>
 								{r.earned ? <Icon size={19} /> : <Lock size={16} />}

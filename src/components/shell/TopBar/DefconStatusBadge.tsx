@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { useSession } from '@/core/session';
+import React, { useEffect, useRef, useState } from 'react';
+import { useLiveEvent, useSession } from '@/core/session';
 import { useWindowActions } from '@/core/windows';
 import { useI18n } from '@/core/i18n';
 import { ShieldAlert, ShieldCheck } from 'lucide-react';
@@ -9,10 +9,8 @@ import { ShieldAlert, ShieldCheck } from 'lucide-react';
 type DefconLevel = 1 | 2 | 3 | 4 | 5;
 
 interface DefconVisual {
-	labelTr: string;
-	labelEn: string;
-	titleTr: string;
-	titleEn: string;
+	labelKey: string;
+	titleKey: string;
 	color: string;
 	bg: string;
 	border: string;
@@ -22,54 +20,44 @@ interface DefconVisual {
 
 const DEFCON_STYLES: Record<DefconLevel, DefconVisual> = {
 	1: {
-		labelTr: 'DEFCON 1: KİLİTLENDİ',
-		labelEn: 'DEFCON 1: LOCKDOWN',
-		titleTr: 'DEFCON 1: Saldırı Altındayız Kalkanı (Hard Lockdown) Aktif! Yönetici harici erişimler askıya alındı. SoC merkezini aç.',
-		titleEn: 'DEFCON 1: Hard Lockdown active! Non-admin access suspended. Open SoC Center.',
-		color: 'var(--danger, #ef4444)',
-		bg: 'rgba(239, 68, 68, 0.2)',
-		border: '1px solid rgba(239, 68, 68, 0.5)',
+		labelKey: 'socDefcon1Label',
+		titleKey: 'socDefcon1Title',
+		color: 'var(--danger)',
+		bg: 'color-mix(in srgb, var(--danger) 20%, transparent)',
+		border: '1px solid color-mix(in srgb, var(--danger) 50%, transparent)',
 		icon: ShieldAlert,
 		pulse: true,
 	},
 	2: {
-		labelTr: 'DEFCON 2: YÜKSEK',
-		labelEn: 'DEFCON 2: HIGH',
-		titleTr: 'DEFCON 2: Yüksek Tehdit Seviyesi (Aktif saldırı / IP karantinaları mevcut). SoC merkezini aç.',
-		titleEn: 'DEFCON 2: High Threat Level (Active attacks / quarantined IPs detected). Open SoC Center.',
-		color: '#f97316',
-		bg: 'rgba(249, 115, 22, 0.18)',
-		border: '1px solid rgba(249, 115, 22, 0.45)',
+		labelKey: 'socDefcon2Label',
+		titleKey: 'socDefcon2Title',
+		color: 'color-mix(in srgb, var(--warning) 45%, var(--danger))',
+		bg: 'color-mix(in srgb, var(--warning) 18%, transparent)',
+		border: '1px solid color-mix(in srgb, var(--warning) 45%, transparent)',
 		icon: ShieldAlert,
 	},
 	3: {
-		labelTr: 'DEFCON 3: DİKKAT',
-		labelEn: 'DEFCON 3: ELEVATED',
-		titleTr: 'DEFCON 3: Artırılmış Güvenlik Uyarısı (Şüpheli aktiviteler ve engeller tespit edildi). SoC merkezini aç.',
-		titleEn: 'DEFCON 3: Elevated Security Warning (Suspicious activity detected). Open SoC Center.',
-		color: 'var(--warning, #eab308)',
-		bg: 'rgba(234, 179, 8, 0.16)',
-		border: '1px solid rgba(234, 179, 8, 0.4)',
+		labelKey: 'socDefcon3Label',
+		titleKey: 'socDefcon3Title',
+		color: 'var(--warning)',
+		bg: 'color-mix(in srgb, var(--warning) 16%, transparent)',
+		border: '1px solid color-mix(in srgb, var(--warning) 40%, transparent)',
 		icon: ShieldAlert,
 	},
 	4: {
-		labelTr: 'DEFCON 4: İZLEME',
-		labelEn: 'DEFCON 4: GUARDED',
-		titleTr: 'DEFCON 4: Rutin Tehdit İzleme (Düşük yoğunluklu denemeler). SoC merkezini aç.',
-		titleEn: 'DEFCON 4: Routine Threat Monitoring (Low-intensity probes). Open SoC Center.',
-		color: '#38bdf8',
-		bg: 'rgba(56, 189, 248, 0.14)',
-		border: '1px solid rgba(56, 189, 248, 0.35)',
+		labelKey: 'socDefcon4Label',
+		titleKey: 'socDefcon4Title',
+		color: 'var(--cyan)',
+		bg: 'color-mix(in srgb, var(--cyan) 14%, transparent)',
+		border: '1px solid color-mix(in srgb, var(--cyan) 35%, transparent)',
 		icon: ShieldCheck,
 	},
 	5: {
-		labelTr: 'DEFCON 5',
-		labelEn: 'DEFCON 5: NORMAL',
-		titleTr: 'DEFCON 5: Normal Operasyon / Barış Hali. SoC siber güvenlik merkezini aç.',
-		titleEn: 'DEFCON 5: Normal Operations. Open SoC Cyber Defense Center.',
-		color: 'var(--success, #22c55e)',
-		bg: 'rgba(34, 197, 94, 0.12)',
-		border: '1px solid rgba(34, 197, 94, 0.28)',
+		labelKey: 'socDefcon5Label',
+		titleKey: 'socDefcon5Title',
+		color: 'var(--success)',
+		bg: 'color-mix(in srgb, var(--success) 12%, transparent)',
+		border: '1px solid color-mix(in srgb, var(--success) 28%, transparent)',
 		icon: ShieldCheck,
 	},
 };
@@ -77,40 +65,69 @@ const DEFCON_STYLES: Record<DefconLevel, DefconVisual> = {
 export function DefconStatusBadge() {
 	const { currentUser, canUseApp } = useSession();
 	const { openApp } = useWindowActions();
-	const { language } = useI18n();
-	const isEn = language === 'en';
+	const { t } = useI18n();
 	const [defcon, setDefcon] = useState<DefconLevel>(5);
+	const lastSyncedAtRef = useRef(0);
+	const channelRef = useRef<BroadcastChannel | null>(null);
+	const triggerFetchRef = useRef<((force?: boolean) => void) | null>(null);
+
+	useLiveEvent((event) => {
+		if (event === 'soc_updated') {
+			triggerFetchRef.current?.(true);
+		}
+	});
 
 	useEffect(() => {
 		if (!currentUser || !canUseApp('soc')) return;
 
 		let active = true;
-		const checkStatus = () => {
-			fetch('/api/soc?action=overview')
-				.then((res) => {
-					if (!res.ok) return null;
-					return res.json();
-				})
+		const bc = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('orbit:soc-defcon') : null;
+		channelRef.current = bc;
+		if (bc) {
+			bc.onmessage = (ev) => {
+				const msg = ev.data as { defcon?: number; ts?: number } | null;
+				if (!active || !msg || typeof msg.defcon !== 'number') return;
+				lastSyncedAtRef.current = typeof msg.ts === 'number' ? msg.ts : Date.now();
+				setDefcon(msg.defcon as DefconLevel);
+			};
+		}
+
+		const checkStatus = (force = false) => {
+			if (!force && typeof document !== 'undefined' && document.hidden) return;
+			if (!force && Date.now() - lastSyncedAtRef.current < 150_000) return;
+			fetch('/api/soc?action=defcon')
+				.then((res) => (res.ok ? res.json() : null))
 				.then((data) => {
 					if (!active || !data) return;
-					const ov = data.overview;
-					if (ov) {
-						if (ov.lockdown?.active) {
-							setDefcon(1);
-						} else if (typeof ov.defcon === 'number') {
-							setDefcon(ov.defcon as DefconLevel);
-						}
+					const ov = data.overview ?? data;
+					if (ov && (typeof ov.defcon === 'number' || ov.lockdown)) {
+						const nextLevel = (
+							ov.lockdown?.active ? 1 : typeof ov.defcon === 'number' ? ov.defcon : 5
+						) as DefconLevel;
+						const now = Date.now();
+						lastSyncedAtRef.current = now;
+						setDefcon(nextLevel);
+						bc?.postMessage({ defcon: nextLevel, ts: now });
 					}
 				})
 				.catch(() => {});
 		};
 
-		checkStatus();
-		const timer = setInterval(checkStatus, 10000);
+		triggerFetchRef.current = checkStatus;
+		checkStatus(true);
+		const timer = setInterval(() => checkStatus(false), 180_000);
+		const onVisible = () => {
+			if (typeof document !== 'undefined' && !document.hidden) checkStatus(false);
+		};
+		document.addEventListener('visibilitychange', onVisible);
 
 		return () => {
 			active = false;
+			triggerFetchRef.current = null;
 			clearInterval(timer);
+			document.removeEventListener('visibilitychange', onVisible);
+			bc?.close();
+			channelRef.current = null;
 		};
 	}, [currentUser, canUseApp]);
 
@@ -118,8 +135,8 @@ export function DefconStatusBadge() {
 
 	const style = DEFCON_STYLES[defcon] || DEFCON_STYLES[5];
 	const Icon = style.icon;
-	const label = isEn ? style.labelEn : style.labelTr;
-	const title = isEn ? style.titleEn : style.titleTr;
+	const label = t(style.labelKey);
+	const title = t(style.titleKey);
 
 	return (
 		<button

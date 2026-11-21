@@ -149,7 +149,7 @@ export function SmtpFormFields({
 								style={{
 									background: 'transparent',
 									border: 'none',
-									color: '#ff453a',
+									color: 'var(--danger)',
 									fontSize: '11px',
 									fontWeight: 600,
 									cursor: isSaving ? 'wait' : 'pointer',

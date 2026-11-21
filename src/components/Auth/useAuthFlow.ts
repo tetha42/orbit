@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useWorkspace, type RegisterPayload } from '@/state/workspaceStore';
+import { useI18n } from '@/core/i18n';
 import type { SetupResponse } from '@/lib/setup';
 
 export type AuthTab = 'login' | 'register';
@@ -12,6 +13,7 @@ export type AuthTab = 'login' | 'register';
  */
 export function useAuthFlow() {
 	const { login, verify2fa, loginWithPasskey, register, sessionConflict, sessionIpMismatch } = useWorkspace();
+	const { t } = useI18n();
 
 	const [activeTab, setActiveTab] = useState<AuthTab>('login');
 	const [loading, setLoading] = useState(false);
@@ -108,13 +110,13 @@ export function useAuthFlow() {
 			setLoading(false);
 
 			if (!result.success) {
-				setErrorMessage(result.error || 'Invalid verification code.');
-				if (result.error?.includes('tekrar giriş') || result.error?.toLowerCase().includes('sign in again')) {
+				setErrorMessage(result.code === 'INVALID_2FA_CODE' ? t('auth2faInvalid') : result.error || t('auth2faInvalid'));
+				if (result.error?.toLowerCase().includes('sign in again')) {
 					setChallengeToken(null);
 				}
 			}
 		},
-		[challengeToken, verify2fa]
+		[challengeToken, verify2fa, t]
 	);
 
 	const submitRegister = useCallback(
@@ -134,14 +136,11 @@ export function useAuthFlow() {
 			} else if (!result.success) {
 				setErrorMessage(result.error || 'Registration failed.');
 			} else if (result.mailQueued) {
-				setSuccessMessage(
-					result.message ||
-						'E-posta servisi kullanılamıyor; doğrulama kodunuz yönetici onayına alındı.'
-				);
+				setSuccessMessage(result.message || t('authRegisterMailQueued'));
 			}
 			return result;
 		},
-		[clearFeedback, setupIncomplete, register]
+		[clearFeedback, setupIncomplete, register, t]
 	);
 
 	const cancelTwoFactor = useCallback(() => {

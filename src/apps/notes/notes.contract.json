@@ -1,0 +1,66 @@
+{
+  "id": "notes",
+  "name": "Notes & Workspace",
+  "version": "1.0.0",
+  "description": "Personal notes, folders, scratchpad, pinned memos, and embedded images.",
+  "tables": [
+    "user_notes",
+    "files"
+  ],
+  "api": {
+    "base": "/api/notes",
+    "endpoints": [
+      {
+        "path": "/api/notes",
+        "methods": [
+          "GET",
+          "POST",
+          "DELETE"
+        ],
+        "description": "Fetch, save, or delete user notes and clean up orphan images."
+      },
+      {
+        "path": "/api/notes/folders",
+        "methods": [
+          "GET",
+          "POST",
+          "DELETE"
+        ],
+        "description": "List, create, update, or delete user note folders."
+      },
+      {
+        "path": "/api/notes/upload",
+        "methods": [
+          "POST"
+        ],
+        "description": "Upload and optimize an image attachment for a note."
+      }
+    ]
+  },
+  "limits": {
+    "maxNoteLength": 100000,
+    "maxPinnedNotes": 20
+  },
+  "errorCodes": [
+    {
+      "code": "NOTE_NOT_FOUND",
+      "status": 404,
+      "i18nKey": "noteNotFound",
+      "description": "Note not found."
+    }
+  ],
+  "files": {
+    "actions": [
+      "src/db/repositories/notes.repo.ts"
+    ],
+    "queries": [
+      "src/apps/notes/hooks/useNotes.ts"
+    ],
+    "ui": [
+      "src/apps/notes/index.tsx"
+    ],
+    "i18n": [
+      "src/lib/i18nApps.ts"
+    ]
+  }
+}

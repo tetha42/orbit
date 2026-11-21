@@ -1,12 +1,13 @@
-// Kanban (Takımlar → Görev Panosu): görev oluşturma, sürükle-bırak, atama, kontrol listesi,
-// yorumlar, etkinlik geçmişi, süzgeçler ve silme. Kaptan ve üye izinleri: kanban-izinler.mjs.
-import { answerDialog, dateInput, drag, openTeam, refreshBoard, stepper, toast } from '../lib/arayuz.mjs';
+// Kanban (Teams → Task Board): creating tasks, drag and drop, assignment, checklist,
+// comments, activity history, filters, and deletion. Captain and member permissions: kanban-permissions.mjs.
+import { answerDialog, dateInput, drag, openTeam, refreshBoard, stepper, toast } from '../lib/ui-shared.mjs';
 import { makeTeam, addTask, readTeam, readTask, sweepStale, xpOf } from '../lib/team.mjs';
 import { newMember } from '../lib/membership.mjs';
+import { tr, trf } from '../lib/locale.mjs';
 
-export const meta = { title: 'Kanban: görev oluşturma, sürükle-bırak, atama, kontrol listesi, yorumlar' };
+export const meta = { title: 'Kanban: task creation, drag and drop, assignment, checklist, comments' };
 
-const COLUMN = { todo: 'Yapılacak', in_progress: 'Sürüyor', review: 'İncelemede', done: 'Tamamlandı' };
+const COLUMN = { todo: tr('kbColTodo'), in_progress: tr('kbColDoing'), review: tr('kbColReview'), done: tr('kbColDone') };
 
 export default async function suite(t) {
 	const { fx } = t;
@@ -14,294 +15,310 @@ export default async function suite(t) {
 
 	await sweepStale(admin);
 
-	// Kendi takımı: bir kaptan ve görev sahibi bir üye.
-	const captain = await newMember(t, admin, { label: 'kaptan', roleId: fx.roles.member });
+	// Own team: one captain and one member who owns tasks.
+	const captain = await newMember(t, admin, { label: 'captain', roleId: fx.roles.member });
 	const worker = await newMember(t, admin, { label: 'member', roleId: fx.roles.member });
 	const team = await makeTeam(t, admin, { label: 'Kanban', leadId: captain.id });
 	await (await worker.api()).post('/api/teams', { action: 'join', teamId: team.id });
 
-	const { page } = await t.open('admin');
+	const { page, context: adminCtx } = await t.open('admin');
 	const win = await openTeam(page, team.id);
 	const step = stepper(t, page);
 	const card = (title) => win.locator('[data-task-id]').filter({ hasText: title });
 	const column = (id) => win.locator(`section[aria-label="${COLUMN[id]}"]`);
 	const tasksOf = async () => (await readTeam(admin, team.id)).tasks;
 	const byTitle = async (title) => (await tasksOf()).find((g) => g.title === title);
+	const description = 'Acceptance criteria go here.';
+	const labelInput = 'Front End';
+	const taskLabel = 'front-end';
+	const checklistItems = ['Sketch the draft', 'Code it', 'Review it'];
+	const firstComment = 'First comment';
+	const secondComment = 'Second comment';
+	const editedDescription = 'New description text.';
+	const historyPattern = (key) =>
+		new RegExp(
+			tr(key)
+				.split(/\{[^}]+\}/)
+				.map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+				.join('.+')
+		);
 
-	await step('boş pano: dört sütun, sayaçlar sıfır', async () => {
-		t.sameSet(await win.locator('section[aria-label]').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label'))), Object.values(COLUMN), 'dört sütun var');
-		t.eq(await win.locator('[data-task-id]').count(), 0, 'pano boş');
-		t.check(await win.getByText('Görev yok').count() === 4, 'her sütun "Görev yok" diyor');
-		await t.shot(page, 'bos-pano');
+	await step('empty board: four columns, counters at zero', async () => {
+		t.sameSet(await win.locator('section[aria-label]').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label'))), Object.values(COLUMN), 'four columns exist');
+		t.eq(await win.locator('[data-task-id]').count(), 0, 'board is empty');
+		t.check(await win.getByText(tr('kbEmptyColumn')).count() === 4, 'every column shows the empty-board message');
+		await t.shot(page, 'empty-board');
 	});
 
-	const title = `Kanban görevi ${Date.now().toString(36)}`;
-	await step('"Yeni Görev" formundan görev oluşturma (açıklama, öncelik, atama, teslim, etiket)', async () => {
-		await win.getByRole('button', { name: 'Yeni Görev' }).click();
-		const dlg = page.getByRole('dialog', { name: 'Yeni Görev' });
-		await dlg.getByLabel('Başlık').fill(title);
-		await dlg.getByLabel('Açıklama').fill('Kabul ölçütleri burada.');
-		await dlg.getByLabel('Atanan').selectOption(worker.id);
-		await dlg.getByLabel('Teslim').fill(dateInput(5));
-		await dlg.getByRole('radio', { name: 'Yüksek' }).click();
-		const labels = dlg.getByPlaceholder(/Etiket yazıp/);
-		await labels.fill('Ön Yüz');
+	const title = `Kanban task ${Date.now().toString(36)}`;
+	await step('create a task from the new-task form (description, priority, assignee, due date, label)', async () => {
+		await win.getByRole('button', { name: tr('teamsAddTask') }).click();
+		const dlg = page.getByRole('dialog', { name: tr('teamsAddTask') });
+		await dlg.getByLabel(tr('evFieldTitle')).fill(title);
+		await dlg.getByLabel(tr('description')).fill(description);
+		await dlg.getByLabel(tr('kbAssignee')).selectOption(worker.id);
+		await dlg.getByLabel(tr('kbDue')).fill(dateInput(5));
+		await dlg.getByRole('radio', { name: tr('teamsPriorityHigh') }).click();
+		const labels = dlg.getByPlaceholder(tr('kbLabelsPh'));
+		await labels.fill(labelInput);
 		await labels.press('Enter');
-		await dlg.getByRole('button', { name: 'Görevi Oluştur' }).click();
+		await dlg.getByRole('button', { name: tr('kbCreate') }).click();
 		await dlg.waitFor({ state: 'detached' });
 		await card(title).waitFor();
 		const stored = await byTitle(title);
-		t.check(Boolean(stored), 'görev API\'de kayıtlı');
-		t.eq(stored?.status, 'todo', 'ilk sütun: Yapılacak');
-		t.eq(stored?.priority, 'high', 'öncelik Yüksek');
-		t.eq(stored?.assigneeMemberId, worker.id, 'atanan üye');
-		t.eq(stored?.tags, ['ön-yüz'], 'etiket küçük harfe ve tireye çevrildi');
-		t.check(stored?.dueDate > Date.now(), 'teslim tarihi ileride');
-		t.check(Boolean(stored?.creatorId), 'oluşturan kayıtlı');
-		t.check(await card(title).getByText('#ön-yüz').count() === 1, 'kartta etiket görünüyor');
-		t.check(await card(title).getByText('Yüksek').count() === 1, 'kartta öncelik rozeti');
-		t.check(await column('todo').locator('[data-task-id]').filter({ hasText: title }).count() === 1, 'kart Yapılacak sütununda');
-		await t.shot(page, 'gorev-olustu');
+		t.check(Boolean(stored), 'task is stored in the API');
+		t.eq(stored?.status, 'todo', 'initial column is to do');
+		t.eq(stored?.priority, 'high', 'priority is high');
+		t.eq(stored?.assigneeMemberId, worker.id, 'assigned member');
+		t.eq(stored?.tags, [taskLabel], 'tag was lowercased and hyphenated');
+		t.check(stored?.dueDate > Date.now(), 'due date is in the future');
+		t.check(Boolean(stored?.creatorId), 'creator is recorded');
+		t.check(await card(title).getByText(`#${taskLabel}`).count() === 1, 'tag appears on the card');
+		t.check(await card(title).getByText(tr('teamsPriorityHigh')).count() === 1, 'priority badge on the card');
+		t.check(await column('todo').locator('[data-task-id]').filter({ hasText: title }).count() === 1, 'card is in the to-do column');
+		await t.shot(page, 'task-created');
 	});
 
-	await step('boş başlıkla görev oluşturulamaz', async () => {
-		await win.getByRole('button', { name: 'Yeni Görev' }).click();
-		const dlg = page.getByRole('dialog', { name: 'Yeni Görev' });
-		t.check(await dlg.getByRole('button', { name: 'Görevi Oluştur' }).isDisabled(), '"Görevi Oluştur" başlık yokken kapalı');
-		await dlg.getByRole('button', { name: 'Vazgeç' }).click();
+	await step('a task cannot be created with an empty title', async () => {
+		await win.getByRole('button', { name: tr('teamsAddTask') }).click();
+		const dlg = page.getByRole('dialog', { name: tr('teamsAddTask') });
+		t.check(await dlg.getByRole('button', { name: tr('kbCreate') }).isDisabled(), 'create button is disabled without a title');
+		await dlg.getByRole('button', { name: tr('acEmailChangeCancel') }).click();
 		await dlg.waitFor({ state: 'detached' });
 	});
 
-	const doingTitle = `Sürüyor sütunundan ${Date.now().toString(36)}`;
-	await step('sütundaki "+" düğmesi görevi o sütunda açar; atanmamış görev havuza düşer', async () => {
-		await column('in_progress').getByRole('button', { name: 'Bu sütuna ekle' }).click();
-		const dlg = page.getByRole('dialog', { name: 'Yeni Görev' });
-		t.eq(await dlg.getByLabel('Sütun').inputValue(), 'in_progress', 'sütun seçimi "Sürüyor"');
-		t.check(await dlg.getByText('Atanmamış görevleri takımdaki herkes üstlenebilir.').count() === 1, 'havuz ipucu görünüyor');
-		await dlg.getByLabel('Başlık').fill(doingTitle);
-		await dlg.getByRole('button', { name: 'Görevi Oluştur' }).click();
+	const doingTitle = `From in-progress column ${Date.now().toString(36)}`;
+	await step('the column "+" button opens the task in that column; an unassigned task goes to the pool', async () => {
+		await column('in_progress').getByRole('button', { name: tr('kbAddHere') }).click();
+		const dlg = page.getByRole('dialog', { name: tr('teamsAddTask') });
+		t.eq(await dlg.getByLabel(tr('kbColumn')).inputValue(), 'in_progress', 'column selection is in progress');
+		t.check(await dlg.getByText(tr('kbPoolHint')).count() === 1, 'pool hint is visible');
+		await dlg.getByLabel(tr('evFieldTitle')).fill(doingTitle);
+		await dlg.getByRole('button', { name: tr('kbCreate') }).click();
 		await dlg.waitFor({ state: 'detached' });
 		await card(doingTitle).waitFor();
 		const stored = await byTitle(doingTitle);
-		t.eq(stored?.status, 'in_progress', 'görev Sürüyor sütununda saklandı');
-		t.eq(stored?.assigneeMemberId, null, 'atanan yok (havuz)');
+		t.eq(stored?.status, 'in_progress', 'task was stored in the in-progress column');
+		t.eq(stored?.assigneeMemberId, null, 'no assignee (pool)');
 	});
 
-	await step('sürükle-bırak: kart başka sütuna taşınır ve kalıcı olur', async () => {
+	await step('drag and drop: the card moves to another column and persists', async () => {
 		await drag(page, card(title), column('review'));
 		await column('review').locator('[data-task-id]').filter({ hasText: title }).waitFor();
 		const ok = await t.waitFor(async () => (await byTitle(title))?.status === 'review');
-		t.check(ok >= 0, 'sunucuda durum "inceleme" oldu');
+		t.check(ok >= 0, 'status became review on the server');
 		await refreshBoard(page);
-		t.check(await column('review').locator('[data-task-id]').filter({ hasText: title }).count() === 1, 'sunucudan yeniden okununca kart hâlâ İncelemede');
-		await t.shot(page, 'surukle-birak');
+		t.check(await column('review').locator('[data-task-id]').filter({ hasText: title }).count() === 1, 'card is still in review after reloading from the server');
+		await t.shot(page, 'drag-and-drop');
 	});
 
-	await step('sürükle-bırak: aynı sütunda sıralama değişir', async () => {
-		const a = await addTask(admin, team.id, { title: `Sıra A ${Date.now().toString(36)}`, status: 'done' });
-		const b = await addTask(admin, team.id, { title: `Sıra B ${Date.now().toString(36)}`, status: 'done' });
+	await step('drag and drop: ordering changes within the same column', async () => {
+		const a = await addTask(admin, team.id, { title: `Order A ${Date.now().toString(36)}`, status: 'done' });
+		const b = await addTask(admin, team.id, { title: `Order B ${Date.now().toString(36)}`, status: 'done' });
 		await refreshBoard(page);
 		const col = column('done');
 		await col.locator(`[data-task-id="${a.id}"]`).waitFor();
 		const order = async () => col.locator('[data-task-id]').evaluateAll((els) => els.map((e) => e.getAttribute('data-task-id')));
 		const before = await order();
 		const [first, second] = before.filter((id) => id === a.id || id === b.id);
-		// İkincisini birincinin üstüne bırak.
+		// Drop the second one onto the first.
 		const target = col.locator(`[data-task-id="${first}"]`);
 		const box = await target.boundingBox();
 		await drag(page, col.locator(`[data-task-id="${second}"]`), target, { x: box.width / 2, y: 4 });
 		const moved = await t.waitFor(async () => (await order()).filter((id) => id === a.id || id === b.id)[0] === second);
-		t.check(moved >= 0, 'ekranda sıra değişti');
-		// Pano iyimser günceller (ekran önce, istek sonra): sunucudaki durum için kaydın inmesi beklenir.
+		t.check(moved >= 0, 'order changed on screen');
+		// The board updates optimistically (screen first, request last): wait for the record to land for the server state.
 		let stored = await tasksOf();
 		const orderOf = (id) => stored.find((g) => g.id === id)?.order;
 		await t.waitFor(async () => {
 			stored = await tasksOf();
 			return orderOf(second) < orderOf(first);
 		}, { timeout: 5000, every: 150 });
-		t.check(orderOf(second) < orderOf(first), 'sunucudaki "sira" da değişti', `${orderOf(second)} < ${orderOf(first)}`);
+		t.check(orderOf(second) < orderOf(first), 'the order also changed on the server', `${orderOf(second)} < ${orderOf(first)}`);
 		await admin.post('/api/teams', { action: 'deleteTask', taskId: a.id });
 		await admin.post('/api/teams', { action: 'deleteTask', taskId: b.id });
 	});
 
-	await step('ok düğmeleri ve Alt+ok: bir sütun sola/sağa', async () => {
+	await step('arrow buttons and Alt+arrow: move one column left/right', async () => {
 		const target = card(title);
 		await target.hover();
-		await target.getByRole('button', { name: 'Önceki sütuna taşı' }).click();
+		await target.getByRole('button', { name: tr('kbMoveLeft') }).click();
 		await column('in_progress').locator('[data-task-id]').filter({ hasText: title }).waitFor();
 		await t.waitFor(async () => (await byTitle(title))?.status === 'in_progress', { timeout: 5000, every: 150 });
-		t.eq((await byTitle(title))?.status, 'in_progress', 'sola düğmesi: Sürüyor');
+		t.eq((await byTitle(title))?.status, 'in_progress', 'left button: in progress');
 		await card(title).focus();
 		await page.keyboard.press('Alt+ArrowRight');
 		await column('review').locator('[data-task-id]').filter({ hasText: title }).waitFor();
 		await t.waitFor(async () => (await byTitle(title))?.status === 'review', { timeout: 5000, every: 150 });
-		t.eq((await byTitle(title))?.status, 'review', 'Alt+→: İncelemede');
+		t.eq((await byTitle(title))?.status, 'review', 'Alt+→: review');
 	});
 
-	await step('görev sayfası: ayrıntılar, atama değiştirme ve etkinlik geçmişi', async () => {
+	await step('task page: details, changing the assignee, and activity history', async () => {
 		await card(title).click();
 		const sheet = page.getByRole('dialog', { name: title });
 		await sheet.waitFor();
-		t.check(await sheet.getByText('Kabul ölçütleri burada.').count() === 1, 'açıklama görünüyor');
+		t.check(await sheet.getByText(description).count() === 1, 'description is visible');
 		const assignee = sheet.locator('aside select').nth(1);
 		await assignee.selectOption('');
 		await t.waitFor(async () => (await byTitle(title))?.assigneeMemberId === null);
-		t.eq((await byTitle(title))?.assigneeMemberId, null, 'atama kaldırıldı');
+		t.eq((await byTitle(title))?.assigneeMemberId, null, 'assignee was cleared');
 		await assignee.selectOption(captain.id);
 		await t.waitFor(async () => (await byTitle(title))?.assigneeMemberId === captain.id);
-		t.eq((await byTitle(title))?.assigneeMemberId, captain.id, 'görev kaptana atandı');
+		t.eq((await byTitle(title))?.assigneeMemberId, captain.id, 'task assigned to the captain');
 		const log = await sheet.locator('ul li').allInnerTexts();
-		t.check(log.some((l) => /taşıdı/.test(l)), 'geçmişte taşıma var', log.join(' | '));
-		t.check(log.some((l) => /atad/.test(l) || /atamayı kaldırdı/.test(l)), 'geçmişte atama var', log.join(' | '));
-		await t.shot(page, 'gorev-sayfasi');
-		await sheet.getByRole('button', { name: 'Kapat' }).click();
+		t.check(log.some((l) => historyPattern('kbActMoved').test(l)), 'history contains a move', log.join(' | '));
+		t.check(log.some((l) => historyPattern('kbActAssigned').test(l) || historyPattern('kbActUnassigned').test(l)), 'history contains an assignment', log.join(' | '));
+		await t.shot(page, 'task-sheet');
+		await sheet.getByRole('button', { name: tr('kbClose') }).click();
 	});
 
-	await step('görev sayfası: başlık, açıklama, öncelik, etiket ve teslim düzenleme', async () => {
+	await step('task page: editing title, description, priority, label, and due date', async () => {
 		await card(title).click();
 		const sheet = page.getByRole('dialog', { name: title });
 		await sheet.waitFor();
-		await sheet.getByRole('radio', { name: 'Kritik' }).click();
+		await sheet.getByRole('radio', { name: tr('kbPrioCritical') }).click();
 		await t.waitFor(async () => (await byTitle(title))?.priority === 'critical');
-		t.eq((await byTitle(title))?.priority, 'critical', 'öncelik Kritik oldu');
-		const label = sheet.getByPlaceholder(/Etiket yazıp/);
+		t.eq((await byTitle(title))?.priority, 'critical', 'priority became critical');
+		const label = sheet.getByPlaceholder(tr('kbLabelsPh'));
 		await label.fill('urgent');
 		await label.press('Enter');
 		await t.waitFor(async () => (await byTitle(title))?.tags.includes('urgent'));
-		t.includes((await byTitle(title)).tags, 'urgent', 'etiket eklendi');
-		await sheet.getByRole('button', { name: 'ön-yüz ×' }).click();
-		await t.waitFor(async () => !(await byTitle(title))?.tags.includes('ön-yüz'));
-		t.eq((await byTitle(title)).tags, ['urgent'], 'etiket kaldırıldı');
-		await sheet.getByRole('button', { name: 'Düzenle' }).click();
-		await sheet.locator('textarea').first().fill('Yeni açıklama metni.');
-		await sheet.getByRole('button', { name: 'Kaydet' }).click();
-		await t.waitFor(async () => (await byTitle(title))?.description === 'Yeni açıklama metni.');
-		t.eq((await byTitle(title)).description, 'Yeni açıklama metni.', 'açıklama kaydedildi');
+		t.includes((await byTitle(title)).tags, 'urgent', 'label added');
+		await sheet.getByRole('button', { name: trf('tmRemoveLabelAria', { label: taskLabel }) }).click();
+		await t.waitFor(async () => !(await byTitle(title))?.tags.includes(taskLabel));
+		t.eq((await byTitle(title)).tags, ['urgent'], 'label removed');
+		await sheet.getByRole('button', { name: tr('kbEdit') }).click();
+		await sheet.locator('textarea').first().fill(editedDescription);
+		await sheet.getByRole('button', { name: tr('kbSave') }).click();
+		await t.waitFor(async () => (await byTitle(title))?.description === editedDescription);
+		t.eq((await byTitle(title)).description, editedDescription, 'description was saved');
 		const due = sheet.locator('input[type=date]');
 		await due.fill(dateInput(9));
 		await t.waitFor(async () => (await byTitle(title))?.dueDate > Date.now() + 8 * 86_400_000);
-		t.check((await byTitle(title)).dueDate > Date.now() + 8 * 86_400_000, 'teslim tarihi güncellendi');
-		await sheet.getByRole('button', { name: 'Kapat' }).click();
+		t.check((await byTitle(title)).dueDate > Date.now() + 8 * 86_400_000, 'due date updated');
+		await sheet.getByRole('button', { name: tr('kbClose') }).click();
 	});
 
-	await step('kontrol listesi: ekleme, işaretleme, kart sayacı, silme', async () => {
+	await step('checklist: adding, checking, card counter, deleting', async () => {
 		await card(title).click();
 		const sheet = page.getByRole('dialog', { name: title });
 		await sheet.waitFor();
-		const input = sheet.getByPlaceholder('Yeni madde ekle…');
-		for (const text of ['Taslağı çiz', 'Kodla', 'Gözden geçir']) {
+		const input = sheet.getByPlaceholder(tr('kbChecklistPh'));
+		for (const text of checklistItems) {
 			await input.fill(text);
-			await sheet.getByRole('button', { name: 'Ekle', exact: true }).click();
+			await sheet.getByRole('button', { name: tr('kbAdd'), exact: true }).click();
 			await sheet.getByText(text, { exact: true }).waitFor();
 		}
-		t.eq(await sheet.locator('input[type=checkbox]').count(), 3, 'üç madde');
+		t.eq(await sheet.locator('input[type=checkbox]').count(), 3, 'three items');
 		await sheet.locator('input[type=checkbox]').nth(0).check();
 		await sheet.locator('input[type=checkbox]').nth(1).check();
 		const detail = async () => (await readTask(admin, (await byTitle(title)).id)).json;
 		await t.waitFor(async () => (await detail()).items.filter((m) => Number(m.isDone) === 1).length === 2);
 		const d = await detail();
-		t.eq(d.items.filter((m) => Number(m.isDone) === 1).length, 2, 'iki madde sunucuda tamam');
-		t.check(await sheet.getByText('2/3').count() >= 1, 'sayfada 2/3');
-		await sheet.locator('label').filter({ hasText: 'Gözden geçir' }).getByRole('button', { name: 'Sil', exact: true }).click();
+		t.eq(d.items.filter((m) => Number(m.isDone) === 1).length, 2, 'two items completed on the server');
+		await t.waitFor(async () => (await sheet.getByText('2/3').count()) >= 1, { timeout: 3000, every: 50 });
+		t.check(await sheet.getByText('2/3').count() >= 1, 'page shows 2/3');
+		await sheet.locator('label').filter({ hasText: checklistItems[2] }).getByRole('button', { name: tr('delete'), exact: true }).click();
 		await t.waitFor(async () => (await detail()).items.length === 2);
-		t.eq((await detail()).items.length, 2, 'madde silindi');
-		await sheet.getByRole('button', { name: 'Kapat' }).click();
-		t.check(await card(title).getByText(/\d\/2/).count() === 1, 'kart yüzünde madde sayacı (x/2)');
-		const inbox = (await detail()).activity.map((a) => a.typeValue);
-		t.includes(inbox, 'item_added', 'geçmişte madde_eklendi');
-		t.includes(inbox, 'item_completed', 'geçmişte madde_tamamlandi');
+		t.eq((await detail()).items.length, 2, 'item deleted');
+		await sheet.getByRole('button', { name: tr('kbClose') }).click();
+		t.check(await card(title).getByText(/\d\/2/).count() === 1, 'checklist counter on the card face (x/2)');
+		const inbox = (await detail()).activity.map((a) => a.type);
+		t.includes(inbox, 'item_added', 'history contains item_added');
+		t.includes(inbox, 'item_completed', 'history contains item_completed');
 	});
 
-	await step('yorumlar: yazma, sayaç, kendi yorumunu silme', async () => {
+	await step('comments: writing, counter, deleting one\'s own comment', async () => {
 		await card(title).click();
 		const sheet = page.getByRole('dialog', { name: title });
 		await sheet.waitFor();
-		t.check(await sheet.getByText('Henüz yorum yok.').count() === 1, 'başta yorum yok');
-		const box = sheet.getByPlaceholder(/Yorum yazın/);
-		await box.fill('İlk yorum');
-		await sheet.getByRole('button', { name: 'Gönder' }).click();
-		await sheet.locator('[data-comment-id]').filter({ hasText: 'İlk yorum' }).waitFor();
-		await box.fill('İkinci yorum');
+		t.check(await sheet.getByText(tr('kbNoComments')).count() === 1, 'no comments initially');
+		const box = sheet.getByPlaceholder(tr('kbCommentPh'));
+		await box.fill(firstComment);
+		await sheet.getByRole('button', { name: tr('kbSend') }).click();
+		await sheet.locator('[data-comment-id]').filter({ hasText: firstComment }).waitFor();
+		await box.fill(secondComment);
 		// Typed while the first comment is still being saved: the text must survive that save
 		// (it used to be wiped). A send while busy is ignored, so wait for the button.
-		t.check((await t.waitFor(() => sheet.getByRole('button', { name: 'Gönder' }).isEnabled())) >= 0, 'ilk yorum kaydedilirken yazılan metin silinmedi');
+		t.check((await t.waitFor(() => sheet.getByRole('button', { name: tr('kbSend') }).isEnabled())) >= 0, 'the text typed while the first comment was being saved was not wiped');
 		await box.press('Control+Enter');
-		await sheet.locator('[data-comment-id]').filter({ hasText: 'İkinci yorum' }).waitFor();
+		await sheet.locator('[data-comment-id]').filter({ hasText: secondComment }).waitFor();
 		const detail = async () => (await readTask(admin, (await byTitle(title)).id)).json;
-		t.eq((await detail()).comments.length, 2, 'iki yorum kayıtlı');
-		await sheet.locator('[data-comment-id]').filter({ hasText: 'İlk yorum' }).getByRole('button', { name: 'Sil', exact: true }).click();
+		t.eq((await detail()).comments.length, 2, 'two comments stored');
+		await sheet.locator('[data-comment-id]').filter({ hasText: firstComment }).getByRole('button', { name: tr('delete'), exact: true }).click();
 		await answerDialog(page);
 		await t.waitFor(async () => (await detail()).comments.length === 1);
-		t.eq((await detail()).comments.length, 1, 'yorum silindi');
-		await sheet.getByRole('button', { name: 'Kapat' }).click();
-		t.check(await card(title).locator('[title="Yorumlar"]').count() === 1, 'kartta yorum sayacı');
+		t.eq((await detail()).comments.length, 1, 'comment deleted');
+		await sheet.getByRole('button', { name: tr('kbClose') }).click();
+		t.check(await card(title).locator(`[title="${tr('kbComments')}"]`).count() === 1, 'comment counter on the card');
 	});
 
-	await step('görevi tamamlama +100 XP verir (bir kez)', async () => {
-		const mine = await addTask(admin, team.id, { title: `XP görevi ${Date.now().toString(36)}`, assigneeMemberId: worker.id });
+	await step('completing a task grants +100 XP (once)', async () => {
+		const mine = await addTask(admin, team.id, { title: `XP task ${Date.now().toString(36)}`, assigneeMemberId: worker.id });
 		const api = await worker.api();
 		const before = await xpOf(api);
 		await refreshBoard(page);
 		await card(mine.title).waitFor();
 		await drag(page, card(mine.title), column('done'));
 		await toast(page, '+100 XP');
-		t.eq(await xpOf(api), before + 100, 'görev sahibi 100 XP kazandı');
-		// Geri alıp yeniden tamamlamak ikinci kez XP vermez.
+		t.eq(await xpOf(api), before + 100, 'task owner earned 100 XP');
+		// Undoing and completing again does not grant XP a second time.
 		await admin.post('/api/teams', { action: 'updateTask', taskId: mine.id, status: 'in_progress' });
 		const again = await admin.post('/api/teams', { action: 'updateTask', taskId: mine.id, status: 'done' });
-		t.eq(again.json?.xpGiven, false, 'ikinci tamamlamada XP verilmedi');
-		t.eq(await xpOf(api), before + 100, 'XP değişmedi');
+		t.eq(again.json?.xpGiven, false, 'no XP was granted on the second completion');
+		t.eq(await xpOf(api), before + 100, 'XP did not change');
 	});
 
-	await step('süzgeçler: arama, "Benim", "Atanmamış", öncelik, etiket, sıralama', async () => {
-		await win.getByPlaceholder('Görevlerde ara…').fill(doingTitle);
-		t.eq(await win.locator('[data-task-id]').count(), 1, 'aramada tek kart');
-		await win.getByPlaceholder('Görevlerde ara…').fill('hiçbir-görev-bunu-içermez');
-		t.check(await win.getByText('Filtreye uyan görev yok.').count() === 1, 'eşleşme yoksa uyarı');
-		await win.getByRole('button', { name: 'Filtreleri temizle' }).click();
-		t.check(await win.locator('[data-task-id]').count() >= 3, 'filtre temizlenince kartlar geri geldi');
-		await win.getByRole('button', { name: 'Atanmamış', exact: true }).click();
-		t.check(await win.locator('[data-task-id]').filter({ hasText: doingTitle }).count() === 1, 'Atanmamış: havuzdaki görev var');
-		t.eq(await win.locator('[data-task-id]').filter({ hasText: title }).count(), 0, 'Atanmamış: kaptana atanmış görev gizli');
-		await win.getByRole('button', { name: 'Tümü', exact: true }).click();
-		await win.getByLabel('Öncelik').selectOption('critical');
-		t.check(await win.locator('[data-task-id]').filter({ hasText: title }).count() === 1, 'Kritik süzgeci: ilgili görev görünüyor');
-		t.eq(await win.locator('[data-task-id]').filter({ hasText: doingTitle }).count(), 0, 'Kritik süzgeci: diğerleri gizli');
-		await win.getByLabel('Öncelik').selectOption('');
-		await win.getByLabel('Etiketler').selectOption('urgent');
-		t.eq(await win.locator('[data-task-id]').count(), 1, 'Etiket süzgeci: tek kart');
-		await win.getByLabel('Etiketler').selectOption('');
+	await step('filters: search, mine, unassigned, priority, label, sorting', async () => {
+		await win.getByPlaceholder(tr('kbSearch')).fill(doingTitle);
+		t.eq(await win.locator('[data-task-id]').count(), 1, 'search finds one card');
+		await win.getByPlaceholder(tr('kbSearch')).fill('no-task-matches-this');
+		t.check(await win.getByText(tr('kbNoMatch')).count() === 1, 'warning shown when nothing matches');
+		await win.getByRole('button', { name: tr('kbClearFilters') }).click();
+		t.check(await win.locator('[data-task-id]').count() >= 3, 'cards returned after clearing the filter');
+		await win.getByRole('button', { name: tr('kbFilterPool'), exact: true }).click();
+		t.check(await win.locator('[data-task-id]').filter({ hasText: doingTitle }).count() === 1, 'unassigned: the pooled task is present');
+		t.eq(await win.locator('[data-task-id]').filter({ hasText: title }).count(), 0, 'unassigned: the task assigned to the captain is hidden');
+		await win.getByRole('button', { name: tr('all'), exact: true }).click();
+		await win.getByLabel(tr('teamsTaskPriority')).selectOption('critical');
+		t.check(await win.locator('[data-task-id]').filter({ hasText: title }).count() === 1, 'critical filter: matching task visible');
+		t.eq(await win.locator('[data-task-id]').filter({ hasText: doingTitle }).count(), 0, 'critical filter: others hidden');
+		await win.getByLabel(tr('teamsTaskPriority')).selectOption('');
+		await win.getByLabel(tr('kbLabels')).selectOption('urgent');
+		t.eq(await win.locator('[data-task-id]').count(), 1, 'label filter: one card');
+		await win.getByLabel(tr('kbLabels')).selectOption('');
 		await win.getByLabel('Sort').selectOption('priority');
 		const order = await column('review').locator('[data-task-id]').allInnerTexts();
-		t.check(order.length >= 1, 'öncelik sıralamasında kartlar duruyor');
+		t.check(order.length >= 1, 'cards remain under priority sorting');
 		await win.getByLabel('Sort').selectOption('manual');
 	});
 
-	await step('görev silme: onay isteniyor, silinince kart ve kayıt gider', async () => {
-		const victim = await addTask(admin, team.id, { title: `Silinecek ${Date.now().toString(36)}` });
+	await step('task deletion: confirmation is required and the card and record disappear', async () => {
+		const victim = await addTask(admin, team.id, { title: `Deletable task ${Date.now().toString(36)}` });
 		await refreshBoard(page);
 		await card(victim.title).click();
 		const sheet = page.getByRole('dialog', { name: victim.title });
-		await sheet.getByRole('button', { name: 'Görevi Sil' }).click();
+		await sheet.getByRole('button', { name: tr('kbDelete') }).click();
 		await answerDialog(page, false);
-		t.check(await byTitle(victim.title) !== undefined, 'vazgeçince görev duruyor');
-		await sheet.getByRole('button', { name: 'Görevi Sil' }).click();
+		t.check(await byTitle(victim.title) !== undefined, 'task remains after cancelling');
+		await sheet.getByRole('button', { name: tr('kbDelete') }).click();
 		await answerDialog(page);
 		await sheet.waitFor({ state: 'detached' });
-		t.eq(await card(victim.title).count(), 0, 'kart panodan kalktı');
-		t.eq(await byTitle(victim.title), undefined, 'kayıt silindi');
+		t.eq(await card(victim.title).count(), 0, 'card removed from the board');
+		t.eq(await byTitle(victim.title), undefined, 'record deleted');
 	});
+	await t.close(adminCtx);
 
-	await step('yetkisiz rol: "Sadece Haberler" kullanıcısı takımları ve görevleri göremez', async () => {
+	await t.step('unauthorized role: a news-only user cannot see teams or tasks', async () => {
 		const reader = await t.api('reader');
 		const list = await reader.get('/api/teams');
 		t.eq(list.status, 403, 'GET /api/teams 403');
 		const task = (await tasksOf())[0];
 		const detail = await readTask(reader, task.id);
-		t.eq(detail.status, 403, 'görev ayrıntısı 403');
-		const add = await reader.post('/api/teams', { action: 'addTask', teamId: team.id, title: 'sızma' });
-		t.eq(add.status, 403, 'görev ekleme 403');
+		t.eq(detail.status, 403, 'task detail 403');
+		const add = await reader.post('/api/teams', { action: 'addTask', teamId: team.id, title: 'intrusion' });
+		t.eq(add.status, 403, 'adding a task 403');
 		const { page: readerPage } = await t.open('reader');
-		t.eq(await readerPage.locator('[data-dock-app=teams]').count(), 0, 'Dock\'ta Takımlar yok');
+		t.eq(await readerPage.locator('[data-dock-app=teams]').count(), 0, 'no Teams app in the dock');
 	});
 }

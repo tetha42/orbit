@@ -1,0 +1,7 @@
+#!/usr/bin/env -S node --no-warnings
+import { dirname, join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const cliEntry = pathToFileURL(join(here, '..', 'scripts', 'orbit-cli.mjs')).href;
+await import(cliEntry);

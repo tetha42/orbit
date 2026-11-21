@@ -18,7 +18,7 @@ export function TwoFactorRecoveryCodes({
 	const { t } = useI18n();
 	return (
 		<div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-			<div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#34c759', fontSize: '13px', fontWeight: 600 }}>
+			<div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--success)', fontSize: '13px', fontWeight: 600 }}>
 				<KeyRound size={16} />
 				<span>{t('twofactorRecoveryTitle')}</span>
 			</div>

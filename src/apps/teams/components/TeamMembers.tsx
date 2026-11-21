@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Check, Inbox, LogOut, UserMinus, UserPlus, Users, X } from 'lucide-react';
-import { useI18n } from '@/core/i18n';
+import { useI18n, getLocaleDefinition } from '@/core/i18n';
 import { useDialog } from '@/components/Common/DialogProvider';
 import { fill } from '@/lib/text';
 import { CAPTAIN_ROLE, ROLE_MAX } from '@/lib/teams';
@@ -25,14 +25,15 @@ interface Props {
 export function TeamMembers({ team, currentUserId, roster, notify, onChanged }: Props) {
 	const { t, language } = useI18n();
 	const dialog = useDialog();
-	const locale = language === 'en' ? 'en-GB' : 'tr-TR';
+	const locale = getLocaleDefinition(language).dateLocale;
 	const manage = team.permissions.manage;
 	const [roleDrafts, setRoleDrafts] = useState<Record<string, string>>({});
 	const [adding, setAdding] = useState('');
 
-	const post = async (body: Record<string, unknown>) => {
+	const post = async (body: Record<string, unknown>, success?: string) => {
 		const res = await sendJson<{ message?: string }>('/api/teams', 'POST', { teamId: team.id, ...body });
 		if (!res.ok) notify(res.error || t('kbActionFailed'), 'error');
+		else if (success) notify(success);
 		else if (res.data.message) notify(res.data.message);
 		await onChanged();
 		return res.ok;
@@ -67,23 +68,28 @@ export function TeamMembers({ team, currentUserId, roster, notify, onChanged }: 
 						team.applications.map((b) => (
 							<div key={b.userId} className={styles.application} data-applicant-id={b.userId}>
 								<span className={ui.avatar} style={{ marginLeft: 0, width: 32, height: 32, fontSize: 12 }}>
-									{initials(b.userNameSurname)}
+									{initials(b.userName)}
 								</span>
 								<div style={{ flex: 1, minWidth: 0 }}>
-									<div className={styles.memberName}>{b.userNameSurname}</div>
+									<div className={styles.memberName}>{b.userName}</div>
 									<div className={styles.memberSub}>
-										{b.userDepartment} · {date(b.participationDate)}
+										{b.userDepartment} · {date(b.joinedAt)}
 									</div>
 								</div>
-								<button type="button" className={ui.primaryBtn} style={{ height: 30, background: '#30d158' }} onClick={() => post({ action: 'approve', userId: b.userId })}>
+								<button
+									type="button"
+									className={ui.primaryBtn}
+									style={{ height: 30, background: 'var(--success)' }}
+									onClick={() => post({ action: 'approve', userId: b.userId }, t('tmApprovedToast'))}
+								>
 									<Check size={14} /> {t('tmApprove')}
 								</button>
 								<button
 									type="button"
 									className={`${ui.btn} ${ui.btnDanger}`}
 									onClick={async () => {
-										if (await dialog.confirm({ message: fill(t('tmRejectConfirm'), { name: b.userNameSurname }), tone: 'danger' })) {
-											await post({ action: 'reject', userId: b.userId });
+										if (await dialog.confirm({ message: fill(t('tmRejectConfirm'), { name: b.userName }), tone: 'danger' })) {
+											await post({ action: 'reject', userId: b.userId }, t('tmRejectedToast'));
 										}
 									}}
 								>
@@ -117,7 +123,7 @@ export function TeamMembers({ team, currentUserId, roster, notify, onChanged }: 
 								className={ui.btn}
 								disabled={!adding}
 								onClick={async () => {
-									if (await post({ action: 'addMember', userId: adding })) setAdding('');
+									if (await post({ action: 'addMember', userId: adding }, t('tmMemberAddedToast'))) setAdding('');
 								}}
 							>
 								<UserPlus size={14} /> {t('tmAddMember')}
@@ -133,20 +139,20 @@ export function TeamMembers({ team, currentUserId, roster, notify, onChanged }: 
 							<div key={u.userId} className={styles.memberCard} data-member-id={u.userId}>
 								<span
 									className={ui.avatar}
-									style={{ marginLeft: 0, width: 36, height: 36, fontSize: 13, background: isCaptain ? 'linear-gradient(135deg,#ff9f0a,#ff375f)' : undefined }}
+									style={{ marginLeft: 0, width: 36, height: 36, fontSize: 13, background: isCaptain ? 'linear-gradient(135deg,var(--warning),#ff375f)' : undefined }}
 								>
-									{initials(u.userNameSurname)}
+									{initials(u.userName)}
 								</span>
 								<div className={styles.memberMain}>
 									<div className={styles.memberName}>
-										{u.userNameSurname} {isMe && <span className={ui.muted}>({t('tmYou')})</span>}
+										{u.userName} {isMe && <span className={ui.muted}>({t('tmYou')})</span>}
 									</div>
 									<input
 										className={styles.roleInput}
 										value={roleDrafts[u.userId] ?? u.teamRole}
 										maxLength={ROLE_MAX}
 										disabled={!manage || isCaptain}
-										aria-label={`${t('tmRole')}: ${u.userNameSurname}`}
+										aria-label={`${t('tmRole')}: ${u.userName}`}
 										title={isCaptain ? CAPTAIN_ROLE : t('tmRole')}
 										onChange={(e) => setRoleDrafts((d) => ({ ...d, [u.userId]: e.target.value }))}
 										onBlur={() => saveRole(u.userId, u.teamRole)}
@@ -156,7 +162,7 @@ export function TeamMembers({ team, currentUserId, roster, notify, onChanged }: 
 									/>
 									<div className={styles.memberSub}>
 										{u.userDepartment}
-										{u.participationDate ? ` · ${fill(t('tmJoined'), { date: date(u.participationDate) })}` : ''}
+										{u.joinedAt ? ` · ${fill(t('tmJoined'), { date: date(u.joinedAt) })}` : ''}
 									</div>
 								</div>
 								{manage && !isCaptain && !isMe && (
@@ -164,10 +170,10 @@ export function TeamMembers({ team, currentUserId, roster, notify, onChanged }: 
 										type="button"
 										className={ui.iconBtn}
 										title={t('tmRemove')}
-										aria-label={`${t('tmRemove')}: ${u.userNameSurname}`}
+										aria-label={`${t('tmRemove')}: ${u.userName}`}
 										onClick={async () => {
-											if (await dialog.confirm({ message: fill(t('tmRemoveConfirm'), { name: u.userNameSurname }), tone: 'danger' })) {
-												await post({ action: 'removeMember', userId: u.userId });
+											if (await dialog.confirm({ message: fill(t('tmRemoveConfirm'), { name: u.userName }), tone: 'danger' })) {
+												await post({ action: 'removeMember', userId: u.userId }, t('tmMemberRemovedToast'));
 											}
 										}}
 									>
@@ -182,7 +188,7 @@ export function TeamMembers({ team, currentUserId, roster, notify, onChanged }: 
 										aria-label={t('tmLeave')}
 										onClick={async () => {
 											if (await dialog.confirm({ message: fill(t('tmLeaveConfirm'), { team: team.name }), tone: 'warning' })) {
-												await post({ action: 'leave' });
+												await post({ action: 'leave' }, t('tmLeftToast'));
 											}
 										}}
 									>

@@ -116,7 +116,7 @@ export function MemberDirectoryApp() {
 				isMemberTouchable={isMemberTouchable}
 				onOpenProfile={(m) => setSelectedMemberForProfile(m)}
 				onResetPassword={handleResetPassword}
-				onSendMessage={(id) => openApp('chat', { section: 'compose', itemId: id })}
+				onSendMessage={(id) => openApp('mail', { section: 'compose', itemId: id })}
 				onUpdateStatus={handleUpdateMemberStatus}
 				onUpdateRole={handleUpdateMemberRole}
 				onAwardXp={handleAwardXp}
@@ -162,7 +162,7 @@ export function MemberDirectoryApp() {
 				currentUserId={currentUser?.id}
 				mailUser={mailUser}
 				isReachable={Boolean(selectedMemberForProfile && reachable.has(selectedMemberForProfile.id))}
-				onSendMessage={(id) => openApp('chat', { section: 'compose', itemId: id })}
+				onSendMessage={(id) => openApp('mail', { section: 'compose', itemId: id })}
 				canEdit={isAuthorizedToAdd}
 				onSaved={fetchMembers}
 				onSendPasswordReset={

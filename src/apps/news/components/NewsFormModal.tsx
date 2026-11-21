@@ -1,17 +1,12 @@
 'use client';
 
 import React from 'react';
-import {
-	X,
-	AlertTriangle,
-	ShieldAlert,
-	FilePen,
-	Lock,
-	Globe,
-} from 'lucide-react';
+import { X, AlertTriangle } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
 import { ModalOverlay, useDraggableSheet } from '@/core/ui/Sheet';
-import { NEWS_LIMITS, NEWS_VISIBILITIES, type NewsVisibility } from '@/types/news';
+import type { NewsVisibility } from '@/types/news';
+import { NewsVisibilitySection, getVisibilityMeta } from './NewsVisibilitySection';
+import { NewsFormFields } from './NewsFormFields';
 
 interface NewsFormModalProps {
 	editingId: string | null;
@@ -58,22 +53,7 @@ export function NewsFormModal({
 }: NewsFormModalProps) {
 	const { t } = useI18n();
 	const { offset, onHeaderMouseDown, onHeaderDoubleClick } = useDraggableSheet(true);
-
-	const visibilityBadges: Record<
-		NewsVisibility,
-		{ color: string; icon: React.ComponentType<{ size?: number; color?: string }>; hint: string; label: string }
-	> = {
-		draft: { color: '#8e8e93', icon: FilePen, hint: t('newsVisDraftHint'), label: t('newsVisDraft') },
-		members: { color: '#0a84ff', icon: Lock, hint: t('newsVisMembersHint'), label: t('newsVisMembers') },
-		published: { color: '#30d158', icon: Globe, hint: t('newsVisPublicHint'), label: t('newsVisPublic') },
-	};
-
-	const bannerPresets = [
-		{ label: 'TEKNOFEST', url: '/app-icons/vscode/256.png' },
-		{ label: t('newsSourceRectorate'), url: '/app-icons/appstore/256.png' },
-		{ label: t('newsCatAtolyeShort'), url: '/app-icons/calendar/256.png' },
-		{ label: 'Ar-Ge / Envanter', url: '/app-icons/settings/256.png' },
-	];
+	const visibilityBadges = getVisibilityMeta(t);
 
 	return (
 		<ModalOverlay onClose={onClose}>
@@ -104,7 +84,13 @@ export function NewsFormModal({
 				<div
 					onMouseDown={onHeaderMouseDown}
 					onDoubleClick={onHeaderDoubleClick}
-					style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'grab', userSelect: 'none' }}
+					style={{
+						display: 'flex',
+						justifyContent: 'space-between',
+						alignItems: 'center',
+						cursor: 'grab',
+						userSelect: 'none',
+					}}
 				>
 					<div>
 						<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -116,8 +102,8 @@ export function NewsFormModal({
 									fontSize: '10.5px',
 									padding: '2px 8px',
 									borderRadius: '10px',
-									background: 'rgba(255, 45, 85, 0.2)',
-									color: '#ff2d55',
+									background: 'color-mix(in srgb, var(--danger) 20%, transparent)',
+									color: 'var(--danger)',
 									fontWeight: 700,
 								}}
 							>
@@ -131,13 +117,7 @@ export function NewsFormModal({
 					<button
 						type="button"
 						onClick={onClose}
-						style={{
-							background: 'transparent',
-							border: 'none',
-							color: 'inherit',
-							cursor: 'pointer',
-							opacity: 0.6,
-						}}
+						style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.6 }}
 					>
 						<X size={18} />
 					</button>
@@ -148,9 +128,9 @@ export function NewsFormModal({
 						style={{
 							padding: '10px 14px',
 							borderRadius: '8px',
-							background: 'rgba(255, 69, 58, 0.15)',
-							border: '1px solid rgba(255, 69, 58, 0.3)',
-							color: '#ff453a',
+							background: 'color-mix(in srgb, var(--danger) 15%, transparent)',
+							border: '1px solid color-mix(in srgb, var(--danger) 30%, transparent)',
+							color: 'var(--danger)',
 							fontSize: '12.5px',
 							display: 'flex',
 							alignItems: 'center',
@@ -162,301 +142,29 @@ export function NewsFormModal({
 					</div>
 				)}
 
-				<div>
-					<label
-						htmlFor="news-visibility"
-						style={{
-							display: 'block',
-							fontSize: '11.5px',
-							fontWeight: 600,
-							marginBottom: '6px',
-							opacity: 0.8,
-						}}
-					>
-						{t('newsWhoCanSee')}
-					</label>
-					<div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }} role="radiogroup" id="news-visibility" aria-label={t('newsWhoCanSee')}>
-						{NEWS_VISIBILITIES.map((value) => {
-							const badge = visibilityBadges[value];
-							const Icon = badge.icon;
-							const active = newVisibility === value;
-							return (
-								<button
-									key={value}
-									type="button"
-									role="radio"
-									aria-checked={active}
-									onClick={() => onChangeVisibility(value)}
-									style={{
-										display: 'inline-flex',
-										alignItems: 'center',
-										gap: '6px',
-										padding: '7px 12px',
-										borderRadius: '8px',
-										border: active ? `1px solid ${badge.color}` : '1px solid rgba(255, 255, 255, 0.12)',
-										background: active ? `${badge.color}26` : 'rgba(255, 255, 255, 0.04)',
-										color: active ? badge.color : 'inherit',
-										fontSize: '12.5px',
-										fontWeight: active ? 700 : 500,
-										cursor: 'pointer',
-									}}
-								>
-									<Icon size={13} />
-									{badge.label}
-								</button>
-							);
-						})}
-					</div>
-				</div>
+				<NewsVisibilitySection
+					newVisibility={newVisibility}
+					newCategory={newCategory}
+					newIsImportant={newIsImportant}
+					onChangeVisibility={onChangeVisibility}
+					onChangeCategory={onChangeCategory}
+					onChangeIsImportant={onChangeIsImportant}
+				/>
 
-				<div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '12px' }}>
-					<div>
-						<label
-							style={{
-								fontSize: '11.5px',
-								fontWeight: 600,
-								opacity: 0.8,
-								display: 'block',
-								marginBottom: '4px',
-							}}
-						>
-							{t('newsCategoryLabel')}
-						</label>
-						<select
-							value={newCategory}
-							onChange={(e) => onChangeCategory(e.target.value)}
-							style={{
-								width: '100%',
-								padding: '9px 12px',
-								borderRadius: '8px',
-								background: 'rgba(0, 0, 0, 0.3)',
-								border: '1px solid rgba(255, 255, 255, 0.15)',
-								color: 'inherit',
-								fontSize: '13px',
-							}}
-						>
-							<option value="general">{t('newsCatGenel')}</option>
-							<option value="teknofest">{t('newsCatTeknofest')}</option>
-							<option value="workshop">{t('newsCatAtolye')}</option>
-							<option value="collaboration">{t('newsCatIsbirligi')}</option>
-							<option value="official">{t('newsCatResmi')}</option>
-						</select>
-					</div>
-
-					<div style={{ display: 'flex', alignItems: 'center', marginTop: '20px' }}>
-						<label
-							style={{
-								display: 'flex',
-								alignItems: 'center',
-								gap: '8px',
-								fontSize: '12.5px',
-								fontWeight: 600,
-								cursor: 'pointer',
-								color: newIsImportant ? '#ff375f' : 'inherit',
-							}}
-						>
-							<input
-								type="checkbox"
-								checked={newIsImportant}
-								onChange={(e) => onChangeIsImportant(e.target.checked)}
-								style={{ width: '16px', height: '16px' }}
-							/>
-							<span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-								<ShieldAlert size={14} /> {t('newsPinUrgent')}
-							</span>
-						</label>
-					</div>
-				</div>
-
-				<div>
-					<label
-						style={{
-							fontSize: '11.5px',
-							fontWeight: 600,
-							opacity: 0.8,
-							display: 'block',
-							marginBottom: '4px',
-						}}
-					>
-						{t('newsTitleLabel')}
-					</label>
-					<input
-						type="text"
-						placeholder={t('newsTitlePh')}
-						value={newTitle}
-						onChange={(e) => onChangeTitle(e.target.value)}
-						maxLength={NEWS_LIMITS.title}
-						required
-						style={{
-							width: '100%',
-							padding: '9px 12px',
-							borderRadius: '8px',
-							background: 'rgba(0, 0, 0, 0.3)',
-							border: '1px solid rgba(255, 255, 255, 0.15)',
-							color: 'inherit',
-							fontSize: '13px',
-						}}
-					/>
-				</div>
-
-				<div>
-					<label
-						style={{
-							fontSize: '11.5px',
-							fontWeight: 600,
-							opacity: 0.8,
-							display: 'block',
-							marginBottom: '4px',
-						}}
-					>
-						{t('newsSummaryLabel')}
-					</label>
-					<input
-						type="text"
-						placeholder="..."
-						value={newSummary}
-						onChange={(e) => onChangeSummary(e.target.value)}
-						maxLength={NEWS_LIMITS.summary}
-						style={{
-							width: '100%',
-							padding: '9px 12px',
-							borderRadius: '8px',
-							background: 'rgba(0, 0, 0, 0.3)',
-							border: '1px solid rgba(255, 255, 255, 0.15)',
-							color: 'inherit',
-							fontSize: '13px',
-						}}
-					/>
-				</div>
-
-				<div>
-					<div
-						style={{
-							display: 'flex',
-							justifyContent: 'space-between',
-							alignItems: 'center',
-							marginBottom: '4px',
-						}}
-					>
-						<label style={{ fontSize: '11.5px', fontWeight: 600, opacity: 0.8 }}>
-							{t('newsBannerLabel')}
-						</label>
-						<span style={{ fontSize: '11px', opacity: 0.6 }}>{t('newsBannerHint')}</span>
-					</div>
-
-					<div style={{ display: 'flex', gap: '6px', marginBottom: '8px', flexWrap: 'wrap' }}>
-						{bannerPresets.map((preset) => (
-							<button
-								key={preset.url}
-								type="button"
-								onClick={() => onChangeImageUrl(preset.url)}
-								style={{
-									padding: '4px 10px',
-									borderRadius: '6px',
-									border:
-										newImageUrl === preset.url
-											? '1px solid #0a84ff'
-											: '1px solid rgba(255, 255, 255, 0.1)',
-									background:
-										newImageUrl === preset.url
-											? 'rgba(10, 132, 255, 0.2)'
-											: 'rgba(255, 255, 255, 0.05)',
-									color: newImageUrl === preset.url ? '#0a84ff' : 'inherit',
-									fontSize: '11px',
-									cursor: 'pointer',
-								}}
-							>
-								{preset.label}
-							</button>
-						))}
-					</div>
-
-					<input
-						type="text"
-						placeholder={t('newsIconUrlPh')}
-						value={newImageUrl}
-						onChange={(e) => onChangeImageUrl(e.target.value)}
-						style={{
-							width: '100%',
-							padding: '8px 12px',
-							borderRadius: '8px',
-							background: 'rgba(0, 0, 0, 0.3)',
-							border: '1px solid rgba(255, 255, 255, 0.15)',
-							color: 'inherit',
-							fontSize: '12.5px',
-						}}
-					/>
-				</div>
-
-				<div>
-					<label
-						style={{
-							fontSize: '11.5px',
-							fontWeight: 600,
-							opacity: 0.8,
-							display: 'block',
-							marginBottom: '4px',
-						}}
-					>
-						{t('newsContentLabel')}
-					</label>
-					<textarea
-						rows={7}
-						placeholder="..."
-						value={newContent}
-						onChange={(e) => onChangeContent(e.target.value)}
-						maxLength={NEWS_LIMITS.content}
-						required
-						style={{
-							width: '100%',
-							padding: '10px 12px',
-							borderRadius: '8px',
-							background: 'rgba(0, 0, 0, 0.3)',
-							border: '1px solid rgba(255, 255, 255, 0.15)',
-							color: 'inherit',
-							fontSize: '13px',
-							resize: 'vertical',
-							lineHeight: 1.5,
-						}}
-					/>
-				</div>
-
-				<div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
-					<button
-						type="button"
-						onClick={onClose}
-						style={{
-							padding: '8px 16px',
-							borderRadius: '8px',
-							border: '1px solid rgba(255, 255, 255, 0.2)',
-							background: 'transparent',
-							color: 'inherit',
-							fontSize: '13px',
-							cursor: 'pointer',
-						}}
-					>
-						{t('cancel')}
-					</button>
-					<button
-						type="submit"
-						disabled={isSubmitting}
-						style={{
-							padding: '8px 22px',
-							borderRadius: '8px',
-							border: 'none',
-							background: 'var(--accent)',
-							color: 'var(--accent-contrast, #ffffff)',
-							fontSize: '13px',
-							fontWeight: 700,
-							cursor: 'pointer',
-							boxShadow: 'var(--accent-glow)',
-						}}
-					>
-						{isSubmitting
-							? (editingId ? t('newsSaving') : newVisibility === 'draft' ? t('newsSaving') : t('newsPublishing'))
-							: (editingId ? t('newsSaveEdit') : newVisibility === 'draft' ? t('newsSaveDraft') : t('newsPublish'))}
-					</button>
-				</div>
+				<NewsFormFields
+					editingId={editingId}
+					isSubmitting={isSubmitting}
+					newVisibility={newVisibility}
+					newTitle={newTitle}
+					newSummary={newSummary}
+					newImageUrl={newImageUrl}
+					newContent={newContent}
+					onClose={onClose}
+					onChangeTitle={onChangeTitle}
+					onChangeSummary={onChangeSummary}
+					onChangeImageUrl={onChangeImageUrl}
+					onChangeContent={onChangeContent}
+				/>
 			</form>
 		</ModalOverlay>
 	);

@@ -152,9 +152,9 @@ export function PasskeySettingsPanel() {
 					style={{
 						padding: '12px 16px',
 						borderRadius: '10px',
-						background: feedback.type === 'ok' ? 'rgba(52, 199, 89, 0.15)' : 'rgba(255, 69, 58, 0.15)',
-						border: `1px solid ${feedback.type === 'ok' ? 'rgba(52, 199, 89, 0.4)' : 'rgba(255, 69, 58, 0.4)'}`,
-						color: feedback.type === 'ok' ? '#34c759' : '#ff453a',
+						background: feedback.type === 'ok' ? 'color-mix(in srgb, var(--success) 15%, transparent)' : 'color-mix(in srgb, var(--danger) 15%, transparent)',
+						border: `1px solid ${feedback.type === 'ok' ? 'color-mix(in srgb, var(--success) 40%, transparent)' : 'color-mix(in srgb, var(--danger) 40%, transparent)'}`,
+						color: feedback.type === 'ok' ? 'var(--success)' : 'var(--danger)',
 						fontSize: '13px',
 						display: 'flex',
 						alignItems: 'center',
@@ -171,9 +171,9 @@ export function PasskeySettingsPanel() {
 					style={{
 						padding: '12px 16px',
 						borderRadius: '10px',
-						background: 'rgba(255, 159, 10, 0.15)',
-						border: '1px solid rgba(255, 159, 10, 0.4)',
-						color: '#ff9f0a',
+						background: 'color-mix(in srgb, var(--warning) 15%, transparent)',
+						border: '1px solid color-mix(in srgb, var(--warning) 40%, transparent)',
+						color: 'var(--warning)',
 						fontSize: '13px',
 					}}
 				>

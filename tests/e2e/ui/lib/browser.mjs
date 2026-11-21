@@ -1,8 +1,11 @@
-// Chrome through playwright-core: the system's Google Chrome, never a download.
+// Chrome through playwright-core: prefers lean Playwright headless shell when headless, else Chrome/Chromium.
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { createRequire } from 'node:module';
 import { SESSION_COOKIE } from './api.mjs';
 import { totpCode } from './totp.mjs';
+import { tr } from './locale.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright-core');
@@ -10,8 +13,27 @@ const { chromium } = require('playwright-core');
 export const DESKTOP = { width: 1440, height: 900 };
 export const MOBILE = { width: 390, height: 844 };
 
-// A dev server compiles on demand and the machine may be busy: wait for the HTML, not for every asset.
-const GOTO = { waitUntil: 'domcontentloaded', timeout: 90_000 };
+// Prebuilt standalone server responds in milliseconds; cap page navigation waits at 30 s.
+const GOTO = { waitUntil: 'domcontentloaded', timeout: 30_000 };
+const TINY_PNG = Buffer.from(
+	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+	'base64'
+);
+
+function findHeadlessShell() {
+	try {
+		const cacheDir = process.env.PLAYWRIGHT_BROWSERS_PATH || path.join(os.homedir(), '.cache', 'ms-playwright');
+		if (!fs.existsSync(cacheDir)) return null;
+		const dirs = fs.readdirSync(cacheDir).filter((d) => d.startsWith('chromium_headless_shell-')).sort().reverse();
+		for (const dir of dirs) {
+			const bin = path.join(cacheDir, dir, 'chrome-headless-shell-linux64', 'chrome-headless-shell');
+			if (fs.existsSync(bin)) return bin;
+		}
+	} catch {
+		// Fall back to Chrome/Chromium when cache directory is unreadable.
+	}
+	return null;
+}
 
 /**
  * One headless Chrome for the whole run; contexts are cheap, launches are not.
@@ -20,15 +42,56 @@ const GOTO = { waitUntil: 'domcontentloaded', timeout: 90_000 };
  * cores and starves the page's timers (the permission poll, hover timeouts). The app
  * falls back to its static aurora, which is all these suites need. `E2E_WEBGL=1` turns it on.
  */
-export async function launchBrowser({ headed = false } = {}) {
-	const args = ['--no-sandbox', ...(process.env.E2E_WEBGL ? [] : ['--disable-3d-apis'])];
-	const options = { headless: !headed, args };
+export async function launchBrowser({ headed = false, maxRenderers = 1 } = {}) {
+	const args = [
+		'--no-sandbox',
+		'--no-zygote',
+		'--disable-gpu',
+		'--disable-gpu-compositing',
+		'--disable-domain-reliability',
+		'--enable-low-end-device-mode',
+		'--disk-cache-size=16777216',
+		'--media-cache-size=1',
+		`--renderer-process-limit=${maxRenderers}`,
+		'--js-flags=--max-old-space-size=64',
+		...(process.env.E2E_WEBGL ? [] : ['--disable-3d-apis']),
+	];
+	const options = {
+		headless: !headed,
+		args,
+		// Playwright keeps every background tab rendering at full speed. Tests drive one page
+		// at a time; letting Chromium deprioritise occluded windows cuts idle compositor work
+		// while timers stay unthrottled (the polling fallbacks in the SSE suite need those).
+		ignoreDefaultArgs: ['--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'],
+	};
+	const explicitPath = process.env.E2E_BROWSER_PATH || process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
+	if (explicitPath && fs.existsSync(explicitPath)) {
+		return chromium.launch({ ...options, executablePath: explicitPath });
+	}
+	if (!headed) {
+		const shellBin = findHeadlessShell();
+		if (shellBin) {
+			try {
+				return await chromium.launch({ ...options, executablePath: shellBin });
+			} catch {
+				// Fall through to full browser channels if headless shell fails to start.
+			}
+		}
+	}
 	try {
 		return await chromium.launch({ ...options, channel: 'chrome' });
 	} catch (e) {
-		const path = ['/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium'].find((p) => fs.existsSync(p));
-		if (!path) throw new Error(`Google Chrome not found (${e.message}). Install it; this suite never downloads a browser.`);
-		return chromium.launch({ ...options, executablePath: path });
+		const candidates = [
+			'/usr/bin/google-chrome',
+			'/usr/bin/google-chrome-stable',
+			'/usr/bin/chromium',
+			'/usr/bin/chromium-browser',
+			'/usr/bin/brave',
+			chromium.executablePath(),
+		];
+		const candidate = candidates.find((p) => p && fs.existsSync(p));
+		if (!candidate) throw new Error(`Chrome/Chromium not found (${e.message}). Install Chromium or run \`pnpm exec playwright-core install chromium-headless-shell\`.`);
+		return chromium.launch({ ...options, executablePath: candidate });
 	}
 }
 
@@ -41,8 +104,33 @@ export async function launchBrowser({ headed = false } = {}) {
  * once, before the page's own scripts — a reload keeps what the page itself saved since;
  * `colorScheme` emulates the OS colour scheme.
  */
-export async function newContext(browser, { viewport = DESKTOP, prefs = null, colorScheme = undefined } = {}) {
-	const context = await browser.newContext({ viewport, locale: 'tr-TR', colorScheme });
+export async function newContext(
+	browser,
+	{ viewport = DESKTOP, prefs = null, colorScheme = undefined, reducedMotion = 'reduce', stubWallpapers = true } = {}
+) {
+	// Most suites are about data and behaviour, not animation. Asking the app for reduced
+	// motion sets `data-motion=reduce`, which stops the shell's transitions/animations and
+	// is the single biggest CPU saver in a long run. Suites that assert motion pass
+	// `reducedMotion: 'no-preference'` explicitly.
+	// Ask Chromium to block service workers so production `/sw.js` does not spin up extra worker
+	// processes or intercept network requests watched by suites such as `lazy-loading` and `sse`.
+	const context = await browser.newContext({
+		viewport,
+		locale: 'tr-TR',
+		colorScheme,
+		reducedMotion,
+		serviceWorkers: 'block',
+	});
+	if (stubWallpapers) {
+		await context.route('**/wallpapers/**', (route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'image/png',
+				body: TINY_PNG,
+				headers: { 'cache-control': 'public, max-age=3600' },
+			})
+		);
+	}
 	if (prefs) {
 		await context.addInitScript((json) => {
 			try {
@@ -56,7 +144,13 @@ export async function newContext(browser, { viewport = DESKTOP, prefs = null, co
 	}
 	await context.addInitScript(() => {
 		try {
+			sessionStorage.setItem('orbit_pwa_installed_session_v2', '1');
 			sessionStorage.setItem('beu_pwa_dev_bypass', '1');
+			sessionStorage.setItem('orbit_pwa_dev_bypass', '1');
+			if (!sessionStorage.getItem('e2e_locale_seeded')) {
+				sessionStorage.setItem('e2e_locale_seeded', '1');
+				localStorage.setItem('orbit_locale', 'tr');
+			}
 		} catch {
 			// no storage: the page shows the download page, and the test says so
 		}
@@ -74,18 +168,28 @@ export async function newContext(browser, { viewport = DESKTOP, prefs = null, co
  * A page that is already signed in as the holder of `token` (a session token from
  * `client().token`), so a suite that is not about signing in skips the form.
  */
-export async function openSession(browser, base, token, { viewport = DESKTOP, prefs, colorScheme } = {}) {
-	const context = await newContext(browser, { viewport, prefs, colorScheme });
+export async function openSession(
+	browser,
+	base,
+	token,
+	{ viewport = DESKTOP, prefs, colorScheme, reducedMotion, stubWallpapers = true } = {}
+) {
+	const context = await newContext(browser, { viewport, prefs, colorScheme, reducedMotion, stubWallpapers });
 	await context.addCookies([{ name: SESSION_COOKIE, value: token, url: base }]);
 	const page = await context.newPage();
 	await page.goto(base, GOTO);
 	await waitDesktop(page);
+	await page.waitForTimeout(50);
 	return { context, page };
 }
 
 /** A page at the sign-in screen, no session. */
-export async function openAnonymous(browser, base, { viewport = DESKTOP, prefs, colorScheme } = {}) {
-	const context = await newContext(browser, { viewport, prefs, colorScheme });
+export async function openAnonymous(
+	browser,
+	base,
+	{ viewport = DESKTOP, prefs, colorScheme, reducedMotion, stubWallpapers = true } = {}
+) {
+	const context = await newContext(browser, { viewport, prefs, colorScheme, reducedMotion, stubWallpapers });
 	const page = await context.newPage();
 	await page.goto(base, GOTO);
 	await page.locator('input[type=email]').waitFor();
@@ -94,10 +198,10 @@ export async function openAnonymous(browser, base, { viewport = DESKTOP, prefs, 
 
 /** The desktop (or the phone launcher) has rendered for a signed-in member. */
 export async function waitDesktop(page) {
-	await page.locator('[data-dock-app], [data-no-role-notice], [data-launcher-app], [data-mobile-nav], [role=dialog][aria-labelledby=twofa-enforce-title]').first().waitFor({ timeout: 30_000 });
+	await page.locator('[data-dock-app], [data-no-role-notice], [data-launcher-app], [data-mobile-nav], [role=dialog][aria-labelledby=twofa-enforce-title]').first().waitFor({ timeout: 20_000 });
 }
 
-/** On the phone the app grid is the "Uygulamalar" tab of the bottom bar; the first screen is the cockpit. */
+/** On the phone the app grid is the apps tab of the bottom bar; the first screen is the cockpit. */
 export async function showLauncherApps(page) {
 	await page.locator('[data-mobile-tab=apps]').click();
 	await page.locator('[data-launcher-app]').first().waitFor();
@@ -114,7 +218,7 @@ export async function submitCredentials(page, email, password) {
 export async function submitSecondFactor(page, code) {
 	const input = page.locator('input[autocomplete=one-time-code]');
 	await input.fill(code);
-	await page.getByRole('button', { name: 'Doğrula ve Giriş Yap' }).click();
+	await page.getByRole('button', { name: tr('auth2faVerifyBtn') }).click();
 }
 
 /**
@@ -125,7 +229,13 @@ export async function loginUi(page, email, password, { totp, code } = {}) {
 	await submitCredentials(page, email, password);
 	if (totp || code) {
 		await page.locator('input[autocomplete=one-time-code]').waitFor();
-		await submitSecondFactor(page, code ?? (await totpCode(totp)));
+		let scope = '';
+		try {
+			scope = new URL(page.url()).origin;
+		} catch {
+			// Fallback to default scope when URL is unavailable.
+		}
+		await submitSecondFactor(page, code ?? (await totpCode(totp, scope)));
 	}
 	await waitDesktop(page);
 }
@@ -139,7 +249,25 @@ export const openWindows = (page) =>
 
 /** Opens an app from the dock and returns its window. */
 export async function openApp(page, appId) {
-	await page.locator(`[data-dock-app=${appId}]`).click();
+	const item = page.locator(`[data-dock-app=${appId}]`);
+	const reveal = async () => {
+		// A maximised window hides the Dock; moving the pointer to the bottom edge brings it
+		// back, exactly as a member does before clicking another app.
+		const size = page.viewportSize() ?? DESKTOP;
+		await page.mouse.move(size.width / 2, size.height - 2);
+		await page.waitForTimeout(320);
+	};
+	// A roamed layout can land while the click is in flight and cover the Dock, so retry:
+	// the click is idempotent (opening an open app only focuses it).
+	for (let attempt = 0; attempt < 3; attempt++) {
+		try {
+			await item.click({ timeout: 3000 });
+			break;
+		} catch (e) {
+			if (attempt === 2) throw e;
+			await reveal();
+		}
+	}
 	const win = page.locator(`[data-window-frame=${appId}]`);
 	await win.waitFor();
 	return win;

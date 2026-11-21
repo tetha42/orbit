@@ -6,6 +6,7 @@ import { useI18n } from '@/core/i18n';
 import { useContextMenu } from '@/core/shell';
 import { copyToClipboard } from '@/lib/clipboard';
 import type { MenuItem } from '@/types/workspace';
+import { NoteGridCard } from './NoteGridCard';
 import type { AppleNote, NoteColors } from '../types';
 
 interface NoteCardProps {
@@ -90,52 +91,17 @@ export function NoteCard({
 
 	if (viewMode === 'grid') {
 		return (
-			<div
-				onClick={onSelect}
-				{...contextMenuProps}
-				style={{
-					padding: '10px',
-					borderRadius: '8px',
-					background: isSelected ? colors.cardSelectedBg : colors.gridCardBg,
-					border: isSelected ? `1.5px solid ${colors.cardSelectedBorder}` : `1px solid ${colors.gridCardBorder}`,
-					cursor: 'pointer',
-					display: 'flex',
-					flexDirection: 'column',
-					gap: '4px',
-					boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-				}}
-			>
-				<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-					<span
-						style={{
-							fontWeight: 600,
-							fontSize: '13px',
-							overflow: 'hidden',
-							textOverflow: 'ellipsis',
-							whiteSpace: 'nowrap',
-							color: isSelected ? colors.cardSelectedTitle : colors.appText,
-						}}
-					>
-						{note.title}
-					</span>
-					{note.isPinned && (
-						<button
-							onClick={(e) => {
-								e.stopPropagation();
-								onTogglePin();
-							}}
-							title={t('notesUnpin')}
-							style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', display: 'grid', placeItems: 'center' }}
-						>
-							<Pin size={11} color={colors.accentGold} />
-						</button>
-					)}
-				</div>
-				<div style={{ fontSize: '11px', color: colors.textSecondary }}>{formatDate(note.updatedAt)}</div>
-				<div style={{ fontSize: '11.5px', color: colors.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-					{bodySnippet}
-				</div>
-			</div>
+			<NoteGridCard
+				note={note}
+				isSelected={isSelected}
+				bodySnippet={bodySnippet}
+				formattedDate={formatDate(note.updatedAt)}
+				colors={colors}
+				unpinTitle={t('notesUnpin')}
+				contextMenuProps={contextMenuProps}
+				onSelect={onSelect}
+				onTogglePin={onTogglePin}
+			/>
 		);
 	}
 
@@ -230,7 +196,7 @@ export function NoteCard({
 						style={{
 							border: 'none',
 							background: 'transparent',
-							color: '#ef4444',
+							color: 'var(--danger)',
 							fontSize: '11px',
 							cursor: 'pointer',
 							display: 'flex',

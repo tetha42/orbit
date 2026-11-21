@@ -83,7 +83,7 @@ export function AuthPortal() {
 					{/* eslint-disable-next-line @next/next/no-img-element */}
 					<img
 						className={styles.brandLogo}
-						src={identity.iconUrl || '/assets/img/logo-girdap.svg'}
+						src={identity.iconUrl || '/assets/img/logo-orbit.svg'}
 						alt={identity.siteName}
 					/>
 					<span className={styles.brandName}>

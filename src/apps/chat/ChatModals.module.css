@@ -1,0 +1,452 @@
+/* Modals & Components */
+.modalOverlay {
+	position: absolute;
+	inset: 0;
+	background: var(--modal-scrim);
+	backdrop-filter: blur(8px);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 100;
+	padding: 16px;
+}
+
+.modalDialog {
+	width: 100%;
+	max-width: 480px;
+	max-height: 90vh;
+	background: var(--modal-bg);
+	border: 1px solid var(--window-border);
+	border-radius: 14px;
+	display: flex;
+	flex-direction: column;
+	box-shadow: var(--shadow-panel);
+	overflow: hidden;
+	color: var(--text-primary);
+	animation: modalIn 0.2s ease-out;
+}
+
+@keyframes modalIn {
+	from {
+		opacity: 0;
+		transform: scale(0.96) translateY(8px);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1) translateY(0);
+	}
+}
+
+.modalHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 16px 20px;
+	border-bottom: 1px solid var(--border-subtle);
+	background: var(--fill-softer);
+}
+
+.modalTitle {
+	font-size: 15px;
+	font-weight: 700;
+	color: var(--text-primary);
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.modalCloseBtn {
+	background: transparent;
+	border: none;
+	color: var(--text-secondary);
+	cursor: pointer;
+	padding: 6px;
+	border-radius: 8px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: background 0.15s ease, color 0.15s ease;
+}
+
+.modalCloseBtn:hover {
+	background: var(--fill-soft);
+	color: var(--text-primary);
+}
+
+.modalBody {
+	flex: 1;
+	overflow-y: auto;
+	padding: 16px 20px;
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	WebkitOverflowScrolling: touch;
+}
+
+.modalSearchRow {
+	position: relative;
+	width: 100%;
+}
+
+.modalSearchInput {
+	width: 100%;
+	background: var(--input-bg);
+	border: 1px solid var(--input-border);
+	border-radius: 10px;
+	padding: 9px 14px 9px 36px;
+	font-size: 13px;
+	color: var(--text-primary);
+	outline: none;
+	transition: border 0.15s ease, background 0.15s ease;
+}
+
+.modalSearchInput:focus {
+	border-color: var(--accent);
+	background: var(--fill-soft);
+}
+
+.modalSearchIcon {
+	position: absolute;
+	left: 12px;
+	top: 50%;
+	transform: translateY(-50%);
+	color: var(--text-secondary);
+	pointer-events: none;
+}
+
+.newGroupToggleBtn {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 10px 14px;
+	background: var(--accent-subtle);
+	border: 1px solid var(--accent-border);
+	border-radius: 10px;
+	color: var(--accent);
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: background 0.15s ease;
+	width: 100%;
+	text-align: left;
+}
+
+.newGroupToggleBtn:hover {
+	background: var(--accent-muted);
+}
+
+.contactsList {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	overflow-y: auto;
+	max-height: 380px;
+}
+
+.contactItem {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 8px 12px;
+	border-radius: 10px;
+	cursor: pointer;
+	transition: background 0.15s ease;
+	border: none;
+	background: transparent;
+	width: 100%;
+	text-align: left;
+	color: var(--text-primary);
+}
+
+.contactItem:hover {
+	background: var(--fill-soft);
+}
+
+.contactItemActive {
+	background: var(--accent-subtle) !important;
+}
+
+.contactAvatar {
+	width: 38px;
+	height: 38px;
+	border-radius: 50%;
+	background: var(--fill-strong);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 13px;
+	font-weight: 700;
+	flex-shrink: 0;
+	overflow: hidden;
+	color: var(--text-primary);
+}
+
+.contactInfo {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.contactName {
+	font-size: 13.5px;
+	font-weight: 600;
+	color: var(--text-primary);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.contactMeta {
+	font-size: 11.5px;
+	color: var(--text-secondary);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.contactRoleBadge {
+	font-size: 10px;
+	background: var(--fill-soft);
+	padding: 1px 6px;
+	border-radius: 4px;
+	color: var(--text-secondary);
+	border: 1px solid var(--border-subtle);
+}
+
+.chipsContainer {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	padding: 4px 0;
+}
+
+.chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 10px;
+	background: var(--accent-subtle);
+	border: 1px solid var(--accent-border);
+	border-radius: 16px;
+	font-size: 12px;
+	color: var(--accent);
+}
+
+.chipRemoveBtn {
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	color: var(--text-secondary);
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.chipRemoveBtn:hover {
+	color: var(--danger);
+}
+
+.modalFooter {
+	padding: 14px 20px;
+	border-top: 1px solid var(--border-subtle);
+	background: var(--fill-softer);
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 10px;
+}
+
+.primaryActionBtn {
+	padding: 9px 18px;
+	background: var(--accent);
+	color: var(--accent-contrast);
+	font-size: 13px;
+	font-weight: 700;
+	border-radius: 10px;
+	border: none;
+	cursor: pointer;
+	box-shadow: var(--accent-glow);
+	transition: opacity 0.15s ease, transform 0.15s ease;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.primaryActionBtn:hover:not(:disabled) {
+	opacity: 0.92;
+	transform: translateY(-1px);
+}
+
+.primaryActionBtn:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+/* Forward Modal */
+
+.forwardPreviewCard {
+	background: var(--fill-soft);
+	border: 1px solid var(--border-subtle);
+	border-radius: 8px;
+	padding: 8px 12px;
+}
+
+.forwardPreviewSender {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 11.5px;
+	font-weight: 700;
+	color: var(--accent);
+	margin-bottom: 3px;
+}
+
+.forwardPreviewText {
+	font-size: 12px;
+	color: var(--text-secondary);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.forwardRoomsList {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	max-height: 260px;
+	overflow-y: auto;
+	padding-right: 4px;
+}
+
+.forwardRoomRow {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 10px;
+	border-radius: 8px;
+	border: 1px solid transparent;
+	background: transparent;
+	cursor: pointer;
+	text-align: left;
+	width: 100%;
+	transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.forwardRoomRow:hover {
+	background: var(--fill-soft);
+}
+
+.forwardRoomRowSelected {
+	background: var(--accent-subtle);
+	border-color: var(--accent-border);
+}
+
+.forwardRoomAvatar {
+	width: 32px;
+	height: 32px;
+	border-radius: 50%;
+	background: var(--fill-strong);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	flex-shrink: 0;
+	color: var(--accent);
+	font-size: 12px;
+	font-weight: 700;
+}
+
+.forwardRoomInfo {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	flex: 1;
+}
+
+.forwardRoomName {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--text-primary);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.forwardRoomType {
+	font-size: 11px;
+	color: var(--text-secondary);
+}
+
+.forwardCheckbox {
+	width: 18px;
+	height: 18px;
+	border-radius: 5px;
+	border: 1.5px solid var(--border-subtle);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	color: var(--accent-contrast);
+	transition: all 0.12s ease;
+}
+
+.forwardCheckboxChecked {
+	background: var(--accent);
+	border-color: var(--accent);
+}
+
+.forwardModalFooter {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px;
+	padding: 12px 16px;
+	border-top: 1px solid var(--border-subtle);
+	background: var(--fill-softer);
+}
+
+.forwardCancelBtn {
+	background: transparent;
+	border: 1px solid var(--border-subtle);
+	color: var(--text-secondary);
+	padding: 7px 14px;
+	border-radius: 8px;
+	font-size: 12.5px;
+	cursor: pointer;
+	transition: all 0.12s ease;
+}
+
+.forwardCancelBtn:hover {
+	background: var(--fill-soft);
+	color: var(--text-primary);
+}
+
+.forwardSubmitBtn {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	background: var(--accent);
+	border: none;
+	color: var(--accent-contrast);
+	padding: 7px 16px;
+	border-radius: 8px;
+	font-size: 12.5px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: opacity 0.12s ease;
+}
+
+.forwardSubmitBtn:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.forwardSubmitBtn:not(:disabled):hover {
+	opacity: 0.9;
+}

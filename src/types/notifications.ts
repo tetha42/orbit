@@ -19,7 +19,7 @@ export interface NotificationItem {
 	id: string;
 	kind: NotificationKind;
 	priority: NotificationPriority;
-	/** A pinned announcement (recent news marked "önemli"). */
+	/** A pinned announcement (recent news marked "important"). */
 	urgent?: boolean;
 	/** When this became relevant, on the server's clock; "new" means `at` is later than the member's last look. */
 	at: number;
@@ -27,7 +27,7 @@ export interface NotificationItem {
 	dueAt?: number;
 	/**
 	 * Facts about the record. The server sends no display text of its own — the
-	 * wording ("Üyelik başvurusu", "Yarın") belongs to the client, in the member's language.
+	 * wording ("Membership application", "Tomorrow") belongs to the client, in the member's language.
 	 */
 	data: { title: string } & Record<string, string | number | boolean | null | undefined>;
 	/** Where clicking goes — passed straight to `openApp(appId, target)`. */

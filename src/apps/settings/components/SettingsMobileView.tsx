@@ -1,77 +1,23 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import {
-	ChevronLeft,
-	ChevronRight,
-	Search,
-	X,
-	FileText,
-	ListChecks,
-	UserRound,
-	UserPlus,
-	Users,
-	Image as ImageIcon,
-	Sparkles,
-	Globe,
-	ShieldAlert,
-	ShieldCheck,
-	KeyRound,
-	Mail,
-	Network,
-	Building2,
-	type LucideIcon,
-} from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Search, X } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
-import { fill } from '@/lib/text';
 import { useSession } from '@/core/session';
 import { useShellState } from '@/core/shell';
 import { useTheme, wallpaperInfo } from '@/core/theme';
 import { useSound } from '@/core/sound';
 import type { SettingsTabId } from '@/configs/settings.config';
 import type { useSettingsNav } from '../hooks/useSettingsNav';
-import { AccountPanel } from './Account/AccountPanel';
-import { WallpaperPanel } from './Panels/WallpaperPanel';
-import { AppearancePanel } from './Panels/AppearancePanel';
-import { LanguageSettingsPanel } from './Panels/LanguageSettingsPanel';
-import { SecurityPanel } from './Panels/SecurityPanel';
-import { CommunitySettingsPanel } from './Panels/CommunitySettingsPanel';
-import { MembershipPolicyPanel } from './Panels/MembershipPolicyPanel';
-import { PrivacyDataPanel } from './Panels/PrivacyDataPanel';
-import { LegalSettingsPanel } from './Panels/LegalSettingsPanel';
-import { FormDesignerPanel } from './Panels/FormDesignerPanel';
-import { TeamCategoriesPanel } from './Panels/TeamCategoriesPanel';
-import { RolesPanel } from './Roles/RolesPanel';
-import { SmtpSettingsPanel } from './Panels/SmtpSettingsPanel';
-import { OAuthAppsPanel } from './Panels/OAuthAppsPanel';
 import { useMobileSubView } from '@/lib/client/useMobileSubView';
+import { SettingsMobileDetail } from './mobile/SettingsMobileDetail';
+import { SettingsMobileProfileCard } from './mobile/SettingsMobileProfileCard';
+import { SettingsMobileList } from './mobile/SettingsMobileList';
 import s from './SettingsMobile.module.css';
 
 interface SettingsMobileViewProps {
 	nav: ReturnType<typeof useSettingsNav>;
 }
-
-interface SettingMeta {
-	bg: string;
-	icon: LucideIcon;
-}
-
-const IOS_SETTING_META: Record<SettingsTabId, SettingMeta> = {
-	account: { bg: 'linear-gradient(135deg, #007aff, #0056b3)', icon: UserRound },
-	wallpaper: { bg: 'linear-gradient(135deg, #32ade6, #0077a6)', icon: ImageIcon },
-	appearance: { bg: 'linear-gradient(135deg, #5856d6, #3634a3)', icon: Sparkles },
-	language: { bg: 'linear-gradient(135deg, #ff9500, #c97700)', icon: Globe },
-	security: { bg: 'linear-gradient(135deg, #34c759, #248a3d)', icon: ShieldCheck },
-	community: { bg: 'linear-gradient(135deg, #6366f1, #4338ca)', icon: Building2 },
-	membership: { bg: 'linear-gradient(135deg, #0a84ff, #0056b3)', icon: UserPlus },
-	legal: { bg: 'linear-gradient(135deg, #0a84ff, #0056b3)', icon: FileText },
-	forms: { bg: 'linear-gradient(135deg, #30d158, #248a3d)', icon: ListChecks },
-	teams: { bg: 'linear-gradient(135deg, #0a84ff, #0056b3)', icon: Users },
-	roles: { bg: 'linear-gradient(135deg, #ff3b30, #c41c14)', icon: KeyRound },
-	privacy: { bg: 'linear-gradient(135deg, #ff453a, #7f1d1d)', icon: ShieldAlert },
-	smtp: { bg: 'linear-gradient(135deg, #007aff, #0056b3)', icon: Mail },
-	integrations: { bg: 'linear-gradient(135deg, #af52de, #7e22ce)', icon: Network },
-};
 
 export function SettingsMobileView({ nav }: SettingsMobileViewProps) {
 	const { t } = useI18n();
@@ -115,9 +61,7 @@ export function SettingsMobileView({ nav }: SettingsMobileViewProps) {
 				if (theme === 'light') return t('settingsThemePreviewLight');
 				return t('settingsThemePreviewAuto');
 			case 'security':
-				return currentUser?.twoFactorEnabled
-					? t('settings2faEnabled')
-					: t('settingsSecurityPassword');
+				return currentUser?.twoFactorEnabled ? t('settings2faEnabled') : t('settingsSecurityPassword');
 			case 'wallpaper': {
 				if (!activeWallpaper) return '';
 				const info = wallpaperInfo(activeWallpaper);
@@ -149,72 +93,29 @@ export function SettingsMobileView({ nav }: SettingsMobileViewProps) {
 		});
 	}, [searchQuery, nav.visibleSections, t]);
 
-	// Title for current sub-panel
-	const currentSection = nav.visibleSections.find((s) => s.id === activeSubTab);
+	const currentSection = nav.visibleSections.find((sec) => sec.id === activeSubTab);
 	const subTitle = currentSection ? t(currentSection.labelKey) : '';
 
-	// Render detail sub-screen if an item is selected
 	if (activeSubTab !== null) {
 		return (
-			<div className={s.detailContainer}>
-				{/* iOS Top Navigation Bar */}
-				<header className={s.detailNavBar}>
-					<button
-						type="button"
-						onClick={handleBack}
-						className={s.detailBackBtn}
-						aria-label={t('settingsBackToSettingsAria')}
-					>
-						<ChevronLeft size={22} strokeWidth={2.6} />
-						<span>{t('settingsNavTitle')}</span>
-					</button>
-
-					<div className={s.detailNavTitle}>{subTitle}</div>
-
-					<div className={s.detailNavSpacer} />
-				</header>
-
-				{/* Panel Content Body */}
-				<main className={s.detailContent}>
-					{activeSubTab === 'account' && <AccountPanel />}
-					{activeSubTab === 'wallpaper' && <WallpaperPanel />}
-					{(activeSubTab === 'appearance' || (activeSubTab as string) === 'dock') && <AppearancePanel />}
-					{(activeSubTab as string) === 'storage' && <AccountPanel />}
-					{activeSubTab === 'language' && <LanguageSettingsPanel />}
-					{activeSubTab === 'security' && <SecurityPanel />}
-					{activeSubTab === 'community' && nav.admin && <CommunitySettingsPanel />}
-					{activeSubTab === 'membership' && nav.admin && <MembershipPolicyPanel />}
-					{activeSubTab === 'legal' && nav.admin && <LegalSettingsPanel />}
-					{activeSubTab === 'forms' && nav.admin && <FormDesignerPanel />}
-					{activeSubTab === 'teams' && nav.admin && <TeamCategoriesPanel />}
-					{activeSubTab === 'roles' && nav.isAdmin && <RolesPanel />}
-					{activeSubTab === 'privacy' && nav.isAdmin && <PrivacyDataPanel />}
-					{activeSubTab === 'smtp' && <SmtpSettingsPanel />}
-					{activeSubTab === 'integrations' && nav.isAdmin && <OAuthAppsPanel />}
-				</main>
-			</div>
+			<SettingsMobileDetail
+				activeSubTab={activeSubTab}
+				subTitle={subTitle}
+				nav={nav}
+				onBack={handleBack}
+			/>
 		);
 	}
 
-	// Root Screen (iOS Settings Overview)
 	const fullName = currentUser ? `${currentUser.name} ${currentUser.surname}`.trim() : t('defaultUser');
 	const userInitials = currentUser
 		? `${currentUser.name?.[0] || ''}${currentUser.surname?.[0] || ''}`.toUpperCase()
 		: 'U';
 
-	const groups: Array<{ key: 'personal' | 'account' | 'system'; title: string }> = [
-		{ key: 'personal', title: t('settingsGroupPersonal') },
-		{ key: 'account', title: t('settingsGroupAccount') },
-		{ key: 'system', title: t('settingsGroupAdmin') },
-	];
-
 	return (
 		<div className={s.root}>
 			<div className={s.scrollContainer}>
-				{/* Large Title */}
-				<h1 className={s.largeTitle}>
-					{t('settingsNavTitle')}
-				</h1>
+				<h1 className={s.largeTitle}>{t('settingsNavTitle')}</h1>
 
 				{/* iOS Search Bar */}
 				<div className={s.searchBar}>
@@ -240,148 +141,26 @@ export function SettingsMobileView({ nav }: SettingsMobileViewProps) {
 
 				{/* Apple ID Style Profile Card (shown when not searching) */}
 				{!searchQuery && (
-					<button
-						type="button"
-						className={s.profileCard}
-						onClick={() => handleOpenTab('account')}
-					>
-						<div className={s.profileAvatarWrap}>
-							{currentUser?.profilePhoto ? (
-								/* eslint-disable-next-line @next/next/no-img-element */
-								<img
-									src={currentUser.profilePhoto}
-									alt={fullName}
-									className={s.profileAvatarImg}
-								/>
-							) : (
-								<div className={s.profileAvatarInitials}>
-									{userInitials}
-								</div>
-							)}
-						</div>
-
-						<div className={s.profileInfo}>
-							<div className={s.profileName}>{fullName}</div>
-							<div className={s.profileSubtitle}>
-								{currentUser?.department
-									? `${currentUser.department}${currentUser.grade ? ` • ${fill(t('membersClassYear'), { year: currentUser.grade })}` : ''}`
-									: currentUser?.email || t('settingsProfileCardFallback')}
-							</div>
-						</div>
-
-						<ChevronRight size={18} color="#8e8e93" style={{ opacity: 0.6 }} />
-					</button>
+					<SettingsMobileProfileCard
+						profilePhoto={currentUser?.profilePhoto}
+						fullName={fullName}
+						userInitials={userInitials}
+						department={currentUser?.department}
+						grade={currentUser?.grade}
+						email={currentUser?.email}
+						onOpenAccount={() => handleOpenTab('account')}
+					/>
 				)}
 
-				{/* Inset Grouped Settings Lists */}
-				{searchQuery ? (
-					/* Search results list */
-					<div className={s.groupSection}>
-						<div className={s.groupHeader}>
-							{t('settingsSearchResults')}
-						</div>
-						<div className={s.groupCard}>
-							{filteredSections.length > 0 ? (
-								filteredSections.map((sec, idx) => {
-									const meta = IOS_SETTING_META[sec.id] || {
-										bg: 'var(--accent)',
-										icon: Sparkles,
-									};
-									const Icon = meta.icon;
-									const val = getValuePreview(sec.id);
-									return (
-										<React.Fragment key={sec.id}>
-											<button
-												type="button"
-												className={s.rowItem}
-												onClick={() => handleOpenTab(sec.id)}
-											>
-												<div
-													className={s.rowIconBox}
-													style={{ background: meta.bg }}
-												>
-													<Icon size={16} strokeWidth={2.2} />
-												</div>
-												<span className={s.rowLabel}>{t(sec.labelKey)}</span>
-												{val && <span className={s.rowValue}>{val}</span>}
-												<ChevronRight
-													size={17}
-													color="#8e8e93"
-													style={{ opacity: 0.55 }}
-												/>
-											</button>
-											{idx < filteredSections.length - 1 && (
-												<div className={s.rowSeparator} />
-											)}
-										</React.Fragment>
-									);
-								})
-							) : (
-								<div style={{ padding: '24px 16px', textAlign: 'center', opacity: 0.6, fontSize: 14 }}>
-									{t('noResultsFound')}
-								</div>
-							)}
-						</div>
-					</div>
-				) : (
-					/* Categorized Grouped Lists */
-					groups.map(({ key, title }) => {
-						const items = nav.visibleSections.filter((sec) => {
-							// Filter out account from grouped list if already shown in Apple ID card
-							if (sec.id === 'account') return false;
-							return sec.group === key;
-						});
-						if (items.length === 0) return null;
+				<SettingsMobileList
+					searchQuery={searchQuery}
+					visibleSections={nav.visibleSections}
+					filteredSections={filteredSections}
+					getValuePreview={getValuePreview}
+					onOpenTab={handleOpenTab}
+				/>
 
-						return (
-							<section key={key} className={s.groupSection}>
-								<div className={s.groupHeader}>{title}</div>
-								<div className={s.groupCard}>
-									{items.map((sec, idx) => {
-										const meta = IOS_SETTING_META[sec.id] || {
-											bg: 'var(--accent)',
-											icon: Sparkles,
-										};
-										const Icon = meta.icon;
-										const val = getValuePreview(sec.id);
-
-										return (
-											<React.Fragment key={sec.id}>
-												<button
-													type="button"
-													className={s.rowItem}
-													onClick={() => handleOpenTab(sec.id)}
-												>
-													<div
-														className={s.rowIconBox}
-														style={{ background: meta.bg }}
-													>
-														<Icon size={16} strokeWidth={2.2} />
-													</div>
-													<span className={s.rowLabel}>{t(sec.labelKey)}</span>
-													{val && <span className={s.rowValue}>{val}</span>}
-													<ChevronRight
-														size={17}
-														color="#8e8e93"
-														style={{ opacity: 0.55 }}
-													/>
-												</button>
-												{idx < items.length - 1 && (
-													<div className={s.rowSeparator} />
-												)}
-											</React.Fragment>
-										);
-									})}
-								</div>
-							</section>
-						);
-					})
-				)}
-
-				{/* iOS System Footer */}
-				<footer className={s.systemFooter}>
-					{t('settingsMobileFooter')}
-				</footer>
+				<footer className={s.systemFooter}>{t('settingsMobileFooter')}</footer>
 			</div>
 		</div>
 	);

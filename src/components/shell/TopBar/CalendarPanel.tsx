@@ -100,13 +100,27 @@ export function CalendarPanel({ returnFocusTo }: { returnFocusTo: RefObject<HTML
 				<div className={styles.title} data-calendar-title="" aria-live="polite">
 					{monthTitle(language, cursor.getFullYear(), cursor.getMonth())}
 				</div>
-				<button type="button" className={styles.nav} data-calendar-prev="" aria-label={t('calendarPrevMonth')} title={t('calendarPrevMonth')} onClick={() => setCursor(addMonths(cursor, -1))}>
+				<button
+					type="button"
+					className={styles.nav}
+					data-calendar-prev=""
+					aria-label={t('calendarPrevMonth')}
+					title={t('calendarPrevMonth')}
+					onClick={() => setCursor(addMonths(cursor, -1))}
+				>
 					<ChevronLeft size={16} />
 				</button>
 				<button type="button" className={styles.todayBtn} data-calendar-today="" onClick={() => setCursor(today)}>
 					{t('calendarToday')}
 				</button>
-				<button type="button" className={styles.nav} data-calendar-next="" aria-label={t('calendarNextMonth')} title={t('calendarNextMonth')} onClick={() => setCursor(addMonths(cursor, 1))}>
+				<button
+					type="button"
+					className={styles.nav}
+					data-calendar-next=""
+					aria-label={t('calendarNextMonth')}
+					title={t('calendarNextMonth')}
+					onClick={() => setCursor(addMonths(cursor, 1))}
+				>
 					<ChevronRight size={16} />
 				</button>
 			</div>

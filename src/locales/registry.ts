@@ -21,7 +21,7 @@ export const LOCALE_REGISTRY: readonly LocaleDefinition[] = [
 	{
 		code: 'tr',
 		name: 'Turkish',
-		nativeName: 'Türkçe',
+		nativeName: 'T\u00fcrk\u00e7e',
 		dir: 'ltr',
 		dateLocale: 'tr-TR',
 	},
@@ -32,6 +32,16 @@ export function isSupportedLocale(code: unknown): code is Language {
 		typeof code === 'string' &&
 		LOCALE_REGISTRY.some((locale) => locale.code === code)
 	);
+}
+
+export function normalizeLocale(code: unknown, fallback: Language = DEFAULT_LOCALE): Language {
+	if (isSupportedLocale(code)) return code;
+	if (typeof code === 'string') {
+		const normalized = code.trim().toLowerCase();
+		if (normalized.startsWith('tr')) return 'tr';
+		if (normalized.startsWith('en')) return 'en';
+	}
+	return isSupportedLocale(fallback) ? fallback : DEFAULT_LOCALE;
 }
 
 export function getLocaleDefinition(code: string): LocaleDefinition {

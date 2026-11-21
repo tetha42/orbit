@@ -1,7 +1,7 @@
 import { getMailMembers, type MailCandidate, type MailMember } from '@/db/messages';
 import { getRolePermission } from '@/db/roles';
 import { canUse } from '@/core/permissions';
-import { notifyPortalMessage } from '@/lib/mail/notifications';
+import { notifyPortalMessage } from '@/lib/mail/notifications/securityAndPortalEmails';
 import type { MailRecipient, MailSkipped } from '@/lib/messages';
 
 export interface RecipientDecision {
@@ -40,7 +40,7 @@ export async function recipientDecision(
 	for (const id of unique) {
 		const u = byId.get(id);
 		if (!u || u.status !== 'active') {
-			if (strict) return { outgoing: [], skipped: [], error: 'Alıcılar yalnızca aktif üyeler olabilir.' };
+			if (strict) return { outgoing: [], skipped: [], error: 'Recipients can only be active members.' };
 			if (u) skipped.push({ id, name: fullName(u), reason: 'inactive' });
 			continue;
 		}

@@ -6,8 +6,9 @@ import { Sheet } from '@/core/ui/Sheet';
 import { resolveLocalizedText, useI18n } from '@/core/i18n';
 import ui from '@/core/ui/ui.module.css';
 import type { AssignableRole } from '../types';
-import type { RegistrationCoreConfig } from '@/lib/registrationConfig';
-import { fieldAppliesTo, fieldLabel, fieldPlaceholder, fieldRequiredFor, optionLabel, type FormField } from '@/lib/formFields';
+import type { RegistrationCoreConfig } from '@/lib/i18n/data/registrationConfig';
+import { fieldAppliesTo, fieldRequiredFor, optionLabel, type FormField } from '@/lib/formFields';
+import { MemberCustomFieldsGroup } from './MemberCustomFieldsGroup';
 
 interface AddMemberModalProps {
 	isOpen: boolean;
@@ -76,10 +77,12 @@ export function AddMemberModal({
 
 	if (!isOpen) return null;
 
+	const applicableFields = memberFields.filter((field) => fieldAppliesTo(field, 'member'));
+
 	return (
 		<Sheet
 			title={t('membersAddMemberModalTitle')}
-			icon={<UserPlus size={20} color="#0a84ff" />}
+			icon={<UserPlus size={20} color="var(--accent)" />}
 			onClose={onClose}
 			onSubmit={onSubmit}
 			closeLabel={t('close')}
@@ -110,7 +113,7 @@ export function AddMemberModal({
 
 			<label className={ui.field}>
 				<span className={ui.fieldLabel}>{t('membersEmailLabel')}</span>
-				<input className={ui.input} type="email" placeholder="uye@orbit.local" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} required />
+				<input className={ui.input} type="email" placeholder="member@orbit.local" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} required />
 			</label>
 
 			<label className={ui.field}>
@@ -131,34 +134,22 @@ export function AddMemberModal({
 				{coreConfig.track.visible && (
 					<label className={ui.field}>
 						<span className={ui.fieldLabel}>
-							{resolveLocalizedText(
-								{ en: coreConfig.track.labelEn, tr: coreConfig.track.labelTr },
-								language,
-								coreConfig.track.labelEn || coreConfig.track.labelTr
-							)}
+							{resolveLocalizedText({ en: coreConfig.track.labelEn, tr: coreConfig.track.labelTr }, language, coreConfig.track.labelEn || coreConfig.track.labelTr)}
 						</span>
 						<select className={ui.select} style={{ maxWidth: 'none' }} value={newTrack} onChange={(e) => setNewTrack(e.target.value)} required>
 							{coreConfig.track.options.map((option) => (
-								<option key={option.value} value={option.value}>
-									{optionLabel(option, language)}
-								</option>
+								<option key={option.value} value={option.value}>{optionLabel(option, language)}</option>
 							))}
 						</select>
 					</label>
 				)}
 				<label className={ui.field}>
 					<span className={ui.fieldLabel}>
-						{resolveLocalizedText(
-							{ en: coreConfig.level.labelEn, tr: coreConfig.level.labelTr },
-							language,
-							coreConfig.level.labelEn || coreConfig.level.labelTr
-						)}
+						{resolveLocalizedText({ en: coreConfig.level.labelEn, tr: coreConfig.level.labelTr }, language, coreConfig.level.labelEn || coreConfig.level.labelTr)}
 					</span>
 					<select className={ui.select} style={{ maxWidth: 'none' }} value={newGrade} onChange={(e) => setNewGrade(Number(e.target.value))}>
 						{coreConfig.level.options.map((option) => (
-							<option key={option.value} value={Number(option.value)}>
-								{optionLabel(option, language)}
-							</option>
+							<option key={option.value} value={Number(option.value)}>{optionLabel(option, language)}</option>
 						))}
 					</select>
 				</label>
@@ -169,7 +160,10 @@ export function AddMemberModal({
 					<span className={ui.fieldLabel}>{t('membersRoleLabel')}</span>
 					<select className={ui.select} style={{ maxWidth: 'none' }} value={newRoleId} data-new-member-role onChange={(e) => setNewRoleId(e.target.value)}>
 						<option value="">
-							{t('membersDefaultRole')}{roleData?.defaultRoleId && rolesById.get(roleData.defaultRoleId) ? ` (${rolesById.get(roleData.defaultRoleId)!.name})` : ` ${t('membersNoRoleAssigned')}`}
+							{t('membersDefaultRole')}
+							{roleData?.defaultRoleId && rolesById.get(roleData.defaultRoleId)
+								? ` (${rolesById.get(roleData.defaultRoleId)!.name})`
+								: ` ${t('membersNoRoleAssigned')}`}
 						</option>
 						{assignableRoles.map((r) => (
 							<option key={r.id} value={r.id}>{r.name}</option>
@@ -178,12 +172,8 @@ export function AddMemberModal({
 				</label>
 				<label className={ui.field}>
 					<span className={ui.fieldLabel}>
-						{resolveLocalizedText(
-							{ en: coreConfig.memberId.labelEn, tr: coreConfig.memberId.labelTr },
-							language,
-							coreConfig.memberId.labelEn || coreConfig.memberId.labelTr
-						)}
-						{coreConfig.memberId.required ? ' *' : ` (${t('authOptional', 'optional')})`}
+						{resolveLocalizedText({ en: coreConfig.memberId.labelEn, tr: coreConfig.memberId.labelTr }, language, coreConfig.memberId.labelEn || coreConfig.memberId.labelTr)}
+						{coreConfig.memberId.required ? ' *' : ` (${t('authOptional')})`}
 					</span>
 					<input
 						className={ui.input}
@@ -203,66 +193,14 @@ export function AddMemberModal({
 				</label>
 			</div>
 
-			{memberFields.filter((field) => fieldAppliesTo(field, 'member')).length > 0 && (
-				<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-					<div style={{ fontSize: 11, fontWeight: 700, opacity: 0.55, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-						{t('membersAdditionalFields')}
-					</div>
-					{memberFields
-						.filter((field) => fieldAppliesTo(field, 'member'))
-						.map((field) => (
-							<label key={field.id} className={ui.field}>
-								<span className={ui.fieldLabel}>
-									{fieldLabel(field, language)}
-									{fieldRequiredFor(field, 'member') ? ' *' : ''}
-								</span>
-								{field.type === 'textarea' ? (
-									<textarea
-										className={ui.input}
-										rows={3}
-										value={customValues[field.fieldKey] ?? ''}
-										placeholder={fieldPlaceholder(field, language)}
-										aria-invalid={Boolean(fieldErrors[field.fieldKey])}
-										onChange={(e) =>
-											setCustomValues((previous) => ({ ...previous, [field.fieldKey]: e.target.value }))
-										}
-									/>
-								) : field.type === 'select' ? (
-									<select
-										className={ui.select}
-										style={{ maxWidth: 'none' }}
-										value={customValues[field.fieldKey] ?? ''}
-										aria-invalid={Boolean(fieldErrors[field.fieldKey])}
-										onChange={(e) =>
-											setCustomValues((previous) => ({ ...previous, [field.fieldKey]: e.target.value }))
-										}
-									>
-										<option value="">{t('authSelectOption')}</option>
-										{field.options.map((option) => (
-											<option key={option.value} value={option.value}>
-												{optionLabel(option, language)}
-											</option>
-										))}
-									</select>
-								) : (
-									<input
-										className={ui.input}
-										type={field.type === 'password' ? 'password' : field.type === 'email' ? 'email' : field.type}
-										value={customValues[field.fieldKey] ?? ''}
-										placeholder={fieldPlaceholder(field, language)}
-										aria-invalid={Boolean(fieldErrors[field.fieldKey])}
-										onChange={(e) =>
-											setCustomValues((previous) => ({ ...previous, [field.fieldKey]: e.target.value }))
-										}
-									/>
-								)}
-								{fieldErrors[field.fieldKey] && (
-									<span style={{ fontSize: 11, color: '#ff453a' }}>{fieldErrors[field.fieldKey]}</span>
-								)}
-							</label>
-						))}
-				</div>
-			)}
+			<MemberCustomFieldsGroup
+				fields={applicableFields}
+				customValues={customValues}
+				fieldErrors={fieldErrors}
+				onChange={(key, val) => setCustomValues((previous) => ({ ...previous, [key]: val }))}
+				isRequiredFn={(field) => fieldRequiredFor(field, 'member')}
+				textareaClassName={ui.input}
+			/>
 		</Sheet>
 	);
 }

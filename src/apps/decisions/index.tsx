@@ -1,102 +1,24 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { ArrowLeft, CalendarDays, Plus, Scale, Users, Vote } from 'lucide-react';
+import { ArrowLeft, Plus, Scale, Vote } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
 import { useSession } from '@/core/session';
 import { useAppCommand } from '@/core/commands';
 import ui from '@/core/ui/ui.module.css';
 import { errorMessage } from '@/lib/errors';
-
-interface Committee {
-	id: string;
-	name: string;
-	slug: string;
-	description: string;
-	category: string;
-	leadId?: string | null;
-	leaderNameSurname?: string | null;
-	activeMemberCount?: number;
-	quorum?: number;
-	creation: number;
-}
-
-interface CommitteeMember {
-	id: string;
-	userId: string;
-	userNameSurname?: string;
-	userDepartment?: string;
-	teamRole: string;
-	votingRight?: number;
-	termStart?: number | null;
-	termEnd?: number | null;
-}
-
-interface Meeting {
-	id: string;
-	title: string;
-	date: number;
-	agenda: string;
-	minutes: string;
-	status: string;
-}
-
-interface Decision {
-	id: string;
-	decisionNo: number;
-	title: string;
-	date: number;
-	agenda: string;
-	content: string;
-	bodyId?: string | null;
-	bodyName?: string | null;
-	decisionType?: string;
-	quorumMet?: number;
-	votesFor?: number;
-	votesAgainst?: number;
-	votesAbstain?: number;
-	isPublicOpen: number;
-}
-
-interface CommitteeDetail {
-	committee: Committee;
-	members: CommitteeMember[];
-	meetings: Meeting[];
-	decisions: Decision[];
-}
-
-interface MemberOption {
-	id: string;
-	name: string;
-	surname: string;
-	email: string;
-	department?: string;
-}
-
-const input: React.CSSProperties = {
-	width: '100%',
-	padding: '8px 10px',
-	borderRadius: '7px',
-	border: '1px solid var(--window-border)',
-	background: 'rgba(0,0,0,0.22)',
-	color: 'inherit',
-	fontSize: '12px',
-	boxSizing: 'border-box',
-};
-const label: React.CSSProperties = { display: 'block', fontSize: '11px', fontWeight: 600, opacity: 0.75, marginBottom: '4px' };
-const card: React.CSSProperties = {
-	padding: '12px',
-	borderRadius: '9px',
-	border: '1px solid var(--window-border)',
-	background: 'rgba(255,255,255,0.025)',
-};
-const grid: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' };
+import contract from './decisions.contract.json';
+import { type Committee, type CommitteeDetail, type Decision, type MemberOption } from './types';
+import { CreateCommitteeForm } from './CreateCommitteeForm';
+import { CommitteeDetailView } from './CommitteeDetailView';
+import { CommitteesGrid } from './CommitteesAndDecisionsLists';
+import { DecisionDocuments } from './DecisionDocuments';
 
 export function DecisionsApp() {
 	const { t, language } = useI18n();
 	const session = useSession();
 	const canManage = session.canManageApp('decisions');
-	const [tab, setTab] = useState<'committees' | 'decisions'>('committees');
+	const [tab, setTab] = useState<'committees' | 'decisions'>('decisions');
 	const [committees, setCommittees] = useState<Committee[]>([]);
 	const [decisions, setDecisions] = useState<Decision[]>([]);
 	const [members, setMembers] = useState<MemberOption[]>([]);
@@ -104,34 +26,21 @@ export function DecisionsApp() {
 	const [loading, setLoading] = useState(true);
 	const [message, setMessage] = useState<string | null>(null);
 	const [showCreate, setShowCreate] = useState(false);
-	const [showMember, setShowMember] = useState(false);
-	const [showMeeting, setShowMeeting] = useState(false);
-	const [showDecision, setShowDecision] = useState(false);
 	const [busy, setBusy] = useState(false);
-
-	const [name, setName] = useState('');
-	const [description, setDescription] = useState('');
-	const [quorum, setQuorum] = useState('3');
-	const [leaderId, setLeaderId] = useState('');
-	const [memberId, setMemberId] = useState('');
-	const [memberRole, setMemberRole] = useState('Member');
-	const [voting, setVoting] = useState(true);
-	const [meetingTitle, setMeetingTitle] = useState('');
-	const [meetingDate, setMeetingDate] = useState('');
-	const [meetingAgenda, setMeetingAgenda] = useState('');
-	const [decisionTitle, setDecisionTitle] = useState('');
-	const [decisionContent, setDecisionContent] = useState('');
-	const [decisionType, setDecisionType] = useState('resolution');
-	const [votesFor, setVotesFor] = useState('0');
-	const [votesAgainst, setVotesAgainst] = useState('0');
-	const [votesAbstain, setVotesAbstain] = useState('0');
-	const [quorumMet, setQuorumMet] = useState(true);
 
 	const formatDate = (value: number) =>
 		new Intl.DateTimeFormat(language, { dateStyle: 'medium' }).format(new Date(value));
 
-	const load = useCallback(async () => {
-		setLoading(true);
+	const resolveError = useCallback(
+		(data: { errorCode?: string; error?: string } | null) => {
+			const entry = data?.errorCode ? contract.errorCodes.find((e) => e.code === data.errorCode) : undefined;
+			return entry ? t(entry.i18nKey) : data?.error || t('gvActionFailed');
+		},
+		[t]
+	);
+
+	const load = useCallback(async (silent = false) => {
+		if (!silent) setLoading(true);
 		try {
 			const [committeeRes, decisionRes, memberRes] = await Promise.all([
 				fetch('/api/committees', { cache: 'no-store' }),
@@ -149,12 +58,15 @@ export function DecisionsApp() {
 		}
 	}, []);
 
-	const loadDetail = useCallback(async (id: string) => {
-		const res = await fetch(`/api/committees?id=${encodeURIComponent(id)}`, { cache: 'no-store' });
-		const data = await res.json().catch(() => null);
-		if (res.ok) setDetail(data);
-		else setMessage(data?.error || t('gvActionFailed'));
-	}, [t]);
+	const loadDetail = useCallback(
+		async (id: string) => {
+			const res = await fetch(`/api/committees?id=${encodeURIComponent(id)}`, { cache: 'no-store' });
+			const data = await res.json().catch(() => null);
+			if (res.ok) setDetail(data);
+			else setMessage(resolveError(data));
+		},
+		[resolveError]
+	);
 
 	useEffect(() => {
 		void load();
@@ -181,7 +93,7 @@ export function DecisionsApp() {
 				body: JSON.stringify(body),
 			});
 			const data = await res.json().catch(() => null);
-			if (!res.ok) throw new Error(data?.error || t('gvActionFailed'));
+			if (!res.ok) throw new Error(resolveError(data));
 			await load();
 			if (detail) await loadDetail(detail.committee.id);
 			return true;
@@ -193,72 +105,38 @@ export function DecisionsApp() {
 		}
 	};
 
-	const createCommittee = async () => {
-		const ok = await post('/api/committees', {
-			action: 'createCommittee',
-			name: name,
-			description: description,
-			quorum: Number(quorum) || 0,
-			leadId: leaderId || undefined,
-		});
+	const createCommittee = async (payload: { name: string; description: string; quorum: number; leadId?: string }) => {
+		const ok = await post('/api/committees', { action: 'createCommittee', ...payload });
 		if (ok) {
-			setName('');
-			setDescription('');
 			setShowCreate(false);
 			setMessage(t('gvCreated'));
 		}
+		return ok;
 	};
 
-	const addMember = async () => {
-		if (!detail) return;
-		const ok = await post('/api/committees', {
-			action: 'addMember',
-			committeeId: detail.committee.id,
-			userId: memberId,
-			role: memberRole,
-			votingRight: voting,
-		});
-		if (ok) {
-			setShowMember(false);
-			setMemberId('');
-		}
+	const addMember = async (payload: { userId: string; role: string; votingRight: boolean }) => {
+		if (!detail) return false;
+		return post('/api/committees', { action: 'addMember', committeeId: detail.committee.id, ...payload });
 	};
 
-	const createMeeting = async () => {
-		if (!detail) return;
-		const ok = await post('/api/committees', {
-			action: 'createMeeting',
-			committeeId: detail.committee.id,
-			title: meetingTitle,
-			date: new Date(`${meetingDate}T12:00:00`).getTime(),
-			agenda: meetingAgenda,
-		});
-		if (ok) {
-			setShowMeeting(false);
-			setMeetingTitle('');
-			setMeetingAgenda('');
-		}
+	const createMeeting = async (payload: { title: string; date: number; agenda: string }) => {
+		if (!detail) return false;
+		return post('/api/committees', { action: 'createMeeting', committeeId: detail.committee.id, ...payload });
 	};
 
-	const createDecision = async () => {
-		if (!detail) return;
-		const ok = await post('/api/decisions', {
-			title: decisionTitle,
-			content: decisionContent,
-			agenda: '',
-			bodyId: detail.committee.id,
-			decisionType,
-			quorumMet,
-			votesFor: Number(votesFor) || 0,
-			votesAgainst: Number(votesAgainst) || 0,
-			votesAbstain: Number(votesAbstain) || 0,
-		});
-		if (ok) {
-			setShowDecision(false);
-			setDecisionTitle('');
-			setDecisionContent('');
-			setMessage(t('gvDecisionCreated'));
-		}
+	const createDecision = async (payload: {
+		title: string;
+		content: string;
+		decisionType: string;
+		quorumMet: boolean;
+		votesFor: number;
+		votesAgainst: number;
+		votesAbstain: number;
+	}) => {
+		if (!detail) return false;
+		const ok = await post('/api/decisions', { ...payload, agenda: '', bodyId: detail.committee.id });
+		if (ok) setMessage(t('gvDecisionCreated'));
+		return ok;
 	};
 
 	if (loading) return <div style={{ padding: 24 }}>{t('loading')}</div>;
@@ -272,18 +150,10 @@ export function DecisionsApp() {
 					</button>
 				) : (
 					<div style={{ display: 'flex', gap: '6px' }}>
-						<button
-							type="button"
-							className={tab === 'committees' ? ui.primaryBtn : ui.btn}
-							onClick={() => setTab('committees')}
-						>
+						<button type="button" className={tab === 'committees' ? ui.primaryBtn : ui.btn} onClick={() => setTab('committees')}>
 							<Scale size={14} /> {t('gvCommittees')}
 						</button>
-						<button
-							type="button"
-							className={tab === 'decisions' ? ui.primaryBtn : ui.btn}
-							onClick={() => setTab('decisions')}
-						>
+						<button type="button" className={tab === 'decisions' ? ui.primaryBtn : ui.btn} onClick={() => setTab('decisions')}>
 							<Vote size={14} /> {t('gvDecisions')}
 						</button>
 					</div>
@@ -297,268 +167,41 @@ export function DecisionsApp() {
 			</header>
 
 			{message && (
-				<div style={{ fontSize: '12px', padding: '8px 10px', borderRadius: '7px', background: 'rgba(10,132,255,0.12)' }}>
+				<div style={{ fontSize: '12px', padding: '8px 10px', borderRadius: '7px', background: 'color-mix(in srgb, var(--accent) 12%, transparent)' }}>
 					{message}
 				</div>
 			)}
 
 			{showCreate && (
-				<div style={card}>
-					<div style={{ fontWeight: 700, fontSize: '13px', marginBottom: '8px' }}>{t('gvNewCommittee')}</div>
-					<div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-						<div>
-							<label style={label}>{t('gvCommitteeName')}</label>
-							<input style={input} value={name} onChange={(e) => setName(e.target.value)} />
-						</div>
-						<div>
-							<label style={label}>{t('gvDescription')}</label>
-							<textarea style={{ ...input, minHeight: 56 }} value={description} onChange={(e) => setDescription(e.target.value)} />
-						</div>
-						<div style={grid}>
-							<div>
-								<label style={label}>{t('gvQuorum')}</label>
-								<input style={input} type="number" min={0} value={quorum} onChange={(e) => setQuorum(e.target.value)} />
-							</div>
-							<div>
-								<label style={label}>{t('gvLeader')}</label>
-								<select style={input} value={leaderId} onChange={(e) => setLeaderId(e.target.value)}>
-									<option value="">{t('gvNoLeader')}</option>
-									{members.map((m) => (
-										<option key={m.id} value={m.id}>{m.name} {m.surname}</option>
-									))}
-								</select>
-							</div>
-						</div>
-						<div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
-							<button type="button" className={ui.btn} onClick={() => setShowCreate(false)}>{t('gvCancel')}</button>
-							<button type="button" className={ui.primaryBtn} disabled={busy} onClick={() => void createCommittee()}>{t('gvSave')}</button>
-						</div>
-					</div>
-				</div>
+				<CreateCommitteeForm
+					members={members}
+					busy={busy}
+					onCancel={() => setShowCreate(false)}
+					onCreate={createCommittee}
+				/>
 			)}
 
 			{detail ? (
-				<div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-					<div style={card}>
-						<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-							<Scale size={18} style={{ color: 'var(--accent)' }} />
-							<h2 style={{ margin: 0, fontSize: '17px' }}>{detail.committee.name}</h2>
-							<span style={{ fontSize: '11px', opacity: 0.6 }}>
-								{t('gvQuorum')}: {detail.committee.quorum ?? 0}
-							</span>
-						</div>
-						<p style={{ margin: '6px 0 0', fontSize: '12px', opacity: 0.7 }}>{detail.committee.description}</p>
-						<div style={{ display: 'flex', gap: '12px', marginTop: '8px', fontSize: '11.5px', opacity: 0.7 }}>
-							<span><Users size={12} /> {detail.members.length} {t('gvMembers')}</span>
-							{detail.committee.leaderNameSurname && <span>{t('gvLeader')}: {detail.committee.leaderNameSurname}</span>}
-						</div>
-					</div>
-
-					<div style={card}>
-						<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-							<div style={{ fontWeight: 700, fontSize: '13px' }}>{t('gvMembers')}</div>
-							{canManage && (
-								<button type="button" className={ui.btn} onClick={() => setShowMember((v) => !v)}>
-									<Plus size={13} /> {t('gvAddMember')}
-								</button>
-							)}
-						</div>
-						{showMember && (
-							<div style={{ ...grid, marginTop: '8px', alignItems: 'end' }}>
-								<div>
-									<label style={label}>{t('gvMember')}</label>
-									<select style={input} value={memberId} onChange={(e) => setMemberId(e.target.value)}>
-										<option value="">—</option>
-										{members.map((m) => (
-											<option key={m.id} value={m.id}>{m.name} {m.surname}</option>
-										))}
-									</select>
-								</div>
-								<div>
-									<label style={label}>{t('gvRole')}</label>
-									<input style={input} value={memberRole} onChange={(e) => setMemberRole(e.target.value)} />
-								</div>
-								<label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
-									<input type="checkbox" checked={voting} onChange={(e) => setVoting(e.target.checked)} />
-									{t('gvVoting')}
-								</label>
-								<button type="button" className={ui.primaryBtn} disabled={!memberId || busy} onClick={() => void addMember()}>{t('gvSave')}</button>
-							</div>
-						)}
-						<div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '8px' }}>
-							{detail.members.length === 0 ? (
-								<div style={{ fontSize: '12px', opacity: 0.6 }}>{t('gvNoMembers')}</div>
-							) : (
-								detail.members.map((member) => (
-									<div key={member.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', padding: '5px 0', borderTop: '1px solid var(--window-border)' }}>
-										<span style={{ flex: 1 }}>{member.userNameSurname ?? member.userId}</span>
-										<span style={{ opacity: 0.6 }}>{member.teamRole}</span>
-										<span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '999px', background: member.votingRight ? 'rgba(48,209,88,0.16)' : 'rgba(255,255,255,0.08)' }}>
-											{member.votingRight ? t('gvVoting') : t('gvNonVoting')}
-										</span>
-									</div>
-								))
-							)}
-						</div>
-					</div>
-
-					<div style={card}>
-						<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-							<div style={{ fontWeight: 700, fontSize: '13px' }}>{t('gvMeetings')}</div>
-							{canManage && (
-								<button type="button" className={ui.btn} onClick={() => setShowMeeting((v) => !v)}>
-									<Plus size={13} /> {t('gvAddMeeting')}
-								</button>
-							)}
-						</div>
-						{showMeeting && (
-							<div style={{ display: 'flex', flexDirection: 'column', gap: '7px', marginTop: '8px' }}>
-								<div style={grid}>
-									<div>
-										<label style={label}>{t('gvMeetingTitle')}</label>
-										<input style={input} value={meetingTitle} onChange={(e) => setMeetingTitle(e.target.value)} />
-									</div>
-									<div>
-										<label style={label}>{t('gvDate')}</label>
-										<input style={input} type="date" value={meetingDate} onChange={(e) => setMeetingDate(e.target.value)} />
-									</div>
-								</div>
-								<div>
-									<label style={label}>{t('gvAgenda')}</label>
-									<textarea style={{ ...input, minHeight: 50 }} value={meetingAgenda} onChange={(e) => setMeetingAgenda(e.target.value)} />
-								</div>
-								<div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-									<button type="button" className={ui.primaryBtn} disabled={busy || !meetingTitle || !meetingDate} onClick={() => void createMeeting()}>{t('gvSave')}</button>
-								</div>
-							</div>
-						)}
-						<div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '8px' }}>
-							{detail.meetings.length === 0 ? (
-								<div style={{ fontSize: '12px', opacity: 0.6 }}>{t('gvNoMeetings')}</div>
-							) : (
-								detail.meetings.map((meeting) => (
-									<div key={meeting.id} style={{ fontSize: '12px', padding: '6px 0', borderTop: '1px solid var(--window-border)' }}>
-										<div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-											<CalendarDays size={13} style={{ opacity: 0.6 }} />
-											<strong style={{ flex: 1 }}>{meeting.title}</strong>
-											<span style={{ opacity: 0.6 }}>{formatDate(meeting.date)}</span>
-											<span style={{ fontSize: '10px', opacity: 0.6 }}>{meeting.status}</span>
-										</div>
-										{meeting.agenda && <div style={{ opacity: 0.6, marginTop: '2px' }}>{meeting.agenda}</div>}
-									</div>
-								))
-							)}
-						</div>
-					</div>
-
-					<div style={card}>
-						<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-							<div style={{ fontWeight: 700, fontSize: '13px' }}>{t('gvDecisions')}</div>
-							{canManage && (
-								<button type="button" className={ui.btn} onClick={() => setShowDecision((v) => !v)}>
-									<Plus size={13} /> {t('gvNewDecision')}
-								</button>
-							)}
-						</div>
-						{showDecision && (
-							<div style={{ display: 'flex', flexDirection: 'column', gap: '7px', marginTop: '8px' }}>
-								<div style={grid}>
-									<div>
-										<label style={label}>{t('gvMeetingTitle')}</label>
-										<input style={input} value={decisionTitle} onChange={(e) => setDecisionTitle(e.target.value)} />
-									</div>
-									<div>
-										<label style={label}>{t('gvType')}</label>
-										<select style={input} value={decisionType} onChange={(e) => setDecisionType(e.target.value)}>
-											<option value="resolution">Resolution</option>
-											<option value="motion">Motion</option>
-											<option value="appointment">Appointment</option>
-											<option value="budget">Budget</option>
-											<option value="minutes">Minutes</option>
-										</select>
-									</div>
-								</div>
-								<div>
-									<label style={label}>{t('gvContent')}</label>
-									<textarea style={{ ...input, minHeight: 70 }} value={decisionContent} onChange={(e) => setDecisionContent(e.target.value)} />
-								</div>
-								<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
-									<div><label style={label}>{t('gvVotesFor')}</label><input style={input} type="number" min={0} value={votesFor} onChange={(e) => setVotesFor(e.target.value)} /></div>
-									<div><label style={label}>{t('gvVotesAgainst')}</label><input style={input} type="number" min={0} value={votesAgainst} onChange={(e) => setVotesAgainst(e.target.value)} /></div>
-									<div><label style={label}>{t('gvVotesAbstain')}</label><input style={input} type="number" min={0} value={votesAbstain} onChange={(e) => setVotesAbstain(e.target.value)} /></div>
-								</div>
-								<label style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: '12px' }}>
-									<input type="checkbox" checked={quorumMet} onChange={(e) => setQuorumMet(e.target.checked)} />
-									{t('gvQuorumMet')}
-								</label>
-								<div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-									<button type="button" className={ui.primaryBtn} disabled={busy || !decisionTitle || decisionContent.length < 10} onClick={() => void createDecision()}>{t('gvSave')}</button>
-								</div>
-							</div>
-						)}
-						<div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '8px' }}>
-							{detail.decisions.length === 0 ? (
-								<div style={{ fontSize: '12px', opacity: 0.6 }}>{t('gvNoDecisions')}</div>
-							) : (
-								detail.decisions.map((decision) => (
-									<div key={decision.id} style={{ fontSize: '12px', padding: '6px 0', borderTop: '1px solid var(--window-border)' }}>
-										<div style={{ display: 'flex', gap: '8px' }}>
-											<strong style={{ flex: 1 }}>{decision.decisionNo} · {decision.title}</strong>
-											<span style={{ opacity: 0.6 }}>{formatDate(decision.date)}</span>
-										</div>
-										<div style={{ opacity: 0.65 }}>
-											{decision.decisionType ?? 'resolution'} · {t('gvVotesFor')}: {decision.votesFor ?? 0} · {t('gvVotesAgainst')}: {decision.votesAgainst ?? 0} · {t('gvVotesAbstain')}: {decision.votesAbstain ?? 0}
-										</div>
-									</div>
-								))
-							)}
-						</div>
-					</div>
-				</div>
+				<CommitteeDetailView
+					detail={detail}
+					members={members}
+					canManage={canManage}
+					busy={busy}
+					formatDate={formatDate}
+					onAddMember={addMember}
+					onCreateMeeting={createMeeting}
+					onCreateDecision={createDecision}
+				/>
 			) : tab === 'committees' ? (
-				<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(260px,1fr))', gap: '10px', overflowY: 'auto' }}>
-					{committees.length === 0 ? (
-						<div style={{ fontSize: '12px', opacity: 0.6 }}>{t('gvNoCommittees')}</div>
-					) : (
-						committees.map((committee) => (
-							<button
-								key={committee.id}
-								type="button"
-								style={{ ...card, textAlign: 'left', cursor: 'pointer', color: 'inherit' }}
-								onClick={() => void loadDetail(committee.id)}
-							>
-								<div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-									<Scale size={16} style={{ color: 'var(--accent)' }} />
-									<strong style={{ fontSize: '13px' }}>{committee.name}</strong>
-								</div>
-								<p style={{ margin: '6px 0', fontSize: '11.5px', opacity: 0.7, minHeight: 30 }}>{committee.description}</p>
-								<div style={{ display: 'flex', gap: '10px', fontSize: '10.5px', opacity: 0.65 }}>
-									<span><Users size={11} /> {committee.activeMemberCount ?? 0}</span>
-									<span>{t('gvQuorum')}: {committee.quorum ?? 0}</span>
-								</div>
-							</button>
-						))
-					)}
-				</div>
+				<CommitteesGrid committees={committees} onOpenCommittee={(id) => void loadDetail(id)} />
 			) : (
-				<div style={{ display: 'flex', flexDirection: 'column', gap: '7px', overflowY: 'auto' }}>
-					{decisions.length === 0 ? (
-						<div style={{ fontSize: '12px', opacity: 0.6 }}>{t('gvNoDecisions')}</div>
-					) : (
-						decisions.map((decision) => (
-							<div key={decision.id} style={card}>
-								<div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-									<Vote size={14} style={{ color: 'var(--accent)' }} />
-									<strong style={{ fontSize: '12.5px', flex: 1 }}>{decision.decisionNo} · {decision.title}</strong>
-									<span style={{ fontSize: '11px', opacity: 0.6 }}>{formatDate(decision.date)}</span>
-								</div>
-								<div style={{ fontSize: '11px', opacity: 0.65, marginTop: '4px' }}>
-									{decision.bodyName || '—'} · {decision.decisionType ?? 'resolution'} · {t('gvVotesFor')}: {decision.votesFor ?? 0} / {t('gvVotesAgainst')}: {decision.votesAgainst ?? 0}
-								</div>
-							</div>
-						))
-					)}
-				</div>
+				<DecisionDocuments
+					decisions={decisions}
+					canManage={canManage}
+					isAdmin={session.isAdmin}
+					formatDate={formatDate}
+					onChanged={() => load(true)}
+				/>
 			)}
 		</div>
 	);

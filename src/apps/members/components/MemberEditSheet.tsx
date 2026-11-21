@@ -5,31 +5,16 @@ import { Pencil } from 'lucide-react';
 import { Sheet } from '@/core/ui/Sheet';
 import { resolveLocalizedText, useI18n } from '@/core/i18n';
 import { errorMessage } from '@/lib/errors';
-import { fieldLabel as getFieldLabel, fieldPlaceholder, optionLabel, type FormField } from '@/lib/formFields';
-import type { RegistrationCoreConfig } from '@/lib/registrationConfig';
+import { optionLabel } from '@/lib/formFields';
 import ui from '@/core/ui/ui.module.css';
-
-interface MemberAdminDetail {
-	member: {
-		id: string;
-		firstName?: string;
-		lastName?: string;
-		handle?: string;
-		department?: string;
-		grade?: number;
-		name: string;
-		surname: string;
-		email: string;
-		studentNo: string;
-		bio: string;
-		status: string;
-		roleId: string | null;
-		roleInfo: { id: string; name: string; color: string } | null;
-	};
-	fields: FormField[];
-	customFields: Record<string, string>;
-	core: RegistrationCoreConfig;
-}
+import { MemberCustomFieldsGroup } from './MemberCustomFieldsGroup';
+import { MEMBER_MAX_BIO_LENGTH } from '../utils/memberContracts';
+import {
+	fetchMemberEditDetail,
+	patchMemberEditDetail,
+	type MemberAdminDetail,
+	type MemberEditValues,
+} from '../utils/memberEditApi';
 
 interface MemberEditSheetProps {
 	memberId: string | null;
@@ -37,23 +22,10 @@ interface MemberEditSheetProps {
 	onSaved: () => void;
 }
 
-interface Values {
-	name: string;
-	surname: string;
-	email: string;
-	studentNo: string;
-	department: string;
-	grade: number;
-	bio: string;
-}
-
-const textareaTypes = new Set(['textarea']);
-const selectTypes = new Set(['select']);
-
 export function MemberEditSheet({ memberId, onClose, onSaved }: MemberEditSheetProps) {
 	const { t, language } = useI18n();
 	const [detail, setDetail] = useState<MemberAdminDetail | null>(null);
-	const [values, setValues] = useState<Values | null>(null);
+	const [values, setValues] = useState<MemberEditValues | null>(null);
 	const [customValues, setCustomValues] = useState<Record<string, string>>({});
 	const [loading, setLoading] = useState(false);
 	const [saving, setSaving] = useState(false);
@@ -72,21 +44,18 @@ export function MemberEditSheet({ memberId, onClose, onSaved }: MemberEditSheetP
 		let cancelled = false;
 		setLoading(true);
 		setError(null);
-		fetch(`/api/members/${encodeURIComponent(memberId)}`, { cache: 'no-store' })
-			.then(async (res) => {
-				const data = await res.json().catch(() => null);
-				if (!res.ok) throw new Error(data?.error || t('membersEditLoadFailed'));
+		fetchMemberEditDetail(memberId, t, t('membersEditLoadFailed'))
+			.then((next) => {
 				if (cancelled) return;
-				const next = data as MemberAdminDetail;
 				setDetail(next);
 				setValues({
 					name: next.member.firstName || next.member.name,
 					surname: next.member.lastName || next.member.surname,
 					email: next.member.email,
 					studentNo: next.member.handle || next.member.studentNo,
-					department: next.member.department,
-					grade: next.member.grade,
-					bio: next.member.bio,
+					department: next.member.department ?? '',
+					grade: next.member.grade ?? 1,
+					bio: next.member.bio ?? '',
 				});
 				setCustomValues(next.customFields ?? {});
 			})
@@ -105,11 +74,7 @@ export function MemberEditSheet({ memberId, onClose, onSaved }: MemberEditSheetP
 		if (!detail || !values) return [];
 		const options = [...detail.core.track.options];
 		if (!options.some((option) => option.value === values.department)) {
-			options.unshift({
-				value: values.department,
-				labelTr: values.department,
-				labelEn: values.department,
-			});
+			options.unshift({ value: values.department, labelTr: values.department, labelEn: values.department });
 		}
 		return options;
 	}, [detail, values]);
@@ -118,18 +83,14 @@ export function MemberEditSheet({ memberId, onClose, onSaved }: MemberEditSheetP
 		if (!detail || !values) return [];
 		const options = [...detail.core.level.options];
 		if (!options.some((option) => Number(option.value) === values.grade)) {
-			options.unshift({
-				value: String(values.grade),
-				labelTr: String(values.grade),
-				labelEn: String(values.grade),
-			});
+			options.unshift({ value: String(values.grade), labelTr: String(values.grade), labelEn: String(values.grade) });
 		}
 		return options;
 	}, [detail, values]);
 
 	if (!memberId) return null;
 
-	const update = <K extends keyof Values>(key: K, value: Values[K]) => {
+	const update = <K extends keyof MemberEditValues>(key: K, value: MemberEditValues[K]) => {
 		setValues((previous) => (previous ? { ...previous, [key]: value } : previous));
 	};
 
@@ -140,23 +101,10 @@ export function MemberEditSheet({ memberId, onClose, onSaved }: MemberEditSheetP
 		setError(null);
 		setFieldErrors({});
 		try {
-			const res = await fetch(`/api/members/${encodeURIComponent(memberId)}`, {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					...values,
-					firstName: values.name,
-					lastName: values.surname,
-					handle: values.studentNo,
-					department: values.department,
-					grade: values.grade,
-					customFields: customValues,
-				}),
-			});
-			const data = await res.json().catch(() => null);
-			if (!res.ok) {
-				if (data?.fieldErrors) setFieldErrors(data.fieldErrors);
-				throw new Error(data?.error || t('membersEditFailed'));
+			const res = await patchMemberEditDetail(memberId, values, customValues, t, t('membersEditFailed'));
+			if (res.error) {
+				if (res.fieldErrors) setFieldErrors(res.fieldErrors);
+				throw new Error(res.error);
 			}
 			onSaved();
 			onClose();
@@ -167,23 +115,20 @@ export function MemberEditSheet({ memberId, onClose, onSaved }: MemberEditSheetP
 		}
 	};
 
-	const fieldLabel = (field: FormField) => getFieldLabel(field, language);
 	const coreLabel = (item: { labelTr: string; labelEn: string }) =>
 		resolveLocalizedText({ en: item.labelEn, tr: item.labelTr }, language, item.labelEn || item.labelTr);
 
 	return (
 		<Sheet
 			title={t('membersEditTitle')}
-			icon={<Pencil size={20} color="#0a84ff" />}
+			icon={<Pencil size={20} color="var(--accent)" />}
 			onClose={onClose}
 			onSubmit={submit}
 			closeLabel={t('close')}
 			maxWidth={520}
 			footer={
 				<>
-					<button type="button" className={ui.btn} onClick={onClose} disabled={saving}>
-						{t('btnCancel')}
-					</button>
+					<button type="button" className={ui.btn} onClick={onClose} disabled={saving}>{t('btnCancel')}</button>
 					<button type="submit" className={ui.primaryBtn} disabled={saving || loading || !values}>
 						{saving ? t('saving') : t('save')}
 					</button>
@@ -197,82 +142,38 @@ export function MemberEditSheet({ memberId, onClose, onSaved }: MemberEditSheetP
 					<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
 						<label className={ui.field}>
 							<span className={ui.fieldLabel}>{t('membersFirstName')}</span>
-							<input
-								className={ui.input}
-								value={values.name}
-								onChange={(event) => update('name', event.target.value)}
-								maxLength={60}
-								required
-							/>
+							<input className={ui.input} value={values.name} onChange={(e) => update('name', e.target.value)} maxLength={60} required />
 						</label>
 						<label className={ui.field}>
 							<span className={ui.fieldLabel}>{t('membersLastName')}</span>
-							<input
-								className={ui.input}
-								value={values.surname}
-								onChange={(event) => update('surname', event.target.value)}
-								maxLength={60}
-								required
-							/>
+							<input className={ui.input} value={values.surname} onChange={(e) => update('surname', e.target.value)} maxLength={60} required />
 						</label>
 					</div>
 
 					<label className={ui.field}>
 						<span className={ui.fieldLabel}>{t('membersEmailLabel')}</span>
-						<input
-							className={ui.input}
-							type="email"
-							value={values.email}
-							onChange={(event) => update('email', event.target.value)}
-							required
-						/>
+						<input className={ui.input} type="email" value={values.email} onChange={(e) => update('email', e.target.value)} required />
 					</label>
 
 					<label className={ui.field}>
-						<span className={ui.fieldLabel}>
-							{coreLabel(detail.core.memberId)}
-						</span>
-						<input
-							className={ui.input}
-							value={values.studentNo}
-							onChange={(event) => update('studentNo', event.target.value)}
-							maxLength={32}
-							required
-						/>
+						<span className={ui.fieldLabel}>{coreLabel(detail.core.memberId)}</span>
+						<input className={ui.input} value={values.studentNo} onChange={(e) => update('studentNo', e.target.value)} maxLength={32} required />
 					</label>
 
 					<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
 						<label className={ui.field}>
-							<span className={ui.fieldLabel}>
-								{coreLabel(detail.core.track)}
-							</span>
-							<select
-								className={ui.select}
-								style={{ maxWidth: 'none' }}
-								value={values.department}
-								onChange={(event) => update('department', event.target.value)}
-							>
+							<span className={ui.fieldLabel}>{coreLabel(detail.core.track)}</span>
+							<select className={ui.select} style={{ maxWidth: 'none' }} value={values.department} onChange={(e) => update('department', e.target.value)}>
 								{trackOptions.map((option) => (
-									<option key={option.value} value={option.value}>
-										{optionLabel(option, language)}
-									</option>
+									<option key={option.value} value={option.value}>{optionLabel(option, language)}</option>
 								))}
 							</select>
 						</label>
 						<label className={ui.field}>
-							<span className={ui.fieldLabel}>
-								{coreLabel(detail.core.level)}
-							</span>
-							<select
-								className={ui.select}
-								style={{ maxWidth: 'none' }}
-								value={values.grade}
-								onChange={(event) => update('grade', Number(event.target.value))}
-							>
+							<span className={ui.fieldLabel}>{coreLabel(detail.core.level)}</span>
+							<select className={ui.select} style={{ maxWidth: 'none' }} value={values.grade} onChange={(e) => update('grade', Number(e.target.value))}>
 								{levelOptions.map((option) => (
-									<option key={option.value} value={Number(option.value)}>
-										{optionLabel(option, language)}
-									</option>
+									<option key={option.value} value={Number(option.value)}>{optionLabel(option, language)}</option>
 								))}
 							</select>
 						</label>
@@ -283,77 +184,18 @@ export function MemberEditSheet({ memberId, onClose, onSaved }: MemberEditSheetP
 						<textarea
 							className={ui.textarea}
 							rows={3}
+							maxLength={MEMBER_MAX_BIO_LENGTH}
 							value={values.bio}
-							onChange={(event) => update('bio', event.target.value)}
+							onChange={(e) => update('bio', e.target.value)}
 						/>
 					</label>
 
-					{detail.fields.length > 0 && (
-						<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-							<div style={{ fontSize: 11, fontWeight: 700, opacity: 0.55, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-								{t('membersAdditionalFields')}
-							</div>
-							{detail.fields.map((field) => {
-								const value = customValues[field.fieldKey] ?? '';
-								const setValue = (next: string) =>
-									setCustomValues((previous) => ({ ...previous, [field.fieldKey]: next }));
-								const errorText = fieldErrors[field.fieldKey];
-								return (
-									<label key={field.id} className={ui.field}>
-										<span className={ui.fieldLabel}>
-											{fieldLabel(field)}
-											{field.requiredAt === 'admin' || field.requiredAt === 'both' ? ' *' : ''}
-										</span>
-										{selectTypes.has(field.type) ? (
-											<select
-												className={ui.select}
-												style={{ maxWidth: 'none' }}
-												value={value}
-												onChange={(event) => setValue(event.target.value)}
-												aria-invalid={Boolean(errorText)}
-											>
-												<option value="">{t('authSelectOption')}</option>
-												{field.options.map((option) => (
-													<option key={option.value} value={option.value}>
-														{optionLabel(option, language)}
-													</option>
-												))}
-											</select>
-										) : textareaTypes.has(field.type) ? (
-											<textarea
-												className={ui.textarea}
-												rows={3}
-												value={value}
-												placeholder={fieldPlaceholder(field, language)}
-												onChange={(event) => setValue(event.target.value)}
-												aria-invalid={Boolean(errorText)}
-											/>
-										) : (
-											<input
-												className={ui.input}
-												type={
-													field.type === 'email'
-														? 'email'
-														: field.type === 'tel'
-															? 'tel'
-															: field.type === 'number'
-																? 'number'
-																: field.type === 'date'
-																	? 'date'
-																	: 'text'
-												}
-												value={value}
-												placeholder={fieldPlaceholder(field, language)}
-												onChange={(event) => setValue(event.target.value)}
-												aria-invalid={Boolean(errorText)}
-											/>
-										)}
-										{errorText && <span style={{ fontSize: 11, color: '#ff453a' }}>{errorText}</span>}
-									</label>
-								);
-							})}
-						</div>
-					)}
+					<MemberCustomFieldsGroup
+						fields={detail.fields}
+						customValues={customValues}
+						fieldErrors={fieldErrors}
+						onChange={(key, next) => setCustomValues((prev) => ({ ...prev, [key]: next }))}
+					/>
 				</div>
 			)}
 		</Sheet>

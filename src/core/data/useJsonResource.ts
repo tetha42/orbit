@@ -3,284 +3,32 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { errorMessage } from '@/lib/errors';
+import type { CacheEntry, JsonResource, UseJsonResourceOptions } from './jsonResource/types';
+import {
+	clearSessionCacheByPattern,
+	getSessionCache,
+	removeSessionCache,
+	setSessionCache,
+	shouldPersist,
+} from './jsonResource/sessionCache';
+import {
+	fetchJsonDeduplicated,
+	IN_FLIGHT,
+	invalidationListeners,
+	invalidateResource,
+	isAbort,
+	mutationListeners,
+	mutateResource,
+	RESOURCE_CACHE,
+	SWR_STALE_MS,
+	type InvalidationListener,
+	type MutationListener,
+} from './jsonResource/cacheStore';
 
-export interface JsonResource<T> {
-	data: T | null;
-	/** For optimistic updates and local edits between refetches. */
-	setData: Dispatch<SetStateAction<T | null>>;
-	/** Re-runs the request; safe to call from event handlers. */
-	refetch: () => Promise<void>;
-	error: string | null;
-	/** No data yet and no failure — i.e. the first request is still in flight. */
-	isLoading: boolean;
-	/**
-	 * HTTP status of the last completed request, `null` until one has finished.
-	 *
-	 * 401/403 are not turned into `error` (the shell handles an ended session), so
-	 * without this a screen could not tell "not allowed" from "still loading" —
-	 * `isLoading` stays true for a refused request, and the user stared at a
-	 * spinner forever. Screens that care check `httpStatus === 403`.
-	 */
-	httpStatus: number | null;
-	/** The server's own `error` text of the last failed request (e.g. a Turkish reason from the mail server), else null. */
-	failure: string | null;
-}
+export type { JsonResource, UseJsonResourceOptions } from './jsonResource/types';
+export { invalidateResource, mutateResource };
 
-/**
- * Plain request helper: fetches JSON and returns it.
- *
- * Kept free of state so the effect below can `await` it and only then update
- * state — React 19's `set-state-in-effect` rule flags effects that reach a
- * state update synchronously, which is exactly what the old
- * `useEffect(() => setLoading(true))` shape did.
- */
-interface CacheEntry<T = unknown> {
-	data: T;
-	timestamp: number;
-	status: number;
-	failure: string | null;
-}
-
-export interface UseJsonResourceOptions {
-	/**
-	 * Persist cache entry into sessionStorage across page reloads.
-	 * Default: true for semi-static endpoints (/api/roles, /api/registration-config, /api/form-fields), false otherwise.
-	 */
-	persistSession?: boolean;
-}
-
-interface InFlightEntry {
-	promise: Promise<{ status: number; payload?: unknown; failure?: string }>;
-	controller: AbortController;
-	signals: Set<AbortSignal>;
-	untrackedCount: number;
-}
-
-const RESOURCE_CACHE = new Map<string, CacheEntry>();
-const IN_FLIGHT = new Map<string, InFlightEntry>();
-const SWR_STALE_MS = 25_000; // 25 seconds SWR freshness window
-
-const SESSION_CACHE_PREFIX = 'orbit_cache:';
-const DEFAULT_SESSION_ROUTES = ['/api/roles', '/api/registration-config', '/api/form-fields'];
-
-function shouldPersist(url: string | null, persistSession?: boolean): boolean {
-	if (!url) return false;
-	if (persistSession !== undefined) return persistSession;
-	return DEFAULT_SESSION_ROUTES.some((route) => url.startsWith(route));
-}
-
-function getSessionCache<T>(url: string): CacheEntry<T> | null {
-	if (typeof window === 'undefined') return null;
-	try {
-		const raw = window.sessionStorage.getItem(SESSION_CACHE_PREFIX + url);
-		if (!raw) return null;
-		return JSON.parse(raw) as CacheEntry<T>;
-	} catch {
-		return null;
-	}
-}
-
-function setSessionCache<T>(url: string, entry: CacheEntry<T>): void {
-	if (typeof window === 'undefined') return;
-	try {
-		window.sessionStorage.setItem(SESSION_CACHE_PREFIX + url, JSON.stringify(entry));
-	} catch {
-		// Ignore quota exceeded or storage disabled
-	}
-}
-
-function removeSessionCache(url: string): void {
-	if (typeof window === 'undefined') return;
-	try {
-		window.sessionStorage.removeItem(SESSION_CACHE_PREFIX + url);
-	} catch {
-		// Ignore
-	}
-}
-
-function clearSessionCacheByPattern(pattern: string | RegExp): void {
-	if (typeof window === 'undefined') return;
-	try {
-		const keysToRemove: string[] = [];
-		for (let i = 0; i < window.sessionStorage.length; i++) {
-			const key = window.sessionStorage.key(i);
-			if (key && key.startsWith(SESSION_CACHE_PREFIX)) {
-				const url = key.slice(SESSION_CACHE_PREFIX.length);
-				const matches = typeof pattern === 'string' ? url.startsWith(pattern) : pattern.test(url);
-				if (matches) {
-					keysToRemove.push(key);
-				}
-			}
-		}
-		for (const key of keysToRemove) {
-			window.sessionStorage.removeItem(key);
-		}
-	} catch {
-		// Ignore
-	}
-}
-
-type InvalidationListener = (pattern: RegExp | string) => void;
-type MutationListener = (url: string, data: unknown) => void;
-
-const invalidationListeners = new Set<InvalidationListener>();
-const mutationListeners = new Set<MutationListener>();
-
-/**
- * Invalidate cached resources matching a pattern and trigger active hooks to refetch.
- */
-export function invalidateResource(pattern: string | RegExp): void {
-	for (const key of RESOURCE_CACHE.keys()) {
-		const matches = typeof pattern === 'string' ? key.startsWith(pattern) : pattern.test(key);
-		if (matches) {
-			RESOURCE_CACHE.delete(key);
-			removeSessionCache(key);
-		}
-	}
-	for (const key of IN_FLIGHT.keys()) {
-		const matches = typeof pattern === 'string' ? key.startsWith(pattern) : pattern.test(key);
-		if (matches) {
-			const entry = IN_FLIGHT.get(key);
-			entry?.controller.abort();
-			IN_FLIGHT.delete(key);
-		}
-	}
-	clearSessionCacheByPattern(pattern);
-
-	invalidationListeners.forEach((listener) => {
-		try {
-			listener(pattern);
-		} catch (err) {
-			console.error('[useJsonResource] invalidation listener error:', err);
-		}
-	});
-}
-
-/**
- * Optimistically mutate a cached resource and notify active hooks immediately.
- */
-export function mutateResource<T = unknown>(
-	url: string,
-	updater: T | ((prev: T | null) => T | null)
-): void {
-	let currentCached = RESOURCE_CACHE.get(url);
-	if (!currentCached && shouldPersist(url)) {
-		const fromSession = getSessionCache(url);
-		if (fromSession) {
-			currentCached = fromSession;
-			RESOURCE_CACHE.set(url, fromSession);
-		}
-	}
-	const prevData = (currentCached?.data as T) ?? null;
-	const nextData =
-		typeof updater === 'function'
-			? (updater as (prev: T | null) => T | null)(prevData)
-			: updater;
-
-	if (nextData === null) {
-		RESOURCE_CACHE.delete(url);
-		removeSessionCache(url);
-	} else {
-		const entry: CacheEntry<unknown> = {
-			data: nextData,
-			timestamp: Date.now(),
-			status: currentCached?.status ?? 200,
-			failure: null,
-		};
-		RESOURCE_CACHE.set(url, entry);
-		if (shouldPersist(url)) {
-			setSessionCache(url, entry);
-		}
-	}
-
-	mutationListeners.forEach((listener) => {
-		try {
-			listener(url, nextData);
-		} catch (err) {
-			console.error('[useJsonResource] mutation listener error:', err);
-		}
-	});
-}
-
-/** Plain request helper: fetches JSON and returns it. Deduplicated across concurrent callers with AbortSignal cancellation. */
-async function fetchJsonDeduplicated<T>(
-	url: string,
-	signal?: AbortSignal
-): Promise<{ status: number; payload?: T; failure?: string }> {
-	if (signal?.aborted) {
-		const err = new Error('Aborted');
-		err.name = 'AbortError';
-		throw err;
-	}
-
-	const existing = IN_FLIGHT.get(url);
-	if (existing) {
-		if (signal) {
-			existing.signals.add(signal);
-			const onAbort = () => {
-				existing.signals.delete(signal);
-				if (existing.signals.size === 0 && existing.untrackedCount === 0) {
-					existing.controller.abort();
-					IN_FLIGHT.delete(url);
-				}
-			};
-			signal.addEventListener('abort', onAbort, { once: true });
-		} else {
-			existing.untrackedCount += 1;
-		}
-		return existing.promise as Promise<{ status: number; payload?: T; failure?: string }>;
-	}
-
-	const fetchController = new AbortController();
-	const signals = new Set<AbortSignal>();
-	let untrackedCount = 0;
-	if (signal) {
-		signals.add(signal);
-		const onAbort = () => {
-			signals.delete(signal);
-			const current = IN_FLIGHT.get(url);
-			if (signals.size === 0 && (current?.untrackedCount ?? 0) === 0) {
-				fetchController.abort();
-				IN_FLIGHT.delete(url);
-			}
-		};
-		signal.addEventListener('abort', onAbort, { once: true });
-	} else {
-		untrackedCount = 1;
-	}
-
-	const promise = (async () => {
-		try {
-			const res = await fetch(url, { signal: fetchController.signal });
-			if (!res.ok) {
-				const body = (await res.json().catch(() => null)) as { error?: unknown } | null;
-				return { status: res.status, failure: typeof body?.error === 'string' ? body.error : undefined };
-			}
-			const payload = (await res.json()) as T;
-			return { status: res.status, payload };
-		} finally {
-			IN_FLIGHT.delete(url);
-		}
-	})();
-
-	IN_FLIGHT.set(url, { promise, controller: fetchController, signals, untrackedCount });
-	return promise;
-}
-
-function isAbort(err: unknown): boolean {
-	return (err as { name?: string } | null)?.name === 'AbortError';
-}
-
-/**
- * Fetches a JSON endpoint on mount with high-performance SWR caching and reactive invalidation.
- *
- * Performance features:
- *  - Instant Cache Hit: Initial state is populated immediately from in-memory cache or sessionStorage if available.
- *  - Stale-While-Revalidate: Revalidates in the background if cache is older than 25s.
- *  - Concurrent Request Deduplication: Multiple simultaneous calls for the same URL share one HTTP request.
- *  - Pub/Sub Invalidation & Mutation: Reactive updates via `invalidateResource` and `mutateResource`.
- *  - Optional Session Persistence: Semi-static configuration survives page reloads.
- */
+/** Fetches a JSON endpoint on mount with SWR caching and reactive invalidation. */
 export function useJsonResource<T>(
 	url: string | null,
 	options?: UseJsonResourceOptions
@@ -309,7 +57,6 @@ export function useJsonResource<T>(
 	const [failure, setFailure] = useState<string | null>(() => (initialCached ? initialCached.failure : null));
 	const inFlightRef = useRef<AbortController | null>(null);
 
-	// Synchronize state immediately during render when url changes
 	if (prevUrl !== url) {
 		setPrevUrl(url);
 		const cachedForNew = getCached(url);
@@ -325,21 +72,12 @@ export function useJsonResource<T>(
 				const next = typeof action === 'function' ? (action as (p: T | null) => T | null)(prev) : action;
 				if (url) {
 					if (next !== null) {
-						const entry = {
-							data: next,
-							timestamp: Date.now(),
-							status: httpStatus ?? 200,
-							failure: null,
-						};
+						const entry = { data: next, timestamp: Date.now(), status: httpStatus ?? 200, failure: null };
 						RESOURCE_CACHE.set(url, entry);
-						if (isPersistent) {
-							setSessionCache(url, entry);
-						}
+						if (isPersistent) setSessionCache(url, entry);
 					} else {
 						RESOURCE_CACHE.delete(url);
-						if (isPersistent) {
-							removeSessionCache(url);
-						}
+						if (isPersistent) removeSessionCache(url);
 					}
 				}
 				return next;
@@ -350,8 +88,6 @@ export function useJsonResource<T>(
 
 	useEffect(() => {
 		if (url === null) return;
-
-		// Check if we have fresh cached data
 		let currentCached = RESOURCE_CACHE.get(url) as CacheEntry<T> | undefined;
 		if (!currentCached && isPersistent) {
 			const sessionData = getSessionCache<T>(url);
@@ -362,18 +98,13 @@ export function useJsonResource<T>(
 		}
 
 		const isFresh = currentCached && Date.now() - currentCached.timestamp < SWR_STALE_MS;
-
 		if (currentCached && currentCached.data !== undefined) {
 			setDataInternal(currentCached.data);
 			setHttpStatus(currentCached.status);
 			setFailure(currentCached.failure);
 			setError(null);
 		}
-
-		if (isFresh) {
-			// Cache is fresh, skip network roundtrip
-			return;
-		}
+		if (isFresh) return;
 
 		const controller = new AbortController();
 		inFlightRef.current = controller;
@@ -387,23 +118,16 @@ export function useJsonResource<T>(
 				if (payload !== undefined) {
 					setDataInternal(payload);
 					setError(null);
-					const entry = {
-						data: payload,
-						timestamp: Date.now(),
-						status,
-						failure: text ?? null,
-					};
+					const entry = { data: payload, timestamp: Date.now(), status, failure: text ?? null };
 					RESOURCE_CACHE.set(url, entry);
-					if (isPersistent) {
-						setSessionCache(url, entry);
-					}
+					if (isPersistent) setSessionCache(url, entry);
 				} else if (text || status >= 400) {
-					setError(text ?? (status === 403 ? 'Erişim yetkiniz yok.' : 'Veriler yüklenemedi.'));
+					setError(text ?? (status === 403 ? 'Access denied.' : 'Failed to load data.'));
 				}
 			} catch (err) {
 				if (!isAbort(err) && !controller.signal.aborted) {
 					console.error(`Failed to fetch ${url}:`, err);
-					setError(errorMessage(err, 'Veriler yüklenemedi.'));
+					setError(errorMessage(err, 'Failed to load data.'));
 				}
 			}
 		})();
@@ -420,16 +144,13 @@ export function useJsonResource<T>(
 		const controller = new AbortController();
 		inFlightRef.current = controller;
 
-		// Force invalidate cache entry and in-flight request for explicit refetch
 		RESOURCE_CACHE.delete(url);
 		const existingInFlight = IN_FLIGHT.get(url);
 		if (existingInFlight) {
 			existingInFlight.controller.abort();
 			IN_FLIGHT.delete(url);
 		}
-		if (isPersistent) {
-			removeSessionCache(url);
-		}
+		if (isPersistent) removeSessionCache(url);
 
 		try {
 			const { status, payload, failure: text } = await fetchJsonDeduplicated<T>(url, controller.signal);
@@ -439,35 +160,25 @@ export function useJsonResource<T>(
 			if (payload !== undefined) {
 				setDataInternal(payload);
 				setError(null);
-				const entry = {
-					data: payload,
-					timestamp: Date.now(),
-					status,
-					failure: text ?? null,
-				};
+				const entry = { data: payload, timestamp: Date.now(), status, failure: text ?? null };
 				RESOURCE_CACHE.set(url, entry);
-				if (isPersistent) {
-					setSessionCache(url, entry);
-				}
+				if (isPersistent) setSessionCache(url, entry);
 			} else if (text || status >= 400) {
-				setError(text ?? (status === 403 ? 'Erişim yetkiniz yok.' : 'Veriler yüklenemedi.'));
+				setError(text ?? (status === 403 ? 'Access denied.' : 'Failed to load data.'));
 			}
 		} catch (err) {
 			if (!isAbort(err) && !controller.signal.aborted) {
 				console.error(`Failed to refetch ${url}:`, err);
-				setError(errorMessage(err, 'Veriler yüklenemedi.'));
+				setError(errorMessage(err, 'Failed to load data.'));
 			}
 		}
 	}, [url, isPersistent]);
 
-	// Reactive pub/sub invalidation and mutation subscribers
 	useEffect(() => {
 		if (url === null) return;
 		const handleInvalidation: InvalidationListener = (pattern) => {
 			const matches = typeof pattern === 'string' ? url.startsWith(pattern) : pattern.test(url);
-			if (matches) {
-				void refetch();
-			}
+			if (matches) void refetch();
 		};
 		const handleMutation: MutationListener = (mutatedUrl, nextData) => {
 			if (mutatedUrl === url) {
@@ -486,7 +197,6 @@ export function useJsonResource<T>(
 		};
 	}, [url, refetch]);
 
-	// The menu's "refresh all data" reaches every mounted view through this event.
 	useEffect(() => {
 		if (url === null) return;
 		const onRefresh = () => {
@@ -510,6 +220,7 @@ export function useJsonResource<T>(
 }
 
 const LIVE_EVENT_RESOURCE_MAP: Record<string, string> = {
+	'permission-changed': '/api/roles',
 	team_updated: '/api/teams',
 	budget_updated: '/api/budget',
 	inventory_updated: '/api/inventory',

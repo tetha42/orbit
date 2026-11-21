@@ -2,12 +2,12 @@ import { NextResponse } from 'next/server';
 import { getUserById } from '@/db';
 import { getRolePermission } from '@/db/roles';
 import { consumeAuthCode, verifyClientCredentials } from '@/db/oauth';
-import { signOAuthJwt, type JwtPayload } from '@/lib/auth/jwt';
 import { clearRateLimit, isRateLimited, recordFailure } from '@/lib/rateLimit';
 import { clientAddress } from '@/lib/http';
 import { logSystemEvent } from '@/db/repositories/logs.repo';
 import { isIpBanned, recordSecurityStrike } from '@/db/repositories/security.repo';
 import { inspectRequestPayload } from '@/lib/waf';
+import { extractClientCredentials, mintOAuthTokenResponse, parseTokenRequestBody } from './tokenHelpers';
 
 const MAX_CLIENT_FAILURES = 10;
 const MAX_IP_FAILURES = 30;
@@ -21,11 +21,11 @@ export async function POST(request: Request) {
 		void recordSecurityStrike({
 			ip,
 			points: 10,
-			reason: 'Karantinadaki IP OAuth token denemesi',
+			reason: 'Quarantined IP attempted OAuth token exchange',
 			path: '/api/oauth/token',
 		});
 		return NextResponse.json(
-			{ error: 'access_denied', error_description: 'IP adresiniz siber güvenlik politikası nedeniyle karantinaya alınmıştır.' },
+			{ error: 'access_denied', error_description: 'Your IP address is quarantined due to security policy.' },
 			{ status: 403 }
 		);
 	}
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
 		void logSystemEvent({
 			service: 'security',
 			level: 'ERROR',
-			message: `[WAF] OAuth token saldırı imzası engellendi (${waf.signature}): POST /api/oauth/token`,
+			message: `[WAF] OAuth token attack signature blocked (${waf.signature}): POST /api/oauth/token`,
 			detail: { category: waf.category, signature: waf.signature },
 			ip,
 		});
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 			path: '/api/oauth/token',
 		});
 		return NextResponse.json(
-			{ error: 'access_denied', error_description: 'Güvenlik duvarı (WAF) tarafından şüpheli istek engellendi.' },
+			{ error: 'access_denied', error_description: 'Suspicious request blocked by the Web Application Firewall (WAF).' },
 			{ status: 403 }
 		);
 	}
@@ -55,45 +55,20 @@ export async function POST(request: Request) {
 	const ipGate = isRateLimited(ipKey, MAX_IP_FAILURES);
 	if (!ipGate.allowed) {
 		return NextResponse.json(
-			{ error: 'temporarily_unavailable', error_description: 'Çok fazla hatalı istek. Lütfen daha sonra tekrar deneyin.' },
+			{ error: 'temporarily_unavailable', error_description: 'Too many invalid requests. Please try again later.' },
 			{ status: 429, headers: { 'Retry-After': String(ipGate.retryAfter) } }
 		);
 	}
 
 	try {
-		const contentType = request.headers.get('content-type') || '';
-		let bodyParams: Record<string, string> = {};
-
-		let rawBody = '';
-		if (contentType.includes('application/x-www-form-urlencoded')) {
-			rawBody = await request.text();
-			const search = new URLSearchParams(rawBody);
-			search.forEach((val, key) => {
-				bodyParams[key] = val;
-			});
-		} else if (contentType.includes('application/json')) {
-			rawBody = await request.text();
-			try {
-				bodyParams = JSON.parse(rawBody);
-			} catch {
-				bodyParams = {};
-			}
-		} else {
-			// Fallback: try parsing as search params
-			rawBody = await request.text();
-			const search = new URLSearchParams(rawBody);
-			search.forEach((val, key) => {
-				bodyParams[key] = val;
-			});
-		}
-
+		const { rawBody, bodyParams } = await parseTokenRequestBody(request);
 		if (rawBody) {
 			const bodyWaf = inspectRequestPayload(request, rawBody);
 			if (bodyWaf.matched) {
 				void logSystemEvent({
 					service: 'security',
 					level: 'ERROR',
-					message: `[WAF] OAuth token gövde saldırı imzası engellendi (${bodyWaf.signature}): POST /api/oauth/token`,
+					message: `[WAF] OAuth token payload attack signature blocked (${bodyWaf.signature}): POST /api/oauth/token`,
 					detail: { category: bodyWaf.category, signature: bodyWaf.signature },
 					ip,
 				});
@@ -104,33 +79,16 @@ export async function POST(request: Request) {
 					path: '/api/oauth/token',
 				});
 				return NextResponse.json(
-					{ error: 'access_denied', error_description: 'Güvenlik duvarı (WAF) tarafından şüpheli istek engellendi.' },
+					{ error: 'access_denied', error_description: 'Suspicious request blocked by the Web Application Firewall (WAF).' },
 					{ status: 403 }
 				);
 			}
 		}
 
-		let clientId = bodyParams.client_id;
-		let clientSecret = bodyParams.client_secret;
-
-		// Check Authorization: Basic <base64>
-		const authHeader = request.headers.get('authorization');
-		if (authHeader && authHeader.startsWith('Basic ')) {
-			try {
-				const creds = Buffer.from(authHeader.slice(6), 'base64').toString('utf8');
-				const colonIdx = creds.indexOf(':');
-				if (colonIdx !== -1) {
-					clientId = creds.slice(0, colonIdx);
-					clientSecret = creds.slice(colonIdx + 1);
-				}
-			} catch {
-				// Ignore parse error, rely on body
-			}
-		}
-
+		const { clientId, clientSecret } = extractClientCredentials(request, bodyParams);
 		if (!clientId || !clientSecret) {
 			return NextResponse.json(
-				{ error: 'invalid_client', error_description: 'client_id ve client_secret parametreleri zorunludur.' },
+				{ error: 'invalid_client', error_description: 'client_id and client_secret parameters are required.' },
 				{ status: 401 }
 			);
 		}
@@ -139,7 +97,7 @@ export async function POST(request: Request) {
 		const clientGate = isRateLimited(clientKey, MAX_CLIENT_FAILURES);
 		if (!clientGate.allowed) {
 			return NextResponse.json(
-				{ error: 'temporarily_unavailable', error_description: 'Çok fazla hatalı kimlik doğrulama denemesi.' },
+				{ error: 'temporarily_unavailable', error_description: 'Too many failed authentication attempts.' },
 				{ status: 429, headers: { 'Retry-After': String(clientGate.retryAfter) } }
 			);
 		}
@@ -151,22 +109,21 @@ export async function POST(request: Request) {
 			await logSystemEvent({
 				service: 'oauth',
 				level: 'WARN',
-				message: `OAuth geçersiz istemci kimlik bilgisi denemesi (${clientId})`,
+				message: `Invalid OAuth client credentials attempt (${clientId})`,
 				detail: { clientId },
 				ip,
 			});
 			return NextResponse.json(
-				{ error: 'invalid_client', error_description: 'Geçersiz istemci kimlik bilgileri.' },
+				{ error: 'invalid_client', error_description: 'Invalid client credentials.' },
 				{ status: 401 }
 			);
 		}
 
 		clearRateLimit(clientKey);
 
-		const grantType = bodyParams.grant_type;
-		if (grantType !== 'authorization_code') {
+		if (bodyParams.grant_type !== 'authorization_code') {
 			return NextResponse.json(
-				{ error: 'unsupported_grant_type', error_description: 'Sadece authorization_code grant_type desteklenmektedir.' },
+				{ error: 'unsupported_grant_type', error_description: 'Only grant_type=authorization_code is supported.' },
 				{ status: 400 }
 			);
 		}
@@ -174,10 +131,9 @@ export async function POST(request: Request) {
 		const code = bodyParams.code;
 		const redirectUri = bodyParams.redirect_uri;
 		const codeVerifier = bodyParams.code_verifier;
-
 		if (!code || !redirectUri) {
 			return NextResponse.json(
-				{ error: 'invalid_request', error_description: 'code ve redirect_uri parametreleri zorunludur.' },
+				{ error: 'invalid_request', error_description: 'code and redirect_uri parameters are required.' },
 				{ status: 400 }
 			);
 		}
@@ -188,12 +144,12 @@ export async function POST(request: Request) {
 			await logSystemEvent({
 				service: 'oauth',
 				level: 'WARN',
-				message: `OAuth geçersiz yetkilendirme kodu takas denemesi (${client.name})`,
+				message: `Invalid OAuth authorization code exchange attempt (${client.name})`,
 				detail: { clientId, redirectUri, error: codeResult.error },
 				ip,
 			});
 			return NextResponse.json(
-				{ error: 'invalid_grant', error_description: codeResult.error || 'Geçersiz yetkilendirme kodu.' },
+				{ error: 'invalid_grant', error_description: codeResult.error || 'Invalid authorization code.' },
 				{ status: 400 }
 			);
 		}
@@ -201,98 +157,31 @@ export async function POST(request: Request) {
 		const user = await getUserById(codeResult.userId);
 		if (!user || user.status !== 'active') {
 			return NextResponse.json(
-				{ error: 'invalid_grant', error_description: 'Kullanıcı hesabı aktif durumda değil.' },
+				{ error: 'invalid_grant', error_description: 'User account is not active.' },
 				{ status: 400 }
 			);
 		}
 
 		const permission = await getRolePermission(user.roleId);
-		const host = request.headers.get('host') || 'localhost:3000';
-		const proto = request.headers.get('x-forwarded-proto') || (host.startsWith('localhost') ? 'http' : 'https');
-		const issuer = `${proto}://${host}`;
-
-		const now = Math.floor(Date.now() / 1000);
-		const expiresIn = 3600; // 1 hour
-
 		const scope = codeResult.scope || 'openid profile email academic roles';
-		const scopes = scope.split(/\s+/);
-
-		// Sign Access Token
-		const accessToken = await signOAuthJwt({
-			iss: issuer,
-			sub: user.id,
-			aud: clientId,
-			exp: now + expiresIn,
-			iat: now,
-			scope,
-			email: user.email,
-			user_id: user.id,
-		});
-
-		// Sign OIDC ID Token with filtered claims
-		const idTokenClaims: JwtPayload = {
-			iss: issuer,
-			sub: user.id,
-			aud: clientId,
-			exp: now + expiresIn,
-			iat: now,
-		};
-
-		if (scopes.includes('profile')) {
-			const first = user.firstName || user.name || '';
-			const last = user.lastName || user.surname || '';
-			idTokenClaims.name = `${first} ${last}`.trim();
-			idTokenClaims.given_name = first;
-			idTokenClaims.family_name = last;
-			idTokenClaims.picture = user.avatarUrl || user.profilePhoto || null;
-		}
-
-		if (scopes.includes('email')) {
-			idTokenClaims.email = user.email;
-			idTokenClaims.email_verified = true;
-		}
-
-		if (scopes.includes('academic')) {
-			idTokenClaims.student_no = user.studentNo || null;
-			idTokenClaims.department = user.department || null;
-			idTokenClaims.grade = user.grade ?? null;
-		}
-
-		if (scopes.includes('roles')) {
-			idTokenClaims.role = permission.role?.name || null;
-			idTokenClaims.is_admin = permission.admin;
-		}
-
-		const idToken = await signOAuthJwt(idTokenClaims);
+		const tokenPayload = await mintOAuthTokenResponse({ request, user, permission, clientId, scope });
 
 		await logSystemEvent({
 			service: 'oauth',
 			level: 'INFO',
-			message: `OAuth jetonu (token) üretildi: ${client.name} -> ${user.email}`,
+			message: `OAuth token issued: ${client.name} -> ${user.email}`,
 			detail: { clientId: client.id, scope },
 			userId: user.id,
 			ip,
 		});
 
-		return NextResponse.json(
-			{
-				access_token: accessToken,
-				token_type: 'Bearer',
-				expires_in: expiresIn,
-				id_token: idToken,
-				scope,
-			},
-			{
-				headers: {
-					'Cache-Control': 'no-store',
-					Pragma: 'no-cache',
-				},
-			}
-		);
+		return NextResponse.json(tokenPayload, {
+			headers: { 'Cache-Control': 'no-store', Pragma: 'no-cache' },
+		});
 	} catch (error) {
 		console.error('API /api/oauth/token error:', error);
 		return NextResponse.json(
-			{ error: 'server_error', error_description: 'Jeton oluşturma işlemi tamamlanamadı.' },
+			{ error: 'server_error', error_description: 'Token issuance could not be completed.' },
 			{ status: 500 }
 		);
 	}

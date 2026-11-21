@@ -7,7 +7,7 @@ import {
 	LEGAL_DOCUMENT_TYPES,
 	type LegalDocumentScope,
 	type LegalDocumentType,
-} from '@/lib/legalDefaults';
+} from '@/lib/i18n/data/legalDefaults';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,13 +38,13 @@ export async function PATCH(request: Request) {
 		return NextResponse.json({ error: 'Unknown document scope.', code: 'INVALID_SCOPE' }, { status: 400 });
 	}
 
-	const titleTr = String(body.titleTr ?? '').trim().slice(0, MAX_TITLE);
 	const titleEn = String(body.titleEn ?? '').trim().slice(0, MAX_TITLE);
-	const bodyTr = String(body.bodyTr ?? '').trim().slice(0, MAX_BODY);
 	const bodyEn = String(body.bodyEn ?? '').trim().slice(0, MAX_BODY);
-	if (!titleTr || !titleEn || !bodyTr || !bodyEn) {
+	const titleTr = String(body.titleTr ?? '').trim().slice(0, MAX_TITLE) || titleEn;
+	const bodyTr = String(body.bodyTr ?? '').trim().slice(0, MAX_BODY) || bodyEn;
+	if (!titleEn || !bodyEn) {
 		return NextResponse.json(
-			{ error: 'Turkish and English title and body are all required.', code: 'LEGAL_CONTENT_REQUIRED' },
+			{ error: 'English title and body are required.', code: 'LEGAL_CONTENT_REQUIRED' },
 			{ status: 400 }
 		);
 	}

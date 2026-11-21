@@ -29,7 +29,7 @@ export function TeamChatEmbed({ teamId, teamName }: TeamChatEmbedProps) {
 	const { t } = useI18n();
 	const { openApp } = useWindowActions();
 
-	const targetRoomId = useMemo(() => `oda_takim_${teamId}`, [teamId]);
+	const targetRoomId = useMemo(() => `room_team_${teamId}`, [teamId]);
 
 	// Ensure team room exists in PostgreSQL database with correct title
 	useEffect(() => {
@@ -158,7 +158,7 @@ export function TeamChatEmbed({ teamId, teamName }: TeamChatEmbedProps) {
 						type="button"
 						className={s.headerActionBtn}
 						style={{
-							background: 'var(--accent-subtle, rgba(10, 132, 255, 0.15))',
+							background: 'var(--accent-subtle, color-mix(in srgb, var(--accent) 15%, transparent))',
 							borderColor: 'var(--accent)',
 							color: 'var(--accent)',
 						}}

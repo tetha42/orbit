@@ -11,7 +11,7 @@ import { memberTargetName } from '@/lib/audit';
 import { verifyAuth } from '@/lib/auth/authGuard';
 import { verifyOtpCode } from '@/lib/auth/otp';
 import { clientAddress } from '@/lib/http';
-import { notifyEmailChanged } from '@/lib/mail/notifications';
+import { notifyEmailChanged } from '@/lib/mail/notifications/membershipEmails';
 import { logSystemEvent } from '@/db/repositories/logs.repo';
 
 export const dynamic = 'force-dynamic';
@@ -26,27 +26,27 @@ export async function POST(request: Request) {
 	const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
 	const code = String(body?.code ?? body?.verificationCode ?? '').trim();
 	if (!/^\d{6}$/.test(code)) {
-		return NextResponse.json({ error: '6 haneli doğrulama kodunu girin.' }, { status: 400 });
+		return NextResponse.json({ error: 'Enter the 6-digit verification code.' }, { status: 400 });
 	}
 
 	const pending = await getOpenEmailChangeRequest(auth.user.id);
 	if (!pending) {
-		return NextResponse.json({ error: 'Bekleyen bir e-posta değişikliği yok.' }, { status: 400 });
+		return NextResponse.json({ error: 'No pending email change request.' }, { status: 400 });
 	}
 	if (pending.expiresAt <= Date.now()) {
 		await deleteEmailChangeRequest(pending.id);
-		return NextResponse.json({ error: 'Doğrulama kodunun süresi doldu. Yeni kod isteyin.' }, { status: 400 });
+		return NextResponse.json({ error: 'Verification code expired. Request a new code.' }, { status: 400 });
 	}
 	if (pending.attempts >= MAX_ATTEMPTS) {
 		await deleteEmailChangeRequest(pending.id);
-		return NextResponse.json({ error: 'Çok fazla hatalı deneme. Yeni kod isteyin.' }, { status: 429 });
+		return NextResponse.json({ error: 'Too many invalid attempts. Request a new code.' }, { status: 429 });
 	}
 
 	if (!verifyOtpCode(pending.codeHash, code)) {
 		const attempts = await incrementEmailChangeAttempts(pending.id);
 		if (attempts >= MAX_ATTEMPTS) await deleteEmailChangeRequest(pending.id);
 		return NextResponse.json(
-			{ error: 'Doğrulama kodu geçersiz.', ...(attempts >= MAX_ATTEMPTS ? { code: 'TOO_MANY_ATTEMPTS' } : {}) },
+			{ error: 'Invalid verification code.', ...(attempts >= MAX_ATTEMPTS ? { code: 'TOO_MANY_ATTEMPTS' } : {}) },
 			{ status: 400 }
 		);
 	}
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
 	const taken = await getUserByEmail(pending.newEmail);
 	if (taken && taken.id !== auth.user.id) {
 		await deleteEmailChangeRequest(pending.id);
-		return NextResponse.json({ error: 'Bu e-posta adresi artık başka bir üyede kullanılıyor.' }, { status: 409 });
+		return NextResponse.json({ error: 'This email address is already used by another member.' }, { status: 409 });
 	}
 
 	try {
@@ -102,7 +102,7 @@ export async function POST(request: Request) {
 		await logSystemEvent({
 			service: 'auth',
 			level: 'INFO',
-			message: `Üye e-posta adresini değiştirdi: ${oldEmail} → ${pending.newEmail}`,
+			message: `Member changed email address: ${oldEmail} → ${pending.newEmail}`,
 			userId: auth.user.id,
 			ip: clientAddress(request),
 		});
@@ -110,12 +110,12 @@ export async function POST(request: Request) {
 	} catch (error) {
 		const code = error instanceof Error ? error.message : '';
 		if (code === 'EMAIL_TAKEN') {
-			return NextResponse.json({ error: 'Bu e-posta adresi artık başka bir üyede kullanılıyor.' }, { status: 409 });
+			return NextResponse.json({ error: 'This email address is already used by another member.' }, { status: 409 });
 		}
 		if (code === 'MEMBER_NOT_FOUND') {
-			return NextResponse.json({ error: 'Üye bulunamadı.' }, { status: 404 });
+			return NextResponse.json({ error: 'Member not found.' }, { status: 404 });
 		}
-		console.error('API /api/profilee/email/confirm POST error:', error);
-		return NextResponse.json({ error: 'E-posta değiştirilemedi.' }, { status: 500 });
+		console.error('API /api/profile/email/confirm POST error:', error);
+		return NextResponse.json({ error: 'Failed to change email.' }, { status: 500 });
 	}
 }

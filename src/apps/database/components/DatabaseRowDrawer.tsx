@@ -1,8 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { X, ExternalLink, Code2, AlertCircle, Save } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Save } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
+import { fill } from '@/lib/text';
+import { buildInitialRowValues, getCellValue } from '../utils/rowValues';
+import { RowDrawerField } from './rowDrawer/RowDrawerField';
 import type { ColumnSpec } from '../types';
 import s from '../Database.module.css';
 
@@ -24,12 +27,19 @@ export function DatabaseRowDrawer({
 	onJumpToForeignKey,
 }: DatabaseRowDrawerProps) {
 	const { t } = useI18n();
-	const [values, setValues] = useState<Record<string, unknown>>({});
+	const columnsRef = useRef(columns);
+	const [values, setValues] = useState<Record<string, unknown>>(() =>
+		buildInitialRowValues(row, columns)
+	);
 	const [jsonErrors, setJsonErrors] = useState<Record<string, string>>({});
 
 	useEffect(() => {
+		columnsRef.current = columns;
+	}, [columns]);
+
+	useEffect(() => {
 		if (row) {
-			setValues({ ...row });
+			setValues(buildInitialRowValues(row, columnsRef.current));
 			setJsonErrors({});
 		}
 	}, [row]);
@@ -38,6 +48,19 @@ export function DatabaseRowDrawer({
 
 	const handleChange = (colName: string, val: unknown) => {
 		setValues((prev) => ({ ...prev, [colName]: val }));
+	};
+
+	const handleJsonValidate = (colName: string, rawText: string) => {
+		try {
+			JSON.parse(rawText);
+			setJsonErrors((prev) => {
+				const copy = { ...prev };
+				delete copy[colName];
+				return copy;
+			});
+		} catch {
+			setJsonErrors((prev) => ({ ...prev, [colName]: t('dbInvalidJson') }));
+		}
 	};
 
 	const handlePrettifyJson = (colName: string) => {
@@ -52,12 +75,11 @@ export function DatabaseRowDrawer({
 				return copy;
 			});
 		} catch {
-			setJsonErrors((prev) => ({ ...prev, [colName]: 'Geçersiz JSON formatı' }));
+			setJsonErrors((prev) => ({ ...prev, [colName]: t('dbInvalidJsonFormat') }));
 		}
 	};
 
 	const handleSave = () => {
-		// Filter out sensitive and unchanged
 		const changed: Record<string, unknown> = {};
 		for (const col of columns) {
 			if (col.isSensitive) continue;
@@ -66,10 +88,15 @@ export function DatabaseRowDrawer({
 				try {
 					v = JSON.parse(v);
 				} catch {
-					// keep as is
+					// Keep raw string if invalid JSON
 				}
 			}
-			if (v !== row[col.name]) {
+			const orig = getCellValue(row, col.name);
+			const isDiff =
+				typeof v === 'object' && typeof orig === 'object' && v !== null && orig !== null
+					? JSON.stringify(v) !== JSON.stringify(orig)
+					: v !== orig;
+			if (isDiff) {
 				changed[col.name] = v;
 			}
 		}
@@ -77,322 +104,133 @@ export function DatabaseRowDrawer({
 	};
 
 	const pkCol = columns.find((c) => c.isPrimaryKey)?.name || 'id';
-	const pkVal = row[pkCol];
+	const pkVal = getCellValue(row, pkCol);
 
 	return (
 		<>
 			<div className={s.drawerBackdrop} onClick={onClose} style={{ zIndex: 75 }} />
 			<div className={s.drawerPanel} style={{ zIndex: 80, width: 440 }}>
-				{/* Drawer Header */}
-			<div
-				style={{
-					display: 'flex',
-					alignItems: 'center',
-					justifyContent: 'space-between',
-					padding: '14px 18px',
-					borderBottom: '1px solid var(--window-border)',
-					background: 'var(--fill-softer)',
-				}}
-			>
-				<div>
-					<div style={{ fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
-						<span>{t('dbRowDetail') || 'Satır Detayı'}</span>
-						<span
-							style={{
-								fontSize: '11px',
-								padding: '2px 7px',
-								borderRadius: '4px',
-								background: 'var(--accent)',
-								color: 'var(--accent-contrast)',
-							}}
-						>
-							{tableName} #{String(pkVal)}
-						</span>
-					</div>
-					<div style={{ fontSize: '11px', opacity: 0.6, marginTop: '2px' }}>
-						{columns.length} sütun inceleniyor
-					</div>
-				</div>
-				<button
-					type="button"
-					onClick={onClose}
+				{/* Drawer header */}
+				<div
 					style={{
-						background: 'transparent',
-						border: 'none',
-						color: 'inherit',
-						cursor: 'pointer',
-						padding: '4px',
 						display: 'flex',
 						alignItems: 'center',
-						opacity: 0.7,
+						justifyContent: 'space-between',
+						padding: '14px 18px',
+						borderBottom: '1px solid var(--window-border)',
+						background: 'var(--fill-softer)',
 					}}
 				>
-					<X size={18} />
-				</button>
-			</div>
-
-			{/* Drawer Fields Body */}
-			<div
-				style={{
-					flex: 1,
-					overflowY: 'auto',
-					padding: '16px 18px',
-					display: 'flex',
-					flexDirection: 'column',
-					gap: '14px',
-				}}
-			>
-				{columns.map((col) => {
-					const isJson = ['json', 'jsonb'].includes(col.type);
-					const rawVal = values[col.name];
-					const displayVal =
-						isJson && typeof rawVal === 'object' && rawVal !== null
-							? JSON.stringify(rawVal, null, 2)
-							: rawVal !== null && rawVal !== undefined
-							? String(rawVal)
-							: '';
-
-					const isFK = Boolean(col.isForeignKey && col.foreignKeyTarget);
-
-					return (
-						<div
-							key={col.name}
-							style={{
-								display: 'flex',
-								flexDirection: 'column',
-								gap: '4px',
-							}}
-						>
-							<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-								<label
-									style={{
-										fontSize: '12px',
-										fontWeight: col.isPrimaryKey ? 700 : 600,
-										display: 'flex',
-										alignItems: 'center',
-										gap: '6px',
-									}}
-								>
-									<span>{col.name}</span>
-									<span
-										style={{
-											fontSize: '10px',
-											opacity: 0.5,
-											fontWeight: 400,
-											background: 'var(--fill-soft)',
-											padding: '1px 5px',
-											borderRadius: '3px',
-										}}
-									>
-										{col.type}
-									</span>
-									{col.isPrimaryKey && (
-										<span style={{ fontSize: '10px', color: 'var(--accent)', fontWeight: 700 }}>
-											[PK]
-										</span>
-									)}
-								</label>
-
-								{/* FK Jump Link */}
-								{isFK && rawVal && onJumpToForeignKey && (
-									<button
-										type="button"
-										onClick={() =>
-											onJumpToForeignKey(
-												col.foreignKeyTarget!.table,
-												col.foreignKeyTarget!.column,
-												rawVal
-											)
-										}
-										style={{
-											display: 'inline-flex',
-											alignItems: 'center',
-											gap: '3px',
-											background: 'var(--accent-subtle)',
-											color: 'var(--accent)',
-											border: '1px solid var(--accent-border)',
-											borderRadius: '4px',
-											padding: '2px 6px',
-											fontSize: '10px',
-											fontWeight: 600,
-											cursor: 'pointer',
-										}}
-										title={`İlişkili ${col.foreignKeyTarget!.table} tablosuna zıpla`}
-									>
-										<span>{col.foreignKeyTarget!.table}</span>
-										<ExternalLink size={10} />
-									</button>
-								)}
-
-								{/* JSON Prettify Button */}
-								{isJson && !col.isSensitive && (
-									<button
-										type="button"
-										onClick={() => handlePrettifyJson(col.name)}
-										style={{
-											display: 'inline-flex',
-											alignItems: 'center',
-											gap: '3px',
-											background: 'transparent',
-											border: '1px solid var(--window-border)',
-											borderRadius: '4px',
-											padding: '2px 6px',
-											fontSize: '10.5px',
-											cursor: 'pointer',
-											color: 'inherit',
-											opacity: 0.7,
-										}}
-									>
-										<Code2 size={11} />
-										<span>Biçimlendir</span>
-									</button>
-								)}
-							</div>
-
-							{/* Input Rendering */}
-							{col.isSensitive ? (
-								<input
-									type="text"
-									disabled
-									value="•••••••• (Hassas Veri)"
-									style={{
-										background: 'var(--input-bg)',
-										border: '1px solid var(--window-border)',
-										borderRadius: '6px',
-										padding: '6px 10px',
-										fontSize: '12px',
-										opacity: 0.6,
-										color: 'inherit',
-									}}
-								/>
-							) : isJson ? (
-								<div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-									<textarea
-										rows={5}
-										value={displayVal}
-										onChange={(e) => {
-											handleChange(col.name, e.target.value);
-											try {
-												JSON.parse(e.target.value);
-												setJsonErrors((prev) => {
-													const copy = { ...prev };
-													delete copy[col.name];
-													return copy;
-												});
-											} catch {
-												setJsonErrors((prev) => ({
-													...prev,
-													[col.name]: 'Geçersiz JSON',
-												}));
-											}
-										}}
-										style={{
-											fontFamily: 'monospace',
-											fontSize: '11px',
-											background: 'var(--input-bg)',
-											border: jsonErrors[col.name]
-												? '1px solid var(--danger)'
-												: '1px solid var(--window-border)',
-											borderRadius: '6px',
-											padding: '8px 10px',
-											color: 'inherit',
-											resize: 'vertical',
-										}}
-									/>
-									{jsonErrors[col.name] && (
-										<span style={{ fontSize: '10.5px', color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-											<AlertCircle size={11} />
-											{jsonErrors[col.name]}
-										</span>
-									)}
-								</div>
-							) : col.type === 'boolean' ? (
-								<select
-									value={String(rawVal ?? '')}
-									onChange={(e) =>
-										handleChange(col.name, e.target.value === 'true' ? true : e.target.value === 'false' ? false : null)
-									}
-									style={{
-										background: 'var(--input-bg)',
-										border: '1px solid var(--window-border)',
-										borderRadius: '6px',
-										padding: '6px 10px',
-										fontSize: '12px',
-										color: 'inherit',
-									}}
-								>
-									<option value="">(NULL)</option>
-									<option value="true">TRUE</option>
-									<option value="false">FALSE</option>
-								</select>
-							) : (
-								<input
-									type="text"
-									value={displayVal}
-									onChange={(e) => handleChange(col.name, e.target.value)}
-									style={{
-										background: 'var(--input-bg)',
-										border: '1px solid var(--window-border)',
-										borderRadius: '6px',
-										padding: '6px 10px',
-										fontSize: '12px',
-										color: 'inherit',
-									}}
-								/>
-							)}
+					<div>
+						<div style={{ fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+							<span>{t('dbRowDetail')}</span>
+							<span
+								style={{
+									fontSize: '11px',
+									padding: '2px 7px',
+									borderRadius: '4px',
+									background: 'var(--accent)',
+									color: 'var(--accent-contrast)',
+								}}
+							>
+								{tableName} #{String(pkVal)}
+							</span>
 						</div>
-					);
-				})}
-			</div>
+						<div style={{ fontSize: '11px', opacity: 0.6, marginTop: '2px' }}>
+							{fill(t('dbColumnsInspected'), { n: columns.length })}
+						</div>
+					</div>
+					<button
+						type="button"
+						onClick={onClose}
+						style={{
+							background: 'transparent',
+							border: 'none',
+							color: 'inherit',
+							cursor: 'pointer',
+							padding: '4px',
+							display: 'flex',
+							alignItems: 'center',
+							opacity: 0.7,
+						}}
+					>
+						<X size={18} />
+					</button>
+				</div>
 
-			{/* Drawer Footer Actions */}
-			<div
-				style={{
-					padding: '12px 18px',
-					borderTop: '1px solid var(--window-border)',
-					background: 'var(--fill-softer)',
-					display: 'flex',
-					justifyContent: 'flex-end',
-					gap: '8px',
-				}}
-			>
-				<button
-					type="button"
-					onClick={onClose}
+				{/* Fields body */}
+				<div
 					style={{
-						padding: '6px 12px',
-						borderRadius: '6px',
-						fontSize: '12px',
-						background: 'transparent',
-						border: '1px solid var(--window-border)',
-						color: 'inherit',
-						cursor: 'pointer',
+						flex: 1,
+						overflowY: 'auto',
+						padding: '16px 18px',
+						display: 'flex',
+						flexDirection: 'column',
+						gap: '14px',
 					}}
 				>
-					{t('cancel') || 'Kapat'}
-				</button>
-				<button
-					type="button"
-					onClick={handleSave}
+					{columns.map((col) => (
+						<RowDrawerField
+							key={col.name}
+							column={col}
+							rawValue={values[col.name]}
+							jsonError={jsonErrors[col.name]}
+							onChange={handleChange}
+							onJsonValidate={handleJsonValidate}
+							onPrettifyJson={handlePrettifyJson}
+							onJumpToForeignKey={onJumpToForeignKey}
+						/>
+					))}
+				</div>
+
+				{/* Footer actions */}
+				<div
 					style={{
-						display: 'inline-flex',
-						alignItems: 'center',
-						gap: '6px',
-						padding: '6px 14px',
-						borderRadius: '6px',
-						fontSize: '12px',
-						fontWeight: 600,
-						background: 'var(--accent)',
-						color: 'var(--accent-contrast)',
-						border: 'none',
-						cursor: 'pointer',
+						padding: '12px 18px',
+						borderTop: '1px solid var(--window-border)',
+						background: 'var(--fill-softer)',
+						display: 'flex',
+						justifyContent: 'flex-end',
+						gap: '8px',
 					}}
 				>
-					<Save size={13} />
-					<span>{t('save') || 'Değişiklikleri Kaydet'}</span>
-				</button>
+					<button
+						type="button"
+						onClick={onClose}
+						style={{
+							padding: '6px 12px',
+							borderRadius: '6px',
+							fontSize: '12px',
+							background: 'transparent',
+							border: '1px solid var(--window-border)',
+							color: 'inherit',
+							cursor: 'pointer',
+						}}
+					>
+						{t('cancel')}
+					</button>
+					<button
+						type="button"
+						onClick={handleSave}
+						style={{
+							display: 'inline-flex',
+							alignItems: 'center',
+							gap: '6px',
+							padding: '6px 14px',
+							borderRadius: '6px',
+							fontSize: '12px',
+							fontWeight: 600,
+							background: 'var(--accent)',
+							color: 'var(--accent-contrast)',
+							border: 'none',
+							cursor: 'pointer',
+						}}
+					>
+						<Save size={13} />
+						<span>{t('save')}</span>
+					</button>
+				</div>
 			</div>
-		</div>
 		</>
 	);
 }

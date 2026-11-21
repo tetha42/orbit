@@ -12,21 +12,21 @@ export const INVENTORY_STATUSES = ['available', 'on_loan', 'faulty', 'lost'] as 
 
 export type InventoryStatus = (typeof INVENTORY_STATUSES)[number];
 
-/** Turkish labels for the status badges and filters. */
+/** Status labels for badges and filters. */
 export const INVENTORY_STATUS_LABELS: Record<InventoryStatus, string> = {
-	available: 'MÜSAİT',
-	on_loan: 'ÖDÜNÇTE',
-	faulty: 'ARIZALI',
-	lost: 'KAYIP',
+	available: 'AVAILABLE',
+	on_loan: 'ON LOAN',
+	faulty: 'FAULTY',
+	lost: 'LOST',
 };
 
 /** Filter labels, including the "show everything" option. */
 export const INVENTORY_FILTER_LABELS: Record<InventoryStatus | 'all', string> = {
-	all: 'Tümü',
-	available: 'Müsait',
-	on_loan: 'Ödünçte',
-	faulty: 'Arızalı',
-	lost: 'Kayıp',
+	all: 'All',
+	available: 'Available',
+	on_loan: 'On Loan',
+	faulty: 'Faulty',
+	lost: 'Lost',
 };
 
 export function isInventoryStatus(value: unknown): value is InventoryStatus {

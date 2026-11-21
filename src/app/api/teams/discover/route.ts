@@ -28,13 +28,13 @@ export async function GET(request: Request) {
 				teams,
 				myTeamCount: activeTeams.length,
 				limits: { team: TEAM_LIMIT, pendingApplication: PENDING_APPLICATION_MAX },
-				saltReadable: auth.user.status === 'alumni',
+				readOnly: auth.user.status === 'alumni',
 			},
 			{ headers: NO_STORE }
 		);
 	} catch (error) {
-		console.error('API /api/teams/kesfet GET error:', error);
-		return NextResponse.json({ error: 'Takımlar okunamadı.' }, { status: 500, headers: NO_STORE });
+		console.error('API /api/teams/discover GET error:', error);
+		return NextResponse.json({ error: 'Failed to load teams.' }, { status: 500, headers: NO_STORE });
 	}
 }
 
@@ -42,7 +42,7 @@ async function handlePOST(request: Request) {
 	const auth = await authenticateEnrolled(request);
 	if (!auth.authorized) return auth.response;
 	if (auth.user.status === 'alumni') {
-		return NextResponse.json({ error: 'Mezunlar sadece okuma erişimine sahiptir.' }, { status: 403 });
+		return NextResponse.json({ error: 'Alumni members have read-only access.' }, { status: 403 });
 	}
 
 	try {
@@ -50,14 +50,14 @@ async function handlePOST(request: Request) {
 		const action = body?.action;
 		const teamId = typeof body?.teamId === 'string' ? body.teamId : '';
 		if ((action !== 'apply' && action !== 'withdraw') || !teamId) {
-			return NextResponse.json({ error: 'Eksik ya da geçersiz parametreler.' }, { status: 400 });
+			return NextResponse.json({ error: 'Missing or invalid parameters.' }, { status: 400 });
 		}
 
 		if (action === 'withdraw') {
 			// Only an application can be withdrawn here; leaving a team is the Teams app's job.
 			const mine = (await getTeamShowcase(auth.user.id)).find((t) => t.id === teamId);
-			if (mine?.myMyStatus !== 'applied') {
-				return NextResponse.json({ error: 'Geri çekilecek bir başvuru bulunamadı.' }, { status: 404 });
+			if (mine?.myStatus !== 'applied') {
+				return NextResponse.json({ error: 'No application found to withdraw.' }, { status: 404 });
 			}
 			const r = await leaveTeam({ teamId, userId: auth.user.id });
 			if (r.success) await publishEventQuiet(getPgPool(), { k: 'team_updated', teamId });
@@ -75,8 +75,8 @@ async function handlePOST(request: Request) {
 		await publishEventQuiet(getPgPool(), [{ k: 'team_updated', teamId }, ...notificationEvents([team?.leadId])]);
 		return NextResponse.json({ success: true, status: result.status, message: result.message });
 	} catch (error) {
-		console.error('API /api/teams/kesfet POST error:', error);
-		return NextResponse.json({ error: 'İşlem tamamlanamadı.' }, { status: 500 });
+		console.error('API /api/teams/discover POST error:', error);
+		return NextResponse.json({ error: 'Operation failed.' }, { status: 500 });
 	}
 }
 

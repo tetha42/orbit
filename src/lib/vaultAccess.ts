@@ -9,6 +9,7 @@ import {
 import { authenticateEnrolled, can, type AuthorizedUser } from '@/lib/auth/access';
 import type { VaultSummary } from '@/types/budget';
 import { canUserAccessChatRoom } from '@/db/repositories/chat.repo';
+import { canUserReadDriveFile } from '@/domains/drive/sharesRepo';
 
 /**
  * Who may see and edit a vault — the single place that decides it.
@@ -27,7 +28,7 @@ export type VaultAccessResult =
 	| { authorized: true; user: AuthorizedUser; isManagement: boolean; access: VaultAccess;response?: never }
 	| { authorized: false; user?: never; isManagement?: never; access?: never;response: NextResponse };
 
-const forbidden = (message = 'Bu kasaya erişim yetkiniz yok.') =>
+const forbidden = (message = 'You do not have permission to access this vault.') =>
 	NextResponse.json({ error: message }, { status: 403 });
 
 async function isTeamCaptain(user: AuthorizedUser, teamId: string | null): Promise<boolean> {
@@ -49,7 +50,7 @@ export async function canAccessVault(user: AuthorizedUser, teamId: string | null
 	return level !== 'none';
 }
 
-/** Authenticates the caller and checks they may read (`oku`) or change (`yaz`) this vault. */
+/** Authenticates the caller and checks they may read or write this vault. */
 export async function verifyVaultAccess(
 	request: Request,
 	teamId: string | null,
@@ -62,10 +63,10 @@ export async function verifyVaultAccess(
 	if (access === 'none') return { authorized: false, response: forbidden() };
 	const isWrite = required === 'write';
 	if (isWrite && access !== 'write') {
-		return { authorized: false, response: forbidden('Bu kasayı yalnızca görüntüleyebilirsiniz.') };
+		return { authorized: false, response: forbidden('You can only view this vault.') };
 	}
 	if (user.status === 'alumni' && isWrite) {
-		return { authorized: false, response: forbidden('Mezunlar sadece okuma erişimine sahiptir.') };
+		return { authorized: false, response: forbidden('Alumni have read-only access.') };
 	}
 	return { authorized: true, user, isManagement: can(user, 'budget', 'manage'), access,};
 }
@@ -75,7 +76,7 @@ export async function listAccessibleVaults(user: AuthorizedUser): Promise<Pick<V
 	if (can(user, 'budget', 'use')) {
 		const teams = await getTeams();
 		return [
-			{ teamId: null, name: 'Genel Kasa', kind: 'general' },
+			{ teamId: null, name: 'General Vault', kind: 'general' },
 			...teams.map((t) => ({ teamId: t.id, name: t.name, kind: 'project' as const })),
 		];
 	}
@@ -91,7 +92,7 @@ export async function verifyUploadAccess(request: Request): Promise<VaultAccessR
 	const user = auth.user;
 	const isManagement = can(user, 'budget', 'manage');
 	const isCaptain = !isManagement && can(user, 'teams', 'use') && (await getLedTeams(user.id)).length > 0;
-	if (!isManagement && !isCaptain) return { authorized: false, response: forbidden('Dosya yükleme yetkiniz yok.') };
+	if (!isManagement && !isCaptain) return { authorized: false, response: forbidden('You do not have permission to upload files.') };
 	return { authorized: true, user, isManagement, access: 'write',};
 }
 
@@ -115,6 +116,11 @@ export async function canReadUpload(user: AuthorizedUser, name: string): Promise
 			user.id,
 			Boolean(user.permission?.admin)
 		);
+	}
+
+	if (file?.sourceApp === 'drive') {
+		if (!can(user, 'drive', 'use') && !user.permission?.admin) return false;
+		return canUserReadDriveFile(name, user.id, user.roleId ?? '');
 	}
 
 	const vaultIds = await getBudgetTeamIdsByReceipt(`/api/uploads/${name}`);

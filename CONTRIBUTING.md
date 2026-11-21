@@ -3,8 +3,7 @@
 ## Before you start
 
 - Use Node.js 22+ and pnpm.
-- Read `docs/ARCHITECTURE.md`, `docs/DATA_MODEL_ROADMAP.md` and
-  `docs/ARCHITECTURE_AUDIT.md`.
+- Read `AGENTS.md`, `docs/README.md`, and `docs/ARCHITECTURE.md`.
 - Never commit `.env`, `config.ini`, `data/`, uploads, database dumps or real
   credentials.
 
@@ -12,24 +11,23 @@
 
 ```bash
 pnpm install
-pnpm dev
+make db-up          # or: ./bin/orbit db up (isolated dev PostgreSQL on 127.0.0.1:5432)
+make dev            # or: ./bin/orbit dev (prints /setup#token=... URL when unlocked)
 ```
 
-Use the Web Setup Wizard at `/setup` for the first run.
+Run `make doctor` (`./bin/orbit doctor`) to check environment health and config provenance, or `make setup-url` (`./bin/orbit setup url`) to retrieve the first-run `/setup` link.
 
 ## Quality gates
 
 Every change must pass:
 
 ```bash
-pnpm typecheck
-pnpm lint
-pnpm check
-pnpm build
+pnpm verify         # tsc --noEmit, eslint --cache ., and pnpm check (9 codegen/AST/length gates)
+pnpm test           # contract test suite (tests/contract/*.test.mjs)
+pnpm build          # production Next.js standalone build
 ```
 
-For database or auth changes, also run the relevant integration/security tests
-and add a regression test for the failure you are fixing.
+For database, authentication, or UI changes, also run `pnpm test:security` and/or `pnpm e2e` (`tests/e2e/ui/README.md`) and add a regression test for the failure you are fixing.
 
 ## Architecture rules
 

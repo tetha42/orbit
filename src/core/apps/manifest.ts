@@ -33,7 +33,7 @@ export interface AppMenuItem {
 	/** Opens the app, then sends it this command — the app receives it with `useAppCommand`. */
 	command?: string;
 	/** Just opens the app. */
-	ac?: true;
+	open?: true;
 }
 
 export interface AppMenuCategory {
@@ -63,7 +63,7 @@ export interface AppPermission {
 	use: string;
 	manage: string;
 	warning?: string;
-	/** Everyone gets at least `kullan` (Settings: password, 2FA, theme…). */
+	/** Everyone gets at least `use` (Settings: password, 2FA, theme…). */
 	everyoneOpen?: true;
 	/** Position in the role editor; apps without one come last, by id. */
 	order?: number;
@@ -130,7 +130,7 @@ export interface WindowManifest extends ManifestBase {
 	colors?: { icon?: string; menu?: string; search?: string };
 	/** Dock icon image (without it the lucide icon on an accent tile is used). */
 	dockIcon?: string;
-	/** The little label on the launcher card ("Yeni", "Canlı") — string or { tr, en }. */
+	/** The little label on the launcher card ("New", "Live") — string or { tr, en }. */
 	badge?: string | L10n;
 	window: AppWindow;
 	component: AppComponent;

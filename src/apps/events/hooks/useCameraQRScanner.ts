@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import jsQR from 'jsqr';
 import { useI18n } from '@/core/i18n';
 import { useSound } from '@/core/sound';
 import { acquireModalLock } from '@/lib/client/modalLock';
@@ -26,11 +25,15 @@ export function useCameraQRScanner({
 	const streamRef = useRef<MediaStream | null>(null);
 	const onScanRef = useRef(onScan);
 	const onCloseRef = useRef(onClose);
+	const playSystemSoundRef = useRef(playSystemSound);
+	const tRef = useRef(t);
 	const lastRead = useRef<{ code: string; at: number } | null>(null);
 
 	useEffect(() => {
 		onScanRef.current = onScan;
 		onCloseRef.current = onClose;
+		playSystemSoundRef.current = playSystemSound;
+		tRef.current = t;
 	});
 
 	useEffect(() => {
@@ -82,7 +85,7 @@ export function useCameraQRScanner({
 				if (!active) return;
 				console.warn('Camera access denied or unavailable:', err);
 				setHasPermission(false);
-				setErrorMsg(t('evCameraPermissionError'));
+				setErrorMsg(tRef.current('evCameraPermissionError'));
 			}
 		};
 
@@ -92,7 +95,7 @@ export function useCameraQRScanner({
 			const last = lastRead.current;
 			if (rawVal && !(last && last.code === rawVal && Date.now() - last.at < 4000)) {
 				lastRead.current = { code: rawVal, at: Date.now() };
-				playSystemSound();
+				playSystemSoundRef.current();
 				onScanRef.current(rawVal);
 				if (!continuous) onCloseRef.current();
 			}
@@ -101,33 +104,51 @@ export function useCameraQRScanner({
 		// Native detector where the browser has one (Chromium/Android). Safari and iOS
 		// do not, so every other browser decodes frames in JavaScript with jsQR.
 		let intervalId: ReturnType<typeof setInterval> | null = null;
+		let useJsQrFallback = true;
 		if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
 			try {
 				const barcodeDetector = new window.BarcodeDetector!({ formats: ['qr_code'] });
+				useJsQrFallback = false;
 				intervalId = setInterval(async () => {
 					if (videoRef.current && videoRef.current.readyState >= 2) {
 						try {
 							const barcodes = await barcodeDetector.detect(videoRef.current);
 							if (barcodes.length > 0 && barcodes[0].rawValue) handleRead(barcodes[0].rawValue);
-						} catch {}
+						} catch {
+							// Skip transient frame-decode errors while the video stream settles.
+						}
 					}
 				}, 400);
-			} catch {}
-		} else {
+			} catch {
+				// BarcodeDetector unavailable or unsupported for qr_code; fall back to jsQR below.
+			}
+		}
+		if (useJsQrFallback) {
 			const canvas = document.createElement('canvas');
 			const ctx = canvas.getContext('2d', { willReadFrequently: true });
-			intervalId = setInterval(() => {
-				const video = videoRef.current;
-				if (!ctx || !video || video.readyState < 2 || !video.videoWidth) return;
-				// Downscale to keep decoding cheap on phones; QR codes stay readable at this size.
-				const scale = Math.min(1, 480 / video.videoWidth);
-				canvas.width = Math.round(video.videoWidth * scale);
-				canvas.height = Math.round(video.videoHeight * scale);
-				ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-				const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
-				const found = jsQR(frame.data, frame.width, frame.height, { inversionAttempts: 'dontInvert' });
-				if (found?.data) handleRead(found.data);
-			}, 300);
+			void import('jsqr')
+				.then((mod) => {
+					if (!active) return;
+					const jsQR =
+						typeof mod.default === 'function'
+							? mod.default
+							: (mod as unknown as typeof mod.default);
+					intervalId = setInterval(() => {
+						const video = videoRef.current;
+						if (!ctx || !video || video.readyState < 2 || !video.videoWidth) return;
+						// Downscale to keep decoding cheap on phones; QR codes stay readable at this size.
+						const scale = Math.min(1, 480 / video.videoWidth);
+						canvas.width = Math.round(video.videoWidth * scale);
+						canvas.height = Math.round(video.videoHeight * scale);
+						ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+						const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+						const found = jsQR(frame.data, frame.width, frame.height, {
+							inversionAttempts: 'dontInvert',
+						});
+						if (found?.data) handleRead(found.data);
+					}, 300);
+				})
+				.catch(() => {});
 		}
 
 		return () => {
@@ -138,7 +159,7 @@ export function useCameraQRScanner({
 				streamRef.current = null;
 			}
 		};
-	}, [isOpen, continuous, playSystemSound, t]);
+	}, [isOpen, continuous]);
 
 	const handleManualSubmit = (e: React.FormEvent) => {
 		e.preventDefault();

@@ -1,9 +1,8 @@
 // Authenticator codes that the server will accept.
 //
-// The server accepts a code once: a second use of the same 30-second window is
-// refused. `totpCode` therefore waits for the next window when the secret was
-// already used in the current one. The windows are remembered in the temp folder, so
-// the bookkeeping also holds from one run to the next.
+// The server accepts monotonic steps within RFC 6238 +/-1 step tolerance (`afterTimeStep`).
+// `totpCode` advances across allowed T-1 / T / T+1 steps before sleeping, avoiding unnecessary
+// 30-second waits between sequential factor challenges on the same secret.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -14,30 +13,59 @@ const require = createRequire(import.meta.url);
 const { generate } = require('otplib');
 
 const STEP_MS = 30_000;
+const BOUNDARY_GUARD_MS = 5_000;
 const FILE = path.join(TMP, 'totp-windows.json');
+const windows = new Map();
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const keyOf = (secret) => crypto.createHash('sha256').update(secret).digest('hex').slice(0, 16);
+const keyOf = (secret, scope = '') =>
+	crypto.createHash('sha256').update(`${scope}\0${secret}`).digest('hex').slice(0, 16);
 const windowNow = () => Math.floor(Date.now() / STEP_MS);
 
-function read() {
+function loadFromDisk() {
+	if (windows.size > 0) return;
 	try {
-		return JSON.parse(fs.readFileSync(FILE, 'utf8'));
+		const data = JSON.parse(fs.readFileSync(FILE, 'utf8'));
+		for (const [k, v] of Object.entries(data)) {
+			if (typeof v === 'number') windows.set(k, v);
+		}
 	} catch {
-		return {};
+		// No prior window state saved yet.
 	}
 }
 
-/** Tell the bookkeeping a code was spent outside `totpCode` (another script, the browser). */
-export function markTotpUsed(secret) {
-	fs.mkdirSync(TMP, { recursive: true });
-	fs.writeFileSync(FILE, JSON.stringify({ ...read(), [keyOf(secret)]: windowNow() }));
+function flushToDisk() {
+	try {
+		fs.mkdirSync(TMP, { recursive: true });
+		fs.writeFileSync(FILE, JSON.stringify(Object.fromEntries(windows)));
+	} catch {
+		// Non-fatal persistence fallback; in-memory map remains authoritative for this run.
+	}
 }
 
-/** A fresh code for `secret`; waits (up to 30 s) if this window's code was already spent. */
-export async function totpCode(secret) {
-	if (read()[keyOf(secret)] >= windowNow()) await sleep(STEP_MS + 500 - (Date.now() % STEP_MS));
-	markTotpUsed(secret);
-	return generate({ secret });
+/** Tells the bookkeeping a step was spent outside `totpCode` (fixtures, browser, or cloned DB). */
+export function markTotpUsed(secret, scope = '', usedStep = windowNow()) {
+	loadFromDisk();
+	const key = keyOf(secret, scope);
+	windows.set(key, Math.max(windows.get(key) ?? -Infinity, usedStep));
+	flushToDisk();
+}
+
+/** A fresh accepted code for `secret`, stepping monotonically across T-1 / T / T+1 without sleeping when allowed. */
+export async function totpCode(secret, scope = '') {
+	loadFromDisk();
+	const key = keyOf(secret, scope);
+	const remainingMs = STEP_MS - (Date.now() % STEP_MS);
+	const minStep = remainingMs > BOUNDARY_GUARD_MS ? windowNow() - 1 : windowNow();
+	const lastStep = windows.get(key) ?? -Infinity;
+	const targetStep = Math.max(lastStep + 1, minStep);
+
+	while (windowNow() + 1 < targetStep) {
+		const waitMs = Math.max(200, (targetStep - 1) * STEP_MS - Date.now() + 200);
+		await sleep(Math.min(waitMs, STEP_MS));
+	}
+
+	markTotpUsed(secret, scope, targetStep);
+	return generate({ secret, epoch: targetStep * 30 });
 }

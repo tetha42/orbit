@@ -13,31 +13,70 @@ export interface AuditOptions<TContext = unknown, TBody = unknown> {
 
 export type RouteHandler<TContext = unknown> = (
 	request: Request,
-	context?: TContext
+	context: TContext
 ) => Promise<Response | NextResponse> | Response | NextResponse;
 
 /**
  * Higher-order function that wraps a Next.js route mutation handler (POST/PUT/DELETE/PATCH).
  * Ensures every state mutation logs an auditable event with actor, IP, action, target and redacted payload.
  */
+import { checkDeclaredContentLength, readBoundedJson } from '@/lib/httpBodyGuard';
+
+const AUDIT_BODY_MAX_BYTES = 1024 * 1024;
+
 export function withAudit<TContext = unknown, TBody = unknown>(
 	handler: RouteHandler<TContext>,
 	options: AuditOptions<TContext, TBody>
 ): RouteHandler<TContext> {
-	return async (request: Request, context?: TContext) => {
+	return async (request: Request, context: TContext) => {
 		let bodyPayload: unknown = null;
+		let clonedForAudit: Request | null = null;
 		try {
-			if (request.method !== 'GET' && request.method !== 'HEAD') {
+			if (
+				request.method !== 'GET' &&
+				request.method !== 'HEAD' &&
+				request.body !== null &&
+				request.headers.get('content-length') !== '0'
+			) {
 				const contentType = request.headers.get('content-type') || '';
-				if (contentType.includes('application/json')) {
-					bodyPayload = await request.clone().json().catch(() => null);
+				if (
+					contentType.includes('application/json') &&
+					checkDeclaredContentLength(request, AUDIT_BODY_MAX_BYTES)
+				) {
+					clonedForAudit = request.clone();
 				}
 			}
 		} catch {
-			// Body cloning/parsing error is non-fatal for handler execution
+			clonedForAudit = null;
 		}
 
-		const response = await handler(request, context);
+		let response: Response | undefined = undefined;
+		try {
+			response = await handler(request, context);
+		} finally {
+			if (!response && clonedForAudit) {
+				void clonedForAudit.body?.cancel().catch(() => {});
+				if (!request.bodyUsed) {
+					void request.body?.cancel().catch(() => {});
+				}
+				clonedForAudit = null;
+			}
+		}
+
+		if (response.status >= 200 && response.status < 400) {
+			if (clonedForAudit) {
+				bodyPayload = await readBoundedJson(clonedForAudit, AUDIT_BODY_MAX_BYTES).catch(
+					() => null
+				);
+				clonedForAudit = null;
+			}
+		} else if (clonedForAudit) {
+			void clonedForAudit.body?.cancel().catch(() => {});
+			if (!request.bodyUsed) {
+				void request.body?.cancel().catch(() => {});
+			}
+			clonedForAudit = null;
+		}
 
 		if (response.status >= 200 && response.status < 400) {
 			try {

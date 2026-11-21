@@ -15,16 +15,16 @@ export const randomPassword = () => `E2e-${crypto.randomBytes(9).toString('base6
 
 /**
  * @param t        the suite context
- * @param options  `izinler` (role matrix; a role is made for it) or `rolId` (an existing role);
- *                 `ad` is the first name (shown in lists)
- * @returns { id, eposta, sifre, ad, soyad, rolId, api, open }  `api` is signed in; `open()` is a browser page signed in as it
+ * @param options  `permissions` (role matrix; a role is made for it) or `roleId` (an existing role);
+ *                 `name` is the first name (shown in lists)
+ * @returns { id, email, password, name, surname, roleId, api, open }  `api` is signed in; `open()` is a browser page signed in as it
  */
-export async function temporaryMember(t, { permissions, roleId, name = 'Geçici' } = {}) {
+export async function temporaryMember(t, { permissions, roleId, name = 'Temporary' } = {}) {
 	const admin = await t.api('admin');
 	const tag = uniq();
 	let role = roleId;
 	if (!role) {
-		role = await createRole(admin, { name: `E2E Rol ${tag}`, color: '#64d2ff', description: 'Geçici test rolü', twoStepRequired: false, permissions });
+		role = await createRole(admin, { name: `E2E Role ${tag}`, color: '#64d2ff', description: 'Temporary test role', twoStepRequired: false, permissions });
 		t.cleanup(async () => {
 			await admin.del('/api/roles', { id: role, move: t.fx.roles.member });
 		});

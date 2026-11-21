@@ -47,11 +47,6 @@ async function main() {
 # Quick Start (Zero-Config):
 #   make up
 #   or: docker compose up -d
-#
-# Host Caddy Reverse Proxy Configuration (Caddyfile):
-#   orbit.example.com {
-#       reverse_proxy 127.0.0.1:3000
-#   }
 # ===========================================================================
 
 services:

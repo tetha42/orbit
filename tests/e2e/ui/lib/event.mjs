@@ -1,7 +1,7 @@
 // Events a suite creates for itself. Times are always relative to now, so a run on any
 // day sees the same "upcoming" or "under way" event; nothing is pinned to a date.
 import { runTag } from './membership.mjs';
-import { openWide } from './arayuz.mjs';
+import { openWide } from './ui-shared.mjs';
 
 const MIN = 60_000;
 
@@ -14,7 +14,7 @@ export async function makeEvent(t, admin, { label, startMin = 3 * 24 * 60, lengt
 	const res = await admin.post('/api/events', {
 		action: 'createEvent',
 		title: `E2E ${label} ${runTag()}`,
-		description: 'E2E sınaması için kurulan geçici etkinlik.',
+		description: 'Temporary event created for the E2E run.',
 		typeValue,
 		location: 'Test Salonu',
 		start: now + startMin * MIN,
@@ -30,8 +30,8 @@ export async function makeEvent(t, admin, { label, startMin = 3 * 24 * 60, lengt
 
 /** Deletes an event after taking back its check-ins. */
 export async function removeEvent(admin, id) {
-	const list = (await admin.get(`/api/events/${encodeURIComponent(id)}/katilim`)).json?.list ?? [];
-	for (const r of list) if (r.participationTime) await admin.post('/api/events', { action: 'removeAttendance', eventId: id, userId: r.userId });
+	const list = (await admin.get(`/api/events/${encodeURIComponent(id)}/attendance`)).json?.list ?? [];
+	for (const r of list) if (r.participationTime) await admin.post('/api/events', { action: 'deleteAttendance', eventId: id, userId: r.userId });
 	await admin.post('/api/events', { action: 'deleteEvent', eventId: id });
 }
 
@@ -47,7 +47,7 @@ export async function eventOf(who, id) {
 
 /** The organiser's list of registrations and check-ins. */
 export async function attendance(admin, id) {
-	return (await admin.get(`/api/events/${encodeURIComponent(id)}/katilim`)).json?.list ?? [];
+	return (await admin.get(`/api/events/${encodeURIComponent(id)}/attendance`)).json?.list ?? [];
 }
 
 /** Events app, maximised, with one event selected; returns { win, detail }. */

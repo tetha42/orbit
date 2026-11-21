@@ -3,11 +3,11 @@
  * document of 2026). This turns them into the "2026/005" form printed on paper;
  * numbers outside that scheme are shown as they are.
  */
-export function documentCount(decisionNo: number): string {
-	const n = Math.trunc(Number(decisionNo));
+export function documentCount(referenceNumber: number): string {
+	const n = Math.trunc(Number(referenceNumber));
 	if (!Number.isFinite(n) || n < 1000_000 || n > 9999_999) return String(Number.isFinite(n) ? n : '');
 	return `${Math.floor(n / 1000)}/${String(n % 1000).padStart(3, '0')}`;
 }
 
 /** The verification code printed under a document's QR code. */
-export const documentVerificationCode = (decisionNo: number) => `ORBIT-DOC-${Math.trunc(Number(decisionNo))}`;
+export const documentVerificationCode = (referenceNumber: number) => `ORBIT-DOC-${Math.trunc(Number(referenceNumber))}`;

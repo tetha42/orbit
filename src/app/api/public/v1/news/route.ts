@@ -21,7 +21,7 @@ function positiveInt(value: string | null, max: number): number | undefined | nu
  * `GET /api/public/v1/news` — published articles, newest first.
  *
  * Query: `page` (default 1), `pageSize` (1–24, default 12), `category` (one of the
- * category ids), `featured` (`1`/`true`: only "önemli" articles). Drafts and
+ * category ids), `featured` (`1`/`true`: only featured articles). Drafts and
  * members-only articles never appear here.
  */
 export async function GET(request: Request) {
@@ -33,14 +33,14 @@ export async function GET(request: Request) {
 
 		const page = positiveInt(params.get('page'), 10_000);
 		const pageSize = positiveInt(params.get('pageSize'), MAX_PAGE_SIZE);
-		if (page === null) return publicError(request, 400, 'invalid_page', 'page 1 veya daha büyük bir tam sayı olmalıdır.');
+		if (page === null) return publicError(request, 400, 'invalid_page', 'page must be an integer greater than or equal to 1.');
 		if (pageSize === null) {
-			return publicError(request, 400, 'invalid_page_size', `pageSize 1 ile ${MAX_PAGE_SIZE} arasında bir tam sayı olmalıdır.`);
+			return publicError(request, 400, 'invalid_page_size', `pageSize must be an integer between 1 and ${MAX_PAGE_SIZE}.`);
 		}
 
 		const category = params.get('category');
 		if (category && !isNewsCategory(category)) {
-			return publicError(request, 400, 'invalid_category', `category şunlardan biri olmalıdır: ${NEWS_CATEGORY_IDS.join(', ')}.`);
+			return publicError(request, 400, 'invalid_category', `category must be one of: ${NEWS_CATEGORY_IDS.join(', ')}.`);
 		}
 		const featuredParam = params.get('featured');
 		const featured = featuredParam === '1' || featuredParam === 'true';
@@ -63,13 +63,13 @@ export async function GET(request: Request) {
 				featured: article.isImportant === 1,
 				imageUrl: publicImageUrl(article.imageUrl),
 				publishedAt: isoDate(article.publishDate),
-				updatedAt: isoDate(article.update),
+				updatedAt: isoDate(article.updatedAt),
 			})),
 			meta: { page: effectivePage, pageSize: effectiveSize, total, totalPages: Math.max(1, Math.ceil(total / effectiveSize)) },
 			categories: NEWS_CATEGORY_IDS.map((id) => ({ id, label: NEWS_CATEGORY_LABELS[id], count: countOf.get(id) ?? 0 })),
 		});
 	} catch (error) {
 		console.error('API /api/public/v1/news error:', error);
-		return publicError(request, 500, 'server_error', 'Haberler şu anda getirilemedi.');
+		return publicError(request, 500, 'server_error', 'Could not retrieve news at this time.');
 	}
 }

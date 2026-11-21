@@ -36,13 +36,13 @@ const manifest = {
 	notifications: { loan: 'use' },
 	permission: {
 		order: 5,
-		name: 'Envanter',
-		use: 'Envanteri görür, ödünç alır, iade eder, süre uzatır.',
-		manage: 'Eşya ekler/düzenler, üye adına ödünç verir, arızalı/kayıp işaretler.',
+		name: 'Equipment Inventory',
+		use: 'Browse inventory, borrow assets, return items, and request extensions.',
+		manage: 'Add and edit items, check out items on behalf of members, mark faulty or lost.',
 	},
 	menu: {
 		title: { tr: 'Envanter', en: 'Assets' },
-		about: { id: 'about-inventory', label: { tr: 'Donanım Envanteri Hakkında', en: 'About Asset Inventory' }, permission: 'use', ac: true },
+		about: { id: 'about-inventory', label: { tr: 'Donanım Envanteri Hakkında', en: 'About Asset Inventory' }, permission: 'use', open: true },
 	},
 } as const satisfies AppManifest;
 

@@ -5,11 +5,12 @@ import { useI18n } from '@/core/i18n';
 import { useWindowActions } from '@/core/windows';
 import { useJsonResource } from '@/core/data/useJsonResource';
 import { useFocusTarget } from '@/lib/client/useFocusTarget';
-import { foldTr } from '@/lib/text';
+import { foldSearchText } from '@/lib/text';
 import { sendJson } from '@/core/data/http';
 import { useToast } from '@/core/ui/Toast';
 import type { Project } from '@/db/schema';
 import type { ProjectStatus } from '@/lib/projects';
+import contract from '../projects.contract.json';
 import type { ProjectsResponse, TeamOption, SortMode } from '../types';
 
 export function useProjects() {
@@ -75,33 +76,33 @@ export function useProjects() {
 	}, [inTab]);
 
 	const allFiltered = useMemo(() => {
-		const q = foldTr(query.trim());
+		const q = foldSearchText(query.trim());
 		const list = projects.filter((p) => {
 			if (tech && !p.technologies.includes(tech)) return false;
 			if (!q) return true;
-			return foldTr(
-				[p.title, p.summary, p.creatorNameSurname ?? '', p.teamName ?? '', ...p.technologies].join(' ')
+			return foldSearchText(
+				[p.title, p.summary, p.creatorName ?? '', p.teamName ?? '', ...p.technologies].join(' ')
 			).includes(q);
 		});
-		const byNew = (a: Project, b: Project) => b.creation - a.creation;
+		const byNew = (a: Project, b: Project) => (b.createdAt ?? 0) - (a.createdAt ?? 0);
 		if (sort === 'newest') return list.sort(byNew);
 		if (sort === 'stars') return list.sort((a, b) => (b.likeCount ?? 0) - (a.likeCount ?? 0) || byNew(a, b));
-		return list.sort((a, b) => Number(b.oneLeaving) - Number(a.oneLeaving) || (b.likeCount ?? 0) - (a.likeCount ?? 0) || byNew(a, b));
+		return list.sort((a, b) => Number(b.isFeatured) - Number(a.isFeatured) || (b.likeCount ?? 0) - (a.likeCount ?? 0) || byNew(a, b));
 	}, [projects, query, tech, sort]);
 
 	const visible = useMemo(() => {
-		const q = foldTr(query.trim());
+		const q = foldSearchText(query.trim());
 		const list = inTab.filter((p) => {
 			if (tech && !p.technologies.includes(tech)) return false;
 			if (!q) return true;
-			return foldTr(
-				[p.title, p.summary, p.creatorNameSurname ?? '', p.teamName ?? '', ...p.technologies].join(' ')
+			return foldSearchText(
+				[p.title, p.summary, p.creatorName ?? '', p.teamName ?? '', ...p.technologies].join(' ')
 			).includes(q);
 		});
-		const byNew = (a: Project, b: Project) => b.creation - a.creation;
+		const byNew = (a: Project, b: Project) => (b.createdAt ?? 0) - (a.createdAt ?? 0);
 		if (sort === 'newest') return list.sort(byNew);
 		if (sort === 'stars') return list.sort((a, b) => (b.likeCount ?? 0) - (a.likeCount ?? 0) || byNew(a, b));
-		return list.sort((a, b) => Number(b.oneLeaving) - Number(a.oneLeaving) || (b.likeCount ?? 0) - (a.likeCount ?? 0) || byNew(a, b));
+		return list.sort((a, b) => Number(b.isFeatured) - Number(a.isFeatured) || (b.likeCount ?? 0) - (a.likeCount ?? 0) || byNew(a, b));
 	}, [inTab, query, tech, sort]);
 
 	const open = projects.find((p) => p.id === openId) ?? null;
@@ -141,7 +142,8 @@ export function useProjects() {
 		const res = await fetch(`/api/projects/${encodeURIComponent(p.id)}`, { method: 'DELETE' });
 		if (!res.ok) {
 			const body = await res.json().catch(() => ({}));
-			notify(body.error || t('kbActionFailed'), 'error');
+			const entry = contract.errorCodes.find((e) => e.code === body?.errorCode);
+			notify(entry ? t(entry.i18nKey) : body.error || t('kbActionFailed'), 'error');
 			return;
 		}
 		setOpenId(null);

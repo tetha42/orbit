@@ -1,0 +1,170 @@
+import type { MenuCategory } from '@/types/workspace';
+import type { Language } from '@/lib/i18n';
+
+/**
+ * The portal's own desktop menu structure and localized dictionary labels.
+ */
+export const PORTAL_MENUS: MenuCategory[] = [
+	{
+		id: 'default',
+		title: 'Orbit OS',
+		items: [
+			{ id: 'about-portal', label: 'About Orbit Community OS', shortcut: '⌘I' },
+			{ id: 'preferences', label: 'System Preferences...', shortcut: '⌘,' },
+			{ id: 'sep1', label: '', separator: true },
+			{ id: 'refresh-data', label: 'Refresh All Data' },
+			{ id: 'sep2', label: '', separator: true },
+			{ id: 'hide', label: 'Hide Portal', shortcut: '⌘H' },
+			{ id: 'hide-others', label: 'Hide Others', shortcut: '⌥⌘H' },
+		],
+	},
+	{
+		id: 'file',
+		title: 'File',
+		items: [
+			{
+				id: 'new-event',
+				label: 'New Event...',
+				shortcut: '⌘N',
+				needs: { appId: 'events', level: 'manage' },
+				command: { appId: 'events', name: 'new-event' },
+			},
+			{
+				id: 'new-member',
+				label: 'New Member Registration...',
+				shortcut: '⇧⌘N',
+				needs: { appId: 'members', level: 'manage' },
+				command: { appId: 'members', name: 'add-member' },
+			},
+			{
+				id: 'new-budget-entry',
+				label: 'New Ledger Entry...',
+				shortcut: '⌥⌘N',
+				needs: { appId: 'budget', level: 'manage' },
+				command: { appId: 'budget', name: 'new-entry' },
+			},
+			{ id: 'sep1', label: '', separator: true },
+			{
+				id: 'export-report',
+				label: 'Export Activity Report',
+				shortcut: '⌘E',
+				needs: { appId: 'members', level: 'manage' },
+			},
+		],
+	},
+	{
+		id: 'edit',
+		title: 'Edit',
+		items: [
+			{ id: 'undo', label: 'Undo', shortcut: '⌘Z' },
+			{ id: 'redo', label: 'Redo', shortcut: '⇧⌘Z' },
+			{ id: 'sep1', label: '', separator: true },
+			{ id: 'cut', label: 'Cut', shortcut: '⌘X' },
+			{ id: 'copy', label: 'Copy', shortcut: '⌘C' },
+			{ id: 'paste', label: 'Paste', shortcut: '⌘V' },
+		],
+	},
+	{
+		id: 'view',
+		title: 'View',
+		items: [
+			{ id: 'toggle-dock', label: 'Toggle Dock Auto-Hide', shortcut: '⌥⌘D' },
+			{ id: 'toggle-wallpapers', label: 'Change Wallpaper...', shortcut: '⌃W' },
+			{ id: 'sep1', label: '', separator: true },
+			{ id: 'enter-fullscreen', label: 'Enter Fullscreen', shortcut: '⌃⌘F' },
+		],
+	},
+	{
+		id: 'window',
+		title: 'Window',
+		items: [
+			{ id: 'minimize', label: 'Minimize', shortcut: '⌘M' },
+			{ id: 'zoom', label: 'Zoom / Maximize' },
+			{ id: 'sep1', label: '', separator: true },
+			{ id: 'tile-windows', label: 'Tile All Windows', shortcut: '⌃⌘T' },
+			{ id: 'reset-layout', label: 'Reset Window Layout' },
+			{ id: 'bring-all-front', label: 'Bring All to Front' },
+		],
+	},
+	{
+		id: 'help',
+		title: 'Help',
+		items: [
+			{ id: 'documentation', label: 'Portal User Guide' },
+			{ id: 'support', label: 'Community Support & Contact' },
+		],
+	},
+];
+
+export const PORTAL_EN: Record<string, string> = {
+	'cat:portal:default': 'Orbit OS',
+	'cat:portal:file': 'File',
+	'cat:portal:edit': 'Edit',
+	'cat:portal:view': 'View',
+	'cat:portal:window': 'Window',
+	'cat:portal:help': 'Help',
+	'about-portal': 'About Orbit Community OS',
+	preferences: 'System Preferences...',
+	'refresh-data': 'Refresh All Data',
+	hide: 'Hide Portal',
+	'hide-others': 'Hide Others',
+	'new-event': 'New Event...',
+	'new-member': 'New Member Registration...',
+	'new-budget-entry': 'New Ledger Entry...',
+	'export-report': 'Export Activity Report',
+	undo: 'Undo',
+	redo: 'Redo',
+	cut: 'Cut',
+	copy: 'Copy',
+	paste: 'Paste',
+	'toggle-dock': 'Toggle Dock Auto-Hide',
+	'toggle-wallpapers': 'Change Wallpaper...',
+	'enter-fullscreen': 'Enter Fullscreen',
+	minimize: 'Minimize',
+	zoom: 'Zoom / Maximize',
+	'tile-windows': 'Tile All Windows',
+	'reset-layout': 'Reset Window Layout',
+	'bring-all-front': 'Bring All to Front',
+	documentation: 'Portal User Guide',
+	support: 'Community Support & Contact',
+	close: 'Close Window',
+};
+
+export const PORTAL_TR: Record<string, string> = {
+	'cat:portal:default': 'Topluluk Portali',
+	'cat:portal:file': 'Dosya',
+	'cat:portal:edit': 'Düzen',
+	'cat:portal:view': 'Görünüm',
+	'cat:portal:window': 'Pencere',
+	'cat:portal:help': 'Yardım',
+	'about-portal': 'Topluluk Portali Hakkında',
+	preferences: 'Sistem Tercihleri...',
+	'refresh-data': 'Tüm Verileri Yenile',
+	hide: 'Portali Gizle',
+	'hide-others': 'Diğerlerini Gizle',
+	'new-event': 'Yeni Etkinlik...',
+	'new-member': 'Yeni Üye Kaydı...',
+	'new-budget-entry': 'Yeni Gelir / Gider Girişi...',
+	'export-report': 'Yönetim Faaliyet Raporunu Al',
+	undo: 'Geri Al',
+	redo: 'Yinele',
+	cut: 'Kes',
+	copy: 'Kopyala',
+	paste: 'Yapıştır',
+	'toggle-dock': 'Dock’u Göster / Gizle',
+	'toggle-wallpapers': 'Duvar Kağıdını Değiştir...',
+	'enter-fullscreen': 'Tam Ekrana Geç',
+	minimize: 'Simge Durumuna Küçült',
+	zoom: 'Büyüt / Küçült',
+	'tile-windows': 'Tüm Pencereleri Hizala',
+	'reset-layout': 'Pencere Düzenini Sıfırla',
+	'bring-all-front': 'Tümünü Öne Getir',
+	documentation: 'Portal Kullanım Kılavuzu',
+	support: 'Topluluk Destek & İletişim',
+	close: 'Pencereyi Kapat',
+};
+
+export const PORTAL_DICTS: Record<Language, Record<string, string>> = {
+	tr: PORTAL_TR,
+	en: PORTAL_EN,
+};

@@ -16,13 +16,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 	if (!auth.authorized) return auth.response;
 	const { id } = await params;
 	const ev = await getEventById(id);
-	if (!ev) return NextResponse.json({ error: 'CommunityEvent bulunamadı.' }, { status: 404 });
+	if (!ev) return NextResponse.json({ error: 'Event not found.' }, { status: 404 });
 	if (ev.status !== 'published' || !Number(ev.attendanceOpen)) {
-		return NextResponse.json({ error: 'Önce yoklamayı açın.', code: 'YOKLAMA_KAPALI' }, { status: 409 });
+		return NextResponse.json({ error: 'Open attendance first.', code: 'YOKLAMA_KAPALI' }, { status: 409 });
 	}
 	const now = Date.now();
 	if (!isAttendanceTime(Number(ev.start), Number(ev.endTime), now)) {
-		return NextResponse.json({ error: 'Attendance yalnızca etkinlik sırasında alınabilir.', code: 'ZAMAN_DISI' }, { status: 409 });
+		return NextResponse.json({ error: 'Attendance can only be taken during the event.', code: 'ZAMAN_DISI' }, { status: 409 });
 	}
 	const code = await createAttendanceCode(id, now);
 	const participant = (await getEventAttendeeList(id)).filter((r) => r.participationTime).length;

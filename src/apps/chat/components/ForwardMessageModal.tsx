@@ -5,7 +5,7 @@ import { useI18n } from '@/core/i18n';
 import { fill } from '@/lib/text';
 import { X, Search, Forward, Users, MessageSquare, Check } from 'lucide-react';
 import type { ChatRoomItem, ChatMessageItem } from '../types';
-import s from '../Chat.module.css';
+import s from '../ChatModals.module.css';
 
 interface ForwardMessageModalProps {
 	isOpen: boolean;

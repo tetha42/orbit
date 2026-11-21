@@ -35,8 +35,6 @@ function isAllowedOrigin(origin: string): boolean {
 		const { hostname } = new URL(origin);
 		if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0') return true;
 		if (hostname.endsWith('.orbit.local') || hostname === 'orbit.local') return true;
-		if (hostname.endsWith('.beuteknoloji.com') || hostname === 'beuteknoloji.com') return true;
-		if (hostname.endsWith('.beuteknoloji.org') || hostname === 'beuteknoloji.org') return true;
 	} catch {
 		return false;
 	}
@@ -87,14 +85,15 @@ export async function limitPublic(request: Request): Promise<NextResponse | null
 	// 1. IP Ban check
 	const ban = await isIpBanned(ip);
 	if (ban.banned) {
-		return publicError(request, 403, 'ip_banned', 'IP adresiniz güvenlik politikası gereği karantinaya alınmıştır.');
+		return publicError(request, 403, 'ip_banned', 'Your IP address has been quarantined by the security policy.');
 	}
 
 	// 2. WAF check
 	const waf = inspectRequestPayload(request);
 	if (waf.matched) {
-		const isProbe = !!request.headers.get('x-appsec-probe');
-		// Yalnızca gerçek dış saldırılar veritabanına loglanır; iç test probları DB'yi kirletmez
+		const { isAuthorizedAppSecProbe } = await import('@/lib/auth/guard/probeAuth');
+		const isProbe = await isAuthorizedAppSecProbe(request);
+		// Only genuine external attacks are logged to the database; verified test probes do not pollute the DB.
 		if (!isProbe) {
 			void logSystemEvent({
 				service: 'security',
@@ -110,13 +109,13 @@ export async function limitPublic(request: Request): Promise<NextResponse | null
 				path: pathname,
 			});
 		}
-		return publicError(request, 403, 'waf_blocked', 'Güvenlik duvarı (WAF) tarafından şüpheli istek engellendi.');
+		return publicError(request, 403, 'waf_blocked', 'The request was blocked as suspicious by the web application firewall (WAF).');
 	}
 
 	// 3. Rate limit check
 	const result = consumeRateLimit(`public-api:${ip}`, REQUESTS_PER_WINDOW, WINDOW_MS);
 	if (result.allowed) return null;
-	return publicError(request, 429, 'rate_limited', 'Çok fazla istek. Lütfen biraz sonra tekrar deneyin.', {
+	return publicError(request, 429, 'rate_limited', 'Too many requests. Please try again later.', {
 		'Retry-After': String(result.retryAfter),
 	});
 }

@@ -8,7 +8,7 @@ import { auditContext } from '@/db/audit';
 import { verifyAuth } from '@/lib/auth/authGuard';
 import { sessionUserOf } from '@/lib/auth/session';
 import { level } from '@/lib/profile';
-import { updateSelfProfile } from '@/server/members/service';
+import { updateSelfProfile } from '@/server/members/service/selfUpdate';
 import { getUserDiskUsage } from '@/db/repositories/files.repo';
 
 export const dynamic = 'force-dynamic';
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
 	}
 	return NextResponse.json(
 		{
-			user: { ...(await sessionUserOf(auth.user)), creation: auth.user.creation },
+			user: { ...(await sessionUserOf(auth.user)), createdAt: auth.user.createdAt },
 			level: level(Number(auth.user.xp) || 0),
 			summary,
 			fields,
@@ -52,7 +52,7 @@ export async function PATCH(request: Request) {
 	try {
 		const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
 		if (!body || typeof body !== 'object' || Array.isArray(body)) {
-			return NextResponse.json({ error: 'Geçersiz istek gövdesi.' }, { status: 400 });
+			return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
 		}
 		const result = await updateSelfProfile(auth.user.id, body, auditContext(request, auth.user));
 		if (!result.ok) {
@@ -65,13 +65,13 @@ export async function PATCH(request: Request) {
 				{ status: failure.status }
 			);
 		}
-		return NextResponse.json({ success: true, message: 'Profiliniz güncellendi.' });
+		return NextResponse.json({ success: true, message: 'Profile updated.' });
 	} catch (error) {
 		const code = error instanceof Error ? error.message : '';
 		if (code === 'MEMBER_NOT_FOUND') {
-			return NextResponse.json({ error: 'Üye bulunamadı.' }, { status: 404 });
+			return NextResponse.json({ error: 'Member not found.' }, { status: 404 });
 		}
-		console.error('API /api/profilee PATCH error:', error);
-		return NextResponse.json({ error: 'Profil güncellenemedi.' }, { status: 500 });
+		console.error('API /api/profile PATCH error:', error);
+		return NextResponse.json({ error: 'Failed to update profile.' }, { status: 500 });
 	}
 }

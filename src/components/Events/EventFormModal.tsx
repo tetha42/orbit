@@ -81,7 +81,7 @@ export function EventFormModal({ event, onClose, onSaved }: Props) {
 	return (
 		<Sheet
 			title={event ? t('evFormEdit') : t('evFormNew')}
-			icon={<CalendarPlus size={20} color="#0a84ff" />}
+			icon={<CalendarPlus size={20} color="var(--accent)" />}
 			onClose={onClose}
 			onSubmit={(e) => {
 				e.preventDefault();
@@ -142,7 +142,7 @@ export function EventFormModal({ event, onClose, onSaved }: Props) {
 					required
 					value={location}
 					onChange={(e) => setLocation(e.target.value)}
-					placeholder="Mühendislik Fakültesi D-101"
+					placeholder={t('evPlaceholder')}
 				/>
 			</label>
 			<div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1fr', gap: 10 }}>

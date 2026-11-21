@@ -1,316 +1,27 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import {
-	History,
-	Activity,
-	RotateCcw,
-	Download,
-	Trash2,
-	Search,
-	X,
-	ChevronLeft,
-	ChevronRight,
-	PlusCircle,
-	Sliders,
-	Trash,
-	ShieldAlert,
-	Copy,
-	Check,
-	Eye,
-	ArrowRight,
-	FileText,
-	Code2,
-	ExternalLink,
-	Shield,
-} from 'lucide-react';
-import { useJsonResource } from '@/core/data/useJsonResource';
-import { downloadCsv } from '@/core/data/download';
-import { formatDateTime } from '@/core/data/format';
-import { useToast } from '@/core/ui/Toast';
-import { useDialog } from '@/components/Common/DialogProvider';
+import React, { useState, useCallback } from 'react';
+import { History, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
-import { copyToClipboard } from '@/lib/clipboard';
-import {
-	AUDIT_CSV_HEADERS,
-	AUDIT_PAGE_SIZE,
-	AUDIT_ACTIONS,
-	auditCsvRows,
-	formatAuditAction,
-	diffRows,
-	type AuditRecord,
-	type DiffRow,
-} from '@/lib/audit';
+import type { AuditRecord } from '@/lib/audit';
 import { fill } from '@/lib/text';
-import { Sheet } from '@/core/ui/Sheet';
-import { isPermissionApp, PERMISSION_DESCRIPTIONS } from '@/core/permissions';
-import { getAppMeta } from '@/configs/apps.config';
-import type { AppID } from '@/types/workspace';
 import { useSoc } from '../../context/SocContext';
+import { AUDIT_I18N } from './audit/i18nAudit';
+import { useSocAudit } from './audit/useSocAudit';
+import { AuditHeader } from './audit/AuditHeader';
+import { AuditFilterBar } from './audit/AuditFilterBar';
+import { AuditDesktopTable } from './audit/AuditDesktopTable';
+import { AuditMobileCards } from './audit/AuditMobileCards';
+import { SocAuditDetailSheet } from './audit/SocAuditDetailSheet';
 import s from './SocAuditView.module.css';
-
-interface AuditResponse {
-	records: AuditRecord[];
-	total: number;
-	page: number;
-	size: number;
-}
-
-type CategoryType = 'all' | 'roles' | 'members' | 'security';
-type DatePresetType = 'all' | 'today' | '7d' | '30d' | 'custom';
-
-function getActionCategory(action: string): 'roles' | 'members' | 'security' {
-	if (action.startsWith('role.')) return 'roles';
-	if (action.startsWith('member.') || action.startsWith('application.')) return 'members';
-	return 'security';
-}
-
-function getActionTone(action: string): 'create' | 'update' | 'delete' | 'security' {
-	if (
-		action.includes('create') ||
-		action.includes('grant') ||
-		action.includes('approve') ||
-		action.includes('activate')
-	) {
-		return 'create';
-	}
-	if (
-		action.includes('delete') ||
-		action.includes('revoke') ||
-		action.includes('reject') ||
-		action.includes('disable')
-	) {
-		return 'delete';
-	}
-	if (
-		action.includes('2fa') ||
-		action.includes('smtp') ||
-		action.includes('security') ||
-		action.includes('password')
-	) {
-		return 'security';
-	}
-	return 'update';
-}
-
-function formatRelativeTime(timestamp: number, isEn: boolean): string {
-	const now = Date.now();
-	const diffSec = Math.max(0, Math.floor((now - timestamp) / 1000));
-	if (diffSec < 60) return isEn ? 'Just now' : 'Az önce';
-	const diffMin = Math.floor(diffSec / 60);
-	if (diffMin < 60) return isEn ? `${diffMin}m ago` : `${diffMin}dk önce`;
-	const diffHours = Math.floor(diffMin / 60);
-	if (diffHours < 24) return isEn ? `${diffHours}h ago` : `${diffHours}sa önce`;
-	const diffDays = Math.floor(diffHours / 24);
-	if (diffDays < 7) return isEn ? `${diffDays}d ago` : `${diffDays}g önce`;
-	return new Date(timestamp).toLocaleDateString(isEn ? 'en-US' : 'tr-TR', {
-		month: 'short',
-		day: 'numeric',
-	});
-}
-
-function getDiffSummary(record: AuditRecord, t: (k: string, f?: string) => string, isEn: boolean): string | null {
-	const diffs = diffRows(record.before, record.after);
-	if (!diffs || diffs.length === 0) return null;
-
-	const roleDiff = diffs.find((d) => d.field === 'roleId' || d.field === 'roleName');
-	if (roleDiff) {
-		const newVal = String(roleDiff.after || '—');
-		return isEn ? `Role: ${newVal}` : `Rol: ${newVal}`;
-	}
-
-	const permDiffs = diffs.filter((d) => d.field.startsWith('izinler.'));
-	if (permDiffs.length > 0) {
-		return isEn ? `${permDiffs.length} perm changes` : `${permDiffs.length} yetki değişti`;
-	}
-
-	if (diffs.length === 1) {
-		const fieldName = t(`auditField_${diffs[0].field}`, diffs[0].field);
-		return isEn ? `${fieldName} updated` : `${fieldName} güncellendi`;
-	}
-
-	return isEn ? `${diffs.length} fields modified` : `${diffs.length} alan değişti`;
-}
 
 export function SocAuditView() {
 	const { t, language } = useI18n();
-	const isEn = language === 'en';
-	const notify = useToast();
-	const dialog = useDialog();
-
-	// SOC context integrations
+	const copy = AUDIT_I18N[language] ?? AUDIT_I18N.en;
 	const { canManage, setSiemIp, setSiemIpOp, setActiveTab } = useSoc();
-
-	// Roles list
-	const [roles, setRoles] = useState<{ id: string; name: string }[]>([]);
-
-	useEffect(() => {
-		let cancelled = false;
-		fetch('/api/roles', { cache: 'no-store' })
-			.then((res) => (res.ok ? res.json() : null))
-			.then((payload) => {
-				if (!cancelled && Array.isArray(payload?.roles)) setRoles(payload.roles);
-			})
-			.catch(() => {});
-		return () => {
-			cancelled = true;
-		};
-	}, []);
-
-	// Filter states
-	const [searchQuery, setSearchQuery] = useState('');
-	const [debouncedSearch, setDebouncedSearch] = useState('');
-	const [activeCategory, setActiveCategory] = useState<CategoryType>('all');
-	const [selectedRole, setSelectedRole] = useState('');
-	const [selectedAction, setSelectedAction] = useState('');
-	const [datePreset, setDatePreset] = useState<DatePresetType>('all');
-	const [fromDate, setFromDate] = useState('');
-	const [toDate, setToDate] = useState('');
-	const [currentPage, setCurrentPage] = useState(1);
-
-	// Debounce search
-	const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-	const handleSearchChange = (val: string) => {
-		setSearchQuery(val);
-		if (searchTimer.current) clearTimeout(searchTimer.current);
-		searchTimer.current = setTimeout(() => {
-			setDebouncedSearch(val.trim());
-			setCurrentPage(1);
-		}, 280);
-	};
-
-	const handleCategoryChange = (cat: CategoryType) => {
-		setActiveCategory(cat);
-		setSelectedAction('');
-		setCurrentPage(1);
-	};
-
-	const handleDatePreset = (preset: DatePresetType) => {
-		setDatePreset(preset);
-		const today = new Date();
-		const formatDateStr = (d: Date) => d.toISOString().split('T')[0];
-
-		if (preset === 'all') {
-			setFromDate('');
-			setToDate('');
-		} else if (preset === 'today') {
-			const str = formatDateStr(today);
-			setFromDate(str);
-			setToDate(str);
-		} else if (preset === '7d') {
-			const past = new Date(Date.now() - 7 * 86400000);
-			setFromDate(formatDateStr(past));
-			setToDate(formatDateStr(today));
-		} else if (preset === '30d') {
-			const past = new Date(Date.now() - 30 * 86400000);
-			setFromDate(formatDateStr(past));
-			setToDate(formatDateStr(today));
-		}
-		setCurrentPage(1);
-	};
-
-	const resetAllFilters = () => {
-		setSearchQuery('');
-		setDebouncedSearch('');
-		setActiveCategory('all');
-		setSelectedRole('');
-		setSelectedAction('');
-		setDatePreset('all');
-		setFromDate('');
-		setToDate('');
-		setCurrentPage(1);
-	};
-
-	const hasActiveFilters = Boolean(
-		debouncedSearch ||
-		activeCategory !== 'all' ||
-		selectedRole ||
-		selectedAction ||
-		fromDate ||
-		toDate
-	);
-
-	// Construct query URL
-	const queryUrl = useMemo(() => {
-		const p = new URLSearchParams();
-		if (debouncedSearch) p.set('user', debouncedSearch);
-		if (selectedRole) p.set('role', selectedRole);
-		if (selectedAction) {
-			p.set('action', selectedAction);
-		}
-		if (fromDate) p.set('from', fromDate);
-		if (toDate) p.set('to', toDate);
-		if (currentPage > 1) p.set('page', String(currentPage));
-		return `/api/audit?${p.toString()}`;
-	}, [debouncedSearch, selectedRole, selectedAction, fromDate, toDate, currentPage]);
-
-	// Fetch records
-	const { data, refetch, isLoading, error } = useJsonResource<AuditResponse>(queryUrl);
-
-	// Filter by Category locally if specific action not selected
-	const filteredRecords = useMemo(() => {
-		const list = data?.records ?? [];
-		if (activeCategory === 'all' || selectedAction) return list;
-		return list.filter((r) => getActionCategory(r.action) === activeCategory);
-	}, [data?.records, activeCategory, selectedAction]);
-
-	const totalRecords = data?.total ?? 0;
-	const totalPages = Math.max(1, Math.ceil(totalRecords / AUDIT_PAGE_SIZE));
-
-	// Action states
-	const [exporting, setExporting] = useState(false);
-	const [clearing, setClearing] = useState(false);
+	const audit = useSocAudit(copy, t);
 	const [inspectRecord, setInspectRecord] = useState<AuditRecord | null>(null);
 
-	// CSV Export
-	const exportAuditCsv = async () => {
-		setExporting(true);
-		try {
-			const p = new URLSearchParams();
-			if (debouncedSearch) p.set('user', debouncedSearch);
-			if (selectedRole) p.set('role', selectedRole);
-			if (selectedAction) p.set('action', selectedAction);
-			if (fromDate) p.set('from', fromDate);
-			if (toDate) p.set('to', toDate);
-			p.set('all', '1');
-
-			const res = await fetch(`/api/audit?${p.toString()}`);
-			if (!res.ok) throw new Error();
-			const json = (await res.json()) as AuditResponse;
-			const rows = auditCsvRows(json.records);
-			downloadCsv(`soc-audit-log-${new Date().toISOString().slice(0, 10)}`, AUDIT_CSV_HEADERS, rows);
-			notify(isEn ? 'Audit log exported as CSV.' : 'Denetim günlüğü CSV olarak indirildi.', 'success');
-		} catch {
-			notify(t('auditCsvHata'), 'error');
-		} finally {
-			setExporting(false);
-		}
-	};
-
-	// Clear / Purge History
-	const purgeAuditLog = async () => {
-		const approved = await dialog.confirm({
-			title: t('auditTemizle'),
-			message: t('auditTemizleOnay'),
-			tone: 'danger',
-			confirmLabel: t('auditTemizle'),
-		});
-		if (!approved) return;
-
-		setClearing(true);
-		try {
-			const res = await fetch('/api/audit', { method: 'DELETE' });
-			if (!res.ok) throw new Error();
-			notify(t('auditTemizlendi'), 'success');
-			await refetch();
-		} catch {
-			notify(t('auditHata'), 'error');
-		} finally {
-			setClearing(false);
-		}
-	};
-
-	// Pivot to SIEM
 	const handlePivotToSiem = useCallback(
 		(ip: string) => {
 			setSiemIp(ip);
@@ -321,465 +32,85 @@ export function SocAuditView() {
 		[setSiemIp, setSiemIpOp, setActiveTab]
 	);
 
-	// Filter actions by category for dropdown
-	const availableActions = useMemo(() => {
-		if (activeCategory === 'all') return AUDIT_ACTIONS;
-		return AUDIT_ACTIONS.filter((a) => getActionCategory(a) === activeCategory);
-	}, [activeCategory]);
-
 	return (
 		<div className={s.auditContainer}>
 			<section className={s.card}>
-				{/* Card Header with Telemetry Badges & Primary Actions */}
-				<div className={s.cardHeader}>
-					<div className={s.headerLeft}>
-						<h2 className={s.cardTitle}>
-							<History size={16} />
-							<span>{isEn ? 'Change History & Security Audit' : 'Değişiklik Geçmişi & Güvenlik Denetimi'}</span>
-						</h2>
-						<p className={s.cardSub}>
-							{isEn
-								? 'Immutable, zero-trust audit trail of role permission mutations, lifecycle events, and administrative actions'
-								: 'Yönetimsel yetki değişiklikleri, rol atamaları ve üye yaşam döngüsünün adli denetim kayıtları'}
-						</p>
-					</div>
+				<AuditHeader
+					copy={copy}
+					t={t}
+					totalRecords={audit.totalRecords}
+					isLoading={audit.isLoading}
+					exporting={audit.exporting}
+					clearing={audit.clearing}
+					canManage={canManage}
+					onRefresh={() => void audit.refetch()}
+					onExportCsv={audit.exportAuditCsv}
+					onPurgeLog={audit.purgeAuditLog}
+				/>
 
-					<div className={s.headerActions}>
-						<span className={s.countBadge}>
-							<Activity size={12} />
-							<span>{fill(isEn ? '{n} Events' : '{n} Olay', { n: totalRecords, count: totalRecords })}</span>
-						</span>
+				<AuditFilterBar
+					copy={copy}
+					t={t}
+					searchQuery={audit.searchQuery}
+					onSearchChange={audit.handleSearchChange}
+					onClearSearch={audit.clearSearch}
+					activeCategory={audit.activeCategory}
+					onCategoryChange={audit.handleCategoryChange}
+					roles={audit.roles}
+					selectedRole={audit.selectedRole}
+					onRoleChange={(val) => {
+						audit.setSelectedRole(val);
+						audit.setCurrentPage(1);
+					}}
+					availableActions={audit.availableActions}
+					selectedAction={audit.selectedAction}
+					onActionChange={(val) => {
+						audit.setSelectedAction(val);
+						audit.setCurrentPage(1);
+					}}
+					datePreset={audit.datePreset}
+					onDatePreset={audit.handleDatePreset}
+					fromDate={audit.fromDate}
+					toDate={audit.toDate}
+					onFromDateChange={(val) => {
+						audit.setFromDate(val);
+						audit.setDatePreset('custom');
+						audit.setCurrentPage(1);
+					}}
+					onToDateChange={(val) => {
+						audit.setToDate(val);
+						audit.setDatePreset('custom');
+						audit.setCurrentPage(1);
+					}}
+					hasActiveFilters={audit.hasActiveFilters}
+					onResetFilters={audit.resetAllFilters}
+				/>
 
-						<button
-							type="button"
-							className={s.actionBtn}
-							onClick={() => void refetch()}
-							disabled={isLoading}
-							title={isEn ? 'Refresh log' : 'Kayıtları yenile'}
-						>
-							<RotateCcw size={13} className={isLoading ? s.spin : ''} />
-							<span>{isEn ? 'Refresh' : 'Yenile'}</span>
-						</button>
+				{audit.error && <div style={{ color: 'var(--danger)', fontSize: 12 }}>{t('auditError')}</div>}
 
-						<button
-							type="button"
-							className={s.actionBtn}
-							onClick={exportAuditCsv}
-							disabled={exporting || totalRecords === 0}
-							title={t('auditCsvIndir')}
-						>
-							<Download size={13} />
-							<span>{exporting ? (isEn ? 'Exporting…' : 'İndiriliyor…') : 'CSV'}</span>
-						</button>
-
-						{canManage && (
-							<button
-								type="button"
-								className={`${s.actionBtn} ${s.actionBtnDanger}`}
-								onClick={purgeAuditLog}
-								disabled={clearing || totalRecords === 0}
-								title={t('auditTemizle')}
-							>
-								<Trash2 size={13} />
-								<span>{isEn ? 'Clear Log' : 'Temizle'}</span>
-							</button>
-						)}
-					</div>
-				</div>
-
-				{/* Omnibar & Responsive Filter Section */}
-				<div className={s.filterSection}>
-					{/* Primary Row: Live Search & Category Pills */}
-					<div className={s.filterRowMain}>
-						<div className={s.searchWrap}>
-							<Search size={14} className={s.searchIcon} />
-							<input
-								type="text"
-								className={s.searchInput}
-								placeholder={
-									isEn
-										? 'Filter by actor, target, action or IP address…'
-										: 'Yapan, hedef, işlem veya IP adresi ara…'
-								}
-								value={searchQuery}
-								onChange={(e) => handleSearchChange(e.target.value)}
-								aria-label={t('auditFiltreKisi')}
-							/>
-							{searchQuery && (
-								<button
-									type="button"
-									className={s.clearSearchBtn}
-									onClick={() => {
-										setSearchQuery('');
-										setDebouncedSearch('');
-										setCurrentPage(1);
-									}}
-									title={isEn ? 'Clear search' : 'Aramayı temizle'}
-								>
-									<X size={12} />
-								</button>
-							)}
-						</div>
-
-						<div className={s.categoryPills}>
-							<button
-								type="button"
-								className={`${s.categoryBtn} ${activeCategory === 'all' ? s.categoryBtnActive : ''}`}
-								onClick={() => handleCategoryChange('all')}
-							>
-								{isEn ? 'All' : 'Tümü'}
-							</button>
-							<button
-								type="button"
-								className={`${s.categoryBtn} ${activeCategory === 'roles' ? s.categoryBtnActive : ''}`}
-								onClick={() => handleCategoryChange('roles')}
-							>
-								<Sliders size={12} />
-								<span>{isEn ? 'Roles & Perms' : 'Rol & Yetkiler'}</span>
-							</button>
-							<button
-								type="button"
-								className={`${s.categoryBtn} ${activeCategory === 'members' ? s.categoryBtnActive : ''}`}
-								onClick={() => handleCategoryChange('members')}
-							>
-								{isEn ? 'Members' : 'Üyeler'}
-							</button>
-							<button
-								type="button"
-								className={`${s.categoryBtn} ${activeCategory === 'security' ? s.categoryBtnActive : ''}`}
-								onClick={() => handleCategoryChange('security')}
-							>
-								<Shield size={12} />
-								<span>{isEn ? 'Security & System' : 'Güvenlik & Sistem'}</span>
-							</button>
-						</div>
-					</div>
-
-					{/* Secondary Row: Granular Selects & Responsive Date Presets */}
-					<div className={s.filterRowSecondary}>
-						<select
-							className={s.selectInput}
-							value={selectedRole}
-							onChange={(e) => {
-								setSelectedRole(e.target.value);
-								setCurrentPage(1);
-							}}
-							aria-label={t('auditFiltreRol')}
-						>
-							<option value="">{t('auditFiltreRolHepsi')}</option>
-							{roles.map((r) => (
-								<option key={r.id} value={r.id}>
-									{r.name}
-								</option>
-							))}
-						</select>
-
-						<select
-							className={s.selectInput}
-							value={selectedAction}
-							onChange={(e) => {
-								setSelectedAction(e.target.value);
-								setCurrentPage(1);
-							}}
-							aria-label={t('auditFiltreIslem')}
-						>
-							<option value="">{t('auditFiltreIslemHepsi')}</option>
-							{availableActions.map((op) => (
-								<option key={op} value={op}>
-									{formatAuditAction(op, t)}
-								</option>
-							))}
-						</select>
-
-						{/* Quick Date Presets */}
-						<div className={s.datePresetGroup}>
-							<button
-								type="button"
-								className={`${s.datePresetBtn} ${datePreset === 'all' ? s.datePresetBtnActive : ''}`}
-								onClick={() => handleDatePreset('all')}
-							>
-								{isEn ? 'All Time' : 'Tümü'}
-							</button>
-							<button
-								type="button"
-								className={`${s.datePresetBtn} ${datePreset === 'today' ? s.datePresetBtnActive : ''}`}
-								onClick={() => handleDatePreset('today')}
-							>
-								{isEn ? 'Today' : 'Bugün'}
-							</button>
-							<button
-								type="button"
-								className={`${s.datePresetBtn} ${datePreset === '7d' ? s.datePresetBtnActive : ''}`}
-								onClick={() => handleDatePreset('7d')}
-							>
-								{isEn ? '7 Days' : '7 Gün'}
-							</button>
-							<button
-								type="button"
-								className={`${s.datePresetBtn} ${datePreset === '30d' ? s.datePresetBtnActive : ''}`}
-								onClick={() => handleDatePreset('30d')}
-							>
-								{isEn ? '30 Days' : '30 Gün'}
-							</button>
-						</div>
-
-						{/* Responsive Date Range Inputs */}
-						<div className={s.dateRangeCustom}>
-							<input
-								type="date"
-								className={s.dateInput}
-								value={fromDate}
-								onChange={(e) => {
-									setFromDate(e.target.value);
-									setDatePreset('custom');
-									setCurrentPage(1);
-								}}
-								aria-label={t('auditFiltreBaslangic')}
-								title={t('auditFiltreBaslangic')}
-							/>
-							<span className={s.dateSep}>—</span>
-							<input
-								type="date"
-								className={s.dateInput}
-								value={toDate}
-								onChange={(e) => {
-									setToDate(e.target.value);
-									setDatePreset('custom');
-									setCurrentPage(1);
-								}}
-								aria-label={t('auditFiltreBitis')}
-								title={t('auditFiltreBitis')}
-							/>
-						</div>
-
-						{hasActiveFilters && (
-							<button
-								type="button"
-								className={s.resetFilterBtn}
-								onClick={resetAllFilters}
-								title={t('auditFiltreTemizle')}
-							>
-								<X size={12} />
-								<span>{t('auditFiltreTemizle')}</span>
-							</button>
-						)}
-					</div>
-				</div>
-
-				{/* Error Notification */}
-				{error && <div style={{ color: 'var(--danger)', fontSize: 12 }}>{t('auditHata')}</div>}
-
-				{/* Empty State */}
-				{filteredRecords.length === 0 && (
+				{audit.filteredRecords.length === 0 ? (
 					<div className={s.emptyState}>
 						<History size={32} style={{ opacity: 0.3 }} />
-						<span>{data ? t('auditBos') : t('auditLoading')}</span>
+						<span>{audit.data ? t('auditNoRecords') : t('auditLoading')}</span>
 					</div>
+				) : (
+					<>
+						<AuditDesktopTable records={audit.filteredRecords} copy={copy} t={t} onInspect={setInspectRecord} />
+						<AuditMobileCards records={audit.filteredRecords} copy={copy} t={t} onInspect={setInspectRecord} />
+					</>
 				)}
 
-				{/* ========================================================= */}
-				{/* 1. Desktop High-Density Table                             */}
-				{/* ========================================================= */}
-				{filteredRecords.length > 0 && (
-					<div className={s.desktopTableWrap}>
-						<table className={s.auditTable}>
-							<thead>
-								<tr>
-									<th>{isEn ? 'Action / Event' : 'İşlem / Olay'}</th>
-									<th>{t('auditYapan')}</th>
-									<th>{t('auditHedef')}</th>
-									<th>{isEn ? 'Diff Summary' : 'Değişiklik Özeti'}</th>
-									<th>{t('auditIp')}</th>
-									<th>{t('auditZaman')}</th>
-									<th style={{ textAlign: 'right' }}>{isEn ? 'Inspect' : 'İncele'}</th>
-								</tr>
-							</thead>
-							<tbody>
-								{filteredRecords.map((record) => {
-									const tone = getActionTone(record.action);
-									const toneClass =
-										tone === 'create'
-											? s.badgeCreate
-											: tone === 'delete'
-											? s.badgeDelete
-											: tone === 'security'
-											? s.badgeSecurity
-											: s.badgeUpdate;
-
-									const actionIcon =
-										tone === 'create' ? (
-											<PlusCircle size={11} />
-										) : tone === 'delete' ? (
-											<Trash size={11} />
-										) : tone === 'security' ? (
-											<ShieldAlert size={11} />
-										) : (
-											<Sliders size={11} />
-										);
-
-									const diffSummary = getDiffSummary(record, t, isEn);
-									const actorName = record.actorName || record.actorId || 'System';
-									const targetName = record.targetName || record.targetId || '—';
-
-									return (
-										<tr
-											key={record.id}
-											className={s.auditTableRow}
-											onClick={() => setInspectRecord(record)}
-										>
-											<td>
-												<span className={`${s.badge} ${toneClass}`}>
-													{actionIcon}
-													<span>{formatAuditAction(record.action, t)}</span>
-												</span>
-											</td>
-											<td>
-												<div className={s.userCell} title={actorName}>
-													<div className={s.userAvatar}>
-														{actorName.charAt(0).toUpperCase()}
-													</div>
-													<span className={s.userName}>{actorName}</span>
-												</div>
-											</td>
-											<td>
-												<span className={s.targetPill} title={targetName}>
-													{targetName}
-												</span>
-											</td>
-											<td>
-												{diffSummary ? (
-													<span className={s.diffChip}>{diffSummary}</span>
-												) : (
-													<span style={{ color: 'var(--text-secondary)', opacity: 0.5 }}>—</span>
-												)}
-											</td>
-											<td>
-												<code className={s.ipMono}>{record.ip || '127.0.0.1'}</code>
-											</td>
-											<td>
-												<span
-													className={s.timeText}
-													title={formatDateTime(record.timestamp, isEn ? 'en-GB' : 'tr-TR')}
-												>
-													{formatRelativeTime(record.timestamp, isEn)}
-												</span>
-											</td>
-											<td style={{ textAlign: 'right' }}>
-												<button
-													type="button"
-													className={s.actionBtn}
-													style={{ padding: '3px 8px', fontSize: 11 }}
-													onClick={(e) => {
-														e.stopPropagation();
-														setInspectRecord(record);
-													}}
-													title={isEn ? 'Inspect event diff' : 'Olay detayını incele'}
-												>
-													<Eye size={12} />
-												</button>
-											</td>
-										</tr>
-									);
-								})}
-							</tbody>
-						</table>
-					</div>
-				)}
-
-				{/* ========================================================= */}
-				{/* 2. Mobile Responsive Card Stream                          */}
-				{/* ========================================================= */}
-				{filteredRecords.length > 0 && (
-					<div className={s.mobileCardStream}>
-						{filteredRecords.map((record) => {
-							const tone = getActionTone(record.action);
-							const toneClass =
-								tone === 'create'
-									? s.badgeCreate
-									: tone === 'delete'
-									? s.badgeDelete
-									: tone === 'security'
-									? s.badgeSecurity
-									: s.badgeUpdate;
-
-							const actionIcon =
-								tone === 'create' ? (
-									<PlusCircle size={11} />
-								) : tone === 'delete' ? (
-									<Trash size={11} />
-								) : tone === 'security' ? (
-									<ShieldAlert size={11} />
-								) : (
-									<Sliders size={11} />
-								);
-
-							const diffSummary = getDiffSummary(record, t, isEn);
-							const actorName = record.actorName || record.actorId || 'System';
-							const targetName = record.targetName || record.targetId || '—';
-
-							return (
-								<button
-									type="button"
-									key={`mobile-${record.id}`}
-									className={s.auditCardItem}
-									onClick={() => setInspectRecord(record)}
-								>
-									{/* Top Row: Action Badge + Relative Time */}
-									<div className={s.cardTopRow}>
-										<span className={`${s.badge} ${toneClass}`}>
-											{actionIcon}
-											<span>{formatAuditAction(record.action, t)}</span>
-										</span>
-										<span
-											className={s.timeText}
-											title={formatDateTime(record.timestamp, isEn ? 'en-GB' : 'tr-TR')}
-										>
-											{formatRelativeTime(record.timestamp, isEn)}
-										</span>
-									</div>
-
-									{/* Middle Flow: Actor -> Target */}
-									<div className={s.cardFlowRow}>
-										<div className={s.userCell}>
-											<div className={s.userAvatar}>{actorName.charAt(0).toUpperCase()}</div>
-											<span className={s.userName}>{actorName}</span>
-										</div>
-										<span className={s.flowArrow}>
-											<ArrowRight size={12} />
-										</span>
-										<span className={s.targetPill}>{targetName}</span>
-									</div>
-
-									{/* Bottom Info: IP, Diff Chip & Tap Hint */}
-									<div className={s.cardBottomRow}>
-										<div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-											<code className={s.ipMono}>{record.ip || '127.0.0.1'}</code>
-											{diffSummary && <span className={s.diffChip}>{diffSummary}</span>}
-										</div>
-										<span className={s.inspectHint}>
-											<span>{isEn ? 'Details' : 'İncele'}</span>
-											<ChevronRight size={12} />
-										</span>
-									</div>
-								</button>
-							);
-						})}
-					</div>
-				)}
-
-				{/* Pager Bar */}
-				{totalPages > 1 && (
+				{audit.totalPages > 1 && (
 					<div className={s.paginationBar}>
 						<span className={s.pageInfo}>
-							{fill(t('auditSayfa'), { current: currentPage, total: totalPages })}
+							{fill(t('auditPage'), { current: audit.currentPage, total: audit.totalPages })}
 						</span>
-
 						<div className={s.pagerBtns}>
 							<button
 								type="button"
 								className={s.pagerBtn}
-								disabled={currentPage <= 1}
-								onClick={() => setCurrentPage((p) => p - 1)}
+								disabled={audit.currentPage <= 1}
+								onClick={() => audit.setCurrentPage((p) => p - 1)}
 								title={t('previous')}
 							>
 								<ChevronLeft size={14} />
@@ -787,8 +118,8 @@ export function SocAuditView() {
 							<button
 								type="button"
 								className={s.pagerBtn}
-								disabled={currentPage >= totalPages}
-								onClick={() => setCurrentPage((p) => p + 1)}
+								disabled={audit.currentPage >= audit.totalPages}
+								onClick={() => audit.setCurrentPage((p) => p + 1)}
 								title={t('next')}
 							>
 								<ChevronRight size={14} />
@@ -798,9 +129,6 @@ export function SocAuditView() {
 				)}
 			</section>
 
-			{/* ========================================================= */}
-			{/* Detail & Forensics Modal                                  */}
-			{/* ========================================================= */}
 			{inspectRecord && (
 				<SocAuditDetailSheet
 					record={inspectRecord}
@@ -809,290 +137,5 @@ export function SocAuditView() {
 				/>
 			)}
 		</div>
-	);
-}
-
-// ---------------------------------------------------------------------------
-// Dedicated SOC Audit Detail & Forensics Sheet
-// ---------------------------------------------------------------------------
-
-function SocAuditDetailSheet({
-	record,
-	onClose,
-	onPivotToSiem,
-}: {
-	record: AuditRecord;
-	onClose: () => void;
-	onPivotToSiem: (ip: string) => void;
-}) {
-	const { t, language } = useI18n();
-	const isEn = language === 'en';
-	const [activeTab, setActiveTab] = useState<'diff' | 'raw'>('diff');
-	const [copiedField, setCopiedField] = useState<string | null>(null);
-
-	const diffs = useMemo(() => diffRows(record.before, record.after), [record.before, record.after]);
-
-	const copyWithFeedback = (key: string, text: string) => {
-		copyToClipboard(text);
-		setCopiedField(key);
-		setTimeout(() => setCopiedField(null), 1400);
-	};
-
-	const formatAuditValue = (field: string, val: unknown): string => {
-		if (val === null || val === undefined) return '—';
-		if (typeof val === 'boolean') {
-			return val ? t('auditYes') : t('auditNo');
-		}
-		if (field === 'roleId' || field === 'movedToRoleId') {
-			if (val === 'role_admin') return t('auditRoleAdmin', 'Yönetici (Admin)');
-			if (val === 'role_management_board') return t('auditRoleBoard', 'Board Member');
-			if (val === 'role_member') return t('auditRoleMember', 'Member');
-			if (val === 'role_alumni') return t('auditRoleAlumni', 'Alumni');
-		}
-		if (typeof val === 'string') {
-			if (
-				val === 'none' ||
-				val === 'use' ||
-				val === 'manage' ||
-				val === 'active' ||
-				val === 'alumni' ||
-				val === 'pending' ||
-				val === 'rejected'
-			) {
-				return t(`auditValue_${val}`, val);
-			}
-		}
-		return String(val);
-	};
-
-	const actionTitle = formatAuditAction(record.action, t);
-	const actorName = record.actorName || record.actorId || 'System';
-	const targetName = record.targetName || record.targetId || '—';
-
-	return (
-		<Sheet
-			title={actionTitle}
-			label={actionTitle}
-			icon={<History size={18} />}
-			onClose={onClose}
-			maxWidth={680}
-		>
-			{/* Summary Metadata Grid */}
-			<div className={s.modalSummaryGrid}>
-				<div className={s.summaryItem}>
-					<span className={s.summaryLabel}>{t('auditYapan')}</span>
-					<div className={s.summaryValue}>
-						<span>{actorName}</span>
-						<button
-							type="button"
-							className={s.copyMiniBtn}
-							onClick={() => copyWithFeedback('actor', actorName)}
-							title={isEn ? 'Copy actor' : 'Yapanı kopyala'}
-						>
-							{copiedField === 'actor' ? <Check size={11} color="var(--success)" /> : <Copy size={11} />}
-						</button>
-					</div>
-				</div>
-
-				<div className={s.summaryItem}>
-					<span className={s.summaryLabel}>{t('auditHedef')}</span>
-					<div className={s.summaryValue}>
-						<span>{targetName}</span>
-						<button
-							type="button"
-							className={s.copyMiniBtn}
-							onClick={() => copyWithFeedback('target', targetName)}
-							title={isEn ? 'Copy target' : 'Hedefi kopyala'}
-						>
-							{copiedField === 'target' ? <Check size={11} color="var(--success)" /> : <Copy size={11} />}
-						</button>
-					</div>
-				</div>
-
-				<div className={s.summaryItem}>
-					<span className={s.summaryLabel}>{t('auditZaman')}</span>
-					<div className={s.summaryValue}>
-						<span style={{ fontVariantNumeric: 'tabular-nums' }}>
-							{formatDateTime(record.timestamp, isEn ? 'en-GB' : 'tr-TR')}
-						</span>
-					</div>
-				</div>
-
-				<div className={s.summaryItem}>
-					<span className={s.summaryLabel}>{t('auditIp')}</span>
-					<div className={s.summaryValue}>
-						<code className={s.ipMono}>{record.ip || '127.0.0.1'}</code>
-						<button
-							type="button"
-							className={s.copyMiniBtn}
-							onClick={() => copyWithFeedback('ip', record.ip || '127.0.0.1')}
-							title={isEn ? 'Copy IP' : 'IP kopyala'}
-						>
-							{copiedField === 'ip' ? <Check size={11} color="var(--success)" /> : <Copy size={11} />}
-						</button>
-						{record.ip && record.ip !== '127.0.0.1' && record.ip !== 'unknown' && (
-							<button
-								type="button"
-								className={s.pivotBtn}
-								onClick={() => onPivotToSiem(record.ip)}
-								title={isEn ? 'Pivot into SIEM logs' : 'SIEM kayıtlarında filtrele'}
-							>
-								<ExternalLink size={10} />
-								<span>SIEM</span>
-							</button>
-						)}
-					</div>
-				</div>
-			</div>
-
-			{/* Tab Switcher: Diff vs Raw JSON */}
-			<div className={s.modalTabs}>
-				<button
-					type="button"
-					className={`${s.modalTabBtn} ${activeTab === 'diff' ? s.modalTabBtnActive : ''}`}
-					onClick={() => setActiveTab('diff')}
-				>
-					<FileText size={13} />
-					<span>{isEn ? 'Field Diffs' : 'Değişiklik Detayı'}</span>
-				</button>
-				<button
-					type="button"
-					className={`${s.modalTabBtn} ${activeTab === 'raw' ? s.modalTabBtnActive : ''}`}
-					onClick={() => setActiveTab('raw')}
-				>
-					<Code2 size={13} />
-					<span>{isEn ? 'Forensics JSON' : 'Adli JSON Kaydı'}</span>
-				</button>
-			</div>
-
-			{/* Tab 1: Diff Viewer */}
-			{activeTab === 'diff' && (
-				<>
-					{diffs.length === 0 ? (
-						<div className={s.emptyState}>
-							<History size={24} style={{ opacity: 0.3 }} />
-							<span>{t('auditFarkYok')}</span>
-						</div>
-					) : (
-						<>
-							{/* Desktop Diff Table */}
-							<div className={s.diffTableWrap}>
-								<table className={s.diffTable}>
-									<thead>
-										<tr>
-											<th style={{ width: '38%' }}>{t('auditAlan')}</th>
-											<th style={{ width: '31%' }}>{t('auditOnceki')}</th>
-											<th style={{ width: '31%' }}>{t('auditSonraki')}</th>
-										</tr>
-									</thead>
-									<tbody>
-										{diffs.map((d: DiffRow) => {
-											const appKey = d.field.startsWith('izinler.')
-												? d.field.slice('izinler.'.length)
-												: d.field;
-											const appMeta = isPermissionApp(appKey)
-												? getAppMeta(appKey as AppID, language)
-												: null;
-											const label = isPermissionApp(appKey)
-												? appMeta?.shortTitle ||
-												  appMeta?.title ||
-												  PERMISSION_DESCRIPTIONS[appKey]?.name ||
-												  appKey
-												: t(`auditField_${d.field}`, d.field);
-
-											return (
-												<tr key={d.field}>
-													<td>
-														<strong style={{ color: 'var(--text-primary)' }}>{label}</strong>
-														{d.field.includes('.') && (
-															<span
-																style={{
-																	display: 'block',
-																	fontSize: 10,
-																	color: 'var(--text-secondary)',
-																	opacity: 0.7,
-																}}
-															>
-																{d.field}
-															</span>
-														)}
-													</td>
-													<td>
-														<span className={s.diffOldVal}>
-															{formatAuditValue(d.field, d.before)}
-														</span>
-													</td>
-													<td>
-														<span className={s.diffNewVal}>
-															{formatAuditValue(d.field, d.after)}
-														</span>
-													</td>
-												</tr>
-											);
-										})}
-									</tbody>
-								</table>
-							</div>
-
-							{/* Mobile Diff Cards */}
-							<div className={s.diffCardsMobile}>
-								{diffs.map((d: DiffRow) => {
-									const appKey = d.field.startsWith('izinler.')
-										? d.field.slice('izinler.'.length)
-										: d.field;
-									const appMeta = isPermissionApp(appKey)
-										? getAppMeta(appKey as AppID, language)
-										: null;
-									const label = isPermissionApp(appKey)
-										? appMeta?.shortTitle ||
-										  appMeta?.title ||
-										  PERMISSION_DESCRIPTIONS[appKey]?.name ||
-										  appKey
-										: t(`auditField_${d.field}`, d.field);
-
-									return (
-										<div key={`mobile-diff-${d.field}`} className={s.diffFieldCard}>
-											<span className={s.diffFieldName}>{label}</span>
-											<div className={s.diffComparison}>
-												<div className={s.diffCol}>
-													<span className={s.diffColLabel}>{t('auditOnceki')}</span>
-													<span className={s.diffOldVal}>
-														{formatAuditValue(d.field, d.before)}
-													</span>
-												</div>
-												<div className={s.diffCol}>
-													<span className={s.diffColLabel}>{t('auditSonraki')}</span>
-													<span className={s.diffNewVal}>
-														{formatAuditValue(d.field, d.after)}
-													</span>
-												</div>
-											</div>
-										</div>
-									);
-								})}
-							</div>
-						</>
-					)}
-				</>
-			)}
-
-			{/* Tab 2: Forensic Raw JSON Viewer */}
-			{activeTab === 'raw' && (
-				<div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-					<div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-						<button
-							type="button"
-							className={s.actionBtn}
-							style={{ padding: '3px 9px', fontSize: 11 }}
-							onClick={() => copyWithFeedback('json', JSON.stringify(record, null, 2))}
-						>
-							{copiedField === 'json' ? <Check size={12} color="var(--success)" /> : <Copy size={12} />}
-							<span>{copiedField === 'json' ? (isEn ? 'Copied!' : 'Kopyalandı!') : (isEn ? 'Copy JSON' : 'JSON Kopyala')}</span>
-						</button>
-					</div>
-					<pre className={s.jsonPre}>{JSON.stringify(record, null, 2)}</pre>
-				</div>
-			)}
-		</Sheet>
 	);
 }

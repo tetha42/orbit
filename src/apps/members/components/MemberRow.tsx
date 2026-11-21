@@ -1,33 +1,18 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
-import {
-	Mail,
-	Award,
-	CheckCircle2,
-	Clock,
-	XCircle,
-	GraduationCap,
-	User,
-	KeyRound,
-	Shield,
-	ShieldAlert,
-	Trash2,
-	HardDrive,
-} from 'lucide-react';
-import { AvatarFallback } from '@/components/Common/AvatarFallback';
+import { Award, ShieldAlert, HardDrive } from 'lucide-react';
 import { RoleBadge } from '@/core/ui/RoleBadge';
-import { isAlumniRole } from '@/core/permissions';
 import { useI18n } from '@/core/i18n';
 import { formatBytes } from '@/core/data/format';
 import { useSession } from '@/core/session';
 import { useContextMenu, useShellActions } from '@/core/shell';
 import { useWindowActions } from '@/core/windows';
-import type { MenuItem } from '@/types/workspace';
 import { fill } from '@/lib/text';
-import ui from '@/core/ui/ui.module.css';
 import { MemberActions } from './MemberActions';
+import { MemberIdentityCell, MemberStatusCell } from './MemberRowCells';
+import { getMemberDisplayRole } from './MemberDisplayUtils';
+import { buildMemberContextMenuItems } from './MemberContextMenu';
 import type { MemberRecord, AssignableRole } from '../types';
 
 interface MemberRowProps {
@@ -68,128 +53,30 @@ export const MemberRow = React.memo(function MemberRow({
 	const { openContextMenu } = useShellActions();
 	const { openApp } = useWindowActions();
 	const canSoc = canUseApp('soc');
+	const displayRole = getMemberDisplayRole(member, t);
 
-	const isAlumni = member.status === 'alumni' || isAlumniRole({ id: member.roleId, name: member.roleName });
-	const displayRole = isAlumni
-		? {
-				name: isAlumniRole({ id: member.roleId, name: member.roleName })
-					? (member.roleName ?? t('membersStatusAlumni', 'Mezun'))
-					: t('membersStatusAlumni', 'Mezun'),
-				color: isAlumniRole({ id: member.roleId, name: member.roleName }) ? (member.roleColor ?? '#64d2ff') : '#64d2ff',
-		  }
-		: member.roleId
-		? { name: member.roleName ?? '—', color: member.roleColor ?? '#8e8e93' }
-		: null;
+	const getMenuItems = () =>
+		buildMemberContextMenuItems({
+			member,
+			currentUserId,
+			mailUser,
+			isReachable,
+			isAuthorizedToAdd,
+			accessible,
+			canSoc,
+			assignableRoles,
+			t,
+			openApp,
+			onOpenProfile,
+			onResetPassword,
+			onSendMessage,
+			onUpdateStatus,
+			onUpdateRole,
+			onAwardXp,
+			onDelete,
+		});
 
-	const buildMenuItems = (): MenuItem[] => {
-		const isSelf = member.id === currentUserId;
-		const canManage = accessible && isAuthorizedToAdd;
-
-		const items: MenuItem[] = [
-			{
-				id: `view-profile-${member.id}`,
-				label: t('membersCtxViewProfile'),
-				icon: <User size={14} />,
-				action: () => onOpenProfile(member),
-			},
-		];
-
-		if (mailUser && !isSelf && member.status === 'active' && isReachable) {
-			items.push({
-				id: `send-mail-${member.id}`,
-				label: t('membersCtxSendMessage'),
-				icon: <Mail size={14} />,
-				action: () => onSendMessage(member.id),
-			});
-		}
-
-		if (canManage) {
-			items.push({ id: `sep-mgm-${member.id}`, label: '', separator: true });
-
-			if (canSoc) {
-				items.push({
-					id: `soc-audit-${member.id}`,
-					label: t('membersCtxSocAudit'),
-					icon: <ShieldAlert size={14} />,
-					action: () => openApp('soc', { section: 'siem', kind: 'user', itemId: member.id }),
-				});
-			}
-
-			items.push({
-				id: `inspect-storage-${member.id}`,
-				label: `${t('membersColStorage', 'Depolama')}: ${formatBytes(member.diskUsageBytes)} (${member.fileCount ?? 0} ${t('filesCountUnit', 'dosya')})`,
-				icon: <HardDrive size={14} />,
-				action: () => onOpenProfile(member),
-			});
-
-			if (member.status !== 'rejected') {
-				items.push({
-					id: `change-role-${member.id}`,
-					label: t('membersCtxChangeRole'),
-					icon: <Shield size={14} />,
-					children: [
-						{
-							id: `role-none-${member.id}`,
-							label: t('membersCtxNoRole'),
-							checked: !member.roleId && !isAlumni,
-							action: () => onUpdateRole(member.id, ''),
-						},
-						...assignableRoles.map((r) => ({
-							id: `role-${r.id}-${member.id}`,
-							label: isAlumniRole(r) ? t('membersStatusAlumni', r.name) : r.name,
-							checked: isAlumni ? isAlumniRole(r) : member.roleId === r.id,
-							action: () => onUpdateRole(member.id, r.id),
-						})),
-					],
-				});
-			}
-
-			items.push({
-				id: `reset-pwd-${member.id}`,
-				label: t('membersCtxResetPassword'),
-				icon: <KeyRound size={14} />,
-				action: () => onResetPassword(member.id, `${member.firstName} ${member.lastName}`),
-			});
-
-			if (member.status === 'pending') {
-				items.push({
-					id: `approve-${member.id}`,
-					label: t('membersCtxApprove'),
-					icon: <CheckCircle2 size={14} />,
-					action: () => onUpdateStatus(member.id, 'active'),
-				});
-				items.push({
-					id: `reject-${member.id}`,
-					label: t('membersCtxReject'),
-					icon: <XCircle size={14} />,
-					action: () => onUpdateStatus(member.id, 'rejected'),
-				});
-			}
-
-			items.push({
-				id: `award-xp-${member.id}`,
-				label: t('membersCtxAwardXp'),
-				icon: <Award size={14} />,
-				action: () => onAwardXp(member.id, 50),
-			});
-
-			if (!isSelf) {
-				items.push({ id: `sep-del-${member.id}`, label: '', separator: true });
-				items.push({
-					id: `delete-${member.id}`,
-					label: t('membersCtxDelete'),
-					icon: <Trash2 size={14} />,
-					action: () => onDelete(member.id, `${member.firstName} ${member.lastName}`),
-				});
-			}
-		}
-
-		return items;
-	};
-
-	const rowContextMenuProps = useContextMenu({
-		items: buildMenuItems,
-	});
+	const rowContextMenuProps = useContextMenu({ items: getMenuItems });
 
 	const handleActionMenuClick = (e: React.MouseEvent) => {
 		e.preventDefault();
@@ -200,7 +87,7 @@ export const MemberRow = React.memo(function MemberRow({
 			y: rect.bottom + 4,
 			mode: 'app',
 			appId: 'members',
-			customItems: buildMenuItems(),
+			customItems: getMenuItems(),
 		});
 	};
 
@@ -211,56 +98,20 @@ export const MemberRow = React.memo(function MemberRow({
 			{...rowContextMenuProps}
 			onDoubleClick={() => onOpenProfile(member)}
 			title={t('membersRowContextTitle')}
-			style={{
-				borderBottom: '1px solid rgba(120, 120, 130, 0.08)',
-				transition: 'background 120ms ease',
-				cursor: 'context-menu',
-			}}
+			style={{ borderBottom: '1px solid color-mix(in srgb, var(--neutral) 8%, transparent)', transition: 'background 120ms ease', cursor: 'context-menu' }}
 		>
-			{/* Name & Avatar */}
-			<td style={{ padding: '10px' }}>
-				<div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-					{member.avatarUrl || member.profilePhoto ? (
-						<Image
-							src={(member.avatarUrl || member.profilePhoto)!}
-							alt={`${member.firstName} ${member.lastName}`}
-							width={34}
-							height={34}
-							unoptimized
-							style={{ width: '34px', height: '34px', borderRadius: '50%', objectFit: 'cover' }}
-						/>
-					) : (
-						<AvatarFallback name={`${member.firstName} ${member.lastName}`} size={34} />
-					)}
-					<div>
-						<div style={{ fontWeight: 600 }}>
-							{member.firstName} {member.lastName}
-						</div>
-						<div style={{ fontSize: '11px', opacity: 0.6 }}>{member.email}</div>
-					</div>
-					{mailUser && member.id !== currentUserId && member.status === 'active' && isReachable && (
-						<button
-							type="button"
-							className={ui.btn}
-							data-member-message={member.id}
-							title={fill(t('membersSendMessageTo'), { name: `${member.firstName} ${member.lastName}` })}
-							aria-label={fill(t('membersSendMessageTo'), { name: `${member.firstName} ${member.lastName}` })}
-							onClick={() => onSendMessage(member.id)}
-							style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 9px', fontSize: 11.5 }}
-						>
-							<Mail size={13} />
-							{t('membersSendMessage')}
-						</button>
-					)}
-				</div>
-			</td>
+			<MemberIdentityCell
+				member={member}
+				currentUserId={currentUserId}
+				mailUser={mailUser}
+				isReachable={isReachable}
+				onSendMessage={onSendMessage}
+			/>
 
-			{/* Role badge */}
 			<td style={{ padding: '10px' }}>
 				<RoleBadge role={displayRole} emptyText={t('roleNone')} />
 			</td>
 
-			{/* Major & Year */}
 			<td style={{ padding: '10px' }}>
 				<div>{member.department}</div>
 				<div style={{ fontSize: '11px', opacity: 0.6 }}>
@@ -268,75 +119,28 @@ export const MemberRow = React.memo(function MemberRow({
 				</div>
 			</td>
 
-			{/* Team */}
 			<td style={{ padding: '10px' }}>
 				<div style={{ fontSize: '12.5px', fontWeight: 500 }}>
 					{member.teamName || <span style={{ opacity: 0.4 }}>{t('membersNotAssigned')}</span>}
 				</div>
 			</td>
 
-			{/* XP */}
 			<td style={{ padding: '10px' }}>
 				<div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-					<Award size={14} style={{ color: '#ff9500' }} />
+					<Award size={14} style={{ color: 'var(--warning)' }} />
 					<span style={{ fontWeight: 600, fontSize: '12px' }}>{member.xp || 0} XP</span>
 				</div>
 			</td>
 
-			{/* Storage */}
 			<td style={{ padding: '10px' }}>
-				<div style={{ display: 'flex', alignItems: 'center', gap: '5px' }} title={`${member.fileCount ?? 0} files`}>
+				<div style={{ display: 'flex', alignItems: 'center', gap: '5px' }} title={`${member.fileCount ?? 0} ${t('filesCountUnit')}`}>
 					<HardDrive size={13} style={{ opacity: 0.6 }} />
-					<span style={{ fontSize: '12px', fontVariantNumeric: 'tabular-nums' }}>
-						{formatBytes(member.diskUsageBytes)}
-					</span>
+					<span style={{ fontSize: '12px', fontVariantNumeric: 'tabular-nums' }}>{formatBytes(member.diskUsageBytes)}</span>
 				</div>
 			</td>
 
-			{/* Status */}
-			<td style={{ padding: '10px' }}>
-				<span
-					style={{
-						display: 'inline-flex',
-						alignItems: 'center',
-						gap: '4px',
-						fontSize: '11px',
-						fontWeight: 600,
-						padding: '2px 8px',
-						borderRadius: '6px',
-						background:
-							member.status === 'active'
-								? 'rgba(52, 199, 89, 0.15)'
-								: member.status === 'alumni'
-								? 'rgba(10, 132, 255, 0.15)'
-								: member.status === 'pending'
-								? 'rgba(255, 204, 0, 0.15)'
-								: 'rgba(255, 59, 48, 0.15)',
-						color:
-							member.status === 'active'
-								? '#34c759'
-								: member.status === 'alumni'
-								? '#0a84ff'
-								: member.status === 'pending'
-								? '#ffcc00'
-								: '#ff3b30',
-					}}
-				>
-					{member.status === 'active' && <CheckCircle2 size={12} />}
-					{member.status === 'pending' && <Clock size={12} />}
-					{member.status === 'rejected' && <XCircle size={12} />}
-					{member.status === 'alumni' && <GraduationCap size={12} />}
-					{member.status === 'active'
-						? t('membersStatusActive', 'Aktif')
-						: member.status === 'pending'
-						? t('membersStatusPending', 'Onay Bekliyor')
-						: member.status === 'alumni'
-						? t('membersStatusAlumni', 'Mezun')
-						: t('membersStatusRejected', 'Reddedildi')}
-				</span>
-			</td>
+			<MemberStatusCell status={member.status} />
 
-			{/* Management Actions */}
 			{isAuthorizedToAdd && (
 				<td style={{ padding: '10px', textAlign: 'center' }}>
 					<div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
@@ -363,11 +167,7 @@ export const MemberRow = React.memo(function MemberRow({
 								<ShieldAlert size={13} />
 							</button>
 						)}
-						<MemberActions
-							member={member}
-							onUpdateStatus={onUpdateStatus}
-							onOpenContextMenu={handleActionMenuClick}
-						/>
+						<MemberActions member={member} onUpdateStatus={onUpdateStatus} onOpenContextMenu={handleActionMenuClick} />
 					</div>
 				</td>
 			)}

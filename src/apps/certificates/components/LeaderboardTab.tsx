@@ -63,7 +63,7 @@ export function LeaderboardTab({ topMembers, currentUserId }: LeaderboardTabProp
 									key={member.id}
 									style={{
 										borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-										background: isMe ? 'rgba(10, 132, 255, 0.12)' : 'transparent',
+										background: isMe ? 'color-mix(in srgb, var(--accent) 12%, transparent)' : 'transparent',
 									}}
 								>
 									<td style={{ padding: '12px 16px', fontWeight: 700, fontSize: '13px' }}>
@@ -71,7 +71,19 @@ export function LeaderboardTab({ topMembers, currentUserId }: LeaderboardTabProp
 									</td>
 									<td style={{ padding: '12px 16px' }}>
 										<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-											<div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg, #0a84ff, #5e5ce6)', display: 'grid', placeItems: 'center', color: '#fff', fontSize: '11px', fontWeight: 700 }}>
+											<div
+												style={{
+													width: '28px',
+													height: '28px',
+													borderRadius: '50%',
+													background: 'linear-gradient(135deg, var(--accent), var(--indigo))',
+													display: 'grid',
+													placeItems: 'center',
+													color: '#fff',
+													fontSize: '11px',
+													fontWeight: 700,
+												}}
+											>
 												{(member.firstName || member.name || '')[0]}{(member.lastName || member.surname || '')[0]}
 											</div>
 											<span style={{ fontWeight: isMe ? 700 : 500 }}>
@@ -80,7 +92,7 @@ export function LeaderboardTab({ topMembers, currentUserId }: LeaderboardTabProp
 										</div>
 									</td>
 									<td style={{ padding: '12px 16px', opacity: 0.8, fontSize: '12px' }}>
-										{member.department} ({fill(t('membersClassYear'), { year: member.grade })})
+										{member.department} ({fill(t('membersClassYear'), { year: member.grade ?? 0 })})
 									</td>
 									<td style={{ padding: '12px 16px' }}>
 										<span style={{ padding: '3px 8px', borderRadius: '6px', background: 'rgba(255, 255, 255, 0.08)', fontSize: '11px' }}>
@@ -88,7 +100,16 @@ export function LeaderboardTab({ topMembers, currentUserId }: LeaderboardTabProp
 										</span>
 									</td>
 									<td style={{ padding: '12px 16px', textAlign: 'right' }}>
-										<span style={{ fontWeight: 800, color: '#ff9500', background: 'rgba(255, 149, 0, 0.15)', padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
+										<span
+									style={{
+										fontWeight: 800,
+										color: 'var(--warning)',
+										background: 'color-mix(in srgb, var(--warning) 15%, transparent)',
+										padding: '3px 10px',
+										borderRadius: '12px',
+										fontSize: '12px',
+									}}
+								>
 											{member.xp || 0} XP
 										</span>
 									</td>

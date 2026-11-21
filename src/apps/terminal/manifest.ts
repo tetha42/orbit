@@ -35,10 +35,10 @@ const manifest = {
 	dock: 11,
 	permission: {
 		order: 11,
-		name: 'Terminal',
-		use: 'Sunucuda kabuk (shell) açar.',
-		manage: 'Sunucuda kabuk (shell) açar.',
-		warning: 'Terminal sunucuya tam erişim verir; yalnızca güvendiğiniz kişilere açın.',
+		name: 'Server Terminal',
+		use: 'Open interactive shell sessions on the server.',
+		manage: 'Open interactive shell sessions on the server.',
+		warning: 'Terminal grants full server access; restrict to trusted administrators only.',
 	},
 	menu: {
 		title: { tr: 'Terminal', en: 'Terminal' },

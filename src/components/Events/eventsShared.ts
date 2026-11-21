@@ -15,8 +15,8 @@ export interface EventView {
 	attendanceOpen: number;
 	registeredCount: number;
 	participantCount: number;
-	myMyRecord: boolean;
-	myMyAttendance: { method: AttendanceMethod; participationTime: number } | null;
+	myRecord: boolean;
+	myAttendance: { method: AttendanceMethod; participationTime: number } | null;
 	ticketCode: string | null;
 }
 
@@ -27,10 +27,10 @@ export interface EventsResponse {
 }
 
 export const TYPE_META: Record<EventType, { color: string; key: string }> = {
-	workshop: { color: 'var(--ev-atolye)', key: 'evTypeAtolye' },
-	seminar: { color: 'var(--ev-seminer)', key: 'evTypeSeminer' },
-	competition: { color: 'var(--ev-yarisma)', key: 'evTypeYarisma' },
-	meeting: { color: 'var(--ev-toplanti)', key: 'evTypeToplanti' },
+	workshop: { color: 'var(--ev-workshop)', key: 'evTypeWorkshop' },
+	seminar: { color: 'var(--ev-seminar)', key: 'evTypeSeminar' },
+	competition: { color: 'var(--ev-competition)', key: 'evTypeCompetition' },
+	meeting: { color: 'var(--ev-meeting)', key: 'evTypeMeeting' },
 };
 
 export const typeMeta = (typeValue: string) => TYPE_META[typeValue as EventType] ?? TYPE_META.workshop;

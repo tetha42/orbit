@@ -1,11 +1,12 @@
-// Kanban izinleri: kaptan panoyu yönetir; üye yalnız kendi görevini taşır/işaretler, havuzdan
-// görev üstlenir, herkesin görevine yorum yazar; takım dışındaki üye panoyu görmez; başka
-// takımın kaptanı bu takımın görevine dokunamaz; mezun salt okur.
-import { drag, openTeam, refreshBoard, stepper } from '../lib/arayuz.mjs';
+// Kanban permissions: the captain manages the board; a member only moves/checks their own task,
+// claims tasks from the pool, and comments on anyone's task; an outsider cannot see the board; a
+// captain of another team cannot touch this team's task; alumni are read-only.
+import { drag, openTeam, refreshBoard, stepper } from '../lib/ui-shared.mjs';
 import { addTask, makeTeam, readTask, readTeam, sweepStale } from '../lib/team.mjs';
 import { newMember } from '../lib/membership.mjs';
+import { tr } from '../lib/locale.mjs';
 
-export const meta = { title: 'Kanban: kaptan ve üye izinleri' };
+export const meta = { title: 'Kanban: captain and member permissions' };
 
 export default async function suite(t) {
 	const { fx } = t;
@@ -13,173 +14,176 @@ export default async function suite(t) {
 	await sweepStale(admin);
 
 	const member = fx.roles.member;
-	const captain = await newMember(t, admin, { label: 'kaptan', roleId: member });
-	const ali = await newMember(t, admin, { label: 'ali', roleId: member });
-	const bek = await newMember(t, admin, { label: 'bek', roleId: member });
-	const outsider = await newMember(t, admin, { label: 'disarida', roleId: member });
-	const captain2 = await newMember(t, admin, { label: 'kaptan2', roleId: member });
-	const team = await makeTeam(t, admin, { label: 'Izin', leadId: captain.id });
-	const team2 = await makeTeam(t, admin, { label: 'Izin2', leadId: captain2.id });
+	const captain = await newMember(t, admin, { label: 'captain', roleId: member });
+	const ali = await newMember(t, admin, { label: 'alice', roleId: member });
+	const bek = await newMember(t, admin, { label: 'bob', roleId: member });
+	const outsider = await newMember(t, admin, { label: 'outsider', roleId: member });
+	const captain2 = await newMember(t, admin, { label: 'captain2', roleId: member });
+	const team = await makeTeam(t, admin, { label: 'Permission', leadId: captain.id });
+	const team2 = await makeTeam(t, admin, { label: 'Permission2', leadId: captain2.id });
 	const [aliApi, bekApi, outApi, cap2Api, capApi] = await Promise.all([ali.api(), bek.api(), outsider.api(), captain2.api(), captain.api()]);
 	await aliApi.post('/api/teams', { action: 'join', teamId: team.id });
 	await bekApi.post('/api/teams', { action: 'join', teamId: team.id });
 
-	const aliTask = await addTask(capApi, team.id, { title: `Ali görevi ${Date.now().toString(36)}`, assigneeMemberId: ali.id });
-	const bekTask = await addTask(capApi, team.id, { title: `Bek görevi ${Date.now().toString(36)}`, assigneeMemberId: bek.id });
-	const poolTask = await addTask(capApi, team.id, { title: `Havuz görevi ${Date.now().toString(36)}` });
+	const aliTask = await addTask(capApi, team.id, { title: `Alice task ${Date.now().toString(36)}`, assigneeMemberId: ali.id });
+	const bekTask = await addTask(capApi, team.id, { title: `Bob task ${Date.now().toString(36)}`, assigneeMemberId: bek.id });
+	const poolTask = await addTask(capApi, team.id, { title: `Pool task ${Date.now().toString(36)}` });
+	const myItem = 'My item';
+	const question = 'Question from Alice';
+	const aliceDescription = 'Alice updated the description.';
 	const statusOf = async (id) => (await readTeam(admin, team.id)).tasks.find((g) => g.id === id)?.status;
 
-	await t.step('kaptan (API): görev ekler, atar, başkasının görevini taşır ve siler', async () => {
-		const extra = await addTask(capApi, team.id, { title: 'Kaptanın geçici görevi', assigneeMemberId: bek.id });
-		t.eq(extra.assigneeMemberId, bek.id, 'kaptan görevi takım üyesine atadı');
-		t.eq((await capApi.post('/api/teams', { action: 'updateTask', taskId: extra.id, status: 'in_progress' })).status, 200, 'kaptan başkasının görevini taşıdı');
-		t.eq((await capApi.patch(`/api/teams/tasks/${extra.id}`, { title: 'Yeni ad', priority: 'critical' })).status, 200, 'kaptan başlık/öncelik değiştirdi');
-		const outsiderAssign = await capApi.post('/api/teams', { action: 'addTask', teamId: team.id, title: 'dışarıya', assigneeMemberId: outsider.id });
-		t.eq(outsiderAssign.status, 400, 'takım dışındaki üyeye görev atanamaz (400)');
-		t.eq((await capApi.post('/api/teams', { action: 'deleteTask', taskId: extra.id })).status, 200, 'kaptan görevi sildi');
+	await t.step('captain (API): adds, assigns, moves, and deletes another member\'s task', async () => {
+		const extra = await addTask(capApi, team.id, { title: 'Captain temporary task', assigneeMemberId: bek.id });
+		t.eq(extra.assigneeMemberId, bek.id, 'captain assigned the task to a team member');
+		t.eq((await capApi.post('/api/teams', { action: 'updateTask', taskId: extra.id, status: 'in_progress' })).status, 200, 'captain moved another member\'s task');
+		t.eq((await capApi.patch(`/api/teams/tasks/${extra.id}`, { title: 'New name', priority: 'critical' })).status, 200, 'captain changed the title/priority');
+		const outsiderAssign = await capApi.post('/api/teams', { action: 'addTask', teamId: team.id, title: 'outsider task', assigneeMemberId: outsider.id });
+		t.eq(outsiderAssign.status, 400, 'a task cannot be assigned to a non-member (400)');
+		t.eq((await capApi.post('/api/teams', { action: 'deleteTask', taskId: extra.id })).status, 200, 'captain deleted the task');
 	});
 
-	await t.step('kaptan (arayüz): "Yeni Görev", sütun "+" ve Ayarlar sekmesi var; kartı sürükler', async () => {
+	await t.step('captain (UI): new-task button, column "+", and settings tab exist; captain drags a card', async () => {
 		const { page } = await captain.open();
 		const win = await openTeam(page, team.id);
-		t.eq(await win.getByRole('button', { name: 'Yeni Görev' }).count(), 1, '"Yeni Görev" düğmesi var');
-		t.eq(await win.getByRole('button', { name: 'Bu sütuna ekle' }).count(), 4, 'her sütunda "+" var');
-		t.check(await win.locator('nav').getByText('Ayarlar').count() === 1, 'Ayarlar sekmesi var');
-		t.eq(await win.locator(`[data-task-id="${bekTask.id}"]`).getAttribute('draggable'), 'true', 'başkasının kartı kaptan için sürüklenebilir');
-		await drag(page, win.locator(`[data-task-id="${bekTask.id}"]`), win.locator('section[aria-label="Sürüyor"]'));
+		t.eq(await win.getByRole('button', { name: tr('teamsAddTask') }).count(), 1, 'create-task button is present');
+		t.eq(await win.getByRole('button', { name: tr('kbAddHere') }).count(), 4, 'every column has a "+"');
+		t.check(await win.locator('nav').getByText(tr('tmTabSettings')).count() === 1, 'settings tab is present');
+		t.eq(await win.locator(`[data-task-id="${bekTask.id}"]`).getAttribute('draggable'), 'true', 'another member\'s card is draggable for the captain');
+		await drag(page, win.locator(`[data-task-id="${bekTask.id}"]`), win.locator(`section[aria-label="${tr('kbColDoing')}"]`));
 		await t.waitFor(async () => (await statusOf(bekTask.id)) === 'in_progress');
-		t.eq(await statusOf(bekTask.id), 'in_progress', 'kaptan Bek\'in görevini sürükledi');
+		t.eq(await statusOf(bekTask.id), 'in_progress', 'captain dragged Bob\'s task');
 		await t.shot(page, 'kaptan-pano');
 	});
 
-	await t.step('üye (arayüz): ekleme düğmeleri yok; yalnız kendi kartı sürüklenebilir', async () => {
+	await t.step('member (UI): no add buttons; only their own card is draggable', async () => {
 		const { page } = await ali.open();
 		const win = await openTeam(page, team.id);
-		t.eq(await win.getByRole('button', { name: 'Yeni Görev' }).count(), 0, '"Yeni Görev" yok');
-		t.eq(await win.getByRole('button', { name: 'Bu sütuna ekle' }).count(), 0, 'sütun "+" düğmeleri yok');
-		t.check(await win.getByText('Görev eklemek kaptan ve yönetime açıktır.').count() === 1, 'yalnız kaptan/yönetim ipucu');
-		t.eq(await win.locator('nav').getByText('Ayarlar').count(), 0, 'Ayarlar sekmesi yok');
-		t.eq(await win.locator('nav').getByText('Proje Kasası').count(), 0, 'Proje Kasası sekmesi yok');
-		t.eq(await win.locator(`[data-task-id="${aliTask.id}"]`).getAttribute('draggable'), 'true', 'kendi kartı sürüklenebilir');
-		t.eq(await win.locator(`[data-task-id="${bekTask.id}"]`).getAttribute('draggable'), 'false', 'başkasının kartı sürüklenemez');
-		t.eq(await win.locator(`[data-task-id="${bekTask.id}"]`).getByRole('button', { name: /sütuna taşı/ }).count(), 0, 'başkasının kartında taşıma okları yok');
-		// Başkasının kartını sürüklemeye çalışmak hiçbir şey değiştirmez.
-		await drag(page, win.locator(`[data-task-id="${bekTask.id}"]`), win.locator('section[aria-label="İncelemede"]'));
+		t.eq(await win.getByRole('button', { name: tr('teamsAddTask') }).count(), 0, 'no create-task button');
+		t.eq(await win.getByRole('button', { name: tr('kbAddHere') }).count(), 0, 'no column "+" buttons');
+		t.check(await win.getByText(tr('kbOnlyManagers')).count() === 1, 'captain/management-only hint shown');
+		t.eq(await win.locator('nav').getByText(tr('tmTabSettings')).count(), 0, 'no settings tab');
+		t.eq(await win.locator('nav').getByText(tr('teamsTreasuryTab')).count(), 0, 'no project vault tab');
+		t.eq(await win.locator(`[data-task-id="${aliTask.id}"]`).getAttribute('draggable'), 'true', 'own card is draggable');
+		t.eq(await win.locator(`[data-task-id="${bekTask.id}"]`).getAttribute('draggable'), 'false', 'another member\'s card is not draggable');
+		t.eq(await win.locator(`[data-task-id="${bekTask.id}"]`).getByRole('button', { name: new RegExp(`${tr('kbMoveLeft')}|${tr('kbMoveRight')}`) }).count(), 0, 'no move arrows on another member\'s card');
+		// Trying to drag someone else's card changes nothing.
+		await drag(page, win.locator(`[data-task-id="${bekTask.id}"]`), win.locator(`section[aria-label="${tr('kbColReview')}"]`));
 		await page.waitForTimeout(500);
-		t.eq(await statusOf(bekTask.id), 'in_progress', 'başkasının görevi yerinde kaldı');
-		await drag(page, win.locator(`[data-task-id="${aliTask.id}"]`), win.locator('section[aria-label="İncelemede"]'));
+		t.eq(await statusOf(bekTask.id), 'in_progress', 'another member\'s task stayed in place');
+		await drag(page, win.locator(`[data-task-id="${aliTask.id}"]`), win.locator(`section[aria-label="${tr('kbColReview')}"]`));
 		await t.waitFor(async () => (await statusOf(aliTask.id)) === 'review');
-		t.eq(await statusOf(aliTask.id), 'review', 'kendi görevini sürükledi');
+		t.eq(await statusOf(aliTask.id), 'review', 'member dragged their own task');
 		await t.shot(page, 'uye-pano');
 	});
 
-	await t.step('üye (arayüz): kendi görevinde liste ve açıklama açık, başlık/öncelik/teslim/atama kapalı, silme yok', async () => {
+	await t.step('member (UI): checklist and description are editable on their own task; title/priority/due/assignee are locked and there is no delete', async () => {
 		const { page } = await ali.open();
 		const win = await openTeam(page, team.id);
 		const step = stepper(t, page);
-		await step('kendi görevi', async () => {
+		await step('own task', async () => {
 			await win.locator(`[data-task-id="${aliTask.id}"]`).click();
 			const sheet = page.getByRole('dialog', { name: aliTask.title });
 			await sheet.waitFor();
-			t.check(await sheet.getByLabel('Başlık').isDisabled(), 'başlık kutusu kapalı');
-			t.check(await sheet.getByRole('radio', { name: 'Kritik' }).isDisabled(), 'öncelik seçimi kapalı');
-			t.check(await sheet.locator('input[type=date]').isDisabled(), 'teslim tarihi kapalı');
-			t.eq(await sheet.locator('aside select').count(), 1, 'atama seçimi yok (yalnız durum seçimi)');
-			t.eq(await sheet.getByRole('button', { name: 'Görevi Sil' }).count(), 0, '"Görevi Sil" yok');
-			const input = sheet.getByPlaceholder('Yeni madde ekle…');
-			await input.fill('Benim maddem');
-			await sheet.getByRole('button', { name: 'Ekle', exact: true }).click();
-			await sheet.getByText('Benim maddem', { exact: true }).waitFor();
+			t.check(await sheet.getByLabel(tr('evFieldTitle')).isDisabled(), 'title field is disabled');
+			t.check(await sheet.getByRole('radio', { name: tr('kbPrioCritical') }).isDisabled(), 'priority selection is disabled');
+			t.check(await sheet.locator('input[type=date]').isDisabled(), 'due date is disabled');
+			t.eq(await sheet.locator('aside select').count(), 1, 'no assignee select (status select only)');
+			t.eq(await sheet.getByRole('button', { name: tr('kbDelete') }).count(), 0, 'no delete-task action');
+			const input = sheet.getByPlaceholder(tr('kbChecklistPh'));
+			await input.fill(myItem);
+			await sheet.getByRole('button', { name: tr('kbAdd'), exact: true }).click();
+			await sheet.getByText(myItem, { exact: true }).waitFor();
 			await sheet.locator('input[type=checkbox]').first().check();
 			await t.waitFor(async () => (await readTask(aliApi, aliTask.id)).json.items.some((m) => Number(m.isDone) === 1));
-			t.check((await readTask(aliApi, aliTask.id)).json.items.some((m) => Number(m.isDone) === 1), 'üye kendi listesini işaretledi');
-			await sheet.getByRole('button', { name: 'Düzenle' }).click();
-			await sheet.locator('textarea').first().fill('Ali açıklamayı güncelledi.');
-			await sheet.getByRole('button', { name: 'Kaydet' }).click();
-			await t.waitFor(async () => (await readTask(aliApi, aliTask.id)).json.task.description === 'Ali açıklamayı güncelledi.');
-			t.eq((await readTask(aliApi, aliTask.id)).json.task.description, 'Ali açıklamayı güncelledi.', 'üye kendi görevinin açıklamasını değiştirdi');
+			t.check((await readTask(aliApi, aliTask.id)).json.items.some((m) => Number(m.isDone) === 1), 'member checked their own checklist item');
+			await sheet.getByRole('button', { name: tr('edit') }).click();
+			await sheet.locator('textarea').first().fill(aliceDescription);
+			await sheet.getByRole('button', { name: tr('kbSave') }).click();
+			await t.waitFor(async () => (await readTask(aliApi, aliTask.id)).json.task.description === aliceDescription);
+			t.eq((await readTask(aliApi, aliTask.id)).json.task.description, aliceDescription, 'member updated the description of their own task');
 		});
-		await step('başkasının görevi: salt okunur, ama yorum yazılabilir', async () => {
+		await step('someone else\'s task: read-only, but comments can be written', async () => {
 			await win.locator(`[data-task-id="${bekTask.id}"]`).click();
 			const sheet = page.getByRole('dialog', { name: bekTask.title });
 			await sheet.waitFor();
-			t.check(await sheet.getByText('Bu görevi yalnızca görüntüleyebilirsiniz.').count() === 1, '"yalnızca görüntüleyebilirsiniz" uyarısı');
-			t.eq(await sheet.getByPlaceholder('Yeni madde ekle…').count(), 0, 'kontrol listesine ekleme yok');
-			t.check(await sheet.locator('aside select').first().isDisabled(), 'durum seçimi kapalı');
-			await sheet.getByPlaceholder(/Yorum yazın/).fill('Ali\'den soru');
-			await sheet.getByRole('button', { name: 'Gönder' }).click();
-			await sheet.locator('[data-comment-id]').filter({ hasText: 'Ali\'den soru' }).waitFor();
-			t.check((await readTask(bekApi, bekTask.id)).json.comments.some((y) => y.content === 'Ali\'den soru'), 'üye başkasının görevine yorum yazdı');
+			t.check(await sheet.getByText(tr('kbReadOnly')).count() === 1, 'view-only warning shown');
+			t.eq(await sheet.getByPlaceholder(tr('kbChecklistPh')).count(), 0, 'no checklist input');
+			t.check(await sheet.locator('aside select').first().isDisabled(), 'status select is disabled');
+			await sheet.getByPlaceholder(tr('kbCommentPh')).fill(question);
+			await sheet.getByRole('button', { name: tr('kbSend') }).click();
+			await sheet.locator('[data-comment-id]').filter({ hasText: question }).waitFor();
+			t.check((await readTask(bekApi, bekTask.id)).json.comments.some((y) => y.content === question), 'member commented on someone else\'s task');
 		});
-		await step('havuzdaki görevi üstlenme', async () => {
+		await step('claiming a pooled task', async () => {
 			await win.locator(`[data-task-id="${poolTask.id}"]`).click();
 			const sheet = page.getByRole('dialog', { name: poolTask.title });
-			await sheet.getByRole('button', { name: 'Görevi Üstlen' }).click();
+			await sheet.getByRole('button', { name: tr('kbClaim') }).click();
 			await t.waitFor(async () => (await readTask(aliApi, poolTask.id)).json.task.assigneeMemberId === ali.id);
-			t.eq((await readTask(aliApi, poolTask.id)).json.task.assigneeMemberId, ali.id, 'havuz görevi üyeye geçti');
-			await t.waitFor(async () => (await sheet.getByRole('button', { name: 'Görevi Üstlen' }).count()) === 0);
-			t.eq(await sheet.getByRole('button', { name: 'Görevi Üstlen' }).count(), 0, '"Görevi Üstlen" düğmesi kalktı');
+			t.eq((await readTask(aliApi, poolTask.id)).json.task.assigneeMemberId, ali.id, 'pooled task was assigned to the member');
+			await t.waitFor(async () => (await sheet.getByRole('button', { name: tr('kbClaim') }).count()) === 0);
+			t.eq(await sheet.getByRole('button', { name: tr('kbClaim') }).count(), 0, 'claim-task button disappeared');
 		});
 	});
 
-	await t.step('üye (API): yetkisi olmayan yazma işlemleri 403', async () => {
-		t.eq((await aliApi.post('/api/teams', { action: 'addTask', teamId: team.id, title: 'izinsiz' })).status, 403, 'görev ekleyemez');
-		t.eq((await aliApi.post('/api/teams', { action: 'updateTask', taskId: bekTask.id, status: 'done' })).status, 403, 'başkasının görevini taşıyamaz');
-		t.eq((await aliApi.post('/api/teams', { action: 'deleteTask', taskId: aliTask.id })).status, 403, 'kendi görevini bile silemez');
-		t.eq((await aliApi.patch(`/api/teams/tasks/${aliTask.id}`, { title: 'değişti' })).status, 403, 'kendi görevinin başlığını değiştiremez');
-		t.eq((await aliApi.patch(`/api/teams/tasks/${aliTask.id}`, { assigneeMemberId: bek.id })).status, 403, 'kendi görevini başkasına aktaramaz');
-		t.eq((await aliApi.patch(`/api/teams/tasks/${bekTask.id}`, { assigneeMemberId: ali.id })).status, 403, 'başkasına atanmış görevi üstlenemez');
-		t.eq((await aliApi.post(`/api/teams/tasks/${bekTask.id}`, { action: 'addItem', text: 'x' })).status, 403, 'başkasının listesine madde ekleyemez');
-		const bekComment = (await bekApi.post(`/api/teams/tasks/${bekTask.id}`, { action: 'addComment', content: 'Bek yazdı' })).json.comment;
-		t.eq((await aliApi.post(`/api/teams/tasks/${bekTask.id}`, { action: 'deleteComment', commentId: bekComment.id })).status, 403, 'başkasının yorumunu silemez');
-		t.eq((await capApi.post(`/api/teams/tasks/${bekTask.id}`, { action: 'deleteComment', commentId: bekComment.id })).status, 200, 'kaptan yorumu silebilir (moderasyon)');
-		t.eq((await aliApi.post('/api/teams', { action: 'updateTeam', teamId: team.id, description: 'Üye takım ayarını değiştiremez.' })).status, 403, 'takım ayarlarını değiştiremez');
+	await t.step('member (API): unauthorized writes return 403', async () => {
+		t.eq((await aliApi.post('/api/teams', { action: 'addTask', teamId: team.id, title: 'unauthorized' })).status, 403, 'cannot add tasks');
+		t.eq((await aliApi.post('/api/teams', { action: 'updateTask', taskId: bekTask.id, status: 'done' })).status, 403, 'cannot move another member\'s task');
+		t.eq((await aliApi.post('/api/teams', { action: 'deleteTask', taskId: aliTask.id })).status, 403, 'cannot even delete their own task');
+		t.eq((await aliApi.patch(`/api/teams/tasks/${aliTask.id}`, { title: 'changed' })).status, 403, 'cannot change the title of their own task');
+		t.eq((await aliApi.patch(`/api/teams/tasks/${aliTask.id}`, { assigneeMemberId: bek.id })).status, 403, 'cannot transfer their own task to someone else');
+		t.eq((await aliApi.patch(`/api/teams/tasks/${bekTask.id}`, { assigneeMemberId: ali.id })).status, 403, 'cannot claim a task assigned to someone else');
+		t.eq((await aliApi.post(`/api/teams/tasks/${bekTask.id}`, { action: 'addItem', text: 'x' })).status, 403, 'cannot add items to someone else\'s checklist');
+		const bekComment = (await bekApi.post(`/api/teams/tasks/${bekTask.id}`, { action: 'addComment', content: 'Bob wrote this' })).json.comment;
+		t.eq((await aliApi.post(`/api/teams/tasks/${bekTask.id}`, { action: 'deleteComment', commentId: bekComment.id })).status, 403, 'cannot delete someone else\'s comment');
+		t.eq((await capApi.post(`/api/teams/tasks/${bekTask.id}`, { action: 'deleteComment', commentId: bekComment.id })).status, 200, 'captain can delete the comment (moderation)');
+		t.eq((await aliApi.post('/api/teams', { action: 'updateTeam', teamId: team.id, description: 'A member cannot change team settings.' })).status, 403, 'cannot change team settings');
 	});
 
-	await t.step('takım dışındaki üye: pano kilitli, görevler gizli (404)', async () => {
+	await t.step('non-member: board locked, tasks hidden (404)', async () => {
 		const list = await readTeam(outApi, team.id);
-		t.eq(list.tasks, [], 'takım listesinde görev yok');
-		t.eq((await readTask(outApi, aliTask.id)).status, 404, 'görev ayrıntısı 404');
-		t.eq((await outApi.post(`/api/teams/tasks/${aliTask.id}`, { action: 'addComment', content: 'sızma' })).status, 404, 'yorum yazamaz (404)');
-		t.eq((await outApi.post('/api/teams', { action: 'updateTask', taskId: aliTask.id, status: 'done' })).status, 403, 'görev taşıyamaz');
+		t.eq(list.tasks, [], 'no tasks in the team list');
+		t.eq((await readTask(outApi, aliTask.id)).status, 404, 'task detail 404');
+		t.eq((await outApi.post(`/api/teams/tasks/${aliTask.id}`, { action: 'addComment', content: 'intrusion' })).status, 404, 'cannot comment (404)');
+		t.eq((await outApi.post('/api/teams', { action: 'updateTask', taskId: aliTask.id, status: 'done' })).status, 403, 'cannot move tasks');
 		const { page } = await outsider.open();
 		const win = await openTeam(page, team.id);
-		await win.getByText('Takım alanı üyelere özel').waitFor();
-		t.eq(await win.locator('[data-task-id]').count(), 0, 'kilit ekranında kart yok');
+		await win.getByText(tr('tmLocked')).waitFor();
+		t.eq(await win.locator('[data-task-id]').count(), 0, 'no cards on the locked screen');
 		await t.shot(page, 'takim-disi-kilit');
 	});
 
-	await t.step('başka takımın kaptanı bu takımın görevini silemez ve taşıyamaz', async () => {
-		t.eq((await cap2Api.post('/api/teams', { action: 'deleteTask', taskId: aliTask.id, teamId: team2.id })).status, 403, 'deleteTask (gövdede kendi takımı) 403');
+	await t.step('a captain of another team cannot delete or move this team\'s task', async () => {
+		t.eq((await cap2Api.post('/api/teams', { action: 'deleteTask', taskId: aliTask.id, teamId: team2.id })).status, 403, 'deleteTask (own team in body) 403');
 		t.eq((await cap2Api.post('/api/teams', { action: 'updateTask', taskId: aliTask.id, status: 'done' })).status, 403, 'updateTask 403');
-		t.eq((await cap2Api.patch(`/api/teams/tasks/${aliTask.id}`, { title: 'ele geçirildi' })).status, 404, 'PATCH 404 (görünmüyor)');
-		t.check((await readTask(admin, aliTask.id)).status === 200, 'görev yerinde');
+		t.eq((await cap2Api.patch(`/api/teams/tasks/${aliTask.id}`, { title: 'hijacked' })).status, 404, 'PATCH 404 (task not visible)');
+		t.check((await readTask(admin, aliTask.id)).status === 200, 'task unchanged');
 	});
 
-	await t.step('mezun üye: panoyu okur, yazamaz', async () => {
-		t.eq((await admin.patch('/api/members', { id: ali.id, status: 'alumni' })).status, 200, 'üye mezun yapıldı');
+	await t.step('alumni member: can read the board, cannot write', async () => {
+		t.eq((await admin.patch('/api/members', { id: ali.id, status: 'alumni' })).status, 200, 'member set to alumni');
 		try {
-			t.eq((await readTask(aliApi, aliTask.id)).status, 200, 'mezun görevi okuyabiliyor');
-			t.eq((await aliApi.post(`/api/teams/tasks/${aliTask.id}`, { action: 'addComment', content: 'alumni' })).status, 403, 'mezun yorum yazamaz');
-			t.eq((await aliApi.post('/api/teams', { action: 'updateTask', taskId: aliTask.id, status: 'done' })).status, 403, 'mezun görev taşıyamaz');
+			t.eq((await readTask(aliApi, aliTask.id)).status, 200, 'alumni can read the task');
+			t.eq((await aliApi.post(`/api/teams/tasks/${aliTask.id}`, { action: 'addComment', content: 'alumni' })).status, 403, 'alumni cannot comment');
+			t.eq((await aliApi.post('/api/teams', { action: 'updateTask', taskId: aliTask.id, status: 'done' })).status, 403, 'alumni cannot move tasks');
 		} finally {
 			await admin.patch('/api/members', { id: ali.id, status: 'active' });
 		}
 	});
 
-	await t.step('yetkisiz rol: "Sadece Haberler" panoya ulaşamaz', async () => {
+	await t.step('unauthorized role: a news-only user cannot reach the board', async () => {
 		const reader = await t.api('reader');
-		t.eq((await readTask(reader, aliTask.id)).status, 403, 'görev ayrıntısı 403');
-		t.eq((await reader.post('/api/teams', { action: 'join', teamId: team.id })).status, 403, 'takıma katılamaz');
+		t.eq((await readTask(reader, aliTask.id)).status, 403, 'task detail 403');
+		t.eq((await reader.post('/api/teams', { action: 'join', teamId: team.id })).status, 403, 'cannot join the team');
 	});
 
-	await t.step('menü: üye "Yeni Görev Ekle" deyince açıklayıcı hata alır', async () => {
+	await t.step('menu: a member using the add-task menu item gets an explanatory error', async () => {
 		const { page } = await bek.open();
 		await openTeam(page, team.id);
 		await refreshBoard(page);
 		await page.locator('[data-menubar-category=file]').click();
 		await page.locator('[data-menu-item=new-task]').click();
-		await page.locator('[role=status] > div').filter({ hasText: 'kaptana veya yönetime' }).waitFor();
-		t.eq(await page.getByRole('dialog', { name: 'Yeni Görev' }).count(), 0, 'görev formu açılmadı');
+		await page.locator('[role=status] > div').filter({ hasText: tr('tmAddTaskCaptainOnly') }).waitFor();
+		t.eq(await page.getByRole('dialog', { name: tr('teamsAddTask') }).count(), 0, 'task form did not open');
 	});
 }

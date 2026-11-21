@@ -18,7 +18,7 @@ interface Props {
 	onQueryChange: (q: string) => void;
 	data: unknown;
 	error: unknown;
-	httpStatus?: number;
+	httpStatus?: number | null;
 	visible: EventView[];
 	selectedId: string | null;
 	onSelectId: (id: string) => void;
@@ -64,7 +64,7 @@ function EventSidebarItem({
 				icon: <Copy size={13} />,
 				action: () => {
 					if (typeof window !== 'undefined') {
-						void copyToClipboard(`${window.location.origin}/etkinlikler/${e.id}`);
+						void copyToClipboard(`${window.location.origin}/?app=events&id=${encodeURIComponent(e.id)}`);
 					}
 				},
 			},
@@ -99,12 +99,12 @@ function EventSidebarItem({
 					{isLive(e, now) && <span className={`${styles.badge} ${styles.b_live}`}>{t('evLive')}</span>}
 					{e.status === 'draft' && <span className={`${styles.badge} ${styles.b_draft}`}>{t('evDraft')}</span>}
 					{e.status === 'cancelled' && <span className={`${styles.badge} ${styles.b_cancelled}`}>{t('evCancelled')}</span>}
-					{e.myMyAttendance ? (
+					{e.myAttendance ? (
 						<span className={`${styles.badge} ${styles.b_attended}`}>
 							<CheckCircle2 size={10} /> {t('evAttended')}
 						</span>
 					) : (
-						e.myMyRecord && <span className={`${styles.badge} ${styles.b_registered}`}>{t('evRegistered')}</span>
+						e.myRecord && <span className={`${styles.badge} ${styles.b_registered}`}>{t('evRegistered')}</span>
 					)}
 				</span>
 			</span>
@@ -138,7 +138,7 @@ export function EventsSidebar({
 		<aside className={styles.sidebar}>
 			<div className={styles.sideHead}>
 				<div className={styles.sideTitle}>
-					<CalendarDays size={18} color="#0a84ff" />
+					<CalendarDays size={18} color="var(--accent)" />
 					{t('evTitle')}
 					{manage && (
 						<button

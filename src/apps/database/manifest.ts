@@ -19,7 +19,7 @@ const manifest = {
 	icon: 'Database',
 	accentColor: '#0a84ff',
 	colors: { icon: '#0a84ff', menu: '#0a84ff', search: '#0a84ff' },
-	dockIcon: '/app-icons/database/256.png',
+	dockIcon: '/app-icons/devutils/256.webp',
 	badge: 'SQL',
 	window: {
 		width: 980,
@@ -35,10 +35,10 @@ const manifest = {
 	dock: 14,
 	permission: {
 		order: 14,
-		name: 'Veritabanı',
-		use: 'Veritabanı tablolarını görüntüler.',
-		manage: 'Veritabanı tablolarını ve kayıtlarını doğrudan düzenler.',
-		warning: 'Veritabanına doğrudan tam erişim verir; yalnızca sistem yöneticilerine açılmalıdır.',
+		name: 'Database Studio',
+		use: 'Browse database tables and view records in read-only mode.',
+		manage: 'Execute SQL queries, edit tables and modify records directly.',
+		warning: 'Grants direct full access to the database; restrict to system administrators only.',
 	},
 	menu: {
 		title: { tr: 'Veritabanı', en: 'Database' },

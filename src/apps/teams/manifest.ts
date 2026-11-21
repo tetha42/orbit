@@ -36,13 +36,13 @@ const manifest = {
 	notifications: { teamApplication: 'use', teamDecision: 'use', task: 'use', assigned: 'use' },
 	permission: {
 		order: 2,
-		name: 'Takımlar',
-		use: 'Takımlara katılır/başvurur, üyesi olduğu takımın görev panosunu kullanır.',
-		manage: 'Takım kurar, kaptan atar, tüm takımların üyelerini ve görevlerini yönetir.',
+		name: 'Teams & Tasks',
+		use: 'Join or apply to teams, and collaborate on member task boards.',
+		manage: 'Create teams, appoint captains, manage roster memberships, and oversee all task boards.',
 	},
 	menu: {
 		title: { tr: 'Takımlar', en: 'Teams' },
-		about: { id: 'about-teams', label: { tr: 'Takımlar Hakkında', en: 'About Teams' }, permission: 'use', ac: true },
+		about: { id: 'about-teams', label: { tr: 'Takımlar Hakkında', en: 'About Teams' }, permission: 'use', open: true },
 		categories: [
 			{
 				id: 'file',

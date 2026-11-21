@@ -70,14 +70,14 @@ export function BudgetSidebar({ active, general, projects, onSelect }: BudgetSid
 						{vault.name}
 					</span>
 					<span style={{ display: 'block', fontSize: '11px', opacity: isActive ? 0.85 : 0.6 }}>
-						{t('kasaEntryCount').replace('{n}', String(vault.recordCount))}
+						{t('treasuryEntryCount').replace('{n}', String(vault.recordCount))}
 					</span>
 				</span>
 				<span
 					style={{
 						fontSize: '12px',
 						fontWeight: 700,
-						color: isActive ? '#ffffff' : (vault.netBalanceMinor > 0 ? '#34c759' : 'inherit'),
+						color: isActive ? '#ffffff' : (vault.netBalanceMinor > 0 ? 'var(--success)' : 'inherit'),
 						opacity: isActive ? 1 : (vault.netBalanceMinor > 0 ? 1 : 0.55),
 						whiteSpace: 'nowrap',
 					}}
@@ -89,18 +89,18 @@ export function BudgetSidebar({ active, general, projects, onSelect }: BudgetSid
 	};
 
 	return (
-		<nav aria-label="Kasalar" className="vault-nav">
+		<nav aria-label={t('treasuryMobTabWallets')} className="vault-nav">
 			<div className="vault-nav-label" style={sectionLabel}>
-				{t('kasaGeneral')}
+				{t('treasuryGeneral')}
 			</div>
 			{general.map(renderItem)}
 			<div className="vault-nav-label" style={sectionLabel}>
-				{t('kasaProjectTreasuries')}
+				{t('treasuryProjectTreasuries')}
 			</div>
 			{projects.map(renderItem)}
 			{projects.length === 0 && (
 				<div className="vault-nav-label" style={{ padding: '4px 10px', fontSize: '12px', opacity: 0.55 }}>
-					{t('kasaNoProjects')}
+					{t('treasuryNoProjects')}
 				</div>
 			)}
 		</nav>

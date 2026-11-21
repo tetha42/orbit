@@ -12,7 +12,7 @@ import { createMember } from './seed.mjs';
 export const runTag = () => `${Date.now().toString(36)}${crypto.randomBytes(2).toString('hex')}`;
 
 /**
- * Creates an active member with the role of `rolId` and arranges for them to be
+ * Creates an active member with the role of `roleId` and arranges for them to be
  * deleted when the suite ends. `label` shows up in the name so a leftover is easy to trace.
  */
 export async function newMember(t, admin, { label, roleId, name = 'Test', surname: surnameOnAttachment, department, studentNo }) {
@@ -24,6 +24,7 @@ export async function newMember(t, admin, { label, roleId, name = 'Test', surnam
 		await admin.del(`/api/members?id=${encodeURIComponent(made.id)}`);
 	});
 	let api = null;
+	let lastContext = null;
 	const member = {
 		id: made.id,
 		email,
@@ -38,7 +39,12 @@ export async function newMember(t, admin, { label, roleId, name = 'Test', surnam
 		/** A Chrome page signed in as this member. */
 		async open({ mobile = false } = {}) {
 			const c = await member.api();
+			if (lastContext) {
+				await t.close(lastContext);
+				lastContext = null;
+			}
 			const opened = await openSession(t.browser, t.base, c.token, { viewport: mobile ? MOBILE : DESKTOP });
+			lastContext = opened.context;
 			t.track(opened.context);
 			return opened;
 		},

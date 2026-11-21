@@ -11,8 +11,8 @@ export interface RoleBadgeRole {
 	color: string;
 }
 
-export function RoleBadge({ role, size = 'sm', emptyText = 'Role atanmadı' }: { role: RoleBadgeRole | null | undefined; size?: 'sm' | 'md'; emptyText?: string }) {
-	const color = role?.color && /^#[0-9a-fA-F]{6}$/.test(role.color) ? role.color : '#8e8e93';
+export function RoleBadge({ role, size = 'sm', emptyText = 'No role assigned' }: { role: RoleBadgeRole | null | undefined; size?: 'sm' | 'md'; emptyText?: string }) {
+	const color = role?.color && /^#[0-9a-fA-F]{6}$/.test(role.color) ? role.color : 'var(--neutral)';
 	return (
 		<span
 			data-role-badge={role ? role.name : ''}
@@ -26,9 +26,9 @@ export function RoleBadge({ role, size = 'sm', emptyText = 'Role atanmadı' }: {
 				lineHeight: 1.3,
 				padding: size === 'md' ? '3px 10px' : '2px 8px',
 				borderRadius: '999px',
-				background: `${color}26`,
-				border: `1px solid ${color}59`,
-				color: role ? color : 'var(--text-secondary, #8e8e93)',
+				background: `color-mix(in srgb, ${color} 15%, transparent)`,
+				border: `1px solid color-mix(in srgb, ${color} 35%, transparent)`,
+				color: role ? color : 'var(--text-secondary)',
 				whiteSpace: 'nowrap',
 				overflow: 'hidden',
 				textOverflow: 'ellipsis',
@@ -42,6 +42,6 @@ export function RoleBadge({ role, size = 'sm', emptyText = 'Role atanmadı' }: {
 
 /** The avatar gradient for a role colour (initials circle). */
 export function roleGradient(color: string | null | undefined): string {
-	const c = color && /^#[0-9a-fA-F]{6}$/.test(color) ? color : '#0a84ff';
+	const c = color && /^#[0-9a-fA-F]{6}$/.test(color) ? color : 'var(--accent)';
 	return `linear-gradient(135deg, ${c}, ${c}b3)`;
 }

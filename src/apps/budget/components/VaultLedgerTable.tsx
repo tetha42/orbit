@@ -1,16 +1,12 @@
 'use client';
 
 import React from 'react';
-import { ArrowDownRight, ArrowRightLeft, ArrowUpRight, Copy, ExternalLink, Pencil, Receipt, Trash2 } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
 import { formatMinor } from '@/lib/budget';
-import { formatDate } from '@/core/data/format';
-import { useContextMenu } from '@/core/shell/useContextMenu';
-import { copyToClipboard } from '@/lib/clipboard';
-import type { MenuItem } from '@/types/workspace';
 import type { VaultRecord } from '../types';
+import { VaultTableRow } from './VaultTableRow';
+import { VaultMobileCard } from './VaultMobileCard';
 import k from './Vault.module.css';
-import { categoryLabel } from '../categoryLabel';
 
 interface VaultLedgerTableProps {
 	records: VaultRecord[];
@@ -27,286 +23,6 @@ interface VaultLedgerTableProps {
 }
 
 const tl = (minor: number) => `₺${formatMinor(minor)}`;
-const dateFmt = (ms: number) => formatDate(ms);
-
-interface VaultRowProps {
-	r: VaultRecord;
-	balance: number;
-	lockedForMe: boolean;
-	canWrite: boolean;
-	isManagement: boolean;
-	language: string;
-	onEdit: (r: VaultRecord) => void;
-	onDelete: (r: VaultRecord) => void;
-}
-
-function VaultTableRow({ r, balance, lockedForMe, language, onEdit, onDelete }: VaultRowProps) {
-	const { t } = useI18n();
-	const transfer = !!r.transferId;
-
-	const menuItems: MenuItem[] = [
-		{
-			id: 'copy-desc',
-			label: t('ctxBudgetCopyDesc'),
-			icon: <Copy size={13} />,
-			action: () => copyToClipboard(r.description),
-		},
-		{
-			id: 'copy-amount',
-			label: t('ctxBudgetCopyAmount'),
-			icon: <Copy size={13} />,
-			action: () => copyToClipboard(tl(r.amountMinor)),
-		},
-	];
-
-	if (r.receiptPhotoUrl) {
-		menuItems.push({
-			id: 'view-receipt',
-			label: t('ctxBudgetViewReceipt'),
-			icon: <ExternalLink size={13} />,
-			action: () => window.open(r.receiptPhotoUrl, '_blank', 'noopener,noreferrer'),
-		});
-	}
-
-	if (!lockedForMe) {
-		menuItems.push(
-			{ id: 'sep-budget-actions', label: '', separator: true },
-			{
-				id: 'edit-entry',
-				label: t('edit'),
-				icon: <Pencil size={13} />,
-				action: () => onEdit(r),
-			},
-			{
-				id: 'delete-entry',
-				label: transfer ? t('dlgRevoke') : t('delete'),
-				icon: <Trash2 size={13} />,
-				danger: true,
-				action: () => onDelete(r),
-			}
-		);
-	}
-
-	const contextMenuProps = useContextMenu({ items: menuItems });
-
-	return (
-		<tr key={r.id} data-focus-id={`kasa-row:${r.id}`} {...contextMenuProps}>
-			<td className={k.date}>{dateFmt(r.date)}</td>
-			<td>
-				{transfer ? (
-					<span className={`${k.tag} ${k.tagTransfer}`}>
-						<ArrowRightLeft size={11} /> {r.typeValue === 'income' ? t('kasaTagTransferIn') : t('kasaTagTransferOut')}
-					</span>
-				) : (
-					<span className={`${k.tag} ${r.typeValue === 'income' ? k.tagIn : k.tagOut}`}>
-						{r.typeValue === 'income' ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
-						{r.typeValue === 'income' ? t('kasaTagIncome') : t('kasaTagExpense')}
-					</span>
-				)}
-			</td>
-			<td style={{ fontWeight: 650, whiteSpace: 'nowrap' }}>{categoryLabel(t, r.category)}</td>
-			<td>
-				<div className={k.desc}>{r.description}</div>
-				{(transfer || r.receiptPhotoUrl || r.update) && (
-					<div className={k.sub}>
-						{transfer && (
-							<span>
-								{r.typeValue === 'income'
-									? `${t('kasaSource')} ${r.counterpartVaultName}`
-									: `${t('kasaTarget')} ${r.counterpartVaultName}`}
-							</span>
-						)}
-						{r.receiptPhotoUrl && (
-							<a
-								className={k.receipt}
-								href={r.receiptPhotoUrl}
-								target="_blank"
-								rel="noopener noreferrer"
-							>
-								<Receipt size={11} /> {t('kasaReceipt')}
-							</a>
-						)}
-						{r.update && (
-							<span title={new Date(r.update).toLocaleString(language)}>
-								{t('kasaEdited')}{r.updaterNameSurname ? ` · ${r.updaterNameSurname}` : ''}
-							</span>
-						)}
-					</div>
-				)}
-			</td>
-			<td className={k.colUser} style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-				{r.recorderNameSurname ?? '—'}
-			</td>
-			<td className={`${k.num} ${r.typeValue === 'income' ? k.pos : k.neg}`} style={{ fontWeight: 750 }}>
-				{r.typeValue === 'income' ? '+' : '−'}
-				{tl(r.amountMinor)}
-			</td>
-			<td className={`${k.num} ${k.colBalance}`} style={{ color: 'var(--text-secondary)' }}>
-				{tl(balance)}
-			</td>
-			<td>
-				{!lockedForMe && (
-					<div className={k.actions}>
-						<button
-							type="button"
-							className={k.rowBtn}
-							onClick={() => onEdit(r)}
-							aria-label={`${t('edit')}: ${r.description}`}
-							title={t('edit')}
-						>
-							<Pencil size={14} />
-						</button>
-						<button
-							type="button"
-							className={`${k.rowBtn} ${k.rowBtnDanger}`}
-							onClick={() => onDelete(r)}
-							aria-label={`${t('delete')}: ${r.description}`}
-							title={transfer ? t('dlgRevoke') : t('delete')}
-						>
-							<Trash2 size={14} />
-						</button>
-					</div>
-				)}
-			</td>
-		</tr>
-	);
-}
-
-function VaultMobileCard({ r, lockedForMe, onEdit, onDelete }: Omit<VaultRowProps, 'balance'>) {
-	const { t } = useI18n();
-	const transfer = !!r.transferId;
-
-	const menuItems: MenuItem[] = [
-		{
-			id: 'copy-desc',
-			label: t('ctxBudgetCopyDesc'),
-			icon: <Copy size={13} />,
-			action: () => copyToClipboard(r.description),
-		},
-		{
-			id: 'copy-amount',
-			label: t('ctxBudgetCopyAmount'),
-			icon: <Copy size={13} />,
-			action: () => copyToClipboard(tl(r.amountMinor)),
-		},
-	];
-
-	if (r.receiptPhotoUrl) {
-		menuItems.push({
-			id: 'view-receipt',
-			label: t('ctxBudgetViewReceipt'),
-			icon: <ExternalLink size={13} />,
-			action: () => window.open(r.receiptPhotoUrl, '_blank', 'noopener,noreferrer'),
-		});
-	}
-
-	if (!lockedForMe) {
-		menuItems.push(
-			{ id: 'sep-mob-budget', label: '', separator: true },
-			{
-				id: 'edit-entry',
-				label: t('edit'),
-				icon: <Pencil size={13} />,
-				action: () => onEdit(r),
-			},
-			{
-				id: 'delete-entry',
-				label: transfer ? t('dlgRevoke') : t('delete'),
-				icon: <Trash2 size={13} />,
-				danger: true,
-				action: () => onDelete(r),
-			}
-		);
-	}
-
-	const contextMenuProps = useContextMenu({ items: menuItems });
-
-	return (
-		<div
-			className="cv-auto-card"
-			{...contextMenuProps}
-			style={{
-				background: 'var(--card-bg)',
-				border: '1px solid var(--card-border)',
-				borderRadius: '12px',
-				padding: '12px 14px',
-				display: 'flex',
-				flexDirection: 'column',
-				gap: '8px',
-				boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
-			}}
-		>
-			<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-				{transfer ? (
-					<span className={`${k.tag} ${k.tagTransfer}`}>
-						<ArrowRightLeft size={11} /> {r.typeValue === 'income' ? t('kasaTagTransferIn') : t('kasaTagTransferOut')}
-					</span>
-				) : (
-					<span className={`${k.tag} ${r.typeValue === 'income' ? k.tagIn : k.tagOut}`}>
-						{r.typeValue === 'income' ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
-						{r.typeValue === 'income' ? t('kasaTagIncome') : t('kasaTagExpense')}
-					</span>
-				)}
-				<span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{dateFmt(r.date)}</span>
-			</div>
-
-			<div style={{ fontWeight: 650, fontSize: '14px', color: 'var(--text-primary)' }}>
-				{r.description}
-			</div>
-
-			<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-secondary)' }}>
-				<span>{categoryLabel(t, r.category)} · {r.recorderNameSurname ?? '—'}</span>
-				<span className={`${r.typeValue === 'income' ? k.pos : k.neg}`} style={{ fontWeight: 800, fontSize: '15px' }}>
-					{r.typeValue === 'income' ? '+' : '−'}{tl(r.amountMinor)}
-				</span>
-			</div>
-
-			{(transfer || r.receiptPhotoUrl || !lockedForMe) && (
-				<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '6px', borderTop: '1px solid var(--card-border)' }}>
-					<div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-						{transfer && (
-							<span>
-								{r.typeValue === 'income' ? `${t('kasaSource')} ${r.counterpartVaultName}` : `${t('kasaTarget')} ${r.counterpartVaultName}`}
-							</span>
-						)}
-						{r.receiptPhotoUrl && (
-							<a
-								className={k.receipt}
-								href={r.receiptPhotoUrl}
-								target="_blank"
-								rel="noopener noreferrer"
-								style={{ marginLeft: transfer ? '8px' : 0 }}
-							>
-								<Receipt size={11} /> {t('kasaReceipt')}
-							</a>
-						)}
-					</div>
-
-					{!lockedForMe && (
-						<div className={k.actions}>
-							<button
-								type="button"
-								className={k.rowBtn}
-								onClick={() => onEdit(r)}
-								title={t('edit')}
-							>
-								<Pencil size={13} />
-							</button>
-							<button
-								type="button"
-								className={`${k.rowBtn} ${k.rowBtnDanger}`}
-								onClick={() => onDelete(r)}
-								title={transfer ? t('dlgRevoke') : t('delete')}
-							>
-								<Trash2 size={13} />
-							</button>
-						</div>
-					)}
-				</div>
-			)}
-		</div>
-	);
-}
 
 export function VaultLedgerTable({
 	records,
@@ -336,28 +52,13 @@ export function VaultLedgerTable({
 			<div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', padding: '10px 14px 32px' }}>
 				{filtered.length === 0 && (
 					<div style={{ padding: '36px 16px', textAlign: 'center', opacity: 0.6, fontSize: '13px' }}>
-						{isLoading
-							? t('loading')
-							: records.length === 0
-								? t('kasaEmptyLedger')
-								: t('kasaNoMatch')}
+						{isLoading ? t('loading') : records.length === 0 ? t('treasuryEmptyLedger') : t('treasuryNoMatch')}
 					</div>
 				)}
 				{filtered.map((r) => {
 					const transfer = !!r.transferId;
 					const lockedForMe = !canWrite || (transfer && !isManagement);
-					return (
-						<VaultMobileCard
-							key={r.id}
-							r={r}
-							lockedForMe={lockedForMe}
-							canWrite={canWrite}
-							isManagement={isManagement}
-							language={language}
-							onEdit={onEdit}
-							onDelete={onDelete}
-						/>
-					);
+					return <VaultMobileCard key={r.id} r={r} lockedForMe={lockedForMe} onEdit={onEdit} onDelete={onDelete} />;
 				})}
 			</div>
 		);
@@ -374,7 +75,7 @@ export function VaultLedgerTable({
 						<th style={{ width: '40%' }}>{t('budgetColTitle')}</th>
 						<th className={k.colUser}>{t('budgetColUser')}</th>
 						<th className={k.num}>{t('budgetColAmount')}</th>
-						<th className={`${k.num} ${k.colBalance}`}>{t('kasaBalance')}</th>
+						<th className={`${k.num} ${k.colBalance}`}>{t('treasuryBalance')}</th>
 						<th aria-label={t('actions')} />
 					</tr>
 				</thead>
@@ -382,11 +83,7 @@ export function VaultLedgerTable({
 					{filtered.length === 0 && (
 						<tr>
 							<td colSpan={8} className={k.emptyRow}>
-								{isLoading
-									? t('loading')
-									: records.length === 0
-										? t('kasaEmptyLedger')
-										: t('kasaNoMatch')}
+								{isLoading ? t('loading') : records.length === 0 ? t('treasuryEmptyLedger') : t('treasuryNoMatch')}
 							</td>
 						</tr>
 					)}
@@ -399,8 +96,6 @@ export function VaultLedgerTable({
 								r={r}
 								balance={balances.get(r.id) ?? 0}
 								lockedForMe={lockedForMe}
-								canWrite={canWrite}
-								isManagement={isManagement}
 								language={language}
 								onEdit={onEdit}
 								onDelete={onDelete}
@@ -411,7 +106,7 @@ export function VaultLedgerTable({
 				{filtered.length > 0 && anyFilter && (
 					<tfoot>
 						<tr className={k.foot}>
-							<td colSpan={5}>{t('kasaFilteredTotal').replace('{n}', String(filtered.length))}</td>
+							<td colSpan={5}>{t('treasuryFilteredTotal').replace('{n}', String(filtered.length))}</td>
 							<td className={`${k.num} ${filteredIn - filteredOut >= 0 ? k.pos : k.neg}`}>
 								{filteredIn - filteredOut >= 0 ? '+' : '−'}
 								{tl(Math.abs(filteredIn - filteredOut))}

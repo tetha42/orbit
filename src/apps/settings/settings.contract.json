@@ -1,0 +1,156 @@
+{
+  "id": "settings",
+  "name": "System Settings",
+  "version": "1.0.0",
+  "description": "Community configuration, brand identity, wallpapers, legal terms, and custom fields.",
+  "tables": [
+    "system_settings",
+    "legal_documents",
+    "form_fields",
+    "roles",
+    "invitations"
+  ],
+  "api": {
+    "base": "/api/settings",
+    "endpoints": [
+      {
+        "path": "/api/community",
+        "methods": ["GET", "PATCH"],
+        "description": "Read or update public community profile settings."
+      },
+      {
+        "path": "/api/custom-assets/[kind]/[name]",
+        "methods": ["GET"],
+        "description": "Serve custom brand assets such as logos and wallpapers."
+      },
+      {
+        "path": "/api/form-fields",
+        "methods": ["GET"],
+        "description": "List public registration form fields."
+      },
+      {
+        "path": "/api/identity",
+        "methods": ["GET"],
+        "description": "Fetch resolved community brand identity metadata."
+      },
+      {
+        "path": "/api/identity/icon/[size]",
+        "methods": ["GET"],
+        "description": "Serve generated or custom community icon in requested size."
+      },
+      {
+        "path": "/api/registration-config",
+        "methods": ["GET"],
+        "description": "Fetch public registration and membership policy configuration."
+      },
+      {
+        "path": "/api/roles",
+        "methods": ["GET", "POST", "PATCH", "DELETE"],
+        "description": "List, create, update, or delete RBAC roles and device policies."
+      },
+      {
+        "path": "/api/settings/anonymize",
+        "methods": ["POST"],
+        "description": "Anonymize personal member data while preserving audit integrity."
+      },
+      {
+        "path": "/api/settings/community",
+        "methods": ["GET", "PATCH", "PUT", "POST"],
+        "description": "Read or update community configuration."
+      },
+      {
+        "path": "/api/settings/export",
+        "methods": ["GET"],
+        "description": "Export authenticated user personal data archive."
+      },
+      {
+        "path": "/api/settings/form-fields",
+        "methods": ["GET", "POST", "PATCH", "DELETE"],
+        "description": "Manage dynamic registration and custom form fields."
+      },
+      {
+        "path": "/api/settings/identity",
+        "methods": ["GET", "PATCH"],
+        "description": "Read or update brand identity."
+      },
+      {
+        "path": "/api/settings/identity/icon",
+        "methods": ["POST", "DELETE"],
+        "description": "Upload or reset custom brand identity icon."
+      },
+      {
+        "path": "/api/settings/invitations",
+        "methods": ["GET", "POST", "DELETE"],
+        "description": "List, issue, or revoke community invitation codes."
+      },
+      {
+        "path": "/api/settings/legal",
+        "methods": ["GET", "PATCH"],
+        "description": "Read or update legal terms and policies."
+      },
+      {
+        "path": "/api/settings/legal/versions",
+        "methods": ["GET"],
+        "description": "Inspect published legal document version history."
+      },
+      {
+        "path": "/api/settings/membership-policy",
+        "methods": ["GET", "PATCH"],
+        "description": "Read or update community membership policy."
+      },
+      {
+        "path": "/api/settings/registration-fields",
+        "methods": ["GET", "PATCH"],
+        "description": "Read or update enabled registration form fields."
+      },
+      {
+        "path": "/api/settings/smtp",
+        "methods": ["GET", "POST"],
+        "description": "Inspect or update SMTP delivery settings."
+      },
+      {
+        "path": "/api/settings/smtp/test",
+        "methods": ["POST"],
+        "description": "Send a test email using configured SMTP settings."
+      },
+      {
+        "path": "/api/settings/team-categories",
+        "methods": ["GET", "PATCH"],
+        "description": "Read or update community team categories."
+      },
+      {
+        "path": "/api/settings/wallpapers",
+        "methods": ["GET", "POST", "PATCH", "DELETE"],
+        "description": "Manage login and workspace wallpapers."
+      }
+    ]
+  },
+  "limits": {
+    "maxCommunityNameLength": 64,
+    "maxWallpapers": 20
+  },
+  "errorCodes": [
+    {
+      "code": "INVALID_CONFIG_KEY",
+      "status": 400,
+      "i18nKey": "invalidConfigKey",
+      "description": "Unrecognized configuration key."
+    }
+  ],
+  "files": {
+    "actions": [
+      "src/db/repositories/customization/identity.ts",
+      "src/db/repositories/customization/legalDocuments.ts",
+      "src/db/repositories/customization/wallpapers.ts"
+    ],
+    "queries": [
+      "src/apps/settings/hooks/useSettingsNav.ts"
+    ],
+    "ui": [
+      "src/apps/settings/index.tsx"
+    ],
+    "i18n": [
+      "src/lib/i18nApps.ts"
+    ]
+  }
+}

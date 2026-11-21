@@ -1,5 +1,26 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { translate, type Language } from '@/lib/i18n';
+import { DEFAULT_LOCALE, isSupportedLocale, normalizeLocale } from '@/locales/registry';
+
+function resolveClientLanguage(): Language {
+  try {
+    const stored = localStorage.getItem('orbit_locale');
+    if (isSupportedLocale(stored)) return stored;
+  } catch {
+    // Storage blocked: fall back to document or browser language
+  }
+  if (typeof document !== 'undefined') {
+    const attr = document.documentElement.getAttribute('lang');
+    if (isSupportedLocale(attr)) return attr;
+  }
+  if (typeof navigator !== 'undefined') {
+    return normalizeLocale(navigator.language, DEFAULT_LOCALE);
+  }
+  return DEFAULT_LOCALE;
+}
+
 export default function GlobalError({
   error,
   reset,
@@ -7,8 +28,15 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const [lang, setLang] = useState<Language>(DEFAULT_LOCALE);
+  const t = (key: string) => translate(lang, key);
+
+  useEffect(() => {
+    setLang(resolveClientLanguage());
+  }, []);
+
   return (
-    <html lang="en">
+    <html lang={lang}>
       <body
         style={{
           margin: 0,
@@ -48,7 +76,7 @@ export default function GlobalError({
             }}
           >
             <span>ORBIT // TETHA42</span>
-            <span style={{ color: '#ef4444' }}>CRITICAL FAULT</span>
+            <span style={{ color: '#ef4444' }}>{t('errCriticalTag')}</span>
           </div>
 
           <div style={{ padding: '28px 24px' }}>
@@ -61,7 +89,7 @@ export default function GlobalError({
                 color: '#fafafa',
               }}
             >
-              System Root Exception
+              {t('errGlobalTitle')}
             </h1>
 
             <p
@@ -72,7 +100,7 @@ export default function GlobalError({
                 color: '#a1a1aa',
               }}
             >
-              A critical fault interrupted the root application shell. Click below to reinitialize the client runtime.
+              {t('errGlobalDesc')}
               {error.digest ? ` (Digest: ${error.digest})` : ''}
             </p>
 
@@ -90,7 +118,7 @@ export default function GlobalError({
                 cursor: 'pointer',
               }}
             >
-              Reinitialize Runtime
+              {t('errReinitBtn')}
             </button>
           </div>
         </div>

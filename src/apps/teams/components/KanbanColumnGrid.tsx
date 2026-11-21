@@ -39,6 +39,8 @@ export function KanbanColumnGrid({
 	setDragId,
 	setDrop,
 }: KanbanColumnGridProps) {
+	const dragTask = dragId ? tasks.find((t) => t.id === dragId) : undefined;
+	const canDropDragged = Boolean(dragTask && (canManage || canWork(dragTask)));
 	return (
 		<div className={styles.columns}>
 			{COLUMNS.map((col, colIndex) => {
@@ -58,7 +60,7 @@ export function KanbanColumnGrid({
 						now={now}
 						dueText={dueText}
 						onDragOver={(e) => {
-							if (dragId && canManage) {
+							if (canDropDragged) {
 								e.preventDefault();
 								if (!drop || drop.col !== col.id) setDrop({ col: col.id, index: list.length });
 							}
@@ -85,7 +87,7 @@ export function KanbanColumnGrid({
 							setDrop(null);
 						}}
 						onCardDragOver={(e, i) => {
-							if (dragId && canManage) {
+							if (canDropDragged) {
 								e.preventDefault();
 								const rect = e.currentTarget.getBoundingClientRect();
 								const insertAfter = e.clientY > rect.top + rect.height / 2;

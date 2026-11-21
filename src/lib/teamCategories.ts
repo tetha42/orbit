@@ -2,7 +2,7 @@ import { TEAM_CATEGORIES } from './teams.ts';
 
 /**
  * Team categories are a community-managed vocabulary, not a hard-coded enum.
- * `teams.kategori` keeps the selected string; removing a category never
+ * `teams.category` keeps the selected string; removing a category never
  * rewrites existing teams, and their old value still appears in edit/filter
  * menus as a legacy option.
  */
@@ -14,12 +14,12 @@ export const DEFAULT_TEAM_CATEGORIES: readonly string[] = [...TEAM_CATEGORIES];
 
 /** Old Turkish factory categories → their English replacements (one-time migration). */
 export const LEGACY_TEAM_CATEGORY_MAP: Record<string, string> = {
-	'Havacılık & İHA': 'Aviation & UAV',
+	'Havac\u0131l\u0131k & \u0130HA': 'Aviation & UAV',
 	'Yapay Zeka': 'Artificial Intelligence',
 	'Web & Mobil': 'Web & Mobile',
-	'Siber Güvenlik': 'Cybersecurity',
-	'Robotik & Gömülü': 'Robotics & Embedded',
-	'Ar-Ge & Diğer': 'R&D & Other',
+	'Siber G\u00fcvenlik': 'Cybersecurity',
+	'Robotik & G\u00f6m\u00fcl\u00fc': 'Robotics & Embedded',
+	'Ar-Ge & Di\u011fer': 'R&D & Other',
 };
 
 /** Merges stored categories with defaults, trims, de-duplicates and caps them. */

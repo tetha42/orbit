@@ -12,10 +12,10 @@ export async function sweepStale(admin) {
 	for (const m of roster) if (m.name === 'Test' && /@e2e\.test$/.test(m.email)) await admin.del(`/api/members?id=${encodeURIComponent(m.id)}`);
 }
 
-const DESC ='E2E sınaması için kurulan geçici takım; paket bitince silinir.';
+const DESC = 'Temporary team created for the E2E run; deleted when the suite ends.';
 
 /** Creates a team (management's `createTeam`) and deletes it when the suite ends. Returns the team row. */
-export async function makeTeam(t, admin, { label, leadId, capacity = 6, participationType = 'open', category = 'Web & Mobil' }) {
+export async function makeTeam(t, admin, { label, leadId, capacity = 6, participationType = 'open', category = 'Web & Mobile' }) {
 	const res = await admin.post('/api/teams', {
 		action: 'createTeam',
 		name: `E2E ${label} ${runTag()}`,
@@ -42,7 +42,7 @@ export async function readTeam(who, teamId) {
 
 /** Adds a task through the API; returns the stored task. */
 export async function addTask(who, teamId, fields = {}) {
-	const res = await who.post('/api/teams', { action: 'addTask', teamId: teamId, title: `Görev ${runTag()}`, ...fields });
+	const res = await who.post('/api/teams', { action: 'addTask', teamId: teamId, title: `Task ${runTag()}`, ...fields });
 	if (!res.json?.task) throw new Error(`addTask: ${res.status} ${JSON.stringify(res.json)}`);
 	return res.json.task;
 }

@@ -24,9 +24,9 @@ export function TaskActivityHistory({ activity, members, when }: TaskActivityHis
 		(typeof id === 'string' && members.find((m) => m.id === id)?.name) || t('kbSomeone');
 
 	const activityText = (a: TeamTaskActivity) => {
-		const actor = a.actorNameSurname || t('kbSomeone');
+		const actor = a.actorName || t('kbSomeone');
 		const d = a.detail ?? {};
-		switch (a.typeValue) {
+		switch (a.type) {
 			case 'created':
 				return fill(t('kbActCreated'), { actor });
 			case 'moved':
@@ -74,7 +74,7 @@ export function TaskActivityHistory({ activity, members, when }: TaskActivityHis
 					<li key={a.id}>
 						<span className={styles.dot} />
 						<span>{activityText(a)}</span>
-						<time dateTime={new Date(a.creation).toISOString()}>{when(a.creation)}</time>
+						<time dateTime={new Date(a.createdAt ?? 0).toISOString()}>{when(a.createdAt ?? 0)}</time>
 					</li>
 				))}
 			</ul>

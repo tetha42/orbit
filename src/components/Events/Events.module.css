@@ -7,10 +7,10 @@
 	min-height: 100%;
 	background: var(--window-bg);
 	color: var(--text-primary);
-	--ev-atolye: #0a84ff;
-	--ev-seminer: #bf5af2;
-	--ev-yarisma: #ff9f0a;
-	--ev-toplanti: #30d158;
+	--ev-workshop: var(--info);
+	--ev-seminar: var(--purple);
+	--ev-competition: var(--warning);
+	--ev-meeting: var(--success);
 }
 
 .sidebar {
@@ -19,7 +19,7 @@
 	display: flex;
 	flex-direction: column;
 	border-right: 1px solid var(--window-border);
-	background: var(--settings-sidebar-bg, var(--fill-softer));
+	background: var(--settings-sidebar-bg);
 	min-height: 0;
 }
 
@@ -92,8 +92,8 @@
 	font-weight: 800;
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
-	color: #fff;
-	background: var(--type-color, #ff453a);
+	color: var(--accent-contrast);
+	background: var(--type-color, var(--accent));
 	padding: 2px 0;
 }
 
@@ -144,8 +144,8 @@
 }
 
 .b_live {
-	background: #ff453a;
-	color: #fff;
+	background: var(--danger);
+	color: var(--accent-contrast);
 }
 
 .b_live::before {
@@ -153,7 +153,7 @@
 	width: 6px;
 	height: 6px;
 	border-radius: 50%;
-	background: #fff;
+	background: var(--accent-contrast);
 	animation: pulse 1.4s ease-in-out infinite;
 }
 
@@ -169,8 +169,8 @@
 }
 
 .b_attended {
-	background: color-mix(in srgb, #30d158 16%, transparent);
-	color: #248a3d;
+	background: color-mix(in srgb, var(--success) 16%, transparent);
+	color: var(--success);
 }
 
 .b_draft {
@@ -179,8 +179,8 @@
 }
 
 .b_cancelled {
-	background: color-mix(in srgb, #ff453a 14%, transparent);
-	color: #ff453a;
+	background: color-mix(in srgb, var(--danger) 14%, transparent);
+	color: var(--danger);
 }
 
 .b_type {
@@ -289,8 +289,8 @@
 	gap: 10px;
 	padding: 12px 14px;
 	border-radius: 11px;
-	background: color-mix(in srgb, #30d158 13%, transparent);
-	color: color-mix(in srgb, #248a3d 85%, var(--text-primary));
+	background: color-mix(in srgb, var(--success) 13%, transparent);
+	color: color-mix(in srgb, var(--success) 85%, var(--text-primary));
 	font-weight: 650;
 	font-size: 13.5px;
 }
@@ -352,14 +352,14 @@
 	width: 14px;
 	height: 14px;
 	border-radius: 50%;
-	background: #fff;
+	background: var(--surface-paper);
 	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 	transition: transform 150ms ease;
 }
 
 .switch input:checked {
-	background: #30d158;
-	border-color: #30d158;
+	background: var(--success);
+	border-color: var(--success);
 }
 
 .switch input:checked::after {
@@ -417,8 +417,8 @@
 
 .ticketTop {
 	padding: 20px 22px;
-	color: #fff;
-	background: linear-gradient(135deg, var(--type-color), color-mix(in srgb, var(--type-color) 60%, #000));
+	color: var(--accent-contrast);
+	background: linear-gradient(135deg, var(--type-color), color-mix(in srgb, var(--type-color) 60%, var(--contrast-dark)));
 }
 
 .ticketBody {
@@ -434,7 +434,7 @@
 .qrBox {
 	padding: 10px;
 	border-radius: 14px;
-	background: #fff;
+	background: var(--surface-paper);
 	line-height: 0;
 }
 
@@ -442,8 +442,8 @@
 	width: min(560px, calc(100vw - 40px));
 	border-radius: 22px;
 	padding: 26px;
-	background: #0b0b0d;
-	color: #fff;
+	background: var(--ink-bg);
+	color: var(--accent-contrast);
 	text-align: center;
 	display: flex;
 	flex-direction: column;
@@ -463,7 +463,7 @@
 .countdown > span {
 	display: block;
 	height: 100%;
-	background: #30d158;
+	background: var(--success);
 	transition: width 1s linear;
 }
 

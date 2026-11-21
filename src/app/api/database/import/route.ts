@@ -2,7 +2,10 @@ import { NextResponse } from 'next/server';
 import { withTransaction, getPgPool } from '@/db';
 import { requireDatabaseAdmin } from '@/server/databaseAccess';
 import { clientAddress } from '@/lib/http';
+import { InvalidBodyError, PayloadTooLargeError, readBoundedJson } from '@/lib/httpBodyGuard';
 import { logSystemEvent } from '@/db/repositories/logs.repo';
+
+const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
 
 const SENSITIVE_COLUMNS = new Set([
 	'password_hash',
@@ -50,29 +53,46 @@ export async function POST(request: Request) {
 	}
 
 	const ip = clientAddress(request);
-	const body = (await request.json().catch(() => ({}))) as ImportBody;
+	let body: ImportBody;
+	try {
+		body = await readBoundedJson<ImportBody>(request, MAX_IMPORT_BYTES);
+	} catch (error) {
+		if (error instanceof PayloadTooLargeError) {
+			return NextResponse.json({ error: 'Import payload exceeds the 5 MB limit.' }, { status: 413 });
+		}
+		if (error instanceof InvalidBodyError) {
+			return NextResponse.json({ error: 'Invalid JSON payload.' }, { status: 400 });
+		}
+		throw error;
+	}
+	if (!body || typeof body !== 'object' || Array.isArray(body)) {
+		return NextResponse.json({ error: 'Import payload must be a JSON object.' }, { status: 400 });
+	}
 	const table = String(body.table || '').trim();
 	const rows = Array.isArray(body.rows) ? body.rows : [];
 	const conflictStrategy = body.conflictStrategy || 'error';
 
 	if (!table || !/^[a-zA-Z0-9_]+$/.test(table)) {
-		return NextResponse.json({ error: 'Geçersiz tablo adı.' }, { status: 400 });
+		return NextResponse.json({ error: 'Invalid table name.' }, { status: 400 });
 	}
 
 	const lowerTable = table.toLowerCase();
 	if (PROTECTED_TABLES.has(lowerTable)) {
 		return NextResponse.json(
-			{ error: 'Güvenlik ve denetim tablolarına toplu veri aktarılamaz.' },
+			{ error: 'Bulk data cannot be imported into security and audit tables.' },
 			{ status: 403 }
 		);
 	}
 
 	if (rows.length === 0) {
-		return NextResponse.json({ error: 'İçe aktarılacak veri bulunamadı.' }, { status: 400 });
+		return NextResponse.json({ error: 'No rows found to import.' }, { status: 400 });
 	}
 
 	if (rows.length > 2000) {
-		return NextResponse.json({ error: 'Tek seferde en fazla 2000 satır içe aktarılabilir.' }, { status: 400 });
+		return NextResponse.json({ error: 'At most 2000 rows can be imported at once.' }, { status: 400 });
+	}
+	if (rows.some((r) => typeof r !== 'object' || r === null || Array.isArray(r))) {
+		return NextResponse.json({ error: 'Each imported row must be a JSON object.' }, { status: 400 });
 	}
 
 	const pool = getPgPool();
@@ -86,7 +106,7 @@ export async function POST(request: Request) {
 		`, [table]);
 
 		if (colRes.rows.length === 0) {
-			return NextResponse.json({ error: 'Hedef tablo bulunamadı.' }, { status: 404 });
+			return NextResponse.json({ error: 'Target table not found.' }, { status: 404 });
 		}
 
 		const validCols = new Set(
@@ -160,7 +180,7 @@ export async function POST(request: Request) {
 		await logSystemEvent({
 			service: 'database',
 			level: 'WARN',
-			message: `Toplu veri içe aktarıldı: ${table}`,
+			message: `Bulk data imported: ${table}`,
 			detail: {
 				table: table,
 				rowCount: rows.length,
@@ -173,12 +193,14 @@ export async function POST(request: Request) {
 
 		return NextResponse.json({
 			success: true,
-			message: `${affectedCount} satır başarıyla işlendi (${table}).`,
+			message: `Successfully processed ${affectedCount} row(s) (${table}).`,
 			affectedCount,
 		});
 	} catch (error) {
-		console.error(`İçe aktarma hatası (${table}):`, error);
-		const msg = error instanceof Error ? error.message : 'İçe aktarma sırasında bir veritabanı hatası oluştu.';
-		return NextResponse.json({ error: msg }, { status: 500 });
+		console.error(`Import error (${table}):`, error);
+		return NextResponse.json(
+			{ error: 'A database error occurred during import.' },
+			{ status: 500 }
+		);
 	}
 }

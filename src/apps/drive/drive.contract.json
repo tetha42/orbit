@@ -1,0 +1,127 @@
+{
+  "id": "drive",
+  "name": "Cloud Drive & Storage Quotas",
+  "version": "1.0.0",
+  "description": "Cloud file storage, chunked uploads, member/role sharing, and in-app storage quota management.",
+  "tables": [
+    "drive_folders",
+    "drive_items",
+    "drive_shares",
+    "storage_quotas",
+    "files"
+  ],
+  "api": {
+    "base": "/api/drive",
+    "endpoints": [
+      {
+        "path": "/api/drive/items",
+        "methods": [
+          "GET"
+        ],
+        "description": "List Drive folders, items, and storage usage breakdown."
+      },
+      {
+        "path": "/api/drive/items/[id]",
+        "methods": [
+          "PATCH",
+          "DELETE"
+        ],
+        "description": "Rename, move, or delete a Drive item."
+      },
+      {
+        "path": "/api/drive/folders",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "description": "List or create folders."
+      },
+      {
+        "path": "/api/drive/folders/[id]",
+        "methods": [
+          "PATCH",
+          "DELETE"
+        ],
+        "description": "Rename, move, or delete a Drive folder."
+      },
+      {
+        "path": "/api/drive/quotas",
+        "methods": [
+          "GET",
+          "PUT",
+          "DELETE"
+        ],
+        "description": "Inspect and manage global, role, and member storage quotas."
+      },
+      {
+        "path": "/api/drive/shares",
+        "methods": [
+          "GET",
+          "POST",
+          "DELETE"
+        ],
+        "description": "List, create, or revoke Drive member and role shares."
+      },
+      {
+        "path": "/api/drive/upload/init",
+        "methods": [
+          "POST"
+        ],
+        "description": "Initialize a chunked Drive upload and reserve quota."
+      },
+      {
+        "path": "/api/drive/upload/chunk",
+        "methods": [
+          "PUT"
+        ],
+        "description": "Upload a file chunk for an initialized Drive transfer."
+      },
+      {
+        "path": "/api/drive/upload/complete",
+        "methods": [
+          "POST"
+        ],
+        "description": "Finalize and commit a chunked Drive upload."
+      }
+    ]
+  },
+  "limits": {
+    "maxSingleFileBytes": 262144000,
+    "chunkSizeBytes": 4194304,
+    "defaultGlobalQuotaBytes": 536870912
+  },
+  "errorCodes": [
+    {
+      "code": "DRIVE_ITEM_NOT_FOUND",
+      "status": 404,
+      "i18nKey": "driveItemNotFound",
+      "description": "Drive file or folder not found."
+    },
+    {
+      "code": "STORAGE_QUOTA_EXCEEDED",
+      "status": 413,
+      "i18nKey": "driveQuotaExceeded",
+      "description": "Storage quota exceeded."
+    }
+  ],
+  "files": {
+    "actions": [
+      "src/domains/drive/repo.ts",
+      "src/domains/drive/foldersRepo.ts",
+      "src/domains/drive/quotasRepo.ts",
+      "src/domains/drive/service.ts"
+    ],
+    "queries": [
+      "src/apps/drive/useDrive.ts"
+    ],
+    "ui": [
+      "src/apps/drive/index.tsx",
+      "src/apps/drive/DriveToolbar.tsx",
+      "src/apps/drive/DriveQuotasPanel.tsx",
+      "src/apps/drive/DriveShareModal.tsx"
+    ],
+    "i18n": [
+      "src/lib/i18n/domains/drive.ts"
+    ]
+  }
+}

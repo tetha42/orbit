@@ -9,7 +9,7 @@
 	width: 100%;
 	height: 100%;
 	min-height: 0;
-	color: var(--text-primary, #f5f5f7);
+	color: var(--text-primary);
 	overflow: hidden;
 	user-select: none;
 	background: var(--window-bg);
@@ -29,12 +29,12 @@
 	width: 100%;
 }
 
-/* Sabit Apple iOS Alt Sekme Çubuğu (Bottom Navigation Tab Bar) */
+/* Fixed Apple iOS Bottom Navigation Tab Bar */
 .mobileBottomTabBar {
 	flex-shrink: 0;
 	height: calc(56px + env(safe-area-inset-bottom, 0px));
 	min-height: calc(56px + env(safe-area-inset-bottom, 0px));
-	background: rgba(18, 18, 22, 0.94);
+	background: var(--mobile-dock-bg);
 	backdrop-filter: blur(20px);
 	-webkit-backdrop-filter: blur(20px);
 	border-top: 1px solid rgba(255, 255, 255, 0.1);
@@ -68,7 +68,7 @@
 }
 
 .mobileBottomTabBtnActive {
-	color: var(--accent, #0a84ff) !important;
+	color: var(--accent) !important;
 }
 
 .mobileBottomTabIconWrap {
@@ -94,15 +94,15 @@
 	min-width: 16px;
 	height: 16px;
 	border-radius: 8px;
-	background: #ff453a;
-	color: #ffffff;
+	background: var(--danger);
+	color: var(--accent-contrast);
 	font-size: 10px;
 	font-weight: 700;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	padding: 0 4px;
-	border: 1.5px solid #121216;
+	border: 1.5px solid var(--ink-elevated);
 }
 
 /* Card Styles */
@@ -145,7 +145,7 @@
 	align-items: center;
 	justify-content: center;
 	flex-shrink: 0;
-	color: var(--accent, #0a84ff);
+	color: var(--accent);
 }
 
 .itemDetails {
@@ -159,7 +159,7 @@
 .itemName {
 	font-size: 14px;
 	font-weight: 700;
-	color: #f8fafc;
+	color: var(--accent-contrast);
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -196,8 +196,8 @@
 }
 
 .badgeOk {
-	background: rgba(52, 199, 89, 0.15);
-	color: #34c759;
+	background: color-mix(in srgb, var(--success) 15%, transparent);
+	color: var(--success);
 }
 
 .badgeWarn {
@@ -206,8 +206,8 @@
 }
 
 .badgeDanger {
-	background: rgba(255, 59, 48, 0.15);
-	color: #ff453a;
+	background: color-mix(in srgb, var(--danger) 15%, transparent);
+	color: var(--danger);
 }
 
 .badgeMuted {
@@ -228,14 +228,14 @@
 	border: 1px solid rgba(255, 255, 255, 0.1);
 	border-radius: 10px;
 	padding: 0 12px 0 34px;
-	color: #ffffff;
+	color: var(--accent-contrast);
 	font-size: 13px;
 	outline: none;
 	box-sizing: border-box;
 }
 
 .searchInput:focus {
-	border-color: var(--accent, #0a84ff);
+	border-color: var(--accent);
 	background: rgba(255, 255, 255, 0.08);
 }
 
@@ -279,9 +279,9 @@
 }
 
 .chipActive {
-	background: var(--accent, #0a84ff) !important;
-	color: #ffffff !important;
-	border-color: var(--accent-border, #0a84ff) !important;
+	background: var(--accent) !important;
+	color: var(--accent-contrast) !important;
+	border-color: var(--accent-border) !important;
 	font-weight: 600;
 }
 

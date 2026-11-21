@@ -19,7 +19,7 @@
 	justify-content: flex-start;
 	padding: 0 8px;
 	background: color-mix(in srgb, var(--window-bg) 85%, transparent);
-	border-bottom: 0.5px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+	border-bottom: 0.5px solid var(--border-subtle);
 	backdrop-filter: blur(20px);
 	-webkit-backdrop-filter: blur(20px);
 	position: sticky;
@@ -58,17 +58,17 @@
 	align-items: center;
 	gap: 8px;
 	height: 38px;
-	background: color-mix(in srgb, var(--card-bg) 60%, rgba(142, 142, 147, 0.16));
-	border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+	background: color-mix(in srgb, var(--card-bg) 60%, color-mix(in srgb, var(--neutral) 16%, transparent));
+	border: 1px solid var(--border-subtle);
 	border-radius: 11px;
 	padding: 0 10px;
 	transition: all 180ms ease;
 }
 
 .searchBar:focus-within {
-	border-color: var(--accent-blue, #0a84ff);
+	border-color: var(--accent-blue);
 	background: var(--card-bg);
-	box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-blue, #0a84ff) 20%, transparent);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-blue) 20%, transparent);
 }
 
 .searchInput {
@@ -82,7 +82,7 @@
 }
 
 .searchInput::placeholder {
-	color: var(--text-secondary, #8e8e93);
+	color: var(--text-secondary);
 	opacity: 0.8;
 }
 
@@ -92,8 +92,8 @@
 	width: 18px;
 	height: 18px;
 	border-radius: 50%;
-	background: rgba(142, 142, 147, 0.4);
-	color: #fff;
+	background: color-mix(in srgb, var(--neutral) 40%, transparent);
+	color: var(--accent-contrast);
 	border: none;
 	cursor: pointer;
 	padding: 0;
@@ -107,7 +107,7 @@
 	gap: 14px;
 	padding: 14px 16px;
 	background: var(--card-bg);
-	border: 1px solid var(--card-border, rgba(255, 255, 255, 0.1));
+	border: 1px solid var(--card-border);
 	border-radius: 14px;
 	cursor: pointer;
 	transition: background 150ms ease, transform 120ms ease;
@@ -117,7 +117,7 @@
 }
 
 .profileCard:active {
-	background: color-mix(in srgb, var(--card-bg) 85%, var(--accent-blue, #0a84ff));
+	background: color-mix(in srgb, var(--card-bg) 85%, var(--accent-blue));
 	transform: scale(0.99);
 }
 
@@ -143,8 +143,8 @@
 	height: 100%;
 	display: grid;
 	place-items: center;
-	background: linear-gradient(135deg, var(--accent-blue, #0a84ff), #5e5ce6);
-	color: #fff;
+	background: linear-gradient(135deg, var(--accent-blue), var(--indigo));
+	color: var(--accent-contrast);
 	font-size: 20px;
 	font-weight: 700;
 }
@@ -169,7 +169,7 @@
 
 .profileSubtitle {
 	font-size: 12.5px;
-	color: var(--text-secondary, #8e8e93);
+	color: var(--text-secondary);
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -187,14 +187,14 @@
 	font-weight: 600;
 	letter-spacing: 0.02em;
 	text-transform: uppercase;
-	color: var(--text-secondary, #8e8e93);
+	color: var(--text-secondary);
 	padding-left: 14px;
 	opacity: 0.75;
 }
 
 .groupCard {
 	background: var(--card-bg);
-	border: 1px solid var(--card-border, rgba(255, 255, 255, 0.08));
+	border: 1px solid var(--card-border);
 	border-radius: 14px;
 	overflow: hidden;
 	display: flex;
@@ -227,7 +227,7 @@
 	border-radius: 7px;
 	display: grid;
 	place-items: center;
-	color: #fff;
+	color: var(--accent-contrast);
 	flex-shrink: 0;
 	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
 }
@@ -242,14 +242,14 @@
 
 .rowValue {
 	font-size: 14px;
-	color: var(--text-secondary, #8e8e93);
+	color: var(--text-secondary);
 	margin-right: 2px;
 	white-space: nowrap;
 }
 
 .rowSeparator {
 	height: 0.5px;
-	background: var(--border-subtle, rgba(255, 255, 255, 0.08));
+	background: var(--border-subtle);
 	margin-left: 55px;
 }
 
@@ -272,7 +272,7 @@
 	justify-content: space-between;
 	padding: 0 10px;
 	background: color-mix(in srgb, var(--window-bg) 85%, transparent);
-	border-bottom: 0.5px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+	border-bottom: 0.5px solid var(--border-subtle);
 	backdrop-filter: blur(20px);
 	-webkit-backdrop-filter: blur(20px);
 	position: sticky;
@@ -287,7 +287,7 @@
 	gap: 3px;
 	background: none;
 	border: none;
-	color: var(--accent-blue, #0a84ff);
+	color: var(--accent-blue);
 	font-size: 16px;
 	font-weight: 500;
 	cursor: pointer;
@@ -330,13 +330,13 @@
 	display: flex;
 	flex-direction: column;
 	gap: 16px;
-	background: var(--right-content-bg, var(--window-bg));
+	background: var(--right-content-bg);
 }
 
 /* System footer */
 .systemFooter {
 	font-size: 11px;
-	color: var(--text-secondary, #8e8e93);
+	color: var(--text-secondary);
 	text-align: center;
 	padding: 12px 16px 4px 16px;
 	opacity: 0.6;

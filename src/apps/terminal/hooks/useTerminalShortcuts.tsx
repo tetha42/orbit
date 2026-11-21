@@ -7,19 +7,8 @@ import { useShellActions } from '@/core/shell';
 import type { MenuItem } from '@/types/workspace';
 import type { NavigatorWithKeyboardLock } from '../types';
 import {
-	ArrowRightLeft,
-	ClipboardPaste,
-	Columns2,
-	Copy,
-	Layers,
-	LogOut,
-	Maximize2,
-	PlusSquare,
-	RotateCw,
-	Rows2,
-	TextSelect,
-	Trash2,
-	XCircle,
+	ArrowRightLeft, ClipboardPaste, Columns2, Copy, Layers, LogOut,
+	Maximize2, PlusSquare, RotateCw, Rows2, TextSelect, Trash2, XCircle,
 } from 'lucide-react';
 
 interface UseTerminalShortcutsOptions {
@@ -199,16 +188,8 @@ export function useTerminalShortcuts({
 			},
 		];
 	}, [
-		isAllowed,
-		t,
-		hasSelection,
-		handleCopySelection,
-		handlePaste,
-		handleSelectAll,
-		handleClear,
-		handleRestart,
-		sendTmuxCommand,
-		handleCloseWindow,
+		isAllowed, t, hasSelection, handleCopySelection, handlePaste,
+		handleSelectAll, handleClear, handleRestart, sendTmuxCommand, handleCloseWindow,
 	]);
 
 	useEffect(() => {
@@ -227,13 +208,17 @@ export function useTerminalShortcuts({
 		if (keyboard?.lock) {
 			try {
 				keyboard.lock().catch(() => {});
-			} catch {}
+			} catch {
+				// Keyboard Lock API may throw in non-fullscreen or unsupported contexts.
+			}
 		}
 		return () => {
 			if (keyboard?.unlock) {
 				try {
 					keyboard.unlock();
-				} catch {}
+				} catch {
+					// Keyboard unlock can throw if no lock is active or already released.
+				}
 			}
 		};
 	}, []);

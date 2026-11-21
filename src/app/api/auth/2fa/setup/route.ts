@@ -120,7 +120,7 @@ export async function POST(request: Request) {
 		await logSystemEvent({
 			service: 'auth',
 			level: 'INFO',
-			message: `2FA kurulum anahtarı oluşturuldu: ${user.email}`,
+			message: `2FA setup key generated: ${user.email}`,
 			userId: user.id,
 			ip,
 		});
@@ -135,7 +135,7 @@ export async function POST(request: Request) {
 	} catch (error) {
 		console.error('API /api/auth/2fa/setup error:', error);
 		return NextResponse.json(
-			{ error: 'İki adımlı doğrulama kurulumu başlatılamadı.' },
+			{ error: 'Failed to start two-factor authentication setup.' },
 			{ status: 500 }
 		);
 	}

@@ -4,22 +4,26 @@
  */
 
 /**
- * Folds text for accent- and case-insensitive matching, the Turkish way.
+ * Folds text for accent- and case-insensitive matching, with Turkish case rules.
  *
- * `toLowerCase()` gets Turkish wrong: "İ" lowercases to "i" plus a combining dot,
- * and "I" to "i" — but in Turkish "I" is the dotless "ı". Lowercasing with the
- * Turkish locale first fixes that, then diacritics are stripped (ş→s, ğ→g, ü→u,
- * ö→o, ç→c, â→a…) and the dotless "ı" is folded to "i", so "ISPARTA", "Isparta",
- * "ısparta" and "İsparta" all find each other, and "Guvenlik" finds "Güvenlik".
+ * Default `toLowerCase()` gets Turkish wrong: U+0130 (LATIN CAPITAL LETTER I WITH
+ * DOT ABOVE) lowercases to "i" plus a combining dot, and "I" to "i" — but in Turkish
+ * the capital "I" is U+0131 (LATIN SMALL LETTER DOTLESS I). Lowercasing with the
+ * Turkish locale first fixes that, then diacritics are stripped from each accented
+ * letter and U+0131 is folded to "i", so the upper-case, title-case, dotless
+ * lower-case and dotted lower-case spellings of a name all find each other, and
+ * an accent-free spelling finds the accented one.
  */
-export function foldTr(input: string | null | undefined): string {
+export function foldSearchText(input: string | null | undefined): string {
 	if (!input) return '';
 	return input
 		.toLocaleLowerCase('tr')
 		.normalize('NFD')
-		.replace(/[̀-ͯ]/g, '')
-		.replace(/ı/g, 'i');
+		.replace(/[\u0300-\u036f]/g, '')
+		.replace(/\u0131/g, 'i');
 }
+
+export const foldTr = foldSearchText;
 
 export interface SearchField {
 	text: string | null | undefined;
@@ -30,17 +34,17 @@ export interface SearchField {
 /**
  * Scores a record against a query. 0 means no match.
  *
- * Every word of the query has to hit some field — "web mobil" must find a team
- * called "Web & Mobil Platform Ekibi" but not one that only says "web". A word
+ * Every word of the query has to hit some field — a query with two words must
+ * find a team whose name contains both, not one that contains only one. A word
  * scores 3× the field's weight when it starts a word in the field, 1× when it
  * only appears inside one, so "aut" ranks "Autonomous drone" above "Cauterize".
  */
 export function scoreMatch(query: string, fields: SearchField[]): number {
-	const terms = foldTr(query).split(/\s+/).filter(Boolean);
+	const terms = foldSearchText(query).split(/\s+/).filter(Boolean);
 	if (terms.length === 0) return 0;
 
 	const folded = fields.map((field) => {
-		const text = foldTr(field.text);
+		const text = foldSearchText(field.text);
 		return { text, words: text.split(/[^a-z0-9]+/).filter(Boolean), weight: field.weight };
 	});
 
@@ -58,20 +62,20 @@ export function scoreMatch(query: string, fields: SearchField[]): number {
 	return total;
 }
 
-/** Fills `{name}` placeholders in a translated string: `fill('{n} gün kaldı', { n: 3 })`. Unknown names are left as they are. */
+/** Fills `{name}` placeholders in a translated string: `fill('{n} days left', { n: 3 })`. Unknown names are left as they are. */
 export function fill(template: string, values: Record<string, string | number>): string {
 	return template.replace(/\{(\w+)\}/g, (whole, name: string) => (name in values ? String(values[name]) : whole));
 }
 
 /**
- * "Güz Dönemi Python & Makine Öğrenmesi" → "guz-donemi-python-makine-ogrenmesi".
+ * "Autumn Term Python & Machine Learning" → "autumn-term-python-machine-learning".
  *
  * The ad-hoc `toLowerCase().replace(/[^a-z0-9]+/g, '-')` used before dropped every
- * Turkish letter ("Siber Güvenlik" became "siber-g-venlik") and returned an empty
- * string for a title made only of them; folding first keeps the words.
+ * non-ASCII letter and returned an empty string for a title made only of them;
+ * folding first keeps the words.
  */
 export function slugify(input: string, maxLength = 80): string {
-	return foldTr(input)
+	return foldSearchText(input)
 		.replace(/[^a-z0-9]+/g, '-')
 		.replace(/^-+|-+$/g, '')
 		.slice(0, maxLength)

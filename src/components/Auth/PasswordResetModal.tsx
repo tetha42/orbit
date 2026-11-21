@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, KeyRound, ArrowRight, Loader2, CheckCircle2 } from 'lucide-react';
+import { X, KeyRound } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
+import { PasswordResetStepEmail } from './passwordReset/PasswordResetStepEmail';
+import { PasswordResetStepVerify } from './passwordReset/PasswordResetStepVerify';
 
 interface PasswordResetModalProps {
 	isOpen: boolean;
@@ -107,7 +109,7 @@ export function PasswordResetModal({ isOpen, onClose, onSuccess }: PasswordReset
 				display: 'flex',
 				alignItems: 'center',
 				justifyContent: 'center',
-				background: 'rgba(9, 9, 11, 0.85)',
+				background: 'color-mix(in srgb, var(--ink-bg) 85%, transparent)',
 				padding: '1rem',
 			}}
 		>
@@ -181,9 +183,9 @@ export function PasswordResetModal({ isOpen, onClose, onSuccess }: PasswordReset
 						style={{
 							padding: '10px 12px',
 							borderRadius: '8px',
-							background: 'rgba(239, 68, 68, 0.12)',
-							border: '1px solid rgba(239, 68, 68, 0.35)',
-							color: '#f87171',
+							background: 'color-mix(in srgb, var(--danger) 12%, transparent)',
+							border: '1px solid color-mix(in srgb, var(--danger) 35%, transparent)',
+							color: 'var(--danger)',
 							fontSize: '12px',
 							marginBottom: '16px',
 						}}
@@ -193,187 +195,24 @@ export function PasswordResetModal({ isOpen, onClose, onSuccess }: PasswordReset
 				)}
 
 				{step === 'email' ? (
-					<form onSubmit={handleRequestCode}>
-						<div style={{ marginBottom: '16px' }}>
-							<label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: '#d4d4d8', marginBottom: '6px' }}>
-								{t('pwResetEmailLabel', 'Email Address')}
-							</label>
-							<input
-								type="email"
-								required
-								value={email}
-								onChange={(e) => setEmail(e.target.value)}
-								placeholder={t('pwResetEmailPh', 'member@orbit.local or name@example.com')}
-								style={{
-									width: '100%',
-									minHeight: '40px',
-									padding: '9px 12px',
-									borderRadius: '8px',
-									border: '1px solid #27272a',
-									background: '#09090b',
-									color: '#fafafa',
-									fontSize: '13px',
-									outline: 'none',
-								}}
-								autoFocus
-							/>
-						</div>
-
-						<button
-							type="submit"
-							disabled={loading || !email.trim()}
-							style={{
-								width: '100%',
-								minHeight: '42px',
-								padding: '10px',
-								borderRadius: '8px',
-								border: '1px solid #fafafa',
-								background: '#fafafa',
-								color: '#09090b',
-								fontSize: '13px',
-								fontWeight: 700,
-								cursor: loading ? 'not-allowed' : 'pointer',
-								display: 'flex',
-								alignItems: 'center',
-								justifyContent: 'center',
-								gap: '8px',
-							}}
-						>
-							{loading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
-							{t('pwResetSendBtn', 'Send Reset Code')}
-						</button>
-					</form>
+					<PasswordResetStepEmail
+						email={email}
+						loading={loading}
+						onEmailChange={setEmail}
+						onSubmit={handleRequestCode}
+					/>
 				) : (
-					<form onSubmit={handleResetPassword}>
-						<div style={{ marginBottom: '12px' }}>
-							<label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: '#d4d4d8', marginBottom: '6px' }}>
-								{t('pwResetCodeLabel', '6-Digit Verification Code')}
-							</label>
-							<input
-								type="text"
-								inputMode="numeric"
-								autoComplete="one-time-code"
-								required
-								maxLength={6}
-								value={code}
-								onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, ''))}
-								placeholder="••••••"
-								style={{
-									width: '100%',
-									padding: '9px 12px',
-									borderRadius: '8px',
-									border: '1px solid #27272a',
-									background: '#09090b',
-									color: '#fafafa',
-									fontSize: '18px',
-									fontWeight: 700,
-									letterSpacing: '6px',
-									textAlign: 'center',
-									outline: 'none',
-									fontFamily: 'monospace',
-								}}
-								autoFocus
-							/>
-						</div>
-
-						<div style={{ marginBottom: '12px' }}>
-							<label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: '#d4d4d8', marginBottom: '6px' }}>
-								{t('pwResetNewPasswordLabel', 'New Password (Min 8 chars)')}
-							</label>
-							<input
-								type="password"
-								autoComplete="new-password"
-								required
-								minLength={8}
-								maxLength={128}
-								value={newPassword}
-								onChange={(e) => setNewPassword(e.target.value)}
-								placeholder="••••••••"
-								style={{
-									width: '100%',
-									minHeight: '40px',
-									padding: '9px 12px',
-									borderRadius: '8px',
-									border: '1px solid #27272a',
-									background: '#09090b',
-									color: '#fafafa',
-									fontSize: '13px',
-									outline: 'none',
-								}}
-							/>
-						</div>
-
-						<div style={{ marginBottom: '16px' }}>
-							<label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: '#d4d4d8', marginBottom: '6px' }}>
-								{t('pwResetConfirmPasswordLabel', 'Confirm New Password')}
-							</label>
-							<input
-								type="password"
-								autoComplete="new-password"
-								required
-								minLength={8}
-								maxLength={128}
-								value={newPasswordRepeat}
-								onChange={(e) => setNewPasswordRepeat(e.target.value)}
-								placeholder="••••••••"
-								style={{
-									width: '100%',
-									minHeight: '40px',
-									padding: '9px 12px',
-									borderRadius: '8px',
-									border: '1px solid #27272a',
-									background: '#09090b',
-									color: '#fafafa',
-									fontSize: '13px',
-									outline: 'none',
-								}}
-							/>
-						</div>
-
-						<div style={{ display: 'flex', gap: '8px' }}>
-							<button
-								type="button"
-								onClick={() => setStep('email')}
-								style={{
-									flex: 1,
-									minHeight: '42px',
-									padding: '10px',
-									borderRadius: '8px',
-									border: '1px solid #27272a',
-									background: '#09090b',
-									color: '#a1a1aa',
-									fontSize: '12.5px',
-									fontWeight: 600,
-									cursor: 'pointer',
-								}}
-							>
-								{t('back', 'Back')}
-							</button>
-							<button
-								type="submit"
-								disabled={loading || code.length !== 6 || !newPassword}
-								style={{
-									flex: 2,
-									minHeight: '42px',
-									padding: '10px',
-									borderRadius: '8px',
-									border: '1px solid #fafafa',
-									background: '#fafafa',
-									color: '#09090b',
-									fontSize: '13px',
-									fontWeight: 700,
-									cursor: loading ? 'not-allowed' : 'pointer',
-									display: 'flex',
-									alignItems: 'center',
-									justifyContent: 'center',
-									gap: '8px',
-								}}
-							>
-								{loading ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-								{t('pwResetUpdateBtn', 'Update Password')}
-							</button>
-						</div>
-					</form>
+					<PasswordResetStepVerify
+						code={code}
+						newPassword={newPassword}
+						newPasswordRepeat={newPasswordRepeat}
+						loading={loading}
+						onCodeChange={setCode}
+						onNewPasswordChange={setNewPassword}
+						onNewPasswordRepeatChange={setNewPasswordRepeat}
+						onBack={() => setStep('email')}
+						onSubmit={handleResetPassword}
+					/>
 				)}
 			</div>
 		</div>

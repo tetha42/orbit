@@ -14,7 +14,7 @@ async function handlePOST(request: Request) {
 
 		const body = await request.json().catch(() => null);
 		if (!body || typeof body !== 'object') {
-			return NextResponse.json({ error: 'Geçersiz istek gövdesi.' }, { status: 400 });
+			return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
 		}
 
 		const playbookId = body.playbookId as SoarPlaybookId;
@@ -26,7 +26,7 @@ async function handlePOST(request: Request) {
 
 		if (!validPlaybooks.includes(playbookId)) {
 			return NextResponse.json(
-				{ error: `Bilinmeyen SOAR playbook ID: ${String(playbookId)}` },
+				{ error: `Unknown SOAR playbook ID: ${String(playbookId)}` },
 				{ status: 400 }
 			);
 		}
@@ -42,7 +42,7 @@ async function handlePOST(request: Request) {
 
 		if (!result.success) {
 			return NextResponse.json(
-				{ error: result.error || 'Playbook çalıştırılırken bir hata oluştu.', result },
+				{ error: result.error || 'An error occurred while executing the playbook.', result },
 				{ status: 500 }
 			);
 		}
@@ -50,7 +50,7 @@ async function handlePOST(request: Request) {
 		return NextResponse.json({ ok: true, result });
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err);
-		return NextResponse.json({ error: `Sunucu hatası: ${msg}` }, { status: 500 });
+		return NextResponse.json({ error: `Server error: ${msg}` }, { status: 500 });
 	}
 }
 

@@ -92,7 +92,7 @@ export async function GET(request: Request) {
 		return NextResponse.json({ tables });
 	} catch (error) {
 		console.error('API /api/database/tables error:', error);
-		return NextResponse.json({ error: 'Tablo listesi alınamadı.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to load table list.' }, { status: 500 });
 	}
 }
 
@@ -105,7 +105,7 @@ export async function POST(request: Request) {
 	const tableName = String(body.tableName || '').trim();
 
 	if (!tableName || !/^[a-zA-Z0-9_]+$/.test(tableName)) {
-		return NextResponse.json({ error: 'Geçersiz tablo adı.' }, { status: 400 });
+		return NextResponse.json({ error: 'Invalid table name.' }, { status: 400 });
 	}
 
 	const pool = getPgPool();
@@ -114,7 +114,7 @@ export async function POST(request: Request) {
 		if (action === 'create_table') {
 			const columns = (Array.isArray(body.columns) ? body.columns : []) as CreateTableColumnInput[];
 			if (columns.length === 0) {
-				return NextResponse.json({ error: 'En az bir sütun tanımlamalısınız.' }, { status: 400 });
+				return NextResponse.json({ error: 'You must define at least one column.' }, { status: 400 });
 			}
 
 			const colDefs: string[] = [];
@@ -123,7 +123,7 @@ export async function POST(request: Request) {
 			for (const c of columns) {
 				const colName = String(c.name || '').trim();
 				if (!colName || !/^[a-zA-Z0-9_]+$/.test(colName)) {
-					return NextResponse.json({ error: `Geçersiz sütun adı: ${colName}` }, { status: 400 });
+					return NextResponse.json({ error: `Invalid column name: ${colName}` }, { status: 400 });
 				}
 
 				const sqlType = sanitizeDataType(c.type || 'text');
@@ -147,14 +147,14 @@ export async function POST(request: Request) {
 			await logSystemEvent({
 				service: 'database',
 				level: 'WARN',
-				message: `Yeni tablo oluşturuldu: ${tableName}`,
+				message: `New table created: ${tableName}`,
 				detail: { table: tableName, columnCount: columns.length },
 				userId: auth.user.id,
 			});
 
 			return NextResponse.json({
 				success: true,
-				message: `Tablo '${tableName}' başarıyla oluşturuldu.`,
+				message: `Table '${tableName}' created successfully.`,
 			});
 		}
 
@@ -162,7 +162,7 @@ export async function POST(request: Request) {
 			const col = (body.column || {}) as CreateTableColumnInput;
 			const colName = String(col.name || '').trim();
 			if (!colName || !/^[a-zA-Z0-9_]+$/.test(colName)) {
-				return NextResponse.json({ error: 'Geçersiz sütun adı.' }, { status: 400 });
+				return NextResponse.json({ error: 'Invalid column name.' }, { status: 400 });
 			}
 
 			const sqlType = sanitizeDataType(col.type || 'text');
@@ -175,21 +175,21 @@ export async function POST(request: Request) {
 			await logSystemEvent({
 				service: 'database',
 				level: 'WARN',
-				message: `Tabloya yeni sütun eklendi: ${tableName}.${colName}`,
+				message: `Column added to table: ${tableName}.${colName}`,
 				detail: { table: tableName, column: colName, type: sqlType },
 				userId: auth.user.id,
 			});
 
 			return NextResponse.json({
 				success: true,
-				message: `'${tableName}' tablosuna '${colName}' sütunu eklendi.`,
+				message: `Column '${colName}' added to table '${tableName}'.`,
 			});
 		}
 
-		return NextResponse.json({ error: 'Geçersiz DDL aksiyonu.' }, { status: 400 });
+		return NextResponse.json({ error: 'Invalid DDL action.' }, { status: 400 });
 	} catch (error) {
-		console.error(`DDL işlemi başarısız (${action} on ${tableName}):`, error);
-		const msg = error instanceof Error ? error.message : 'DDL işlemi gerçekleştirilemedi.';
+		console.error(`DDL operation failed (${action} on ${tableName}):`, error);
+		const msg = error instanceof Error ? error.message : 'DDL operation could not be completed.';
 		return NextResponse.json({ error: msg }, { status: 500 });
 	}
 }

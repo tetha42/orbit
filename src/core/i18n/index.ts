@@ -4,6 +4,7 @@ export {
 	LOCALE_REGISTRY,
 	DEFAULT_LOCALE,
 	isSupportedLocale,
+	normalizeLocale,
 	getLocaleDefinition,
 	getNextLocale,
 	resolveLocalizedText,

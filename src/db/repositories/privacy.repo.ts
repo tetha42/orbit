@@ -143,10 +143,10 @@ export async function anonymizeMember(
 
 		await client.query(
 			`UPDATE users SET
-				first_name = 'Anonim', last_name = 'Üye', email = $2, handle = $3,
+				first_name = 'Anonymous', last_name = 'Member', email = $2, handle = $3,
 				password_hash = $4, email_verified_at = NULL, avatar_url = NULL, bio = NULL,
 				department = '—', grade = 1, role_id = NULL, status = 'rejected',
-				custom_fields = '{}'::jsonb, workspace_state = '{}'::jsonb, oauth_consents = '{}'::jsonb,
+				custom_fields = '{}'::jsonb, oauth_consents = '{}'::jsonb,
 				legal_consents = $5::jsonb, application_history = $6::jsonb,
 				session_token = NULL, session_expires_at = NULL, last_login_at = NULL,
 				last_login_ip = NULL, last_login_user_agent = NULL, last_active_ip = NULL,
@@ -167,14 +167,14 @@ export async function anonymizeMember(
 			action: 'member.anonymize',
 			targetType: 'member',
 			targetId: userId,
-			targetName: 'Anonim üye',
+			targetName: 'Anonymous member',
 			before: {
 				name: `${user.first_name ?? user.firstName ?? ''} ${user.last_name ?? user.lastName ?? ''}`.trim(),
 				email: String(user.email),
 				handle: user.handle ? String(user.handle) : null,
 				status: String(user.status),
 			},
-			after: { name: 'Anonim Üye', status: 'rejected', anonymizedAt: now },
+			after: { name: 'Anonymous Member', status: 'rejected', anonymizedAt: now },
 		});
 		return 'ok';
 	});

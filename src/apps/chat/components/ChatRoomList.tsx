@@ -4,7 +4,7 @@ import React from 'react';
 import { useI18n } from '@/core/i18n';
 import { MessageSquare, Users } from 'lucide-react';
 import type { ChatRoomItem } from '../types';
-import s from '../Chat.module.css';
+import s from '../ChatSidebar.module.css';
 
 interface ChatRoomListProps {
 	rooms: ChatRoomItem[];
@@ -66,7 +66,7 @@ export function ChatRoomList({ rooms, activeRoomId, onSelectRoom }: ChatRoomList
 					<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
 						<span className={s.roomLastMsg}>
 							{room.lastMessage
-								? `${(room.lastMessage.senderName || 'Üye').split(' ')[0]}: ${room.lastMessage.content}`
+								? `${(room.lastMessage.senderName || t('chatMemberFallback')).split(' ')[0]}: ${room.lastMessage.content}`
 								: t('chatNoMessages')}
 						</span>
 						{Boolean(room.unreadCount && room.unreadCount > 0) && (

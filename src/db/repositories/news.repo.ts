@@ -9,28 +9,28 @@ const NEWS_COLUMNS = `
 	h.id, h.slug, h.title AS title, h.summary AS summary, h.content AS content, h.category AS category,
 	h.is_pinned AS "isImportant", h.cover_url AS "imageUrl",
 	h.publish_status AS "publishStatus", h.published_at AS "publishDate",
-	h.author_id AS "authorId", h.created_at AS creation, h.updated_at AS update
+	h.author_id AS "authorId", h.created_at AS "createdAt", h.updated_at AS "updatedAt"
 `;
 
 function mapNews(r: Record<string, unknown>): NewsItem {
 	return {
 		...(r as unknown as NewsItem),
 		isImportant: Number(r.isImportant),
-		creation: Number(r.creation),
-		update: Number(r.update),
+		createdAt: Number(r.createdAt),
+		updatedAt: Number(r.updatedAt),
 		publishDate: r.publishDate === null || r.publishDate === undefined ? null : Number(r.publishDate),
 	};
 }
 
 /**
- * The articles a reader may see, headlines first. `yonetim` (management) also gets
+ * The articles a reader may see, headlines first. `management` also gets
  * drafts; everyone else only what has been published to members or to the public.
  */
 export async function getNews(audience: 'management' | 'member' = 'management'): Promise<NewsItem[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(`
 		SELECT ${NEWS_COLUMNS},
-		       k.first_name || ' ' || k.last_name AS "authorNameSurname"
+		       k.first_name || ' ' || k.last_name AS "authorName"
 		FROM news h
 		LEFT JOIN users k ON h.author_id = k.id
 		${audience === 'management' ? '' : "WHERE h.publish_status <> 'draft'"}
@@ -44,7 +44,7 @@ export async function getNewsById(id: string): Promise<NewsItem | null> {
 	const res = await getPgPool().query(
 		`
 		SELECT ${NEWS_COLUMNS},
-		       k.first_name || ' ' || k.last_name AS "authorNameSurname"
+		       k.first_name || ' ' || k.last_name AS "authorName"
 		FROM news h
 		LEFT JOIN users k ON h.author_id = k.id
 		WHERE h.id = $1

@@ -13,6 +13,6 @@ export async function GET(request: Request) {
 		return NextResponse.json({ count,}, { headers: { 'Cache-Control': 'no-store' } });
 	} catch (error) {
 		console.error('API /api/messages/unread error:', error);
-		return NextResponse.json({ error: 'Okunmamış sayısı okunamadı.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to load unread count.' }, { status: 500 });
 	}
 }

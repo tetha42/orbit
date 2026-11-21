@@ -29,8 +29,8 @@ export function UrgentHeadlineBanner({
 				marginBottom: '24px',
 				padding: '20px 24px',
 				borderRadius: '16px',
-				background: 'linear-gradient(135deg, rgba(255, 45, 85, 0.22), rgba(10, 132, 255, 0.16))',
-				border: '1px solid rgba(255, 45, 85, 0.45)',
+				background: 'linear-gradient(135deg, color-mix(in srgb, var(--danger) 22%, transparent), color-mix(in srgb, var(--accent) 16%, transparent))',
+				border: '1px solid color-mix(in srgb, var(--danger) 45%, transparent)',
 				boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
 				cursor: 'pointer',
 				display: 'flex',
@@ -49,18 +49,18 @@ export function UrgentHeadlineBanner({
 							gap: '4px',
 							padding: '3px 9px',
 							borderRadius: '12px',
-							background: '#ff2d55',
+							background: 'var(--danger)',
 							color: '#fff',
 							fontSize: '10px',
 							fontWeight: 800,
 							letterSpacing: '0.5px',
-							boxShadow: '0 2px 8px rgba(255, 45, 85, 0.4)',
+							boxShadow: '0 2px 8px color-mix(in srgb, var(--danger) 40%, transparent)',
 						}}
 					>
 						<ShieldAlert size={12} /> {t('newsHeadline')}
 					</span>
 					<span style={{ fontSize: '11px', opacity: 0.7 }}>
-						{new Date(article.creation).toLocaleDateString(
+						{new Date(article.createdAt).toLocaleDateString(
 							language,
 							{ day: 'numeric', month: 'long', year: 'numeric' }
 						)}
@@ -83,9 +83,9 @@ export function UrgentHeadlineBanner({
 						style={{
 							padding: '8px',
 							borderRadius: '8px',
-							border: '1px solid rgba(255, 69, 58, 0.3)',
-							background: 'rgba(255, 69, 58, 0.1)',
-							color: '#ff453a',
+							border: '1px solid color-mix(in srgb, var(--danger) 30%, transparent)',
+							background: 'color-mix(in srgb, var(--danger) 10%, transparent)',
+							color: 'var(--danger)',
 							cursor: 'pointer',
 						}}
 					>

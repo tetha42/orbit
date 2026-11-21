@@ -5,14 +5,14 @@
 	display: flex;
 	flex-direction: column;
 	gap: 14px;
-	--kb-todo: #ff9f0a;
-	--kb-doing: #0a84ff;
-	--kb-review: #bf5af2;
-	--kb-done: #30d158;
-	--kb-low: #8e8e93;
-	--kb-medium: #0a84ff;
-	--kb-high: #ff9f0a;
-	--kb-critical: #ff453a;
+	--kb-todo: var(--warning);
+	--kb-doing: var(--info);
+	--kb-review: var(--purple);
+	--kb-done: var(--success);
+	--kb-low: var(--neutral);
+	--kb-medium: var(--info);
+	--kb-high: var(--warning);
+	--kb-critical: var(--danger);
 }
 
 /* ---------- toolbar ---------- */
@@ -321,7 +321,7 @@
 .labelInputWrap button:first-of-type {
 	background: var(--accent);
 	border-color: var(--accent);
-	color: #ffffff;
+	color: var(--accent-contrast);
 }
 
 .labelInputWrap button:hover {
@@ -359,18 +359,18 @@
 }
 
 .due_overdue {
-	background: color-mix(in srgb, #ff453a 15%, transparent);
-	color: #ff453a;
+	background: color-mix(in srgb, var(--danger) 15%, transparent);
+	color: var(--danger);
 }
 
 .due_today {
-	background: color-mix(in srgb, #ff9f0a 18%, transparent);
-	color: #d97706;
+	background: color-mix(in srgb, var(--warning) 18%, transparent);
+	color: var(--warning);
 }
 
 .due_upcoming {
-	background: color-mix(in srgb, #ffd60a 22%, transparent);
-	color: #b58900;
+	background: color-mix(in srgb, var(--gold) 22%, transparent);
+	color: var(--gold-text);
 }
 
 .due_next {
@@ -410,7 +410,7 @@
 .moveBtn:hover {
 	background: var(--accent);
 	border-color: var(--accent);
-	color: #fff;
+	color: var(--accent-contrast);
 }
 
 .miniProgress {
@@ -489,7 +489,7 @@
 .checkItem input[type='checkbox'] {
 	width: 15px;
 	height: 15px;
-	accent-color: #30d158;
+	accent-color: var(--success);
 	cursor: pointer;
 }
 
@@ -517,7 +517,7 @@
 }
 
 .rowDelete:hover {
-	color: #ff453a;
+	color: var(--danger);
 }
 
 .inlineAdd {

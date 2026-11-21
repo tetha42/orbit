@@ -1,10 +1,10 @@
 'use client';
 
 import React from 'react';
-import { Search, X, Loader2, StickyNote, SquarePen, Pin } from 'lucide-react';
+import { Search, X, Loader2, StickyNote, SquarePen } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
-import { useSound } from '@/core/sound';
-import { NoteCard } from './NoteCard';
+import { formatNoteDate } from '../utils/noteHelpers';
+import { NotesListSection } from './NotesListSection';
 import type { AppleNote, NoteColors } from '../types';
 
 interface NotesListProps {
@@ -28,42 +28,12 @@ interface NotesListProps {
 }
 
 export function NotesList({
-	searchQuery,
-	onSearchChange,
-	activeFolderId,
-	notes,
-	filteredNotes,
-	pinnedNotes,
-	regularNotes,
-	selectedNoteId,
-	viewMode,
-	isLoading,
-	colors,
-	onSelectNote,
-	onTogglePin,
-	onDeleteNote,
-	onRestoreNote,
-	onEmptyTrash,
-	onCreateNote,
+	searchQuery, onSearchChange, activeFolderId, notes, filteredNotes, pinnedNotes, regularNotes,
+	selectedNoteId, viewMode, isLoading, colors, onSelectNote, onTogglePin, onDeleteNote,
+	onRestoreNote, onEmptyTrash, onCreateNote,
 }: NotesListProps) {
 	const { t, language } = useI18n();
-	const { playSystemSound } = useSound();
-
-	const formatNoteDate = (timestamp: number) => {
-		const date = new Date(timestamp);
-		const now = new Date();
-		const locale = language;
-		const isToday = date.toDateString() === now.toDateString();
-		if (isToday) {
-			return date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
-		}
-		const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 3600 * 24));
-		if (diffDays === 1) return t('notesYesterday');
-		if (diffDays < 7) {
-			return date.toLocaleDateString(locale, { weekday: 'short' });
-		}
-		return date.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
-	};
+	const formatDate = (ts: number) => formatNoteDate(ts, language, t('notesYesterday'));
 
 	return (
 		<div
@@ -97,14 +67,7 @@ export function NotesList({
 						value={searchQuery}
 						onChange={(e) => onSearchChange(e.target.value)}
 						placeholder={t('notesSearchInput')}
-						style={{
-							border: 'none',
-							background: 'transparent',
-							color: colors.appText,
-							fontSize: '12.5px',
-							width: '100%',
-							outline: 'none',
-						}}
+						style={{ border: 'none', background: 'transparent', color: colors.appText, fontSize: '12.5px', width: '100%', outline: 'none' }}
 					/>
 					{searchQuery && (
 						<button
@@ -129,22 +92,22 @@ export function NotesList({
 				<div
 					style={{
 						padding: '8px 12px',
-						background: 'rgba(239, 68, 68, 0.18)',
-						borderBottom: '1px solid rgba(239, 68, 68, 0.3)',
+						background: 'color-mix(in srgb, var(--danger) 18%, transparent)',
+						borderBottom: '1px solid color-mix(in srgb, var(--danger) 30%, transparent)',
 						display: 'flex',
 						alignItems: 'center',
 						justifyContent: 'space-between',
 						fontSize: '11px',
 					}}
 				>
-					<span style={{ color: '#ef4444', fontWeight: 500 }}>{t('notesTrashBannerTitle')}</span>
+					<span style={{ color: 'var(--danger)', fontWeight: 500 }}>{t('notesTrashBannerTitle')}</span>
 					{notes.some((n) => n.isDeleted) && (
 						<button
 							onClick={onEmptyTrash}
 							style={{
 								border: 'none',
 								background: 'transparent',
-								color: '#ef4444',
+								color: 'var(--danger)',
 								fontWeight: 600,
 								cursor: 'pointer',
 								textDecoration: 'underline',
@@ -158,17 +121,7 @@ export function NotesList({
 
 			<div style={{ flex: 1, overflowY: 'auto', padding: '6px 8px' }}>
 				{isLoading ? (
-					<div
-						style={{
-							display: 'flex',
-							flexDirection: 'column',
-							alignItems: 'center',
-							justifyContent: 'center',
-							height: '180px',
-							gap: '8px',
-							color: colors.textSecondary,
-						}}
-					>
+					<div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '180px', gap: '8px', color: colors.textSecondary }}>
 						<Loader2 className="animate-spin" size={20} color={colors.accentGold} />
 						<span style={{ fontSize: '12px' }}>{t('notesLoading')}</span>
 					</div>
@@ -186,13 +139,7 @@ export function NotesList({
 						}}
 					>
 						<StickyNote size={24} style={{ opacity: 0.4, color: colors.textSecondary }} />
-						<span>
-							{searchQuery
-								? t('notesNoNotesFound')
-								: activeFolderId === 'trash'
-								? t('notesTrashEmpty')
-								: t('notesFolderEmpty')}
-						</span>
+						<span>{searchQuery ? t('notesNoNotesFound') : activeFolderId === 'trash' ? t('notesTrashEmpty') : t('notesFolderEmpty')}</span>
 						{activeFolderId !== 'trash' && !searchQuery && (
 							<button
 								onClick={onCreateNote}
@@ -219,79 +166,35 @@ export function NotesList({
 				) : (
 					<div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
 						{pinnedNotes.length > 0 && (
-							<div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-								<div
-									style={{
-										display: 'flex',
-										alignItems: 'center',
-										gap: '4px',
-										fontSize: '10.5px',
-										fontWeight: 700,
-										color: colors.accentGold,
-										textTransform: 'uppercase',
-										letterSpacing: '0.4px',
-										padding: '4px 6px',
-									}}
-								>
-									<Pin size={11} />
-									<span>{t('notesPinnedLabel')}</span>
-								</div>
-								{pinnedNotes.map((note) => (
-									<NoteCard
-										key={note.id}
-										note={note}
-										isSelected={note.id === selectedNoteId}
-										isTrash={activeFolderId === 'trash'}
-										viewMode={viewMode}
-										formatDate={formatNoteDate}
-										colors={colors}
-										onSelect={() => {
-											onSelectNote(note.id);
-											playSystemSound();
-										}}
-										onTogglePin={() => onTogglePin(note.id)}
-										onDelete={() => onDeleteNote(note.id)}
-										onRestore={() => onRestoreNote(note.id)}
-									/>
-								))}
-							</div>
+							<NotesListSection
+								label={t('notesPinnedLabel')}
+								pinnedIcon
+								items={pinnedNotes}
+								selectedNoteId={selectedNoteId}
+								activeFolderId={activeFolderId}
+								viewMode={viewMode}
+								colors={colors}
+								formatDate={formatDate}
+								onSelectNote={onSelectNote}
+								onTogglePin={onTogglePin}
+								onDeleteNote={onDeleteNote}
+								onRestoreNote={onRestoreNote}
+							/>
 						)}
-
 						{regularNotes.length > 0 && (
-							<div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-								{pinnedNotes.length > 0 && (
-									<div
-										style={{
-											fontSize: '10.5px',
-											fontWeight: 700,
-											color: colors.textTertiary,
-											textTransform: 'uppercase',
-											letterSpacing: '0.4px',
-											padding: '4px 6px',
-										}}
-									>
-										{t('notesNotesLabel')}
-									</div>
-								)}
-								{regularNotes.map((note) => (
-									<NoteCard
-										key={note.id}
-										note={note}
-										isSelected={note.id === selectedNoteId}
-										isTrash={activeFolderId === 'trash'}
-										viewMode={viewMode}
-										formatDate={formatNoteDate}
-										colors={colors}
-										onSelect={() => {
-											onSelectNote(note.id);
-											playSystemSound();
-										}}
-										onTogglePin={() => onTogglePin(note.id)}
-										onDelete={() => onDeleteNote(note.id)}
-										onRestore={() => onRestoreNote(note.id)}
-									/>
-								))}
-							</div>
+							<NotesListSection
+								label={pinnedNotes.length > 0 ? t('notesNotesLabel') : undefined}
+								items={regularNotes}
+								selectedNoteId={selectedNoteId}
+								activeFolderId={activeFolderId}
+								viewMode={viewMode}
+								colors={colors}
+								formatDate={formatDate}
+								onSelectNote={onSelectNote}
+								onTogglePin={onTogglePin}
+								onDeleteNote={onDeleteNote}
+								onRestoreNote={onRestoreNote}
+							/>
 						)}
 					</div>
 				)}

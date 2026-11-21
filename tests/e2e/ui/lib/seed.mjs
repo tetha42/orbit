@@ -1,7 +1,7 @@
 // Making roles and members through the admin API, for suites that build their own data.
 import { client } from './api.mjs';
 
-export const PASSWORD = 'Kulup-Test-2026!';
+export const PASSWORD = 'Orbit-Test-2026!';
 
 /** Creates a role and returns its id. `spec` is the body of POST /api/roles. */
 export async function createRole(admin, spec) {
@@ -12,9 +12,9 @@ export async function createRole(admin, spec) {
 
 /**
  * Creates an active member with a known password (the generated one is replaced the way
- * a person would: first sign-in, then "change password"). Returns { id, eposta, sifre }.
+ * a person would: first sign-in, then "change password"). Returns { id, email, password }.
  */
-export async function createMember(admin, base, { name, surname, email, roleId, department = 'Bilgisayar Mühendisliği', grade = 2, studentNo }) {
+export async function createMember(admin, base, { name, surname, email, roleId, department = 'Software Engineering & Architecture', grade = 2, studentNo }) {
 	const created = await admin.post('/api/members', {
 		firstName: name,
 		lastName: surname,
@@ -24,6 +24,7 @@ export async function createMember(admin, base, { name, surname, email, roleId, 
 		department: department,
 		grade: grade,
 		roleId: roleId,
+		preferredLanguage: 'tr',
 		...(studentNo ? { handle: studentNo, studentNo } : {}),
 	});
 	const tempPassword = created.json?.temporaryPassword;

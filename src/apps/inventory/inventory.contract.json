@@ -1,0 +1,55 @@
+{
+  "id": "inventory",
+  "name": "Inventory & Equipment",
+  "version": "1.0.0",
+  "description": "Club equipment tracking, loans, custody, and return management.",
+  "tables": [
+    "inventory",
+    "users"
+  ],
+  "api": {
+    "base": "/api/inventory",
+    "endpoints": [
+      {
+        "path": "/api/inventory",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "description": "List or mutate inventory items."
+      }
+    ]
+  },
+  "limits": {
+    "maxCodeLength": 64,
+    "maxNameLength": 200
+  },
+  "errorCodes": [
+    {
+      "code": "ITEM_NOT_FOUND",
+      "status": 404,
+      "i18nKey": "itemNotFound",
+      "description": "Inventory item not found."
+    },
+    {
+      "code": "ITEM_ALREADY_BORROWED",
+      "status": 400,
+      "i18nKey": "itemAlreadyBorrowed",
+      "description": "Item currently on loan."
+    }
+  ],
+  "files": {
+    "actions": [
+      "src/db/repositories/inventory.repo.ts"
+    ],
+    "queries": [
+      "src/apps/inventory/hooks/useInventory.ts"
+    ],
+    "ui": [
+      "src/apps/inventory/index.tsx"
+    ],
+    "i18n": [
+      "src/lib/i18nApps.ts"
+    ]
+  }
+}

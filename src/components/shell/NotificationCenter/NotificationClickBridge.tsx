@@ -36,6 +36,7 @@ export function NotificationClickBridge() {
 		window.addEventListener('orbit:notification-click', onWindowEvent);
 
 		const params = new URLSearchParams(window.location.search);
+		let mutated = false;
 		const roomId = params.get('chatRoom');
 		if (roomId) {
 			openTarget({
@@ -46,6 +47,21 @@ export function NotificationClickBridge() {
 			});
 			params.delete('chatRoom');
 			params.delete('chatMessage');
+			mutated = true;
+		}
+		const appParam = params.get('app');
+		const idParam = params.get('id');
+		if (appParam === 'news' || appParam === 'events') {
+			openTarget({
+				appId: appParam,
+				kind: appParam === 'news' ? 'news' : 'event',
+				itemId: idParam || undefined,
+			});
+			params.delete('app');
+			params.delete('id');
+			mutated = true;
+		}
+		if (mutated) {
 			const query = params.toString();
 			window.history.replaceState(
 				{},

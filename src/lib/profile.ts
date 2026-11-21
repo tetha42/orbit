@@ -38,8 +38,6 @@ const COMMONLY_BREACHED_PASSWORDS = new Set([
 	'master123',
 	'changeme1',
 	'pass1234',
-	'beuteknoloji1',
-	'beukutup1',
 	'orbitcommunity1',
 	'orbit12345678',
 	'asdfghjk1',
@@ -49,22 +47,22 @@ const COMMONLY_BREACHED_PASSWORDS = new Set([
 ]);
 
 /**
- * Why a new password is not acceptable, or null when it is. Turkish, because the
+ * Why a new password is not acceptable, or null when it is. English, because the
  * API returns it to the member as is.
  */
 export function passwordProblem(fresh: unknown, opts: { current?: string; email?: string } = {}): string | null {
-	if (typeof fresh !== 'string') return 'Yeni şifre gerekli.';
-	if (fresh.length < PASSWORD_MIN) return `Yeni şifre en az ${PASSWORD_MIN} karakter olmalıdır.`;
-	if (fresh.length > PASSWORD_MAX) return `Yeni şifre en fazla ${PASSWORD_MAX} karakter olabilir.`;
-	if (!/\p{L}/u.test(fresh) || !/\d/.test(fresh)) return 'Yeni şifre en az bir harf ve bir rakam içermelidir.';
-	if (opts.current !== undefined && fresh === opts.current) return 'Yeni şifre mevcut şifreyle aynı olamaz.';
+	if (typeof fresh !== 'string') return 'A new password is required.';
+	if (fresh.length < PASSWORD_MIN) return `The new password must be at least ${PASSWORD_MIN} characters long.`;
+	if (fresh.length > PASSWORD_MAX) return `The new password can be at most ${PASSWORD_MAX} characters long.`;
+	if (!/\p{L}/u.test(fresh) || !/\d/.test(fresh)) return 'The new password must contain at least one letter and one digit.';
+	if (opts.current !== undefined && fresh === opts.current) return 'The new password cannot be the same as the current password.';
 	const local = opts.email?.split('@')[0]?.toLocaleLowerCase('tr-TR');
 	if (local && local.length >= 3 && fresh.toLocaleLowerCase('tr-TR').includes(local)) {
-		return 'Şifre e-posta adresinizi içeremez.';
+		return 'The password cannot contain your e-mail address.';
 	}
 	const normalized = fresh.toLowerCase().trim();
 	if (COMMONLY_BREACHED_PASSWORDS.has(normalized)) {
-		return 'Bu şifre dünyada en çok sızdırılan zayıf şifreler listesinde yer alıyor. Lütfen daha güvenli ve tahmin edilemez bir şifre seçiniz.';
+		return 'This password appears on the list of the most commonly leaked weak passwords. Please choose a safer, less predictable password.';
 	}
 	return null;
 }

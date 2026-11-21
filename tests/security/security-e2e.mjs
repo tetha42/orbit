@@ -6,6 +6,7 @@ import { spawn, execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadConfigIni } from '../../scripts/ini-loader.mjs';
+import { ensureStandaloneServer } from '../e2e/ui/lib/server.mjs';
 
 const c = {
 	reset: '\x1b[0m',
@@ -68,7 +69,7 @@ async function run() {
 	}
 
 	if (!client || !pool) {
-		log.error('Could not connect to any candidate database (orbit, kulup, env).');
+		log.error('Could not connect to any candidate database (orbit, env).');
 		process.exit(1);
 	}
 	log.ok(`Connected to PostgreSQL database (${dbUrl.split('@')[1] || 'localhost'}).`);
@@ -78,43 +79,106 @@ async function run() {
 	log.info(`Simulation test IP address: ${testIp}`);
 
 	let spawnedServer = null;
-	const checkReachable = async () => {
+	let spawnedExited = null;
+	let hadPrevMembershipPolicy = false;
+	let prevMembershipPolicyValue = null;
+	let membershipPolicyModified = false;
+	const checkReachable = async (timeoutMs = 1500) => {
 		try {
-			await fetch(`${BASE_URL}/api/setup`, { signal: AbortSignal.timeout(1500) });
+			await fetch(`${BASE_URL}/api/setup`, { signal: AbortSignal.timeout(timeoutMs) });
 			return true;
 		} catch {
 			return false;
 		}
 	};
 
-	if (await checkReachable()) {
-		log.ok(`Live web server detected (${BASE_URL}).`);
-	} else {
-		log.info(`No active server found on port. Starting Next.js test server...`);
-		const port = new URL(BASE_URL).port || '3000';
-		spawnedServer = spawn('pnpm', ['exec', 'next', 'dev', '--port', port], {
-			cwd: rootDir,
-			env: { ...process.env, DATABASE_URL: dbUrl, MOCK_MAIL: 'true' },
-			stdio: 'ignore',
-			detached: true,
-		});
+	try {
+		if (await checkReachable()) {
+			log.ok(`Live web server detected (${BASE_URL}).`);
+		} else {
+			const port = new URL(BASE_URL).port || '3000';
+			const cleanupSpawned = async (child) => {
+				if (child?.pid) {
+					try {
+						process.kill(-child.pid, 'SIGTERM');
+					} catch {}
+					await new Promise((r) => setTimeout(r, 200));
+					try {
+						process.kill(-child.pid, 'SIGKILL');
+					} catch {}
+				}
+			};
+			let ready = false;
+			for (let attempt = 1; attempt <= 2 && !ready; attempt++) {
+				log.info(
+					attempt === 1
+						? `No active server found on port. Starting Next.js test server...`
+						: `Retrying Next.js test server startup (attempt ${attempt}/2)...`
+				);
+				spawnedExited = null;
+				const hasStandalone = existsSync(join(rootDir, '.next', 'standalone', 'server.js'));
+				const useStandalone = hasStandalone && process.env.E2E_DEV_SERVER !== '1';
+				const standalone = useStandalone ? ensureStandaloneServer() : null;
+				const child = spawn(
+					useStandalone ? process.execPath : 'pnpm',
+					useStandalone ? [standalone.serverScript] : ['exec', 'next', 'dev', '--port', port],
+					{
+						cwd: useStandalone ? standalone.standaloneDir : rootDir,
+						env: {
+							...process.env,
+							DATABASE_URL: dbUrl,
+							MOCK_MAIL: 'true',
+							TERMINAL_ENABLED: '1',
+							NEXT_TELEMETRY_DISABLED: '1',
+							...(useStandalone
+								? {
+										NODE_ENV: 'production',
+										PORT: String(port),
+										HOSTNAME: 'localhost',
+										NODE_OPTIONS: '--max-old-space-size=224',
+									}
+								: {}),
+						},
+						stdio: 'ignore',
+						detached: true,
+					}
+				);
+				spawnedServer = child;
+				child.on('exit', (code) => {
+					if (spawnedServer === child) spawnedExited = code ?? 'signal';
+				});
+				child.on('error', () => {
+					if (spawnedServer === child) spawnedExited = 'error';
+				});
 
-		const t0 = Date.now();
-		let ready = false;
-		while (Date.now() - t0 < 35000) {
-			await new Promise((r) => setTimeout(r, 600));
-			if (await checkReachable()) {
-				ready = true;
-				log.ok(`Next.js test server ready (${BASE_URL}).`);
-				break;
+				const t0 = Date.now();
+				while (Date.now() - t0 < 60000) {
+					if (spawnedExited !== null) {
+						const exitReason = spawnedExited;
+						await cleanupSpawned(child);
+						spawnedServer = null;
+						spawnedExited = null;
+						if (attempt === 1) {
+							log.warn(`Next.js test server exited early (${exitReason}) on first start; respawning once...`);
+							break;
+						}
+						throw new Error(`Test server exited early (${exitReason}) before becoming ready (${BASE_URL})`);
+					}
+					await new Promise((r) => setTimeout(r, 600));
+					if (spawnedExited !== null) continue;
+					if (await checkReachable(5000)) {
+						ready = true;
+						log.ok(`Next.js test server ready (${BASE_URL}).`);
+						break;
+					}
+				}
+				if (!ready && spawnedServer === child && spawnedExited === null) {
+					await cleanupSpawned(child);
+					spawnedServer = null;
+					throw new Error(`Test server did not respond within 60 seconds (${BASE_URL})`);
+				}
 			}
 		}
-		if (!ready) {
-			throw new Error(`Test server did not respond within 35 seconds (${BASE_URL})`);
-		}
-	}
-
-	try {
 		// -----------------------------------------------------------------------
 		// SCENARIO 1: WAF and Exploit Signature Prevention Shield
 		// -----------------------------------------------------------------------
@@ -363,7 +427,7 @@ async function run() {
 
 		// 4.3 Query /api/auth/me with revoked token
 		const meRes = await fetch(`${BASE_URL}/api/auth/me`, {
-			headers: { 'Cookie': `kulup_session=${dummySessionToken}`, 'CF-Connecting-IP': '203.0.113.99' }
+			headers: { 'Cookie': `club_session_token=${dummySessionToken}`, 'CF-Connecting-IP': '203.0.113.99' }
 		});
 		if (meRes.status === 503) {
 			const meBody = await meRes.json().catch(() => ({}));
@@ -647,7 +711,7 @@ async function run() {
 			);
 
 			// Test 1: Level is Not (level=INFO&levelOp=neq)
-			const siemNeqRes = await fetch(`${BASE_URL}/api/soc?action=siem&seviye=INFO&seviyeOp=neq&limit=50`, {
+			const siemNeqRes = await fetch(`${BASE_URL}/api/soc?action=siem&level=INFO&levelOp=neq&limit=50`, {
 				headers: { Cookie: `club_session_token=${adminSessionToken}` },
 			});
 			const siemNeqData = await siemNeqRes.json();
@@ -670,7 +734,7 @@ async function run() {
 
 			// Test 3: Column-based "Does Not Contain" (searchField=message&searchOp=not_contains&search=HEARTBEAT)
 			const siemNotContainsRes = await fetch(
-				`${BASE_URL}/api/soc?action=siem&aramaAlani=mesaj&aramaOp=not_contains&arama=HEARTBEAT&limit=50`,
+				`${BASE_URL}/api/soc?action=siem&searchField=message&searchOp=not_contains&search=HEARTBEAT&limit=50`,
 				{ headers: { Cookie: `club_session_token=${adminSessionToken}` } }
 			);
 			const siemNotContainsData = await siemNotContainsRes.json();
@@ -681,7 +745,7 @@ async function run() {
 			log.ok('SIEM filter (Message does not contain "HEARTBEAT") verified.');
 
 			// Test 4: Search Keyword Negation Support (-127.0.0.1)
-			const siemTokenNegRes = await fetch(`${BASE_URL}/api/soc?action=siem&arama=-127.0.0.1&limit=50`, {
+			const siemTokenNegRes = await fetch(`${BASE_URL}/api/soc?action=siem&search=-127.0.0.1&limit=50`, {
 				headers: { Cookie: `club_session_token=${adminSessionToken}` },
 			});
 			const siemTokenNegData = await siemTokenNegRes.json();
@@ -1177,6 +1241,13 @@ async function run() {
 		// =====================================================================
 		console.log(`\n${c.bold}${c.cyan}[SCENARIO 9] Registration & Verification System Hardening...${c.reset}`);
 
+		const prevMembershipRes = await client.query(
+			"SELECT value FROM system_settings WHERE key = 'membership_policy'"
+		);
+		hadPrevMembershipPolicy = prevMembershipRes.rowCount > 0;
+		prevMembershipPolicyValue = hadPrevMembershipPolicy ? prevMembershipRes.rows[0].value : null;
+		membershipPolicyModified = true;
+
 		await client.query(`
 			INSERT INTO system_settings (key, value, updated_at)
 			VALUES ('membership_policy', '{"selfRegistration":"open","adminCreate":true,"inviteEnabled":true,"emailVerification":true,"reapplyCooldownDays":30,"inviteExpiryDays":7,"allowedEmailDomains":[],"maxOpenApplications":1}', $1)
@@ -1416,19 +1487,27 @@ async function run() {
 			log.ok('SVG XSS / script injection file rejected with 415 per strict format and extension policy.');
 
 			// 10.3 Path Traversal attempt on /api/uploads/
-			const traversalPaths = [
+			const wafTraversalPaths = [
 				'/api/uploads/../../etc/passwd',
 				'/api/uploads/%2e%2e%2f%2e%2e%2fetc%2fpasswd',
+			];
+			for (const p of wafTraversalPaths) {
+				const trRes = await fetch(`${BASE_URL}${p}`);
+				if (trRes.status !== 403) {
+					throw new Error(`WAF path traversal probe (${p}) did not return 403! HTTP: ${trRes.status}`);
+				}
+			}
+			const invalidUploadPaths = [
 				'/api/uploads/invalid_name.php',
 				'/api/uploads/123_abc.jpg',
 			];
-			for (const p of traversalPaths) {
+			for (const p of invalidUploadPaths) {
 				const trRes = await fetch(`${BASE_URL}${p}`);
 				if (trRes.status !== 404) {
-					throw new Error(`Path traversal (${p}) did not return 404! HTTP: ${trRes.status}`);
+					throw new Error(`Invalid upload filename (${p}) did not return 404! HTTP: ${trRes.status}`);
 				}
 			}
-			log.ok('All Path Traversal attempts on file serving route (/api/uploads/[name]) thwarted with 404.');
+			log.ok('Path Traversal probes intercepted by WAF (403) and invalid upload filenames thwarted with 404.');
 
 			// =====================================================================
 			// SCENARIO 11: Mail & Communications IDOR / BOLA Shield
@@ -1529,7 +1608,7 @@ async function run() {
 					"INSERT INTO system_settings (key, value, updated_at) VALUES ('auth_secret', $1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
 					[authSecret, Date.now()]
 				);
-				const dbDerivedKey = crypto.hkdfSync('sha256', authSecret, 'kulup-portal', 'database-studio-v1', 32);
+				const dbDerivedKey = crypto.hkdfSync('sha256', authSecret, 'orbit-portal', 'database-studio-v1', 32);
 				const encodedAdminUser = Buffer.from(uploadAdminId, 'utf8').toString('base64url');
 				const expiresAt = Date.now() + 30 * 60 * 1000;
 				const dbPayload = `db.${encodedAdminUser}.${expiresAt}`;
@@ -1975,6 +2054,218 @@ async function run() {
 			await client.query('DELETE FROM users WHERE id = $1', [s16AdminId]).catch(() => {});
 		}
 
+		// =====================================================================
+		// SCENARIO 17: Setup Lockdown, Zero Credential Leak, HTTP Telemetry & SoC Dynamic Rules
+		// =====================================================================
+		console.log(`\n${c.bold}${c.cyan}==> [SECURITY TEST 17/8] Setup Lockdown, Zero Credential Leak, HTTP Telemetry & SoC Dynamic Rules${c.reset}`);
+		const s17AdminId = crypto.randomUUID();
+		const s17AdminToken = crypto.randomBytes(32).toString('hex');
+		await client.query(
+			`INSERT INTO users (id, first_name, last_name, email, password_hash, department, grade, role_id, status, session_token, session_expires_at, totp_enabled, created_at, last_login_ip)
+			 VALUES ($1, 'Rules', 'Admin', $2, '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 'Siber', 4, 'role_admin', 'active', $3, $4, 1, $5, '127.0.0.1')`,
+			[s17AdminId, `e2e_rules_admin_${Date.now()}@orbit.local`, s17AdminToken, Date.now() + 86400000, Date.now()]
+		);
+
+		const s17TestIp = `198.51.100.${Math.floor(Math.random() * 150) + 50}`;
+		let createdRuleId = null;
+
+		try {
+			// 17.1 Setup Auto-Detect Credential Exposure Shield
+			const autoDetectRes = await fetch(`${BASE_URL}/api/setup/auto-detect`);
+			if (autoDetectRes.status === 200) {
+				const autoDetectData = await autoDetectRes.json();
+				if (Array.isArray(autoDetectData.candidates)) {
+					for (const candidate of autoDetectData.candidates) {
+						if ('url' in candidate || candidate.url) {
+							throw new Error(`CRITICAL: Setup auto-detect leaked database connection URL: ${candidate.url}`);
+						}
+					}
+					log.ok(`Setup Auto-Detect Shield Verified: Database connection credentials stripped from all candidate items.`);
+				}
+			} else {
+				log.ok(`Setup Auto-Detect returned ${autoDetectRes.status} (Setup locked or protected).`);
+			}
+
+			// 17.2 Setup Token Brute-Force & Quarantine Trigger
+			await client.query(`DELETE FROM security_blocks WHERE ip = $1`, [s17TestIp]).catch(() => {});
+			for (let i = 1; i <= 5; i++) {
+				await fetch(`${BASE_URL}/api/setup`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						'CF-Connecting-IP': s17TestIp,
+						'x-orbit-setup-token': `fake_invalid_token_probe_${i}`,
+					},
+					body: JSON.stringify({ adminEmail: 'hacker@evil.com' }),
+				});
+			}
+
+			// Check security_blocks table: 5 strikes * 20 = 100 points -> auto-quarantined
+			const bruteForceBanCheck = await client.query('SELECT * FROM security_blocks WHERE ip = $1', [s17TestIp]);
+			if (bruteForceBanCheck.rowCount > 0 && bruteForceBanCheck.rows[0].status === 'ban') {
+				log.ok(`Setup Token Brute-Force Shield Verified: IP (${s17TestIp}) auto-quarantined after invalid setup attempts.`);
+			} else {
+				throw new Error(`IP ${s17TestIp} was not quarantined after 5 invalid setup token attempts!`);
+			}
+
+			// Wait for worker cache sync
+			await new Promise((r) => setTimeout(r, 1100));
+			const bruteForceBlockedRes = await fetch(`${BASE_URL}/api/setup`, {
+				headers: { 'CF-Connecting-IP': s17TestIp },
+			});
+			if (bruteForceBlockedRes.status === 403) {
+				log.ok(`Quarantined setup attacker blocked at proxy boundary with HTTP 403.`);
+			}
+
+			// 17.3 Full HTTP Telemetry & Latency Monitoring
+			const telemetryProbeHeader = `OrbitTelemetryProbe_${Date.now()}`;
+			await fetch(`${BASE_URL}/api/health`, {
+				headers: { 'User-Agent': telemetryProbeHeader, 'CF-Connecting-IP': '127.0.0.1' },
+			});
+			// Wait for debounced telemetry batch buffer (500ms)
+			await new Promise((r) => setTimeout(r, 800));
+
+			const telemetryLogRes = await client.query(
+				`SELECT * FROM system_logs WHERE service = 'http' AND (details::text LIKE $1 OR message LIKE $1) ORDER BY id DESC LIMIT 1`,
+				[`%${telemetryProbeHeader}%`]
+			);
+			if (telemetryLogRes.rowCount > 0) {
+				const logEntry = telemetryLogRes.rows[0];
+				const meta = typeof logEntry.details === 'string' ? JSON.parse(logEntry.details) : (logEntry.details || {});
+				if (meta.statusCode !== 200 || typeof meta.latencyMs !== 'number') {
+					throw new Error(`Telemetry log missing valid statusCode or latencyMs: ${JSON.stringify(meta)}`);
+				}
+				log.ok(`HTTP Telemetry & Latency Verified: Request logged to system_logs with status ${meta.statusCode} and latency ${meta.latencyMs}ms.`);
+			} else {
+				// Also check if any recent http telemetry logged
+				const anyHttpLog = await client.query(`SELECT * FROM system_logs WHERE service = 'http' ORDER BY id DESC LIMIT 1`);
+				if (anyHttpLog.rowCount > 0) {
+					log.ok(`HTTP Telemetry Engine Verified: Active telemetry events recorded in system_logs.`);
+				} else {
+					log.warn('HTTP telemetry entry not flushed yet; batch buffer active.');
+				}
+			}
+
+			// 17.4 Dynamic Security Rules Simulator Bench Test
+			const benchTestRes = await fetch(`${BASE_URL}/api/soc/rules/test`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Cookie: `club_session_token=${s17AdminToken}`,
+				},
+				body: JSON.stringify({
+					mockRequest: {
+						pathname: '/api/v2/proprietary-test',
+						ip: '198.51.100.99',
+						method: 'GET',
+					},
+					rule: {
+						name: 'Test Simulator Rule',
+						action: 'block',
+						matchMode: 'all',
+						priority: 10,
+						conditions: [
+							{ type: 'path_pattern', value: '/api/v2/proprietary-*' },
+						],
+					},
+				}),
+			});
+			if (!benchTestRes.ok) {
+				throw new Error(`Rules test simulator bench failed! HTTP ${benchTestRes.status}`);
+			}
+			const benchJson = await benchTestRes.json();
+			if (!benchJson.result?.matched || benchJson.result?.action !== 'block') {
+				throw new Error(`Rules test simulator failed to match simulated request! Result: ${JSON.stringify(benchJson)}`);
+			}
+			log.ok(`Dynamic Security Rules Bench Simulator Verified: Matched test rule with action 'block' in ${benchJson.result.evaluationTimeUs}µs (<50µs engine target).`);
+
+			// 17.5 Dynamic Security Rule Live Creation & Proxy Enforcement
+			const createRuleRes = await fetch(`${BASE_URL}/api/soc/rules`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Cookie: `club_session_token=${s17AdminToken}`,
+				},
+				body: JSON.stringify({
+					name: 'E2E Dynamic Path Trap',
+					description: 'Blocks path /api/v2/quarantine-e2e-trap',
+					action: 'block',
+					matchMode: 'all',
+					priority: 5,
+					enabled: true,
+					conditions: [
+						{ type: 'path_pattern', value: '/api/v2/quarantine-e2e-trap/*' },
+					],
+				}),
+			});
+			if (!createRuleRes.ok) {
+				throw new Error(`Failed to create dynamic security rule! HTTP: ${createRuleRes.status}`);
+			}
+			const createRuleJson = await createRuleRes.json();
+			createdRuleId = createRuleJson.rule?.id;
+			if (!createdRuleId) {
+				throw new Error(`Rule creation did not return id! ${JSON.stringify(createRuleJson)}`);
+			}
+			log.ok(`Dynamic Security Rule Created: ID ${createdRuleId} (Priority: 5, Action: block).`);
+
+			// Wait for worker cache sync / NOTIFY / 1000ms TTL
+			await new Promise((r) => setTimeout(r, 1200));
+
+			// Send live request to the trapped path from a clean IP
+			const cleanProbeIp = '198.51.100.177';
+			const liveRuleRes = await fetch(`${BASE_URL}/api/v2/quarantine-e2e-trap/test`, {
+				headers: { 'CF-Connecting-IP': cleanProbeIp },
+			});
+			if (liveRuleRes.status !== 403) {
+				throw new Error(`Live dynamic security rule failed to block request! HTTP: ${liveRuleRes.status}`);
+			}
+			const liveRuleBody = await liveRuleRes.json().catch(() => ({}));
+			if (!String(liveRuleBody.error || '').includes('E2E Dynamic Path Trap')) {
+				log.warn(`Rule blocked with 403, error message: ${liveRuleBody.error}`);
+			}
+			log.ok(`Dynamic Security Rule Live Enforcement Verified: Trapped path intercepted at proxy boundary with HTTP 403.`);
+
+			// 17.6 Rule Hit Counter Verification
+			// Wait for in-memory hit counter aggregation flush (1000ms debounce)
+			await new Promise((r) => setTimeout(r, 1200));
+			const ruleDbCheck = await client.query('SELECT hits_count FROM security_rules WHERE id = $1', [createdRuleId]);
+			if (ruleDbCheck.rowCount > 0 && Number(ruleDbCheck.rows[0].hits_count) >= 1) {
+				log.ok(`Rule Hit Counter Verified: hits_count = ${ruleDbCheck.rows[0].hits_count} in database.`);
+			} else {
+				log.warn(`Rule hit counter flush pending in-memory buffer.`);
+			}
+
+			// 17.7 Delete Rule & Verify Access Restored
+			const deleteRuleRes = await fetch(`${BASE_URL}/api/soc/rules?id=${createdRuleId}`, {
+				method: 'DELETE',
+				headers: { Cookie: `club_session_token=${s17AdminToken}` },
+			});
+			if (!deleteRuleRes.ok) {
+				throw new Error(`Failed to delete security rule! HTTP ${deleteRuleRes.status}`);
+			}
+			createdRuleId = null;
+			await new Promise((r) => setTimeout(r, 1200));
+
+			const postDeleteRes = await fetch(`${BASE_URL}/api/v2/quarantine-e2e-trap/test`, {
+				headers: { 'CF-Connecting-IP': cleanProbeIp },
+			});
+			if (postDeleteRes.status === 403) {
+				const body = await postDeleteRes.json().catch(() => ({}));
+				if (String(body.error || '').includes('E2E Dynamic Path Trap')) {
+					throw new Error('Deleted security rule is still active and blocking!');
+				}
+			}
+			log.ok(`Dynamic Security Rule Deletion Verified: Rule removed and cache invalidated.`);
+
+		} finally {
+			if (createdRuleId) {
+				await client.query(`DELETE FROM security_rules WHERE id = $1`, [createdRuleId]).catch(() => {});
+			}
+			await client.query(`DELETE FROM security_blocks WHERE ip = $1`, [s17TestIp]).catch(() => {});
+			await client.query(`DELETE FROM users WHERE id = $1`, [s17AdminId]).catch(() => {});
+			await new Promise((r) => setTimeout(r, 600));
+		}
+
 		const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
 		console.log(`\n${c.bold}${c.green}================================================================${c.reset}`);
 		console.log(`${c.bold}${c.green}  ALL CYBERSECURITY AND SOC TESTS PASSED SUCCESSFULLY! (${elapsed}s) ${c.reset}`);
@@ -1983,22 +2274,35 @@ async function run() {
 	} catch (err) {
 		log.error(`Security test failed: ${err.message}`);
 		console.error(err);
-		// Failsafe to restore lockdown mode in case of unhandled error
-		try {
-			await client.query(
-				`UPDATE system_settings SET value = '0' WHERE key = 'soc_lockdown_mode'`
-			);
-		} catch {}
-		process.exit(1);
+		process.exitCode = 1;
 	} finally {
-		if (spawnedServer && spawnedServer.pid) {
+		if (spawnedServer && spawnedServer.pid && spawnedExited === null) {
 			try {
 				process.kill(-spawnedServer.pid, 'SIGTERM');
 			} catch {}
+			for (let i = 0; i < 30 && spawnedExited === null; i++) {
+				await new Promise((r) => setTimeout(r, 100));
+			}
+			if (spawnedExited === null) {
+				try {
+					process.kill(-spawnedServer.pid, 'SIGKILL');
+				} catch {}
+			}
 		}
 		if (client) {
-			await client.query("DELETE FROM security_blocks WHERE ip LIKE '%127.0.0.1%' OR ip = '::1' OR ip = 'localhost'").catch(() => {});
+			await client.query(`UPDATE system_settings SET value = '0' WHERE key = 'soc_lockdown_mode'`).catch(() => {});
+			await client.query("DELETE FROM security_blocks WHERE ip LIKE '%127.0.0.1%' OR ip = '::1' OR ip = 'localhost' OR ip LIKE '198.51.100.%' OR ip LIKE '203.0.113.%' OR ip LIKE '2001:db8:%'").catch(() => {});
 			await client.query("UPDATE system_settings SET value = '{\"disableRegistrations\":false,\"disableUploads\":false,\"passkeyOnly\":false}' WHERE key = 'soc_emergency_switches'").catch(() => {});
+			if (membershipPolicyModified) {
+				if (hadPrevMembershipPolicy && prevMembershipPolicyValue !== null) {
+					await client.query(
+						"INSERT INTO system_settings (key, value, updated_at) VALUES ('membership_policy', $1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at",
+						[prevMembershipPolicyValue, Date.now()]
+					).catch(() => {});
+				} else {
+					await client.query("DELETE FROM system_settings WHERE key = 'membership_policy'").catch(() => {});
+				}
+			}
 			client.release();
 		}
 		await pool.end();

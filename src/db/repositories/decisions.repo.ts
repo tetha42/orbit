@@ -3,9 +3,9 @@ import { ensurePostgresInit, getPgPool, withTransaction } from '@/db/index';
 import type { Decision } from '@/db/schema';
 
 const DECISION_SELECT_COLUMNS = `
-	id, reference_no AS "decisionNo", record_type AS "documentType", title AS "title", date,
-	agenda AS "agenda", content AS "content", is_public AS "isPublicOpen", is_locked AS "isLocked",
-	created_by AS "creatorId", created_at AS "creation",
+	id, reference_no AS "referenceNumber", record_type AS "documentType", title AS "title", date,
+	agenda AS "agenda", content AS "content", is_public AS "isPublic", is_locked AS "isLocked",
+	created_by AS "creatorId", created_at AS "createdAt",
 	body_id, body_id AS "bodyId",
 	decision_type, decision_type AS "decisionType",
 	quorum_met, quorum_met AS "quorumMet",
@@ -18,9 +18,9 @@ const DECISION_SELECT_COLUMNS = `
 export async function getDecisions(): Promise<Decision[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(`
-		SELECT t.id, t.reference_no AS "decisionNo", t.record_type AS "documentType", t.title AS "title", t.date,
-		       t.agenda AS "agenda", t.content AS "content", t.is_public AS "isPublicOpen", t.is_locked AS "isLocked",
-		       t.created_by AS "creatorId", t.created_at AS "creation",
+		SELECT t.id, t.reference_no AS "referenceNumber", t.record_type AS "documentType", t.title AS "title", t.date,
+		       t.agenda AS "agenda", t.content AS "content", t.is_public AS "isPublic", t.is_locked AS "isLocked",
+		       t.created_by AS "creatorId", t.created_at AS "createdAt",
 		       t.body_id, t.body_id AS "bodyId",
 		       t.decision_type, t.decision_type AS "decisionType",
 		       t.quorum_met, t.quorum_met AS "quorumMet",
@@ -28,7 +28,7 @@ export async function getDecisions(): Promise<Decision[]> {
 		       t.votes_against, t.votes_against AS "votesAgainst",
 		       t.votes_abstain, t.votes_abstain AS "votesAbstain",
 		       t.published_at, t.published_at AS "publishedAt",
-		       k.first_name || ' ' || k.last_name AS "creatorNameSurname",
+		       k.first_name || ' ' || k.last_name AS "creatorName",
 		       b.name AS "bodyName"
 		FROM decisions t
 		LEFT JOIN users k ON t.created_by = k.id
@@ -38,7 +38,7 @@ export async function getDecisions(): Promise<Decision[]> {
 	`);
 	return res.rows.map((r) => ({
 		...r,
-		isPublicOpen: Number(r.isPublicOpen),
+		isPublic: Number(r.isPublic),
 		isLocked: Number(r.isLocked),
 	}));
 }
@@ -50,6 +50,7 @@ export async function createDecision(params: {
 	creatorId: string;
 	documentType?: string;
 	date?: number;
+	isPublic?: boolean;
 	isPublicOpen?: boolean;
 	bodyId?: string | null;
 	decisionType?: string;
@@ -72,18 +73,20 @@ export async function createDecision(params: {
 			'SELECT COALESCE(MAX(reference_no), $1) AS "maxNo" FROM decisions WHERE reference_no BETWEEN $1 AND $2',
 			[year * 1000, year * 1000 + 999]
 		);
+		const num = Number(maxRow.rows[0].maxNo) + 1;
+		const isPub = (params.isPublic !== undefined ? params.isPublic : params.isPublicOpen) !== false ? 1 : 0;
 		const decision: Decision = {
 			id: randomUUID(),
-			decisionNo: Number(maxRow.rows[0].maxNo) + 1,
+			referenceNumber: num,
 			documentType: params.documentType || 'resolution',
 			title: params.title.trim(),
 			date,
 			agenda: params.agenda.trim(),
 			content: params.content.trim(),
-			isPublicOpen: params.isPublicOpen !== false ? 1 : 0,
+			isPublic: isPub,
 			isLocked: 0,
 			creatorId: params.creatorId,
-			creation: now,
+			createdAt: now,
 			bodyId: params.bodyId ?? null,
 			decisionType: params.decisionType || 'resolution',
 			quorumMet: params.quorumMet ? 1 : 0,
@@ -99,13 +102,13 @@ export async function createDecision(params: {
 			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0, $9, $10, $10, $11, $12, $13, $14, $15, $16, $17)`,
 			[
 				decision.id,
-				decision.decisionNo,
+				decision.referenceNumber,
 				decision.documentType,
 				decision.title,
 				decision.date,
 				decision.agenda,
 				decision.content,
-				decision.isPublicOpen,
+				decision.isPublic,
 				decision.creatorId,
 				now,
 				decision.bodyId,
@@ -125,14 +128,14 @@ export async function getDecisionById(id: string): Promise<Decision | null> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(`SELECT ${DECISION_SELECT_COLUMNS} FROM decisions WHERE id = $1`, [id]);
 	const r = res.rows[0];
-	return r ? { ...r, isPublicOpen: Number(r.isPublicOpen), isLocked: Number(r.isLocked) } : null;
+	return r ? { ...r, isPublic: Number(r.isPublic), isLocked: Number(r.isLocked) } : null;
 }
 
-export async function getDecisionByNumber(decisionNo: number): Promise<Decision | null> {
+export async function getDecisionByNumber(referenceNumber: number): Promise<Decision | null> {
 	await ensurePostgresInit();
-	const res = await getPgPool().query(`SELECT ${DECISION_SELECT_COLUMNS} FROM decisions WHERE reference_no = $1`, [decisionNo]);
+	const res = await getPgPool().query(`SELECT ${DECISION_SELECT_COLUMNS} FROM decisions WHERE reference_no = $1`, [referenceNumber]);
 	const r = res.rows[0];
-	return r ? { ...r, isPublicOpen: Number(r.isPublicOpen), isLocked: Number(r.isLocked) } : null;
+	return r ? { ...r, isPublic: Number(r.isPublic), isLocked: Number(r.isLocked) } : null;
 }
 
 /**
@@ -146,6 +149,7 @@ export async function updateDecision(
 		agenda?: string;
 		content?: string;
 		documentType?: string;
+		isPublic?: boolean;
 		isPublicOpen?: boolean;
 		bodyId?: string | null;
 		decisionType?: string;
@@ -167,7 +171,8 @@ export async function updateDecision(
 	if (patch.agenda !== undefined) set('agenda', patch.agenda);
 	if (patch.content !== undefined) set('content', patch.content);
 	if (patch.documentType !== undefined) set('record_type', patch.documentType);
-	if (patch.isPublicOpen !== undefined) set('is_public', patch.isPublicOpen ? 1 : 0);
+	const isPub = patch.isPublic !== undefined ? patch.isPublic : patch.isPublicOpen;
+	if (isPub !== undefined) set('is_public', isPub ? 1 : 0);
 	if (patch.bodyId !== undefined) set('body_id', patch.bodyId);
 	if (patch.decisionType !== undefined) set('decision_type', patch.decisionType);
 	if (patch.quorumMet !== undefined) set('quorum_met', patch.quorumMet ? 1 : 0);

@@ -12,11 +12,11 @@ export async function roleLimitProblem(
 ): Promise<string | null> {
 	if (!roleId) return null;
 	if (roleId === ADMIN_ROLE_ID && !actor.permission.admin) {
-		return 'Admin roleünü yalnızca bir admin verebilir.';
+		return 'Only an administrator can grant the admin role.';
 	}
 	const excess = extraPermissions((await getRolePermission(roleId)).permissions, actor.permission.permissions);
 	return excess.length
-		? `Kendinizden daha yetkili bir role veremezsiniz (${excess
+		? `Cannot grant a role with greater permissions than your own (${excess
 				.map((a) => PERMISSION_DESCRIPTIONS[a].name)
 				.join(', ')}).`
 		: null;

@@ -8,19 +8,12 @@ import { fill } from '@/lib/text';
 import { sendJson } from '@/core/data/http';
 import type { TaskStatus } from '@/lib/kanban';
 import type { TeamTaskItem, TeamTaskComment } from '@/db/schema';
-import type { TeamTask } from '../types';
-
-interface Detail {
-	task: TeamTask;
-	items: TeamTaskItem[];
-	comments: TeamTaskComment[];
-	permissions: { manage: boolean; work: boolean; comment: boolean };
-}
+import type { TeamTaskDetail } from '../types';
 
 interface UseTaskDetailParams {
 	url: string;
-	data: Detail | null;
-	setData: React.Dispatch<React.SetStateAction<Detail | null>>;
+	data: TeamTaskDetail | null;
+	setData: React.Dispatch<React.SetStateAction<TeamTaskDetail | null>>;
 	refetch: () => Promise<void>;
 	onChanged: () => Promise<void>;
 	notify: (text: string, tone?: 'success' | 'error') => void;

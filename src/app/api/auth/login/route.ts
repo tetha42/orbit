@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { getUserByEmail, updateUserPassword } from '@/db';
+import { getUserByEmail } from '@/db';
 import { attachSessionCookie, establishSession, sessionUserOf } from '@/lib/auth/session';
 import { createLoginChallenge } from '@/lib/auth/authToken';
+import { getRoleDevicePolicy, hasActiveMobileSession } from '@/domains/devices/sessionStore';
+import { detectDeviceMetadata } from '@/domains/devices/types';
 import { clearRateLimit, consumeRateLimit, isRateLimited, recordFailure } from '@/lib/rateLimit';
 import { clientAddress } from '@/lib/http';
 import { inspectRequestPayload } from '@/lib/waf';
@@ -24,18 +26,12 @@ export async function POST(request: Request) {
 		const ip = clientAddress(request);
 		const ban = await isIpBanned(ip);
 		if (ban.banned) {
-			return NextResponse.json(
-				{ error: 'Your IP address has been temporarily quarantined due to security policy.' },
-				{ status: 403 }
-			);
+			return NextResponse.json({ error: 'Your IP address has been temporarily quarantined due to security policy.' }, { status: 403 });
 		}
 
 		const emergency = await getEmergencyKillSwitches();
 		if (emergency.passkeyOnly) {
-			return NextResponse.json(
-				{ error: 'Password authentication is disabled under emergency security protocol (Kill-Switch). Please sign in using your Passkey.' },
-				{ status: 403 }
-			);
+			return NextResponse.json({ error: 'Password authentication is disabled under emergency security protocol (Kill-Switch). Please sign in using your Passkey.' }, { status: 403 });
 		}
 
 		const waf = inspectRequestPayload(request);
@@ -47,28 +43,15 @@ export async function POST(request: Request) {
 				detail: { category: waf.category, signature: waf.signature },
 				ip,
 			});
-			void recordSecurityStrike({
-				ip,
-				points: waf.points,
-				reason: `WAF: ${waf.signature}`,
-				path: '/api/auth/login',
-			});
-			return NextResponse.json(
-				{ error: 'Suspicious request blocked by the Web Application Firewall (WAF).' },
-				{ status: 403 }
-			);
+			void recordSecurityStrike({ ip, points: waf.points, reason: `WAF: ${waf.signature}`, path: '/api/auth/login' });
+			return NextResponse.json({ error: 'Suspicious request blocked by the Web Application Firewall (WAF).' }, { status: 403 });
 		}
 
 		const lockdown = await getLockdownState();
 		const burstLimit = lockdown.active ? Math.max(5, Math.floor(MAX_IP_BURST_PER_MIN / 3)) : MAX_IP_BURST_PER_MIN;
 		const ipBurst = consumeRateLimit(`login:burst:ip:${ip}`, burstLimit, BURST_WINDOW_MS);
 		if (!ipBurst.allowed) {
-			void recordSecurityStrike({
-				ip,
-				points: 25,
-				reason: 'Login endpoint rate burst exceeded',
-				path: '/api/auth/login',
-			});
+			void recordSecurityStrike({ ip, points: 25, reason: 'Login endpoint rate burst exceeded', path: '/api/auth/login' });
 			return NextResponse.json(
 				{ error: 'Too many sign-in requests. Please wait a moment.' },
 				{ status: 429, headers: { 'Retry-After': String(ipBurst.retryAfter) } }
@@ -134,12 +117,7 @@ export async function POST(request: Request) {
 		const fail = (reason: string) => {
 			recordFailure(accountKey, ATTEMPT_WINDOW_MS);
 			recordFailure(ipKey, ATTEMPT_WINDOW_MS);
-			void recordSecurityStrike({
-				ip,
-				points: 15,
-				reason,
-				path: '/api/auth/login',
-			});
+			void recordSecurityStrike({ ip, points: 15, reason, path: '/api/auth/login' });
 		};
 
 		if (email.length > 254 || password.length > 128) {
@@ -164,14 +142,15 @@ export async function POST(request: Request) {
 		}
 
 		let isValidPassword = false;
-		if (user.passwordHash.startsWith('$2a$') || user.passwordHash.startsWith('$2b$')) {
+		if (
+			user.passwordHash.startsWith('$2a$') ||
+			user.passwordHash.startsWith('$2b$') ||
+			user.passwordHash.startsWith('$2y$')
+		) {
 			isValidPassword = await bcrypt.compare(password, user.passwordHash);
 		} else {
-			isValidPassword = user.passwordHash === password;
-			if (isValidPassword) {
-				const upgradedHash = await bcrypt.hash(password, 10);
-				await updateUserPassword(user.id, upgradedHash);
-			}
+			await bcrypt.compare(password, DUMMY_HASH);
+			isValidPassword = false;
 		}
 
 		if (!isValidPassword) {
@@ -188,41 +167,48 @@ export async function POST(request: Request) {
 		}
 
 		if (user.status === 'pending') {
-			return NextResponse.json(
-				{
-					error: 'Your membership application is awaiting administrator approval.',
-					status: 'pending',
-				},
-				{ status: 403 }
-			);
+			return NextResponse.json({ error: 'Your membership application is awaiting administrator approval.', status: 'pending' }, { status: 403 });
 		}
 
 		if (user.status === 'rejected') {
-			return NextResponse.json(
-				{
-					error: 'Your membership application was not approved by community administration.',
-					status: 'rejected',
-				},
-				{ status: 403 }
-			);
+			return NextResponse.json({ error: 'Your membership application was not approved by community administration.', status: 'rejected' }, { status: 403 });
 		}
 
 		if (lockdown.active && user.roleId !== ADMIN_ROLE_ID) {
-			return NextResponse.json(
-				{
-					error: 'The system is currently in Shield Mode (Defcon Lockdown). Only administrators can sign in.',
-					code: 'LOCKDOWN_ACTIVE',
-				},
-				{ status: 503 }
-			);
+			return NextResponse.json({ error: 'The system is currently in Shield Mode (Defcon Lockdown). Only administrators can sign in.', code: 'LOCKDOWN_ACTIVE' }, { status: 503 });
 		}
 
 		clearRateLimit(accountKey);
 
-		if (Number(user.totpEnabled) === 1) {
+		const deviceMeta = detectDeviceMetadata(request);
+		const devicePolicy = await getRoleDevicePolicy(user.roleId);
+		if (deviceMeta.deviceClass === 'mobile' && !devicePolicy.allowMobileAccess) {
+			return NextResponse.json(
+				{ error: 'Mobile device access is not permitted for your role.', code: 'MOBILE_ACCESS_DENIED' },
+				{ status: 403 }
+			);
+		}
+		if (deviceMeta.deviceClass === 'desktop' && !devicePolicy.allowDesktopAccess) {
+			return NextResponse.json(
+				{ error: 'Desktop access is not permitted for your role.', code: 'DESKTOP_ACCESS_DENIED' },
+				{ status: 403 }
+			);
+		}
+
+		const hasMobile =
+			deviceMeta.deviceClass === 'desktop' ? await hasActiveMobileSession(user.id) : false;
+		const requiresMobileOr2fa =
+			Number(user.totpEnabled) === 1 ||
+			(deviceMeta.deviceClass === 'desktop' &&
+				(devicePolicy.desktopAuthPolicy === 'mobile_required' ||
+					(devicePolicy.desktopAuthPolicy === 'mobile_preferred' && hasMobile)));
+
+		if (requiresMobileOr2fa) {
 			return NextResponse.json({
 				success: false,
 				require2fa: true,
+				mobileApprovalAvailable: hasMobile,
+				totpEnabled: Number(user.totpEnabled) === 1,
 				challengeToken: await createLoginChallenge(user.id),
 			});
 		}

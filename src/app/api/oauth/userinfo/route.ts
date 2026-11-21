@@ -14,11 +14,11 @@ export async function GET(request: Request) {
 		void recordSecurityStrike({
 			ip,
 			points: 10,
-			reason: 'Karantinadaki IP OAuth userinfo denemesi',
+			reason: 'Quarantined IP attempted OAuth userinfo request',
 			path: '/api/oauth/userinfo',
 		});
 		return NextResponse.json(
-			{ error: 'access_denied', error_description: 'IP adresiniz siber güvenlik politikası nedeniyle karantinaya alınmıştır.' },
+			{ error: 'access_denied', error_description: 'Your IP address is quarantined due to security policy.' },
 			{ status: 403 }
 		);
 	}
@@ -28,7 +28,7 @@ export async function GET(request: Request) {
 		void logSystemEvent({
 			service: 'security',
 			level: 'ERROR',
-			message: `[WAF] OAuth userinfo saldırı imzası engellendi (${waf.signature}): GET /api/oauth/userinfo`,
+			message: `[WAF] OAuth userinfo attack signature blocked (${waf.signature}): GET /api/oauth/userinfo`,
 			detail: { category: waf.category, signature: waf.signature },
 			ip,
 		});
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
 			path: '/api/oauth/userinfo',
 		});
 		return NextResponse.json(
-			{ error: 'access_denied', error_description: 'Güvenlik duvarı (WAF) tarafından şüpheli istek engellendi.' },
+			{ error: 'access_denied', error_description: 'Suspicious request blocked by the Web Application Firewall (WAF).' },
 			{ status: 403 }
 		);
 	}
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
 		const authHeader = request.headers.get('authorization') || '';
 		if (!authHeader.startsWith('Bearer ')) {
 			return NextResponse.json(
-				{ error: 'invalid_token', error_description: 'Bearer jetonu eksik.' },
+				{ error: 'invalid_token', error_description: 'Missing Bearer token.' },
 				{
 					status: 401,
 					headers: { 'WWW-Authenticate': 'Bearer error="invalid_token"' },
@@ -60,7 +60,7 @@ export async function GET(request: Request) {
 		const verified = await verifyOAuthJwt(token);
 
 		if (!verified.valid) {
-			const errorMsg = 'error' in verified ? verified.error : 'Geçersiz token.';
+			const errorMsg = 'error' in verified ? verified.error : 'Invalid token.';
 			return NextResponse.json(
 				{ error: 'invalid_token', error_description: errorMsg },
 				{
@@ -75,7 +75,7 @@ export async function GET(request: Request) {
 
 		if (!user || (user.status !== 'active' && user.status !== 'alumni')) {
 			return NextResponse.json(
-				{ error: 'invalid_token', error_description: 'Kullanıcı bulunamadı veya aktif değil.' },
+				{ error: 'invalid_token', error_description: 'User not found or inactive.' },
 				{ status: 401 }
 			);
 		}
@@ -130,7 +130,7 @@ export async function GET(request: Request) {
 	} catch (error) {
 		console.error('API /api/oauth/userinfo error:', error);
 		return NextResponse.json(
-			{ error: 'server_error', error_description: 'Kullanıcı bilgisi alınamadı.' },
+			{ error: 'server_error', error_description: 'Failed to retrieve user info.' },
 			{ status: 500 }
 		);
 	}

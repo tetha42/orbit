@@ -17,8 +17,8 @@ export function SmtpInfoCards({ from, emailReady }: SmtpInfoCardsProps) {
 		<>
 			<div
 				style={{
-					background: 'rgba(10, 132, 255, 0.08)',
-					border: '1px solid rgba(10, 132, 255, 0.25)',
+					background: 'color-mix(in srgb, var(--accent) 8%, transparent)',
+					border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
 					borderRadius: '12px',
 					padding: '14px 16px',
 					display: 'flex',
@@ -49,9 +49,9 @@ export function SmtpInfoCards({ from, emailReady }: SmtpInfoCardsProps) {
 					style={{
 						padding: '14px 16px',
 						borderRadius: '12px',
-						background: 'rgba(255, 69, 58, 0.12)',
-						border: '1px solid rgba(255, 69, 58, 0.35)',
-						color: '#ff453a',
+						background: 'color-mix(in srgb, var(--danger) 12%, transparent)',
+						border: '1px solid color-mix(in srgb, var(--danger) 35%, transparent)',
+						color: 'var(--danger)',
 						fontSize: '13px',
 						lineHeight: 1.5,
 						display: 'flex',

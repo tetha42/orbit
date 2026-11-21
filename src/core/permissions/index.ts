@@ -12,11 +12,10 @@
  */
 import { ALL_MANIFESTS, type PermissionApp } from '../../apps/index.ts';
 
-export const LEVELS = ['none', 'use', 'manage'] as const;
-export const SEVIYELER = LEVELS;
+const LEVELS = ['none', 'use', 'manage'] as const;
 export type PermissionLevel = (typeof LEVELS)[number];
 export type Level = PermissionLevel;
-export const ORDER: Record<PermissionLevel, number> = { none: 0, use: 1, manage: 2 };
+const ORDER: Record<PermissionLevel, number> = { none: 0, use: 1, manage: 2 };
 
 /**
  * Every app a role can be granted, in the order the role editor lists them —
@@ -56,19 +55,25 @@ export function isAlumniRole(
  * club details.
  */
 export const ALWAYS_OPEN: readonly PermissionApp[] = ALL_MANIFESTS.filter((m) => m.permission.everyoneOpen).map((m) => m.id as PermissionApp);
-export const EVERY_TIME_OPEN = ALWAYS_OPEN;
 
 /** What each level means in each app — shown in the role editor next to the switch. */
 export const PERMISSION_DESCRIPTIONS = Object.fromEntries(
-	ALL_MANIFESTS.map((m) => [m.id, { name: m.permission.name, use: m.permission.use, manage: m.permission.manage, ...('uyari' in m.permission ? { warning: m.permission.warning } : {}) }])
+	ALL_MANIFESTS.map((m) => [
+		m.id,
+		{
+			name: m.permission.name,
+			use: m.permission.use,
+			manage: m.permission.manage,
+			...(m.permission.warning ? { warning: m.permission.warning } : {}),
+		},
+	])
 ) as Record<PermissionApp, { name: string; use: string; manage: string; warning?: string }>;
 
-export const isPermissionLevel = (v: unknown): v is PermissionLevel => typeof v === 'string' && (LEVELS as readonly string[]).includes(v);
-export const isLevel = isPermissionLevel;
+const isPermissionLevel = (v: unknown): v is PermissionLevel => typeof v === 'string' && (LEVELS as readonly string[]).includes(v);
 export const isPermissionApp = (v: unknown): v is PermissionApp => typeof v === 'string' && (PERMISSION_APPS as readonly string[]).includes(v);
 
 /** Normalizes legacy permission level values if encountered. */
-export function canonicalLevel(v: unknown): PermissionLevel {
+function canonicalLevel(v: unknown): PermissionLevel {
 	if (v === 'use') return 'use';
 	if (v === 'manage') return 'manage';
 	return 'none';
@@ -82,8 +87,7 @@ export function levelOf(permissions: Permissions | null | undefined, appId: stri
 	return s;
 }
 
-export const isSufficientLevel = (held: PermissionLevel, required: PermissionLevel) => ORDER[canonicalLevel(held)] >= ORDER[canonicalLevel(required)];
-export const isSufficient = isSufficientLevel;
+const isSufficientLevel = (held: PermissionLevel, required: PermissionLevel) => ORDER[canonicalLevel(held)] >= ORDER[canonicalLevel(required)];
 export const canUse = (permissions: Permissions | null | undefined, appId: string) => isSufficientLevel(levelOf(permissions, appId), 'use');
 export const canManage = (permissions: Permissions | null | undefined, appId: string) => isSufficientLevel(levelOf(permissions, appId), 'manage');
 
@@ -133,8 +137,8 @@ export const ROLE_COLORS = ['#0a84ff', '#30d158', '#ff9f0a', '#ff453a', '#bf5af2
 /** Validates a role's name, colour and description. */
 export function roleProblem(r: { name?: unknown; color?: unknown; description?: unknown }): string | null {
 	const name = typeof r.name === 'string' ? r.name.trim() : '';
-	if (name.length < 2 || name.length > 40) return 'Role adı 2-40 karakter olmalıdır.';
-	if (typeof r.color !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(r.color)) return 'Renk #rrggbb biçiminde olmalıdır.';
-	if (r.description !== undefined && (typeof r.description !== 'string' || r.description.length > 200)) return 'Açıklama en fazla 200 karakter olabilir.';
+	if (name.length < 2 || name.length > 40) return 'Role name must be 2-40 characters.';
+	if (typeof r.color !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(r.color)) return 'Color must be in #rrggbb format.';
+	if (r.description !== undefined && (typeof r.description !== 'string' || r.description.length > 200)) return 'Description can be at most 200 characters.';
 	return null;
 }

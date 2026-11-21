@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useI18n } from '@/core/i18n';
+import { useI18n, getLocaleDefinition } from '@/core/i18n';
 import { fill } from '@/lib/text';
 import { Fingerprint, Trash2 } from 'lucide-react';
 
@@ -10,7 +10,7 @@ export interface PasskeySummary {
 	nickname: string | null;
 	deviceType: string | null;
 	backedUp: boolean;
-	creation: number;
+	createdAt: number;
 	lastUsage: number | null;
 }
 
@@ -40,7 +40,7 @@ const secondaryButton: React.CSSProperties = {
 
 export function PasskeyList({ passkeys, isBusy, onRemove }: PasskeyListProps) {
 	const { t, language } = useI18n();
-	const loc = language === 'en' ? 'en-US' : 'tr-TR';
+	const loc = getLocaleDefinition(language).dateLocale;
 	if (passkeys.length === 0) return null;
 
 	return (
@@ -66,7 +66,7 @@ export function PasskeyList({ passkeys, isBusy, onRemove }: PasskeyListProps) {
 								{pk.nickname || (pk.deviceType === 'multiDevice' ? t('passkeySynced') : t('passkeyThisDevice'))}
 							</div>
 							<div style={{ fontSize: '11.5px', opacity: 0.65 }}>
-								{fill(t('passkeyAddedDate'), { date: formatDate(pk.creation, loc) })}
+								{fill(t('passkeyAddedDate'), { date: formatDate(pk.createdAt, loc) })}
 								{pk.lastUsage ? ` · ${fill(t('passkeyLastUsedDate'), { date: formatDate(pk.lastUsage, loc) })}` : ''}
 								{pk.backedUp ? ` · ${t('passkeyBackedUp')}` : ''}
 							</div>
@@ -76,7 +76,7 @@ export function PasskeyList({ passkeys, isBusy, onRemove }: PasskeyListProps) {
 						type="button"
 						onClick={() => onRemove(pk.id, pk.nickname || t('passkeyThisDevice'))}
 						disabled={isBusy}
-						style={{ ...secondaryButton, color: '#ff453a', flexShrink: 0 }}
+						style={{ ...secondaryButton, color: 'var(--danger)', flexShrink: 0 }}
 						title={t('passkeyRemoveTooltip')}
 					>
 						<Trash2 size={14} />

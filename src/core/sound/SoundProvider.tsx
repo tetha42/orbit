@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 export interface SoundContextValue {
 	/** 0–100. */
@@ -34,19 +34,43 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
 		return true;
 	});
 
+	const audioCtxRef = useRef<AudioContext | null>(null);
+	const volumeRef = useRef(volume);
+	const isMutedRef = useRef(isMuted);
+
+	useEffect(() => {
+		volumeRef.current = volume;
+		isMutedRef.current = isMuted;
+	}, [volume, isMuted]);
+
+	useEffect(() => {
+		return () => {
+			if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+				void audioCtxRef.current.close().catch(() => {});
+			}
+		};
+	}, []);
+
 	const playSystemSound = useCallback(() => {
-		if (isMuted) return;
+		if (isMutedRef.current) return;
+		const currentVolume = volumeRef.current;
 		try {
 			const AudioContextClass =
 				typeof window !== 'undefined' ? window.AudioContext || window.webkitAudioContext : null;
 			if (AudioContextClass) {
-				const ctx = new AudioContextClass();
+				if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+					audioCtxRef.current = new AudioContextClass();
+				}
+				const ctx = audioCtxRef.current;
+				if (ctx.state === 'suspended') {
+					void ctx.resume().catch(() => {});
+				}
 				const osc = ctx.createOscillator();
 				const gain = ctx.createGain();
 				osc.type = 'sine';
 				osc.frequency.setValueAtTime(587.33, ctx.currentTime);
 				osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.08);
-				gain.gain.setValueAtTime((volume / 100) * 0.35, ctx.currentTime);
+				gain.gain.setValueAtTime((currentVolume / 100) * 0.35, ctx.currentTime);
 				gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
 				osc.connect(gain);
 				gain.connect(ctx.destination);
@@ -55,10 +79,10 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
 			}
 		} catch {
 			const audio = new Audio('/sounds/mac-startup-sound.mp3');
-			audio.volume = Math.max(0, Math.min(1, volume / 100));
+			audio.volume = Math.max(0, Math.min(1, currentVolume / 100));
 			audio.play().catch(() => {});
 		}
-	}, [isMuted, volume]);
+	}, []);
 
 	const toggleMute = useCallback(() => {
 		setIsMuted((prev) => !prev);

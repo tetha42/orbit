@@ -38,13 +38,20 @@ export function AccountPasswordForm({
 			return;
 		}
 		onSetBusy('password');
-		const res = await sendJson('/api/profilee/password', 'POST', { current, fresh });
+		const res = await sendJson('/api/profile/password', 'POST', { current, fresh });
 		if (res.ok) {
 			setCurrent('');
 			setNew('');
 			setRepeat('');
 		}
-		onPasswordDone(res.ok, res.ok ? t('acPasswordChanged') : res.error || t('kbActionFailed'));
+		onPasswordDone(
+			res.ok,
+			res.ok
+				? t('acPasswordChanged')
+				: res.code === 'CURRENT_PASSWORD_WRONG'
+					? t('acCurrentWrong')
+					: res.error || t('kbActionFailed')
+		);
 	};
 
 	return (

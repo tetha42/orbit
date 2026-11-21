@@ -17,7 +17,7 @@ export async function GET(request: Request) {
 	try {
 		const accessible = await listAccessibleVaults(auth.user);
 		if (accessible.length === 0) {
-			return NextResponse.json({ error: 'Bu alana erişim yetkiniz yok.' }, { status: 403 });
+			return NextResponse.json({ error: 'You do not have permission to access this area.' }, { status: 403 });
 		}
 
 		const totals = new Map((await getCashTotals()).map((t) => [t.teamId, t]));
@@ -38,6 +38,6 @@ export async function GET(request: Request) {
 		return NextResponse.json({ vaults,});
 	} catch (error) {
 		console.error('API /api/budget/vaults GET error:', error);
-		return NextResponse.json({ error: 'İşlem tamamlanamadı.' }, { status: 500 });
+		return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 });
 	}
 }

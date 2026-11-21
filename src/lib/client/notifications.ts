@@ -45,8 +45,8 @@ export async function showAppNotification(
 			const reg = await navigator.serviceWorker.ready;
 			if (reg && 'showNotification' in reg) {
 				await reg.showNotification(title, {
-					icon: '/assets/img/logo-girdap.svg',
-					badge: '/assets/img/logo-girdap.svg',
+					icon: '/assets/img/logo-orbit.svg',
+					badge: '/assets/img/logo-orbit.svg',
 					body: options.body,
 					tag: options.tag,
 					data: options.data,
@@ -58,7 +58,7 @@ export async function showAppNotification(
 
 		// Fallback to standard Notification constructor
 		const notification = new Notification(title, {
-			icon: '/assets/img/logo-girdap.svg',
+			icon: '/assets/img/logo-orbit.svg',
 			body: options.body,
 			tag: options.tag,
 			silent: options.silent,

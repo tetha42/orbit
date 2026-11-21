@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { X, Award, Trophy, Medal, Crown } from 'lucide-react';
-import { useI18n } from '@/core/i18n';
+import { getLocaleDefinition, normalizeLocale, useI18n } from '@/core/i18n';
 import type { CommunityProfile } from '@/db';
 import { ModalOverlay, useDraggableSheet } from '@/core/ui/Sheet';
 import { CertificateQr } from './CertificateQr';
@@ -35,7 +35,8 @@ export function CertificateDetailModal({
 }: CertificateDetailModalProps) {
 	const { t, language } = useI18n();
 	const { offset, onHeaderMouseDown, onHeaderDoubleClick } = useDraggableSheet(true);
-	const lang = (cert.language === 'en' || language === 'en') ? 'en' : 'tr';
+	const lang = normalizeLocale(cert.language, language);
+	const dateLocale = getLocaleDefinition(lang).dateLocale;
 	const recipient = cert.userNameSurname || currentUserName || t('membersMember');
 
 	const catId = inferCertificateCategory(cert.title, cert.category);
@@ -118,10 +119,10 @@ export function CertificateDetailModal({
 				</div>
 
 				<div style={{ fontSize: '12px', letterSpacing: '2px', textTransform: 'uppercase', color: theme.secondaryColor, fontWeight: 700 }}>
-					{club?.university.toLocaleUpperCase(lang === 'en' ? 'en-US' : 'tr-TR')}
+					{club?.university.toLocaleUpperCase(dateLocale)}
 				</div>
 				<div style={{ fontSize: '13px', color: '#555', marginTop: '2px' }}>
-					{club?.clubName.toLocaleUpperCase(lang === 'en' ? 'en-US' : 'tr-TR')}
+					{club?.clubName.toLocaleUpperCase(dateLocale)}
 				</div>
 
 				<h2 style={{ fontSize: '27px', color: theme.secondaryColor, margin: '18px 0 10px 0', fontWeight: 700, letterSpacing: '-0.01em' }}>
@@ -132,7 +133,17 @@ export function CertificateDetailModal({
 					{theme.givenTo[lang]}
 				</p>
 
-				<div style={{ fontSize: '26px', fontWeight: 700, color: '#111', borderBottom: `2px solid ${theme.borderColor}`, display: 'inline-block', padding: '0 24px 6px 24px', marginBottom: '16px' }}>
+				<div
+					style={{
+						fontSize: '26px',
+						fontWeight: 700,
+						color: '#111',
+						borderBottom: `2px solid ${theme.borderColor}`,
+						display: 'inline-block',
+						padding: '0 24px 6px 24px',
+						marginBottom: '16px',
+					}}
+				>
 					{recipient}
 				</div>
 

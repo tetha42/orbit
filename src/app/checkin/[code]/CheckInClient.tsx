@@ -3,13 +3,14 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { CheckCircle2, Clock, LogIn, XCircle } from 'lucide-react';
+import { useI18n } from '@/core/i18n';
 import styles from './checkin.module.css';
 
 type State =
 	| { kind: 'pending' }
-	| { kind: 'ok'; title: string; message: string; already: boolean }
+	| { kind: 'ok'; title: string; already: boolean }
 	| { kind: 'login' }
-	| { kind: 'error'; message: string; expired: boolean };
+	| { kind: 'error'; message?: string; messageKey: 'ciRecordFailed' | 'ciNetworkError'; expired: boolean };
 
 async function submit(code: string): Promise<State> {
 	try {
@@ -24,21 +25,22 @@ async function submit(code: string): Promise<State> {
 			return {
 				kind: 'ok',
 				title: data.event?.title ?? '',
-				message: data.message || 'Your attendance has been recorded.',
 				already: !!data.already,
 			};
 		}
 		return {
 			kind: 'error',
-			message: data.error || 'Could not record attendance.',
+			message: typeof data.error === 'string' && data.error ? data.error : undefined,
+			messageKey: 'ciRecordFailed',
 			expired: res.status === 410,
 		};
 	} catch {
-		return { kind: 'error', message: 'Network connection failed.', expired: false };
+		return { kind: 'error', messageKey: 'ciNetworkError', expired: false };
 	}
 }
 
 export function CheckInClient({ code }: { code: string }) {
+	const { t } = useI18n();
 	const [state, setState] = useState<State>({ kind: 'pending' });
 	const request = useRef<{ code: string; result: Promise<State> } | null>(null);
 
@@ -53,14 +55,14 @@ export function CheckInClient({ code }: { code: string }) {
 
 	const statusText =
 		state.kind === 'ok'
-			? 'VERIFIED'
+			? t('ciStatusVerified')
 			: state.kind === 'error'
 				? state.expired
-					? 'TOKEN EXPIRED'
-					: 'CHECK-IN FAILED'
+					? t('ciStatusExpired')
+					: t('ciStatusFailed')
 				: state.kind === 'login'
-					? 'AUTH REQUIRED'
-					: 'VERIFYING...';
+					? t('ciStatusAuthRequired')
+					: t('ciStatusVerifying');
 
 	const badgeClass =
 		state.kind === 'ok'
@@ -76,7 +78,7 @@ export function CheckInClient({ code }: { code: string }) {
 			<div role="status" aria-live="polite" className={styles.panel}>
 				<header className={styles.header}>
 					<span>ORBIT // TETHA42</span>
-					<span style={{ color: '#fafafa' }}>EVENT CHECK-IN</span>
+					<span style={{ color: '#fafafa' }}>{t('ciHeaderTag')}</span>
 				</header>
 
 				<div className={styles.body}>
@@ -96,13 +98,13 @@ export function CheckInClient({ code }: { code: string }) {
 					<h1 className={styles.title}>
 						{state.kind === 'ok'
 							? state.already
-								? 'Attendance Already Recorded'
-								: 'Check-In Confirmed'
+								? t('ciAlreadyTitle')
+								: t('ciConfirmedTitle')
 							: state.kind === 'error'
-								? 'Check-In Failed'
+								? t('ciFailedTitle')
 								: state.kind === 'login'
-									? 'Authentication Required'
-									: 'Validating Event Token...'}
+									? t('ciLoginTitle')
+									: t('ciVerifyingTitle')}
 					</h1>
 
 					{state.kind === 'ok' && state.title && (
@@ -111,16 +113,18 @@ export function CheckInClient({ code }: { code: string }) {
 
 					<p className={styles.message}>
 						{state.kind === 'ok'
-							? state.message
+							? state.already
+								? t('evAttendanceAlready')
+								: t('evAttendanceRecorded')
 							: state.kind === 'error'
-								? state.message
+								? state.message || t(state.messageKey)
 								: state.kind === 'login'
-									? 'Please sign in to the Orbit workspace first, then scan the live QR code displayed on the event screen.'
-									: 'Communicating with the Orbit attendance ledger...'}
+									? t('ciLoginMessage')
+									: t('ciVerifyingMessage')}
 					</p>
 
 					<Link href="/" className={styles.primaryBtn}>
-						Return to Orbit Workspace
+						{t('ciReturn')}
 					</Link>
 				</div>
 			</div>

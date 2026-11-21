@@ -32,9 +32,9 @@ const manifest = {
 	dock: 14,
 	permission: {
 		order: 16,
-		name: 'Kararlar & Komiteler',
-		use: 'Komiteleri, toplantıları ve kamuya açık kararları görür.',
-		manage: 'Komite kurar, üye/oy hakkı atar, toplantı ve karar kaydı oluşturur.',
+		name: 'Decisions & Committees',
+		use: 'View committees, meetings, and public board resolutions.',
+		manage: 'Form committees, assign voting rights, record meetings and publish resolutions.',
 	},
 	menu: {
 		title: { tr: 'Yönetişim', en: 'Governance' },
@@ -42,7 +42,7 @@ const manifest = {
 			id: 'about-decisions',
 			label: { tr: 'Yönetişim Hakkında', en: 'About Governance' },
 			permission: 'use',
-			ac: true,
+			open: true,
 		},
 		categories: [
 			{

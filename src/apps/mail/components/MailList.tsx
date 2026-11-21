@@ -1,26 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import {
-	Search,
-	RefreshCw,
-	Paperclip,
-	Star,
-	MailOpen,
-	X,
-	ChevronLeft,
-	ChevronRight,
-	CheckSquare,
-	Check,
-	Trash2,
-	Eye,
-} from 'lucide-react';
+import { Search, RefreshCw, MailOpen, X, ChevronLeft, ChevronRight, CheckSquare, Trash2 } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
-import { useContextMenu } from '@/core/shell';
-import type { MenuItem } from '@/types/workspace';
 import { fill } from '@/lib/text';
-import { formatMailDate } from '../utils';
 import type { MailMessageSummary } from '../types';
+import { MailListItem } from './MailListItem';
+import { MailBatchToolbar } from './MailBatchToolbar';
 import styles from '../Mail.module.css';
 
 interface MailListProps {
@@ -47,156 +33,6 @@ interface MailListProps {
 	isTrashFolder?: boolean;
 	onEmptyTrash?: () => void;
 }
-
-interface MailListItemProps {
-	msg: MailMessageSummary;
-	isSelected: boolean;
-	isChecked: boolean;
-	isSelectMode: boolean;
-	showCheckboxes: boolean;
-	locale: string;
-	t: (k: string) => string;
-	onToggleSelectUid?: (uid: number) => void;
-	onSelectMessage: (uid: number) => void;
-	onBatchTrash?: () => void;
-	onToggleStar?: (msg: MailMessageSummary) => void;
-	onToggleRead?: (msg: MailMessageSummary) => void;
-}
-
-const MailListItem: React.FC<MailListItemProps> = ({
-	msg,
-	isSelected,
-	isChecked,
-	isSelectMode,
-	showCheckboxes,
-	locale,
-	t,
-	onToggleSelectUid,
-	onSelectMessage,
-	onBatchTrash,
-	onToggleStar,
-	onToggleRead,
-}) => {
-	const menuItems = React.useMemo<MenuItem[]>(() => {
-		const items: MenuItem[] = [
-			{
-				id: `mail-open-${msg.uid}`,
-				label: t('ctxMailOpen'),
-				icon: <Eye size={13} />,
-				action: () => onSelectMessage(msg.uid),
-			},
-		];
-
-		if (onToggleRead) {
-			items.push({
-				id: `mail-read-${msg.uid}`,
-				label: msg.seen ? t('ctxMailMarkUnread') : t('ctxMailMarkRead'),
-				icon: msg.seen ? <MailOpen size={13} /> : <MailOpen size={13} />,
-				action: () => onToggleRead(msg),
-			});
-		}
-
-		if (onToggleStar) {
-			items.push({
-				id: `mail-star-${msg.uid}`,
-				label: msg.flagged ? t('ctxMailUnstar') : t('ctxMailStar'),
-				icon: <Star size={13} color={msg.flagged ? '#ffb340' : undefined} fill={msg.flagged ? '#ffb340' : 'none'} />,
-				action: () => onToggleStar(msg),
-			});
-		}
-
-		if (onBatchTrash) {
-			items.push(
-				{ id: `sep-mail-${msg.uid}`, label: '', separator: true },
-				{
-					id: `mail-trash-${msg.uid}`,
-					label: t('ctxMailDelete'),
-					icon: <Trash2 size={13} />,
-					danger: true,
-					action: () => {
-						if (onToggleSelectUid) {
-							onToggleSelectUid(msg.uid);
-						}
-						onBatchTrash();
-					},
-				}
-			);
-		}
-
-		return items;
-	}, [msg, t, onSelectMessage, onBatchTrash, onToggleSelectUid, onToggleRead, onToggleStar]);
-
-	const contextMenuProps = useContextMenu({ items: menuItems });
-
-	return (
-		<li
-			className={`${styles.messageItem} ${isSelected ? styles.messageItemActive : ''}`}
-			{...contextMenuProps}
-			onClick={() => {
-				if (isSelectMode && onToggleSelectUid) {
-					onToggleSelectUid(msg.uid);
-				} else {
-					onSelectMessage(msg.uid);
-				}
-			}}
-		>
-			<div className={styles.messageItemRow}>
-				{showCheckboxes && (
-					<button
-						type="button"
-						className={`${styles.selectionCheckbox} ${isChecked ? styles.selectionCheckboxChecked : ''}`}
-						onClick={(e) => {
-							e.stopPropagation();
-							onToggleSelectUid?.(msg.uid);
-						}}
-						title={isChecked ? t('mailDeselectAll') : t('mailSelectAll')}
-						style={{ marginTop: 2 }}
-					>
-						{isChecked && <Check size={11} strokeWidth={3} />}
-					</button>
-				)}
-				<div className={styles.messageItemContent}>
-					<div className={styles.messageTopRow}>
-						<div className={styles.senderBox}>
-							{!msg.seen && <span className={styles.unreadDot} title={t('mailUnread')} />}
-							<span title={msg.from.address || msg.from.name}>{msg.from.name}</span>
-						</div>
-						<span className={styles.messageDate}>{formatMailDate(msg.date, locale, t('mailYesterday'))}</span>
-					</div>
-
-					<div className={styles.messageSubject}>{msg.subject || t('mailNoSubject')}</div>
-
-					{msg.snippet && <div className={styles.messageSnippet}>{msg.snippet}</div>}
-
-					{(msg.hasAttachments || msg.flagged) && (
-						<div className={styles.messageIconsRow}>
-							{msg.hasAttachments && (
-								<span
-									title={t('mailHasAttachments')}
-									style={{ display: 'inline-flex', alignItems: 'center' }}
-								>
-									<Paperclip size={12} />
-								</span>
-							)}
-							{msg.flagged && (
-								<span
-									title={t('mailStarred')}
-									style={{
-										display: 'inline-flex',
-										alignItems: 'center',
-										color: '#ffb340',
-									}}
-								>
-									<Star size={12} fill="#ffb340" />
-								</span>
-							)}
-						</div>
-					)}
-				</div>
-			</div>
-		</li>
-	);
-};
 
 export const MailList: React.FC<MailListProps> = ({
 	folderTitle,
@@ -238,19 +74,12 @@ export const MailList: React.FC<MailListProps> = ({
 					<div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
 						<h2 className={styles.listTitle}>{folderTitle}</h2>
 						{total > 0 && (
-							<span style={{ fontSize: 11.5, color: 'var(--text-muted)', fontWeight: 500 }}>
-								({total})
-							</span>
+							<span style={{ fontSize: 11.5, color: 'var(--text-muted)', fontWeight: 500 }}>({total})</span>
 						)}
 					</div>
 					<div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
 						{isTrashFolder && total > 0 && onEmptyTrash && (
-							<button
-								type="button"
-								className={styles.emptyTrashHeaderBtn}
-								onClick={onEmptyTrash}
-								title={t('mailEmptyTrash')}
-							>
+							<button type="button" className={styles.emptyTrashHeaderBtn} onClick={onEmptyTrash} title={t('mailEmptyTrash')}>
 								<Trash2 size={12} />
 								<span>{t('mailEmptyTrash')}</span>
 							</button>
@@ -317,55 +146,15 @@ export const MailList: React.FC<MailListProps> = ({
 			</div>
 
 			{hasSelected && (
-				<div className={styles.batchToolbar}>
-					<div className={styles.batchToolbarLeft}>
-						<button
-							type="button"
-							className={`${styles.selectionCheckbox} ${isAllSelected ? styles.selectionCheckboxChecked : ''}`}
-							onClick={isAllSelected ? onDeselectAll : onSelectAll}
-							title={isAllSelected ? t('mailDeselectAll') : t('mailSelectAll')}
-						>
-							{isAllSelected && <Check size={12} strokeWidth={3} />}
-						</button>
-						<span className={styles.batchCount}>
-							{fill(t('mailSelectedCount'), { count: selectedUids.size })}
-						</span>
-					</div>
-					<div className={styles.batchToolbarRight}>
-						{onBatchToggleRead && (
-							<button
-								type="button"
-								className={styles.batchActionBtn}
-								onClick={() => onBatchToggleRead(true)}
-								title={t('mailBatchMarkRead')}
-							>
-								<MailOpen size={13} />
-								<span>{t('mailBatchMarkRead')}</span>
-							</button>
-						)}
-						{onBatchTrash && (
-							<button
-								type="button"
-								className={`${styles.batchActionBtn} ${styles.batchActionBtnDanger}`}
-								onClick={onBatchTrash}
-								title={isTrashFolder ? t('mailBatchDelete') : t('mailBatchTrash')}
-							>
-								<Trash2 size={13} />
-								<span>{isTrashFolder ? t('mailBatchDelete') : t('mailBatchTrash')}</span>
-							</button>
-						)}
-						{onDeselectAll && (
-							<button
-								type="button"
-								className={styles.batchActionBtn}
-								onClick={onDeselectAll}
-								title={t('mailDeselectAll')}
-							>
-								<X size={13} />
-							</button>
-						)}
-					</div>
-				</div>
+				<MailBatchToolbar
+					selectedCount={selectedUids.size}
+					isAllSelected={isAllSelected}
+					isTrashFolder={isTrashFolder}
+					onSelectAll={onSelectAll}
+					onDeselectAll={onDeselectAll}
+					onBatchToggleRead={onBatchToggleRead}
+					onBatchTrash={onBatchTrash}
+				/>
 			)}
 
 			<ul className={styles.messageList}>
@@ -378,9 +167,7 @@ export const MailList: React.FC<MailListProps> = ({
 					<li style={{ padding: '44px 16px', textAlign: 'center', color: 'var(--text-muted)' }}>
 						<MailOpen size={28} style={{ opacity: 0.4, marginBottom: 8 }} />
 						<p style={{ margin: 0, fontSize: 13 }}>
-							{searchQuery
-								? t('mailNoSearchMatch')
-								: t('mailEmptyFolder')}
+							{searchQuery ? t('mailNoSearchMatch') : t('mailEmptyFolder')}
 						</p>
 					</li>
 				) : (
@@ -427,9 +214,7 @@ export const MailList: React.FC<MailListProps> = ({
 						<ChevronLeft size={13} />
 						<span>{t('mailPrevPage')}</span>
 					</button>
-					<span>
-						{fill(t('mailPageOf'), { page, totalPages, n: page, total: totalPages })}
-					</span>
+					<span>{fill(t('mailPageOf'), { page, totalPages, n: page, total: totalPages })}</span>
 					<button
 						type="button"
 						className={styles.actionBtn}

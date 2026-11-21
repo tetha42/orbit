@@ -32,7 +32,7 @@ function LegalBody({ text }: { text: string }) {
 					return (
 						<h4
 							key={index}
-							style={{ margin: 0, fontSize: '13.5px', fontWeight: 700, color: 'var(--text-primary, #fafafa)' }}
+							style={{ margin: 0, fontSize: '13.5px', fontWeight: 700, color: 'var(--text-primary)' }}
 						>
 							{trimmed.slice(3)}
 						</h4>
@@ -42,7 +42,7 @@ function LegalBody({ text }: { text: string }) {
 					return (
 						<h3
 							key={index}
-							style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--text-primary, #fafafa)' }}
+							style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}
 						>
 							{trimmed.slice(2)}
 						</h3>
@@ -85,7 +85,7 @@ export function LegalDocumentModal({ document, onClose, onAccept }: LegalDocumen
 				display: 'flex',
 				alignItems: 'center',
 				justifyContent: 'center',
-				background: 'rgba(3, 7, 18, 0.72)',
+				background: 'color-mix(in srgb, var(--ink-bg) 72%, transparent)',
 				backdropFilter: 'blur(10px)',
 				padding: '16px',
 			}}
@@ -98,7 +98,7 @@ export function LegalDocumentModal({ document, onClose, onAccept }: LegalDocumen
 					width: '100%',
 					maxWidth: '660px',
 					maxHeight: '86vh',
-					background: 'rgba(15, 17, 23, 0.94)',
+					background: 'color-mix(in srgb, var(--ink-bg) 94%, transparent)',
 					border: '1px solid rgba(255,255,255,0.14)',
 					borderRadius: '14px',
 					color: '#e4e4e7',
@@ -116,7 +116,7 @@ export function LegalDocumentModal({ document, onClose, onAccept }: LegalDocumen
 						gap: '12px',
 						padding: '16px 20px',
 						borderBottom: '1px solid rgba(255,255,255,0.1)',
-						background: 'rgba(9, 9, 11, 0.6)',
+						background: 'color-mix(in srgb, var(--ink-bg) 60%, transparent)',
 					}}
 				>
 					<div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
@@ -174,7 +174,7 @@ export function LegalDocumentModal({ document, onClose, onAccept }: LegalDocumen
 						gap: '8px',
 						padding: '13px 20px',
 						borderTop: '1px solid rgba(255,255,255,0.1)',
-						background: 'rgba(9, 9, 11, 0.6)',
+						background: 'color-mix(in srgb, var(--ink-bg) 60%, transparent)',
 					}}
 				>
 					<button

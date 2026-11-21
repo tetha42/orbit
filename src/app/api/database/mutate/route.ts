@@ -69,19 +69,19 @@ export async function POST(request: Request) {
 	const deletes = Array.isArray(body.deletes) ? body.deletes : [];
 
 	if (!table || !/^[a-zA-Z0-9_]+$/.test(table)) {
-		return NextResponse.json({ error: 'Geçersiz tablo adı.' }, { status: 400 });
+		return NextResponse.json({ error: 'Invalid table name.' }, { status: 400 });
 	}
 
 	const lowerTable = table.toLowerCase();
 	if (PROTECTED_TABLES.has(lowerTable)) {
 		return NextResponse.json(
-			{ error: 'Güvenlik ve denetim tabloları doğrudan düzenlenemez veya silinemez.' },
+			{ error: 'Security and audit tables cannot be modified or deleted directly.' },
 			{ status: 403 }
 		);
 	}
 
 	if (updates.length === 0 && inserts.length === 0 && deletes.length === 0) {
-		return NextResponse.json({ error: 'İşlenecek değişiklik bulunamadı.' }, { status: 400 });
+		return NextResponse.json({ error: 'No changes provided to apply.' }, { status: 400 });
 	}
 
 	try {
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
 			// 1. Process Updates
 			for (const u of updates) {
 				const pkCol = String(u.pk.col || '').trim();
-				if (!/^[a-zA-Z0-9_]+$/.test(pkCol)) throw new Error('Geçersiz birincil anahtar kolonu.');
+				if (!/^[a-zA-Z0-9_]+$/.test(pkCol)) throw new Error('Invalid primary key column.');
 				if (lowerTable === 'system_settings' && PROTECTED_SETTINGS_KEYS.has(String(u.pk.val ?? '').toLowerCase())) {
 					continue;
 				}
@@ -168,7 +168,7 @@ export async function POST(request: Request) {
 			// 3. Process Deletes
 			for (const d of deletes) {
 				const pkCol = String(d.col || '').trim();
-				if (!/^[a-zA-Z0-9_]+$/.test(pkCol)) throw new Error('Geçersiz silme hedefi.');
+				if (!/^[a-zA-Z0-9_]+$/.test(pkCol)) throw new Error('Invalid delete target.');
 				if (lowerTable === 'system_settings' && PROTECTED_SETTINGS_KEYS.has(String(d.val ?? '').toLowerCase())) {
 					continue;
 				}
@@ -182,7 +182,7 @@ export async function POST(request: Request) {
 		await logSystemEvent({
 			service: 'database',
 			level: 'WARN',
-			message: `"${table}" tablosunda toplu veri değişikliği yapıldı`,
+			message: `Bulk data mutation performed on table "${table}"`,
 			detail: {
 				table: table,
 				updatedCount: updates.length,
@@ -197,13 +197,13 @@ export async function POST(request: Request) {
 
 		return NextResponse.json({
 			success: true,
-			message: `${updates.length} güncelleme, ${inserts.length} ekleme ve ${deletes.length} silme işlemi başarıyla kaydedildi.`,
+			message: `Saved ${updates.length} update(s), ${inserts.length} insert(s), and ${deletes.length} delete(s).`,
 		});
 	} catch (error) {
 		console.error(`API /api/database/mutate error on "${table}":`, error);
 		const err = error as Error;
 		return NextResponse.json(
-			{ error: `Veritabanı işlemi başarısız: ${err?.message || 'Bilinmeyen hata'}` },
+			{ error: `Database operation failed: ${err?.message || 'Unknown error'}` },
 			{ status: 500 }
 		);
 	}

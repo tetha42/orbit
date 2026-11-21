@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { RefreshCw, CheckCircle2, XCircle, ArrowUpRight, Zap } from 'lucide-react';
+import { RefreshCw, CheckCircle2, Zap } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
 import { fill } from '@/lib/text';
+import { ApiSuiteRow } from './ApiSuiteRow';
 import s from './Testbench.module.css';
 import type { ApiTestItem } from '../types';
 
@@ -14,7 +15,7 @@ interface ApiSuiteTabProps {
 }
 
 export function ApiSuiteTab({ items, isRunning, onRunSuite }: ApiSuiteTabProps) {
-	const { t, language } = useI18n();
+	const { t } = useI18n();
 	const [expandedId, setExpandedId] = useState<string | null>(null);
 
 	const total = items.length;
@@ -39,9 +40,9 @@ export function ApiSuiteTab({ items, isRunning, onRunSuite }: ApiSuiteTabProps) 
 				<div className={s.card}>
 					<div className={s.cardHeader}>
 						<span className={s.cardTitle}>{t('tbApiPermMatch')}</span>
-						<CheckCircle2 size={15} color="#34c759" />
+						<CheckCircle2 size={15} color="var(--success)" />
 					</div>
-					<div className={s.cardValue} style={{ color: '#34c759' }}>
+					<div className={s.cardValue} style={{ color: 'var(--success)' }}>
 						{passed} / {total}
 					</div>
 					<div className={s.cardSub}>
@@ -99,135 +100,12 @@ export function ApiSuiteTab({ items, isRunning, onRunSuite }: ApiSuiteTabProps) 
 					</thead>
 					<tbody>
 						{items.map((item) => (
-							<React.Fragment key={item.id}>
-								<tr
-									style={{ cursor: 'pointer' }}
-									onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
-								>
-									<td style={{ fontWeight: 600 }}>{language === 'en' && item.nameEn ? item.nameEn : item.name}</td>
-									<td>
-										<code
-											style={{ fontSize: '11px', opacity: 0.85, cursor: 'text', userSelect: 'text' }}
-											onDoubleClick={(e) => {
-												e.stopPropagation();
-												const selection = window.getSelection();
-												if (!selection) return;
-												const range = document.createRange();
-												range.selectNodeContents(e.currentTarget);
-												selection.removeAllRanges();
-												selection.addRange(range);
-											}}
-										>
-											{item.endpoint}
-										</code>
-									</td>
-									<td>
-										<span
-											style={{
-												fontSize: '11px',
-												padding: '2px 7px',
-												borderRadius: 5,
-												background:
-													item.requiredLevel === 'admin'
-														? 'color-mix(in srgb, var(--danger, #d70015) 12%, transparent)'
-														: 'color-mix(in srgb, var(--accent, #0071e3) 12%, transparent)',
-												color: item.requiredLevel === 'admin' ? 'var(--danger, #d70015)' : 'var(--accent, #0071e3)',
-												fontWeight: 600,
-											}}
-										>
-											{item.requiredLevel}
-										</span>
-									</td>
-									<td>
-										<span
-											className={`${s.badge} ${
-												item.status && item.status >= 200 && item.status < 300
-													? s.badgeOk
-													: item.status === 403
-													? s.badgeWarn
-													: s.badgeFail
-											}`}
-										>
-											{item.status} {item.statusText}
-										</span>
-									</td>
-									<td>
-										<span style={{ fontSize: '11px', opacity: 0.65 }}>
-											{fill(t('tbApiExpectedRoleBased'), { code: item.expectedStatus })}
-										</span>
-									</td>
-									<td style={{ fontFamily: 'ui-monospace, monospace', fontSize: '11px' }}>
-										{item.latencyMs} ms
-									</td>
-									<td style={{ textAlign: 'center' }}>
-										{item.pass ? (
-											<span
-												style={{
-													color: '#34c759',
-													display: 'inline-flex',
-													alignItems: 'center',
-													gap: 5,
-													fontSize: '11.5px',
-													fontWeight: 700,
-												}}
-											>
-												<CheckCircle2 size={14} /> {t('tbApiPass')}
-											</span>
-										) : (
-											<span
-												style={{
-													color: '#ff3b30',
-													display: 'inline-flex',
-													alignItems: 'center',
-													gap: 5,
-													fontSize: '11.5px',
-													fontWeight: 700,
-												}}
-											>
-												<XCircle size={14} /> {t('tbApiFail')}
-											</span>
-										)}
-									</td>
-								</tr>
-								{expandedId === item.id && (
-									<tr>
-										<td
-											colSpan={7}
-											style={{ background: 'var(--fill-softer, rgba(0, 0, 0, 0.04))', padding: '12px 16px' }}
-										>
-											<div
-												style={{
-													display: 'flex',
-													justifyContent: 'space-between',
-													marginBottom: 6,
-												}}
-											>
-												<span style={{ fontSize: '11.5px', opacity: 0.7, fontWeight: 500 }}>
-													{t('tbApiResponseSnippet')}
-												</span>
-												<a
-													href={item.endpoint}
-													target="_blank"
-													rel="noreferrer noopener"
-													style={{
-														fontSize: '11.5px',
-														color: 'var(--accent, #0071e3)',
-														display: 'inline-flex',
-														alignItems: 'center',
-														gap: 3,
-														textDecoration: 'none',
-													}}
-												>
-													{t('tbApiOpenInBrowser')} <ArrowUpRight size={12} />
-												</a>
-											</div>
-											<div className={s.codeBlock} style={{ maxHeight: 95 }}>
-												{item.responseSnippet || t('tbApiNoBody')}
-											</div>
-										</td>
-									</tr>
-								)}
-							</React.Fragment>
+							<ApiSuiteRow
+								key={item.id}
+								item={item}
+								expanded={expandedId === item.id}
+								onToggle={() => setExpandedId(expandedId === item.id ? null : item.id)}
+							/>
 						))}
 						{items.length === 0 && (
 							<tr>

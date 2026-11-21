@@ -32,8 +32,11 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
+# Install bash and python3 for PTY terminal shell support
+RUN apk add --no-cache bash python3
+
 # Uploads directory with node user permissions
-RUN mkdir -p /app/data/uploads /app/data/custom && chown -R node:node /app/data
+RUN mkdir -p /app/data/uploads /app/data/custom && chown -R node:node /app/data && chmod -R 755 /app/data
 
 # Standalone production output
 COPY --from=builder /app/public ./public

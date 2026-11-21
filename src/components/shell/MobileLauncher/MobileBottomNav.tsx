@@ -66,7 +66,7 @@ export function MobileBottomNav({ tab, onChange }: { tab: MobileTab; onChange: (
 							background: 'none',
 							border: 0,
 							cursor: 'pointer',
-							color: active ? '#0a84ff' : 'rgba(255, 255, 255, 0.6)',
+							color: active ? 'var(--accent)' : 'rgba(255, 255, 255, 0.6)',
 							fontSize: '10.5px',
 							fontWeight: active ? 700 : 500,
 							padding: 0,

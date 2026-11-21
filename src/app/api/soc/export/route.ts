@@ -88,6 +88,6 @@ export async function GET(request: Request) {
 		});
 	} catch (error) {
 		console.error('API /api/soc/export error:', error);
-		return NextResponse.json({ error: 'Adli kayıtlar dışa aktarılamadı.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to export forensic logs.' }, { status: 500 });
 	}
 }

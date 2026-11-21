@@ -86,7 +86,7 @@ export function ProjectorModal({ event, onClose }: { event: EventView; onClose: 
 				</div>
 				<h2 style={{ margin: 0, fontSize: 22 }}>{event.title}</h2>
 				{error ? (
-					<p style={{ color: '#ff9f0a', margin: '40px 0' }}>{error}</p>
+					<p style={{ color: 'var(--warning)', margin: '40px 0' }}>{error}</p>
 				) : (
 					<>
 						<div className={styles.qrBox} style={{ padding: 14 }} data-testid="projector-qr" data-code={code?.shortCode ?? ''}>
@@ -108,7 +108,7 @@ export function ProjectorModal({ event, onClose }: { event: EventView; onClose: 
 							</div>
 						)}
 						<div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16, fontWeight: 750 }}>
-							<Users size={18} color="#30d158" />
+							<Users size={18} color="var(--success)" />
 							{fill(t('evProjectorCount'), { n: code?.participantCount ?? 0 })}
 						</div>
 					</>

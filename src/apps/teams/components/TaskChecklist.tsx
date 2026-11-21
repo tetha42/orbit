@@ -46,7 +46,7 @@ export function TaskChecklist({
 				<div className={styles.progressTrack} style={{ marginBottom: 6, height: 5 }}>
 					<div
 						className={styles.progressSeg}
-						style={{ width: `${(doneItems / items.length) * 100}%`, background: '#30d158' }}
+						style={{ width: `${(doneItems / items.length) * 100}%`, background: 'var(--success)' }}
 					/>
 				</div>
 			)}

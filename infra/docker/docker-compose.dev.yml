@@ -1,0 +1,29 @@
+# Standalone PostgreSQL profile for local Orbit Community OS development.
+# Usage:
+#   ./bin/orbit db up          (or: make db-up)
+#   ./bin/orbit db down        (or: make db-down)
+# Kept independent from infra/docker/docker-compose.yml so production secret guards remain strict.
+name: orbit-dev
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: orbit-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-orbit}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-orbit_dev_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-orbit}
+    ports:
+      - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - orbit-dev-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-orbit} -d ${POSTGRES_DB:-orbit}']
+      interval: 3s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
+
+volumes:
+  orbit-dev-pgdata:

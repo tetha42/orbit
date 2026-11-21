@@ -25,7 +25,7 @@ export async function POST(request: Request) {
 		const ban = await isIpBanned(ip);
 		if (ban.banned) {
 			return NextResponse.json(
-				{ error: 'IP adresiniz siber güvenlik politikası nedeniyle geçici olarak karantinaya alınmıştır.' },
+				{ error: 'Your IP address has been temporarily quarantined due to security policy.' },
 				{ status: 403 }
 			);
 		}
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
 			void logSystemEvent({
 				service: 'security',
 				level: 'ERROR',
-				message: `[WAF] Saldırı imzası engellendi (${waf.signature}): POST /api/auth/2fa/challenge`,
+				message: `[WAF] Attack signature blocked (${waf.signature}): POST /api/auth/2fa/challenge`,
 				detail: { category: waf.category, signature: waf.signature },
 				ip,
 			});
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 				path: '/api/auth/2fa/challenge',
 			});
 			return NextResponse.json(
-				{ error: 'Güvenlik duvarı (WAF) tarafından şüpheli istek engellendi.' },
+				{ error: 'Suspicious request blocked by the Web Application Firewall (WAF).' },
 				{ status: 403 }
 			);
 		}
@@ -57,14 +57,14 @@ export async function POST(request: Request) {
 			await logSystemEvent({
 				service: 'auth',
 				level: 'WARN',
-				message: '2FA doğrulama IP hız sınırı aşıldı',
+				message: '2FA verification IP rate limit exceeded',
 				detail: { lockKey: ipKey, remainingSeconds: ipGate.retryAfter },
 				ip,
 			});
 			void recordSecurityStrike({
 				ip,
 				points: 40,
-				reason: '2FA doğrulama hız sınırı aşımı',
+				reason: '2FA verification rate limit exceeded',
 				path: '/api/auth/2fa/challenge',
 			});
 			return NextResponse.json(
@@ -85,7 +85,7 @@ export async function POST(request: Request) {
 			void recordSecurityStrike({
 				ip,
 				points: 20,
-				reason: 'Geçersiz 2FA challenge token',
+				reason: 'Invalid 2FA challenge token',
 				path: '/api/auth/2fa/challenge',
 			});
 			return NextResponse.json(
@@ -196,7 +196,7 @@ export async function POST(request: Request) {
 		await logSystemEvent({
 			service: 'auth',
 			level: 'INFO',
-			message: `Kullanıcı 2FA ile giriş yaptı: ${user.name} ${user.surname} (${user.email})`,
+			message: `User signed in with 2FA: ${user.name} ${user.surname} (${user.email})`,
 			userId: user.id,
 			ip,
 		});
@@ -205,6 +205,6 @@ export async function POST(request: Request) {
 		return attachSessionCookie(response, sessionToken);
 	} catch (error) {
 		console.error('API /api/auth/2fa/challenge error:', error);
-		return NextResponse.json({ error: 'Doğrulama tamamlanamadı.' }, { status: 500 });
+		return NextResponse.json({ error: 'Verification could not be completed.' }, { status: 500 });
 	}
 }

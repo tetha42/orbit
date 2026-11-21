@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { useShellActions, useShellState } from '@/core/shell';
-import { useWindowActions } from '@/core/windows';
+import { useShellActions, useShellSelector } from '@/core/shell';
+import { useWindow, useWindowActions } from '@/core/windows';
 import { TopBar } from '@/components/shell/TopBar/TopBar';
 import { Dock } from '@/components/shell/Dock/Dock';
 import { WindowFrame } from '@/components/shell/WindowManager/WindowFrame';
@@ -16,8 +16,16 @@ import { ALL_APPS_CONFIG } from '@/configs/apps.config';
 import { AppID } from '@/types/workspace';
 import { NoRoleNotice } from './NoRoleNotice';
 
+const WindowGate = React.memo(function WindowGate({ appId }: { appId: AppID }) {
+	const win = useWindow(appId);
+	if (!win?.isOpen) return null;
+	return <WindowFrame appId={appId} />;
+});
+
 export function Desktop() {
-	const { activeWallpaper, brightness, isSpotlightOpen } = useShellState();
+	const activeWallpaper = useShellSelector((s) => s.activeWallpaper);
+	const brightness = useShellSelector((s) => s.brightness);
+	const isSpotlightOpen = useShellSelector((s) => s.isSpotlightOpen);
 	const { openDesktopContextMenu } = useShellActions();
 	const { focusApp } = useWindowActions();
 
@@ -79,7 +87,7 @@ export function Desktop() {
 				}}
 			>
 				{(Object.keys(ALL_APPS_CONFIG) as AppID[]).map((appId) => (
-					<WindowFrame key={appId} appId={appId} />
+					<WindowGate key={appId} appId={appId} />
 				))}
 			</div>
 

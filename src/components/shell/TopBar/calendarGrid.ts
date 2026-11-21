@@ -22,10 +22,13 @@ export function parseDayKey(key: string): Date {
 	return new Date(y, m - 1, d);
 }
 
-/** Weeks start on Monday in Turkish, on Sunday in English (0 = Sunday). */
-export const weekStartOf = (language: string): number => (language === 'en' ? 0 : 1);
+const WEEK_START_BY_LANG: Record<string, number> = { en: 0, tr: 1 };
+const LOCALE_BY_LANG: Record<string, string> = { en: 'en-US', tr: 'tr-TR' };
 
-export const localeOf = (language: string): string => (language === 'en' ? 'en-US' : 'tr-TR');
+/** Weeks start on Monday in Turkish, on Sunday in English (0 = Sunday). */
+export const weekStartOf = (language: string): number => WEEK_START_BY_LANG[language] ?? 1;
+
+export const localeOf = (language: string): string => LOCALE_BY_LANG[language] ?? 'tr-TR';
 
 /** Six full weeks — a fixed height, so the panel does not jump between months. */
 export function monthGrid(year: number, month: number, weekStart: number): DayCell[] {

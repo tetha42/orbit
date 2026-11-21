@@ -53,9 +53,9 @@ export function CertificatesToolbar({
 				<div
 					style={{
 						padding: '10px 16px',
-						background: message.type === 'success' ? 'rgba(52, 199, 89, 0.15)' : 'rgba(255, 59, 48, 0.15)',
-						borderBottom: `1px solid ${message.type === 'success' ? '#34c759' : '#ff3b30'}`,
-						color: message.type === 'success' ? '#34c759' : '#ff3b30',
+						background: message.type === 'success' ? 'color-mix(in srgb, var(--success) 15%, transparent)' : 'color-mix(in srgb, var(--danger) 15%, transparent)',
+						borderBottom: `1px solid ${message.type === 'success' ? 'var(--success)' : 'var(--danger)'}`,
+						color: message.type === 'success' ? 'var(--success)' : 'var(--danger)',
 						fontSize: '13px',
 						fontWeight: 600,
 						borderRadius: '8px',
@@ -65,7 +65,17 @@ export function CertificatesToolbar({
 				</div>
 			)}
 
-			<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
+			<div
+				style={{
+					display: 'flex',
+					justifyContent: 'space-between',
+					alignItems: 'center',
+					borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+					paddingBottom: '10px',
+					flexWrap: 'wrap',
+					gap: '10px',
+				}}
+			>
 				<div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
 					<button
 						onClick={() => onSelectTab('certificates')}
@@ -138,8 +148,8 @@ export function CertificatesToolbar({
 							style={{
 								padding: '8px 14px',
 								borderRadius: '8px',
-								border: '1px solid rgba(212, 175, 55, 0.5)',
-								background: 'rgba(212, 175, 55, 0.12)',
+								border: '1px solid color-mix(in srgb, var(--gold) 50%, transparent)',
+								background: 'color-mix(in srgb, var(--gold) 12%, transparent)',
 								color: '#b08a1e',
 								fontSize: '12.5px',
 								fontWeight: 700,
@@ -172,7 +182,7 @@ export function CertificatesToolbar({
 							}}
 						>
 							<Plus size={15} />
-							<span>{t('certsIssueCertificate')}</span>
+							<span>{t('certsIssueBtn')}</span>
 						</button>
 					)}
 				</div>

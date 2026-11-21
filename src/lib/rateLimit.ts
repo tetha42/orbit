@@ -29,6 +29,15 @@ function enforceMaxBuckets(): void {
 	}
 }
 
+/**
+ * The end-to-end runner signs in dozens of throw-away accounts from one loopback
+ * address in a couple of minutes; that is the brute-force limiter working as
+ * designed, not an attack. Its spawned server sets this flag, which exempts only
+ * the authentication buckets — message and SMTP limits keep applying.
+ */
+const AUTH_BUCKET = /^(login|passkey|2fa|auth):/;
+const trustAuthBuckets = () => process.env.E2E_TRUSTED_AUTH === 'true';
+
 export interface RateLimitResult {
 	allowed: boolean;
 	/** Seconds until the window resets — only meaningful when `allowed` is false. */
@@ -42,6 +51,7 @@ export interface RateLimitResult {
  * @param windowMs  window length in milliseconds
  */
 export function consumeRateLimit(key: string, limit: number, windowMs: number): RateLimitResult {
+	if (trustAuthBuckets() && AUTH_BUCKET.test(key)) return { allowed: true, retryAfter: 0 };
 	const now = Date.now();
 	const bucket = buckets.get(key);
 
@@ -84,6 +94,7 @@ pruneTimer.unref?.();
  * only after the attempt is known to have failed.
  */
 export function isRateLimited(key: string, limit: number): RateLimitResult {
+	if (trustAuthBuckets() && AUTH_BUCKET.test(key)) return { allowed: true, retryAfter: 0 };
 	const bucket = buckets.get(key);
 	const now = Date.now();
 
@@ -101,6 +112,7 @@ export function isRateLimited(key: string, limit: number): RateLimitResult {
  * of attempts spread over hours does not accumulate into a lockout.
  */
 export function recordFailure(key: string, windowMs: number): number {
+	if (trustAuthBuckets() && AUTH_BUCKET.test(key)) return 0;
 	const now = Date.now();
 	const bucket = buckets.get(key);
 

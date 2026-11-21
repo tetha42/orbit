@@ -9,7 +9,7 @@ import { verifyAuth } from '@/lib/auth/authGuard';
 import { hashOtpCode } from '@/lib/auth/otp';
 import { clientAddress } from '@/lib/http';
 import { isValidEmail } from '@/lib/mail/address';
-import { notifyEmailChangeCode } from '@/lib/mail/notifications';
+import { notifyEmailChangeCode } from '@/lib/mail/notifications/membershipEmails';
 import { consumeRateLimit } from '@/lib/rateLimit';
 import { logSystemEvent } from '@/db/repositories/logs.repo';
 
@@ -41,13 +41,13 @@ export async function POST(request: Request) {
 	const auth = await verifyAuth(request);
 	if (!auth.authorized) return auth.response;
 	if (auth.user.status !== 'active') {
-		return NextResponse.json({ error: 'Yalnızca aktif hesaplar e-posta değiştirebilir.' }, { status: 403 });
+		return NextResponse.json({ error: 'Only active accounts can change email.' }, { status: 403 });
 	}
 
 	const limit = consumeRateLimit(`email-change:${auth.user.id}`, 5, 60 * 60_000);
 	if (!limit.allowed) {
 		return NextResponse.json(
-			{ error: 'Çok sık e-posta değişikliği talebinde bulundunuz. Lütfen daha sonra tekrar deneyin.' },
+			{ error: 'Too many email change requests. Please try again later.' },
 			{ status: 429, headers: { 'Retry-After': String(limit.retryAfter) } }
 		);
 	}
@@ -55,14 +55,14 @@ export async function POST(request: Request) {
 	const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
 	const newEmail = String(body?.newEmail ?? body?.email ?? '').trim().toLowerCase();
 	if (!isValidEmail(newEmail)) {
-		return NextResponse.json({ error: 'Geçerli bir e-posta adresi girin.' }, { status: 400 });
+		return NextResponse.json({ error: 'Enter a valid email address.' }, { status: 400 });
 	}
 	if (newEmail === auth.user.email.trim().toLowerCase()) {
-		return NextResponse.json({ error: 'Yeni e-posta adresi mevcut adresinizle aynı olamaz.' }, { status: 400 });
+		return NextResponse.json({ error: 'New email address cannot be the same as your current address.' }, { status: 400 });
 	}
 	const existing = await getUserByEmail(newEmail);
 	if (existing && existing.id !== auth.user.id) {
-		return NextResponse.json({ error: 'Bu e-posta adresi başka bir üyede kullanılıyor.' }, { status: 409 });
+		return NextResponse.json({ error: 'This email address is already used by another member.' }, { status: 409 });
 	}
 
 	const code = String(randomInt(100000, 1000000));
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
 	await logSystemEvent({
 		service: 'auth',
 		level: 'INFO',
-		message: `E-posta değişikliği doğrulama kodu istendi: ${auth.user.email} → ${newEmail}`,
+		message: `Email change verification code requested: ${auth.user.email} → ${newEmail}`,
 		userId: auth.user.id,
 		ip: clientAddress(request),
 	});
@@ -91,6 +91,6 @@ export async function POST(request: Request) {
 		success: true,
 		requireCode: true,
 		newEmail,
-		message: 'Yeni adrese 6 haneli bir doğrulama kodu gönderildi.',
+		message: 'A 6-digit verification code has been sent to the new address.',
 	});
 }

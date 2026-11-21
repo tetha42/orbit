@@ -1,13 +1,13 @@
-// Canlı yetki değişimi: admin bir üyenin rolünü değiştirir, üyenin açık oturumu
-// sayfa yenilenmeden güncellenir: SSE akışıyla (/api/stream) saniyeler içinde. Akış yokken
-// 15 sn'lik yoklamaya düşüş `sse` paketinde sınanır.
+// Live permission change: admin changes a member's role and the member's open session is
+// updated without a page reload within seconds via the SSE stream (/api/stream). The fallback to
+// the 15 s polling when the stream is absent is exercised in the `sse` suite.
 import { dockApps, openApp, openWindows } from '../lib/browser.mjs';
 
-export const meta = { title: 'Rol değişince açık oturum SSE ile saniyeler içinde güncelleniyor' };
+export const meta = { title: 'Changing a role updates the open session within seconds via SSE' };
 
-const MEMBER_DOCK = ['teams', 'events', 'projects', 'decisions', 'news', 'certificates', 'inventory', 'members', 'notes', 'settings', 'mail'];
-const NEWS_DOCK = ['news', 'settings'];
-// SSE olayı + /api/auth/me + çizim; 15 sn'lik yoklamadan çok uzakta (yoklama olsaydı bu sınır aşılırdı).
+const MEMBER_DOCK = ['teams', 'events', 'projects', 'decisions', 'news', 'certificates', 'inventory', 'members', 'notes', 'settings', 'chat', 'mail'];
+const NEWS_DOCK = ['chat', 'news', 'settings'];
+// SSE event + /api/auth/me + render; far from the 15 s polling (a poll would exceed this limit).
 const LIMIT_MS = 4_000;
 
 export default async function suite(t) {
@@ -17,34 +17,34 @@ export default async function suite(t) {
 	const setRole = (roleId) => admin.patch('/api/members', { id: canId, roleId });
 	t.cleanup(() => setRole(fx.roles.member));
 
-	// "can" (Üye) kendi tarayıcı bağlamında Etkinlikler'i açık tutuyor; admin ayrı bir istemci.
+	// "can" (Member) keeps Events open in their own browser context; admin is a separate client.
 	const { page } = await t.open('can');
-	await t.step('başlangıç: Üye rolü uygulamaları açabiliyor', async () => {
+	await t.step('start: the Member role can open apps', async () => {
 		await openApp(page, 'events');
-		t.sameSet(await dockApps(page), MEMBER_DOCK, 'Dock: Üye rolünün uygulamaları');
-		t.includes(await openWindows(page), 'events', 'Etkinlikler penceresi açık');
+		t.sameSet(await dockApps(page), MEMBER_DOCK, 'dock: apps available to the Member role');
+		t.includes(await openWindows(page), 'events', 'events window is open');
 		await t.shot(page, 'once-uye-etkinlikler-acik');
-		await t.sleep(1000); // canlı akışın açılması için kısa pay
+		await t.sleep(1000); // brief pause so the live stream can connect
 	});
 
-	await t.step('admin rolü "Sadece Haberler" yapıyor → ≤4 sn içinde Dock ve pencere güncelleniyor', async () => {
+	await t.step('admin switches the role to news-only → dock and windows update within ≤4 s', async () => {
 		const res = await setRole(fx.roles.news);
-		t.eq(res.status, 200, 'PATCH /api/members {rolId: Sadece Haberler} 200');
+		t.eq(res.status, 200, 'PATCH /api/members assigning the news-only role returns 200');
 		const ms = await t.waitFor(async () => {
 			const dock = await dockApps(page);
 			return !dock.includes('events') && !dock.includes('teams');
 		}, { timeout: 25_000, every: 100 });
-		t.check(ms >= 0 && ms <= LIMIT_MS, `Dock'tan Etkinlikler ve Takımlar sayfa yenilenmeden kayboldu (${ms} ms ≤ ${LIMIT_MS})`);
-		t.sameSet(await dockApps(page), NEWS_DOCK, 'Dock yalnız Haberler ve Ayarlar');
-		t.excludes(await openWindows(page), 'events', 'açık Etkinlikler penceresi kapandı');
-		t.excludes(await openWindows(page), 'teams', 'varsayılan açık Takımlar penceresi kapandı');
+		t.check(ms >= 0 && ms <= LIMIT_MS, `Events and Teams disappeared from the dock without a page reload (${ms} ms ≤ ${LIMIT_MS})`);
+		t.sameSet(await dockApps(page), NEWS_DOCK, 'dock only has News and Settings');
+		t.excludes(await openWindows(page), 'events', 'the open events window closed');
+		t.excludes(await openWindows(page), 'teams', 'the default open teams window closed');
 		await t.shot(page, 'sonra-sadece-haberler');
 	});
 
-	await t.step('admin rolü geri veriyor → uygulamalar Dock\'a geri geliyor', async () => {
+	await t.step('admin restores the role → apps return to the dock', async () => {
 		await setRole(fx.roles.member);
 		const ms = await t.waitFor(async () => (await dockApps(page)).includes('events'), { timeout: 25_000, every: 100 });
-		t.check(ms >= 0 && ms <= LIMIT_MS, `Üye rolü geri verilince Dock güncellendi (${ms} ms)`);
-		t.sameSet(await dockApps(page), MEMBER_DOCK, 'Dock yeniden Üye rolünün uygulamaları');
+		t.check(ms >= 0 && ms <= LIMIT_MS, `dock updated after the Member role was restored (${ms} ms)`);
+		t.sameSet(await dockApps(page), MEMBER_DOCK, 'dock again shows the Member role\'s apps');
 	});
 }

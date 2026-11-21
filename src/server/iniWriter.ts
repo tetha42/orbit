@@ -12,14 +12,17 @@ export function updateConfigIniSync(
 	updates: IniUpdates,
 	customPath?: string
 ): void {
-	// Normalize updates structure
+	// Normalize updates structure and strip CR/LF characters to prevent INI section/key injection
 	const pendingUpdates: Record<string, Record<string, string>> = {};
 	for (const [sec, kv] of Object.entries(updates)) {
-		const normalizedSection = sec.trim().toLowerCase();
+		const normalizedSection = sec.replace(/[\r\n\[\]]+/g, '').trim().toLowerCase();
+		if (!normalizedSection) continue;
 		pendingUpdates[normalizedSection] = {};
 		for (const [k, v] of Object.entries(kv)) {
 			if (v !== undefined && v !== null) {
-				pendingUpdates[normalizedSection][k.trim().toLowerCase()] = String(v);
+				const cleanKey = k.replace(/[\r\n=]+/g, '').trim().toLowerCase();
+				if (!cleanKey) continue;
+				pendingUpdates[normalizedSection][cleanKey] = String(v).replace(/[\r\n]+/g, ' ').trim();
 			}
 		}
 	}
@@ -30,11 +33,11 @@ export function updateConfigIniSync(
 	// Persist runtime state to gitignored data/runtime-config.json so dev/prod server restarts retain DB & branding
 	try {
 		const rootDir = process.cwd();
-		const dataDir = path.join(rootDir, 'data');
+		const dataDir = path.resolve(/*turbopackIgnore: true*/ [rootDir, 'data'].join(path.sep));
 		if (!fs.existsSync(/*turbopackIgnore: true*/ dataDir)) {
-			fs.mkdirSync(/*turbopackIgnore: true*/ dataDir, { recursive: true });
+			fs.mkdirSync(/*turbopackIgnore: true*/ dataDir, { recursive: true, mode: 0o700 });
 		}
-		const runtimePath = path.join(dataDir, 'runtime-config.json');
+		const runtimePath = path.resolve(/*turbopackIgnore: true*/ [dataDir, 'runtime-config.json'].join(path.sep));
 		let currentRuntime: Record<string, Record<string, string>> = {};
 		if (fs.existsSync(/*turbopackIgnore: true*/ runtimePath)) {
 			try {
@@ -46,7 +49,15 @@ export function updateConfigIniSync(
 		for (const [sec, kv] of Object.entries(pendingUpdates)) {
 			currentRuntime[sec] = { ...(currentRuntime[sec] || {}), ...kv };
 		}
-		fs.writeFileSync(/*turbopackIgnore: true*/ runtimePath, JSON.stringify(currentRuntime, null, 2), 'utf8');
+		fs.writeFileSync(/*turbopackIgnore: true*/ runtimePath, JSON.stringify(currentRuntime, null, 2), {
+			encoding: 'utf8',
+			mode: 0o600,
+		});
+		try {
+			fs.chmodSync(/*turbopackIgnore: true*/ runtimePath, 0o600);
+		} catch {
+			// Best-effort POSIX permission hardening
+		}
 	} catch {
 		// Ignore on read-only filesystems
 	}
@@ -57,7 +68,7 @@ export function updateConfigIniSync(
 	}
 
 	const rootDir = process.cwd();
-	const iniPath = customPath || path.join(rootDir, 'config.ini');
+	const iniPath = customPath || path.resolve(/*turbopackIgnore: true*/ [rootDir, 'config.ini'].join(path.sep));
 
 	let lines: string[] = [];
 	if (fs.existsSync(/*turbopackIgnore: true*/ iniPath)) {
@@ -140,10 +151,10 @@ export function updateConfigIniSync(
 		}
 	}
 
-	// Write file atomically
+	// Write file atomically with owner-only permissions (0o600)
 	const output = newLines.join('\n') + (newLines[newLines.length - 1] === '' ? '' : '\n');
 	const tempPath = `${iniPath}.tmp.${Date.now()}`;
-	fs.writeFileSync(/*turbopackIgnore: true*/ tempPath, output, 'utf8');
+	fs.writeFileSync(/*turbopackIgnore: true*/ tempPath, output, { encoding: 'utf8', mode: 0o600 });
 	fs.renameSync(/*turbopackIgnore: true*/ tempPath, /*turbopackIgnore: true*/ iniPath);
 }
 
@@ -174,67 +185,36 @@ function applyToMemory(updates: Record<string, Record<string, string>>): void {
 		process.env.WEBAUTHN_RP_ID = updates.security.webauthn_rp_id;
 		CONFIG.security.webauthnRpId = updates.security.webauthn_rp_id;
 	}
-	if (updates.bootstrap_admin?.email !== undefined) {
-		process.env.BOOTSTRAP_ADMIN_EMAIL = updates.bootstrap_admin.email;
-		CONFIG.bootstrapAdmin.email = updates.bootstrap_admin.email;
+	const ba = updates.bootstrap_admin;
+	if (ba) {
+		if (ba.email !== undefined) { process.env.BOOTSTRAP_ADMIN_EMAIL = ba.email; CONFIG.bootstrapAdmin.email = ba.email; }
+		if (ba.first_name !== undefined) { process.env.BOOTSTRAP_ADMIN_FIRST_NAME = ba.first_name; CONFIG.bootstrapAdmin.firstName = ba.first_name; }
+		if (ba.last_name !== undefined) { process.env.BOOTSTRAP_ADMIN_LAST_NAME = ba.last_name; CONFIG.bootstrapAdmin.lastName = ba.last_name; }
 	}
-	if (updates.bootstrap_admin?.first_name !== undefined) {
-		process.env.BOOTSTRAP_ADMIN_FIRST_NAME = updates.bootstrap_admin.first_name;
-		CONFIG.bootstrapAdmin.firstName = updates.bootstrap_admin.first_name;
+	const cp = updates.club_preset;
+	if (cp) {
+		if (cp.name !== undefined) { process.env.CLUB_NAME = cp.name; CONFIG.clubPreset.name = cp.name; }
+		if (cp.university !== undefined) { process.env.CLUB_UNIVERSITY = cp.university; CONFIG.clubPreset.university = cp.university; }
+		if (cp.domain !== undefined) { process.env.CLUB_DOMAIN = cp.domain; CONFIG.clubPreset.domain = cp.domain; }
+		if (cp.president_name !== undefined) {
+			process.env.CLUB_PRESIDENT_NAME = cp.president_name;
+			process.env.ORBIT_PRESIDENT_NAME = cp.president_name;
+			CONFIG.clubPreset.presidentName = cp.president_name;
+		}
+		if (cp.president_title !== undefined) { process.env.CLUB_PRESIDENT_TITLE = cp.president_title; CONFIG.clubPreset.presidentTitle = cp.president_title; }
+		if (cp.advisor_name !== undefined) {
+			process.env.CLUB_ADVISOR_NAME = cp.advisor_name;
+			process.env.ORBIT_ADVISOR_NAME = cp.advisor_name;
+			CONFIG.clubPreset.advisorName = cp.advisor_name;
+		}
+		if (cp.advisor_title !== undefined) { process.env.CLUB_ADVISOR_TITLE = cp.advisor_title; CONFIG.clubPreset.advisorTitle = cp.advisor_title; }
 	}
-	if (updates.bootstrap_admin?.last_name !== undefined) {
-		process.env.BOOTSTRAP_ADMIN_LAST_NAME = updates.bootstrap_admin.last_name;
-		CONFIG.bootstrapAdmin.lastName = updates.bootstrap_admin.last_name;
-	}
-	if (updates.club_preset?.name !== undefined) {
-		process.env.CLUB_NAME = updates.club_preset.name;
-		CONFIG.clubPreset.name = updates.club_preset.name;
-	}
-	if (updates.club_preset?.university !== undefined) {
-		process.env.CLUB_UNIVERSITY = updates.club_preset.university;
-		CONFIG.clubPreset.university = updates.club_preset.university;
-	}
-	if (updates.club_preset?.domain !== undefined) {
-		process.env.CLUB_DOMAIN = updates.club_preset.domain;
-		CONFIG.clubPreset.domain = updates.club_preset.domain;
-	}
-	if (updates.club_preset?.president_name !== undefined) {
-		process.env.CLUB_PRESIDENT_NAME = updates.club_preset.president_name;
-		process.env.ORBIT_PRESIDENT_NAME = updates.club_preset.president_name;
-		CONFIG.clubPreset.presidentName = updates.club_preset.president_name;
-	}
-	if (updates.club_preset?.president_title !== undefined) {
-		process.env.CLUB_PRESIDENT_TITLE = updates.club_preset.president_title;
-		CONFIG.clubPreset.presidentTitle = updates.club_preset.president_title;
-	}
-	if (updates.club_preset?.advisor_name !== undefined) {
-		process.env.CLUB_ADVISOR_NAME = updates.club_preset.advisor_name;
-		process.env.ORBIT_ADVISOR_NAME = updates.club_preset.advisor_name;
-		CONFIG.clubPreset.advisorName = updates.club_preset.advisor_name;
-	}
-	if (updates.club_preset?.advisor_title !== undefined) {
-		process.env.CLUB_ADVISOR_TITLE = updates.club_preset.advisor_title;
-		CONFIG.clubPreset.advisorTitle = updates.club_preset.advisor_title;
-	}
-	if (updates.smtp?.host !== undefined) {
-		process.env.SMTP_HOST = updates.smtp.host;
-		CONFIG.smtp.host = updates.smtp.host;
-	}
-	if (updates.smtp?.port !== undefined) {
-		const port = Number(updates.smtp.port) || 465;
-		process.env.SMTP_PORT = String(port);
-		CONFIG.smtp.port = port;
-	}
-	if (updates.smtp?.user !== undefined) {
-		process.env.SMTP_USER = updates.smtp.user;
-		CONFIG.smtp.user = updates.smtp.user;
-	}
-	if (updates.smtp?.password !== undefined) {
-		process.env.SMTP_PASS = updates.smtp.password;
-		CONFIG.smtp.password = updates.smtp.password;
-	}
-	if (updates.smtp?.from !== undefined) {
-		process.env.SMTP_FROM = updates.smtp.from;
-		CONFIG.smtp.from = updates.smtp.from;
+	const sm = updates.smtp;
+	if (sm) {
+		if (sm.host !== undefined) { process.env.SMTP_HOST = sm.host; CONFIG.smtp.host = sm.host; }
+		if (sm.port !== undefined) { const port = Number(sm.port) || 465; process.env.SMTP_PORT = String(port); CONFIG.smtp.port = port; }
+		if (sm.user !== undefined) { process.env.SMTP_USER = sm.user; CONFIG.smtp.user = sm.user; }
+		if (sm.password !== undefined) { process.env.SMTP_PASS = sm.password; CONFIG.smtp.password = sm.password; }
+		if (sm.from !== undefined) { process.env.SMTP_FROM = sm.from; CONFIG.smtp.from = sm.from; }
 	}
 }

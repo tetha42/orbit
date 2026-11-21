@@ -13,8 +13,8 @@ export function VisibilityBadge({ visibility }: { visibility: NewsVisibility }) 
 		{ color: string; icon: React.ComponentType<{ size?: number; color?: string }>; hint: string; label: string }
 	> = {
 		draft: { color: '#8e8e93', icon: FilePen, hint: t('newsVisDraftHint'), label: t('newsVisDraft') },
-		members: { color: '#0a84ff', icon: Lock, hint: t('newsVisMembersHint'), label: t('newsVisMembers') },
-		published: { color: '#30d158', icon: Globe, hint: t('newsVisPublicHint'), label: t('newsVisPublic') },
+		members: { color: 'var(--accent)', icon: Lock, hint: t('newsVisMembersHint'), label: t('newsVisMembers') },
+		published: { color: 'var(--success)', icon: Globe, hint: t('newsVisPublicHint'), label: t('newsVisPublic') },
 	};
 
 	const b = visibilityBadges[visibility];
@@ -30,7 +30,7 @@ export function VisibilityBadge({ visibility }: { visibility: NewsVisibility }) 
 				fontWeight: 700,
 				padding: '2px 6px',
 				borderRadius: '4px',
-				background: `${b.color}22`,
+				background: `color-mix(in srgb, ${b.color} 14%, transparent)`,
 				color: b.color,
 			}}
 		>

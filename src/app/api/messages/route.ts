@@ -28,7 +28,7 @@ export async function GET(request: Request) {
 	try {
 		const params = new URL(request.url).searchParams;
 		const folder = (params.get('folder') ?? 'inbox') as MailFolder;
-		if (!MAIL_FOLDERS.includes(folder)) return NextResponse.json({ error: 'Geçersiz klasör.' }, { status: 400, headers: NO_STORE });
+		if (!MAIL_FOLDERS.includes(folder)) return NextResponse.json({ error: 'Invalid folder.' }, { status: 400, headers: NO_STORE });
 		const page = Math.max(1, Math.floor(Number(params.get('page'))) || 1);
 		const [list, unreadCount] = await Promise.all([
 			getMailThreads(auth.user.id, folder, page),
@@ -38,13 +38,13 @@ export async function GET(request: Request) {
 		return NextResponse.json(body, { headers: NO_STORE });
 	} catch (error) {
 		console.error('API /api/messages GET error:', error);
-		return NextResponse.json({ error: 'Posta okunamadı.' }, { status: 500, headers: NO_STORE });
+		return NextResponse.json({ error: 'Failed to load mail.' }, { status: 500, headers: NO_STORE });
 	}
 }
 
 /**
  * Starts a conversation with one or more members. Recipients must be active members
- * whose role opens Mail; the others are reported back (`atlananlar`) and the
+ * whose role opens Mail; the others are reported back (`skipped`) and the
  * message goes to the rest — or, when nobody can be reached, nowhere (422).
  */
 async function handlePOST(request: Request) {
@@ -58,18 +58,21 @@ async function handlePOST(request: Request) {
 		const rawRecipients = body?.recipients;
 		const recipients = Array.isArray(rawRecipients) ? rawRecipients.filter((x): x is string => typeof x === 'string') : [];
 		if (!subject || subject.length > MAIL_SUBJECT_MAX) {
-			return NextResponse.json({ error: `Konu 1 ile ${MAIL_SUBJECT_MAX} karakter arasında olmalıdır.` }, { status: 400 });
+			return NextResponse.json({ error: `Subject must be between 1 and ${MAIL_SUBJECT_MAX} characters.` }, { status: 400 });
 		}
 		if (!messageBody || messageBody.length > MAIL_BODY_MAX) {
-			return NextResponse.json({ error: `Mesaj 1 ile ${MAIL_BODY_MAX} karakter arasında olmalıdır.` }, { status: 400 });
+			return NextResponse.json({ error: `Message must be between 1 and ${MAIL_BODY_MAX} characters.` }, { status: 400 });
 		}
 		const ids = [...new Set(recipients)].filter((id) => id !== user.id);
-		if (ids.length === 0) return NextResponse.json({ error: 'En az bir alıcı seçin (kendinize mesaj gönderemezsiniz).' }, { status: 400 });
-		if (ids.length > MAIL_RECIPIENT_MAX) return NextResponse.json({ error: `En fazla ${MAIL_RECIPIENT_MAX} alıcı seçilebilir.` }, { status: 400 });
+		if (ids.length === 0) return NextResponse.json({ error: 'Select at least one recipient (you cannot message yourself).' }, { status: 400 });
+		if (ids.length > MAIL_RECIPIENT_MAX) return NextResponse.json({ error: `At most ${MAIL_RECIPIENT_MAX} recipients may be selected.` }, { status: 400 });
 
 		const limit = consumeRateLimit(`messages:${user.id}`, MAIL_PER_MINUTE_LIMIT, 60_000);
 		if (!limit.allowed) {
-			return NextResponse.json({ error: 'Çok hızlı mesaj gönderiyorsunuz. Biraz bekleyin.' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } });
+			return NextResponse.json(
+				{ error: 'You are sending messages too fast. Please wait a moment.', code: 'MAIL_RATE_LIMITED' },
+				{ status: 429, headers: { 'Retry-After': String(limit.retryAfter) } }
+			);
 		}
 
 		const decision = await recipientDecision(user.id, ids, true);
@@ -89,7 +92,7 @@ async function handlePOST(request: Request) {
 		return NextResponse.json(result, { status: 201 });
 	} catch (error) {
 		console.error('API /api/messages POST error:', error);
-		return NextResponse.json({ error: 'Mesaj gönderilemedi.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to send message.' }, { status: 500 });
 	}
 }
 

@@ -1,8 +1,8 @@
 .viewport {
   min-height: 100dvh;
-  background-color: #09090b;
-  color: #fafafa;
-  font-family: var(--font-sans, Inter, system-ui, -apple-system, sans-serif);
+  background-color: var(--ink-bg);
+  color: var(--ink-text);
+  font-family: var(--font-sans);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -13,8 +13,8 @@
 .panel {
   width: 100%;
   max-width: 440px;
-  background-color: #111113;
-  border: 1px solid #27272a;
+  background-color: var(--ink-elevated);
+  border: 1px solid var(--ink-border);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -24,12 +24,12 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  background-color: #0c0c0e;
-  border-bottom: 1px solid #27272a;
-  font-family: var(--font-mono, JetBrains Mono, monospace);
+  background-color: var(--ink-surface);
+  border-bottom: 1px solid var(--ink-border);
+  font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.08em;
-  color: #a1a1aa;
+  color: var(--ink-text-muted);
   text-transform: uppercase;
 }
 
@@ -47,33 +47,33 @@
   gap: 6px;
   padding: 4px 10px;
   border-radius: 4px;
-  font-family: var(--font-mono, JetBrains Mono, monospace);
+  font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  background-color: #18181b;
-  border: 1px solid #27272a;
-  color: #a1a1aa;
+  background-color: var(--ink-card);
+  border: 1px solid var(--ink-border);
+  color: var(--ink-text-muted);
   margin-bottom: 16px;
 }
 
 .badgeOk {
-  background-color: rgba(16, 185, 129, 0.1);
-  border-color: rgba(16, 185, 129, 0.35);
-  color: #34d399;
+  background-color: color-mix(in srgb, var(--success) 10%, transparent);
+  border-color: color-mix(in srgb, var(--success) 35%, transparent);
+  color: var(--success);
 }
 
 .badgeError {
-  background-color: rgba(239, 68, 68, 0.1);
-  border-color: rgba(239, 68, 68, 0.35);
-  color: #f87171;
+  background-color: color-mix(in srgb, var(--danger) 10%, transparent);
+  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+  color: var(--danger);
 }
 
 .badgeLogin {
-  background-color: rgba(245, 158, 11, 0.1);
-  border-color: rgba(245, 158, 11, 0.35);
-  color: #fbbf24;
+  background-color: color-mix(in srgb, var(--warning) 10%, transparent);
+  border-color: color-mix(in srgb, var(--warning) 35%, transparent);
+  color: var(--warning);
 }
 
 .title {
@@ -81,19 +81,19 @@
   font-size: 20px;
   font-weight: 600;
   letter-spacing: -0.02em;
-  color: #fafafa;
+  color: var(--ink-text);
 }
 
 .eventTitle {
   margin: 0 0 10px 0;
   padding: 10px 12px;
   width: 100%;
-  background-color: #09090b;
-  border: 1px solid #27272a;
+  background-color: var(--ink-bg);
+  border: 1px solid var(--ink-border);
   border-radius: 6px;
   font-size: 13.5px;
   font-weight: 600;
-  color: #fafafa;
+  color: var(--ink-text);
   box-sizing: border-box;
 }
 
@@ -101,7 +101,7 @@
   margin: 0 0 24px 0;
   font-size: 13.5px;
   line-height: 1.6;
-  color: #a1a1aa;
+  color: var(--ink-text-muted);
 }
 
 .primaryBtn {
@@ -111,9 +111,9 @@
   justify-content: center;
   padding: 11px 16px;
   border-radius: 6px;
-  background-color: #fafafa;
-  border: 1px solid #fafafa;
-  color: #09090b;
+  background-color: var(--ink-text);
+  border: 1px solid var(--ink-text);
+  color: var(--ink-bg);
   font-size: 13px;
   font-weight: 600;
   text-decoration: none;
@@ -121,5 +121,5 @@
 }
 
 .primaryBtn:hover {
-  background-color: #e4e4e7;
+  background-color: var(--ink-text-secondary);
 }

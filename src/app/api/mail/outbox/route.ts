@@ -9,7 +9,8 @@ import {
 } from '@/db';
 import { requireAdmin } from '@/lib/auth/access';
 import { wasDelivered } from '@/lib/mail/mailer';
-import { notifyEmailVerificationCode, notifyPasswordResetCode } from '@/lib/mail/notifications';
+import { notifyEmailVerificationCode } from '@/lib/mail/notifications/membershipEmails';
+import { notifyPasswordResetCode } from '@/lib/mail/notifications/securityAndPortalEmails';
 import { clientAddress } from '@/lib/http';
 import { logSystemEvent } from '@/db/repositories/logs.repo';
 
@@ -31,12 +32,12 @@ export async function POST(request: Request) {
 	const id = typeof body.id === 'string' ? body.id : '';
 	const action = String(body.action ?? '');
 	if (!id || !['approve', 'reject'].includes(action)) {
-		return NextResponse.json({ error: 'Geçersiz istek.' }, { status: 400 });
+		return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
 	}
 
 	const item = await getMailOutbox(id);
 	if (!item || !['pending', 'failed'].includes(item.status)) {
-		return NextResponse.json({ error: 'Onay bekleyen kayıt bulunamadı.' }, { status: 404 });
+		return NextResponse.json({ error: 'Pending outbox item not found.' }, { status: 404 });
 	}
 
 	if (action === 'reject') {
@@ -48,10 +49,10 @@ export async function POST(request: Request) {
 	const code = typeof payload?.code === 'string' ? payload.code : '';
 	if (!code || !['registration_verification', 'password_reset'].includes(item.kind)) {
 		await markMailOutbox(id, 'failed', {
-			error: 'Bekleyen e-posta içeriği okunamadı.',
+			error: 'Could not read queued email payload.',
 			approvedBy: auth.user.id,
 		});
-		return NextResponse.json({ error: 'E-posta içeriği okunamadı.' }, { status: 409 });
+		return NextResponse.json({ error: 'Could not read queued email payload.' }, { status: 409 });
 	}
 
 	const user = item.targetUserId
@@ -59,7 +60,7 @@ export async function POST(request: Request) {
 		: await getUserByEmail(item.recipient);
 	const recipient = user
 		? { name: user.name, surname: user.surname, email: item.recipient }
-		: { name: 'Aday', surname: '', email: item.recipient };
+		: { name: 'Applicant', surname: '', email: item.recipient };
 
 	const result =
 		item.kind === 'registration_verification'
@@ -67,12 +68,12 @@ export async function POST(request: Request) {
 			: await notifyPasswordResetCode(recipient, code);
 
 	if (!wasDelivered(result)) {
-		const reason = result.simulated ? 'SMTP yapılandırılmamış' : result.error || 'Gönderim başarısız';
+		const reason = result.simulated ? 'SMTP is not configured' : result.error || 'Delivery failed';
 		await markMailOutbox(id, 'failed', { error: reason, approvedBy: auth.user.id });
 		await logSystemEvent({
 			service: 'mail',
 			level: 'WARN',
-			message: `Bekleyen e-posta gönderilemedi: ${item.recipient}`,
+			message: `Failed to send queued email: ${item.recipient}`,
 			detail: { outboxId: id, reason },
 			userId: auth.user.id,
 			ip: clientAddress(request),
@@ -84,7 +85,7 @@ export async function POST(request: Request) {
 	await logSystemEvent({
 		service: 'mail',
 		level: 'INFO',
-		message: `Bekleyen e-posta onaylandı ve gönderildi: ${item.recipient}`,
+		message: `Queued email approved and sent: ${item.recipient}`,
 		detail: { outboxId: id, kind: item.kind },
 		userId: auth.user.id,
 		ip: clientAddress(request),

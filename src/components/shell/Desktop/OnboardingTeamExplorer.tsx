@@ -1,21 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Clock, Send, Users } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
 import { useLiveEvent } from '@/core/session';
 import { useJsonResource } from '@/core/data/useJsonResource';
 import { errorMessage } from '@/lib/errors';
-import { fill } from '@/lib/text';
-import { APPLICATION_NOTE_MAX, EXPERTISE_SUGGESTIONS } from '@/lib/teams';
 import type { TeamShowcaseRecord } from '@/db/repositories/teams.repo';
-import ui from '@/core/ui/ui.module.css';
+import { OnboardingTeamCard } from './OnboardingTeamCard';
 
 interface ShowcaseResponse {
 	teams: TeamShowcaseRecord[];
 	myTeamCount: number;
 	limits: { team: number; pendingApplication: number };
-	saltReadable: boolean;
+	readOnly: boolean;
 }
 
 async function post(body: Record<string, unknown>): Promise<void> {
@@ -26,7 +23,7 @@ async function post(body: Record<string, unknown>): Promise<void> {
 	});
 	if (res.ok) return;
 	const data = (await res.json().catch(() => null)) as { error?: string } | null;
-	throw new Error(data?.error || 'İşlem tamamlanamadı.');
+	throw new Error(data?.error || 'Operation failed.');
 }
 
 /**
@@ -83,9 +80,9 @@ export function OnboardingTeamExplorer({ compact = false }: { compact?: boolean 
 		<section aria-label={t('obTitle')} data-onboarding-teams style={{ width: '100%', textAlign: 'left' }}>
 			<div style={{ fontSize: '13.5px', fontWeight: 700 }}>{t('obTitle')}</div>
 			<div style={{ fontSize: '12px', opacity: 0.7, margin: '2px 0 10px' }}>{t('obSubtitle')}</div>
-			{data.saltReadable && <div style={{ fontSize: '12px', opacity: 0.8, marginBottom: 8 }}>{t('obReadOnly')}</div>}
+			{data.readOnly && <div style={{ fontSize: '12px', opacity: 0.8, marginBottom: 8 }}>{t('obReadOnly')}</div>}
 			{formError && formFor === null && (
-				<div role="alert" style={{ fontSize: '12px', color: '#ff453a', marginBottom: 8 }}>
+				<div role="alert" style={{ fontSize: '12px', color: 'var(--danger)', marginBottom: 8 }}>
 					{formError}
 				</div>
 			)}
@@ -94,154 +91,26 @@ export function OnboardingTeamExplorer({ compact = false }: { compact?: boolean 
 				<div style={state}>{t('obEmpty')}</div>
 			) : (
 				<ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-					{data.teams.map((team) => {
-						const full = team.remainingCapacity === 0;
-						const atLimit = data.myTeamCount >= data.limits.team;
-						const formOpen = formFor === team.id;
-						return (
-							<li
-								key={team.id}
-								data-team-id={team.id}
-								style={{
-									padding: '12px',
-									borderRadius: '12px',
-									border: '1px solid var(--window-border)',
-									background: 'rgba(127, 127, 127, 0.08)',
-								}}
-							>
-								<div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'flex-start' }}>
-									<div style={{ minWidth: 0 }}>
-										<div style={{ fontSize: '13.5px', fontWeight: 700 }}>{team.name}</div>
-										<div style={{ fontSize: '11.5px', opacity: 0.7 }}>
-											{team.category}
-											{team.leaderNameSurname ? ` · ${t('tmCaptain')}: ${team.leaderNameSurname}` : ''}
-										</div>
-									</div>
-									<div style={{ fontSize: '11.5px', opacity: 0.75, whiteSpace: 'nowrap', display: 'inline-flex', gap: 4, alignItems: 'center' }}>
-										<Users size={12} aria-hidden="true" />
-										{fill(t('obSeats'), { free: team.remainingCapacity, total: team.capacity })}
-									</div>
-								</div>
-								<p
-									style={{
-										margin: '6px 0 8px',
-										fontSize: '12px',
-										lineHeight: 1.45,
-										opacity: 0.8,
-										display: '-webkit-box',
-										WebkitLineClamp: compact ? 3 : 2,
-										WebkitBoxOrient: 'vertical',
-										overflow: 'hidden',
-									}}
-								>
-									{team.description}
-								</p>
-
-								{team.myMyStatus === 'active' ? (
-									<div style={{ fontSize: '12px', color: '#30d158', display: 'inline-flex', gap: 5, alignItems: 'center' }}>
-										<Check size={13} aria-hidden="true" /> {team.myMyDecision === 'accepted' ? t('obAccepted') : t('tmMember')}
-									</div>
-								) : team.myMyStatus === 'applied' ? (
-									<div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-										<span style={{ fontSize: '12px', color: '#ff9f0a', display: 'inline-flex', gap: 5, alignItems: 'center' }}>
-											<Clock size={13} aria-hidden="true" /> {t('obApplied')}
-										</span>
-										{!data.saltReadable && (
-											<button type="button" className={ui.btn} disabled={busy} onClick={() => void run({ action: 'withdraw', teamId: team.id })}>
-												{t('tmWithdraw')}
-											</button>
-										)}
-									</div>
-								) : formOpen ? (
-									<form
-										onSubmit={(e) => {
-											e.preventDefault();
-											void run({ action: 'apply', teamId: team.id, expertise: skills, applicationNote: note }, () => setFormFor(null));
-										}}
-										style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
-									>
-										<div style={{ fontSize: '11.5px', fontWeight: 600 }}>{t('obSkills')}</div>
-										<div role="group" aria-label={t('obSkills')} style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-											{EXPERTISE_SUGGESTIONS.map((skill) => {
-												const on = skills.includes(skill);
-												return (
-													<button
-														key={skill}
-														type="button"
-														aria-pressed={on}
-														onClick={() => toggleSkill(skill)}
-														style={{
-															padding: '4px 10px',
-															borderRadius: 999,
-															fontSize: '11.5px',
-															cursor: 'pointer',
-															border: `1px solid ${on ? 'var(--accent-blue)' : 'var(--window-border)'}`,
-															background: on ? 'var(--accent-blue)' : 'transparent',
-															color: on ? '#fff' : 'inherit',
-														}}
-													>
-														{skill}
-													</button>
-												);
-											})}
-										</div>
-										<label style={{ fontSize: '11.5px', fontWeight: 600 }}>
-											{t('obNote')}
-											<textarea
-												value={note}
-												maxLength={APPLICATION_NOTE_MAX}
-												rows={3}
-												placeholder={t('obNotePh')}
-												onChange={(e) => setNote(e.target.value)}
-												style={{
-													display: 'block',
-													width: '100%',
-													boxSizing: 'border-box',
-													marginTop: 4,
-													padding: '8px',
-													borderRadius: 8,
-													border: '1px solid var(--window-border)',
-													background: 'transparent',
-													color: 'inherit',
-													font: 'inherit',
-													fontWeight: 400,
-													resize: 'vertical',
-												}}
-											/>
-										</label>
-										{formError && (
-											<div role="alert" style={{ fontSize: '12px', color: '#ff453a' }}>
-												{formError}
-											</div>
-										)}
-										<div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-											<button type="button" className={ui.btn} disabled={busy} onClick={() => setFormFor(null)}>
-												{t('obCancel')}
-											</button>
-											<button type="submit" className={ui.primaryBtn} disabled={busy}>
-												<Send size={13} /> {busy ? t('obSending') : t('tmSendApplication')}
-											</button>
-										</div>
-									</form>
-								) : (
-									<div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-										<span style={{ fontSize: '12px', opacity: 0.85, color: team.myMyDecision === 'red' ? '#ff9f0a' : undefined }}>
-											{team.myMyDecision === 'red' ? t('obRejected') : ''}
-										</span>
-										<button
-											type="button"
-											className={ui.primaryBtn}
-											disabled={busy || data.saltReadable || full || atLimit}
-											title={atLimit ? fill(t('tmLimitReached'), { n: data.limits.team }) : undefined}
-											onClick={() => openForm(team.id)}
-										>
-											{full ? t('tmFull') : t('tmApply')}
-										</button>
-									</div>
-								)}
-							</li>
-						);
-					})}
+					{data.teams.map((team) => (
+						<OnboardingTeamCard
+							key={team.id}
+							team={team}
+							compact={compact}
+							readOnly={data.readOnly}
+							atLimit={data.myTeamCount >= data.limits.team}
+							teamLimit={data.limits.team}
+							busy={busy}
+							formOpen={formFor === team.id}
+							skills={skills}
+							note={note}
+							formError={formError}
+							onOpenForm={openForm}
+							onCloseForm={() => setFormFor(null)}
+							onToggleSkill={toggleSkill}
+							onNoteChange={setNote}
+							onSubmitAction={(body, done) => void run(body, done)}
+						/>
+					))}
 				</ul>
 			)}
 		</section>

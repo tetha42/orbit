@@ -29,8 +29,8 @@ export function VaultCardSummary({
 		<div className={k.cards}>
 			<div className={k.card}>
 				<div className={k.cardHead}>
-					{teamId ? t('kasaProjectBalance') : t('budgetNetBalance')}{' '}
-					<Wallet size={17} color="#30d158" />
+					{teamId ? t('treasuryProjectBalance') : t('budgetNetBalance')}{' '}
+					<Wallet size={17} color="var(--success)" />
 				</div>
 				<div
 					className={`${k.cardValue} ${(summary?.netBalanceMinor ?? 0) > 0 ? k.pos : ''}`}
@@ -40,27 +40,27 @@ export function VaultCardSummary({
 					{summary ? tl(summary.netBalanceMinor) : '—'}
 				</div>
 				<div className={k.cardNote}>
-					{summary ? t('kasaEntryCount').replace('{n}', String(summary.recordCount)) : isLoading ? t('loading') : ''}
+					{summary ? t('treasuryEntryCount').replace('{n}', String(summary.recordCount)) : isLoading ? t('loading') : ''}
 				</div>
 			</div>
 			<div className={k.card}>
 				<div className={k.cardHead}>
-					{t('budgetTotalIncome')} <TrendingUp size={17} color="#0a84ff" />
+					{t('budgetTotalIncome')} <TrendingUp size={17} color="var(--accent)" />
 				</div>
 				<div className={`${k.cardValue} ${k.blue}`}>{tl(summary?.totalIncomeMinor ?? 0)}</div>
-				<div className={k.cardNote}>{t('kasaIncomeNote')}</div>
+				<div className={k.cardNote}>{t('treasuryIncomeNote')}</div>
 			</div>
 			<div className={k.card}>
 				<div className={k.cardHead}>
-					{t('budgetTotalExpense')} <TrendingDown size={17} color="#ff453a" />
+					{t('budgetTotalExpense')} <TrendingDown size={17} color="var(--danger)" />
 				</div>
 				<div className={`${k.cardValue} ${k.neg}`}>{tl(summary?.totalExpenseMinor ?? 0)}</div>
 				<div className={k.cardNote}>
 					{distributionFirstCategory
-						? t('kasaMostSpent')
+						? t('treasuryMostSpent')
 								.replace('{cat}', categoryLabel(t, distributionFirstCategory.category))
 								.replace('{pct}', String(Math.round(distributionFirstCategory.ratio * 100)))
-						: t('kasaNoSpendingYet')}
+						: t('treasuryNoSpendingYet')}
 				</div>
 			</div>
 		</div>

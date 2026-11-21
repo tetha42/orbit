@@ -1,11 +1,13 @@
-// Tema sistemi (#8): Açık/Koyu/Sistem, vurgu rengi, saydamlık, hareketi azalt; yenileyince korunma;
-// açılışta flaş yok; saydamlık kapalıyken hiçbir yerde backdrop-filter yok; "cam" tek yerden açılıp kapanır.
-// Tercihler tarayıcıda (localStorage `club_theme`) durur; sunucuya hiçbir şey yazılmaz, geri alınacak veri yok.
+// Theme system (#8): Light/Dark/System, accent color, transparency, reduced motion; preserved across reloads;
+// no flash on load; no backdrop-filter anywhere while transparency is off; "glass" is toggled in one place.
+// Preferences live in the browser (localStorage `club_theme`); nothing is written to the server, so there is no data to roll back.
 import { newContext, openApp, openSettingsTab, openWindows } from '../lib/browser.mjs';
-import { dialogReply } from '../lib/diyalog.mjs';
+import { dialogReply } from '../lib/dialog.mjs';
 import { frameBox, movingState, pointerDrag, reloadDesktop, rightClickDesktop, settle, titlePoint } from '../lib/desktop.mjs';
+import { tr } from '../lib/locale.mjs';
+import { DEFAULT_WALLPAPER, WALLPAPERS } from '../../../../src/core/theme/wallpapers.ts';
 
-export const meta = { title: 'Tema: Açık/Koyu/Sistem, vurgu, saydamlık, hareket; kalıcılık, flaş yok, tek cam' };
+export const meta = { title: 'Theme: Light/Dark/System, accent, transparency, motion; persistence, no flash, single glass source' };
 
 const attrs = (page) =>
 	page.evaluate(() => {
@@ -15,7 +17,7 @@ const attrs = (page) =>
 const stored = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('club_theme') || 'null'));
 const waitAttr = (t, page, key, value, name) => t.waitFor(async () => (await attrs(page))[key] === value, { timeout: 3000, every: 50 }).then((ms) => t.check(ms >= 0, name, JSON.stringify({ requested: value })));
 
-/** CSS değişkenini bir yoklama öğesiyle çözer: gerçek renk ("rgb(...)"). */
+/** Resolves a CSS variable through a probe element: the real color ("rgb(...)"). */
 const resolved = (page, expr) =>
 	page.evaluate((v) => {
 		const probe = document.createElement('i');
@@ -26,7 +28,7 @@ const resolved = (page, expr) =>
 		return c;
 	}, expr);
 
-/** Sayfadaki, hesaplanmış backdrop-filter'ı "none" olmayan öğeler. */
+/** Elements on the page whose computed backdrop-filter is not "none". */
 const glassElements = (page) =>
 	page.evaluate(() => [...document.querySelectorAll('body *')].filter((e) => getComputedStyle(e).backdropFilter !== 'none').map((e) => `${e.tagName.toLowerCase()}${e.getAttribute('data-window-frame') ? `[${e.getAttribute('data-window-frame')}]` : ''}${e.hasAttribute('data-dock') ? '[dock]' : ''}${e.hasAttribute('data-topbar') ? '[topbar]' : ''}`));
 
@@ -37,218 +39,218 @@ const luminance = (rgb) => {
 
 
 export default async function suite(t) {
-	await t.step('varsayılanlar: Sistem teması, mavi vurgu, saydamlık kapalı, hareket tam', async () => {
+	await t.step('defaults: System theme, blue accent, transparency off, full motion', async () => {
 		const { page } = await t.open('can', { colorScheme: 'light' });
-		t.eq(await attrs(page), { theme: 'light', accent: 'blue', transparency: 'off', motion: 'full' }, '<html> öznitelikleri varsayılan');
-		t.eq(await stored(page), null, 'kullanıcı dokunmadıkça localStorage boş');
+		t.eq(await attrs(page), { theme: 'light', accent: 'blue', transparency: 'off', motion: 'full' }, '<html> attributes are the defaults');
+		t.eq(await stored(page), null, 'localStorage stays empty until the user changes something');
 		const win = await openSettingsTab(page, 'appearance');
-		t.eq(await win.locator('[data-theme-option]').evaluateAll((e) => e.map((x) => x.getAttribute('data-theme-option'))), ['light', 'dark', 'system'], 'üç tema kartı: Açık, Koyu, Sistem');
-		t.eq(await win.locator('[data-theme-option=system]').getAttribute('aria-pressed'), 'true', 'Sistem seçili');
-		t.eq(await win.locator('[data-accent-option]').count(), 6, '6 hazır vurgu rengi');
-		t.eq(await win.locator('[data-accent-option=blue]').getAttribute('aria-pressed'), 'true', 'mavi seçili');
-		t.eq(await win.locator('[data-setting=transparency]').getAttribute('aria-checked'), 'false', 'Saydamlık anahtarı varsayılan kapalı');
-		t.eq(await win.locator('[data-setting=reduce-motion]').getAttribute('aria-checked'), 'false', 'Hareketi azalt kapalı (sistem azaltmıyor)');
+		t.eq(await win.locator('[data-theme-option]').evaluateAll((e) => e.map((x) => x.getAttribute('data-theme-option'))), ['light', 'dark', 'system'], 'three theme cards: light, dark, system');
+		t.eq(await win.locator('[data-theme-option=system]').getAttribute('aria-pressed'), 'true', 'System is selected');
+		t.eq(await win.locator('[data-accent-option]').count(), 6, '6 preset accent colors');
+		t.eq(await win.locator('[data-accent-option=blue]').getAttribute('aria-pressed'), 'true', 'blue is selected');
+		t.eq(await win.locator('[data-setting=transparency]').getAttribute('aria-checked'), 'false', 'Transparency toggle is off by default');
+		t.eq(await win.locator('[data-setting=reduce-motion]').getAttribute('aria-checked'), 'false', 'Reduce motion is off (the system does not request it)');
 		await t.shot(page, 'gorunum-varsayilan');
 	});
 
-	await t.step('Açık/Koyu: anında uygulanır, renkler gerçekten değişir, yenileyince korunur', async () => {
+	await t.step('Light/Dark: applied instantly, colors really change, preserved across reloads', async () => {
 		const { page } = await t.open('can', { colorScheme: 'light' });
 		const win = await openSettingsTab(page, 'appearance');
 		const lightBg = luminance(await resolved(page, 'var(--window-bg)'));
 		await win.locator('[data-theme-option=dark]').click();
-		await waitAttr(t, page, 'theme', 'dark', 'Koyu: data-theme="dark" hemen yazıldı');
-		t.check(luminance(await resolved(page, 'var(--window-bg)')) < 0.25 && lightBg > 0.9, 'pencere zemini koyulaştı');
-		t.check(luminance(await page.evaluate(() => getComputedStyle(document.querySelector('[data-window-frame=settings]')).backgroundColor)) < 0.25, 'pencere çerçevesi gerçekten koyu');
-		t.check(await page.evaluate(() => document.documentElement.classList.contains('dark') && getComputedStyle(document.documentElement).colorScheme === 'dark'), 'html.dark ve color-scheme: dark');
-		t.eq((await stored(page)).theme, 'dark', 'tercih localStorage\'a yazıldı');
+		await waitAttr(t, page, 'theme', 'dark', 'Dark: data-theme="dark" is set immediately');
+		t.check(luminance(await resolved(page, 'var(--window-bg)')) < 0.25 && lightBg > 0.9, 'window background got darker');
+		t.check(luminance(await page.evaluate(() => getComputedStyle(document.querySelector('[data-window-frame=settings]')).backgroundColor)) < 0.25, 'window frame is really dark');
+		t.check(await page.evaluate(() => document.documentElement.classList.contains('dark') && getComputedStyle(document.documentElement).colorScheme === 'dark'), 'html.dark and color-scheme: dark');
+		t.eq((await stored(page)).theme, 'dark', 'preference was written to localStorage');
 		await t.shot(page, 'koyu');
 		await reloadDesktop(page);
-		t.eq((await attrs(page)).theme, 'dark', 'yenileyince koyu kaldı');
+		t.eq((await attrs(page)).theme, 'dark', 'stayed dark after reload');
 		const win2 = await openSettingsTab(page, 'appearance');
-		t.eq(await win2.locator('[data-theme-option=dark]').getAttribute('aria-pressed'), 'true', 'yenileyince Koyu kartı seçili');
+		t.eq(await win2.locator('[data-theme-option=dark]').getAttribute('aria-pressed'), 'true', 'Dark card is selected after reload');
 		await win2.locator('[data-theme-option=light]').click();
-		await waitAttr(t, page, 'theme', 'light', 'Açık: data-theme="light"');
+		await waitAttr(t, page, 'theme', 'light', 'Light: data-theme="light"');
 		await reloadDesktop(page);
-		t.eq((await attrs(page)).theme, 'light', 'yenileyince açık kaldı (sistem koyu olsa da değil: açıkça seçildi)');
+		t.eq((await attrs(page)).theme, 'light', 'stayed light after reload (an explicit choice wins even when the system is dark)');
 	});
 
-	await t.step('Sistem: prefers-color-scheme\'i izler, değişince anında uygular; açık seçim izlemez', async () => {
+	await t.step('System: follows prefers-color-scheme and applies changes instantly; an explicit choice does not follow it', async () => {
 		const { page } = await t.open('can', { colorScheme: 'light', prefs: { theme: 'system' } });
-		t.eq((await attrs(page)).theme, 'light', 'sistem açıkken açık');
+		t.eq((await attrs(page)).theme, 'light', 'light while the system is light');
 		await page.emulateMedia({ colorScheme: 'dark' });
-		await waitAttr(t, page, 'theme', 'dark', 'sistem koyuya dönünce sayfa yenilenmeden koyu oldu');
+		await waitAttr(t, page, 'theme', 'dark', 'turned dark when the system did, without a page reload');
 		await page.emulateMedia({ colorScheme: 'light' });
-		await waitAttr(t, page, 'theme', 'light', 'sistem açığa dönünce açık oldu');
+		await waitAttr(t, page, 'theme', 'light', 'turned light when the system did');
 		await page.emulateMedia({ colorScheme: 'dark' });
-		await waitAttr(t, page, 'theme', 'dark', 'tekrar koyu');
+		await waitAttr(t, page, 'theme', 'dark', 'dark again');
 		await reloadDesktop(page);
-		t.eq((await attrs(page)).theme, 'dark', 'yenileyince sistemin koyusu uygulanıyor (flaşsız yol: aşağıda)');
+		t.eq((await attrs(page)).theme, 'dark', 'the system dark theme is applied after reload (flash-free path: below)');
 
 		const win = await openSettingsTab(page, 'appearance');
 		await win.locator('[data-theme-option=light]').click();
-		await waitAttr(t, page, 'theme', 'light', 'açık seçilince sistem koyu olsa da açık');
+		await waitAttr(t, page, 'theme', 'light', 'light after choosing it, even while the system is dark');
 		await page.emulateMedia({ colorScheme: 'light' });
 		await page.emulateMedia({ colorScheme: 'dark' });
 		await page.waitForTimeout(300);
-		t.eq((await attrs(page)).theme, 'light', 'açık seçimdeyken sistem değişimi temayı oynatmıyor');
+		t.eq((await attrs(page)).theme, 'light', 'system changes do not move the theme while an explicit choice is set');
 		await win.locator('[data-theme-option=system]').click();
-		await waitAttr(t, page, 'theme', 'dark', 'Sistem\'e dönünce (sistem koyu) koyu');
-		t.eq((await stored(page)).theme, 'system', 'tercih "system" olarak saklı');
+		await waitAttr(t, page, 'theme', 'dark', 'dark after returning to System (the system is dark)');
+		t.eq((await stored(page)).theme, 'system', 'preference stored as "system"');
 	});
 
-	await t.step('Sağ tık "Karanlık Mod" kısayolu ve Kontrol Merkezi açık/koyu arasında geçirir', async () => {
+	await t.step('Right-click "Dark Mode" shortcut and Control Center toggle between light and dark', async () => {
 		const { page } = await t.open('can', { colorScheme: 'light', prefs: { theme: 'system' } });
 		await rightClickDesktop(page);
 		await page.locator('[data-menu-item=dt-theme]').click();
-		await waitAttr(t, page, 'theme', 'dark', 'sağ tık menüsü koyuya çevirdi');
-		t.eq((await stored(page)).theme, 'dark', 'kısayol açık bir tercih yazar');
+		await waitAttr(t, page, 'theme', 'dark', 'the context menu switched to dark');
+		t.eq((await stored(page)).theme, 'dark', 'the shortcut writes an explicit preference');
 		await rightClickDesktop(page);
 		await page.locator('[data-menu-item=dt-theme]').click();
-		await waitAttr(t, page, 'theme', 'light', 'ikinci kez açığa döndü');
+		await waitAttr(t, page, 'theme', 'light', 'switched back to light on the second run');
 	});
 
-	await t.step('vurgu rengi: 6 renk, anında; seçili sekme, birincil düğme ve odak halkası ondan gelir; kalıcı', async () => {
+	await t.step('accent color: 6 colors, instant; selected tab, primary button and focus ring come from it; persistent', async () => {
 		const { page } = await t.open('can', { colorScheme: 'light' });
 		const win = await openSettingsTab(page, 'appearance');
 		const seen = new Set();
 		for (const id of ['blue', 'purple', 'pink', 'orange', 'green', 'graphite']) {
 			await win.locator(`[data-accent-option=${id}]`).click();
-			await waitAttr(t, page, 'accent', id, `vurgu ${id}`);
+			await waitAttr(t, page, 'accent', id, `accent ${id}`);
 			const accent = await resolved(page, 'var(--accent)');
 			seen.add(accent);
-			t.eq(await resolved(page, 'var(--accent-blue)'), accent, `${id}: --accent-blue takma adı aynı renk`);
-			t.eq(await win.locator('[data-settings-tab=appearance]').evaluate((e) => getComputedStyle(e).backgroundColor), accent, `${id}: seçili sekme vurgu renginde`);
+			t.eq(await resolved(page, 'var(--accent-blue)'), accent, `${id}: the --accent-blue alias resolves to the same color`);
+			t.eq(await win.locator('[data-settings-tab=appearance]').evaluate((e) => getComputedStyle(e).backgroundColor), accent, `${id}: selected tab uses the accent color`);
 		}
-		t.eq(seen.size, 6, '6 vurgu 6 ayrı renk');
+		t.eq(seen.size, 6, '6 accents, 6 distinct colors');
 
 		await win.locator('[data-accent-option=purple]').click();
 		const purple = await resolved(page, 'var(--accent)');
-		// Birincil düğme: Dock'tan Haberler'in ortak "primaryBtn"ı yerine her pencerede bulunan iletişim kutusu düğmesi.
+		// Primary button: instead of News' shared "primaryBtn" from the Dock, use the dialog button present in every window.
 		await page.evaluate(() => {
 			const b = document.createElement('button');
 			b.id = 'tema-odak';
 			b.textContent = 'x';
 			document.body.prepend(b);
 		});
-		// Klavyeyle başlayan odak :focus-visible sayılır (fareyle tıklanan düğme sayılmaz).
+		// Focus reached via keyboard counts as :focus-visible (a mouse-clicked button does not).
 		await page.keyboard.press('Tab');
 		await page.evaluate(() => document.getElementById('tema-odak').focus());
-		t.check(await page.evaluate(() => document.activeElement?.id === 'tema-odak'), 'klavye odağı yoklama düğmesine geldi');
-		t.eq(await page.evaluate(() => getComputedStyle(document.activeElement).outlineColor), purple, 'odak halkası vurgu renginde');
-		t.check((await page.evaluate(() => getComputedStyle(document.activeElement).outlineStyle)) === 'solid', 'odak halkası çiziliyor');
+		t.check(await page.evaluate(() => document.activeElement?.id === 'tema-odak'), 'keyboard focus reached the probe button');
+		t.eq(await page.evaluate(() => getComputedStyle(document.activeElement).outlineColor), purple, 'focus ring uses the accent color');
+		t.check((await page.evaluate(() => getComputedStyle(document.activeElement).outlineStyle)) === 'solid', 'focus ring is drawn');
 		await page.evaluate(() => document.getElementById('tema-odak')?.remove());
 
 		await win.locator('[data-theme-option=dark]').click();
-		await waitAttr(t, page, 'theme', 'dark', 'koyuya geçildi');
+		await waitAttr(t, page, 'theme', 'dark', 'switched to dark');
 		const purpleDark = await resolved(page, 'var(--accent)');
-		t.check(purpleDark !== purple, 'koyu temada vurgu bir ton açılıyor', `${purple} → ${purpleDark}`);
-		t.eq(await win.locator('[data-accent-option=purple]').evaluate((e) => getComputedStyle(e).backgroundColor), purpleDark, 'örnek daire de koyu temadaki rengi gösteriyor');
+		t.check(purpleDark !== purple, 'accent gets a shade lighter in the dark theme', `${purple} → ${purpleDark}`);
+		t.eq(await win.locator('[data-accent-option=purple]').evaluate((e) => getComputedStyle(e).backgroundColor), purpleDark, 'the swatch shows the dark-theme color too');
 		await t.shot(page, 'vurgu-mor-koyu');
 		await reloadDesktop(page);
-		t.eq((await attrs(page)).accent, 'purple', 'yenileyince vurgu korundu');
-		t.eq(await resolved(page, 'var(--accent)'), purpleDark, 'yenileyince renk aynı');
+		t.eq((await attrs(page)).accent, 'purple', 'accent preserved after reload');
+		t.eq(await resolved(page, 'var(--accent)'), purpleDark, 'same color after reload');
 	});
 
-	await t.step('saydamlık kapalı (varsayılan): hiçbir yerde backdrop-filter yok, yüzeyler opak', async () => {
+	await t.step('transparency off (default): no backdrop-filter anywhere, surfaces are opaque', async () => {
 		const { page } = await t.open('can', { colorScheme: 'light' });
 		await openApp(page, 'news');
 		await openSettingsTab(page, 'appearance');
-		t.eq(await openWindows(page).then((w) => w.length >= 2), true, 'iki pencere açık');
-		t.eq(await glassElements(page), [], 'saydamlık kapalı: hesaplanmış backdrop-filter "none" olmayan öğe yok');
+		t.eq(await openWindows(page).then((w) => w.length >= 2), true, 'two windows open');
+		t.eq(await glassElements(page), [], 'transparency off: no element has a computed backdrop-filter other than "none"');
 		const frame = await page.evaluate(() => {
 			const c = getComputedStyle(document.querySelector('[data-window-frame=news]'));
 			return { filter: c.backdropFilter, bg: c.backgroundColor };
 		});
-		t.eq(frame.filter, 'none', 'pencere çerçevesi: backdrop-filter none');
-		t.check(await page.evaluate(() => getComputedStyle(document.querySelector('[data-window-frame=news]')).contain.includes('layout')), 'pencere, sabit konumlu sayfalarının (Sheet) kapsayıcısı kalıyor: bulanıklık olmasa da contain: layout');
-		t.check(/^rgb\(/.test(frame.bg), 'pencere arka planı opak (alfa yok)', frame.bg);
+		t.eq(frame.filter, 'none', 'window frame: backdrop-filter none');
+		t.check(await page.evaluate(() => getComputedStyle(document.querySelector('[data-window-frame=news]')).contain.includes('layout')), 'the window remains the containing block for fixed-position sheets: contain: layout even without blur');
+		t.check(/^rgb\(/.test(frame.bg), 'window background is opaque (no alpha)', frame.bg);
 		const bars = await page.evaluate(() => ({
 			top: getComputedStyle(document.querySelector('[data-topbar]')).backgroundColor,
 			dock: getComputedStyle(document.querySelector('[data-dock]')).backgroundColor,
 		}));
-		t.check(/^rgb\(/.test(bars.top) && /^rgb\(/.test(bars.dock), 'menü çubuğu ve Dock opak', JSON.stringify(bars));
+		t.check(/^rgb\(/.test(bars.top) && /^rgb\(/.test(bars.dock), 'menu bar and Dock are opaque', JSON.stringify(bars));
 		await t.shot(page, 'saydamlik-kapali');
 	});
 
-	await t.step('saydamlık açık: cam her yerde tek tokendan gelir; sürüklerken kapanır, bırakınca döner; kalıcı', async () => {
+	await t.step('transparency on: glass comes from a single token everywhere; turns off while dragging and returns on release; persistent', async () => {
 		const { page } = await t.open('can', { colorScheme: 'light' });
 		await openApp(page, 'news');
 		const win = await openSettingsTab(page, 'appearance');
 		await win.locator('[data-setting=transparency]').click();
 		await waitAttr(t, page, 'transparency', 'on', 'data-transparency="on"');
-		t.eq((await stored(page)).transparency, true, 'tercih saklandı');
+		t.eq((await stored(page)).transparency, true, 'preference was stored');
 		const glass = await glassElements(page);
-		t.check(glass.includes('header[topbar]') && glass.includes('div[dock]') && glass.includes('div[news]') && glass.includes('div[settings]'), 'menü çubuğu, Dock ve pencereler buzlu', JSON.stringify(glass));
+		t.check(glass.includes('header[topbar]') && glass.includes('div[dock]') && glass.includes('div[news]') && glass.includes('div[settings]'), 'menu bar, Dock and windows are frosted', JSON.stringify(glass));
 		const css = await page.evaluate(() => {
 			const c = getComputedStyle(document.querySelector('[data-window-frame=news]'));
 			return { filter: c.backdropFilter, bg: c.backgroundColor, topbar: getComputedStyle(document.querySelector('[data-topbar]')).backgroundColor };
 		});
-		t.check(css.filter.includes('blur'), 'pencere: blur var', css.filter);
-		t.check(/rgba\(/.test(css.bg) && /rgba\(/.test(css.topbar), 'pencere ve menü çubuğu yarı saydam', JSON.stringify(css));
+		t.check(css.filter.includes('blur'), 'window: blur is present', css.filter);
+		t.check(/rgba\(/.test(css.bg) && /rgba\(/.test(css.topbar), 'window and menu bar are translucent', JSON.stringify(css));
 		await t.shot(page, 'saydamlik-acik');
 
 		const idle = await movingState(page, 'news');
-		t.check(!idle.moving && idle.blur.includes('blur'), 'sürükleme yokken buzlu', idle.blur);
+		t.check(!idle.moving && idle.blur.includes('blur'), 'frosted while not dragging', idle.blur);
 		const box = await frameBox(page, 'news');
 		const from = titlePoint(box);
 		await pointerDrag(page, from, { x: from.x + 110, y: from.y + 60 }, { hold: true });
 		const during = await movingState(page, 'news');
-		t.check(during.moving && during.blur === 'none', 'sürüklerken data-window-moving var ve pencere bulanıklığı kapalı', JSON.stringify(during));
-		t.eq((await movingState(page, 'settings')).blur, 'none', 'sürüklerken öteki pencere de opak/bulanıksız');
+		t.check(during.moving && during.blur === 'none', 'data-window-moving is set while dragging and window blur is off', JSON.stringify(during));
+		t.eq((await movingState(page, 'settings')).blur, 'none', 'the other window is opaque/blur-free while dragging');
 		await page.mouse.up();
 		await settle(page);
 		const after = await movingState(page, 'news');
-		t.check(!after.moving && after.blur.includes('blur'), 'bırakınca bulanıklık geri geldi', after.blur);
+		t.check(!after.moving && after.blur.includes('blur'), 'blur returned on release', after.blur);
 
 		await reloadDesktop(page);
-		t.eq((await attrs(page)).transparency, 'on', 'yenileyince saydamlık açık kaldı');
+		t.eq((await attrs(page)).transparency, 'on', 'transparency stayed on after reload');
 		const win2 = await openSettingsTab(page, 'appearance');
-		t.eq(await win2.locator('[data-setting=transparency]').getAttribute('aria-checked'), 'true', 'anahtar açık görünüyor');
+		t.eq(await win2.locator('[data-setting=transparency]').getAttribute('aria-checked'), 'true', 'toggle appears on');
 		await win2.locator('[data-setting=transparency]').click();
-		await waitAttr(t, page, 'transparency', 'off', 'anahtar kapatılınca anında kapanır');
+		await waitAttr(t, page, 'transparency', 'off', 'turns off instantly when the toggle is switched off');
 		await page.waitForTimeout(400);
-		t.eq(await glassElements(page), [], 'kapatınca hiçbir yerde cam kalmadı');
+		t.eq(await glassElements(page), [], 'no glass anywhere after turning it off');
 	});
 
-	await t.step('hareketi azalt: anahtar animasyonları kısaltır; varsayılan sistemin prefers-reduced-motion\'ı', async () => {
+	await t.step('reduce motion: the toggle shortens animations; the default follows the system prefers-reduced-motion', async () => {
 		const { page } = await t.open('can', { colorScheme: 'light' });
 		const win = await openSettingsTab(page, 'appearance');
 		const dur = () => page.evaluate(() => getComputedStyle(document.querySelector('[data-dock] button')).transitionDuration);
-		t.eq((await attrs(page)).motion, 'full', 'başlangıçta tam hareket');
+		t.eq((await attrs(page)).motion, 'full', 'full motion at start');
 		const full = await page.evaluate(() => getComputedStyle(document.querySelector('[data-window-frame=settings]')).animationDuration);
 		await win.locator('[data-setting=reduce-motion]').click();
-		await waitAttr(t, page, 'motion', 'reduce', 'anahtar: data-motion="reduce"');
-		t.check(parseFloat(await dur()) <= 0.01, 'Dock/pencere geçişleri ~0 sn', await dur());
+		await waitAttr(t, page, 'motion', 'reduce', 'toggle: data-motion="reduce"');
+		t.check(parseFloat(await dur()) <= 0.01, 'Dock/window transitions ~0 s', await dur());
 		await page.locator('[data-dock-app=news]').click();
 		await page.locator('[data-window-frame=news]').waitFor();
 		const anim = await page.evaluate(() => getComputedStyle(document.querySelector('[data-window-frame=news]')).animationDuration);
-		t.check(parseFloat(anim) <= 0.01, 'pencere açılış animasyonu kısaldı', `${full} → ${anim}`);
-		t.eq((await stored(page)).reduceMotion, true, 'tercih saklandı');
+		t.check(parseFloat(anim) <= 0.01, 'window opening animation was shortened', `${full} → ${anim}`);
+		t.eq((await stored(page)).reduceMotion, true, 'preference was stored');
 		await reloadDesktop(page);
-		t.eq((await attrs(page)).motion, 'reduce', 'yenileyince korundu');
+		t.eq((await attrs(page)).motion, 'reduce', 'preserved after reload');
 
-		// Sistem varsayılanı: hiç dokunulmamış tercih sistemi izler; açık seçim sistemi geçersiz kılar.
+		// System default: an untouched preference follows the system; an explicit choice overrides the system.
 		const fresh = await t.open('can', { colorScheme: 'light' });
 		await fresh.page.emulateMedia({ reducedMotion: 'reduce' });
-		await waitAttr(t, fresh.page, 'motion', 'reduce', 'dokunulmamış tercih: sistem "hareketi azalt" derse azaltılır (anında)');
+		await waitAttr(t, fresh.page, 'motion', 'reduce', 'untouched preference: motion is reduced if the system asks for reduced motion (instantly)');
 		const w2 = await openSettingsTab(fresh.page, 'appearance');
-		t.eq(await w2.locator('[data-setting=reduce-motion]').getAttribute('aria-checked'), 'true', 'anahtar sistemin değerini gösteriyor');
+		t.eq(await w2.locator('[data-setting=reduce-motion]').getAttribute('aria-checked'), 'true', 'toggle reflects the system value');
 		await w2.locator('[data-setting=reduce-motion]').click();
-		await waitAttr(t, fresh.page, 'motion', 'full', 'sistem azaltsa da kullanıcı kapatabilir');
+		await waitAttr(t, fresh.page, 'motion', 'full', 'the user can turn it off even if the system reduces motion');
 		await fresh.page.emulateMedia({ reducedMotion: 'no-preference' });
 		await fresh.page.emulateMedia({ reducedMotion: 'reduce' });
 		await fresh.page.waitForTimeout(200);
-		t.eq((await attrs(fresh.page)).motion, 'full', 'açık seçim sistem değişiminden etkilenmez');
+		t.eq((await attrs(fresh.page)).motion, 'full', 'an explicit choice is unaffected by system changes');
 	});
 
-	await t.step('açılış flaşı yok: koyu tercihte ilk boyamadan önce koyu; <html> hiç açık görünmez', async () => {
+	await t.step('no load flash: dark before the first paint when the preference is dark; <html> never looks light', async () => {
 		for (const [name, prefs, scheme] of [
-			['kayıtlı koyu tercih', { theme: 'dark' }, 'light'],
-			['Sistem + koyu işletim sistemi (kayıt yok)', null, 'dark'],
+			['stored dark preference', { theme: 'dark' }, 'light'],
+			['System + dark OS (nothing stored)', null, 'dark'],
 		]) {
-			const context = t.track(await newContext(t.browser, { prefs, colorScheme: scheme }));
+			const context = t.track(await newContext(t.browser, { prefs, colorScheme: scheme, reducedMotion: 'no-preference', stubWallpapers: false }));
 			await context.addInitScript(() => {
-				// Belge başlarken <html> henüz olmayabilir: belgenin kendisini izle.
+				// At document start <html> may not exist yet: observe the document itself.
 				const seen = [];
 				window.__themeSeen = seen;
 				new MutationObserver((records) => {
@@ -262,9 +264,9 @@ export default async function suite(t) {
 			await page.goto(t.base, { waitUntil: 'domcontentloaded', timeout: 90_000 });
 			await page.locator('input[type=email]').waitFor();
 			const info = await page.evaluate(() => ({ seen: window.__themeSeen, first: window.__firstFrame }));
-			t.check(info.first?.theme === 'dark', `${name}: ilk karede data-theme="dark"`, JSON.stringify(info.first));
-			t.check(info.seen.length > 0 && info.seen.every((v) => v === 'dark'), `${name}: data-theme hiçbir zaman açık olmadı`, JSON.stringify(info.seen));
-			// Giriş ekranı çizilmiş hâliyle koyu: sayfanın ortalama parlaklığı düşük.
+			t.check(info.first?.theme === 'dark', `${name}: data-theme="dark" on the first frame`, JSON.stringify(info.first));
+			t.check(info.seen.length > 0 && info.seen.every((v) => v === 'dark'), `${name}: data-theme was never light`, JSON.stringify(info.seen));
+			// The login screen is dark as rendered: the page's average brightness is low.
 			const png = (await page.screenshot()).toString('base64');
 			const mean = await page.evaluate(async (b64) => {
 				const img = new Image();
@@ -280,15 +282,16 @@ export default async function suite(t) {
 				for (let i = 0; i < d.length; i += 4) s += (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) / 255;
 				return s / (d.length / 4);
 			}, png);
-			t.check(mean < 0.45, `${name}: ilk ekran görüntüsü koyu (ort. parlaklık ${mean.toFixed(2)})`);
+			t.check(mean < 0.45, `${name}: first screenshot is dark (mean brightness ${mean.toFixed(2)})`);
 			await t.shot(page, `ilk-boyama-${name}`);
+			await t.close(context);
 		}
 	});
 
-	await t.step('gizli pencere: localStorage okunamazsa sessizce varsayılana düşer', async () => {
-		const context = t.track(await newContext(t.browser, { colorScheme: 'dark' }));
+	await t.step('hidden window: falls back to defaults silently when localStorage cannot be read', async () => {
+		const context = t.track(await newContext(t.browser, { colorScheme: 'dark', reducedMotion: 'no-preference', stubWallpapers: false }));
 		await context.addInitScript(() => {
-			// Çerezleri kapalı tarayıcıdaki gibi: localStorage'a erişmek bile SecurityError fırlatır.
+			// Like a browser with cookies disabled: even accessing localStorage throws SecurityError.
 			Object.defineProperty(window, 'localStorage', {
 				get() {
 					throw new DOMException('denied', 'SecurityError');
@@ -301,40 +304,40 @@ export default async function suite(t) {
 		await page.goto(t.base, { waitUntil: 'domcontentloaded', timeout: 90_000 });
 		await page.locator('input[type=email]').waitFor({ timeout: 30_000 }).catch(() => {});
 		const got = await attrs(page);
-		t.check(JSON.stringify(got) === JSON.stringify({ theme: 'dark', accent: 'blue', transparency: 'off', motion: 'full' }), 'okuma hatasında varsayılanlar (Sistem = koyu işletim sistemi) yazıldı', `${JSON.stringify(got)} ${JSON.stringify(errors)} ${page.url()}`);
-		t.eq(errors.filter((m) => /club_theme|SecurityError|denied/.test(m) && /theme|boot/i.test(m)), [], 'tema kodu hata fırlatmadı');
+		t.check(JSON.stringify(got) === JSON.stringify({ theme: 'dark', accent: 'blue', transparency: 'off', motion: 'full' }), 'defaults are written on a read error (System = dark OS)', `${JSON.stringify(got)} ${JSON.stringify(errors)} ${page.url()}`);
+		t.eq(errors.filter((m) => /club_theme|SecurityError|denied/.test(m) && /theme|boot/i.test(m)), [], 'theme code did not throw');
 	});
 
-	await t.step('rol boyutu: "Sadece Haberler" rolü de Görünüm ayarlarını değiştirebilir ve kalıcıdır', async () => {
+	await t.step('role scope: the news-only role can also change Appearance settings, and they persist', async () => {
 		const { page } = await t.open('reader', { colorScheme: 'light' });
 		const win = await openSettingsTab(page, 'appearance');
-		t.eq(await win.locator('[data-theme-option]').count(), 3, 'tema kartları görünüyor');
+		t.eq(await win.locator('[data-theme-option]').count(), 3, 'theme cards are visible');
 		await win.locator('[data-theme-option=dark]').click();
 		await win.locator('[data-accent-option=green]').click();
 		await win.locator('[data-setting=transparency]').click();
 		await win.locator('[data-setting=reduce-motion]').click();
-		t.eq(await attrs(page), { theme: 'dark', accent: 'green', transparency: 'on', motion: 'reduce' }, 'dördü de anında uygulandı');
+		t.eq(await attrs(page), { theme: 'dark', accent: 'green', transparency: 'on', motion: 'reduce' }, 'all four applied instantly');
 		await reloadDesktop(page);
-		t.eq(await attrs(page), { theme: 'dark', accent: 'green', transparency: 'on', motion: 'reduce' }, 'yenileyince hepsi korundu');
+		t.eq(await attrs(page), { theme: 'dark', accent: 'green', transparency: 'on', motion: 'reduce' }, 'all preserved after reload');
 		await t.shot(page, 'okur-gorunum');
 	});
 
-	await t.step('"Oturumu sıfırla" görünümü varsayılana döndürür; duvar kağıdı tek katalogdan döner', async () => {
+	await t.step('"Reset session" returns appearance to defaults; the wallpaper comes from a single catalog', async () => {
 		const { page } = await t.open('can', { colorScheme: 'light', prefs: { theme: 'dark', accent: 'pink', transparency: true, reduceMotion: true } });
-		t.eq(await attrs(page), { theme: 'dark', accent: 'pink', transparency: 'on', motion: 'reduce' }, 'tohumlanan tercihler uygulandı');
+		t.eq(await attrs(page), { theme: 'dark', accent: 'pink', transparency: 'on', motion: 'reduce' }, 'seeded preferences were applied');
 
-		// Sonraki duvar kağıdı: katalogdaki sıra (3B Aurora → Ventura Light).
+		// Next wallpaper: catalog order (3D Aurora → second catalog wallpaper).
 		await page.evaluate(() => localStorage.setItem('club_active_wallpaper', '3d-aurora'));
 		await reloadDesktop(page);
 		await rightClickDesktop(page);
 		await page.locator('[data-menu-item=dt-next-wallpaper]').click();
-		t.eq(await page.evaluate(() => localStorage.getItem('club_active_wallpaper')), '/wallpapers/ventura-2.webp', 'sonraki duvar kağıdı kataloğun ikincisi');
+		t.eq(await page.evaluate(() => localStorage.getItem('club_active_wallpaper')), WALLPAPERS[1].src, 'next wallpaper is the second one in the catalog');
 
-		const win = await openSettingsTab(page, 'storage');
-		await win.getByRole('button', { name: 'Reset Session' }).click();
+		const win = await openSettingsTab(page, 'account');
+		await win.getByRole('button', { name: tr('dlgReset') }).click();
 		await dialogReply(page, true);
-		await waitAttr(t, page, 'accent', 'blue', 'sıfırlayınca vurgu mavi');
-		t.eq(await stored(page), { theme: 'system', accent: 'blue', transparency: false, reduceMotion: null }, 'tercihler varsayılana döndü');
-		t.eq(await page.evaluate(() => localStorage.getItem('club_active_wallpaper')), '3d-aurora', 'duvar kağıdı varsayılana döndü');
+		await waitAttr(t, page, 'accent', 'blue', 'accent is blue after reset');
+		t.eq(await stored(page), { theme: 'system', accent: 'blue', transparency: false, reduceMotion: null }, 'preferences returned to defaults');
+		t.eq(await page.evaluate(() => localStorage.getItem('club_active_wallpaper')), DEFAULT_WALLPAPER, 'wallpaper returned to default');
 	});
 }

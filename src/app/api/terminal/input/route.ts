@@ -2,10 +2,12 @@ import { NextResponse } from 'next/server';
 import { writeToTerminal, getTerminalSession } from '@/server/terminalManager';
 import { authorizeTerminal } from '@/server/terminalAccess';
 import { clientAddress } from '@/lib/http';
+import { InvalidBodyError, PayloadTooLargeError, readBoundedJson } from '@/lib/httpBodyGuard';
 import { logSystemEvent } from '@/db/repositories/logs.repo';
 
 /** A paste can be large, but nothing legitimate sends megabytes in one keystroke batch. */
 const MAX_INPUT_LENGTH = 64 * 1024;
+const MAX_INPUT_BODY_BYTES = 128 * 1024;
 
 interface TerminalInputBody {
 	sessionId?: unknown;
@@ -17,19 +19,19 @@ export async function POST(request: Request) {
 	if (!auth.authorized) return auth.response;
 
 	try {
-		const body = (await request.json().catch(() => ({}))) as TerminalInputBody;
+		const body = await readBoundedJson<TerminalInputBody>(request, MAX_INPUT_BODY_BYTES);
 		const { sessionId, data } = body;
 
 		if (!sessionId || typeof sessionId !== 'string' || typeof data !== 'string') {
-			return NextResponse.json({ error: 'Geçersiz parametreler' }, { status: 400 });
+			return NextResponse.json({ error: 'Invalid parameters.' }, { status: 400 });
 		}
 		if (data.length > MAX_INPUT_LENGTH) {
-			return NextResponse.json({ error: 'Girdi çok büyük' }, { status: 413 });
+			return NextResponse.json({ error: 'Input is too large.' }, { status: 413 });
 		}
 
 		const session = getTerminalSession(sessionId);
 		if (!session || session.userId !== auth.user.id) {
-			return NextResponse.json({ error: 'Oturum bulunamadı' }, { status: 404 });
+			return NextResponse.json({ error: 'Session not found.' }, { status: 404 });
 		}
 
 		const { ok, executedCommands } = writeToTerminal(sessionId, data);
@@ -39,7 +41,7 @@ export async function POST(request: Request) {
 				void logSystemEvent({
 					service: 'terminal',
 					level: 'INFO',
-					message: `Terminal komutu çalıştırıldı (${auth.user.email}): ${cmd.slice(0, 120)}`,
+					message: `Terminal command executed (${auth.user.email}): ${cmd.slice(0, 120)}`,
 					detail: { command: cmd, sessionId },
 					userId: auth.user.id,
 					ip,
@@ -49,7 +51,13 @@ export async function POST(request: Request) {
 
 		return NextResponse.json({ success: ok });
 	} catch (error: unknown) {
-		const message = error instanceof Error ? error.message : 'Girdi iletilemedi';
-		return NextResponse.json({ error: message }, { status: 500 });
+		if (error instanceof PayloadTooLargeError) {
+			return NextResponse.json({ error: 'Input is too large.' }, { status: 413 });
+		}
+		if (error instanceof InvalidBodyError) {
+			return NextResponse.json({ error: 'Invalid parameters.' }, { status: 400 });
+		}
+		console.error('[terminal/input] failed:', error);
+		return NextResponse.json({ error: 'Failed to deliver input.' }, { status: 500 });
 	}
 }

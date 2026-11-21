@@ -2,9 +2,9 @@
 .input {
 	height: 38px;
 	border-radius: 9px;
-	border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.12));
-	background: var(--fill-soft, rgba(0, 0, 0, 0.04));
-	color: var(--text-primary, #1d1d1f);
+	border: 1px solid var(--border-subtle);
+	background: var(--fill-soft);
+	color: var(--text-primary);
 	font-size: 13px;
 	padding: 0 14px;
 	outline: none;
@@ -13,28 +13,31 @@
 
 .input:focus {
 	border-color: var(--accent);
-	background: var(--window-bg, #ffffff);
+	background: var(--window-bg);
 	box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 .input::placeholder {
-	color: var(--text-secondary, #86868b);
+	color: var(--text-secondary);
 	opacity: 0.7;
 }
 
 .select {
 	height: 38px;
 	border-radius: 9px;
-	border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.12));
-	background-color: var(--fill-soft, rgba(0, 0, 0, 0.04));
-	color: var(--text-primary, #1d1d1f);
+	border: 1px solid var(--border-subtle);
+	background-color: var(--fill-soft);
+	color: var(--text-primary);
 	font-size: 13px;
 	font-weight: 500;
 	padding: 0 34px 0 12px;
 	outline: none;
 	appearance: none;
 	-webkit-appearance: none;
-	background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2386868b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+	background-image: url("data:image/svg+xml;charset=UTF-8,\
+%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' \
+stroke='%2386868b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e\
+%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
 	background-repeat: no-repeat;
 	background-position: right 10px center;
 	background-size: 14px;
@@ -44,20 +47,20 @@
 
 .select:focus {
 	border-color: var(--accent);
-	background-color: var(--window-bg, #ffffff);
+	background-color: var(--window-bg);
 	box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 .select option {
-	background: var(--window-bg, #ffffff);
-	color: var(--text-primary, #1d1d1f);
+	background: var(--window-bg);
+	color: var(--text-primary);
 }
 
 .textarea {
 	border-radius: 10px;
-	border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.12));
-	background: var(--fill-soft, rgba(0, 0, 0, 0.04));
-	color: var(--text-primary, #1d1d1f);
+	border: 1px solid var(--border-subtle);
+	background: var(--fill-soft);
+	color: var(--text-primary);
 	padding: 10px 14px;
 	font-family: ui-monospace, SFMono-Regular, monospace;
 	font-size: 12px;
@@ -69,7 +72,7 @@
 
 .textarea:focus {
 	border-color: var(--accent);
-	background: var(--window-bg, #ffffff);
+	background: var(--window-bg);
 	box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
@@ -98,7 +101,7 @@
 	border-radius: 9px;
 	border: 1px solid var(--accent-border);
 	background: var(--accent);
-	color: #ffffff;
+	color: var(--accent-contrast);
 	font-size: 13px;
 	font-weight: 600;
 	cursor: pointer;
@@ -139,9 +142,9 @@
 	height: 38px;
 	padding: 0 16px;
 	border-radius: 9px;
-	border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.12));
-	background: var(--fill-soft, rgba(0, 0, 0, 0.04));
-	color: var(--text-primary, #1d1d1f);
+	border: 1px solid var(--border-subtle);
+	background: var(--fill-soft);
+	color: var(--text-primary);
 	font-size: 13px;
 	font-weight: 500;
 	cursor: pointer;
@@ -152,8 +155,8 @@
 
 .btnSecondary:hover,
 .btnSecondaryLg:hover {
-	background: var(--fill-strong, rgba(0, 0, 0, 0.08));
-	color: var(--text-primary, #1d1d1f);
+	background: var(--fill-strong);
+	color: var(--text-primary);
 	transform: translateY(-1px);
 }
 
@@ -177,9 +180,9 @@
 	height: 34px;
 	padding: 0 14px;
 	border-radius: 8px;
-	border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.12));
-	background: var(--fill-soft, rgba(0, 0, 0, 0.04));
-	color: var(--text-primary, #1d1d1f);
+	border: 1px solid var(--border-subtle);
+	background: var(--fill-soft);
+	color: var(--text-primary);
 	font-size: 12.5px;
 	font-weight: 500;
 	cursor: pointer;
@@ -188,7 +191,7 @@
 }
 
 .btnSecondaryMd:hover {
-	background: var(--fill-strong, rgba(0, 0, 0, 0.08));
+	background: var(--fill-strong);
 }
 
 .btnCopy {
@@ -198,9 +201,9 @@
 	height: 26px;
 	padding: 0 9px;
 	border-radius: 6px;
-	border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.12));
-	background: var(--fill-soft, rgba(0, 0, 0, 0.04));
-	color: var(--text-secondary, #6e6e73);
+	border: 1px solid var(--border-subtle);
+	background: var(--fill-soft);
+	color: var(--text-secondary);
 	font-size: 11.5px;
 	font-weight: 500;
 	cursor: pointer;
@@ -208,8 +211,8 @@
 }
 
 .btnCopy:hover {
-	background: var(--fill-strong, rgba(0, 0, 0, 0.08));
-	color: var(--text-primary, #1d1d1f);
+	background: var(--fill-strong);
+	color: var(--text-primary);
 }
 
 /* Modern Scope Pills (Replacing raw checkboxes!) */
@@ -220,9 +223,9 @@
 	height: 34px;
 	padding: 0 13px;
 	border-radius: 8px;
-	border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.1));
-	background: var(--fill-soft, rgba(0, 0, 0, 0.04));
-	color: var(--text-secondary, #6e6e73);
+	border: 1px solid var(--border-subtle);
+	background: var(--fill-soft);
+	color: var(--text-secondary);
 	font-size: 12px;
 	font-weight: 500;
 	cursor: pointer;
@@ -231,8 +234,8 @@
 }
 
 .scopePill:hover {
-	background: var(--fill-strong, rgba(0, 0, 0, 0.08));
-	color: var(--text-primary, #1d1d1f);
+	background: var(--fill-strong);
+	color: var(--text-primary);
 }
 
 .scopePillActive {
@@ -249,11 +252,11 @@
 	gap: 6px;
 	padding: 3px 9px;
 	border-radius: 6px;
-	background: var(--fill-soft, rgba(0, 0, 0, 0.04));
-	border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+	background: var(--fill-soft);
+	border: 1px solid var(--border-subtle);
 	font-size: 11.5px;
 	font-weight: 500;
-	color: var(--text-primary, #1d1d1f);
+	color: var(--text-primary);
 }
 
 /* Grid & Cards */
@@ -287,20 +290,20 @@
 }
 
 .card {
-	background: var(--card-bg, var(--fill-softer, #f8f8fa));
-	border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+	background: var(--card-bg);
+	border: 1px solid var(--border-subtle);
 	border-radius: 12px;
 	padding: 16px 18px;
 	display: flex;
 	flex-direction: column;
 	gap: 10px;
 	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-	color: var(--text-primary, #1d1d1f);
+	color: var(--text-primary);
 	transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 
 .card:hover {
-	border-color: var(--border-subtle, rgba(0, 0, 0, 0.16));
+	border-color: var(--border-subtle);
 }
 
 .cardHeader {
@@ -312,7 +315,7 @@
 .cardTitle {
 	font-size: 12.5px;
 	font-weight: 600;
-	color: var(--text-primary, #1d1d1f);
+	color: var(--text-primary);
 	display: flex;
 	align-items: center;
 	gap: 7px;
@@ -323,12 +326,12 @@
 	font-weight: 800;
 	font-family: ui-monospace, SFMono-Regular, monospace;
 	letter-spacing: -0.02em;
-	color: var(--text-primary, #1d1d1f);
+	color: var(--text-primary);
 }
 
 .cardSub {
 	font-size: 11.5px;
-	color: var(--text-secondary, #6e6e73);
+	color: var(--text-secondary);
 	line-height: 1.4;
 }
 
@@ -345,9 +348,9 @@
 }
 
 .badgeOk {
-	background: rgba(52, 199, 89, 0.15);
-	color: #34c759;
-	border: 1px solid rgba(52, 199, 89, 0.32);
+	background: color-mix(in srgb, var(--success) 15%, transparent);
+	color: var(--success);
+	border: 1px solid color-mix(in srgb, var(--success) 32%, transparent);
 }
 
 .badgeWarn {
@@ -357,21 +360,21 @@
 }
 
 .badgeFail {
-	background: rgba(255, 59, 48, 0.15);
-	color: #ff3b30;
-	border: 1px solid rgba(255, 59, 48, 0.32);
+	background: color-mix(in srgb, var(--danger) 15%, transparent);
+	color: var(--danger);
+	border: 1px solid color-mix(in srgb, var(--danger) 32%, transparent);
 }
 
 /* Code & Snippet blocks */
 .codeBlock {
-	background: var(--fill-softer, rgba(0, 0, 0, 0.04));
-	border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+	background: var(--fill-softer);
+	border: 1px solid var(--border-subtle);
 	border-radius: 8px;
 	padding: 10px 14px;
 	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 	font-size: 11.5px;
 	line-height: 1.5;
-	color: var(--text-primary, #1d1d1f);
+	color: var(--text-primary);
 	overflow-x: auto;
 	white-space: pre-wrap;
 	word-break: break-all;
@@ -380,8 +383,8 @@
 
 /* Table */
 .tableContainer {
-	background: var(--window-bg, #ffffff);
-	border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+	background: var(--window-bg);
+	border: 1px solid var(--border-subtle);
 	border-radius: 10px;
 	overflow-x: auto;
 	-webkit-overflow-scrolling: touch;
@@ -403,17 +406,17 @@
 	font-weight: 600;
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
-	color: var(--text-secondary, #6e6e73);
-	border-bottom: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
-	background: var(--fill-softer, rgba(0, 0, 0, 0.02));
+	color: var(--text-secondary);
+	border-bottom: 1px solid var(--border-subtle);
+	background: var(--fill-softer);
 	font-family: inherit;
 	white-space: nowrap;
 }
 
 .table td {
 	padding: 10px 14px;
-	border-bottom: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06));
-	color: var(--text-primary, #1d1d1f);
+	border-bottom: 1px solid var(--border-subtle);
+	color: var(--text-primary);
 	vertical-align: middle;
 	font-family: inherit;
 	user-select: text;
@@ -424,7 +427,7 @@
 }
 
 .table tr:hover td {
-	background: var(--fill-soft, rgba(0, 0, 0, 0.03));
+	background: var(--fill-soft);
 }
 
 /* Step timeline */
@@ -435,8 +438,8 @@
 }
 
 .step {
-	background: var(--fill-softer, rgba(0, 0, 0, 0.02));
-	border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+	background: var(--fill-softer);
+	border: 1px solid var(--border-subtle);
 	border-radius: 10px;
 	padding: 14px 16px;
 	display: flex;

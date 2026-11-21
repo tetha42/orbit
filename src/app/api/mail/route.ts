@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth/access';
 import { getFolderMessages, getMailboxes, invalidateMailboxCache } from '@/lib/mail/imap';
+import { readImapAccount } from '@/lib/mail/smtpSettings';
 import { sendMail } from '@/lib/mail/mailer';
 import { isValidEmail } from '@/lib/mail/address';
 import { errorMessage } from '@/lib/errors';
 import { consumeRateLimit } from '@/lib/rateLimit';
 import { clientAddress } from '@/lib/http';
 import { logSystemEvent } from '@/db/repositories/logs.repo';
+import mailContract from '@/apps/mail/mail.contract.json';
+import { contractErrorResponse } from '@/contracts/helpers';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,6 +43,24 @@ export async function GET(request: Request) {
 			return NextResponse.json({ folders, user }, { headers: NO_STORE });
 		}
 
+		// An unconfigured account is a state of the mailbox, not a server failure: answering 200
+		// keeps the browser from logging a failed request for every admin who opens the app before
+		// an address is connected, and the UI renders its connection state from `configured`.
+		const account = await readImapAccount();
+		if (!account.user || !account.pass) {
+			return NextResponse.json(
+				{
+					configured: false,
+					error: 'Email account is not configured or app password is missing.',
+					messages: [],
+					total: 0,
+					folders: [],
+					user: '',
+				},
+				{ headers: NO_STORE }
+			);
+		}
+
 		const messageData = await getFolderMessages(folder, page, limit, search);
 		const { folders, user } = await getMailboxes(forceRefresh);
 
@@ -54,7 +75,7 @@ export async function GET(request: Request) {
 	} catch (error) {
 		return NextResponse.json(
 			{
-				error: errorMessage(error) || 'E-postalar sunucudan alınırken bir hata oluştu.',
+				error: errorMessage(error) || 'Failed to fetch emails from server.',
 			},
 			{ status: 500, headers: NO_STORE }
 		);
@@ -74,7 +95,7 @@ export async function POST(request: Request) {
 	const limit = consumeRateLimit(`mail:send:${auth.user.id}`, 15, 60_000);
 	if (!limit.allowed) {
 		return NextResponse.json(
-			{ error: 'Çok hızlı e-posta gönderiyorsunuz. Lütfen biraz bekleyin.' },
+			{ error: 'Sending emails too fast. Please wait a moment.' },
 			{ status: 429, headers: { 'Retry-After': String(limit.retryAfter) } }
 		);
 	}
@@ -84,10 +105,7 @@ export async function POST(request: Request) {
 		const { to, subject, html, text } = body;
 
 		if (!to || typeof to !== 'string') {
-			return NextResponse.json(
-				{ error: 'Geçerli bir alıcı e-posta adresi belirtilmelidir.' },
-				{ status: 400 }
-			);
+			return contractErrorResponse(mailContract, 'INVALID_RECIPIENT', 'A valid recipient email address is required.');
 		}
 
 		const recipients = to
@@ -95,17 +113,20 @@ export async function POST(request: Request) {
 			.map((a: string) => a.trim())
 			.filter(Boolean);
 		if (recipients.length === 0 || recipients.length > 20 || !recipients.every((a: string) => isValidEmail(a))) {
-			return NextResponse.json(
-				{ error: 'Alıcı adreslerinden biri veya birkaçı geçersiz formatta.' },
-				{ status: 400 }
-			);
+			return contractErrorResponse(mailContract, 'INVALID_RECIPIENT', 'One or more recipient addresses are invalid.');
 		}
 
-		if (!subject || typeof subject !== 'string' || subject.trim().length === 0 || subject.length > 250) {
-			return NextResponse.json({ error: 'Konu başlığı 1-250 karakter arasında olmalıdır.' }, { status: 400 });
+		if (!subject || typeof subject !== 'string' || subject.trim().length === 0 || subject.length > mailContract.limits.maxSubjectLength) {
+			return NextResponse.json({ error: `Subject must be between 1 and ${mailContract.limits.maxSubjectLength} characters.` }, { status: 400 });
 		}
-		if (!html || typeof html !== 'string' || html.trim().length === 0 || html.length > 200_000) {
-			return NextResponse.json({ error: 'E-posta içeriği boş bırakılamaz veya sınırı aşamaz.' }, { status: 400 });
+		if (
+			!html ||
+			typeof html !== 'string' ||
+			html.trim().length === 0 ||
+			html.length > mailContract.limits.maxBodyLength ||
+			(typeof text === 'string' && text.length > mailContract.limits.maxBodyLength)
+		) {
+			return NextResponse.json({ error: 'Email body cannot be empty or exceed maximum length.' }, { status: 400 });
 		}
 
 		const cleanSubject = subject.replace(/[\r\n\0]+/g, ' ').trim();
@@ -122,21 +143,22 @@ export async function POST(request: Request) {
 			await logSystemEvent({
 				service: 'mail',
 				level: 'WARN',
-				message: `E-posta gönderimi başarısız: ${cleanTo}`,
+				message: `Email delivery failed: ${cleanTo}`,
 				detail: { recipient: cleanTo, topic: cleanSubject, error: result.error },
 				userId: auth.user.id,
 				ip,
 			});
-			return NextResponse.json(
-				{ error: result.error || 'E-posta gönderilemedi.' },
-				{ status: 500 }
+			return contractErrorResponse(
+				mailContract,
+				'MAIL_SEND_FAILED',
+				result.error || 'Failed to queue or deliver email.'
 			);
 		}
 
 		await logSystemEvent({
 			service: 'mail',
 			level: 'INFO',
-			message: `E-posta gönderildi: ${cleanTo} (${cleanSubject})`,
+			message: `Email sent: ${cleanTo} (${cleanSubject})`,
 			detail: { recipient: cleanTo, topic: cleanSubject, messageId: result.messageId, simulated: result.simulated },
 			userId: auth.user.id,
 			ip,
@@ -149,9 +171,10 @@ export async function POST(request: Request) {
 			simulated: result.simulated,
 		});
 	} catch (error) {
-		return NextResponse.json(
-			{ error: errorMessage(error) || 'E-posta gönderimi sırasında bir hata oluştu.' },
-			{ status: 500 }
+		return contractErrorResponse(
+			mailContract,
+			'MAIL_SEND_FAILED',
+			errorMessage(error) || 'An error occurred while sending email.'
 		);
 	}
 }

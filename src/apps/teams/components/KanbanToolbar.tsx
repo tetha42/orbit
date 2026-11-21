@@ -132,7 +132,7 @@ export function KanbanToolbar({
 					<div className={styles.statLabel}>{t('kbStatDone')}</div>
 				</div>
 				<div className={styles.stat}>
-					<div className={styles.statValue} style={{ color: stats.overdue ? '#ff453a' : undefined }}>
+					<div className={styles.statValue} style={{ color: stats.overdue ? 'var(--danger)' : undefined }}>
 						{stats.overdue}
 					</div>
 					<div className={styles.statLabel}>{t('kbStatOverdue')}</div>

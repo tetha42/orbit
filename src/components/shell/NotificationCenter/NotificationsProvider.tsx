@@ -102,7 +102,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
 			lastAlertedMsgAtRef.current = Math.max(lastAlertedMsgAtRef.current, maxAt);
 			playSystemSound();
 			const newest = freshMsgs[0];
-			void showAppNotification(String(newest.data.from || 'Yeni Mesaj'), {
+			void showAppNotification(String(newest.data.from || 'New Message'), {
 				body: newest.data.title,
 				tag: `chat-${newest.target.itemId || newest.id}`,
 				data: { target: newest.target, messageId: newest.data.messageId ?? null },
@@ -116,15 +116,38 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
 		} catch {
 			// see readSeenAt
 		}
+		if (typeof BroadcastChannel !== 'undefined') {
+			try {
+				const bc = new BroadcastChannel('orbit:notifications-seen');
+				bc.postMessage({ userId: currentUserId, seenAt });
+				bc.close();
+			} catch {
+				// ignore BroadcastChannel error
+			}
+		}
 	}, [currentUserId, seenAt]);
+
+	useEffect(() => {
+		if (typeof BroadcastChannel === 'undefined') return;
+		const bc = new BroadcastChannel('orbit:notifications-seen');
+		bc.onmessage = (ev) => {
+			const msg = ev.data as { userId?: string | null; seenAt?: number } | null;
+			if (!msg || msg.userId !== currentUserId || typeof msg.seenAt !== 'number') return;
+			const nextSeenAt = msg.seenAt;
+			setSeenAt((prev) => (nextSeenAt > prev ? nextSeenAt : prev));
+		};
+		return () => bc.close();
+	}, [currentUserId]);
 
 	const refetchRef = useRef(refetch);
 	useEffect(() => {
 		refetchRef.current = refetch;
 	});
-	// The server says something new is there (or the role changed, which changes what the feed shows): read it now.
+	// Refetch only on notification or role/permission SSE frames (not unrelated kanban/note edits).
 	useLiveEvent((event) => {
-		if (event !== 'session-ended') void refetchRef.current().catch(() => {});
+		if (event === 'notification' || event === 'permission-changed') {
+			void refetchRef.current().catch(() => {});
+		}
 	});
 	useEffect(() => {
 		const tick = () => {

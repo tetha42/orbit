@@ -7,7 +7,7 @@
  */
 
 /** Extracts a human-readable message from an unknown thrown value. */
-export function errorMessage(error: unknown, fallback = 'Beklenmeyen bir hata oluştu.'): string {
+export function errorMessage(error: unknown, fallback = 'An unexpected error occurred.'): string {
 	if (error instanceof Error && error.message) return error.message;
 	if (typeof error === 'string' && error) return error;
 	return fallback;
@@ -19,6 +19,6 @@ export function errorMessage(error: unknown, fallback = 'Beklenmeyen bir hata ol
  * Deliberately generic: database errors carry table and column names, and file
  * errors carry absolute paths. Those belong in the server log, not the response.
  */
-export function publicErrorMessage(fallback = 'İşlem tamamlanamadı.'): string {
+export function publicErrorMessage(fallback = 'The operation could not be completed.'): string {
 	return fallback;
 }

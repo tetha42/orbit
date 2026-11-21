@@ -47,7 +47,7 @@ export function AccountStatsCards({ summary }: AccountStatsCardsProps) {
 					<div className={styles.teams}>
 						{summary.teams.map((tm) => (
 							<span key={tm.id} className={styles.teamChip}>
-								{tm.isCaptain && <Crown size={12} color="#ff9f0a" aria-label={t('acCaptain')} />}
+								{tm.isCaptain && <Crown size={12} color="var(--warning)" aria-label={t('acCaptain')} />}
 								<strong>{tm.name}</strong>
 								<span className={ui.muted}>{tm.role}</span>
 							</span>

@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 	const id = new URL(request.url).searchParams.get('id');
 	if (id) {
 		const detail = await getCommitteeDetail(id);
-		if (!detail) return bad('Komite bulunamadı.', 404);
+		if (!detail) return bad('Committee not found.', 404);
 		return NextResponse.json(detail, { headers: { 'Cache-Control': 'no-store' } });
 	}
 	return NextResponse.json(
@@ -36,18 +36,18 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
 	const auth = await requireApp(request, 'decisions', 'manage');
 	if (!auth.authorized) return auth.response;
-	if (auth.user.status === 'alumni') return bad('Mezunlar sadece okuma erişimine sahiptir.', 403);
+	if (auth.user.status === 'alumni') return bad('Alumni accounts have read-only access.', 403);
 
 	const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
-	if (!body) return bad('Geçersiz istek.');
+	if (!body) return bad('Invalid request.');
 	const action = String(body.action ?? '');
 
 	try {
 		if (action === 'createCommittee') {
 			const name = String(body.name ?? '').trim();
 			const description = String(body.description ?? '').trim();
-			if (name.length < 3 || name.length > 120) return bad('Komite adı 3-120 karakter olmalıdır.');
-			if (description.length > 2000) return bad('Açıklama en fazla 2000 karakter olabilir.');
+			if (name.length < 3 || name.length > 120) return bad('Committee name must be 3–120 characters.');
+			if (description.length > 2000) return bad('Description may be at most 2000 characters.');
 			const committee = await createCommittee({
 				name,
 				description,
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
 			void logSystemEvent({
 				service: 'decisions',
 				level: 'INFO',
-				message: `Komite oluşturuldu: ${committee.name}`,
+				message: `Committee created: ${committee.name}`,
 				detail: { committeeId: committee.id },
 				userId: auth.user.id,
 			});
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
 			const committeeId = String(body.committeeId ?? '');
 			const userId = String(body.userId ?? '');
 			const target = await getUserById(userId);
-			if (!target) return bad('Üye bulunamadı.', 404);
+			if (!target) return bad('Member not found.', 404);
 			const ok = await addCommitteeMember({
 				committeeId,
 				userId,
@@ -79,23 +79,23 @@ export async function POST(request: Request) {
 				termStart: Number(body.termStart) || null,
 				termEnd: Number(body.termEnd) || null,
 			});
-			if (!ok) return bad('Komite bulunamadı.', 404);
+			if (!ok) return bad('Committee not found.', 404);
 			return NextResponse.json({ ok: true });
 		}
 
 		if (action === 'removeMember') {
 			const ok = await removeCommitteeMember(String(body.committeeId ?? ''), String(body.userId ?? ''));
-			if (!ok) return bad('Komite üyesi bulunamadı.', 404);
+			if (!ok) return bad('Committee member not found.', 404);
 			return NextResponse.json({ ok: true });
 		}
 
 		if (action === 'createMeeting') {
 			const committeeId = String(body.committeeId ?? '');
-			if (!(await getCommitteeDetail(committeeId))) return bad('Komite bulunamadı.', 404);
+			if (!(await getCommitteeDetail(committeeId))) return bad('Committee not found.', 404);
 			const title = String(body.title ?? '').trim();
-			if (title.length < 3 || title.length > 160) return bad('Toplantı başlığı 3-160 karakter olmalıdır.');
+			if (title.length < 3 || title.length > 160) return bad('Meeting title must be 3–160 characters.');
 			const date = Number(body.date);
-			if (!Number.isFinite(date) || date <= 0) return bad('Geçersiz toplantı tarihi.');
+			if (!Number.isFinite(date) || date <= 0) return bad('Invalid meeting date.');
 			const meeting = await createCommitteeMeeting({
 				committeeId,
 				title,
@@ -111,7 +111,7 @@ export async function POST(request: Request) {
 		if (action === 'updateMeeting') {
 			const id = String(body.id ?? '');
 			const date = body.date === undefined ? undefined : Number(body.date);
-			if (date !== undefined && (!Number.isFinite(date) || date <= 0)) return bad('Geçersiz toplantı tarihi.');
+			if (date !== undefined && (!Number.isFinite(date) || date <= 0)) return bad('Invalid meeting date.');
 			const ok = await updateCommitteeMeeting(id, {
 				title: typeof body.title === 'string' ? body.title.trim().slice(0, 160) : undefined,
 				date,
@@ -122,19 +122,19 @@ export async function POST(request: Request) {
 						? body.status
 						: undefined,
 			});
-			if (!ok) return bad('Toplantı bulunamadı.', 404);
+			if (!ok) return bad('Meeting not found.', 404);
 			return NextResponse.json({ ok: true });
 		}
 
 		if (action === 'deleteMeeting') {
 			const ok = await deleteCommitteeMeeting(String(body.id ?? ''));
-			if (!ok) return bad('Toplantı bulunamadı.', 404);
+			if (!ok) return bad('Meeting not found.', 404);
 			return NextResponse.json({ ok: true });
 		}
 
-		return bad('Geçersiz komite işlemi.');
+		return bad('Invalid committee action.');
 	} catch (error) {
 		console.error('API /api/committees POST error:', error);
-		return bad('Komite işlemi tamamlanamadı.', 500);
+		return bad('Committee action could not be completed.', 500);
 	}
 }

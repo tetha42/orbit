@@ -1,5 +1,14 @@
 import type { TaskStatus, TaskPriority } from '@/lib/kanban';
+import type { TeamTaskActivity, TeamTaskItem, TeamTaskComment } from '@/db/schema';
 export type { TaskStatus, TaskPriority };
+
+export interface TeamTaskDetail {
+	task: TeamTask;
+	items: TeamTaskItem[];
+	comments: TeamTaskComment[];
+	activity: TeamTaskActivity[];
+	permissions: { manage: boolean; work: boolean; comment: boolean };
+}
 
 export interface TeamMember {
 	id: string;
@@ -7,7 +16,7 @@ export interface TeamMember {
 	userId: string;
 	teamRole: string;
 	status: string;
-	userNameSurname: string;
+	userName: string;
 	userDepartment: string;
 }
 
@@ -19,23 +28,23 @@ export interface TeamTask {
 	status: TaskStatus;
 	priority: TaskPriority;
 	assigneeMemberId: string | null;
-	assigneeNameSurname: string | null;
+	assigneeName: string | null;
 	dueDate: number | null;
 	order: number;
 	tags: string[];
 	creatorId?: string | null;
-	creatorNameSurname?: string | null;
-	update?: number | null;
-	completion?: number | null;
+	creatorName?: string | null;
+	updatedAt?: number | null;
+	completedAt?: number | null;
 	itemCount?: number;
 	doneItemCount?: number;
 	commentCount?: number;
-	creation: number;
+	createdAt: number;
 }
 
 export interface TeamApplication extends TeamMember {
 	applicationNote?: string | null;
-	participationDate: number;
+	joinedAt: number;
 }
 
 /** A team as `/api/teams` returns it to one member. */
@@ -46,7 +55,7 @@ export interface Team {
 	description: string;
 	category: string;
 	leadId: string;
-	leaderNameSurname: string;
+	leaderName: string;
 	capacity: number;
 	repoUrl: string | null;
 	status: 'active' | 'suspended' | 'done';
@@ -54,9 +63,9 @@ export interface Team {
 	fullCapacity: number;
 	remainingCapacity: number;
 	occupancyRatio: number;
-	members: (TeamMember & { participationDate?: number })[];
+	members: (TeamMember & { joinedAt?: number })[];
 	applications: TeamApplication[];
-	myMyStatus: 'active' | 'applied' | null;
+	myStatus: 'active' | 'applied' | null;
 	permissions: { manage: boolean; editAll: boolean };
 	tasks: TeamTask[];
 	canManage?: boolean;
@@ -89,7 +98,7 @@ export function labelHue(label: string): string {
 
 export function sortTasks(tasks: TeamTask[], mode: 'manual' | 'priority' | 'due'): TeamTask[] {
 	const list = [...tasks];
-	const byManual = (a: TeamTask, b: TeamTask) => a.order - b.order || b.creation - a.creation;
+	const byManual = (a: TeamTask, b: TeamTask) => a.order - b.order || b.createdAt - a.createdAt;
 	if (mode === 'manual') return list.sort(byManual);
 	if (mode === 'priority') {
 		return list.sort(

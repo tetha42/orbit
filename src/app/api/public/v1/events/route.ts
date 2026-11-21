@@ -6,10 +6,10 @@ export const dynamic = 'force-dynamic';
 export const OPTIONS = publicPreflight;
 
 const TYPE_LABELS: Record<string, string> = {
-	workshop: 'Atölye',
-	seminar: 'Seminer',
-	competition: 'Yarışma',
-	meeting: 'Toplantı',
+	workshop: 'Workshop',
+	seminar: 'Seminar',
+	competition: 'Competition',
+	meeting: 'Meeting',
 };
 
 /**
@@ -41,6 +41,6 @@ export async function GET(request: Request) {
 		});
 	} catch (error) {
 		console.error('API /api/public/v1/events error:', error);
-		return publicError(request, 500, 'server_error', 'Etkinlikler şu anda getirilemedi.');
+		return publicError(request, 500, 'server_error', 'Events could not be fetched right now.');
 	}
 }

@@ -94,7 +94,7 @@ export function MembersTable({
 						<th style={{ padding: '8px 10px' }}>{t('membersColDept')}</th>
 						<th style={{ padding: '8px 10px' }}>{t('membersColTeam')}</th>
 						<th style={{ padding: '8px 10px' }}>{t('membersColXp')}</th>
-						<th style={{ padding: '8px 10px' }}>{t('membersColStorage', 'Depolama')}</th>
+						<th style={{ padding: '8px 10px' }}>{t('membersColStorage')}</th>
 						<th style={{ padding: '8px 10px' }}>{t('membersColStatus')}</th>
 						{isAuthorizedToAdd && <th style={{ padding: '8px 10px', textAlign: 'center' }}>{t('membersColActions')}</th>}
 					</tr>

@@ -3,28 +3,24 @@
 import React from 'react';
 import Image from 'next/image';
 import {
-	Mail,
 	Award,
 	CheckCircle2,
 	Clock,
 	XCircle,
 	GraduationCap,
-	User,
-	KeyRound,
-	ShieldAlert,
-	Trash2,
 	ChevronRight,
 	HardDrive,
 } from 'lucide-react';
 import { AvatarFallback } from '@/components/Common/AvatarFallback';
 import { RoleBadge } from '@/core/ui/RoleBadge';
-import { isAlumniRole } from '@/core/permissions';
 import { useI18n } from '@/core/i18n';
 import { formatBytes } from '@/core/data/format';
 import { useSession } from '@/core/session';
 import { useWindowActions } from '@/core/windows';
 import { fill } from '@/lib/text';
 import type { MemberRecord, AssignableRole } from '../types';
+import { getMemberDisplayRole, getMemberStatusLabel } from './MemberDisplayUtils';
+import { MemberCardActions } from './MemberCardActions';
 
 interface MemberCardProps {
 	member: MemberRecord;
@@ -64,18 +60,7 @@ export const MemberCard = React.memo(function MemberCard({
 	const { openApp } = useWindowActions();
 	const canSoc = canUseApp('soc');
 
-	const isAlumni = member.status === 'alumni' || isAlumniRole({ id: member.roleId, name: member.roleName });
-	const displayRole = isAlumni
-		? {
-				name: isAlumniRole({ id: member.roleId, name: member.roleName })
-					? (member.roleName ?? t('membersStatusAlumni', 'Mezun'))
-					: t('membersStatusAlumni', 'Mezun'),
-				color: isAlumniRole({ id: member.roleId, name: member.roleName }) ? (member.roleColor ?? '#64d2ff') : '#64d2ff',
-		  }
-		: member.roleId
-		? { name: member.roleName ?? '—', color: member.roleColor ?? '#8e8e93' }
-		: null;
-
+	const displayRole = getMemberDisplayRole(member, t);
 	const isSelf = member.id === currentUserId;
 	const canManage = accessible && isAuthorizedToAdd;
 
@@ -94,7 +79,6 @@ export const MemberCard = React.memo(function MemberCard({
 				boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
 			}}
 		>
-			{/* Top Header: Avatar + Name + Status / Role */}
 			<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
 				<div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
 					<div
@@ -152,10 +136,8 @@ export const MemberCard = React.memo(function MemberCard({
 					</div>
 				</div>
 
-				{/* Role or Status Badge */}
 				<div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
 					<RoleBadge role={displayRole} emptyText={t('roleNone')} size="sm" />
-
 					<span
 						style={{
 							fontSize: '10.5px',
@@ -167,28 +149,21 @@ export const MemberCard = React.memo(function MemberCard({
 								member.status === 'active'
 									? 'var(--success)'
 									: member.status === 'pending'
-									? 'var(--warning)'
-									: member.status === 'alumni'
-									? '#64d2ff'
-									: 'var(--danger)',
+										? 'var(--warning)'
+										: member.status === 'alumni'
+											? '#64d2ff'
+											: 'var(--danger)',
 						}}
 					>
 						{member.status === 'active' && <CheckCircle2 size={11} />}
 						{member.status === 'pending' && <Clock size={11} />}
 						{member.status === 'alumni' && <GraduationCap size={11} />}
 						{member.status === 'rejected' && <XCircle size={11} />}
-						{member.status === 'active'
-							? t('statusActive', 'Aktif')
-							: member.status === 'pending'
-							? t('statusPending', 'Bekliyor')
-							: member.status === 'alumni'
-							? t('membersStatusAlumni', 'Mezun')
-							: t('statusRejected', 'Red')}
+						{getMemberStatusLabel(member.status, t)}
 					</span>
 				</div>
 			</div>
 
-			{/* Meta Row: Dept, Class, Team, XP */}
 			<div
 				style={{
 					display: 'grid',
@@ -206,21 +181,16 @@ export const MemberCard = React.memo(function MemberCard({
 						{member.department || '—'} {member.grade ? `(${fill(t('certsGradeFormat'), { grade: member.grade })})` : ''}
 					</span>
 				</div>
-
 				<div>
 					<span style={{ opacity: 0.6, fontSize: '10.5px', display: 'block' }}>{t('membersTeamProjectLabel')}</span>
-					<span style={{ fontWeight: 550 }}>
-						{member.teamName || '—'}
-					</span>
+					<span style={{ fontWeight: 550 }}>{member.teamName || '—'}</span>
 				</div>
-
 				<div>
 					<span style={{ opacity: 0.6, fontSize: '10.5px', display: 'block' }}>{t('membersStudentIdLabel')}</span>
 					<span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '11px' }}>
 						{member.handle || member.studentNo || '—'}
 					</span>
 				</div>
-
 				<div>
 					<span style={{ opacity: 0.6, fontSize: '10.5px', display: 'block' }}>{t('membersXpPointsLabel')}</span>
 					<span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontWeight: 600, color: 'var(--warning)' }}>
@@ -228,9 +198,8 @@ export const MemberCard = React.memo(function MemberCard({
 						{member.xp ?? 0} XP
 					</span>
 				</div>
-
 				<div>
-					<span style={{ opacity: 0.6, fontSize: '10.5px', display: 'block' }}>{t('membersColStorage', 'Depolama')}</span>
+					<span style={{ opacity: 0.6, fontSize: '10.5px', display: 'block' }}>{t('membersColStorage')}</span>
 					<span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontWeight: 600 }}>
 						<HardDrive size={12} style={{ opacity: 0.6 }} />
 						{formatBytes(member.diskUsageBytes)}
@@ -238,164 +207,19 @@ export const MemberCard = React.memo(function MemberCard({
 				</div>
 			</div>
 
-			{/* Actions Row */}
-			<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', flexWrap: 'wrap', paddingTop: '4px' }}>
-				{mailUser && !isSelf && member.status === 'active' && (
-					<button
-						type="button"
-						onClick={() => onSendMessage(member.id)}
-						style={{
-							display: 'inline-flex',
-							alignItems: 'center',
-							justifyContent: 'center',
-							gap: '5px',
-							fontSize: '11.5px',
-							minHeight: '44px',
-							minWidth: '44px',
-							padding: '0 12px',
-							borderRadius: '8px',
-							background: 'rgba(0, 122, 255, 0.1)',
-							color: 'var(--accent)',
-							border: '1px solid rgba(0, 122, 255, 0.2)',
-							cursor: 'pointer',
-							fontWeight: 600,
-						}}
-					>
-						<Mail size={13} />
-						<span>{t('membersCardMessage', 'Mesaj')}</span>
-					</button>
-				)}
-
-				<button
-					type="button"
-					onClick={() => onOpenProfile(member)}
-					style={{
-						display: 'inline-flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						gap: '5px',
-						fontSize: '11.5px',
-						minHeight: '44px',
-						minWidth: '44px',
-						padding: '0 12px',
-						borderRadius: '8px',
-						background: 'var(--fill-soft, rgba(255, 255, 255, 0.08))',
-						color: 'var(--text-primary)',
-						border: '1px solid var(--window-border, rgba(255, 255, 255, 0.12))',
-						cursor: 'pointer',
-						fontWeight: 500,
-					}}
-				>
-					<User size={13} />
-					<span>{t('membersCardProfile', 'Profil')}</span>
-				</button>
-
-				{canManage && (
-					<>
-						<button
-							type="button"
-							onClick={() => onAwardXp(member.id, 25)}
-							style={{
-								display: 'inline-flex',
-								alignItems: 'center',
-								justifyContent: 'center',
-								gap: '5px',
-								fontSize: '11.5px',
-								minHeight: '44px',
-								minWidth: '44px',
-								padding: '0 12px',
-								borderRadius: '8px',
-								background: 'rgba(255, 189, 46, 0.12)',
-								color: '#e5a50a',
-								border: '1px solid rgba(255, 189, 46, 0.25)',
-								cursor: 'pointer',
-								fontWeight: 600,
-							}}
-						>
-							<Award size={13} />
-							<span>{fill(t('membersCardAwardXp', '+{amount} XP'), { amount: 25 })}</span>
-						</button>
-
-						<button
-							type="button"
-							onClick={() => onResetPassword(member.id, `${member.firstName} ${member.lastName}`)}
-							style={{
-								display: 'inline-flex',
-								alignItems: 'center',
-								justifyContent: 'center',
-								fontSize: '11.5px',
-								minHeight: '44px',
-								minWidth: '44px',
-								padding: '0 10px',
-								borderRadius: '8px',
-								background: 'var(--fill-soft, rgba(255, 255, 255, 0.08))',
-								color: 'var(--text-primary)',
-								border: '1px solid var(--window-border, rgba(255, 255, 255, 0.12))',
-								cursor: 'pointer',
-								fontWeight: 500,
-							}}
-							title={t('membersCtxResetPassword')}
-							aria-label={t('membersCtxResetPassword')}
-						>
-							<KeyRound size={14} />
-						</button>
-
-						{canSoc && (
-							<button
-								type="button"
-								onClick={() => openApp('soc', { section: 'siem', kind: 'user', itemId: member.id })}
-								style={{
-									display: 'inline-flex',
-									alignItems: 'center',
-									justifyContent: 'center',
-									gap: '5px',
-									fontSize: '11.5px',
-									minHeight: '44px',
-									minWidth: '44px',
-									padding: '0 12px',
-									borderRadius: '8px',
-									background: 'var(--fill-soft, rgba(255, 255, 255, 0.08))',
-									color: 'var(--text-primary)',
-									border: '1px solid var(--window-border, rgba(255, 255, 255, 0.12))',
-									cursor: 'pointer',
-									fontWeight: 500,
-								}}
-								title={t('membersCtxSocAudit')}
-								aria-label={t('membersCtxSocAudit')}
-							>
-								<ShieldAlert size={13} />
-								<span>{t('membersCardSoc', 'SOC')}</span>
-							</button>
-						)}
-
-						{!isSelf && (
-							<button
-								type="button"
-								onClick={() => onDelete(member.id, `${member.firstName} ${member.lastName}`)}
-								style={{
-									display: 'inline-flex',
-									alignItems: 'center',
-									justifyContent: 'center',
-									fontSize: '11.5px',
-									minHeight: '44px',
-									minWidth: '44px',
-									padding: '0 10px',
-									borderRadius: '8px',
-									background: 'rgba(215, 0, 21, 0.1)',
-									color: 'var(--danger)',
-									border: '1px solid rgba(215, 0, 21, 0.2)',
-									cursor: 'pointer',
-									fontWeight: 500,
-								}}
-								title={t('membersCtxDelete')}
-								aria-label={t('membersCtxDelete')}
-							>
-								<Trash2 size={14} />
-							</button>
-						)}
-					</>
-				)}
-			</div>
+			<MemberCardActions
+				member={member}
+				isSelf={isSelf}
+				mailUser={mailUser}
+				canManage={canManage}
+				canSoc={canSoc}
+				onOpenProfile={onOpenProfile}
+				onResetPassword={onResetPassword}
+				onSendMessage={onSendMessage}
+				onAwardXp={onAwardXp}
+				onDelete={onDelete}
+				onOpenSoc={(id) => openApp('soc', { section: 'siem', kind: 'user', itemId: id })}
+			/>
 		</div>
 	);
 });

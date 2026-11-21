@@ -1,133 +1,94 @@
-# Tarayıcı (Playwright) uçtan uca testleri
+# Browser E2E Suites (`tests/e2e/ui/`)
 
-Gerçek Google Chrome (başsız), gerçek sunucu, gerçek PostgreSQL. Tarayıcı indirilmez;
-bağımlılık yalnızca `playwright-core`. Hiçbir test kullanıcının gerçek veritabanına
-(`localhost:5432`) dokunmaz: sıfırlama (`DROP DATABASE`) yalnız test konteynerinde
-(`127.0.0.1:55432`, kullanıcı `test`) çalışır ve bu kural `lib/db.mjs` içinde kodla zorlanır.
+Playwright end-to-end tests that exercise the real Next.js application in Chromium — desktop windows, mobile layouts, 2FA/Passkey flows, permissions, SSE updates, and app CRUD journeys. Each file in `tests/e2e/ui/suites/` is automatically discovered as a suite by `tests/e2e/ui/run.mjs`.
 
-```
-pnpm e2e              # bütün paketler, sırayla
-pnpm e2e roller 2fa   # yalnız adı verilenler
-pnpm e2e --list       # paketleri listeler
-pnpm e2e performans   # isteğe bağlı ölçüm paketi (aşağıya bakın); PERF_TRANSPARENCY=on ile saydamlık açık
-pnpm e2e performans-etkilesim   # isteğe bağlı: pencere/Dock etkileşimi başına React commit sayısı
-```
+---
 
-Ekran görüntüleri `tests/e2e/shots/<paket>/` altına yazılır (git'e alınmaz).
-Sunucu günlükleri ve geçici dosyalar `tests/e2e/.tmp/` altındadır (git'e alınmaz).
+## 1. Prerequisites
 
-## İki çalıştırma biçimi
+1. **Chromium for Playwright (lean headless shell recommended):**
+   ```bash
+   pnpm exec playwright-core install chromium-headless-shell
+   ```
+   *(Headless runs prefer Playwright's lightweight `chromium-headless-shell` when installed to stay under `1 GB` PSS, and fall back automatically to Chrome/Chromium or explicit `E2E_BROWSER_PATH`.)*
+2. **Database:**
+   - **Self-managed mode (recommended):** Point `E2E_DATABASE_URL` at a throw-away database inside the test PostgreSQL container (`127.0.0.1:55432`, user `test`), e.g. `postgresql://test:test@127.0.0.1:55432/orbit_e2e`. `tests/e2e/ui/lib/db.mjs` explicitly refuses to drop or reset non-test databases (`localhost:5432`, `kulup`, `postgres`, etc.).
+   - **External server mode:** Start your own dev server and seed fixtures using `tests/fixtures/dev-fixtures.mjs`, then pass `--base` and `--fixtures`.
 
-**1. Her şeyi koşucu yapsın (sıfırdan, CI gibi).** Test konteynerinde kendi veritabanınızı açın,
-adını `E2E_DATABASE_URL` ile verin. Koşucu veritabanını DROP/CREATE eder, `.env` adminini
-(`BOOTSTRAP_ADMIN_*`) kendisi üretir, sunucuyu kendisi başlatır, `scripts/dev-fixtures.mjs`
-ile fikstürü kurar ve paketleri koşar. `2fa` gibi boş veritabanı isteyen paketler (`isolated`)
-ayrı bir veritabanında, kendi sunucularında koşar; aynı klasörde tek `next dev` olabildiği için
-sunucular art arda açılıp kapanır.
+---
 
-```
-docker exec beu-test-db psql -U test -d postgres -c 'CREATE DATABASE "benim_e2e"'
-E2E_DATABASE_URL=postgresql://test:test@127.0.0.1:55432/benim_e2e E2E_PORT=3101 pnpm e2e
+## 2. Running Suites
+
+### Option A — Runner-Managed Server & Clean Database
+
+```bash
+E2E_DATABASE_URL=postgresql://test:test@127.0.0.1:55432/orbit_e2e pnpm e2e
 ```
 
-Bu biçimde portta (`E2E_PORT`, varsayılan 3100) çalışan başka sunucu olmamalıdır; `pnpm e2e`
-bittiğinde sunucuları kapatır.
+The runner drops/recreates the target test database, launches the prebuilt production standalone server (`node .next/standalone/server.js`, ~100 MB RSS with `MOCK_MAIL=true`), runs `tests/fixtures/dev-fixtures.mjs` once to build a snapshot database, shards shared suites across up to 2 workers (`E2E_WORKERS`), and gives `isolated` suites their own fresh empty database + server. A live `/proc` watchdog enforces strict budgets (`<= 1024 MB` total RSS and `<= 180s` runtime by default). Pass `E2E_DEV_SERVER=1` only if you need `next dev`.
 
-**2. Kendi sunucunuza bağlanın (geliştirirken hızlı döngü).** Sunucuyu ve fikstürü siz kurarsınız:
+### Option B — Against an Already-Running Server
 
+```bash
+# 1. Start the server (in another terminal)
+MOCK_MAIL=true pnpm dev
+
+# 2. Seed deterministic test roles, users, and sample records
+BOOTSTRAP_ADMIN_EMAIL=... BOOTSTRAP_ADMIN_PASSWORD=... \
+  node tests/fixtures/dev-fixtures.mjs --base http://localhost:3000 --out /tmp/orbit-fx.json
+
+# 3. Run selected or all shared suites
+pnpm e2e --base http://localhost:3000 --fixtures /tmp/orbit-fx.json
 ```
-export DATABASE_URL=postgresql://test:test@127.0.0.1:55432/benim_e2e
-export BOOTSTRAP_ADMIN_EMAIL=admin@e2e.test BOOTSTRAP_ADMIN_PASSWORD='en-az-12-karakter'
-pnpm exec next dev --port 3101 &
-node scripts/dev-fixtures.mjs --base http://localhost:3101 --out /tmp/fx.json
-pnpm e2e roller --base http://localhost:3101 --fixtures /tmp/fx.json
-#   aynısı: E2E_BASE=… E2E_FIXTURES=/tmp/fx.json pnpm e2e roller
-node tests/e2e/rbac-api.mjs --fixtures /tmp/fx.json --base http://localhost:3101   # API testi, aynı fikstür
-node tests/e2e/onboarding-api.mjs --fixtures /tmp/fx.json --base http://localhost:3101   # takım vitrini / rolsüz üye başvurusu (DATABASE_URL gerekir)
-```
 
-Bu biçimde `isolated` paketler atlanır ("atlandı" olarak yazılır): kendi boş veritabanı ve
-sunucusu ister, çalışan sunucunuzla aynı klasörde ikinci bir `next dev` açılamaz.
+*(Isolated suites such as empty-DB onboarding are skipped automatically when `--base` / `E2E_BASE` is provided.)*
 
-Fikstür dosyasında admin ve 2FA'lı hesapların TOTP gizli anahtarları vardır (`adminTotp`,
-`users.zeynep.totp`). Aynı 30 sn'lik pencerede bir kod iki kez kullanılamaz; `lib/totp.mjs`
-bunu bilir ve gerekirse sonraki pencereyi bekler (pencereler çalıştırmalar arasında da
-`tests/e2e/.tmp/` içinde hatırlanır).
+### Useful CLI Flags (`tests/e2e/ui/run.mjs`)
 
-## Yeni paket eklemek
+| Flag / Env | Description |
+| :--- | :--- |
+| `--list` | List all available suites, noting `[isolated server]` and `[opt-in by name]` flags |
+| `<suite> ...` | Run only named suites (e.g. `pnpm e2e vault inventory`) |
+| `--headed` | Show the Chromium browser window instead of running headless |
+| `--port` / `E2E_PORT` | Dev server port in self-managed mode (default `3100`) |
+| `--base` / `E2E_BASE` | Attach to an already-running server URL |
+| `--fixtures` / `E2E_FIXTURES` | Path to JSON fixture output from `tests/fixtures/dev-fixtures.mjs` |
+| `E2E_WORKERS` | Worker count (`2` default when running 4+ shared suites in standalone mode; `1` otherwise or with `E2E_DEV_SERVER=1`) |
+| `E2E_SHOTS=1` | Capture non-error `t.shot()` PNGs during the run (error shots always saved) |
+| `E2E_MAX_RSS_MB` | Total runner + server + Chromium RSS budget in MB (default `1024`) |
+| `E2E_MAX_DURATION_SEC` | Total wall-clock runtime budget in seconds (default `180`) |
+| `E2E_DEV_SERVER=1` | Fallback to `next dev` instead of `.next/standalone/server.js` |
 
-`tests/e2e/ui/suites/<ad>.mjs` dosyası bir pakettir; koşucu klasörü tarar, kayıt gerekmez.
-Her paket kendi verisini kurar ve işi bitince geri alır (`t.cleanup`), fikstürü yalnız okur;
-paketler arasında sıra bağımlılığı olmamalıdır.
+> Opt-in suites (such as `performance`) are excluded from default `pnpm e2e` runs and execute only when named explicitly (`pnpm e2e performance`).
+
+---
+
+## 3. Authoring a New Suite
+
+Add `tests/e2e/ui/suites/<name>.mjs`. Export `meta` (optional) and a default async function receiving the context object `t` (defined in `tests/e2e/ui/lib/context.mjs`):
 
 ```js
-// tests/e2e/ui/suites/ornek.mjs
-import { openApp } from '../lib/browser.mjs';
-
-export const meta = { title: 'Kısa açıklama' };   // isolated: true → boş veritabanı + kendi sunucusu
+export const meta = {
+	title: 'Sample feature check',
+	// isolated: true, // set if suite requires a fresh empty database
+	// optIn: true,    // set if suite should only run when named explicitly
+};
 
 export default async function suite(t) {
-	const { fx } = t;                                // fikstür (isolated pakette null; t.bootstrap = .env admini)
-	const admin = await t.api('admin');              // cookie'li API istemcisi; 2FA'lı hesap için TOTP'yi kendisi girer
-	t.cleanup(() => admin.patch('/api/members', { id: fx.users.can.id, rolId: fx.roles.uye })); // hata olsa da çalışır
+	const adminApi = t.api('admin');
 
-	await t.step('Üye Rehberi açılıyor', async () => {   // step içindeki hata yalnız o adımı düşürür
-		const { page } = await t.open('can');            // 'admin' | 'zeynep' | 'ege' | 'can' | 'okur'; { mobile: true } → 390×844
-		const win = await openApp(page, 'members');
-		t.check(await win.locator('[data-role-badge]').count() > 0, 'rozetler var');
-		t.sameSet(await page.locator('[data-dock-app]').evaluateAll((e) => e.map((x) => x.dataset.dockApp)), ['news', 'settings'], 'Dock');
-		await t.shot(page, 'uye-rehberi');
+	await t.step('renders feature inside desktop window', async () => {
+		const { page } = await t.open('admin');
+		const me = await adminApi.get('/api/auth/me');
+		t.eq(me.status, 200, 'admin /api/auth/me returns 200');
+		await t.shot(page, 'loaded');
 	});
 }
 ```
 
-`t` üzerindekiler (`lib/context.mjs` başındaki listeye bakın): `check / eq / sameSet / includes /
-excludes` (iddialar), `step`, `waitFor`, `shot`, `cleanup`, `api(anahtar)`, `open(anahtar, {mobile})`,
-`anonymous()`, `adopt(anahtar, context)`, `track(context)`, `browser`, `base`, `fx`.
-Tarayıcı yardımcıları `lib/browser.mjs` içindedir: `loginUi` (TOTP/kurtarma kodu dahil),
-`logoutUi`, `openApp`, `openSettingsTab`, `dockApps`, `openWindows`, `desktopToolMenu`,
-`sessionToken`. Yardımcı ekleyeceğiniz zaman `lib/` altına koyun; paket içinde kopyalamayın.
+### Context Helpers & Conventions
 
-`meta.optIn: true` olan paket (şimdilik yalnız `performans`) `pnpm e2e` ile koşmaz; yalnız adı
-verilince koşar. `performans` kendi Chrome'unu WebGL açık başlatır (3B duvar kağıdı çalışır),
-boş masaüstü / 3 pencere + 3B / sürükleme için FPS, kare süreleri, React commit sayısı (DevTools
-kancası) ve uzun görevleri tablo olarak basar ve `tests/e2e/.tmp/perf-<tarih>.json` dosyasına
-yazar (öncesi/sonrası karşılaştırması için). Eşikler gevşektir ve gerekçeleri paketin içinde;
-yazılım GPU'sunda 3B sahnenin çizildiği boş masaüstü FPS'i yalnız raporlanır.
-
-`performans-etkilesim` (isteğe bağlı) 3 pencere açma, 6 odak değişimi, 6 Dock simgesinde gezinme ve 3 pencereyi kapatıp açma sırasında kaç React commit'i olduğunu (3 tur, medyan) sayar ve `tests/e2e/.tmp/perf-etkilesim-<tarih>.json` dosyasına yazar. 3B kapalıdır; eşik yoktur, yalnız ölçer. Eski bir commit'in sunucusuna `--base` ve `--fixtures` ile bağlanarak öncesi/sonrası karşılaştırılabilir (eski arayüzde `data-menu-item` yoktur; `performans` paketi eski sürümde bu yüzden çalışmaz, `performans-etkilesim` çalışır).
-
-Masaüstü davranış yardımcıları (pencere kutusu, sürükleme/boyutlandırma, bağlam menüleri,
-sayfa hata izleyici) `lib/desktop.mjs`, ölçüm yardımcıları `lib/perf.mjs` içindedir.
-
-### Seçiciler
-
-Metne değil `data-` özniteliklerine bağlanın: `[data-dock-app=<uygulama>]`,
-`[data-window-frame=<uygulama>]`, `[data-settings-tab=roles|security|smtp|…]`,
-`[data-role-id]`, `[data-role-badge="<rol adı>"]`, `[data-role-select=<üye id>]`,
-`[data-no-role-notice]`, `[data-launcher-app=<uygulama>]` (mobil), `[data-menubar-category=<id>]`,
-`[data-menu-item=<öğe id>]` (menü çubuğu ve sağ tık menüsü), `[data-window-control=close|minimize|maximize]`,
-`[data-notification-toggle]`, `[data-notification-badge=<sayı>]`, `[data-notification-panel]`,
-`[data-notification-item=<tür:id>]` (`data-unread`), `[data-notification-group=pinned|action|fresh|earlier]`,
-`[data-notification-action=onayla|reddet]`, `[data-app-loading]` (uygulama parçası yükleniyor),
-`[data-about-modal]`, sürükleme/boyutlandırma sırasında `html[data-window-moving]`, zorunlu 2FA modalı
-`[role=dialog][aria-labelledby=twofa-enforce-title]`. Gerekirse bileşene yeni bir `data-`
-özniteliği eklemek serbesttir.
-
-### Bilinmesi gerekenler
-
-- **Tek oturum kuralı:** bir hesapla form üzerinden giriş yapmak onun önceki oturumunu bitirir.
-  `t.api`/`t.open` oturumu paketler arasında paylaşır; formla giriş yapıp devam edecekseniz
-  `t.adopt(anahtar, context)` ile yeni oturumu devredin.
-- **WebGL kapalı:** başsız Chrome yazılımla 3B duvar kağıdını çizip birkaç çekirdeği yer ve
-  sayfanın zamanlayıcılarını (15 sn'lik yetki yoklamasını) geciktirir. Bu yüzden Chrome
-  `--disable-3d-apis` ile açılır, uygulama statik arka plana düşer. `E2E_WEBGL=1` açar.
-- **Geliştirme sunucusunda** portal normalde "uygulamayı yükle" sayfası gösterir; testler sekme
-  başına geliştirici atlatma bayrağını (`beu_pwa_dev_bypass`) kendisi koyar.
-- **Giriş sınırı:** hesap başına 5 hatalı giriş 15 dakika kilitler; hatalı parola/kodla
-  deneme sayısını düşük tutun.
-- **İki sunucu süreci (`sse`):** aynı klasörde ikinci bir `next dev` ancak kendi derleme klasörüyle açılabilir
-  (`BEU_DIST_DIR=.next-b`, `next.config.mjs`). `sse` paketi ikinci süreci `E2E_PORT+1` portunda ve aynı
-  veritabanında kendisi başlatır (`E2E_DATABASE_URL`/`DATABASE_URL` yoksa o adımı atlar), `next-env.d.ts` ve
-  `tsconfig.json`'ı geri yazar. Canlı olay (SSE) paketleri 15 sn'lik yoklamayı beklemez; yoklamaya düşüş
-  yalnız `sse` paketinde (akış engellenerek) sınanır.
+- **`t.open(key, opts)` / `t.anonymous(opts)`:** Opens authenticated or anonymous Playwright pages. `tests/e2e/ui/lib/browser.mjs` blocks service workers and seeds `sessionStorage` installed/bypass flags (`orbit_pwa_installed_session_v2`, `orbit_pwa_dev_bypass`, and legacy `beu_pwa_dev_bypass`) so the PWA install prompt does not block UI interactions in production or development builds.
+- **`t.api(key)`:** Cookie-backed HTTP client authenticated as a fixture account (`admin`, etc.).
+- **`t.check` / `t.eq` / `t.sameSet` / `t.includes` / `t.excludes`:** Non-aborting assertions; wrap sections in `t.step(name, fn)` and register teardown via `t.cleanup(fn)`.
+- **Screenshots:** Saved to `tests/e2e/shots/<suite>/` (auto-cleaned per run; git-ignored). Temporary session tokens live in `tests/e2e/.tmp/`.

@@ -22,21 +22,21 @@ export function TeamCard({ team: tm, joinButton, onOpen, onEdit, onRemove }: Tea
 
 	const quotaColor = (team: Team) =>
 		team.remainingCapacity === 0
-			? '#ff453a'
+			? 'var(--danger)'
 			: team.occupancyRatio > 75
-				? 'linear-gradient(90deg,#ff9f0a,#ff453a)'
-				: 'linear-gradient(90deg,#0a84ff,#30d158)';
+				? 'linear-gradient(90deg,var(--warning),var(--danger))'
+				: 'linear-gradient(90deg,var(--accent),var(--success))';
 
 	return (
 		<article
 			data-focus-id={`team:${tm.id}`}
 			data-team-id={tm.id}
-			className={`${styles.card} ${tm.myMyStatus === 'active' ? styles.cardMine : ''}`}
+			className={`${styles.card} ${tm.myStatus === 'active' ? styles.cardMine : ''}`}
 		>
 			<div className={styles.pills}>
 				<span className={`${styles.pill} ${styles.pCategory}`}>{tm.category}</span>
-				{tm.myMyStatus === 'active' && <span className={`${styles.pill} ${styles.pMine}`}>{t('tmMember')}</span>}
-				{tm.myMyStatus === 'applied' && <span className={`${styles.pill} ${styles.pApplied}`}>{t('tmApplied')}</span>}
+				{tm.myStatus === 'active' && <span className={`${styles.pill} ${styles.pMine}`}>{t('tmMember')}</span>}
+				{tm.myStatus === 'applied' && <span className={`${styles.pill} ${styles.pApplied}`}>{t('tmApplied')}</span>}
 				{tm.participationType === 'approval' && <span className={`${styles.pill} ${styles.pMode}`}>{t('tmByApplication')}</span>}
 				{tm.status !== 'active' && (
 					<span className={`${styles.pill} ${styles.pPaused}`}>
@@ -50,23 +50,23 @@ export function TeamCard({ team: tm, joinButton, onOpen, onEdit, onRemove }: Tea
 			<h3 className={styles.cardTitle}>{tm.name}</h3>
 			<p className={styles.cardDesc}>{tm.description}</p>
 			<div className={styles.captain}>
-				<span className={ui.avatar} style={{ marginLeft: 0, background: 'linear-gradient(135deg,#ff9f0a,#ff375f)' }}>
-					{initials(tm.leaderNameSurname)}
+				<span className={ui.avatar} style={{ marginLeft: 0, background: 'linear-gradient(135deg,var(--warning),#ff375f)' }}>
+					{initials(tm.leaderName)}
 				</span>
 				<span>
 					<span className={ui.muted} style={{ fontSize: 11.5 }}>
 						{t('tmCaptain')}
 					</span>
 					<br />
-					<strong>{tm.leaderNameSurname || t('tmNoCaptain')}</strong>
+					<strong>{tm.leaderName || t('tmNoCaptain')}</strong>
 				</span>
 				<span className={styles.avatars} aria-hidden>
 					{tm.members
 						.filter((u) => u.userId !== tm.leadId)
 						.slice(0, 4)
 						.map((u) => (
-							<span key={u.userId} className={ui.avatar} title={u.userNameSurname}>
-								{initials(u.userNameSurname)}
+							<span key={u.userId} className={ui.avatar} title={u.userName}>
+								{initials(u.userName)}
 							</span>
 						))}
 				</span>
@@ -76,7 +76,7 @@ export function TeamCard({ team: tm, joinButton, onOpen, onEdit, onRemove }: Tea
 					<span>
 						{t('tmQuota')}: {tm.fullCapacity}/{tm.capacity}
 					</span>
-					<span style={{ color: tm.remainingCapacity === 0 ? '#ff453a' : '#30d158' }}>
+					<span style={{ color: tm.remainingCapacity === 0 ? 'var(--danger)' : 'var(--success)' }}>
 						{tm.remainingCapacity === 0 ? t('tmFull') : fill(t('tmSpotsLeft'), { n: tm.remainingCapacity })}
 					</span>
 				</div>

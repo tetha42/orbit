@@ -11,18 +11,18 @@ export async function POST(request: Request) {
 	if (!auth.authorized) return auth.response;
 	const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
 	const userId = typeof body?.userId === 'string' ? body.userId : '';
-	if (!userId) return NextResponse.json({ error: 'Üye seçilmedi.' }, { status: 400 });
+	if (!userId) return NextResponse.json({ error: 'No member selected.' }, { status: 400 });
 	if (userId === auth.user.id) {
-		return NextResponse.json({ error: 'Kendi hesabınızı anonimleştiremezsiniz.' }, { status: 409 });
+		return NextResponse.json({ error: 'You cannot anonymize your own account.' }, { status: 409 });
 	}
 	if (body?.confirm !== 'ANONYMIZE') {
-		return NextResponse.json({ error: 'Onay metni eşleşmiyor.' }, { status: 400 });
+		return NextResponse.json({ error: 'Confirmation text does not match.' }, { status: 400 });
 	}
 
 	const result = await anonymizeMember(userId, auditContext(request, auth.user));
-	if (result === 'none') return NextResponse.json({ error: 'Üye bulunamadı.' }, { status: 404 });
+	if (result === 'none') return NextResponse.json({ error: 'Member not found.' }, { status: 404 });
 	if (result === 'admin') {
-		return NextResponse.json({ error: 'Admin hesabı anonimleştirilemez.' }, { status: 409 });
+		return NextResponse.json({ error: 'Admin account cannot be anonymized.' }, { status: 409 });
 	}
 	return NextResponse.json({ ok: true });
 }

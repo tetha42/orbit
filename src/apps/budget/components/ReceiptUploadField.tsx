@@ -7,14 +7,14 @@ import ui from '@/core/ui/ui.module.css';
 import k from './Vault.module.css';
 
 interface ReceiptUploadFieldProps {
-	receiptPhotoUrl: string | null;
+	receiptUrl: string | null;
 	uploading: boolean;
 	onUpload: (file: File | undefined) => void;
 	onRemove: () => void;
 }
 
 export function ReceiptUploadField({
-	receiptPhotoUrl,
+	receiptUrl,
 	uploading,
 	onUpload,
 	onRemove,
@@ -23,10 +23,10 @@ export function ReceiptUploadField({
 
 	return (
 		<div className={ui.field}>
-			<span className={ui.fieldLabel}>{t('kasaReceiptLabel')}</span>
+			<span className={ui.fieldLabel}>{t('treasuryReceiptLabel')}</span>
 			<div className={k.fileRow}>
 				<label className={ui.btn} style={{ cursor: uploading ? 'wait' : 'pointer' }}>
-					<Paperclip size={14} /> {receiptPhotoUrl ? t('kasaChangeFile') : t('kasaChooseFile')}
+					<Paperclip size={14} /> {receiptUrl ? t('treasuryChangeFile') : t('treasuryChooseFile')}
 					<input
 						type="file"
 						hidden
@@ -36,15 +36,15 @@ export function ReceiptUploadField({
 					/>
 				</label>
 				{uploading && <span className={ui.muted}>{t('loading')}</span>}
-				{receiptPhotoUrl && !uploading && (
+				{receiptUrl && !uploading && (
 					<>
 						<a
 							className={k.receipt}
-							href={receiptPhotoUrl}
+							href={receiptUrl}
 							target="_blank"
 							rel="noopener noreferrer"
 						>
-							<Check size={14} /> {t('kasaReceiptAttached')}
+							<Check size={14} /> {t('treasuryReceiptAttached')}
 						</a>
 						<button type="button" className={ui.btn} onClick={onRemove}>
 							{t('dlgRemove')}

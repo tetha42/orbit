@@ -14,26 +14,49 @@ export function ClockApplet() {
 	const buttonRef = useRef<HTMLButtonElement>(null);
 
 	useEffect(() => {
+		const localeDef = getLocaleDefinition(language);
+		const formatter = new Intl.DateTimeFormat(localeDef.dateLocale, {
+			weekday: 'short',
+			day: 'numeric',
+			month: 'short',
+			hour: '2-digit',
+			minute: '2-digit',
+		});
+
 		const updateTime = () => {
+			if (typeof document !== 'undefined' && document.hidden) return;
+			setTimeStr(formatter.format(new Date()));
+		};
+
+		let timeoutId: ReturnType<typeof setTimeout> | null = null;
+		const scheduleNextTick = () => {
+			if (timeoutId) clearTimeout(timeoutId);
 			const now = new Date();
-			const localeDef = getLocaleDefinition(language);
-			const formatted = new Intl.DateTimeFormat(localeDef.dateLocale, {
-				weekday: 'short',
-				day: 'numeric',
-				month: 'short',
-				hour: '2-digit',
-				minute: '2-digit',
-			}).format(now);
-			setTimeStr(formatted);
+			const msUntilNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds() + 50;
+			timeoutId = setTimeout(() => {
+				updateTime();
+				scheduleNextTick();
+			}, Math.max(1000, msUntilNextMinute));
 		};
 
 		updateTime();
-		const interval = setInterval(updateTime, 1000);
-		return () => clearInterval(interval);
+		scheduleNextTick();
+		const onVisibility = () => {
+			if (typeof document !== 'undefined' && !document.hidden) {
+				updateTime();
+				scheduleNextTick();
+			}
+		};
+		document.addEventListener('visibilitychange', onVisibility);
+		return () => {
+			if (timeoutId) clearTimeout(timeoutId);
+			document.removeEventListener('visibilitychange', onVisibility);
+		};
 	}, [language]);
 
-	// Close on click outside
+	// Close on click outside (only attach when open)
 	useEffect(() => {
+		if (!isCalendarOpen) return;
 		const handlePointerDown = (e: MouseEvent) => {
 			if (ref.current && !ref.current.contains(e.target as Node)) {
 				setIsCalendarOpen(false);
@@ -41,7 +64,7 @@ export function ClockApplet() {
 		};
 		window.addEventListener('pointerdown', handlePointerDown);
 		return () => window.removeEventListener('pointerdown', handlePointerDown);
-	}, [setIsCalendarOpen]);
+	}, [isCalendarOpen, setIsCalendarOpen]);
 
 	return (
 		<div ref={ref} style={{ position: 'relative', height: '100%', display: 'flex', alignItems: 'center' }}>

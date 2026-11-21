@@ -174,9 +174,9 @@ export function KanbanCard({
 				)}
 				<span
 					className={`${ui.avatar} ${task.assigneeMemberId ? '' : styles.avatarEmpty}`}
-					title={task.assigneeNameSurname || t('kbUnassigned')}
+					title={task.assigneeName || t('kbUnassigned')}
 				>
-					{task.assigneeMemberId ? initials(task.assigneeNameSurname) : '?'}
+					{task.assigneeMemberId ? initials(task.assigneeName) : '?'}
 				</span>
 			</div>
 		</article>

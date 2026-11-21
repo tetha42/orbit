@@ -7,7 +7,7 @@
  */
 export type JsonResult<T> =
 	| { ok: true; data: T; error?: undefined; status: number }
-	| { ok: false; data?: undefined; error: string; status: number };
+	| { ok: false; data?: undefined; error: string; code?: string; status: number };
 
 export async function sendJson<T = Record<string, unknown>>(url: string, method: 'POST' | 'PATCH' | 'PUT' | 'DELETE', body?: unknown): Promise<JsonResult<T>> {
 	try {
@@ -16,8 +16,8 @@ export async function sendJson<T = Record<string, unknown>>(url: string, method:
 			headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
 			body: body === undefined ? undefined : JSON.stringify(body),
 		});
-		const data = (await res.json().catch(() => ({}))) as T & { error?: string };
-		if (!res.ok) return { ok: false, error: data?.error || '', status: res.status };
+		const data = (await res.json().catch(() => ({}))) as T & { error?: string; code?: string };
+		if (!res.ok) return { ok: false, error: data?.error || '', code: data?.code, status: res.status };
 		return { ok: true, data, status: res.status };
 	} catch {
 		return { ok: false, error: '', status: 0 };

@@ -1,17 +1,15 @@
 'use client';
 
-import { createContext, useContext, useMemo } from 'react';
-import type { AppID, ContextMenuMode, DesktopContextMenuState, DockContextMenuState, GlobalContextMenuState, MenuItem } from '@/types/workspace';
+import { createContext, useContext, useMemo, useSyncExternalStore } from 'react';
+import type {
+	AppID,
+	ContextMenuMode,
+	DesktopContextMenuState,
+	DockContextMenuState,
+	GlobalContextMenuState,
+	MenuItem,
+} from '@/types/workspace';
 
-/**
- * The shell: what the desktop itself holds, outside the core modules (session,
- * language, sound, windows, theme) — wallpaper, brightness, the dock, context
- * menus and which panel is open. The provider lives in state/workspaceStore.tsx.
- *
- * It is split in two so that a component that only acts (open a context menu,
- * close a panel) takes `useShellActions()` — a stable object that never
- * re-renders it — and only a component that shows shell state takes `useShellState()`.
- */
 export interface ShellState {
 	dockApps: AppID[];
 	activeWallpaper: string;
@@ -35,7 +33,13 @@ export interface ShellActions {
 	closeDockContextMenu: () => void;
 	openDesktopContextMenu: (x: number, y: number) => void;
 	closeDesktopContextMenu: () => void;
-	openContextMenu: (options: { x: number; y: number; mode?: ContextMenuMode; appId?: AppID | null; customItems?: MenuItem[] | null }) => void;
+	openContextMenu: (options: {
+		x: number;
+		y: number;
+		mode?: ContextMenuMode;
+		appId?: AppID | null;
+		customItems?: MenuItem[] | null;
+	}) => void;
 	closeContextMenu: () => void;
 	registerAppContextMenu: (appId: AppID, items: MenuItem[] | null) => void;
 	cycleWallpaper: () => void;
@@ -51,8 +55,27 @@ export interface ShellActions {
 	setIsCalendarOpen: (open: boolean) => void;
 }
 
+export interface ShellStore {
+	getState: () => ShellState;
+	subscribe: (listener: () => void) => () => void;
+}
+
 export const ShellStateContext = createContext<ShellState | null>(null);
+export const ShellStoreContext = createContext<ShellStore | null>(null);
 export const ShellActionsContext = createContext<ShellActions | null>(null);
+
+/** Fine-grained selector subscription via useSyncExternalStore. */
+export function useShellSelector<T>(selector: (state: ShellState) => T): T {
+	const store = useContext(ShellStoreContext);
+	const fallbackState = useContext(ShellStateContext);
+	const getSnapshot = () => {
+		const s = store ? store.getState() : fallbackState;
+		if (!s) throw new Error('useShellSelector must be used within a WorkspaceProvider');
+		return selector(s);
+	};
+	const subscribe = store ? store.subscribe : () => () => {};
+	return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+}
 
 /** Wallpaper, dock, context-menu and panel state — re-renders when any of it changes. */
 export function useShellState(): ShellState {

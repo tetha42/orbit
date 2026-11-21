@@ -5,11 +5,11 @@ import type { ReactNode } from 'react';
 import ui from './ui.module.css';
 
 /**
- * Short confirmations ("Kayıt eklendi.") and failures, for every app — one
+ * Short confirmations ("Saved.") and failures, for every app — one
  * provider instead of a useState + setTimeout pair in each app.
  *
  *   const notify = useToast();
- *   notify('Kaydedildi.');            // success
+ *   notify('Saved.');            // success
  *   notify(res.error, 'error');
  */
 export type ToastTone = 'success' | 'error';

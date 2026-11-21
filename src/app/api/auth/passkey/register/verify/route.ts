@@ -21,7 +21,7 @@ async function handlePOST(request: Request) {
 	const limit = consumeRateLimit(`passkey:reg:verify:${auth.user.id}`, 10, 15 * 60_000);
 	if (!limit.allowed) {
 		return NextResponse.json(
-			{ error: 'Çok fazla Passkey doğrulama denemesi. Lütfen daha sonra tekrar deneyin.' },
+			{ error: 'Too many passkey verification attempts. Please try again later.' },
 			{ status: 429, headers: { 'Retry-After': String(limit.retryAfter) } }
 		);
 	}
@@ -32,13 +32,13 @@ async function handlePOST(request: Request) {
 		const { challengeId, response, nickname } = body;
 
 		if (!challengeId || !response) {
-			return NextResponse.json({ error: 'Eksik parametreler.' }, { status: 400 });
+			return NextResponse.json({ error: 'Missing required parameters.' }, { status: 400 });
 		}
 
 		const pending = await consumeWebauthnChallenge(String(challengeId), 'registration');
 		if (!pending || pending.userId !== user.id) {
 			return NextResponse.json(
-				{ error: 'Doğrulama oturumu geçersiz veya süresi dolmuş. Lütfen tekrar deneyin.' },
+				{ error: 'Verification session is invalid or has expired. Please try again.' },
 				{ status: 400 }
 			);
 		}
@@ -50,10 +50,11 @@ async function handlePOST(request: Request) {
 			expectedChallenge: pending.challenge,
 			expectedOrigin: origin,
 			expectedRPID: rpID,
+			requireUserVerification: true,
 		});
 
 		if (!verification.verified || !verification.registrationInfo) {
-			return NextResponse.json({ error: 'Passkey doğrulanamadı.' }, { status: 400 });
+			return NextResponse.json({ error: 'Passkey verification failed.' }, { status: 400 });
 		}
 
 		const { credential, credentialDeviceType, credentialBackedUp } =
@@ -64,7 +65,7 @@ async function handlePOST(request: Request) {
 		const clash = await getWebauthnCredentialById(credential.id);
 		if (clash) {
 			return NextResponse.json(
-				{ error: 'Bu passkey zaten kayıtlı.' },
+				{ error: 'This passkey is already registered.' },
 				{ status: 409 }
 			);
 		}
@@ -80,10 +81,10 @@ async function handlePOST(request: Request) {
 			nickname: typeof nickname === 'string' && nickname.trim() ? nickname.trim().slice(0, 60) : null,
 		});
 
-		return NextResponse.json({ success: true, message: 'Passkey eklendi.' });
+		return NextResponse.json({ success: true, message: 'Passkey added.' });
 	} catch (error) {
 		console.error('API /api/auth/passkey/register/verify error:', error);
-		return NextResponse.json({ error: 'Passkey kaydedilemedi.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to save passkey.' }, { status: 500 });
 	}
 }
 

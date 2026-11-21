@@ -37,9 +37,9 @@ const manifest = {
 	notifications: { checkin: 'use', event: 'use' },
 	permission: {
 		order: 1,
-		name: 'Etkinlikler',
-		use: 'Etkinliklere kaydolur, bilet ve QR yoklama kullanır.',
-		manage: 'Etkinlik oluşturur, yoklama alır, katılımcı listesini görür ve indirir.',
+		name: 'Events & Attendance',
+		use: 'Register for events, access tickets and use QR check-in.',
+		manage: 'Create events, manage attendance, and view or export attendee rosters.',
 	},
 	menu: {
 		title: { tr: 'Etkinlikler', en: 'Events' },
@@ -49,7 +49,7 @@ const manifest = {
 				id: 'file',
 				title: { tr: 'İşlemler', en: 'Actions' },
 				items: [
-					{ id: 'new-event', label: { tr: 'Yeni CommunityEvent...', en: 'New Event...' }, shortcut: '⌘N', permission: 'manage', command: 'new-event' },
+					{ id: 'new-event', label: { tr: 'Yeni Etkinlik...', en: 'New Event...' }, shortcut: '⌘N', permission: 'manage', command: 'new-event' },
 					{ id: 'projector-qr', label: { tr: 'Projeksiyon QR Modu', en: 'Projector QR Mode' }, shortcut: '⌘P', permission: 'manage', command: 'projector' },
 				],
 			},

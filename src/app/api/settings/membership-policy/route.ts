@@ -18,17 +18,17 @@ export async function PATCH(request: Request) {
 	const auth = await requireApp(request, 'settings', 'manage');
 	if (!auth.authorized) return auth.response;
 	if (auth.user.status === 'alumni') {
-		return NextResponse.json({ error: 'Mezunlar sadece okuma erişimine sahiptir.' }, { status: 403 });
+		return NextResponse.json({ error: 'Alumni accounts have read-only access.' }, { status: 403 });
 	}
 	const body = await request.json().catch(() => null);
 	if (!body || typeof body !== 'object' || Array.isArray(body)) {
-		return NextResponse.json({ error: 'Geçersiz üyelik politikası.' }, { status: 400 });
+		return NextResponse.json({ error: 'Invalid membership policy.' }, { status: 400 });
 	}
 	const policy = await setMembershipPolicy(body);
 	void logSystemEvent({
 		service: 'settings',
 		level: 'INFO',
-		message: `Üyelik politikası güncellendi (${auth.user.firstName || auth.user.name || ""} ${auth.user.lastName || auth.user.surname || ""})`,
+		message: `Membership policy updated (${auth.user.firstName || auth.user.name || ""} ${auth.user.lastName || auth.user.surname || ""})`,
 		detail: {
 			selfRegistration: policy.selfRegistration,
 			adminCreate: policy.adminCreate,

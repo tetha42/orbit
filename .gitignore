@@ -9,6 +9,7 @@
 .next/
 .next-*/
 *.tsbuildinfo
+.eslintcache
 package-lock.json
 
 # Database dumps produced by `make db-backup`
@@ -26,6 +27,9 @@ config.ini
 *.ini
 *.ini.example
 *.log
+
+# Security Guard compiled Go binary (bin/orbit remains tracked)
+/bin/security-guard
 
 # UI e2e (tests/e2e/ui): screenshots, server logs and run fixtures stay local.
 /tests/e2e/shots/

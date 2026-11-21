@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { ArrowRightLeft, Download, Plus } from 'lucide-react';
-import { useI18n } from '@/core/i18n';
+import { getLocaleDefinition, useI18n } from '@/core/i18n';
 import { BUDGET_CATEGORIES, TRANSFER_CATEGORY } from '@/types/budget';
 import ui from '@/core/ui/ui.module.css';
 import k from './Vault.module.css';
@@ -11,7 +11,7 @@ import { categoryLabel } from '../categoryLabel';
 interface VaultToolbarProps {
 	search: string;
 	onSearchChange: (val: string) => void;
-	typeValue: 'all' | 'income' | 'expense';
+	typeFilter: 'all' | 'income' | 'expense';
 	onTypeChange: (val: 'all' | 'income' | 'expense') => void;
 	category: string;
 	onCategoryChange: (val: string) => void;
@@ -29,7 +29,7 @@ interface VaultToolbarProps {
 const monthName = (key: string, style: 'short' | 'long' = 'short', lang = 'tr') => {
 	const [y, m] = key.split('-').map(Number);
 	return new Date(y, m - 1, 1).toLocaleDateString(
-		lang === 'tr' ? 'tr-TR' : 'en-US',
+		getLocaleDefinition(lang).dateLocale,
 		style === 'long' ? { month: 'long', year: 'numeric' } : { month: 'short' }
 	);
 };
@@ -37,7 +37,7 @@ const monthName = (key: string, style: 'short' | 'long' = 'short', lang = 'tr') 
 export function VaultToolbar({
 	search,
 	onSearchChange,
-	typeValue,
+	typeFilter,
 	onTypeChange,
 	category,
 	onCategoryChange,
@@ -57,10 +57,10 @@ export function VaultToolbar({
 		<div className={k.toolbar}>
 			<input
 				className={`${ui.search} ${k.searchInput}`}
-				placeholder={t('kasaSearchPlaceholder')}
+				placeholder={t('treasurySearchPlaceholder')}
 				value={search}
 				onChange={(e) => onSearchChange(e.target.value)}
-				aria-label={t('kasaSearchPlaceholder')}
+				aria-label={t('treasurySearchPlaceholder')}
 			/>
 			<div className={ui.segmented} role="radiogroup" aria-label={t('budgetColType')}>
 				{(['all', 'income', 'expense'] as const).map((f) => (
@@ -68,11 +68,11 @@ export function VaultToolbar({
 						key={f}
 						type="button"
 						role="radio"
-						aria-checked={typeValue === f}
-						className={`${ui.segment} ${typeValue === f ? ui.segmentActive : ''}`}
+						aria-checked={typeFilter === f}
+						className={`${ui.segment} ${typeFilter === f ? ui.segmentActive : ''}`}
 						onClick={() => onTypeChange(f)}
 					>
-						{f === 'all' ? t('all') : f === 'income' ? t('kasaIncome') : t('kasaExpense')}
+						{f === 'all' ? t('all') : f === 'income' ? t('treasuryIncome') : t('treasuryExpense')}
 					</button>
 				))}
 			</div>
@@ -83,7 +83,7 @@ export function VaultToolbar({
 				onChange={(e) => onCategoryChange(e.target.value)}
 				aria-label={t('budgetColCategory')}
 			>
-				<option value="">{t('kasaAllCategories')}</option>
+				<option value="">{t('treasuryAllCategories')}</option>
 				{[...BUDGET_CATEGORIES, TRANSFER_CATEGORY].map((c) => (
 					<option key={c} value={c}>
 						{categoryLabel(t, c)}
@@ -97,7 +97,7 @@ export function VaultToolbar({
 				onChange={(e) => onMonthChange(e.target.value)}
 				aria-label={t('budgetColDate')}
 			>
-				<option value="">{t('kasaAllMonths')}</option>
+				<option value="">{t('treasuryAllMonths')}</option>
 				{monthOptions.map((m) => (
 					<option key={m} value={m}>
 						{monthName(m, 'long', language)}
@@ -116,7 +116,7 @@ export function VaultToolbar({
 			</button>
 			{canTransfer && (
 				<button type="button" className={ui.btn} onClick={onOpenTransfer}>
-					<ArrowRightLeft size={14} /> {t('kasaTransferGrant')}
+					<ArrowRightLeft size={14} /> {t('treasuryTransferGrant')}
 				</button>
 			)}
 			{canWrite && (

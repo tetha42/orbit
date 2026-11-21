@@ -1,12 +1,32 @@
-import { ensurePostgresInit, getPgPool } from '@/db/index';
+import { unlink } from 'fs/promises';
+import path from 'path';
+import { ensurePostgresInit, getPgPool, withTransaction } from '@/db/index';
+import { deleteStoredFilesByScope } from '@/db/repositories/files.repo';
 import type { UserNote, UserNoteFolder } from '@/db/schema';
+import { UPLOAD_NAME_RE, uploadDir } from '@/lib/uploads';
+
+async function unlinkNoteFiles(files: Array<{ id: string; storedName: string }>): Promise<void> {
+	if (files.length === 0) return;
+	const rootDir = path.resolve(uploadDir());
+	for (const file of files) {
+		const name = file.storedName || file.id;
+		if (!UPLOAD_NAME_RE.test(name)) continue;
+		const resolved = path.resolve(rootDir, name);
+		if (!resolved.startsWith(rootDir + path.sep)) continue;
+		try {
+			await unlink(resolved);
+		} catch {
+			// Ignore missing physical upload files when cleaning up deleted notes.
+		}
+	}
+}
 
 export async function getUserNotes(userId: string): Promise<UserNote[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
 		`SELECT id, user_id AS "userId", title AS title, content AS content, color AS color,
 		        is_pinned AS "isPinned", folder_id AS "folderId", is_trashed AS "isTrashed",
-		        updated_at AS update, created_at AS creation
+		        updated_at AS "updatedAt", created_at AS "createdAt"
 		 FROM user_notes
 		 WHERE user_id = $1 AND folder_id <> '__folder__'
 		 ORDER BY is_pinned DESC, updated_at DESC`,
@@ -33,14 +53,14 @@ export async function getUserNotes(userId: string): Promise<UserNote[]> {
 		return {
 			id: r.id as string,
 			userId: r.userId as string,
-			title: (r.title as string) || 'Başlıksız Not',
+			title: (r.title as string) || 'Untitled Note',
 			content: body,
 			color: (r.color as string) || 'yellow',
 			isPinned: Boolean(r.isPinned),
 			folderId: folderId,
 			isTrashed: isDeleted,
-			update: Number(r.update) || Date.now(),
-			creation: Number(r.creation) || Date.now(),
+			updatedAt: Number(r.updatedAt) || Date.now(),
+			createdAt: Number(r.createdAt) || Date.now(),
 		};
 	});
 }
@@ -72,9 +92,9 @@ export async function saveUserNote(params: {
 			[params.id]
 		);
 		if (existing.rows.length > 0) {
-			const owner = String(existing.rows[0].userId ?? existing.rows[0].userid);
+			const owner = String(existing.rows[0].userId);
 			if (owner !== params.userId) {
-				throw new Error('Yetkisiz işlem: Bu not başka bir kullanıcıya aittir.');
+				throw new Error('Unauthorized: This note belongs to another user.');
 			}
 		}
 	}
@@ -96,7 +116,7 @@ export async function saveUserNote(params: {
 	);
 
 	if (params.id && (res.rowCount ?? 0) === 0) {
-		throw new Error('Yetkisiz işlem: Bu not başka bir kullanıcıya aittir.');
+		throw new Error('Unauthorized: This note belongs to another user.');
 	}
 
 	return {
@@ -108,33 +128,38 @@ export async function saveUserNote(params: {
 		isPinned: Boolean(isPinned),
 		folderId: folderId,
 		isTrashed: Boolean(isTrashed),
-		update: now,
-		creation: now,
+		updatedAt: now,
+		createdAt: now,
 	};
 }
 
+async function deleteNotesAndFiles(userId: string, clause: string, params: unknown[]): Promise<number> {
+	const { count, storedFiles } = await withTransaction(async (client) => {
+		const res = await client.query<{ id: string }>(
+			`DELETE FROM user_notes WHERE ${clause} RETURNING id`,
+			params
+		);
+		const ids = res.rows.map((r) => String(r.id));
+		if (ids.length === 0) return { count: 0, storedFiles: [] as Array<{ id: string; storedName: string }> };
+		const stored = await deleteStoredFilesByScope(userId, 'notes', ids, client);
+		return { count: ids.length, storedFiles: stored };
+	});
+	await unlinkNoteFiles(storedFiles);
+	return count;
+}
+
 export async function deleteUserNote(id: string, userId: string): Promise<boolean> {
-	await ensurePostgresInit();
-	const res = await getPgPool().query(
-		`DELETE FROM user_notes WHERE id = $1 AND user_id = $2 AND folder_id <> '__folder__'`,
-		[id, userId]
-	);
-	return (res.rowCount ?? 0) > 0;
+	return (await deleteNotesAndFiles(userId, `id = $1 AND user_id = $2 AND folder_id <> '__folder__'`, [id, userId])) > 0;
 }
 
 export async function emptyUserNotesTrash(userId: string): Promise<number> {
-	await ensurePostgresInit();
-	const res = await getPgPool().query(
-		`DELETE FROM user_notes WHERE user_id = $1 AND is_trashed = 1 AND folder_id <> '__folder__'`,
-		[userId]
-	);
-	return res.rowCount ?? 0;
+	return deleteNotesAndFiles(userId, `user_id = $1 AND is_trashed = 1 AND folder_id <> '__folder__'`, [userId]);
 }
 
 export async function getUserNoteFolders(userId: string): Promise<UserNoteFolder[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT id, user_id AS "userId", title AS name, color AS color, is_pinned AS "order", created_at AS creation
+		`SELECT id, user_id AS "userId", title AS name, color AS color, is_pinned AS "order", created_at AS "createdAt"
 		 FROM user_notes
 		 WHERE user_id = $1 AND folder_id = '__folder__'
 		 ORDER BY is_pinned ASC, created_at ASC`,
@@ -146,7 +171,7 @@ export async function getUserNoteFolders(userId: string): Promise<UserNoteFolder
 		name: r.name as string,
 		color: (r.color as string) || undefined,
 		order: Number(r.order) || 0,
-		creation: Number(r.creation) || Date.now(),
+		createdAt: Number(r.createdAt) || Date.now(),
 	}));
 }
 
@@ -171,9 +196,9 @@ export async function saveUserNoteFolder(params: {
 			[params.id]
 		);
 		if (existing.rows.length > 0) {
-			const owner = String(existing.rows[0].userId ?? existing.rows[0].userid);
+			const owner = String(existing.rows[0].userId);
 			if (owner !== params.userId) {
-				throw new Error('Yetkisiz işlem: Bu klasör başka bir kullanıcıya aittir.');
+				throw new Error('Unauthorized: This folder belongs to another user.');
 			}
 		}
 	}
@@ -192,7 +217,7 @@ export async function saveUserNoteFolder(params: {
 	);
 
 	if (params.id && (res.rowCount ?? 0) === 0) {
-		throw new Error('Yetkisiz işlem: Bu klasör başka bir kullanıcıya aittir.');
+		throw new Error('Unauthorized: This folder belongs to another user.');
 	}
 
 	return {
@@ -201,7 +226,7 @@ export async function saveUserNoteFolder(params: {
 		name: params.name,
 		color: color || undefined,
 		order,
-		creation: now,
+		createdAt: now,
 	};
 }
 

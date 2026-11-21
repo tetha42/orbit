@@ -5,7 +5,7 @@ import { useI18n } from '@/core/i18n';
 import { fill } from '@/lib/text';
 import { X, Users, UserPlus } from 'lucide-react';
 import type { ChatRoomItem, ChatRoomMemberItem } from '../types';
-import s from '../Chat.module.css';
+import s from '../ChatModals.module.css';
 
 interface GroupInfoModalProps {
 	isOpen: boolean;
@@ -166,8 +166,8 @@ export function GroupInfoModal({
 											{member.avatarUrl || member.profilePhoto ? (
 												// eslint-disable-next-line @next/next/no-img-element
 												<img
-													src={member.avatarUrl || member.profilePhoto}
-													alt={member.firstName || member.name}
+													src={member.avatarUrl || member.profilePhoto || undefined}
+													alt={member.firstName || member.name || ''}
 													style={{ width: '100%', height: '100%', objectFit: 'cover' }}
 												/>
 											) : (

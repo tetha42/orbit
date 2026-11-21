@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { KeyRound, ShieldAlert, Lock, ArrowRight, Loader2 } from 'lucide-react';
+import { KeyRound, Lock, Loader2 } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
-import { useWindowActions } from '@/core/windows';
+import { TerminalPasskeyGate, TerminalTwoFactorRequired } from './TerminalGateStates';
 
 interface TerminalTwoFactorPromptProps {
 	isLight: boolean;
@@ -25,7 +25,6 @@ export function TerminalTwoFactorPrompt({
 	onSubmit,
 }: TerminalTwoFactorPromptProps) {
 	const { t } = useI18n();
-	const { openApp } = useWindowActions();
 
 	const [code, setCode] = useState('');
 	const [loading, setLoading] = useState(false);
@@ -66,144 +65,14 @@ export function TerminalTwoFactorPrompt({
 		const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 8);
 		setCode(val);
 		setError(null);
-		// Deliberately no auto-submit: browser OTP autofill can refill the code
-		// that was just spent at sign-in, which would submit it again immediately
-		// and bounce the gate before the user can read the error.
 	};
 
 	if (passkeySession) {
-		return (
-			<div
-				style={{
-					display: 'flex',
-					flexDirection: 'column',
-					alignItems: 'center',
-					justifyContent: 'center',
-					height: '100%',
-					padding: '2rem',
-					background: isLight ? '#f8fafc' : '#080b11',
-					color: isLight ? '#0f172a' : '#f8fafc',
-					textAlign: 'center',
-				}}
-			>
-				<div
-					style={{
-						width: '56px',
-						height: '56px',
-						borderRadius: '14px',
-						background: 'rgba(16, 185, 129, 0.12)',
-						border: '1px solid rgba(16, 185, 129, 0.3)',
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						marginBottom: '1.25rem',
-						color: '#10b981',
-					}}
-				>
-					<KeyRound size={28} />
-				</div>
-				<h2 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '0.4rem' }}>
-					{t('termPasskeyTitle')}
-				</h2>
-				<p
-					style={{
-						maxWidth: '430px',
-						fontSize: '0.8125rem',
-						color: isLight ? '#64748b' : '#94a3b8',
-						lineHeight: 1.5,
-						marginBottom: '1.5rem',
-					}}
-				>
-					{t('termPasskeyDesc')}
-				</p>
-				<button
-					type="button"
-					onClick={() => void onSubmit('')}
-					style={{
-						padding: '0.625rem 1.25rem',
-						borderRadius: '10px',
-						background: 'var(--accent)',
-						color: '#fff',
-						fontSize: '0.875rem',
-						fontWeight: 600,
-						border: 'none',
-						cursor: 'pointer',
-					}}
-				>
-					{t('termPasskeyOpen')}
-				</button>
-			</div>
-		);
+		return <TerminalPasskeyGate isLight={isLight} error={error} onContinue={() => void onSubmit('')} />;
 	}
 
 	if (!twoFactorEnabled) {
-		return (
-			<div
-				style={{
-					display: 'flex',
-					flexDirection: 'column',
-					alignItems: 'center',
-					justifyContent: 'center',
-					height: '100%',
-					padding: '2rem',
-					background: isLight ? '#f8fafc' : '#080b11',
-					color: isLight ? '#0f172a' : '#f8fafc',
-					textAlign: 'center',
-				}}
-			>
-				<div
-					style={{
-						width: '64px',
-						height: '64px',
-						borderRadius: '16px',
-						background: 'rgba(239, 68, 68, 0.12)',
-						border: '1px solid rgba(239, 68, 68, 0.25)',
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						marginBottom: '1.25rem',
-						color: '#ef4444',
-					}}
-				>
-					<ShieldAlert size={34} />
-				</div>
-				<h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-					{t('twofactorSetupRequired')}
-				</h2>
-				<p
-					style={{
-						maxWidth: '440px',
-						fontSize: '0.875rem',
-						color: isLight ? '#64748b' : '#94a3b8',
-						lineHeight: 1.6,
-						marginBottom: '1.5rem',
-					}}
-				>
-					{t('term2faRequiredDesc')}
-				</p>
-				<button
-					type="button"
-					onClick={() => openApp('settings', { section: 'security' })}
-					style={{
-						display: 'inline-flex',
-						alignItems: 'center',
-						gap: '0.5rem',
-						padding: '0.625rem 1.25rem',
-						borderRadius: '10px',
-						background: '#2563eb',
-						color: '#ffffff',
-						fontSize: '0.875rem',
-						fontWeight: 500,
-						border: 'none',
-						cursor: 'pointer',
-						boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
-					}}
-				>
-					{t('term2faOpenSettings')}
-					<ArrowRight size={16} />
-				</button>
-			</div>
-		);
+		return <TerminalTwoFactorRequired isLight={isLight} />;
 	}
 
 	return (
@@ -225,8 +94,8 @@ export function TerminalTwoFactorPrompt({
 					maxWidth: '380px',
 					padding: '2rem',
 					borderRadius: '16px',
-					background: isLight ? '#ffffff' : 'rgba(15, 23, 42, 0.75)',
-					border: isLight ? '1px solid rgba(226, 232, 240, 0.8)' : '1px solid rgba(255, 255, 255, 0.08)',
+					background: isLight ? '#ffffff' : 'color-mix(in srgb, var(--ink-bg) 75%, transparent)',
+					border: isLight ? '1px solid color-mix(in srgb, var(--ink-text-secondary) 80%, transparent)' : '1px solid rgba(255, 255, 255, 0.08)',
 					boxShadow: isLight ? '0 10px 25px -5px rgba(0, 0, 0, 0.06)' : '0 10px 25px -5px rgba(0, 0, 0, 0.5)',
 					textAlign: 'center',
 				}}
@@ -236,13 +105,13 @@ export function TerminalTwoFactorPrompt({
 						width: '56px',
 						height: '56px',
 						borderRadius: '14px',
-						background: idleExpired ? 'rgba(245, 158, 11, 0.12)' : 'rgba(16, 185, 129, 0.12)',
-						border: idleExpired ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(16, 185, 129, 0.3)',
+						background: idleExpired ? 'color-mix(in srgb, var(--warning) 12%, transparent)' : 'color-mix(in srgb, var(--success) 12%, transparent)',
+						border: idleExpired ? '1px solid color-mix(in srgb, var(--warning) 30%, transparent)' : '1px solid color-mix(in srgb, var(--success) 30%, transparent)',
 						display: 'flex',
 						alignItems: 'center',
 						justifyContent: 'center',
 						margin: '0 auto 1.25rem',
-						color: idleExpired ? '#f59e0b' : '#10b981',
+						color: idleExpired ? 'var(--warning)' : 'var(--success)',
 					}}
 				>
 					{idleExpired ? <Lock size={28} /> : <KeyRound size={28} />}
@@ -268,9 +137,9 @@ export function TerminalTwoFactorPrompt({
 						style={{
 							padding: '0.625rem 0.875rem',
 							borderRadius: '8px',
-							background: 'rgba(239, 68, 68, 0.1)',
-							border: '1px solid rgba(239, 68, 68, 0.25)',
-							color: '#ef4444',
+							background: 'color-mix(in srgb, var(--danger) 10%, transparent)',
+							border: '1px solid color-mix(in srgb, var(--danger) 25%, transparent)',
+							color: 'var(--danger)',
 							fontSize: '0.8125rem',
 							marginBottom: '1.25rem',
 							textAlign: 'left',
@@ -320,7 +189,7 @@ export function TerminalTwoFactorPrompt({
 							gap: '0.5rem',
 							padding: '0.75rem 1.25rem',
 							borderRadius: '10px',
-							background: loading || code.trim().length < 6 ? (isLight ? '#94a3b8' : '#334155') : '#10b981',
+							background: loading || code.trim().length < 6 ? (isLight ? '#94a3b8' : '#334155') : 'var(--success)',
 							color: '#ffffff',
 							fontSize: '0.875rem',
 							fontWeight: 600,

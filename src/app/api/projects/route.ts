@@ -4,6 +4,7 @@ import { createProject, getProjects, getPgPool, type ProjectInput } from '@/db';
 import { publishEventQuiet } from '@/db/events';
 import { can, requireApp } from '@/lib/auth/access';
 import { parseProjectInput } from '@/server/projectInput';
+import projectsContract from '@/apps/projects/projects.contract.json';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,25 +15,45 @@ export async function GET(request: Request) {
 	try {
 		const manage = can(auth.user, 'projects', 'manage');
 		const projects = await getProjects(auth.user.id, manage);
-		return NextResponse.json({ projects: projects, permissions: { manage } });
+		return NextResponse.json({ projects, permissions: { manage } });
 	} catch (error) {
 		console.error('API /api/projects GET error:', error);
-		return NextResponse.json({ error: 'Projeler okunamadı.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to load projects.' }, { status: 500 });
 	}
 }
 
 /**
- * Adds a project. A member's submission is a proposal (`oneri`) until management
+ * Adds a project. A member's submission is a proposal ('proposed') until management
  * publishes it; management may publish directly or keep it as a draft proposal.
  */
 async function handlePOST(request: Request) {
 	const auth = await requireApp(request, 'projects', 'use');
 	if (!auth.authorized) return auth.response;
 	if (auth.user.status === 'alumni') {
-		return NextResponse.json({ error: 'Mezunlar sadece okuma erişimine sahiptir.' }, { status: 403 });
+		return NextResponse.json({ error: 'Alumni have read-only access.' }, { status: 403 });
 	}
 	try {
 		const body = (await request.json()) as Record<string, unknown>;
+		if (typeof body.title === 'string' && body.title.trim().length > projectsContract.limits.maxTitleLength) {
+			return NextResponse.json(
+				{ error: `Project title cannot exceed ${projectsContract.limits.maxTitleLength} characters.` },
+				{ status: 400 }
+			);
+		}
+		const techCount = Array.isArray(body.technologies)
+			? body.technologies.length
+			: typeof body.technologies === 'string'
+			? body.technologies
+					.split(',')
+					.map((s) => s.trim())
+					.filter(Boolean).length
+			: 0;
+		if (techCount > projectsContract.limits.maxTechStackTags) {
+			return NextResponse.json(
+				{ error: `At most ${projectsContract.limits.maxTechStackTags} technology tags are allowed.` },
+				{ status: 400 }
+			);
+		}
 		const parsed = await parseProjectInput(body, auth.user, false);
 		if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
 		const manage = can(auth.user, 'projects', 'manage');
@@ -42,10 +63,10 @@ async function handlePOST(request: Request) {
 			status: manage && body.status !== 'proposed' ? 'published' : 'proposed',
 		});
 		await publishEventQuiet(getPgPool(), [{ k: 'project_updated' }]);
-		return NextResponse.json({ success: true, project: project }, { status: 201 });
+		return NextResponse.json({ success: true, project }, { status: 201 });
 	} catch (error) {
 		console.error('API /api/projects POST error:', error);
-		return NextResponse.json({ error: 'Project kaydedilemedi.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to save project.' }, { status: 500 });
 	}
 }
 

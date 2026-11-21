@@ -1,0 +1,285 @@
+/* ---- Design tokens ----
+   The appearance preferences (core/theme) reach this file as attributes on <html>:
+     data-theme         light | dark              (system already resolved)
+     data-accent        blue | purple | pink | orange | green | graphite
+     data-transparency  on | off                  (off is the default)
+     data-motion        reduce | full
+   Surfaces are OPAQUE by default. With data-transparency="on" the shell surfaces below
+   (window, menu bar, dock, menus, sidebars) turn translucent and the glass tokens get a
+   blur; with it off there is no backdrop-filter anywhere, which is what keeps dragging
+   windows over the 3D wallpaper at 60 FPS. */
+:root {
+	--system-font: var(--font-inter, 'Inter'), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+	--font-sans: var(--system-font);
+	--font-mono: ui-monospace, 'SFMono-Regular', 'JetBrains Mono', Menlo, Monaco, Consolas, monospace;
+
+	/* Type scale, radii */
+	--type-caption: 10px;
+	--type-body: 13px;
+	--type-subheadline: 14px;
+	--type-title-sm: 15px;
+	--type-title-lg: 18px;
+	--radius-window: 10px;
+	--radius-card: 8px;
+	--radius-control: 6px;
+	--radius-traffic: 12px;
+	--traffic-red: #ff5f56;
+	--traffic-yellow: #ffbd2e;
+	--traffic-green: #27c93f;
+
+	/* Accent: the selected tab, the primary button, the focus ring. --accent-blue is the old name. */
+	--accent: #007aff;
+	--accent-blue: var(--accent);
+	--accent-contrast: #ffffff;
+	--accent-hover: color-mix(in srgb, var(--accent) 88%, #000000);
+	--accent-active: color-mix(in srgb, var(--accent) 76%, #000000);
+	--accent-subtle: color-mix(in srgb, var(--accent) 10%, transparent);
+	--accent-muted: color-mix(in srgb, var(--accent) 18%, transparent);
+	--accent-border: color-mix(in srgb, var(--accent) 35%, transparent);
+	--accent-glow: 0 3px 12px color-mix(in srgb, var(--accent) 30%, transparent);
+	--accent-gradient: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 65%, #9b51e0));
+
+	/* Status colours. Vault, Inventory and the notification panel are bound to these. */
+	--success: #248a3d;
+	--warning: #c45500;
+	--danger: #d70015;
+	--danger-subtle: color-mix(in srgb, var(--danger) 12%, transparent);
+	--danger-border: color-mix(in srgb, var(--danger) 35%, transparent);
+	--info: #0a6cdc;
+	--neutral: #6e6e73;
+	--purple: #9333ea;
+	--indigo: #5e5ce6;
+	--gold: #ffb800;
+	--gold-text: #b07d00;
+	--cyan: #0284c7;
+
+	/* Text */
+	--text-primary: #1d1d1f;
+	--text-secondary: #6e6e73;
+	--text-muted: #6e6e73;
+	--text-tertiary: #8e8e93;
+	--text-placeholder: #9ca3af;
+	--window-text: var(--text-primary);
+	--topbar-text: #1d1d1f;
+
+	/* Surfaces (opaque) */
+	--window-bg: #ffffff;
+	--window-bg-secondary: #f5f5f7;
+	--window-titlebar: #f4f4f7;
+	--vibrancy-window: var(--window-bg);
+	--settings-sidebar-bg: #f0f1f2;
+	--right-content-bg: #ffffff;
+	--topbar-bg: #ececf0;
+	--dock-bg: #e8e8ed;
+	--menu-bg: #fbfbfd;
+	--card-bg: #f5f5f7;
+	--bg-hover: color-mix(in srgb, var(--text-primary) 6%, transparent);
+	--surface-paper: #ffffff;
+	--surface-media: #000000;
+	--contrast-dark: #000000;
+	--mobile-dock-bg: rgba(18, 18, 22, 0.94);
+
+	/* Standalone dark ink tokens (auth, verification, OAuth consent, VS Code bridge) */
+	--ink-bg: #09090b;
+	--ink-surface: #0c0c0e;
+	--ink-elevated: #111113;
+	--ink-card: #18181b;
+	--ink-dark: #18191b;
+	--ink-border: #27272a;
+	--ink-border-strong: #3f3f46;
+	--ink-text: #fafafa;
+	--ink-text-secondary: #e4e4e7;
+	--ink-text-muted: #a1a1aa;
+	--ink-text-dim: #71717a;
+	--ink-text-subtle: #52525b;
+	--ink-glass: rgba(9, 9, 11, 0.56);
+	--ink-glass-strong: rgba(9, 9, 11, 0.72);
+	--ink-glass-soft: rgba(9, 9, 11, 0.35);
+	--ink-deep: rgba(3, 7, 18, 0.52);
+	--ink-deep-strong: rgba(3, 7, 18, 0.86);
+	--ink-vs-accent: #0078d4;
+	--ink-vs-hover: #0284c7;
+	--ink-vs-border: #333333;
+	--ink-vs-border-strong: #555555;
+	--ink-vs-surface: #0a0a0a;
+	--ink-vs-elevated: #0e0e10;
+	--ink-vs-panel: #121215;
+	--ink-vs-field: #161619;
+	--ink-vs-field-hover: #1a1a1e;
+	--ink-vs-field-border: #1f1f23;
+	--ink-vs-card: #1c1c1f;
+	--ink-vs-code-bg: #181818;
+	--ink-vs-code-border: #282828;
+	--ink-vs-btn: #3a3d41;
+	--ink-vs-btn-hover: #45494e;
+	--ink-vs-btn-border: #3c3c3c;
+	--ink-vs-text: #cccccc;
+	--ink-vs-muted: #888888;
+	--ink-vs-subtle: #8c8c8c;
+	--ink-vs-dim: #777777;
+	--ink-vs-success: #107c41;
+	--ink-paper-text: #1a1a1a;
+	--syntax-error: #f48771;
+	--syntax-type: #4ec9b0;
+	--syntax-var: #9cdcfe;
+	--syntax-string: #ce9178;
+	--input-bg: rgba(0, 0, 0, 0.05);
+	--scrim: rgba(0, 0, 0, 0.4);
+	--modal-bg: #ffffff;
+	--modal-surface: #ffffff;
+	--modal-scrim: rgba(0, 0, 0, 0.5);
+
+	/* Standardized z-index layers to prevent collisions */
+	--z-window-base: 100;
+	--z-window-active: 500;
+	--z-window-maximized: 9998;
+	--z-dock: 10000;
+	--z-topbar: 10000;
+	--z-modal-overlay: 20000;
+	--z-nested-modal: 25000;
+	--z-dropdown-menu: 30000;
+	--z-toast: 40000;
+	--z-dialog: 50000;
+
+	/* Lines */
+	--window-border: rgba(0, 0, 0, 0.12);
+	--border-subtle: rgba(0, 0, 0, 0.08);
+	--card-border: rgba(0, 0, 0, 0.08);
+	--topbar-border: rgba(0, 0, 0, 0.1);
+	--dock-border: rgba(0, 0, 0, 0.12);
+	--menu-border: rgba(0, 0, 0, 0.1);
+	--input-border: rgba(0, 0, 0, 0.15);
+
+	/* Neutral fills for chips, tracks and hovered rows; follow the text colour, so they work in both themes. */
+	--fill-soft: color-mix(in srgb, var(--text-primary) 6%, transparent);
+	--fill-softer: color-mix(in srgb, var(--text-primary) 3.5%, transparent);
+	--fill-strong: color-mix(in srgb, var(--text-primary) 14%, transparent);
+
+	/* Shadows (one pair per theme; the dark one is heavier) */
+	--shadow-window-inactive: 0 4px 12px rgba(0, 0, 0, 0.15), 0 0 1px rgba(0, 0, 0, 0.2);
+	--shadow-window-active: 0 18px 48px rgba(0, 0, 0, 0.28), 0 0 1px rgba(0, 0, 0, 0.25);
+	--shadow-dock: 0 20px 48px rgba(0, 0, 0, 0.3);
+	--shadow-panel: 0 24px 60px rgba(0, 0, 0, 0.35);
+	--menu-shadow: 0 16px 36px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.08);
+
+	/* Glass: the one place frosted blur is defined. 'none' unless transparency is on. */
+	--glass-blur: none;
+	--glass-blur-strong: none;
+	--glass-blur-scrim: none;
+
+	color-scheme: light;
+}
+
+[data-theme='dark'] {
+	color-scheme: dark;
+	--accent: #0a84ff;
+	--accent-hover: color-mix(in srgb, var(--accent) 85%, #ffffff);
+	--accent-active: color-mix(in srgb, var(--accent) 70%, #ffffff);
+	--accent-subtle: color-mix(in srgb, var(--accent) 14%, transparent);
+	--accent-muted: color-mix(in srgb, var(--accent) 22%, transparent);
+	--accent-border: color-mix(in srgb, var(--accent) 42%, transparent);
+	--accent-glow: 0 4px 16px color-mix(in srgb, var(--accent) 40%, transparent);
+	--accent-gradient: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 65%, #bf5af2));
+	--success: #30d158;
+	--warning: #ff9f0a;
+	--danger: #ff6961;
+	--info: #409cff;
+	--neutral: #98989d;
+	--purple: #bf5af2;
+	--indigo: #6e6cf0;
+	--gold: #ffd60a;
+	--gold-text: #fbbf24;
+	--cyan: #38bdf8;
+
+	--text-primary: #f5f5f7;
+	--text-secondary: #a1a1a6;
+	--text-muted: #a1a1a6;
+	--text-tertiary: #6e6e73;
+	--text-placeholder: #71717a;
+	--topbar-text: #f5f5f7;
+
+	--window-bg: #1c1c1e;
+	--window-bg-secondary: #252528;
+	--window-titlebar: #252528;
+	--settings-sidebar-bg: #252528;
+	--right-content-bg: #1c1c1e;
+	--topbar-bg: #1b1b1f;
+	--dock-bg: #26262a;
+	--menu-bg: #2a2a2e;
+	--card-bg: rgba(255, 255, 255, 0.07);
+	--input-bg: rgba(255, 255, 255, 0.08);
+	--modal-bg: #222226;
+	--modal-surface: #222226;
+	--modal-scrim: rgba(0, 0, 0, 0.7);
+
+	--window-border: rgba(255, 255, 255, 0.16);
+	--border-subtle: rgba(255, 255, 255, 0.1);
+	--card-border: rgba(255, 255, 255, 0.12);
+	--topbar-border: rgba(255, 255, 255, 0.12);
+	--dock-border: rgba(255, 255, 255, 0.18);
+	--menu-border: rgba(255, 255, 255, 0.15);
+	--input-border: rgba(255, 255, 255, 0.16);
+
+	--shadow-window-inactive: 0 6px 16px rgba(0, 0, 0, 0.45), 0 0 1px rgba(0, 0, 0, 0.6);
+	--shadow-window-active: 0 24px 64px rgba(0, 0, 0, 0.7), 0 0 1px rgba(0, 0, 0, 0.6);
+	--shadow-dock: 0 20px 48px rgba(0, 0, 0, 0.55);
+	--shadow-panel: 0 24px 60px rgba(0, 0, 0, 0.6);
+	--menu-shadow: 0 20px 48px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+/* Transparency on: translucent shell surfaces and the glass blur. */
+[data-transparency='on'] {
+	--topbar-bg: rgba(255, 255, 255, 0.65);
+	--dock-bg: rgba(255, 255, 255, 0.55);
+	--menu-bg: rgba(255, 255, 255, 0.95);
+	--vibrancy-window: rgba(255, 255, 255, 0.85);
+	--window-bg: transparent;
+	--settings-sidebar-bg: rgba(246, 246, 246, 0.78);
+	--right-content-bg: transparent;
+	--dock-border: rgba(255, 255, 255, 0.65);
+
+	--glass-blur: blur(20px) saturate(180%);
+	--glass-blur-strong: blur(40px) saturate(180%);
+	--glass-blur-scrim: blur(8px) saturate(120%);
+	--modal-bg: #ffffff;
+	--modal-surface: rgba(255, 255, 255, 0.96);
+	--modal-scrim: rgba(0, 0, 0, 0.55);
+}
+
+/* While a window is being dragged the blur tokens are emptied for the whole document:
+   repainting frosted surfaces under the moving frame is what costs the frame rate. */
+:root[data-window-moving][data-transparency='on'] {
+	--glass-blur: none;
+	--glass-blur-strong: none;
+	--glass-blur-scrim: none;
+}
+
+[data-transparency='on'][data-theme='dark'] {
+	--topbar-bg: rgba(20, 20, 24, 0.75);
+	--dock-bg: rgba(20, 20, 24, 0.7);
+	--menu-bg: rgba(28, 28, 32, 0.96);
+	--vibrancy-window: rgba(30, 30, 32, 0.82);
+	--window-bg: transparent;
+	--settings-sidebar-bg: rgba(38, 38, 41, 0.72);
+	--right-content-bg: transparent;
+	--dock-border: rgba(255, 255, 255, 0.18);
+	--modal-bg: #222226;
+	--modal-surface: rgba(34, 34, 38, 0.96);
+	--modal-scrim: rgba(0, 0, 0, 0.75);
+}
+
+/* Accent colours: one per theme, the dark one a little lighter. White text sits on --accent.
+   [data-accent] on any element (the swatches in Settings) re-resolves --accent inside it. */
+[data-accent='blue'] { --accent: #007aff; }
+[data-accent='purple'] { --accent: #a550d8; }
+[data-accent='pink'] { --accent: #e0245e; }
+[data-accent='orange'] { --accent: #c76400; }
+[data-accent='green'] { --accent: #218739; }
+[data-accent='graphite'] { --accent: #616166; }
+
+:is([data-theme='dark'][data-accent='blue'], [data-theme='dark'] [data-accent='blue']) { --accent: #0a84ff; }
+:is([data-theme='dark'][data-accent='purple'], [data-theme='dark'] [data-accent='purple']) { --accent: #bf5af2; }
+:is([data-theme='dark'][data-accent='pink'], [data-theme='dark'] [data-accent='pink']) { --accent: #ff375f; }
+:is([data-theme='dark'][data-accent='orange'], [data-theme='dark'] [data-accent='orange']) { --accent: #e07b00; }
+:is([data-theme='dark'][data-accent='green'], [data-theme='dark'] [data-accent='green']) { --accent: #2ea84f; }
+:is([data-theme='dark'][data-accent='graphite'], [data-theme='dark'] [data-accent='graphite']) { --accent: #8e8e93; }

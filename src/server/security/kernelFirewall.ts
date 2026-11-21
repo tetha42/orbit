@@ -59,7 +59,7 @@ export async function addKernelBlackhole(ipOrCidr: string): Promise<KernelFirewa
 
 	const validTarget = validateIpOrCidr(ipOrCidr);
 	if (!validTarget || isLoopbackOrLocal(validTarget)) {
-		return { success: false, applied: false, error: 'Geçersiz veya korumalı yerel IP' };
+		return { success: false, applied: false, error: 'Invalid or protected local IP' };
 	}
 
 	try {
@@ -67,7 +67,7 @@ export async function addKernelBlackhole(ipOrCidr: string): Promise<KernelFirewa
 		await logSystemEvent({
 			service: 'security',
 			level: 'INFO',
-			message: `🐧 [KERNEL BLACKHOLE] ${validTarget} adresi Linux çekirdeğine (blackhole) eklendi.`,
+			message: `🐧 [KERNEL BLACKHOLE] ${validTarget} address added to the Linux kernel (blackhole).`,
 			detail: { ip: validTarget, action: 'add_blackhole' },
 		});
 		return { success: true, applied: true };
@@ -83,13 +83,13 @@ export async function addKernelBlackhole(ipOrCidr: string): Promise<KernelFirewa
 			await logSystemEvent({
 				service: 'security',
 				level: 'WARN',
-				message: `🐧 [KERNEL BLACKHOLE FALLBACK] ${validTarget} için Linux çekirdek yönlendirme izni yok (CAP_NET_ADMIN / root gerekli); uygulama kalkanı devrede.`,
+				message: `🐧 [KERNEL BLACKHOLE FALLBACK] No Linux kernel routing permission for ${validTarget} (CAP_NET_ADMIN / root required); application-layer shield is active.`,
 				detail: { ip: validTarget, reason: 'EPERM' },
 			}).catch(() => {});
 			return {
 				success: true,
 				applied: false,
-				error: 'Linux çekirdek yetkisi (CAP_NET_ADMIN / root) bulunmuyor; uygulama katmanı kalkanı devrede.',
+				error: 'Linux kernel permission (CAP_NET_ADMIN / root) is not available; application-layer shield is active.',
 			};
 		}
 
@@ -97,7 +97,7 @@ export async function addKernelBlackhole(ipOrCidr: string): Promise<KernelFirewa
 			return {
 				success: true,
 				applied: false,
-				error: 'Linux ip aracı sistemde bulunamadı; uygulama katmanı kalkanı devrede.',
+				error: 'The Linux ip tool was not found on the system; application-layer shield is active.',
 			};
 		}
 
@@ -115,7 +115,7 @@ export async function removeKernelBlackhole(ipOrCidr: string): Promise<KernelFir
 
 	const validTarget = validateIpOrCidr(ipOrCidr);
 	if (!validTarget || isLoopbackOrLocal(validTarget)) {
-		return { success: false, applied: false, error: 'Geçersiz veya korumalı yerel IP' };
+		return { success: false, applied: false, error: 'Invalid or protected local IP' };
 	}
 
 	try {
@@ -123,7 +123,7 @@ export async function removeKernelBlackhole(ipOrCidr: string): Promise<KernelFir
 		await logSystemEvent({
 			service: 'security',
 			level: 'INFO',
-			message: `🐧 [KERNEL BLACKHOLE] ${validTarget} adresi Linux çekirdek yönlendirme tablosundan kaldırıldı.`,
+			message: `🐧 [KERNEL BLACKHOLE] ${validTarget} address removed from the Linux kernel routing table.`,
 			detail: { ip: validTarget, action: 'del_blackhole' },
 		});
 		return { success: true, applied: true };
@@ -138,13 +138,13 @@ export async function removeKernelBlackhole(ipOrCidr: string): Promise<KernelFir
 			await logSystemEvent({
 				service: 'security',
 				level: 'INFO',
-				message: `🐧 [KERNEL BLACKHOLE] ${validTarget} çekirdek tablosunda işlem yetkisi yok (CAP_NET_ADMIN / root), atlanıyor.`,
+				message: `🐧 [KERNEL BLACKHOLE] No operation permission in the kernel table for ${validTarget} (CAP_NET_ADMIN / root), skipping.`,
 				detail: { ip: validTarget, reason: 'EPERM' },
 			}).catch(() => {});
 			return {
 				success: true,
 				applied: false,
-				error: 'Linux çekirdek yetkisi (CAP_NET_ADMIN / root) bulunmuyor.',
+				error: 'Linux kernel permission (CAP_NET_ADMIN / root) is not available.',
 			};
 		}
 
@@ -152,7 +152,7 @@ export async function removeKernelBlackhole(ipOrCidr: string): Promise<KernelFir
 			return {
 				success: true,
 				applied: false,
-				error: 'Linux ip aracı sistemde bulunamadı.',
+				error: 'The Linux ip tool was not found on the system.',
 			};
 		}
 

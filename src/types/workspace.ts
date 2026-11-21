@@ -82,7 +82,7 @@ export type DesktopContextMenuState = GlobalContextMenuState;
  * Every field is optional — a bare app id still just opens the app.
  */
 export interface FocusTargetInput {
-	/** App-specific section: a tab, a settings page, a kasa. */
+	/** App-specific section: a tab, a settings page, a vault. */
 	section?: string;
 	/** What sort of record `itemId` names ('task', 'member', 'ledger'…). */
 	kind?: string;

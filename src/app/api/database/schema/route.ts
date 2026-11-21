@@ -154,6 +154,6 @@ export async function GET(request: Request) {
 		return NextResponse.json(data);
 	} catch (error) {
 		console.error('API /api/database/schema error:', error);
-		return NextResponse.json({ error: 'Veritabanı şeması okunamadı.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to read database schema.' }, { status: 500 });
 	}
 }

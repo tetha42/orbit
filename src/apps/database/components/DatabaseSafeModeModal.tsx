@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { ShieldAlert, AlertTriangle, X, Check } from 'lucide-react';
+import { useI18n } from '@/core/i18n';
 
 interface DatabaseSafeModeModalProps {
 	dangerousCommand?: string;
@@ -18,9 +19,10 @@ export function DatabaseSafeModeModal({
 	onConfirm,
 	onCancel,
 }: DatabaseSafeModeModalProps) {
+	const { t } = useI18n();
 	const [challengeInput, setChallengeInput] = useState('');
 
-	const requiredText = targetTable || 'ONAYLIYORUM';
+	const requiredText = targetTable || t('dbSafeModeConfirmWord');
 	const isMatched = challengeInput.trim().toUpperCase() === requiredText.toUpperCase();
 
 	return (
@@ -65,7 +67,7 @@ export function DatabaseSafeModeModal({
 					<div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
 						<ShieldAlert size={22} color="var(--danger)" />
 						<div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--danger)' }}>
-							Safe Mode Güvenlik Kalkanı Devrede!
+							{t('dbSafeModeActive')}
 						</div>
 					</div>
 					<button
@@ -89,7 +91,7 @@ export function DatabaseSafeModeModal({
 					<div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
 						<AlertTriangle size={24} color="var(--danger)" style={{ flexShrink: 0, marginTop: '2px' }} />
 						<div style={{ fontSize: '13px', lineHeight: 1.5, color: 'var(--text-primary)' }}>
-							{reason || 'Bu sorgu veritabanınızda geri döndürülemez toplu veri kaybına veya şema bozulmasına yol açabilir.'}
+							{reason || t('dbSafeModeReason')}
 						</div>
 					</div>
 
@@ -105,13 +107,14 @@ export function DatabaseSafeModeModal({
 								color: 'var(--danger)',
 							}}
 						>
-							Tespit Edilen Kritik İşlem: <strong>{dangerousCommand}</strong>
+							{t('dbSafeModeDetected')} <strong>{dangerousCommand}</strong>
 						</div>
 					)}
 
 					<div style={{ fontSize: '12px', opacity: 0.9, marginTop: '4px' }}>
-						Eğer bu sorguyu bilinçli olarak çalıştırmak istiyorsanız aşağıdaki kutuya tam olarak{' '}
-						<strong style={{ color: 'var(--text-primary)', textDecoration: 'underline' }}>{requiredText}</strong> yazınız:
+						{t('dbSafeModeTypePromptPrefix')}{' '}
+						<strong style={{ color: 'var(--text-primary)', textDecoration: 'underline' }}>{requiredText}</strong>{' '}
+						{t('dbSafeModeTypePromptSuffix')}
 					</div>
 
 					<input
@@ -157,7 +160,7 @@ export function DatabaseSafeModeModal({
 							cursor: 'pointer',
 						}}
 					>
-						İptal Et & Durdur
+						{t('dbSafeModeCancel')}
 					</button>
 
 					<button
@@ -180,7 +183,7 @@ export function DatabaseSafeModeModal({
 						}}
 					>
 						<Check size={14} strokeWidth={3} />
-						<span>Riskleri Onaylıyorum, Çalıştır</span>
+						<span>{t('dbSafeModeConfirm')}</span>
 					</button>
 				</div>
 			</div>

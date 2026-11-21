@@ -18,12 +18,12 @@ import { foldTr } from '@/lib/text';
 import { useAppCommand } from '@/core/commands';
 import type { VaultRecord, VaultResponse, VaultSummary } from '../types';
 import { downloadCsv } from '@/core/data/download';
-import { escapeHtml } from '@/core/text/escape';
-import { openPrintWindow } from '@/core/data/print';
-import { formatDate, formatDateTime } from '@/core/data/format';
+import { formatDate } from '@/core/data/format';
 import { useToast } from '@/core/ui/Toast';
 import { useNow } from '@/lib/client/useSheet';
+import contract from '../budget.contract.json';
 import { categoryLabel } from '../categoryLabel';
+import { printVaultReport } from './vaultPrintReport';
 
 const tl = (minor: number) => `₺${formatMinor(minor)}`;
 const dateFmt = (ms: number) => formatDate(ms);
@@ -50,7 +50,7 @@ export function useVaultLedger({ teamId, onChanged, embedded = false, vaults }: 
 	const records = useMemo(() => data?.records ?? [], [data]);
 	const summary = data?.summary ?? null;
 
-	const [typeValue, setType] = useState<'all' | 'income' | 'expense'>('all');
+	const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
 	const [category, setCategory] = useState('');
 	const [month, setMonth] = useState('');
 	const [search, setSearch] = useState('');
@@ -78,29 +78,30 @@ export function useVaultLedger({ teamId, onChanged, embedded = false, vaults }: 
 		[records]
 	);
 	const filtered = useMemo(
-		() => filterRecords(records, { typeValue, category, month, search, fold: foldTr }),
-		[records, typeValue, category, month, search]
+		() => filterRecords(records, { type: typeFilter, category, month, search, fold: foldTr }),
+		[records, typeFilter, category, month, search]
 	);
 	const filteredIn = filtered
-		.filter((r) => r.typeValue === 'income')
+		.filter((r) => r.type === 'income')
 		.reduce((a, r) => a + r.amountMinor, 0);
 	const filteredOut = filtered
-		.filter((r) => r.typeValue === 'expense')
+		.filter((r) => r.type === 'expense')
 		.reduce((a, r) => a + r.amountMinor, 0);
-	const anyFilter = typeValue !== 'all' || !!category || !!month || !!search.trim();
+	const anyFilter = typeFilter !== 'all' || !!category || !!month || !!search.trim();
 	const maxMonth = Math.max(1, ...months.map((m) => Math.max(m.income, m.expense)));
 	const canTransfer = isManagement && !!vaults && vaults.length > 1;
 
 	const remove = async (r: VaultRecord) => {
 		const message = r.transferId
-			? fill(t('kasaRevertTransferConfirm'), { target: r.counterpartVaultName ?? t('kasaOtherLedger') })
-			: fill(t('kasaDeleteRecordConfirm'), { desc: r.description, amount: tl(r.amountMinor) });
+			? fill(t('treasuryRevertTransferConfirm'), { target: r.counterpartVaultName ?? t('treasuryOtherLedger') })
+			: fill(t('treasuryDeleteRecordConfirm'), { desc: r.description, amount: tl(r.amountMinor) });
 		if (!(await dialog.confirm({ message, tone: 'danger' }))) return;
 		const res = await fetch(`/api/budget?id=${encodeURIComponent(r.id)}`, { method: 'DELETE' });
-		if (res.ok) await changed(r.transferId ? t('kasaTransferReverted') : t('kasaRecordDeleted'));
+		if (res.ok) await changed(r.transferId ? t('treasuryTransferReverted') : t('treasuryRecordDeleted'));
 		else {
 			const body = await res.json().catch(() => ({}));
-			flash(body.error || t('actionFailed'), true);
+			const entry = contract.errorCodes.find((e) => e.code === body?.errorCode);
+			flash(entry ? t(entry.i18nKey) : body.error || t('actionFailed'), true);
 		}
 	};
 
@@ -109,59 +110,45 @@ export function useVaultLedger({ teamId, onChanged, embedded = false, vaults }: 
 			.reverse()
 			.map((r) => [
 				dateFmt(r.date),
-				r.typeValue === 'income' ? t('kasaIncome') : t('kasaExpense'),
+				r.type === 'income' ? t('treasuryIncome') : t('treasuryExpense'),
 				categoryLabel(t, r.category),
 				r.description,
 				r.transferId ? (r.counterpartVaultName ?? '') : '',
-				r.recorderNameSurname ?? '',
-				(r.typeValue === 'income' ? r.amountMinor : -r.amountMinor) / 100,
+				r.recorderName ?? '',
+				(r.type === 'income' ? r.amountMinor : -r.amountMinor) / 100,
 				(balances.get(r.id) ?? 0) / 100,
-				r.receiptPhotoUrl ? t('yes') : '',
+				r.receiptUrl ? t('yes') : '',
 			]);
 		downloadCsv(
 			data?.vault.name ?? 'vault',
 			[
-				t('kasaColDate'),
-				t('kasaColType'),
+				t('treasuryColDate'),
+				t('treasuryColType'),
 				t('budgetColCategory'),
-				t('kasaColDesc'),
-				t('kasaColOpposite'),
+				t('treasuryColDesc'),
+				t('treasuryColOpposite'),
 				t('budgetColUser'),
-				`${t('budgetColAmount')} (TL)`,
-				`${t('kasaBalance')} (TL)`,
-				t('kasaColReceipt'),
+				t('budgetColAmount'),
+				`${t('treasuryBalance')} (TL)`,
+				t('treasuryColReceipt'),
 			],
 			rows
 		);
 	};
 
 	const printReport = () => {
-		const esc = escapeHtml;
-		const rows = [...filtered]
-			.reverse()
-			.map(
-				(r) =>
-					`<tr><td>${dateFmt(r.date)}</td><td>${r.typeValue === 'income' ? t('kasaIncome') : t('kasaExpense')}</td><td>${esc(r.category)}</td><td>${esc(r.description)}${r.transferId && r.counterpartVaultName ? ` <i>(${r.typeValue === 'income' ? t('kasaSource') : t('kasaTarget')}: ${esc(r.counterpartVaultName)})</i>` : ''}</td><td>${esc(r.recorderNameSurname ?? '')}</td><td class="n">${r.typeValue === 'income' ? '' : '−'}${formatMinor(r.amountMinor)}</td><td class="n">${formatMinor(balances.get(r.id) ?? 0)}</td></tr>`
-			)
-			.join('');
-		const cats = distribution
-			.map((d) => `<tr><td>${esc(categoryLabel(t, d.category))}</td><td class="n">${formatMinor(d.amountMinor)}</td><td class="n">%${Math.round(d.ratio * 100)}</td></tr>`)
-			.join('');
-		const scope = anyFilter
-			? fill(t('kasaPrintFilteredScope'), { filtered: filtered.length, total: records.length })
-			: fill(t('kasaAllRecordsCount'), { count: records.length });
-		const title = `${data?.vault.name ?? t('kasaBalance')} — ${t('kasaAuditReportTitle')}`;
-		const w = openPrintWindow({
-			title,
-			css: '.sum{display:flex;gap:24px;margin-top:10px}.sum div{border:1px solid #ccc;border-radius:6px;padding:6px 10px}.sign{display:flex;justify-content:space-between;margin-top:48px}.sign div{width:40%;border-top:1px solid #333;padding-top:4px;text-align:center}',
-			body: `<h1>${esc(title)}</h1>
-<div>${t('kasaReportDateLabel')}: ${formatDateTime(Date.now())} · ${scope}</div>
-<div class="sum"><div>${t('kasaTotalIncome')}<br><b>${formatMinor(summary?.totalIncomeMinor ?? 0)} ₺</b></div><div>${t('kasaTotalExpense')}<br><b>${formatMinor(summary?.totalExpenseMinor ?? 0)} ₺</b></div><div>${t('kasaNetBalance')}<br><b>${formatMinor(summary?.netBalanceMinor ?? 0)} ₺</b></div></div>
-<h2>${t('kasaPrintDistribution')}</h2><table><tr><th>${t('kasaPrintCategory')}</th><th class="n">${t('kasaPrintAmount')}</th><th class="n">${t('kasaPrintShare')}</th></tr>${cats || `<tr><td colspan="3">${t('kasaNoExpenses')}</td></tr>`}</table>
-<h2>${t('kasaTransactionsTitle')}</h2><table><tr><th>${t('kasaColDate')}</th><th>${t('kasaColType')}</th><th>${t('budgetColCategory')}</th><th>${t('kasaColDesc')}</th><th>${t('budgetColUser')}</th><th class="n">${t('budgetColAmount')} (₺)</th><th class="n">${t('kasaBalance')} (₺)</th></tr>${rows || `<tr><td colspan="7">${t('kasaNoRecords')}</td></tr>`}</table>
-<div class="sign"><div>${t('kasaPrintPreparedBy')}</div><div>${t('kasaPrintAuditedBy')}</div></div>`,
+		printVaultReport({
+			vaultName: teamId === null ? t('treasuryGeneralTitle') : data?.vault.name,
+			filtered,
+			totalCount: records.length,
+			anyFilter,
+			balances,
+			distribution,
+			summary,
+			dateFmt,
+			t,
+			onPopupBlocked: () => flash(t('treasuryPopupBlocked'), true),
 		});
-		if (!w) flash(t('kasaPopupBlocked'), true);
 	};
 
 	useAppCommand(
@@ -174,7 +161,7 @@ export function useVaultLedger({ teamId, onChanged, embedded = false, vaults }: 
 	);
 
 	const clearFilter = () => {
-		setType('all');
+		setTypeFilter('all');
 		setCategory('');
 		setMonth('');
 		setSearch('');
@@ -191,8 +178,8 @@ export function useVaultLedger({ teamId, onChanged, embedded = false, vaults }: 
 		canWrite,
 		isManagement,
 		canTransfer,
-		typeValue,
-		setType,
+		typeFilter,
+		setTypeFilter,
 		category,
 		setCategory,
 		month,

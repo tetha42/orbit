@@ -2,6 +2,8 @@
 
 import React, { Component, type ErrorInfo, type ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, X } from 'lucide-react';
+import { translate } from '@/lib/i18n';
+import { DEFAULT_LOCALE, normalizeLocale } from '@/locales/registry';
 
 export interface MiniAppErrorBoundaryProps {
 	appId: string;
@@ -51,7 +53,11 @@ export class MiniAppErrorBoundary extends Component<
 	override render(): ReactNode {
 		if (this.state.hasError) {
 			const { appId, onClose } = this.props;
-			const errorMessage = this.state.error?.message || 'Bilinmeyen bir hata oluştu.';
+			const language = normalizeLocale(
+				typeof document !== 'undefined' ? document.documentElement.getAttribute('lang') : DEFAULT_LOCALE
+			);
+			const t = (key: string): string => translate(language, key);
+			const errorMessage = this.state.error?.message || t('miniAppCrashUnknown');
 			const errorStack = this.state.error?.stack || this.state.errorInfo?.componentStack || '';
 
 			return (
@@ -68,7 +74,7 @@ export class MiniAppErrorBoundary extends Component<
 						boxSizing: 'border-box',
 						textAlign: 'center',
 						backgroundColor: 'var(--bg-primary, #1e1e1e)',
-						color: 'var(--text-primary, #ffffff)',
+						color: 'var(--text-primary)',
 						overflowY: 'auto',
 					}}
 				>
@@ -77,8 +83,8 @@ export class MiniAppErrorBoundary extends Component<
 							width: 48,
 							height: 48,
 							borderRadius: '50%',
-							backgroundColor: 'rgba(255, 69, 58, 0.15)',
-							color: '#ff453a',
+							backgroundColor: 'color-mix(in srgb, var(--danger) 15%, transparent)',
+							color: 'var(--danger)',
 							display: 'flex',
 							alignItems: 'center',
 							justifyContent: 'center',
@@ -93,10 +99,10 @@ export class MiniAppErrorBoundary extends Component<
 							fontSize: 16,
 							fontWeight: 600,
 							margin: '0 0 8px 0',
-							color: 'var(--text-primary, #ffffff)',
+							color: 'var(--text-primary)',
 						}}
 					>
-						Uygulama Beklenmedik Bir Hatayla Karşılaştı
+						{t('miniAppCrashTitle')}
 					</h2>
 
 					<p
@@ -105,10 +111,11 @@ export class MiniAppErrorBoundary extends Component<
 							lineHeight: 1.5,
 							maxWidth: 420,
 							margin: '0 0 16px 0',
-							color: 'var(--text-secondary, #a1a1aa)',
+							color: 'var(--text-secondary)',
 						}}
 					>
-						<strong>{appId}</strong> uygulaması izole edildi. Orbit masaüstünüz ve diğer açık pencereler güvenle çalışmaya devam ediyor.
+						<strong>{appId}</strong>
+						{t('miniAppCrashBodySuffix')}
 					</p>
 
 					<div
@@ -129,14 +136,14 @@ export class MiniAppErrorBoundary extends Component<
 								borderRadius: 8,
 								fontSize: 13,
 								fontWeight: 500,
-								backgroundColor: 'var(--accent, #0a84ff)',
+								backgroundColor: 'var(--accent)',
 								color: '#ffffff',
 								border: 'none',
 								cursor: 'pointer',
 							}}
 						>
 							<RefreshCw size={14} />
-							Yeniden Başlat
+							{t('miniAppCrashRestart')}
 						</button>
 
 						{onClose && (
@@ -152,13 +159,13 @@ export class MiniAppErrorBoundary extends Component<
 									fontSize: 13,
 									fontWeight: 500,
 									backgroundColor: 'var(--bg-tertiary, #27272a)',
-									color: 'var(--text-primary, #ffffff)',
+									color: 'var(--text-primary)',
 									border: '1px solid var(--border-color, rgba(255, 255, 255, 0.1))',
 									cursor: 'pointer',
 								}}
 							>
 								<X size={14} />
-								Kapat
+								{t('close')}
 							</button>
 						)}
 					</div>
@@ -178,10 +185,10 @@ export class MiniAppErrorBoundary extends Component<
 							}}
 						>
 							<summary style={{ cursor: 'pointer', outline: 'none', userSelect: 'none' }}>
-								Hata Ayrıntılarını Göster
+								{t('miniAppCrashDetails')}
 							</summary>
 							<div style={{ marginTop: 8, wordBreak: 'break-all', fontFamily: 'monospace' }}>
-								<div style={{ color: '#ff453a', fontWeight: 600, marginBottom: 4 }}>
+								<div style={{ color: 'var(--danger)', fontWeight: 600, marginBottom: 4 }}>
 									{errorMessage}
 								</div>
 								<pre style={{ margin: 0, whiteSpace: 'pre-wrap', maxHeight: 160, overflowY: 'auto' }}>

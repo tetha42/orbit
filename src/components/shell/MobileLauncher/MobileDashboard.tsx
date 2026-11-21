@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { CalendarClock, ListChecks, QrCode, X } from 'lucide-react';
 import { useSession, useLiveEvent } from '@/core/session';
 import { useSound } from '@/core/sound';
-import { useI18n } from '@/core/i18n';
+import { resolveLocalizedText, useI18n } from '@/core/i18n';
 import { useJsonResource } from '@/core/data/useJsonResource';
 import { postAction } from '@/core/data/http';
 import { dayOffset } from '@/core/data/format';
@@ -23,11 +23,22 @@ const CARD = {
 	border: '1px solid rgba(255, 255, 255, 0.12)',
 	borderRadius: '18px',
 	padding: '16px',
-	color: '#fff',
+	color: 'var(--accent-contrast)',
 	textAlign: 'left',
 	width: '100%',
 	boxSizing: 'border-box',
 } as const;
+
+const badgeStyle = (token: string, size = 36) => ({
+	width: size,
+	height: size,
+	borderRadius: size === 44 ? 14 : 12,
+	display: 'grid',
+	placeItems: 'center',
+	background: `color-mix(in srgb, ${token} 20%, transparent)`,
+	color: token,
+	flexShrink: 0,
+}) as const;
 
 const MAX_TASKS_SHOWN = 3;
 
@@ -61,7 +72,7 @@ export function MobileDashboard({ onOpenApp }: { onOpenApp: (appId: AppID) => vo
 		if (event === 'event_updated' && canEvents) void refetchEvents();
 	});
 
-	const locale = language === 'en' ? 'en-GB' : 'tr-TR';
+	const locale = resolveLocalizedText({ en: 'en-GB', tr: 'tr-TR' }, language, 'tr-TR');
 	const tasks = useMemo(() => (currentUser && Array.isArray(teams.data) ? myOpenTasks(teams.data, currentUser.id) : []), [teams.data, currentUser]);
 	const upcoming = useMemo(() => nextEvent(events.data?.events ?? [], now), [events.data, now]);
 
@@ -103,7 +114,7 @@ export function MobileDashboard({ onOpenApp }: { onOpenApp: (appId: AppID) => vo
 					aria-label={fill(t('mobLevel'), { n: levelInfo.level })}
 					style={{ height: '8px', borderRadius: '4px', background: 'rgba(255, 255, 255, 0.12)', margin: '10px 0 6px', overflow: 'hidden' }}
 				>
-					<div style={{ height: '100%', width: `${Math.round(levelInfo.progress * 100)}%`, background: 'linear-gradient(90deg, #0a84ff, #5e5ce6)' }} />
+					<div style={{ height: '100%', width: `${Math.round(levelInfo.progress * 100)}%`, background: 'linear-gradient(90deg, var(--accent), var(--indigo))' }} />
 				</div>
 				<div style={{ fontSize: '11.5px', opacity: 0.6 }}>{fill(t('mobXpToNext'), { n: Math.max(0, levelInfo.next - (currentUser.xp || 0)) })}</div>
 			</div>
@@ -119,7 +130,7 @@ export function MobileDashboard({ onOpenApp }: { onOpenApp: (appId: AppID) => vo
 						gap: '10px',
 						alignItems: 'center',
 						justifyContent: 'space-between',
-						borderColor: feedback.ok ? 'rgba(48, 209, 88, 0.5)' : 'rgba(255, 159, 10, 0.5)',
+						borderColor: feedback.ok ? 'color-mix(in srgb, var(--success) 50%, transparent)' : 'color-mix(in srgb, var(--warning) 50%, transparent)',
 						fontSize: '13px',
 					}}
 				>
@@ -147,7 +158,7 @@ export function MobileDashboard({ onOpenApp }: { onOpenApp: (appId: AppID) => vo
 					}}
 					style={{ ...CARD, display: 'flex', gap: '14px', alignItems: 'center', cursor: 'pointer', minHeight: '64px' }}
 				>
-					<span style={{ width: 44, height: 44, borderRadius: 14, display: 'grid', placeItems: 'center', background: 'rgba(48, 209, 88, 0.2)', color: '#30d158', flexShrink: 0 }}>
+					<span style={badgeStyle('var(--success)', 44)}>
 						<QrCode size={22} aria-hidden="true" />
 					</span>
 					<span>
@@ -161,7 +172,7 @@ export function MobileDashboard({ onOpenApp }: { onOpenApp: (appId: AppID) => vo
 			{canTeams && (
 				<button type="button" data-cockpit="tasks" onClick={() => onOpenApp('teams')} style={{ ...CARD, cursor: 'pointer' }}>
 					<div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: tasks.length ? '10px' : 0 }}>
-						<span style={{ width: 36, height: 36, borderRadius: 12, display: 'grid', placeItems: 'center', background: 'rgba(94, 92, 230, 0.22)', color: '#8e8cff' }}>
+						<span style={badgeStyle('var(--indigo)')}>
 							<ListChecks size={19} aria-hidden="true" />
 						</span>
 						<span style={{ fontSize: '15px', fontWeight: 700 }}>{t('mobMyTasks')}</span>
@@ -179,7 +190,7 @@ export function MobileDashboard({ onOpenApp }: { onOpenApp: (appId: AppID) => vo
 											<span style={{ display: 'block', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.title}</span>
 											<span style={{ display: 'block', fontSize: '11.5px', opacity: 0.6 }}>{task.teamName}</span>
 										</span>
-										{due && <span style={{ fontSize: '11.5px', color: due.overdue ? '#ff453a' : undefined, opacity: due.overdue ? 1 : 0.7, whiteSpace: 'nowrap' }}>{due.text}</span>}
+										{due && <span style={{ fontSize: '11.5px', color: due.overdue ? 'var(--danger)' : undefined, opacity: due.overdue ? 1 : 0.7, whiteSpace: 'nowrap' }}>{due.text}</span>}
 									</li>
 								);
 							})}
@@ -195,7 +206,7 @@ export function MobileDashboard({ onOpenApp }: { onOpenApp: (appId: AppID) => vo
 			{canEvents && (
 				<button type="button" data-cockpit="event" onClick={() => onOpenApp('events')} style={{ ...CARD, cursor: 'pointer' }}>
 					<div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-						<span style={{ width: 36, height: 36, borderRadius: 12, display: 'grid', placeItems: 'center', background: 'rgba(255, 59, 48, 0.2)', color: '#ff6961' }}>
+						<span style={badgeStyle('var(--danger)')}>
 							<CalendarClock size={19} aria-hidden="true" />
 						</span>
 						<span style={{ fontSize: '15px', fontWeight: 700 }}>{t('mobUpcoming')}</span>
@@ -209,7 +220,7 @@ export function MobileDashboard({ onOpenApp }: { onOpenApp: (appId: AppID) => vo
 									: new Date(upcoming.start).toLocaleString(locale, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
 								{upcoming.location ? ` · ${upcoming.location}` : ''}
 							</div>
-							{upcoming.myMyRecord && <div style={{ fontSize: '11.5px', color: '#30d158', marginTop: '4px' }}>{t('mobEventRegistered')}</div>}
+							{upcoming.myRecord && <div style={{ fontSize: '11.5px', color: 'var(--success)', marginTop: '4px' }}>{t('mobEventRegistered')}</div>}
 						</div>
 					) : (
 						<div style={{ fontSize: '12.5px', opacity: 0.6, marginTop: '8px' }}>{events.isLoading ? '…' : t('mobNoUpcoming')}</div>

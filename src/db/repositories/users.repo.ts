@@ -34,7 +34,7 @@ export async function getUserUpcomingReturns(
 		await ensurePostgresInit();
 		const res = await getPgPool().query(
 			`
-			SELECT id, code AS code, name AS name, due_at AS "returnDate"
+			SELECT id, code AS code, name AS name, due_at AS "dueDate"
 			FROM inventory
 			WHERE holder_user_id = $1
 			  AND status IN ('on_loan', 'borrowed')

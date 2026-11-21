@@ -1,0 +1,58 @@
+{
+  "id": "decisions",
+  "name": "Decisions & Resolutions",
+  "version": "1.0.0",
+  "description": "Formal board decisions, assembly resolutions, and voting records.",
+  "tables": [
+    "decisions",
+    "teams",
+    "users"
+  ],
+  "api": {
+    "base": "/api/decisions",
+    "endpoints": [
+      {
+        "path": "/api/decisions",
+        "methods": [
+          "GET",
+          "POST",
+          "PATCH",
+          "DELETE"
+        ],
+        "description": "List, record, update, or delete official decisions."
+      }
+    ]
+  },
+  "limits": {
+    "maxTitleLength": 300,
+    "maxContentLength": 50000
+  },
+  "errorCodes": [
+    {
+      "code": "DECISION_NOT_FOUND",
+      "status": 404,
+      "i18nKey": "decisionNotFound",
+      "description": "Decision record not found."
+    },
+    {
+      "code": "DECISION_LOCKED",
+      "status": 400,
+      "i18nKey": "decisionLocked",
+      "description": "Locked decisions cannot be modified."
+    }
+  ],
+  "files": {
+    "actions": [
+      "src/db/repositories/decisions.repo.ts"
+    ],
+    "queries": [
+      "src/app/api/decisions/route.ts"
+    ],
+    "ui": [
+      "src/apps/decisions/index.tsx"
+    ],
+    "i18n": [
+      "src/lib/i18nApps.ts"
+    ]
+  }
+}

@@ -2,7 +2,7 @@
 //
 //   t.base            address of the server under test
 //   t.fx              the fixtures (null for suites that start from an empty database)
-//   t.bootstrap       { eposta, sifre } of the .env admin (isolated suites only)
+//   t.bootstrap       { email, password } of the .env admin (isolated suites only)
 //   t.check(cond, name, extra)      one assertion; the rest still runs when it fails
 //   t.eq / t.sameSet / t.includes   typed assertions with a readable failure
 //   t.step(name, fn)                a group of assertions; a throw in it fails the step only
@@ -18,13 +18,12 @@ import { SHOTS, TMP } from './env.mjs';
 import { account } from './fixtures.mjs';
 import { client, loginApi } from './api.mjs';
 import { DESKTOP, MOBILE, openAnonymous, openSession, sessionToken } from './browser.mjs';
-import { sleep } from './totp.mjs';
+import { totpCode, sleep } from './totp.mjs';
 
 /**
  * Signed-in API clients live for the whole run: a second sign-in would end the first
- * (one session per account). The tokens are also kept in the temp folder (ignored by
- * version control), so the next run does not wait out another 30-second code window
- * for the 2FA accounts. A token that no longer works is replaced by a fresh sign-in.
+ * (one session per account). The tokens are also kept in memory and cached on disk
+ * (ignored by version control) so subsequent runs skip TOTP window waits.
  */
 const sessions = new Map();
 const SESSION_FILE = path.join(TMP, 'sessions.json');
@@ -35,25 +34,72 @@ const readSaved = () => {
 		return {};
 	}
 };
+let savedTokens = readSaved();
 const saveToken = (slot, token) => {
+	savedTokens[slot] = token;
 	fs.mkdirSync(TMP, { recursive: true });
-	fs.writeFileSync(SESSION_FILE, JSON.stringify({ ...readSaved(), [slot]: token }));
+	fs.writeFileSync(SESSION_FILE, JSON.stringify(savedTokens));
 };
+
+/** Pre-seeds `sessions` for `base` from cloned DB `session_token` rows to avoid extra logins. */
+export function seedSessionTokens(base, fx, emailToToken) {
+	if (!fx || !emailToToken?.size) return 0;
+	let seeded = 0;
+	const assign = (key, email) => {
+		const token = emailToToken.get(String(email || '').toLowerCase());
+		if (!token) return;
+		const slot = `${base}|${key}`;
+		sessions.set(slot, client(base, token));
+		savedTokens[slot] = token;
+		seeded++;
+	};
+	assign('admin', fx.admin?.email);
+	for (const [key, user] of Object.entries(fx.users ?? {})) assign(key, user?.email);
+	if (seeded > 0) {
+		fs.mkdirSync(TMP, { recursive: true });
+		fs.writeFileSync(SESSION_FILE, JSON.stringify(savedTokens));
+	}
+	return seeded;
+}
 
 const slug = (s) =>
 	String(s)
 		.toLowerCase()
-		.replace(/[^a-z0-9ğüşıöç]+/gi, '-')
+		.replace(/[^a-z0-9]+/gi, '-')
 		.replace(/^-|-$/g, '')
 		.slice(0, 70);
 
-export function createContext({ suite, base, fx, bootstrap, browser, report }) {
+export function createContext({ suite, base, fx, bootstrap, browser, report, log, trackServer, untrackServer }) {
 	const cleanups = [];
 	const contexts = [];
+	/** The live page per fixture account; a new t.open(key) replaces (and closes) the old one. */
+	const openByKey = new Map();
 	// Last run's pictures would be mistaken for this run's.
 	fs.rmSync(path.join(SHOTS, suite), { recursive: true, force: true });
 	let shotNo = 0;
 	let lastPage = null;
+	let stepContexts = null;
+
+	const registerContext = (context) => {
+		contexts.push(context);
+		if (stepContexts && !stepContexts.includes(context)) stepContexts.push(context);
+	};
+
+	const releaseContext = async (context) => {
+		const idx = contexts.indexOf(context);
+		if (idx >= 0) contexts.splice(idx, 1);
+		for (const [k, ctx] of openByKey.entries()) {
+			if (ctx === context) openByKey.delete(k);
+		}
+		if (lastPage) {
+			try {
+				if (lastPage.context() === context) lastPage = null;
+			} catch {
+				lastPage = null;
+			}
+		}
+		await context.close().catch(() => {});
+	};
 
 	const check = (cond, name, extra = '') => report(Boolean(cond), name, extra);
 
@@ -64,29 +110,39 @@ export function createContext({ suite, base, fx, bootstrap, browser, report }) {
 		bootstrap,
 		browser,
 		sleep,
+		log,
+		totpCode: (secret) => totpCode(secret, base),
+		trackServer,
+		untrackServer,
 		viewport: { DESKTOP, MOBILE },
 		check,
-		eq: (actual, expected, name) => check(JSON.stringify(actual) === JSON.stringify(expected), name, `beklenen ${JSON.stringify(expected)}, gelen ${JSON.stringify(actual)}`),
+		eq: (actual, expected, name) => check(JSON.stringify(actual) === JSON.stringify(expected), name, `expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`),
 		/** Same members, any order. */
 		sameSet: (actual, expected, name) => {
 			const a = [...actual].sort();
 			const e = [...expected].sort();
-			check(JSON.stringify(a) === JSON.stringify(e), name, `beklenen ${JSON.stringify(e)}, gelen ${JSON.stringify(a)}`);
+			check(JSON.stringify(a) === JSON.stringify(e), name, `expected ${JSON.stringify(e)}, got ${JSON.stringify(a)}`);
 		},
-		includes: (haystack, needle, name) => check(haystack.includes(needle), name, `${JSON.stringify(needle)} yok: ${JSON.stringify(haystack)}`),
-		excludes: (haystack, needle, name) => check(!haystack.includes(needle), name, `${JSON.stringify(needle)} olmamalıydı: ${JSON.stringify(haystack)}`),
+		includes: (haystack, needle, name) => check(haystack.includes(needle), name, `${JSON.stringify(needle)} missing from: ${JSON.stringify(haystack)}`),
+		excludes: (haystack, needle, name) => check(!haystack.includes(needle), name, `did not expect ${JSON.stringify(needle)} in: ${JSON.stringify(haystack)}`),
 
 		async step(name, fn) {
+			const prevStep = stepContexts;
+			const owned = [];
+			stepContexts = owned;
 			try {
 				await fn();
 			} catch (e) {
-				report(false, name, `hata: ${String(e.message).split('\n')[0]}`);
-				if (lastPage) await t.shot(lastPage, `HATA-${name}`).catch(() => {});
+				report(false, name, `error: ${String(e.message).split('\n').slice(0, 3).join(' | ')}`);
+				if (lastPage) await t.shot(lastPage, `ERROR-${name}`).catch(() => {});
+			} finally {
+				stepContexts = prevStep;
+				for (const c of owned.reverse()) await releaseContext(c);
 			}
 		},
 
 		/** Waits until `fn` returns truthy; returns the milliseconds it took, or -1 on timeout. */
-		async waitFor(fn, { timeout = 15_000, every = 250 } = {}) {
+		async waitFor(fn, { timeout = 10_000, every = 250 } = {}) {
 			const start = Date.now();
 			while (Date.now() - start < timeout) {
 				if (await fn()) return Date.now() - start;
@@ -97,10 +153,11 @@ export function createContext({ suite, base, fx, bootstrap, browser, report }) {
 
 		async shot(page, name) {
 			lastPage = page;
+			if (!name.startsWith('ERROR-') && process.env.E2E_SHOTS !== '1') return null;
 			const dir = path.join(SHOTS, suite);
 			fs.mkdirSync(dir, { recursive: true });
 			const file = path.join(dir, `${String(++shotNo).padStart(2, '0')}-${slug(name)}.png`);
-			await page.screenshot({ path: file });
+			await page.screenshot({ path: file, animations: 'disabled' });
 			return file;
 		},
 
@@ -111,7 +168,7 @@ export function createContext({ suite, base, fx, bootstrap, browser, report }) {
 			const acc = account(fx, key);
 			const slot = `${base}|${key}`;
 			if (!fresh) {
-				const saved = readSaved()[slot];
+				const saved = savedTokens[slot];
 				for (const c of [sessions.get(slot), saved && client(base, saved)]) {
 					if (!c) continue;
 					const me = await c.get('/api/auth/me');
@@ -139,27 +196,52 @@ export function createContext({ suite, base, fx, bootstrap, browser, report }) {
 		},
 
 		/** A page signed in as that account, reusing its API session. Closed when the suite ends. */
-		async open(key, { mobile = false, prefs, colorScheme } = {}) {
+		async open(key, { mobile = false, prefs, colorScheme, reducedMotion } = {}) {
 			const c = await t.api(key);
-			const opened = await openSession(browser, base, c.token, { viewport: mobile ? MOBILE : DESKTOP, prefs, colorScheme });
-			opened.context.setDefaultTimeout(15_000);
-			contexts.push(opened.context);
+			const motion = reducedMotion ?? (suite === 'theme' ? 'no-preference' : 'reduce');
+			// Old pages of the same account are normally dead weight: each is a full renderer
+			// with a stream and timers. A suite that needs two tabs of one account does not
+			// call t.open twice for it.
+			const previous = openByKey.get(key);
+			if (previous) await releaseContext(previous);
+			const opened = await openSession(browser, base, c.token, {
+				viewport: mobile ? MOBILE : DESKTOP,
+				prefs,
+				colorScheme,
+				reducedMotion: motion,
+				stubWallpapers: true,
+			});
+			opened.context.setDefaultTimeout(10_000);
+			registerContext(opened.context);
+			openByKey.set(key, opened.context);
 			lastPage = opened.page;
 			return opened;
 		},
 
-		async anonymous({ mobile = false, prefs, colorScheme } = {}) {
-			const opened = await openAnonymous(browser, base, { viewport: mobile ? MOBILE : DESKTOP, prefs, colorScheme });
-			opened.context.setDefaultTimeout(15_000);
-			contexts.push(opened.context);
+		async anonymous({ mobile = false, prefs, colorScheme, reducedMotion } = {}) {
+			const motion = reducedMotion ?? (suite === 'theme' ? 'no-preference' : 'reduce');
+			const opened = await openAnonymous(browser, base, {
+				viewport: mobile ? MOBILE : DESKTOP,
+				prefs,
+				colorScheme,
+				reducedMotion: motion,
+				stubWallpapers: true,
+			});
+			opened.context.setDefaultTimeout(10_000);
+			registerContext(opened.context);
 			lastPage = opened.page;
 			return opened;
 		},
 
-		/** A browser context of your own (a second user, a virtual authenticator…); closed when the suite ends. */
+		/** Releases a tracked context early so multi-step suites don't accumulate extra desktops. */
+		async close(context) {
+			if (context) await releaseContext(context);
+		},
+
+		/** A browser context of your own (a second user, a virtual authenticator…); closed when the step or suite ends. */
 		track(context) {
-			context.setDefaultTimeout(15_000);
-			contexts.push(context);
+			context.setDefaultTimeout(10_000);
+			registerContext(context);
 			return context;
 		},
 	};
@@ -169,7 +251,7 @@ export function createContext({ suite, base, fx, bootstrap, browser, report }) {
 			try {
 				await fn();
 			} catch (e) {
-				report(false, 'temizlik', `hata: ${String(e.message).split('\n')[0]}`);
+				report(false, 'cleanup', `error: ${String(e.message).split('\n')[0]}`);
 			}
 		}
 		for (const c of contexts) await c.close().catch(() => {});

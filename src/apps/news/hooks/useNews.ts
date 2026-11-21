@@ -9,6 +9,7 @@ import { useFocusTarget } from '@/lib/client/useFocusTarget';
 import { useJsonResource } from '@/core/data/useJsonResource';
 import type { NewsVisibility } from '@/types/news';
 import type { NewsEntry } from '../types';
+import { mapNewsContractError, saveNewsRequest, validateNewsDraft } from '../utils/newsApi';
 
 export function useNews() {
 	const { canManageApp } = useSession();
@@ -78,41 +79,34 @@ export function useNews() {
 
 	const handleSaveNews = async (e: React.FormEvent) => {
 		e.preventDefault();
-		if (!newTitle.trim() || !newContent.trim()) {
+		if (validateNewsDraft(newTitle, newSummary, newContent)) {
 			setFormError(t('newsFormMissingFields'));
 			return;
 		}
-
 		try {
 			setIsSubmitting(true);
 			setFormError(null);
-			const res = await fetch('/api/news', {
-				method: editingId ? 'PATCH' : 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					...(editingId ? { id: editingId } : {}),
-					title: newTitle.trim(),
-					summary: (newSummary || newTitle).trim(),
-					content: newContent.trim(),
-					category: newCategory,
-					isImportant: newIsImportant,
-					imageUrl: newImageUrl.trim(),
-					publishStatus: newVisibility,
-				}),
+			const result = await saveNewsRequest(editingId, {
+				title: newTitle.trim(),
+				summary: (newSummary || newTitle).trim(),
+				content: newContent.trim(),
+				category: newCategory,
+				isImportant: newIsImportant,
+				imageUrl: newImageUrl.trim(),
+				publishStatus: newVisibility,
 			});
-
-			if (!res.ok) {
-				const errData = await res.json().catch(() => ({}));
-				setFormError(errData.error || (editingId ? t('newsFormSaveFailed') : t('newsFormPublishFailed')));
+			if (!result.ok) {
+				setFormError(
+					mapNewsContractError(t, result.error, result.code) ||
+						(editingId ? t('newsFormSaveFailed') : t('newsFormPublishFailed'))
+				);
 				return;
 			}
-
-			const saved: NewsEntry = await res.json();
 			playSystemSound();
 			setIsCreateModalOpen(false);
 			setEditingId(null);
 			await fetchNews();
-			setSelectedArticle(saved);
+			setSelectedArticle(result.data);
 		} catch (error) {
 			console.error('Error saving news:', error);
 			setFormError(t('newsFormNetworkError'));

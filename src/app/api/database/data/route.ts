@@ -17,7 +17,7 @@ export async function GET(request: Request) {
 	const rawFilters = searchParams.get('filters');
 
 	if (!table || !/^[a-zA-Z0-9_]+$/.test(table)) {
-		return NextResponse.json({ error: 'Geçersiz tablo adı.' }, { status: 400 });
+		return NextResponse.json({ error: 'Invalid table name.' }, { status: 400 });
 	}
 
 	const pool = getPgPool();
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
 		);
 
 		if (colRes.rows.length === 0) {
-			return NextResponse.json({ error: 'Tablo bulunamadı.' }, { status: 404 });
+			return NextResponse.json({ error: 'Table not found.' }, { status: 404 });
 		}
 
 		// 1b. Fetch primary key mappings for this table
@@ -135,9 +135,15 @@ export async function GET(request: Request) {
 		const whereClauses: string[] = [];
 		const params: unknown[] = [];
 
+		if (table === 'system_settings') {
+			whereClauses.push(`"key" NOT IN ('auth_secret', 'smtp_pass', 'soc_webhook_config')`);
+		}
+
 		if (search) {
-			const textCols = columns.filter((c) =>
-				['text', 'character varying', 'character', 'uuid', 'json', 'jsonb'].includes(c.type)
+			const textCols = columns.filter(
+				(c) =>
+					!c.isSensitive &&
+					['text', 'character varying', 'character', 'uuid', 'json', 'jsonb'].includes(c.type)
 			);
 			if (textCols.length > 0) {
 				params.push(`%${search}%`);
@@ -149,34 +155,44 @@ export async function GET(request: Request) {
 
 		// Process dynamic multi-column filters
 		if (rawFilters) {
+			let parsedFilters: unknown = null;
 			try {
-				const parsed = JSON.parse(rawFilters);
-				if (Array.isArray(parsed)) {
-					for (const f of parsed) {
-						if (!f || typeof f !== 'object') continue;
-						const col = String(f.column || '');
-						if (!validColNames.has(col)) continue;
-						const op = String(f.op || '=');
-						const val = f.value !== undefined ? String(f.value) : '';
+				parsedFilters = JSON.parse(rawFilters);
+			} catch {
+				parsedFilters = null;
+			}
+			if (Array.isArray(parsedFilters)) {
+				for (const f of parsedFilters) {
+					if (!f || typeof f !== 'object') continue;
+					const col = String((f as Record<string, unknown>).column || '');
+					if (!col) continue;
+					const lowerCol = col.toLowerCase();
+					if (DB_SENSITIVE_COLUMNS.has(lowerCol) || DB_SENSITIVE_COLUMNS.has(lowerCol.replace(/_/g, ''))) {
+						return NextResponse.json(
+							{ error: 'Filtering on sensitive cryptographic or credential columns is prohibited.' },
+							{ status: 400 }
+						);
+					}
+					if (!validColNames.has(col)) continue;
+					const op = String((f as Record<string, unknown>).op || '=');
+					const rawVal = (f as Record<string, unknown>).value;
+					const val = rawVal !== undefined ? String(rawVal) : '';
 
-						if (op === 'is_null') {
-							whereClauses.push(`"${col}" IS NULL`);
-						} else if (op === 'is_not_null') {
-							whereClauses.push(`"${col}" IS NOT NULL`);
-						} else if (op === 'like') {
-							params.push(`%${val}%`);
-							whereClauses.push(`CAST("${col}" AS TEXT) LIKE $${params.length}`);
-						} else if (op === 'ilike') {
-							params.push(`%${val}%`);
-							whereClauses.push(`CAST("${col}" AS TEXT) ILIKE $${params.length}`);
-						} else if (['=', '!=', '>', '<', '>=', '<='].includes(op)) {
-							params.push(val);
-							whereClauses.push(`"${col}" ${op} $${params.length}`);
-						}
+					if (op === 'is_null') {
+						whereClauses.push(`"${col}" IS NULL`);
+					} else if (op === 'is_not_null') {
+						whereClauses.push(`"${col}" IS NOT NULL`);
+					} else if (op === 'like') {
+						params.push(`%${val}%`);
+						whereClauses.push(`CAST("${col}" AS TEXT) LIKE $${params.length}`);
+					} else if (op === 'ilike') {
+						params.push(`%${val}%`);
+						whereClauses.push(`CAST("${col}" AS TEXT) ILIKE $${params.length}`);
+					} else if (['=', '!=', '>', '<', '>=', '<='].includes(op)) {
+						params.push(val);
+						whereClauses.push(`"${col}" ${op} $${params.length}`);
 					}
 				}
-			} catch {
-				// ignore malformed filter payloads
 			}
 		}
 
@@ -201,7 +217,7 @@ export async function GET(request: Request) {
 		const dataQuery = `SELECT * FROM "${table}" ${whereSql} ${orderSql} LIMIT ${limit} OFFSET ${offset}`;
 		const dataRes = await pool.query(dataQuery, params);
 
-		// Mask and deny-list sensitive fields by column name, value prefix, and sistem_ayarlari row key
+		// Mask and deny-list sensitive fields by column name, value prefix, and system_settings row key
 		const rows = dataRes.rows.map((r) => {
 			if (!r || typeof r !== 'object') return r;
 			const clean = { ...(r as Record<string, unknown>) };
@@ -228,6 +244,6 @@ export async function GET(request: Request) {
 		});
 	} catch (error) {
 		console.error(`API /api/database/data?table=${table} error:`, error);
-		return NextResponse.json({ error: 'Tablo verileri okunamadı.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to read table data.' }, { status: 500 });
 	}
 }

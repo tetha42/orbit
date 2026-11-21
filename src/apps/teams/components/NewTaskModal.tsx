@@ -63,7 +63,7 @@ export function NewTaskModal({ teamId, column, members, labels, onClose, onCreat
 	return (
 		<Sheet
 			title={t('kbNewTask')}
-			icon={<ListPlus size={20} color="#0a84ff" />}
+			icon={<ListPlus size={20} color="var(--accent)" />}
 			onClose={onClose}
 			onSubmit={submit}
 			closeLabel={t('kbClose')}

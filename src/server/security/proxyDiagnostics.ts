@@ -124,14 +124,13 @@ export function inspectIngress(request: Request): IngressDiagnostics {
 export function getProxyAndIngressDiagnostics(request: Request) {
 	const diag = inspectIngress(request);
 	return {
+		...diag,
 		detectedClientIp: diag.clientIp,
 		isDockerBridgeOrPrivate: diag.isInfrastructureProtected || diag.isDockerGateway,
-		detectedEdge: diag.detectedEdge,
 		isContainerEnvironment: diag.isContainer,
 		recommendation: diag.isInfrastructureProtected
 			? 'Docker bridge / RFC1918 network detected. Reverse proxy must forward X-Forwarded-For headers.'
 			: undefined,
-		...diag,
 	};
 }
 

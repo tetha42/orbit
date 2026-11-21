@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 	try {
 		const list = await getFolderMessages('INBOX', 1, 5);
 		if (!list.messages || list.messages.length === 0) {
-			return NextResponse.json({ success: false, error: 'Gelen kutusunda ileti bulunamadı.' });
+			return NextResponse.json({ success: false, error: 'No messages found in Inbox.' });
 		}
 
 		const firstUid = list.messages[0].uid;
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
 		return NextResponse.json(
 			{
 				success: false,
-				error: errorMessage(err) || 'İleti testi başarısız oldu.',
+				error: errorMessage(err) || 'Message test failed.',
 			},
 			{ status: 500 }
 		);

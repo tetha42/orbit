@@ -25,7 +25,7 @@ export async function GET() {
 					siteName: 'Orbit Community',
 					siteShortName: 'Orbit',
 					descriptionTr:
-						'Tetha42 tarafından geliştirilen kendi sunucunuzda barındırılan topluluk işletim sistemi.',
+						'Self-hosted community operating system engineered by tetha42.',
 					descriptionEn:
 						'Self-hosted community operating system engineered by tetha42.',
 					domain: 'orbit.local',

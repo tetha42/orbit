@@ -17,7 +17,7 @@ table{width:100%;border-collapse:collapse}td,th{border-bottom:1px solid #ddd;pad
 export function openPrintWindow(opts: { title: string; body: string | null; css?: string; width?: number; height?: number; print?: boolean }): Window | null {
 	const w = window.open('', '_blank', `width=${opts.width ?? 900},height=${opts.height ?? 1000}`);
 	if (!w) return null;
-	writePrintWindow(w, { title: opts.title, body: opts.body ?? '<p class="muted">Hazırlanıyor…</p>', css: opts.css, print: opts.body !== null && opts.print !== false });
+	writePrintWindow(w, { title: opts.title, body: opts.body ?? '<p class="muted">Preparing…</p>', css: opts.css, print: opts.body !== null && opts.print !== false });
 	return w;
 }
 

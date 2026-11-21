@@ -19,11 +19,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
 		const { slug } = await params;
 		// Slugs are lowercase ASCII words joined by dashes; anything else cannot exist.
 		if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || slug.length > 120) {
-			return publicError(request, 404, 'not_found', 'Haber bulunamadı.');
+			return publicError(request, 404, 'not_found', 'Article not found.');
 		}
 
 		const article = await getPublicNewsBySlug(slug);
-		if (!article) return publicError(request, 404, 'not_found', 'Haber bulunamadı.');
+		if (!article) return publicError(request, 404, 'not_found', 'Article not found.');
 
 		return publicJson(request, {
 			data: {
@@ -36,11 +36,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
 				featured: article.isImportant === 1,
 				imageUrl: publicImageUrl(article.imageUrl),
 				publishedAt: isoDate(article.publishDate),
-				updatedAt: isoDate(article.update),
+				updatedAt: isoDate(article.updatedAt),
 			},
 		});
 	} catch (error) {
 		console.error('API /api/public/v1/news/[slug] error:', error);
-		return publicError(request, 500, 'server_error', 'Haber şu anda getirilemedi.');
+		return publicError(request, 500, 'server_error', 'Could not retrieve article at this time.');
 	}
 }

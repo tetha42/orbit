@@ -1,17 +1,14 @@
 'use client';
 
-import { AppID, WindowState } from '@/types/workspace';
+import type { AppID } from '@/types/workspace';
 
 export interface WorkspaceSessionData {
-	windows: Record<AppID, WindowState>;
-	activeApp: AppID | 'portal';
 	activeWallpaper: string;
 	brightness: number;
 	volume: number;
 	isMuted: boolean;
 	isDockAutoHide: boolean;
 	dockApps: AppID[];
-	// Role is intentionally absent: it is owned by the server session, not the client cache.
 	updatedAt: number;
 }
 
@@ -20,10 +17,13 @@ const DB_VERSION = 1;
 const STORE_NAME = 'session_store';
 const SESSION_KEY = 'current_workspace_session';
 
+let cachedDbPromise: Promise<IDBDatabase> | null = null;
+
 function openDatabase(): Promise<IDBDatabase> {
-	// Not an async function: the promise is returned rather than awaited.
-	return new Promise((resolve, reject) => {
+	if (cachedDbPromise) return cachedDbPromise;
+	cachedDbPromise = new Promise((resolve, reject) => {
 		if (typeof window === 'undefined' || !window.indexedDB) {
+			cachedDbPromise = null;
 			return reject(new Error('IndexedDB not supported in this environment'));
 		}
 
@@ -37,13 +37,23 @@ function openDatabase(): Promise<IDBDatabase> {
 		};
 
 		request.onsuccess = () => {
-			resolve(request.result);
+			const db = request.result;
+			db.onclose = () => {
+				cachedDbPromise = null;
+			};
+			db.onversionchange = () => {
+				db.close();
+				cachedDbPromise = null;
+			};
+			resolve(db);
 		};
 
 		request.onerror = () => {
+			cachedDbPromise = null;
 			reject(request.error);
 		};
 	});
+	return cachedDbPromise;
 }
 
 export async function saveWorkspaceSession(data: WorkspaceSessionData): Promise<void> {

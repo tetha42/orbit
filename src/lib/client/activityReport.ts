@@ -4,13 +4,8 @@ import { returnStatus } from '@/lib/inventory';
 import { formatMinor } from '@/lib/budget';
 import { escapeHtml } from '@/core/text/escape';
 import { openPrintWindow, writePrintWindow } from '@/core/data/print';
-
-/**
- * "Yönetim Faaliyet Raporu": one printable page with where the club stands —
- * members, the last six months' events and attendance, teams and their tasks,
- * every kasa's balance and the inventory. Built from the same endpoints the
- * apps use, so it shows exactly what management can see, nothing more.
- */
+import { translate, type Language } from '@/lib/i18n';
+import { DEFAULT_LOCALE, getLocaleDefinition, isSupportedLocale } from '@/locales/registry';
 
 interface Member {
 	roleId?: string | null;
@@ -48,9 +43,35 @@ const get = async <T,>(url: string): Promise<T | null> => {
 	return res.ok ? ((await res.json()) as T) : null;
 };
 
-export async function openActivityReport(): Promise<'ok' | 'popup' | 'error'> {
-	// Open the window first, inside the click: browsers block pop-ups opened after an await.
-	const w = openPrintWindow({ title: 'Rapor hazırlanıyor…', body: null, width: 960 });
+function resolveClientLocale(override?: Language): Language {
+	if (override && isSupportedLocale(override)) return override;
+	try {
+		const stored = typeof window !== 'undefined' ? localStorage.getItem('orbit_locale') : null;
+		if (isSupportedLocale(stored)) return stored;
+	} catch {
+		// Ignore private storage restrictions
+	}
+	return DEFAULT_LOCALE;
+}
+
+const REPORT_CSS = [
+	'body{font:12px/1.45 system-ui,sans-serif;margin:28px;color:#111}',
+	'h1{font-size:19px;margin:0}',
+	'h2{font-size:14px;margin:20px 0 6px;border-bottom:2px solid #0a84ff;padding-bottom:3px}',
+	'table{width:100%;border-collapse:collapse}',
+	'td,th{border-bottom:1px solid #ddd;padding:4px 6px;text-align:left}',
+	'th{background:#f2f2f2}.n{text-align:right}',
+	'.kpis{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}',
+	'.kpis div{border:1px solid #ccc;border-radius:6px;padding:6px 10px;min-width:110px}',
+	'.kpis b{font-size:16px;display:block}.muted{color:#666}',
+].join('');
+
+export async function openActivityReport(language?: Language): Promise<'ok' | 'popup' | 'error'> {
+	const lang = resolveClientLocale(language);
+	const t = (key: string) => translate(lang, key);
+	const dateLocale = getLocaleDefinition(lang).dateLocale;
+
+	const w = openPrintWindow({ title: t('reportPreparingTitle'), body: null, width: 960 });
 	if (!w) return 'popup';
 	try {
 		const [membersRes, eventsRes, teamsRes, vaultsRes, inventoryRes] = await Promise.all([
@@ -64,42 +85,88 @@ export async function openActivityReport(): Promise<'ok' | 'popup' | 'error'> {
 		const members = membersRes?.members ?? [];
 		const count = (pred: (m: Member) => boolean) => members.filter(pred).length;
 		const since = now - 183 * 86_400_000;
-		const events = (eventsRes?.events ?? []).filter((e) => e.status !== 'draft' && e.start >= since && e.start <= now).sort((a, b) => b.start - a.start);
+		const events = (eventsRes?.events ?? [])
+			.filter((e) => e.status !== 'draft' && e.start >= since && e.start <= now)
+			.sort((a, b) => b.start - a.start);
 		const reg = events.reduce((a, e) => a + Number(e.registeredCount || 0), 0);
 		const att = events.reduce((a, e) => a + Number(e.participantCount || 0), 0);
 		const teams = teamsRes ?? [];
 		const items = inventoryRes ?? [];
 		const overdue = items.filter((i) => i.status === 'on_loan' && returnStatus(i.returnDate, now)?.overdue).length;
-		const vaults = vaultsRes;
+		const rate = reg ? Math.round((att / reg) * 100) : 0;
 
-		const css = `body{font:12px/1.45 system-ui,sans-serif;margin:28px;color:#111}h1{font-size:19px;margin:0}h2{font-size:14px;margin:20px 0 6px;border-bottom:2px solid #0a84ff;padding-bottom:3px}
-table{width:100%;border-collapse:collapse}td,th{border-bottom:1px solid #ddd;padding:4px 6px;text-align:left}th{background:#f2f2f2}.n{text-align:right}
-.kpis{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}.kpis div{border:1px solid #ccc;border-radius:6px;padding:6px 10px;min-width:110px}.kpis b{font-size:16px;display:block}
-.muted{color:#666}`;
-		const html = `
-<h1>Yönetim Faaliyet Raporu</h1><div class="muted">${esc(new Date(now).toLocaleString('tr-TR'))} · son 6 ay</div>
-<h2>Üyeler</h2><div class="kpis"><div><b>${count((m) => m.status === 'active')}</b>aktif üye</div><div><b>${count((m) => m.status === 'pending')}</b>onay bekleyen</div><div><b>${count((m) => m.status === 'alumni')}</b>mezun</div><div><b>${count((m) => m.status === 'active' && !m.roleId)}</b>roleü atanmamış</div></div>
-<h2>Etkinlikler</h2><div class="kpis"><div><b>${events.length}</b>etkinlik</div><div><b>${reg}</b>kayıt</div><div><b>${att}</b>katılım</div><div><b>${reg ? Math.round((att / reg) * 100) : 0}%</b>katılım oranı</div></div>
-<table><tr><th>Tarih</th><th>CommunityEvent</th><th class="n">Kayıt</th><th class="n">Katılım</th></tr>${
-			events.map((e) => `<tr><td>${esc(new Date(e.start).toLocaleDateString('tr-TR'))}</td><td>${esc(e.title)}${e.status === 'cancelled' ? ' <i>(iptal)</i>' : ''}</td><td class="n">${e.registeredCount}</td><td class="n">${e.participantCount}</td></tr>`).join('') ||
-			'<tr><td colspan="4" class="muted">Bu dönemde etkinlik yok.</td></tr>'
-		}</table>
-<h2>Takımlar</h2><table><tr><th>Takım</th><th>Kaptan</th><th class="n">Üye / kontenjan</th><th class="n">Açık görev</th><th class="n">Tamamlanan</th><th>Durum</th></tr>${teams
-			.map((t) => {
-				const done = t.tasks.filter((g) => g.status === 'done').length;
-				return `<tr><td>${esc(t.name)}</td><td>${esc(t.leaderNameSurname ?? '—')}</td><td class="n">${t.activeMemberCount} / ${t.capacity}</td><td class="n">${t.tasks.length - done}</td><td class="n">${done}</td><td>${esc(t.status)}</td></tr>`;
+		const eventsRows =
+			events
+				.map((e) => {
+					const dt = esc(new Date(e.start).toLocaleDateString(dateLocale));
+					const cancel = e.status === 'cancelled' ? ` <i>${esc(t('reportCancelledTag'))}</i>` : '';
+					return `<tr><td>${dt}</td><td>${esc(e.title)}${cancel}</td><td class="n">${e.registeredCount}</td><td class="n">${e.participantCount}</td></tr>`;
+				})
+				.join('') || `<tr><td colspan="4" class="muted">${esc(t('reportNoEventsPeriod'))}</td></tr>`;
+
+		const teamsRows = teams
+			.map((tm) => {
+				const done = tm.tasks.filter((g) => g.status === 'done').length;
+				const lead = esc(tm.leaderNameSurname ?? '—');
+				return (
+					`<tr><td>${esc(tm.name)}</td><td>${lead}</td>` +
+					`<td class="n">${tm.activeMemberCount} / ${tm.capacity}</td>` +
+					`<td class="n">${tm.tasks.length - done}</td><td class="n">${done}</td>` +
+					`<td>${esc(tm.status)}</td></tr>`
+				);
 			})
-			.join('')}</table>
-${
-	vaults
-		? `<h2>Kasalar</h2><table><tr><th>Kasa</th><th class="n">Gelir (₺)</th><th class="n">Gider (₺)</th><th class="n">Bakiye (₺)</th></tr>${vaults.vaults
-				.map((k) => `<tr><td>${esc(k.name)}</td><td class="n">${formatMinor(k.totalIncomeMinor)}</td><td class="n">${formatMinor(k.totalExpenseMinor)}</td><td class="n"><b>${formatMinor(k.netBalanceMinor)}</b></td></tr>`)
-				.join('')}</table>`
-		: ''
-}
-<h2>Envanter</h2><div class="kpis"><div><b>${items.length}</b>eşya</div><div><b>${items.filter((i) => i.status === 'available').length}</b>müsait</div><div><b>${items.filter((i) => i.status === 'on_loan').length}</b>ödünçte</div><div><b>${overdue}</b>gecikmiş iade</div><div><b>${items.filter((i) => i.status === 'faulty').length}</b>arızalı</div><div><b>${items.filter((i) => i.status === 'lost').length}</b>kayıp</div></div>
-`;
-		writePrintWindow(w, { title: 'Yönetim Faaliyet Raporu', body: html, css });
+			.join('');
+
+		const vaultsSection = vaultsRes
+			? [
+					`<h2>${esc(t('reportVaultsHeading'))}</h2>`,
+					`<table><tr><th>${esc(t('reportColVault'))}</th>`,
+					`<th class="n">${esc(t('reportColIncome'))}</th>`,
+					`<th class="n">${esc(t('reportColExpense'))}</th>`,
+					`<th class="n">${esc(t('reportColBalance'))}</th></tr>`,
+					vaultsRes.vaults
+						.map(
+							(v) =>
+								`<tr><td>${esc(v.name)}</td>` +
+								`<td class="n">${formatMinor(v.totalIncomeMinor)}</td>` +
+								`<td class="n">${formatMinor(v.totalExpenseMinor)}</td>` +
+								`<td class="n"><b>${formatMinor(v.netBalanceMinor)}</b></td></tr>`
+						)
+						.join(''),
+					'</table>',
+				].join('')
+			: '';
+
+		const html = [
+			`<h1>${esc(t('reportTitle'))}</h1>`,
+			`<div class="muted">${esc(new Date(now).toLocaleString(dateLocale))} · ${esc(t('reportLastSixMonths'))}</div>`,
+			`<h2>${esc(t('reportMembersHeading'))}</h2><div class="kpis">`,
+			`<div><b>${count((m) => m.status === 'active')}</b>${esc(t('reportActiveMembers'))}</div>`,
+			`<div><b>${count((m) => m.status === 'pending')}</b>${esc(t('reportPendingApproval'))}</div>`,
+			`<div><b>${count((m) => m.status === 'alumni')}</b>${esc(t('reportAlumni'))}</div>`,
+			`<div><b>${count((m) => m.status === 'active' && !m.roleId)}</b>${esc(t('reportUnassignedRole'))}</div></div>`,
+			`<h2>${esc(t('reportEventsHeading'))}</h2><div class="kpis">`,
+			`<div><b>${events.length}</b>${esc(t('reportEventCount'))}</div>`,
+			`<div><b>${reg}</b>${esc(t('reportRegistrations'))}</div>`,
+			`<div><b>${att}</b>${esc(t('reportAttendance'))}</div>`,
+			`<div><b>${rate}%</b>${esc(t('reportAttendanceRate'))}</div></div>`,
+			`<table><tr><th>${esc(t('reportColDate'))}</th><th>${esc(t('reportColEvent'))}</th>`,
+			`<th class="n">${esc(t('reportColReg'))}</th><th class="n">${esc(t('reportColAtt'))}</th></tr>${eventsRows}</table>`,
+			`<h2>${esc(t('reportTeamsHeading'))}</h2>`,
+			`<table><tr><th>${esc(t('reportColTeam'))}</th><th>${esc(t('reportColCaptain'))}</th>`,
+			`<th class="n">${esc(t('reportColCapacity'))}</th><th class="n">${esc(t('reportColOpenTasks'))}</th>`,
+			`<th class="n">${esc(t('reportColCompleted'))}</th><th>${esc(t('reportColStatus'))}</th></tr>${teamsRows}</table>`,
+			vaultsSection,
+			`<h2>${esc(t('reportInventoryHeading'))}</h2><div class="kpis">`,
+			`<div><b>${items.length}</b>${esc(t('reportInvItems'))}</div>`,
+			`<div><b>${items.filter((i) => i.status === 'available').length}</b>${esc(t('reportInvAvailable'))}</div>`,
+			`<div><b>${items.filter((i) => i.status === 'on_loan').length}</b>${esc(t('reportInvOnLoan'))}</div>`,
+			`<div><b>${overdue}</b>${esc(t('reportInvOverdue'))}</div>`,
+			`<div><b>${items.filter((i) => i.status === 'faulty').length}</b>${esc(t('reportInvFaulty'))}</div>`,
+			`<div><b>${items.filter((i) => i.status === 'lost').length}</b>${esc(t('reportInvLost'))}</div></div>`,
+		].join('');
+
+		writePrintWindow(w, { title: t('reportTitle'), body: html, css: REPORT_CSS });
 		return 'ok';
 	} catch {
 		w.close();

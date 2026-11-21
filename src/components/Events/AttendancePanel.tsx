@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Download, ListChecks, ScanLine, Tv, UserPlus, Undo2, UserMinus } from 'lucide-react';
 import { useSound } from '@/core/sound';
-import { useI18n } from '@/core/i18n';
+import { resolveLocalizedText, useI18n } from '@/core/i18n';
 import { useDialog } from '@/components/Common/DialogProvider';
 import { useJsonResource } from '@/core/data/useJsonResource';
 import { fill } from '@/lib/text';
@@ -22,16 +22,16 @@ interface Props {
 	onProjector: () => void;
 }
 
-const METHOD_KEY: Record<string, string> = { qr: 'evMethodQr', ticket: 'evMethodBilet', manual: 'evMethodManuel' };
+const METHOD_KEY: Record<string, string> = { qr: 'evMethodQr', ticket: 'evMethodTicket', manual: 'evMethodManual' };
 
 /** Organiser tools for one event: check-in switch, projector, ticket scan, manual entry, the list and CSV. */
 export function AttendancePanel({ event, notify, onChanged, onProjector }: Props) {
 	const { t, language } = useI18n();
 	const { playSystemSound } = useSound();
 	const dialog = useDialog();
-	const locale = language === 'en' ? 'en-GB' : 'tr-TR';
+	const locale = resolveLocalizedText({ en: 'en-GB', tr: 'tr-TR' }, language, 'tr-TR');
 	const { data, refetch } = useJsonResource<{ list: AttendeeRow[] }>(
-		`/api/events/${encodeURIComponent(event.id)}/katilim`
+		`/api/events/${encodeURIComponent(event.id)}/attendance`
 	);
 	const list = data?.list ?? [];
 	const [studentNo, setStudentNo] = useState('');
@@ -39,11 +39,26 @@ export function AttendancePanel({ event, notify, onChanged, onProjector }: Props
 	const open = Number(event.attendanceOpen) === 1;
 
 	const post = async (body: Record<string, unknown>, quiet = false) => {
-		const res = await sendJson<{ message?: string; already?: boolean }>('/api/events', 'POST', { eventId: event.id, ...body });
+		const res = await sendJson<{ message?: string; already?: boolean; member?: { nameSurname?: string } }>('/api/events', 'POST', {
+			eventId: event.id,
+			...body,
+		});
 		if (!res.ok) notify(res.error || t('kbActionFailed'), 'error');
 		else {
 			if (!res.data.already) playSystemSound();
-			if (!quiet && res.data.message) notify(res.data.message, res.data.already ? 'error' : 'success');
+			const name = res.data.member?.nameSurname ?? '';
+			if (!quiet && body.action === 'scanTicket') {
+				notify(
+					fill(res.data.already ? t('evAlreadyCheckedIn') : t('evCheckedInRecorded'), { name }),
+					res.data.already ? 'error' : 'success'
+				);
+			} else if (!quiet && body.action === 'manualAttendance') {
+				notify(fill(t('evManualAdded'), { name }), 'success');
+			} else if (!quiet && body.action === 'deleteAttendance') {
+				notify(fill(t('evCheckInRemoved'), { name }), 'success');
+			} else if (!quiet && body.action === 'removeRegistration') {
+				notify(fill(t('evRegistrationRemoved'), { name }), 'success');
+			}
 		}
 		await Promise.all([refetch(), onChanged()]);
 		return res.ok;
@@ -55,7 +70,7 @@ export function AttendancePanel({ event, notify, onChanged, onProjector }: Props
 	const exportCsv = () => {
 		downloadCsv(
 			`${event.slug || event.id}-${t('evCsvName')}`,
-			[t('evColName'), t('evStudentNo'), 'Bölüm', t('evColReg'), t('evColAttend'), 'Yöntem', t('evColBy')],
+			[t('evColName'), t('evStudentNo'), t('department'), t('evColReg'), t('evColAttend'), t('evColMethod'), t('evColBy')],
 			list.map((r) => [
 				r.nameSurname,
 				r.studentNo,

@@ -120,9 +120,9 @@ export function TeamCategoriesPanel() {
 							borderRadius: '8px',
 							marginBottom: '12px',
 							fontSize: '11.5px',
-							background: status.type === 'ok' ? 'rgba(48,209,88,0.12)' : 'rgba(255,69,58,0.12)',
-							color: status.type === 'ok' ? '#30d158' : '#ff453a',
-							border: `1px solid ${status.type === 'ok' ? 'rgba(48,209,88,0.3)' : 'rgba(255,69,58,0.3)'}`,
+							background: status.type === 'ok' ? 'color-mix(in srgb, var(--success) 12%, transparent)' : 'color-mix(in srgb, var(--danger) 12%, transparent)',
+							color: status.type === 'ok' ? 'var(--success)' : 'var(--danger)',
+							border: `1px solid ${status.type === 'ok' ? 'color-mix(in srgb, var(--success) 30%, transparent)' : 'color-mix(in srgb, var(--danger) 30%, transparent)'}`,
 						}}
 					>
 						{status.type === 'ok' ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
@@ -174,9 +174,9 @@ export function TeamCategoriesPanel() {
 											width: '27px',
 											height: '27px',
 											borderRadius: '6px',
-											border: '1px solid rgba(239,68,68,0.3)',
-											background: 'rgba(239,68,68,0.08)',
-											color: '#f87171',
+											border: '1px solid color-mix(in srgb, var(--danger) 30%, transparent)',
+											background: 'color-mix(in srgb, var(--danger) 8%, transparent)',
+											color: 'var(--danger)',
 											display: 'grid',
 											placeItems: 'center',
 											cursor: categories.length <= 1 ? 'not-allowed' : 'pointer',

@@ -15,6 +15,23 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  experimental: {
+    optimizePackageImports: ['@xterm/xterm', '@xterm/addon-fit', '@simplewebauthn/browser'],
+  },
+  outputFileTracingExcludes: {
+    '**': [
+      './data/**',
+      'data/**',
+      'tests/**',
+      'docs/**',
+      'examples/**',
+      'backups/**',
+      'dist-release/**',
+      '.ai/**',
+      'infra/**',
+      'docker-compose*.yml',
+    ],
+  },
   async headers() {
     return [
       {
@@ -28,13 +45,17 @@ const nextConfig = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           {
             key: 'Permissions-Policy',
-            value: 'camera=(self), microphone=(), geolocation=(), payment=()',
+            value: 'camera=(self), microphone=(self), geolocation=(), payment=()',
           },
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' data: blob:; worker-src 'self' blob:; media-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self';",
+            value: `default-src 'self'; script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''} blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' data: blob:; worker-src 'self' blob:; media-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self';`,
           },
         ],
+      },
+      {
+        source: '/(_astro|fonts|app-icons|wallpapers)/:path*',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
       },
     ];
   },

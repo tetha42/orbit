@@ -1,0 +1,125 @@
+{
+  "id": "soc",
+  "name": "Security Operations Center",
+  "version": "1.0.0",
+  "description": "Cybersecurity defense, SIEM telemetry, FIM scanning, WAF management, and SOAR playbooks.",
+  "tables": [
+    "security_blocks",
+    "security_rules",
+    "soc_incidents",
+    "system_logs",
+    "audit_logs"
+  ],
+  "api": {
+    "base": "/api/soc",
+    "endpoints": [
+      {
+        "path": "/api/soc",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "description": "SoC command center and telemetry queries."
+      },
+      {
+        "path": "/api/soc/inspection",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "description": "FIM scan and AppSec audit probes."
+      },
+      {
+        "path": "/api/soc/stream",
+        "methods": [
+          "GET"
+        ],
+        "description": "Real-time SoC security telemetry SSE stream."
+      },
+      {
+        "path": "/api/soc/rules",
+        "methods": [
+          "GET",
+          "POST",
+          "DELETE"
+        ],
+        "description": "Manage dynamic WAF and security inspection rules."
+      },
+      {
+        "path": "/api/soc/rules/test",
+        "methods": [
+          "POST"
+        ],
+        "description": "Dry-run a candidate security rule against a synthetic request."
+      },
+      {
+        "path": "/api/soc/playbooks",
+        "methods": [
+          "POST"
+        ],
+        "description": "Execute automated SOAR incident response playbooks."
+      },
+      {
+        "path": "/api/soc/export",
+        "methods": [
+          "GET"
+        ],
+        "description": "Export filtered SIEM logs in CSV or JSON format."
+      },
+      {
+        "path": "/api/soc/testbench",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "description": "Run and inspect automated SoC security self-tests."
+      },
+      {
+        "path": "/api/audit",
+        "methods": [
+          "GET",
+          "POST",
+          "DELETE"
+        ],
+        "description": "Query, export, or prune immutable audit log trails."
+      }
+    ]
+  },
+  "limits": {
+    "maxSiemQueryWindowHours": 720,
+    "maxBans": 5000
+  },
+  "errorCodes": [
+    {
+      "code": "SOC_ACCESS_DENIED",
+      "status": 403,
+      "i18nKey": "socAccessDenied",
+      "description": "Analyst or Admin permission required."
+    },
+    {
+      "code": "INVALID_ACTION",
+      "status": 400,
+      "i18nKey": "socInvalidAction",
+      "description": "Unrecognized SoC mitigation action."
+    }
+  ],
+  "files": {
+    "actions": [
+      "src/apps/soc/actions/firewallActions.ts",
+      "src/apps/soc/actions/sessionActions.ts",
+      "src/apps/soc/actions/lockdownActions.ts"
+    ],
+    "queries": [
+      "src/apps/soc/queries/overviewQueries.ts",
+      "src/apps/soc/queries/siemQueries.ts",
+      "src/apps/soc/queries/inspectionQueries.ts"
+    ],
+    "ui": [
+      "src/apps/soc/index.tsx",
+      "src/apps/soc/context/SocContext.tsx"
+    ],
+    "i18n": [
+      "src/lib/i18nApps.ts"
+    ]
+  }
+}

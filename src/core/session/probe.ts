@@ -21,31 +21,42 @@ export type SessionProbe =
 	| { kind: 'none' }
 	| { kind: 'failed' };
 
-export async function probeSession(): Promise<SessionProbe> {
-	try {
-		const res = await fetch('/api/auth/me');
-		if (res.ok) {
-			const data = await res.json();
-			return data?.authenticated && data.user ? { kind: 'user', user: data.user } : { kind: 'none' };
-		}
-		if (res.status === 401 || res.status === 403) {
-			const data = await res.json().catch(() => ({}));
-			return {
-				kind: 'ended',
-				conflict: !!data?.conflict,
-				ipMismatch: data?.code === 'SESSION_IP_MISMATCH',
-			};
-		}
-		if (res.status === 503) {
-			const data = await res.json().catch(() => ({}));
-			if (data?.lockdown || data?.code === 'LOCKDOWN_ACTIVE') {
-				return { kind: 'lockdown', message: data.error || 'Sistem DEFCON 1 siber kalkan kriz modundadır.' };
+let inFlightProbe: Promise<SessionProbe> | null = null;
+
+export function probeSession(): Promise<SessionProbe> {
+	if (inFlightProbe) return inFlightProbe;
+	inFlightProbe = (async (): Promise<SessionProbe> => {
+		try {
+			const res = await fetch('/api/auth/me');
+			if (res.ok) {
+				const data = await res.json();
+				return data?.authenticated && data.user ? { kind: 'user', user: data.user } : { kind: 'none' };
 			}
+			if (res.status === 401 || res.status === 403) {
+				const data = await res.json().catch(() => ({}));
+				return {
+					kind: 'ended',
+					conflict: !!data?.conflict,
+					ipMismatch: data?.code === 'SESSION_IP_MISMATCH',
+				};
+			}
+			if (res.status === 503) {
+				const data = await res.json().catch(() => ({}));
+				if (data?.lockdown || data?.code === 'LOCKDOWN_ACTIVE') {
+					return {
+						kind: 'lockdown',
+						message: data.error || 'System is currently in DEFCON 1 cyber shield lockdown mode.',
+					};
+				}
+			}
+			return { kind: 'none' };
+		} catch {
+			return { kind: 'failed' };
+		} finally {
+			inFlightProbe = null;
 		}
-		return { kind: 'none' };
-	} catch {
-		return { kind: 'failed' };
-	}
+	})();
+	return inFlightProbe;
 }
 
 /** How often an open workspace asks the server whether the session still stands (and what the role allows) when no live stream is up. */
@@ -67,11 +78,23 @@ export function startSessionPolling(
 	onConnectionState?: (state: 'live' | 'reconnecting' | 'offline') => void
 ): () => void {
 	let interval: ReturnType<typeof setInterval> | undefined;
+	const probeIfVisible = () => {
+		if (typeof document !== 'undefined' && document.hidden) return;
+		probe();
+	};
 	const every = (ms: number) => {
 		clearInterval(interval);
-		interval = setInterval(probe, ms);
+		interval = setInterval(probeIfVisible, ms);
 	};
 	every(SESSION_POLL_MS);
+	const onVisibility = () => {
+		if (typeof document !== 'undefined' && !document.hidden) {
+			probe();
+		}
+	};
+	if (typeof document !== 'undefined') {
+		document.addEventListener('visibilitychange', onVisibility);
+	}
 	let live = false;
 	const stopLive = startLiveConnection({
 		onState: (connected, again) => {
@@ -90,6 +113,9 @@ export function startSessionPolling(
 	});
 	return () => {
 		clearInterval(interval);
+		if (typeof document !== 'undefined') {
+			document.removeEventListener('visibilitychange', onVisibility);
+		}
 		stopLive();
 	};
 }

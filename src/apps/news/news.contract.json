@@ -1,0 +1,71 @@
+{
+  "id": "news",
+  "name": "News & Announcements",
+  "version": "1.0.0",
+  "description": "Public and member announcements, blog posts, and rich text newsfeed.",
+  "tables": [
+    "news",
+    "users"
+  ],
+  "api": {
+    "base": "/api/news",
+    "endpoints": [
+      {
+        "path": "/api/news",
+        "methods": [
+          "GET",
+          "POST",
+          "PATCH",
+          "DELETE"
+        ],
+        "description": "List, publish, update, or delete news announcements."
+      },
+      {
+        "path": "/api/public/v1/news",
+        "methods": [
+          "GET"
+        ],
+        "description": "Public news feed."
+      },
+      {
+        "path": "/api/public/v1/news/[slug]",
+        "methods": [
+          "GET"
+        ],
+        "description": "Read a single public news article by slug."
+      }
+    ]
+  },
+  "limits": {
+    "maxTitleLength": 200,
+    "maxSummaryLength": 500
+  },
+  "errorCodes": [
+    {
+      "code": "NEWS_NOT_FOUND",
+      "status": 404,
+      "i18nKey": "newsNotFound",
+      "description": "News article not found."
+    },
+    {
+      "code": "SLUG_ALREADY_EXISTS",
+      "status": 409,
+      "i18nKey": "slugExists",
+      "description": "Article slug already taken."
+    }
+  ],
+  "files": {
+    "actions": [
+      "src/db/repositories/news.repo.ts"
+    ],
+    "queries": [
+      "src/apps/news/hooks/useNews.ts"
+    ],
+    "ui": [
+      "src/apps/news/index.tsx"
+    ],
+    "i18n": [
+      "src/lib/i18nApps.ts"
+    ]
+  }
+}

@@ -16,14 +16,14 @@ export async function GET(request: Request) {
 		const ban = await isIpBanned(ip);
 		if (ban.banned) {
 			return NextResponse.json(
-				{ authenticated: false, user: null, error: 'Erişim engellendi.' },
+				{ authenticated: false, user: null, error: 'Access denied.' },
 				{ status: 403, headers: { 'Cache-Control': 'no-store' } }
 			);
 		}
 
 		const sessionToken = readSessionToken(request);
 		if (!sessionToken) {
-			return NextResponse.json({ authenticated: false, user: null, message: 'Aktif bir oturum bulunamadı' }, { status: 401 });
+			return NextResponse.json({ authenticated: false, user: null, message: 'No active session found.' }, { status: 401 });
 		}
 
 		const user = await getUserBySessionToken(sessionToken);
@@ -36,7 +36,7 @@ export async function GET(request: Request) {
 					authenticated: false,
 					user: null,
 					conflict: true,
-					error: 'Oturumunuz başka bir cihazda açıldığı için bu cihazdaki oturum sonlandırıldı.',
+					error: 'Your session was signed out because the account logged in on another device.',
 				},
 				{ status: 401 }
 			);
@@ -55,7 +55,7 @@ export async function GET(request: Request) {
 						user: null,
 						lockdown: true,
 						code: 'LOCKDOWN_ACTIVE',
-						error: 'Sistem DEFCON 1 siber kalkan kriz modundadır. Yönetici harici erişimler geçici olarak askıya alınmıştır.',
+						error: 'System is in DEFCON 1 Lockdown mode. Non-administrator access is temporarily suspended.',
 					},
 					{ status: 503, headers: { 'Cache-Control': 'no-store' } }
 				);
@@ -70,7 +70,7 @@ export async function GET(request: Request) {
 					authenticated: false,
 					user: null,
 					code: 'SESSION_IP_MISMATCH',
-					error: 'Oturum açtığınız IP/ağ ile mevcut IP adresiniz uyuşmuyor. Güvenlik nedeniyle oturumunuz donduruldu (Pass-the-Cookie Koruması). Lütfen tekrar giriş yapın.',
+					error: 'Your current IP address does not match your login network. Session frozen by Pass-the-Cookie protection; please sign in again.',
 				},
 				{ status: 401 }
 			);
@@ -81,7 +81,7 @@ export async function GET(request: Request) {
 		// Alumni keep a read-only session (as verifyAuth allows); pending or
 		// rejected accounts are signed out.
 		if (user.status !== 'active' && user.status !== 'alumni') {
-			const response = NextResponse.json({ authenticated: false, user: null, error: 'Hesabınız aktif durumda değildir.' }, { status: 403 });
+			const response = NextResponse.json({ authenticated: false, user: null, error: 'Your account is not active.' }, { status: 403 });
 			response.cookies.delete(SESSION_COOKIE);
 			return response;
 		}
@@ -89,6 +89,6 @@ export async function GET(request: Request) {
 		return NextResponse.json({ authenticated: true, user: await sessionUserOf(user) }, { headers: { 'Cache-Control': 'no-store' } });
 	} catch (error) {
 		console.error('API error:', error);
-		return NextResponse.json({ error: 'İşlem tamamlanamadı.' }, { status: 500 });
+		return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 });
 	}
 }

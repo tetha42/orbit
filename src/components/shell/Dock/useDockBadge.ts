@@ -7,6 +7,7 @@ import type { NotificationsResponse } from '@/types/notifications';
 /** The number on an app's Dock icon, from the notification feed. Apps without one are absent. */
 const DOCK_BADGES: Partial<Record<AppID, (counts: NotificationsResponse['counts']) => number>> = {
 	chat: (counts) => counts.unreadMessages,
+	mail: (counts) => counts.unreadMessages,
 };
 
 export function useDockBadge(appId: AppID): number {

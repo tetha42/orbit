@@ -19,13 +19,13 @@ export async function GET(request: Request) {
 				nickname: c.nickname,
 				deviceType: c.deviceType,
 				backedUp: Number(c.backedUp) === 1,
-				creation: c.creation,
+				createdAt: c.createdAt,
 				lastUsage: c.lastUsage,
 			})),
 		});
 	} catch (error) {
 		console.error('API /api/auth/passkey GET error:', error);
-		return NextResponse.json({ error: 'Passkey listesi okunamadı.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to load passkey list.' }, { status: 500 });
 	}
 }
 
@@ -38,19 +38,19 @@ async function handleDELETE(request: Request) {
 		const body = await request.json().catch(() => ({}));
 		const id = String(body.id ?? '').trim();
 		if (!id) {
-			return NextResponse.json({ error: 'Passkey kimliği zorunludur.' }, { status: 400 });
+			return NextResponse.json({ error: 'Passkey ID is required.' }, { status: 400 });
 		}
 
 		// Scoped by user id inside the query, so one member cannot remove another's.
 		const removed = await deleteWebauthnCredential(id, auth.user.id);
 		if (!removed) {
-			return NextResponse.json({ error: 'Passkey bulunamadı.' }, { status: 404 });
+			return NextResponse.json({ error: 'Passkey not found.' }, { status: 404 });
 		}
 
-		return NextResponse.json({ success: true, message: 'Passkey kaldırıldı.' });
+		return NextResponse.json({ success: true, message: 'Passkey removed.' });
 	} catch (error) {
 		console.error('API /api/auth/passkey DELETE error:', error);
-		return NextResponse.json({ error: 'Passkey kaldırılamadı.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to remove passkey.' }, { status: 500 });
 	}
 }
 

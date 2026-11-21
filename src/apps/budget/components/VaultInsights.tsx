@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { BarChart3, PieChart } from 'lucide-react';
-import { useI18n } from '@/core/i18n';
+import { getLocaleDefinition, useI18n } from '@/core/i18n';
 import { formatMinor } from '@/lib/budget';
 import ui from '@/core/ui/ui.module.css';
 import k from './Vault.module.css';
@@ -22,7 +22,7 @@ const tl = (minor: number) => `₺${formatMinor(minor)}`;
 const monthName = (key: string, style: 'short' | 'long' = 'short', lang = 'tr') => {
 	const [y, m] = key.split('-').map(Number);
 	return new Date(y, m - 1, 1).toLocaleDateString(
-		lang === 'tr' ? 'tr-TR' : 'en-US',
+		getLocaleDefinition(lang).dateLocale,
 		style === 'long' ? { month: 'long', year: 'numeric' } : { month: 'short' }
 	);
 };
@@ -40,11 +40,11 @@ export function VaultInsights({
 
 	return (
 		<div className={k.insights}>
-			<section className={k.box} aria-label={t('kasaSpendingDistribution')}>
+			<section className={k.box} aria-label={t('treasurySpendingDistribution')}>
 				<h4 className={k.boxTitle}>
-					<PieChart size={15} /> {t('kasaSpendingDistribution')}
+					<PieChart size={15} /> {t('treasurySpendingDistribution')}
 				</h4>
-				{distribution.length === 0 && <div className={ui.muted}>{t('kasaNoExpenses')}</div>}
+				{distribution.length === 0 && <div className={ui.muted}>{t('treasuryNoExpenses')}</div>}
 				{distribution.map((d) => (
 					<button
 						key={d.category}
@@ -63,9 +63,9 @@ export function VaultInsights({
 					</button>
 				))}
 			</section>
-			<section className={k.box} aria-label={t('kasaMonthlyFlow')}>
+			<section className={k.box} aria-label={t('treasuryMonthlyFlow')}>
 				<h4 className={k.boxTitle}>
-					<BarChart3 size={15} /> {t('kasaLast6Months')}
+					<BarChart3 size={15} /> {t('treasuryLast6Months')}
 				</h4>
 				<div className={k.months}>
 					{months.map((m) => (
@@ -74,7 +74,7 @@ export function VaultInsights({
 							type="button"
 							className={`${k.month} ${month === m.month ? k.monthActive : ''}`}
 							onClick={() => onSelectMonth(month === m.month ? '' : m.month)}
-							title={`${monthName(m.month, 'long', language)}: ${t('kasaIncome')} ${tl(m.income)}, ${t('kasaExpense')} ${tl(m.expense)}`}
+							title={`${monthName(m.month, 'long', language)}: ${t('treasuryIncome')} ${tl(m.income)}, ${t('treasuryExpense')} ${tl(m.expense)}`}
 						>
 							<span className={k.bars}>
 								<span
@@ -92,14 +92,14 @@ export function VaultInsights({
 				</div>
 				<div className={k.legend}>
 					<span>
-						<i style={{ background: '#30d158' }} />
-						{t('kasaIncome')}
+						<i style={{ background: 'var(--success)' }} />
+						{t('treasuryIncome')}
 					</span>
 					<span>
-						<i style={{ background: '#ff453a' }} />
-						{t('kasaExpense')}
+						<i style={{ background: 'var(--danger)' }} />
+						{t('treasuryExpense')}
 					</span>
-					<span>{t('kasaMonthFilterHint')}</span>
+					<span>{t('treasuryMonthFilterHint')}</span>
 				</div>
 			</section>
 		</div>

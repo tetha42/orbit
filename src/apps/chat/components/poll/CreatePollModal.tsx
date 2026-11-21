@@ -3,8 +3,14 @@
 import React, { useState } from 'react';
 import { useI18n } from '@/core/i18n';
 import { fill } from '@/lib/text';
-import { X, Plus, Trash2, BarChart2, Shield, CheckSquare, Clock } from 'lucide-react';
-import s from '../../Chat.module.css';
+import { X, Plus, Trash2, BarChart2 } from 'lucide-react';
+import {
+	CreatePollSettings,
+	computePollEndsAt,
+	type DurationOption,
+} from './CreatePollSettings';
+import m from '../../ChatModals.module.css';
+import s from '../../ChatPoll.module.css';
 
 interface CreatePollModalProps {
 	isOpen: boolean;
@@ -17,8 +23,6 @@ interface CreatePollModalProps {
 		endsAt: number | null;
 	}) => Promise<boolean>;
 }
-
-type DurationOption = 'none' | '1h' | '24h' | '3d' | '1w';
 
 export function CreatePollModal(props: CreatePollModalProps) {
 	if (!props.isOpen) return null;
@@ -70,45 +74,37 @@ function CreatePollDialog({ onClose, onSubmit }: CreatePollModalProps) {
 		setError(null);
 		setSubmitting(true);
 
-		let endsAt: number | null = null;
-		const now = Date.now();
-		if (duration === '1h') endsAt = now + 3600 * 1000;
-		else if (duration === '24h') endsAt = now + 86400 * 1000;
-		else if (duration === '3d') endsAt = now + 3 * 86400 * 1000;
-		else if (duration === '1w') endsAt = now + 7 * 86400 * 1000;
-
 		try {
 			const ok = await onSubmit({
 				question: cleanQuestion,
 				options: cleanOptions,
 				multipleSelection,
 				anonymous,
-				endsAt,
+				endsAt: computePollEndsAt(duration),
 			});
 			if (ok) {
 				onClose();
 			} else {
-				setError(t('chatPollCreateError') || 'Anket oluşturulamadı.');
+				setError(t('chatPollCreateError'));
 			}
 		} catch {
-			setError(t('chatPollCreateError') || 'Anket oluşturulurken bir hata oluştu.');
+			setError(t('chatPollCreateError'));
 		} finally {
 			setSubmitting(false);
 		}
 	};
 
 	return (
-		<div className={s.modalOverlay} role="dialog" aria-modal="true">
-			<div className={`${s.modalDialog} ${s.pollModalDialog}`}>
-				{/* Modal Header */}
-				<div className={s.modalHeader}>
-					<div className={s.modalTitle}>
+		<div className={m.modalOverlay} role="dialog" aria-modal="true">
+			<div className={`${m.modalDialog} ${s.pollModalDialog}`}>
+				<div className={m.modalHeader}>
+					<div className={m.modalTitle}>
 						<BarChart2 size={18} />
 						<span>{t('chatPollModalTitle')}</span>
 					</div>
 					<button
 						type="button"
-						className={s.modalCloseBtn}
+						className={m.modalCloseBtn}
 						onClick={onClose}
 						aria-label={t('close')}
 					>
@@ -116,14 +112,12 @@ function CreatePollDialog({ onClose, onSubmit }: CreatePollModalProps) {
 					</button>
 				</div>
 
-				{/* Modal Body / Form */}
 				<form onSubmit={handleSubmit} className={s.pollForm}>
 					<div className={s.pollModalBody}>
 						{error && <div className={s.pollErrorBanner}>{error}</div>}
 
-						{/* Question Input */}
 						<div className={s.pollFieldGroup}>
-							<label className={s.pollFieldLabel}>{t('question') || 'Soru'}</label>
+							<label className={s.pollFieldLabel}>{t('question')}</label>
 							<textarea
 								className={s.pollQuestionInput}
 								placeholder={t('chatPollQuestionPh')}
@@ -134,9 +128,8 @@ function CreatePollDialog({ onClose, onSubmit }: CreatePollModalProps) {
 							/>
 						</div>
 
-						{/* Options List */}
 						<div className={s.pollFieldGroup}>
-							<label className={s.pollFieldLabel}>{t('options') || 'Seçenekler'}</label>
+							<label className={s.pollFieldLabel}>{t('options')}</label>
 							<div className={s.pollOptionsList}>
 								{options.map((opt, idx) => (
 									<div key={idx} className={s.pollOptionRow}>
@@ -174,77 +167,20 @@ function CreatePollDialog({ onClose, onSubmit }: CreatePollModalProps) {
 							)}
 						</div>
 
-						{/* Settings: Anonymous & Multi-choice */}
-						<div className={s.pollSettingsContainer}>
-							<label className={s.pollSettingItem}>
-								<div className={s.pollSettingInfo}>
-									<div className={s.pollSettingTitle}>
-										<Shield size={15} />
-										<span>{t('chatPollAnonymous')}</span>
-									</div>
-									<div className={s.pollSettingDesc}>{t('chatPollAnonymousDesc')}</div>
-								</div>
-								<input
-									type="checkbox"
-									className={s.pollToggle}
-									checked={anonymous}
-									onChange={(e) => setAnonymous(e.target.checked)}
-								/>
-							</label>
-
-							<label className={s.pollSettingItem}>
-								<div className={s.pollSettingInfo}>
-									<div className={s.pollSettingTitle}>
-										<CheckSquare size={15} />
-										<span>{t('chatPollMultiChoice')}</span>
-									</div>
-									<div className={s.pollSettingDesc}>{t('chatPollMultiChoiceDesc')}</div>
-								</div>
-								<input
-									type="checkbox"
-									className={s.pollToggle}
-									checked={multipleSelection}
-									onChange={(e) => setMultipleSelection(e.target.checked)}
-								/>
-							</label>
-
-							{/* Duration Segment Control */}
-							<div className={s.pollDurationGroup}>
-								<div className={s.pollDurationTitle}>
-									<Clock size={15} />
-									<span>{t('chatPollDuration')}</span>
-								</div>
-								<div className={s.pollDurationSegments}>
-									{(
-										[
-											{ id: 'none', labelKey: 'chatPollDurationUnlimited' },
-											{ id: '1h', labelKey: 'chatPollDuration1h' },
-											{ id: '24h', labelKey: 'chatPollDuration24h' },
-											{ id: '3d', labelKey: 'chatPollDuration3d' },
-											{ id: '1w', labelKey: 'chatPollDuration1w' },
-										] as const
-									).map((item) => (
-										<button
-											key={item.id}
-											type="button"
-											className={`${s.pollDurationBtn} ${
-												duration === item.id ? s.pollDurationBtnActive : ''
-											}`}
-											onClick={() => setDuration(item.id)}
-										>
-											{t(item.labelKey)}
-										</button>
-									))}
-								</div>
-							</div>
-						</div>
+						<CreatePollSettings
+							anonymous={anonymous}
+							onAnonymousChange={setAnonymous}
+							multipleSelection={multipleSelection}
+							onMultipleSelectionChange={setMultipleSelection}
+							duration={duration}
+							onDurationChange={setDuration}
+						/>
 					</div>
 
-					{/* Modal Footer */}
-					<div className={s.modalFooter}>
+					<div className={m.modalFooter}>
 						<button
 							type="button"
-							className={s.modalCloseBtn}
+							className={m.modalCloseBtn}
 							onClick={onClose}
 							disabled={submitting}
 						>
@@ -252,7 +188,7 @@ function CreatePollDialog({ onClose, onSubmit }: CreatePollModalProps) {
 						</button>
 						<button
 							type="submit"
-							className={s.primaryActionBtn}
+							className={m.primaryActionBtn}
 							disabled={submitting || !question.trim()}
 						>
 							<BarChart2 size={16} />

@@ -189,22 +189,22 @@
 }
 
 .b_available {
-	color: var(--green);
-	background: color-mix(in srgb, #30d158 15%, transparent);
+	color: var(--success);
+	background: color-mix(in srgb, var(--success) 15%, transparent);
 }
 
 .b_on_loan {
-	color: var(--orange);
-	background: color-mix(in srgb, #ff9f0a 16%, transparent);
+	color: var(--warning);
+	background: color-mix(in srgb, var(--warning) 16%, transparent);
 }
 
 .b_faulty {
-	color: var(--red);
-	background: color-mix(in srgb, #ff453a 14%, transparent);
+	color: var(--danger);
+	background: color-mix(in srgb, var(--danger) 14%, transparent);
 }
 
 .b_lost {
-	color: var(--gray);
+	color: var(--neutral);
 	background: var(--fill-soft);
 }
 
@@ -215,13 +215,13 @@
 	padding: 8px 10px;
 	border-radius: 10px;
 	font-size: 12px;
-	background: color-mix(in srgb, #ff9f0a 9%, transparent);
-	border: 1px solid color-mix(in srgb, #ff9f0a 30%, transparent);
+	background: color-mix(in srgb, var(--warning) 9%, transparent);
+	border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
 }
 
 .loanOverdue {
-	background: color-mix(in srgb, #ff453a 9%, transparent);
-	border-color: color-mix(in srgb, #ff453a 35%, transparent);
+	background: color-mix(in srgb, var(--danger) 9%, transparent);
+	border-color: color-mix(in srgb, var(--danger) 35%, transparent);
 }
 
 .due {
@@ -229,7 +229,7 @@
 }
 
 .dueLate {
-	color: var(--red);
+	color: var(--danger);
 }
 
 .dueSoon {
@@ -268,7 +268,7 @@
 
 .btnPrimary {
 	background: var(--accent);
-	color: var(--accent-contrast, #ffffff);
+	color: var(--accent-contrast);
 }
 
 .btnPrimary:hover {
@@ -277,13 +277,13 @@
 }
 
 .btnSuccess {
-	background: var(--green, #30d158);
-	color: #fff;
+	background: var(--green);
+	color: var(--accent-contrast);
 }
 
 .btnSuccess:hover {
 	opacity: 0.9;
-	box-shadow: 0 2px 8px rgba(48, 209, 88, 0.35);
+	box-shadow: 0 2px 8px color-mix(in srgb, var(--success) 35%, transparent);
 }
 
 .btnSecondary {
@@ -348,8 +348,8 @@
 	padding: 12px;
 	border-radius: 12px;
 	border: 1px solid var(--card-border);
-	background: #fff;
-	color: #111;
+	background: var(--surface-paper);
+	color: var(--ink-paper-text);
 	text-align: center;
 	font-size: 11px;
 }

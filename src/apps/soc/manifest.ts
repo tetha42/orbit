@@ -35,14 +35,14 @@ const manifest = {
 	dock: 15,
 	permission: {
 		order: 15,
-		name: 'SOC Savunma',
-		use: 'Canlı tehdit radarını, aktif oturumları, SIEM kayıtlarını ve test laboratuvarı ekranlarını izler.',
-		manage: 'IP karantinası uygular, şüpheli oturumları düşürür, Kalkan Modunu (Lockdown) yönetir ve API test paketini çalıştırır.',
-		warning: 'Kullanıcı oturumlarını sonlandırma ve IP engelleme yetkisi verir; yalnızca güvenlik yöneticilerine açılmalıdır.',
+		name: 'SOC Defense Center',
+		use: 'Monitor real-time threat radar, active sessions, SIEM security logs, and testbench views.',
+		manage: 'Quarantine IPs, terminate suspicious sessions, toggle Lockdown mode, and execute test suites.',
+		warning: 'Grants authority to terminate sessions and block IP addresses; restrict to security officers only.',
 	},
 	menu: {
 		title: { tr: 'SOC Kalkanı', en: 'SOC Defense' },
-		about: { id: 'about-soc', label: { tr: 'SOC Güvenlik Merkezi Hakkında', en: 'About SOC Security Center' }, permission: 'use', ac: true },
+		about: { id: 'about-soc', label: { tr: 'SOC Güvenlik Merkezi Hakkında', en: 'About SOC Security Center' }, permission: 'use', open: true },
 		categories: [
 			{
 				id: 'view',
@@ -50,7 +50,13 @@ const manifest = {
 				items: [
 					{ id: 'soc-tab-radar', label: { tr: 'Canlı Tehdit Radarı', en: 'Live Threat Radar' }, shortcut: '⌥1', permission: 'use', command: 'tab-radar' },
 					{ id: 'soc-tab-firewall', label: { tr: 'IP Karantina & Güvenlik Duvarı', en: 'IP Quarantine & Firewall' }, shortcut: '⌥2', permission: 'use', command: 'tab-firewall' },
-					{ id: 'soc-tab-sessions', label: { tr: 'Aktif Oturumlar & Kimlik Kalkanı', en: 'Active Sessions & Identity Shield' }, shortcut: '⌥3', permission: 'use', command: 'tab-sessions' },
+					{
+						id: 'soc-tab-sessions',
+						label: { tr: 'Aktif Oturumlar & Kimlik Kalkanı', en: 'Active Sessions & Identity Shield' },
+						shortcut: '⌥3',
+						permission: 'use',
+						command: 'tab-sessions',
+					},
 					{ id: 'soc-tab-siem', label: { tr: 'SIEM & Adli Log Analizi', en: 'SIEM & Log Forensics' }, shortcut: '⌥4', permission: 'use', command: 'tab-siem' },
 					{ id: 'soc-tab-inspection', label: { tr: 'Mavi Takım Teftiş', en: 'Blue Team Inspection' }, shortcut: '⌥5', permission: 'use', command: 'tab-inspection' },
 					{ id: 'soc-tab-audit', label: { tr: 'Değişiklik Geçmişi', en: 'Change History' }, shortcut: '⌥A', permission: 'manage', command: 'tab-audit' },

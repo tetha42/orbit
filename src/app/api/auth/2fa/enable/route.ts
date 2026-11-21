@@ -62,18 +62,18 @@ export async function POST(request: Request) {
 		await logSystemEvent({
 			service: 'auth',
 			level: 'INFO',
-			message: `Kullanıcı iki adımlı doğrulamayı (2FA) etkinleştirdi: ${user.email}`,
+			message: `User enabled two-factor authentication (2FA): ${user.email}`,
 			userId: user.id,
 			ip,
 		});
 
 		return NextResponse.json({
 			success: true,
-			message: 'İki adımlı doğrulama etkinleştirildi.',
+			message: 'Two-factor authentication enabled.',
 			recoveryCodes: plain,
 		});
 	} catch (error) {
 		console.error('API /api/auth/2fa/enable error:', error);
-		return NextResponse.json({ error: 'İki adımlı doğrulama etkinleştirilemedi.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to enable two-factor authentication.' }, { status: 500 });
 	}
 }

@@ -1,75 +1,93 @@
 import { getUserBySessionToken } from '@/db';
 import { subscribe, type AppEvent } from '@/db/events';
 import { readSessionToken, verifyAuth } from '@/lib/auth/authGuard';
+import { encodeSseComment, encodeSseEvent } from '@/lib/sse/protocol';
+import { acquireStreamSlot } from '@/server/sse/streamQuota';
+import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-/**
- * Interval between SSE `:keepalive` comments so reverse proxies (nginx, Cloudflare, etc.)
- * do not drop an idle connection.
- */
 const HEARTBEAT_MS = 25_000;
-
-/**
- * Periodic session token re-verification interval while the stream is open.
- * Even if a `session` NOTIFY were missed, a revoked token is detected within
- * at most this window.
- */
 const SESSION_VERIFY_MS = 60_000;
+const MAX_HIGHWATER_BYTES = 512 * 1024;
 
-/**
- * GET /api/stream — per-member Server-Sent Events (SSE) stream.
- *
- * Emitted events:
- *   permission-changed  — the member's role, or a role's permissions, changed
- *   session-ended       — the session is over (signed in elsewhere, signed out, account suspended); the stream closes
- *   notification        — a new notification was recorded for this member
- *   team_updated        — team roster, settings, or kanban tasks changed
- *   budget_updated      — budget ledger or balance changed
- *   inventory_updated   — inventory item status, custody, or details changed
- */
 export async function GET(request: Request) {
 	const auth = await verifyAuth(request);
 	if (!auth.authorized) return auth.response;
 
 	const userId = auth.user.id;
 	const token = readSessionToken(request) ?? '';
-	const encoder = new TextEncoder();
 
+	let closed = false;
 	let unsubscribe: (() => void) | null = null;
+	let releaseQuota: (() => void) | null = null;
 	let heartbeat: ReturnType<typeof setInterval> | null = null;
 	let verifyTimer: ReturnType<typeof setInterval> | null = null;
-	let closed = false;
+	let closeController: (() => void) | null = null;
+
+	const finish = () => {
+		if (closed) return;
+		closed = true;
+		if (heartbeat) clearInterval(heartbeat);
+		if (verifyTimer) clearInterval(verifyTimer);
+		heartbeat = null;
+		verifyTimer = null;
+		const unsub = unsubscribe;
+		unsubscribe = null;
+		if (unsub) unsub();
+		const rel = releaseQuota;
+		releaseQuota = null;
+		if (rel) rel();
+		if (closeController) closeController();
+	};
+
+	const slot = acquireStreamSlot({
+		channel: 'system',
+		userId,
+		maxPerUser: 8,
+		maxGlobal: 512,
+		onEvict: finish,
+	});
+	if (!slot.ok) {
+		return NextResponse.json(
+			{ error: slot.reason },
+			{ status: 429, headers: { 'Retry-After': String(slot.retryAfter) } }
+		);
+	}
+	releaseQuota = slot.release;
+
+	const encoder = new TextEncoder();
 
 	const stream = new ReadableStream<Uint8Array>({
 		start(controller) {
-			const write = (line: string) => {
-				if (closed) return;
-				try {
-					controller.enqueue(encoder.encode(line));
-				} catch {
-					finish();
-				}
-			};
-			const emit = (event: string, data = '{}') => {
-				write(`event: ${event}\ndata: ${data}\n\n`);
-			};
-			const finish = () => {
-				if (closed) return;
-				closed = true;
-				if (heartbeat) clearInterval(heartbeat);
-				if (verifyTimer) clearInterval(verifyTimer);
-				heartbeat = null;
-				verifyTimer = null;
-				const unsub = unsubscribe;
-				unsubscribe = null;
-				if (unsub) unsub();
+			closeController = () => {
 				try {
 					controller.close();
 				} catch {
 					/* already closed */
 				}
+			};
+			if (request.signal.aborted) {
+				finish();
+				return;
+			}
+			const writeRaw = (bytes: Uint8Array) => {
+				if (closed) return;
+				if (
+					controller.desiredSize !== null &&
+					controller.desiredSize < -MAX_HIGHWATER_BYTES
+				) {
+					return;
+				}
+				try {
+					controller.enqueue(bytes);
+				} catch {
+					finish();
+				}
+			};
+			const emit = (event: string, data: Record<string, unknown> = {}) => {
+				writeRaw(encodeSseEvent(event, { ts: Date.now(), ...data }));
 			};
 
 			const verifySession = async () => {
@@ -82,14 +100,23 @@ export async function GET(request: Request) {
 						finish();
 					}
 				} catch {
-					/* transient DB hiccup: do not drop the session, retry on next tick */
+					/* transient DB hiccup */
 				}
 			};
 
 			const send = (event: AppEvent) => {
 				if (closed) return;
-				if (event.k === 'session') {
+				if (event.k === 'session' || event.k === 'session_revoked') {
 					void verifySession();
+				} else if (event.k === 'login_approval') {
+					emit('login_approval', {
+						approvalId: event.approvalId,
+						status: event.status,
+					});
+				} else if (event.k === 'drive_updated') {
+					emit('drive_updated', { itemId: event.itemId });
+				} else if (event.k === 'call_ring' || event.k === 'call_signal') {
+					emit(event.k, { ...event });
 				} else if (event.k === 'permission') {
 					emit('permission-changed');
 				} else if (event.k === 'notification') {
@@ -110,25 +137,30 @@ export async function GET(request: Request) {
 					emit('decision_updated');
 				} else if (event.k === 'note_updated') {
 					emit('note_updated');
+				} else if (event.k === 'soc_updated') {
+					emit('soc_updated');
 				} else if (event.k === 'refresh') {
-					emit('permission-changed');
-					emit('notification');
-					emit('team_updated');
-					emit('budget_updated');
-					emit('inventory_updated');
-					emit('news_updated');
-					emit('event_updated');
-					emit('project_updated');
-					emit('decision_updated');
-					emit('note_updated');
+					for (const ev of [
+						'permission-changed',
+						'notification',
+						'team_updated',
+						'budget_updated',
+						'inventory_updated',
+						'news_updated',
+						'event_updated',
+						'project_updated',
+						'decision_updated',
+						'note_updated',
+						'soc_updated',
+					]) {
+						emit(ev);
+					}
 				}
 			};
 
-			// Send an initial frame immediately so EventSource fires `open`.
-			write('retry: 3000\n:connected\n: baglandi\n\n');
-
+			writeRaw(encoder.encode('retry: 3000\n:connected\n: ready\n\n'));
 			unsubscribe = subscribe({ userId, send, close: finish });
-			heartbeat = setInterval(() => write(':keepalive\n\n'), HEARTBEAT_MS);
+			heartbeat = setInterval(() => writeRaw(encodeSseComment('keepalive')), HEARTBEAT_MS);
 			const jitterMs = Math.floor(Math.random() * 10_000) - 5_000;
 			verifyTimer = setInterval(() => void verifySession(), SESSION_VERIFY_MS + jitterMs);
 			if (typeof heartbeat === 'object' && 'unref' in heartbeat) heartbeat.unref();
@@ -137,11 +169,7 @@ export async function GET(request: Request) {
 			request.signal.addEventListener('abort', finish, { once: true });
 		},
 		cancel() {
-			if (closed) return;
-			closed = true;
-			if (heartbeat) clearInterval(heartbeat);
-			if (verifyTimer) clearInterval(verifyTimer);
-			if (unsubscribe) unsubscribe();
+			finish();
 		},
 	});
 

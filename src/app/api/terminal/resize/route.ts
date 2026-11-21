@@ -18,25 +18,31 @@ async function handlePOST(request: Request) {
 		const { sessionId, cols, rows } = body;
 
 		if (!sessionId || typeof sessionId !== 'string') {
-			return NextResponse.json({ error: 'Geçersiz sessionId' }, { status: 400 });
+			return NextResponse.json({ error: 'Invalid sessionId.' }, { status: 400 });
 		}
 
 		const session = getTerminalSession(sessionId);
 		if (!session) {
-			return NextResponse.json({ error: 'Oturum bulunamadı veya sonlandı' }, { status: 404 });
+			return NextResponse.json({ error: 'Session not found or ended.' }, { status: 404 });
 		}
 
 		if (session.userId !== auth.user.id) {
-			return NextResponse.json({ error: 'Bu oturumu yönetme yetkiniz yok' }, { status: 403 });
+			return NextResponse.json({ error: 'You do not have permission to manage this session.' }, { status: 403 });
 		}
 
-		const numCols = typeof cols === 'number' && cols > 0 ? cols : 80;
-		const numRows = typeof rows === 'number' && rows > 0 ? rows : 24;
+		const numCols =
+			typeof cols === 'number' && Number.isFinite(cols)
+				? Math.min(300, Math.max(20, Math.trunc(cols)))
+				: 80;
+		const numRows =
+			typeof rows === 'number' && Number.isFinite(rows)
+				? Math.min(120, Math.max(10, Math.trunc(rows)))
+				: 24;
 
 		const ok = resizeTerminalSession(sessionId, numCols, numRows);
 		return NextResponse.json({ ok, cols: numCols, rows: numRows });
 	} catch (error: unknown) {
-		const message = error instanceof Error ? error.message : 'Terminal boyutu güncellenemedi';
+		const message = error instanceof Error ? error.message : 'Failed to resize terminal.';
 		return NextResponse.json({ error: message }, { status: 500 });
 	}
 }

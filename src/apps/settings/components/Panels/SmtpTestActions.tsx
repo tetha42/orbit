@@ -40,12 +40,12 @@ export function SmtpTestActions({
 					padding: '9px 20px',
 					borderRadius: '8px',
 					border: 'none',
-					background: '#34c759',
+					background: 'var(--success)',
 					color: '#fff',
 					fontWeight: 700,
 					fontSize: '13px',
 					cursor: 'pointer',
-					boxShadow: '0 2px 8px rgba(52, 199, 89, 0.3)',
+					boxShadow: '0 2px 8px color-mix(in srgb, var(--success) 30%, transparent)',
 				}}
 			>
 				{isSaving ? t('smtpSaving') : t('smtpSaveBtn')}
@@ -78,7 +78,7 @@ export function SmtpTestActions({
 						padding: '8px 14px',
 						borderRadius: '8px',
 						border: '1px solid var(--accent-blue)',
-						background: 'rgba(10, 132, 255, 0.15)',
+						background: 'color-mix(in srgb, var(--accent) 15%, transparent)',
 						color: 'var(--accent-blue)',
 						fontWeight: 600,
 						fontSize: '12.5px',

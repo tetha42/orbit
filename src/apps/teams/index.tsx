@@ -19,6 +19,7 @@ export function TeamsApp() {
 	const { t } = useI18n();
 	const state = useTeams();
 
+	const boardCommandRef = React.useRef<((cmd: string) => void) | null>(null);
 	const boardOpen = !!state.selectedTeam && state.visibleTab === 'kanban' && state.canEnter(state.selectedTeam);
 	useAppCommand(
 		'teams',
@@ -26,8 +27,10 @@ export function TeamsApp() {
 			if (cmd === 'new-team') {
 				if (state.canCreateTeam) state.setCreating(true);
 				else state.notify(t('tmNoPermissionCreateTeam'), 'error');
+			} else if (boardOpen && boardCommandRef.current && (cmd === 'new-task' || cmd === 'kanban-refresh')) {
+				boardCommandRef.current(cmd);
 			} else if (cmd === 'new-task') {
-				if (!boardOpen) state.notify(t('tmOpenBoardFirst'), 'error');
+				state.notify(t('tmOpenBoardFirst'), 'error');
 			} else if (cmd === 'kanban-refresh') {
 				void state.fetchTeams().then(() => state.notify(t('tmTeamsRefreshed')));
 			}
@@ -105,6 +108,9 @@ export function TeamsApp() {
 							fetchTeams={state.fetchTeams}
 							setTeamsData={state.setTeamsData}
 							onRemoveTeam={state.remove}
+							onRegisterBoardCommand={(fn) => {
+								boardCommandRef.current = fn;
+							}}
 						/>
 					)}
 				</div>
@@ -127,7 +133,7 @@ export function TeamsApp() {
 					teamName={state.applyTo.name}
 					onClose={() => state.setApplyTo(null)}
 					onSend={async (note) => {
-						if (await state.post({ action: 'join', teamId: state.applyTo!.id, applicationNote: note })) {
+						if (await state.post({ action: 'join', teamId: state.applyTo!.id, applicationNote: note }, t('tmAppliedToast'))) {
 							state.setApplyTo(null);
 						}
 					}}

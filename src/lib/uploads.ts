@@ -18,8 +18,14 @@ export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
  * Names are generated server-side; anything else is refused before touching the
  * disk. Chat attachments share the directory and extend the extension list.
  */
-export const UPLOAD_NAME_RE =
-	/^\d{10,16}_[a-f0-9]{18}\.(jpg|jpeg|png|webp|gif|avif|pdf|mp4|mov|webm|weba|mkv|ogg|wav|mp3|flac|m4a|txt|md|markdown|csv|json|log|yaml|yml|xml|zip|docx|xlsx|pptx|odt|ods|odp|epub|doc|xls|ppt|bin)$/;
+const UPLOAD_EXTS = [
+	'jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'pdf', 'mp4', 'mov', 'webm', 'weba',
+	'mkv', 'ogg', 'wav', 'mp3', 'flac', 'm4a', 'txt', 'md', 'markdown', 'csv', 'json',
+	'log', 'yaml', 'yml', 'xml', 'zip', 'docx', 'xlsx', 'pptx', 'odt', 'ods', 'odp',
+	'epub', 'doc', 'xls', 'ppt', 'bin',
+].join('|');
+
+export const UPLOAD_NAME_RE = new RegExp(`^\\d{10,16}_[a-f0-9]{18}\\.(${UPLOAD_EXTS})$`);
 
 export interface SniffedFile {
 	mime: 'image/jpeg' | 'image/png' | 'image/webp' | 'application/pdf';

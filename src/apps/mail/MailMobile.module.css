@@ -23,7 +23,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   1. Navigasyon Çubuğu (Top Navigation Bar)
+   1. Navigation Bar (Top Navigation Bar)
    -------------------------------------------------------------------------- */
 .navBar {
 	display: flex;
@@ -116,7 +116,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   2. Büyük Başlık ve Arama (iOS Large Title & Search)
+   2. Large Title and Search (iOS Large Title & Search)
    -------------------------------------------------------------------------- */
 .largeTitleWrap {
 	padding: 10px 16px 4px 16px;
@@ -174,7 +174,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   3. Ekran 1: Gruplu Posta Kutuları (iOS Grouped Mailboxes)
+   3. Screen 1: Grouped Mailboxes (iOS Grouped Mailboxes)
    -------------------------------------------------------------------------- */
 .mailboxesScroll {
 	flex: 1;
@@ -239,7 +239,7 @@
 
 .unreadBadge {
 	background: var(--accent);
-	color: #ffffff;
+	color: var(--accent-contrast);
 	font-size: 11px;
 	font-weight: 700;
 	padding: 2px 8px;
@@ -261,7 +261,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   4. Ekran 2: İleti Listesi Kartları (Message List Cards)
+   4. Screen 2: Message List Cards (Message List Cards)
    -------------------------------------------------------------------------- */
 .messageListScroll {
 	flex: 1;
@@ -361,7 +361,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   5. Ekran 3: İleti Detayı ve Alt Araç Çubuğu (Detail & Bottom Toolbar)
+   5. Screen 3: Message Detail and Bottom Toolbar (Detail & Bottom Toolbar)
    -------------------------------------------------------------------------- */
 .detailViewContainer {
 	flex: 1;
@@ -445,14 +445,14 @@
 .detailBodyScroll {
 	flex: 1;
 	overflow-y: auto;
-	background: #ffffff;
+	background: var(--surface-paper);
 	position: relative;
 	-webkit-overflow-scrolling: touch;
 	user-select: text;
 }
 
 :global([data-theme="dark"]) .detailBodyScroll {
-	background: #18191b;
+	background: var(--ink-dark);
 }
 
 .remoteBannerMobile {
@@ -470,7 +470,7 @@
 .loadImagesBtn {
 	border: none;
 	background: var(--accent);
-	color: #ffffff;
+	color: var(--accent-contrast);
 	font-size: 10.5px;
 	font-weight: 600;
 	padding: 4px 8px;
@@ -504,7 +504,7 @@
 	white-space: nowrap;
 }
 
-/* Sabit iOS Alt Araç Çubuğu (Fixed Bottom Frosted Toolbar) */
+/* Fixed iOS Bottom Toolbar (Fixed Bottom Frosted Toolbar) */
 .bottomToolbar {
 	height: 52px;
 	min-height: 52px;
@@ -543,7 +543,7 @@
 }
 
 .toolbarBtnDestructive {
-	color: #ff453a;
+	color: var(--danger);
 }
 
 .selectionCheckbox {
@@ -558,7 +558,7 @@
 	cursor: pointer;
 	padding: 0;
 	flex-shrink: 0;
-	color: #ffffff;
+	color: var(--accent-contrast);
 	transition: border-color 0.12s ease, background-color 0.12s ease;
 }
 
@@ -589,9 +589,9 @@
 	gap: 5px;
 	padding: 4px 8px;
 	border-radius: 7px;
-	border: 1px solid rgba(255, 69, 58, 0.28);
-	background: rgba(255, 69, 58, 0.08);
-	color: #ff453a;
+	border: 1px solid color-mix(in srgb, var(--danger) 28%, transparent);
+	background: color-mix(in srgb, var(--danger) 8%, transparent);
+	color: var(--danger);
 	font-size: 11.5px;
 	font-weight: 600;
 	cursor: pointer;
@@ -603,7 +603,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   6. iOS Alttan Kayan Tam Ekran Yeni İleti (Compose Full Sheet)
+   6. iOS Bottom-Sliding Full-Screen Compose (Compose Full Sheet)
    -------------------------------------------------------------------------- */
 .sheetOverlay {
 	position: absolute;
@@ -669,7 +669,7 @@
 .sheetSendBtn {
 	border: none;
 	background: var(--accent);
-	color: #ffffff;
+	color: var(--accent-contrast);
 	font-size: 13px;
 	font-weight: 600;
 	padding: 5px 14px;
@@ -730,7 +730,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   7. Yükleme ve Boş Durumlar (Loading & Empty States)
+   7. Loading and Empty States (Loading & Empty States)
    -------------------------------------------------------------------------- */
 .centerEmptyState {
 	flex: 1;
@@ -744,12 +744,12 @@
 	color: var(--text-muted);
 }
 
-/* Sabit Apple iOS Alt Sekme Çubuğu (Bottom Navigation Tab Bar) */
+/* Fixed Apple iOS Bottom Tab Bar (Bottom Navigation Tab Bar) */
 .mobileBottomTabBar {
 	flex-shrink: 0;
 	height: calc(56px + env(safe-area-inset-bottom, 0px));
 	min-height: calc(56px + env(safe-area-inset-bottom, 0px));
-	background: rgba(18, 18, 22, 0.94);
+	background: var(--mobile-dock-bg);
 	backdrop-filter: blur(20px);
 	-webkit-backdrop-filter: blur(20px);
 	border-top: 1px solid rgba(255, 255, 255, 0.1);
@@ -783,7 +783,7 @@
 }
 
 .mobileBottomTabBtnActive {
-	color: var(--accent, #0a84ff) !important;
+	color: var(--accent) !important;
 }
 
 .mobileBottomTabIconWrap {
@@ -809,14 +809,14 @@
 	min-width: 16px;
 	height: 16px;
 	border-radius: 8px;
-	background: #ff453a;
-	color: #ffffff;
+	background: var(--danger);
+	color: var(--accent-contrast);
 	font-size: 10px;
 	font-weight: 700;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	padding: 0 4px;
-	border: 1.5px solid #121216;
+	border: 1.5px solid var(--ink-elevated);
 }
 

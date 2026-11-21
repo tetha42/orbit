@@ -18,19 +18,19 @@ export async function GET(request: Request) {
 			? settings.organization_archetype
 			: DEFAULT_ARCHETYPE;
 		return NextResponse.json({
-			clubName: settings.club_name || 'Orbit Community',
-			university: settings.university || 'tetha42',
-			clubDomain: settings.club_domain || 'orbit.local',
+			clubName: settings.club_name || settings.organization_name || 'Orbit Community',
+			university: settings.university || settings.parent_entity || 'tetha42',
+			clubDomain: settings.club_domain || settings.organization_domain || 'orbit.local',
 			archetype,
 			organizationArchetype: archetype,
-			signature1Name: settings.signature1_name || '',
-			signature1Rank: settings.signature1_rank || 'Topluluk Lideri',
-			signature2Name: settings.signature2_name || '',
-			signature2Rank: settings.signature2_rank || 'Stüdyo Koordinatörü',
+			signature1Name: settings.signature1_name || settings.signatory_1_name || '',
+			signature1Rank: settings.signature1_rank || settings.signatory_1_title || 'Community Leader',
+			signature2Name: settings.signature2_name || settings.signatory_2_name || '',
+			signature2Rank: settings.signature2_rank || settings.signatory_2_title || 'Studio Coordinator',
 		});
 	} catch (error) {
 		console.error('API /api/settings/community GET error:', error);
-		return NextResponse.json({ error: 'Topluluk ayarları okunamadı.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to read community settings.' }, { status: 500 });
 	}
 }
 
@@ -58,8 +58,9 @@ export async function PATCH(request: Request) {
 
 		if (clubName !== undefined) {
 			const name = clean(clubName);
-			if (!name) return NextResponse.json({ error: 'Topluluk adı boş bırakılamaz.' }, { status: 400 });
+			if (!name) return NextResponse.json({ error: 'Community name cannot be empty.' }, { status: 400 });
 			updates.club_name = name;
+			updates.organization_name = name;
 		}
 		if (university !== undefined) {
 			const studio = clean(university);
@@ -77,26 +78,44 @@ export async function PATCH(request: Request) {
 				return NextResponse.json({ error: 'Studio name cannot be empty.' }, { status: 400 });
 			}
 			updates.university = 'tetha42';
+			updates.parent_entity = 'tetha42';
 		}
 		if (clubDomain !== undefined) {
 			const domain = clean(clubDomain);
-			if (!domain) return NextResponse.json({ error: 'Topluluk alan adı boş bırakılamaz.' }, { status: 400 });
+			if (!domain) return NextResponse.json({ error: 'Community domain cannot be empty.' }, { status: 400 });
 			updates.club_domain = domain;
+			updates.organization_domain = domain;
 		}
 		const rawArchetype = archetype ?? organizationArchetype;
 		if (rawArchetype !== undefined) {
 			if (!isOrganizationArchetype(rawArchetype)) {
-				return NextResponse.json({ error: 'Geçersiz organizasyon arketipi.' }, { status: 400 });
+				return NextResponse.json({ error: 'Invalid organization archetype.' }, { status: 400 });
 			}
 			updates.organization_archetype = rawArchetype;
 		}
-		if (signature1Name !== undefined) updates.signature1_name = clean(signature1Name);
-		if (signature1Rank !== undefined) updates.signature1_rank = clean(signature1Rank) || 'Topluluk Lideri';
-		if (signature2Name !== undefined) updates.signature2_name = clean(signature2Name);
-		if (signature2Rank !== undefined) updates.signature2_rank = clean(signature2Rank) || 'Stüdyo Koordinatörü';
+		if (signature1Name !== undefined) {
+			const val = clean(signature1Name);
+			updates.signature1_name = val;
+			updates.signatory_1_name = val;
+		}
+		if (signature1Rank !== undefined) {
+			const val = clean(signature1Rank) || 'Community Leader';
+			updates.signature1_rank = val;
+			updates.signatory_1_title = val;
+		}
+		if (signature2Name !== undefined) {
+			const val = clean(signature2Name);
+			updates.signature2_name = val;
+			updates.signatory_2_name = val;
+		}
+		if (signature2Rank !== undefined) {
+			const val = clean(signature2Rank) || 'Studio Coordinator';
+			updates.signature2_rank = val;
+			updates.signatory_2_title = val;
+		}
 
 		if (Object.keys(updates).length === 0) {
-			return NextResponse.json({ ok: true, message: 'Güncellenecek alan bulunamadı.' });
+			return NextResponse.json({ ok: true, message: 'No fields to update.' });
 		}
 
 		await setSystemSettings(updates);
@@ -104,7 +123,7 @@ export async function PATCH(request: Request) {
 		void logSystemEvent({
 			service: 'settings',
 			level: 'INFO',
-			message: `Topluluk kimliği güncellendi (${auth.user.firstName || auth.user.name || ""} ${auth.user.lastName || auth.user.surname || ""})`,
+			message: `Community identity updated (${auth.user.firstName || auth.user.name || ""} ${auth.user.lastName || auth.user.surname || ""})`,
 			detail: updates,
 		});
 
@@ -137,20 +156,20 @@ export async function PATCH(request: Request) {
 			success: true,
 			archetype: freshArchetype,
 			settings: {
-				clubName: fresh.club_name,
-				university: fresh.university,
-				clubDomain: fresh.club_domain,
+				clubName: fresh.club_name || fresh.organization_name || 'Orbit Community',
+				university: fresh.university || fresh.parent_entity || 'tetha42',
+				clubDomain: fresh.club_domain || fresh.organization_domain || 'orbit.local',
 				archetype: freshArchetype,
 				organizationArchetype: freshArchetype,
-				signature1Name: fresh.signature1_name,
-				signature1Rank: fresh.signature1_rank,
-				signature2Name: fresh.signature2_name,
-				signature2Rank: fresh.signature2_rank,
+				signature1Name: fresh.signature1_name || fresh.signatory_1_name || '',
+				signature1Rank: fresh.signature1_rank || fresh.signatory_1_title || 'Community Leader',
+				signature2Name: fresh.signature2_name || fresh.signatory_2_name || '',
+				signature2Rank: fresh.signature2_rank || fresh.signatory_2_title || 'Studio Coordinator',
 			},
 		});
 	} catch (error) {
 		console.error('API /api/settings/community PATCH error:', error);
-		return NextResponse.json({ error: 'Topluluk ayarları kaydedilemedi.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to save community settings.' }, { status: 500 });
 	}
 }
 

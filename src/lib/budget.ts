@@ -1,22 +1,29 @@
 /**
- * Kasa calculations shared by the ledger screen and its checks. Pure: no
+ * Vault calculations shared by the ledger screen and its checks. Pure: no
  * imports, so `scripts/check-pure.mjs` can load it directly.
  */
 
 export interface VaultRow {
 	id: string;
 	date: number;
+	createdAt?: number;
 	creation?: number;
-	typeValue: 'income' | 'expense';
+	type?: 'income' | 'expense';
+	typeValue?: 'income' | 'expense';
 	category: string;
 	amountMinor: number;
 	description: string;
+	recorderName?: string | null;
 	recorderNameSurname?: string | null;
 	transferId?: string | null;
 }
 
+const rowType = (r: VaultRow): 'income' | 'expense' => r.type ?? r.typeValue ?? 'expense';
+const rowCreatedAt = (r: VaultRow): number => r.createdAt ?? r.creation ?? 0;
+const rowRecorderName = (r: VaultRow): string => r.recorderName ?? r.recorderNameSurname ?? '';
+
 /**
- * Reads an amount typed in Turkish or English style into kuruş:
+ * Reads an amount typed in Turkish or English style into cents (kurus):
  * "1.234,56", "1234,56", "1234.56", "1 234,5", "₺12". Returns null when the
  * text is not a positive amount with at most two decimals.
  */
@@ -63,7 +70,7 @@ export const formatMinor = formatCents;
 function chronological<T extends VaultRow>(rows: T[]): T[] {
 	return [...rows].sort(
 		(a, b) =>
-			a.date - b.date || (a.creation ?? 0) - (b.creation ?? 0) || a.id.localeCompare(b.id),
+			a.date - b.date || rowCreatedAt(a) - rowCreatedAt(b) || a.id.localeCompare(b.id),
 	);
 }
 
@@ -72,7 +79,7 @@ export function runningBalance(rows: VaultRow[]): Map<string, number> {
 	const out = new Map<string, number>();
 	let balance = 0;
 	for (const r of chronological(rows)) {
-		balance += r.typeValue === 'income' ? r.amountMinor : -r.amountMinor;
+		balance += rowType(r) === 'income' ? r.amountMinor : -r.amountMinor;
 		out.set(r.id, balance);
 	}
 	return out;
@@ -82,7 +89,7 @@ export function runningBalance(rows: VaultRow[]): Map<string, number> {
 export function categoryBreakdown(rows: VaultRow[], type: 'income' | 'expense' = 'expense') {
 	const totals = new Map<string, number>();
 	for (const r of rows)
-		if (r.typeValue === type) totals.set(r.category, (totals.get(r.category) ?? 0) + r.amountMinor);
+		if (rowType(r) === type) totals.set(r.category, (totals.get(r.category) ?? 0) + r.amountMinor);
 	const total = [...totals.values()].reduce((a, b) => a + b, 0);
 	return [...totals.entries()]
 		.map(([category, amountMinor]) => ({
@@ -111,13 +118,14 @@ export function monthlyFlow(rows: VaultRow[], now: number, count = 6) {
 	const byKey = new Map(months.map((m) => [m.month, m]));
 	for (const r of rows) {
 		const m = byKey.get(monthKey(r.date));
-		if (m) m[r.typeValue] += r.amountMinor;
+		if (m) m[rowType(r)] += r.amountMinor;
 	}
 	return months;
 }
 export const monthlyFeed = monthlyFlow;
 
 export interface VaultFilter {
+	type?: 'all' | 'income' | 'expense';
 	typeValue?: 'all' | 'income' | 'expense';
 	category?: string;
 	/** "2026-10"; empty for all months. */
@@ -130,12 +138,13 @@ export interface VaultFilter {
 export function filterRecords<T extends VaultRow>(rows: T[], f: VaultFilter): T[] {
 	const fold = f.fold ?? ((s: string) => s.toLocaleLowerCase('tr'));
 	const q = f.search?.trim() ? fold(f.search.trim()) : '';
+	const kind = f.type ?? f.typeValue;
 	return rows.filter(
 		(r) =>
-			(!f.typeValue || f.typeValue === 'all' || r.typeValue === f.typeValue) &&
+			(!kind || kind === 'all' || rowType(r) === kind) &&
 			(!f.category || r.category === f.category) &&
 			(!f.month || monthKey(r.date) === f.month) &&
-			(!q || fold(`${r.description} ${r.category} ${r.recorderNameSurname ?? ''}`).includes(q)),
+			(!q || fold(`${r.description} ${r.category} ${rowRecorderName(r)}`).includes(q)),
 	);
 }
 

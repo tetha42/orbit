@@ -1,28 +1,16 @@
 import React from 'react';
-import {
-	Ban,
-	CheckCircle2,
-	Clock,
-	MapPin,
-	Pencil,
-	Plus,
-	QrCode,
-	Send,
-	Ticket,
-	Trash2,
-	Users,
-	X,
-	Info,
-} from 'lucide-react';
+import { Ban, CheckCircle2, Info, Pencil, Plus, QrCode, Send, Ticket, Trash2, X } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
 import { useDialog } from '@/components/Common/DialogProvider';
 import { Linkified } from '@/components/Common/Linkified';
 import { fill } from '@/lib/text';
 import type { EventView, Tab } from '../types';
-import { formatRange, isLive, typeMeta } from '@/components/Events/eventsShared';
+import type { Notify } from '@/core/ui/Toast';
+import { isLive, typeMeta } from '@/components/Events/eventsShared';
 import { AttendancePanel } from '@/components/Events/AttendancePanel';
 import ui from '@/core/ui/ui.module.css';
 import styles from '@/components/Events/Events.module.css';
+import { EventDetailFacts } from './EventDetailFacts';
 
 interface Props {
 	event: EventView;
@@ -30,7 +18,7 @@ interface Props {
 	now: number;
 	locale: string;
 	busy: boolean;
-	notify: (msg: string, type?: 'info' | 'error' | 'success') => void;
+	notify: Notify;
 	refetch: () => Promise<void>;
 	tabOf: (e: EventView) => Tab;
 	setTab: (t: Tab) => void;
@@ -70,8 +58,8 @@ export function EventDetail({
 	const live = isLive(e, now);
 	const ended = e.endTime < now;
 	const full = e.capacity > 0 && e.registeredCount >= e.capacity;
-	const canRegister = e.status === 'published' && !ended && !e.myMyRecord;
-	const canCheckIn = e.status === 'published' && Number(e.attendanceOpen) === 1 && !e.myMyAttendance && !ended;
+	const canRegister = e.status === 'published' && !ended && !e.myRecord;
+	const canCheckIn = e.status === 'published' && Number(e.attendanceOpen) === 1 && !e.myAttendance && !ended;
 
 	return (
 		<div style={{ '--type-color': meta.color } as React.CSSProperties} data-event-id={e.id}>
@@ -81,68 +69,24 @@ export function EventDetail({
 					{live && <span className={`${styles.badge} ${styles.b_live}`}>{t('evLive')}</span>}
 					{e.status === 'draft' && <span className={`${styles.badge} ${styles.b_draft}`}>{t('evDraft')}</span>}
 					{e.status === 'cancelled' && <span className={`${styles.badge} ${styles.b_cancelled}`}>{t('evCancelled')}</span>}
-					{e.myMyAttendance ? (
+					{e.myAttendance ? (
 						<span className={`${styles.badge} ${styles.b_attended}`}>
 							<CheckCircle2 size={10} /> {t('evAttended')}
 						</span>
 					) : (
-						e.myMyRecord && <span className={`${styles.badge} ${styles.b_registered}`}>{t('evRegistered')}</span>
+						e.myRecord && <span className={`${styles.badge} ${styles.b_registered}`}>{t('evRegistered')}</span>
 					)}
 				</div>
 				<h2 className={styles.heroTitle}>{e.title}</h2>
 			</header>
 			<div className={styles.content}>
-				<div className={styles.facts}>
-					<div className={styles.fact}>
-						<span className={styles.factIcon}>
-							<Clock size={15} />
-						</span>
-						<div>
-							<div className={styles.factLabel}>{t('evWhen')}</div>
-							<div className={styles.factValue}>{formatRange(e.start, e.endTime, locale)}</div>
-						</div>
-					</div>
-					<div className={styles.fact}>
-						<span className={styles.factIcon}>
-							<MapPin size={15} />
-						</span>
-						<div>
-							<div className={styles.factLabel}>{t('evWhere')}</div>
-							<div className={styles.factValue}>{e.location}</div>
-						</div>
-					</div>
-					<div className={styles.fact}>
-						<span className={styles.factIcon}>
-							<Users size={15} />
-						</span>
-						<div style={{ flex: 1 }}>
-							<div className={styles.factLabel}>{t('evCapacity')}</div>
-							<div className={styles.factValue}>
-								{e.capacity > 0 ? `${e.registeredCount} / ${e.capacity}` : `${e.registeredCount} · ${t('evUnlimited')}`}
-							</div>
-							{e.capacity > 0 && (
-								<div className={styles.meter}>
-									<span style={{ width: `${Math.min(100, (e.registeredCount / e.capacity) * 100)}%` }} />
-								</div>
-							)}
-							<div className={styles.factLabel} style={{ marginTop: 4 }}>
-								{ended || live
-									? fill(t('evAttendedCount'), { n: e.participantCount })
-									: full
-									? t('evFull')
-									: e.capacity > 0
-									? fill(t('evSeatsLeft'), { n: e.capacity - e.registeredCount })
-									: ''}
-							</div>
-						</div>
-					</div>
-				</div>
+				<EventDetailFacts event={e} locale={locale} live={live} ended={ended} full={full} />
 
-				{e.myMyAttendance && (
+				{e.myAttendance && (
 					<div className={styles.attendedBanner}>
 						<CheckCircle2 size={18} />
 						{fill(t('evAttendedAt'), {
-							when: new Date(e.myMyAttendance.participationTime).toLocaleString(locale, {
+							when: new Date(e.myAttendance.participationTime).toLocaleString(locale, {
 								hour: '2-digit',
 								minute: '2-digit',
 								day: 'numeric',
@@ -163,7 +107,7 @@ export function EventDetail({
 							<Plus size={16} /> {full ? t('evFull') : t('evRegister')}
 						</button>
 					)}
-					{e.myMyRecord && e.ticketCode && (
+					{e.myRecord && e.ticketCode && (
 						<button type="button" className={`${ui.btn} ${styles.bigBtn}`} onClick={() => onOpenTicket(e)}>
 							<Ticket size={16} /> {t('evMyTicket')}
 						</button>
@@ -172,23 +116,23 @@ export function EventDetail({
 						<button
 							type="button"
 							className={`${ui.primaryBtn} ${styles.bigBtn}`}
-							style={{ background: '#30d158' }}
+							style={{ background: 'var(--success)' }}
 							onClick={onStartScan}
 						>
 							<QrCode size={16} /> {t('evCheckIn')}
 						</button>
 					)}
-					{e.myMyRecord && e.start > now && e.status === 'published' && (
+					{e.myRecord && e.start > now && e.status === 'published' && (
 						<button type="button" className={`${ui.btn} ${styles.bigBtn}`} disabled={busy} onClick={() => onUnregister(e)}>
 							<X size={15} /> {t('evCancelRegistration')}
 						</button>
 					)}
-					{e.myMyRecord && e.start <= now && !ended && e.status === 'published' && (
+					{e.myRecord && e.start <= now && !ended && e.status === 'published' && (
 						<span className={ui.muted} style={{ fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
 							<Info size={14} /> {t('evRegistrationLockedStarted')}
 						</span>
 					)}
-					{!canRegister && !e.myMyRecord && !ended && e.status !== 'draft' && (
+					{!canRegister && !e.myRecord && !ended && e.status !== 'draft' && (
 						<span className={ui.muted}>{t('evRegisterClosed')}</span>
 					)}
 				</div>

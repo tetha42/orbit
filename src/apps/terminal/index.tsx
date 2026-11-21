@@ -28,7 +28,7 @@ export function TerminalApp() {
 	const isAllowed = canUseApp('terminal');
 	const passkeySession = currentUser?.authMethod === 'passkey';
 
-	const [is2FaVerified, setIs2FaVerified] = useState(false);
+	const [is2FaVerified, setIs2FaVerified] = useState(() => currentUser?.authMethod === 'passkey');
 	const [twoFactorCode, setTwoFactorCode] = useState<string>('');
 	const [idleExpired, setIdleExpired] = useState(false);
 	// The gate is shown again when the shell cannot start (wrong/reused TOTP,
@@ -40,11 +40,11 @@ export function TerminalApp() {
 	// without a second prompt. After the 60-minute idle lock the passkey panel
 	// asks once, and the session is re-verified without a TOTP code.
 	useEffect(() => {
-		if (passkeySession && !idleExpired) {
+		if (passkeySession && !idleExpired && !initError) {
 			setIs2FaVerified(true);
 			setTwoFactorCode('');
 		}
-	}, [passkeySession, idleExpired]);
+	}, [passkeySession, idleExpired, initError]);
 
 	const handleIdleTimeout = useCallback(() => {
 		setIs2FaVerified(false);

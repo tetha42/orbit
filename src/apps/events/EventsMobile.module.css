@@ -14,10 +14,10 @@
 	overflow: hidden;
 	user-select: none;
 	-webkit-tap-highlight-color: transparent;
-	--ev-atolye: #0a84ff;
-	--ev-seminer: #bf5af2;
-	--ev-yarisma: #ff9f0a;
-	--ev-toplanti: #30d158;
+	--ev-workshop: var(--info);
+	--ev-seminar: var(--purple);
+	--ev-competition: var(--warning);
+	--ev-meeting: var(--success);
 }
 
 .root button,
@@ -26,7 +26,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   1. Navigasyon Çubuğu (Top Bar)
+   1. Navigation Bar (Top Bar)
    -------------------------------------------------------------------------- */
 .topBar {
 	display: flex;
@@ -108,7 +108,7 @@
 	border-radius: 8px;
 	border: none;
 	background: var(--accent);
-	color: #ffffff;
+	color: var(--accent-contrast);
 	cursor: pointer;
 	transition: opacity 0.15s ease, transform 0.1s ease;
 }
@@ -119,7 +119,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   2. Büyük Başlık, Segmented Bar ve Arama
+   2. Large Title, Segmented Bar, and Search
    -------------------------------------------------------------------------- */
 .largeTitleWrap {
 	padding: 10px 16px 4px 16px;
@@ -221,7 +221,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   3. Mobil Liste: Apple Takvim Yaprağı Kartları (Calendar Leaf Cards)
+   3. Mobile List: Apple Calendar Leaf Cards (Calendar Leaf Cards)
    -------------------------------------------------------------------------- */
 .eventsScroll {
 	flex: 1;
@@ -251,7 +251,7 @@
 	border-color: var(--accent-subtle);
 }
 
-/* Apple Takvim Yaprağı */
+/* Apple Calendar Leaf */
 .calendarLeaf {
 	width: 48px;
 	height: 54px;
@@ -270,7 +270,7 @@
 .calendarLeafMonth {
 	width: 100%;
 	background: var(--type-color, var(--accent));
-	color: #ffffff;
+	color: var(--accent-contrast);
 	font-size: 9px;
 	font-weight: 800;
 	text-transform: uppercase;
@@ -324,9 +324,9 @@
 	font-weight: 700;
 	padding: 1px 6px;
 	border-radius: 6px;
-	background: rgba(48, 209, 88, 0.15);
-	color: #30d158;
-	border: 1px solid rgba(48, 209, 88, 0.3);
+	background: color-mix(in srgb, var(--success) 15%, transparent);
+	color: var(--success);
+	border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
 }
 
 .cardTitle {
@@ -369,12 +369,12 @@
 }
 
 .attendedPill {
-	background: rgba(48, 209, 88, 0.15);
-	color: #30d158;
+	background: color-mix(in srgb, var(--success) 15%, transparent);
+	color: var(--success);
 }
 
 /* --------------------------------------------------------------------------
-   4. Mobil Detay Ekranı (Detail View & Facts)
+   4. Mobile Detail Screen (Detail View & Facts)
    -------------------------------------------------------------------------- */
 .detailContainer {
 	flex: 1;
@@ -480,10 +480,10 @@
 	transition: width 0.3s ease;
 }
 
-/* Bilet Kartı (Ticket Card if registered) */
+/* Ticket Card (Ticket Card if registered) */
 .ticketCard {
-	background: linear-gradient(135deg, rgba(10, 132, 255, 0.12), rgba(191, 90, 242, 0.12));
-	border: 1px solid rgba(10, 132, 255, 0.25);
+	background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, transparent), color-mix(in srgb, var(--purple) 12%, transparent));
+	border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
 	border-radius: 16px;
 	padding: 14px;
 	display: flex;
@@ -501,7 +501,7 @@
 .ticketBtn {
 	border: none;
 	background: var(--accent);
-	color: #ffffff;
+	color: var(--accent-contrast);
 	font-size: 12px;
 	font-weight: 600;
 	padding: 6px 12px;
@@ -536,7 +536,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   5. Sabit iOS Alt Araç Çubuğu (Fixed Bottom Action Toolbar)
+   5. Fixed iOS Bottom Toolbar (Fixed Bottom Action Toolbar)
    -------------------------------------------------------------------------- */
 .bottomToolbar {
 	height: 58px;
@@ -565,7 +565,7 @@
 	justify-content: center;
 	gap: 8px;
 	background: var(--accent);
-	color: #ffffff;
+	color: var(--accent-contrast);
 	font-size: 14px;
 	font-weight: 700;
 	padding: 10px 18px;
@@ -616,7 +616,7 @@
 }
 
 .toolbarBtnDestructive {
-	color: #ff453a;
+	color: var(--danger);
 }
 
 /* --------------------------------------------------------------------------
@@ -638,7 +638,7 @@
 }
 
 .sheetCard {
-	background: var(--card-bg, #1c1c1e);
+	background: var(--card-bg);
 	border: 1px solid var(--border-subtle);
 	border-radius: 14px;
 	overflow: hidden;
@@ -684,7 +684,7 @@
 }
 
 .sheetActionBtn:active {
-	background: var(--bg-hover, rgba(255, 255, 255, 0.08));
+	background: var(--bg-hover);
 }
 
 .sheetDestructiveBtn {
@@ -695,7 +695,7 @@
 	background: transparent;
 	border: none;
 	border-bottom: 1px solid var(--border-subtle);
-	color: #ff453a;
+	color: var(--danger);
 	font-size: 15px;
 	font-weight: 500;
 	text-align: left;
@@ -709,12 +709,12 @@
 }
 
 .sheetDestructiveBtn:active {
-	background: rgba(255, 69, 58, 0.12);
+	background: var(--danger-subtle);
 }
 
 .sheetCancelBtn {
 	margin-top: 8px;
-	background: var(--card-bg, #1c1c1e);
+	background: var(--card-bg);
 	border: 1px solid var(--border-subtle);
 	border-radius: 14px;
 	padding: 14px 16px;
@@ -743,7 +743,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   6. Yükleme ve Boş Durumlar (Empty States)
+   6. Loading and Empty States (Empty States)
    -------------------------------------------------------------------------- */
 .emptyState {
 	flex: 1;

@@ -56,11 +56,11 @@ export function ComposerActionsMenu({
 			ref={menuRef}
 			className={s.composerActionsMenu}
 			role="menu"
-			aria-label={t('chatActionsMenu') || 'Eylemler Menüsü'}
+			aria-label={t('chatActionsMenu')}
 		>
 			{availableActions.length === 0 ? (
 				<div className={s.composerActionEmpty}>
-					{t('chatNoAvailableActions') || 'Kullanılabilir ek eylem yok'}
+					{t('chatNoAvailableActions')}
 				</div>
 			) : (
 				availableActions.map((action: ComposerActionItem) => {

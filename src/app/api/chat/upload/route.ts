@@ -1,15 +1,17 @@
 import { withAudit } from '@/lib/audit/withAudit';
 import { NextResponse } from 'next/server';
-import { mkdir, writeFile } from 'fs/promises';
+import { mkdir, unlink, writeFile } from 'fs/promises';
 import path from 'path';
 import { randomBytes } from 'crypto';
-import { addStoredFile } from '@/db';
+import { addStoredFile, withTransaction } from '@/db';
 import { requireApp } from '@/lib/auth/access';
 import { canUserAccessChatRoom } from '@/db/repositories/chat.repo';
 import { consumeRateLimit } from '@/lib/rateLimit';
 import { MAX_ATTACHMENT_BYTES, sniffMedia } from '@/lib/media';
+import { PayloadTooLargeError, readBoundedFormData } from '@/lib/httpBodyGuard';
 import { uploadDir } from '@/lib/uploads';
 import { getEmergencyKillSwitches } from '@/db/repositories/security.repo';
+import { reserveUserStorageQuota } from '@/server/storage/quota';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,8 +19,8 @@ export const dynamic = 'force-dynamic';
  * Chat attachment upload.
  *
  * The room is verified before a byte is written, so a member cannot upload into
- * a private room they cannot read. The stored MIME type comes from the bytes,
- * never from the client, and the original name is display metadata only.
+ * a private room they cannot read. Storage quota is reserved atomically inside
+ * `withTransaction`, and the stored MIME type comes from the bytes.
  */
 async function handlePOST(request: Request) {
 	const auth = await requireApp(request, 'chat', 'use');
@@ -42,8 +44,14 @@ async function handlePOST(request: Request) {
 
 	let formData: FormData;
 	try {
-		formData = await request.formData();
-	} catch {
+		formData = await readBoundedFormData(request, MAX_ATTACHMENT_BYTES + 128 * 1024);
+	} catch (error) {
+		if (error instanceof PayloadTooLargeError) {
+			return NextResponse.json(
+				{ error: `Attachments must be smaller than ${Math.round(MAX_ATTACHMENT_BYTES / 1024 / 1024)} MB.` },
+				{ status: 413 }
+			);
+		}
 		return NextResponse.json({ error: 'Invalid upload request.' }, { status: 400 });
 	}
 
@@ -80,21 +88,60 @@ async function handlePOST(request: Request) {
 
 	const name = `${Date.now()}_${randomBytes(9).toString('hex')}${media.ext}`;
 	const dir = uploadDir();
-	await mkdir(dir, { recursive: true });
-	await writeFile(path.join(dir, name), buffer, { flag: 'wx' });
-	await addStoredFile({
-		name: name,
-		uploaderId: auth.user.id,
-		mime: media.mime,
-		size: buffer.length,
-		chatRoomId: roomId,
-	});
+	const targetPath = path.join(dir, name);
+	let fileWritten = false;
+
+	try {
+		const txResult = await withTransaction(async (client) => {
+			const quota = await reserveUserStorageQuota(client, auth.user.id, buffer.length);
+			if (!quota.allowed) {
+				return { allowed: false as const, quota };
+			}
+			await mkdir(dir, { recursive: true });
+			await writeFile(targetPath, buffer, { flag: 'wx' });
+			fileWritten = true;
+			await addStoredFile(
+				{
+					name,
+					uploaderId: auth.user.id,
+					mime: media.mime,
+					size: buffer.length,
+					chatRoomId: roomId,
+					sourceApp: 'chat',
+					scopeId: roomId,
+				},
+				client
+			);
+			return { allowed: true as const };
+		});
+
+		if (!txResult.allowed) {
+			return NextResponse.json(
+				{
+					error: 'Storage quota exceeded.',
+					code: 'STORAGE_QUOTA_EXCEEDED',
+					usedBytes: txResult.quota.usedBytes,
+					quotaBytes: txResult.quota.quotaBytes,
+					remainingBytes: txResult.quota.remainingBytes,
+				},
+				{ status: 413 }
+			);
+		}
+	} catch (err) {
+		if (fileWritten) {
+			await unlink(targetPath).catch((cleanupErr) => {
+				console.warn('[chat/upload] Failed to remove orphan file after rollback:', cleanupErr);
+			});
+		}
+		throw err;
+	}
 
 	// Display-only: never used to decide the stored type or path.
-	const originalName = String(file.name || 'attachment')
-		.replace(/[\r\n\0]+/g, ' ')
-		.trim()
-		.slice(0, 140) || 'attachment';
+	const originalName =
+		String(file.name || 'attachment')
+			.replace(/[\r\n\0]+/g, ' ')
+			.trim()
+			.slice(0, 140) || 'attachment';
 
 	return NextResponse.json({
 		ok: true,

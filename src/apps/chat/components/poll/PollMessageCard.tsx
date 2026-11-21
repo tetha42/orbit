@@ -16,7 +16,7 @@ import {
 	Lock,
 } from 'lucide-react';
 import type { ChatPollItem } from '../../types';
-import s from '../../Chat.module.css';
+import s from '../../ChatPoll.module.css';
 
 interface PollMessageCardProps {
 	poll: ChatPollItem;
@@ -66,11 +66,11 @@ export function PollMessageCard({
 
 	// Format remaining time if poll has expiration
 	const getRemainingText = () => {
-		if (isClosed) return t('chatPollClosedBadge') || 'Anket Kapandı';
+		if (isClosed) return t('chatPollClosedBadge');
 		if (!poll.endsAt) return null;
 
 		const diffSec = Math.max(0, Math.floor((poll.endsAt - now) / 1000));
-		if (diffSec <= 0) return t('chatPollEnded') || 'Süresi doldu';
+		if (diffSec <= 0) return t('chatPollEnded');
 
 		const hours = Math.floor(diffSec / 3600);
 		const minutes = Math.floor((diffSec % 3600) / 60);
@@ -78,11 +78,11 @@ export function PollMessageCard({
 		let timeStr = '';
 		if (hours > 24) {
 			const days = Math.floor(hours / 24);
-			timeStr = `${days} gün`;
+			timeStr = fill(t('chatPollTimeDays'), { n: days });
 		} else if (hours > 0) {
-			timeStr = `${hours} sa ${minutes} dk`;
+			timeStr = fill(t('chatPollTimeHoursMinutes'), { hours, minutes });
 		} else {
-			timeStr = `${minutes} dk`;
+			timeStr = fill(t('chatPollTimeMinutes'), { minutes });
 		}
 
 		return fill(t('chatPollEndsIn'), { time: timeStr });

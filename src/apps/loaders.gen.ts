@@ -10,6 +10,7 @@ export const APP_LOADERS: Record<AppID, () => Promise<ComponentType>> = {
 	chat: () => import('@/apps/chat/index').then((m) => m.ChatApp),
 	database: () => import('@/apps/database/index').then((m) => m.DatabaseApp),
 	decisions: () => import('@/apps/decisions/index').then((m) => m.DecisionsApp),
+	drive: () => import('@/apps/drive/index').then((m) => m.DriveApp),
 	events: () => import('@/apps/events/index').then((m) => m.EventsApp),
 	inventory: () => import('@/apps/inventory/index').then((m) => m.InventoryApp),
 	mail: () => import('@/apps/mail/index').then((m) => m.MailApp),

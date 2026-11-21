@@ -12,7 +12,7 @@ export interface NewsEntry {
 	publishStatus: NewsVisibility;
 	publishDate: number | null;
 	authorId?: string;
-	authorNameSurname?: string;
-	creation: number;
-	update: number;
+	authorName?: string;
+	createdAt: number;
+	updatedAt: number;
 }

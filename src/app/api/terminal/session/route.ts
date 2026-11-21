@@ -1,13 +1,15 @@
 import { NextResponse } from 'next/server';
 import { createTerminalSession, closeTerminalSession, getTerminalSession } from '@/server/terminalManager';
 import { authorizeTerminal } from '@/server/terminalAccess';
-
 import { getUserById, setUserTotpStep } from '@/db';
 import { verifyTotpCodeDetailed } from '@/lib/auth/totp';
 import { clearRateLimit, isRateLimited, recordFailure } from '@/lib/rateLimit';
 import { clientAddress } from '@/lib/http';
+import { PayloadTooLargeError, readBoundedJson } from '@/lib/httpBodyGuard';
 import { logSystemEvent } from '@/db/repositories/logs.repo';
 import { recordSecurityStrike } from '@/db/repositories/security.repo';
+import terminalContract from '@/apps/terminal/terminal.contract.json';
+import { contractErrorResponse } from '@/contracts/helpers';
 
 const MAX_ATTEMPTS = 8;
 const WINDOW_MS = 15 * 60_000;
@@ -22,40 +24,65 @@ interface DeleteSessionBody {
 	sessionId?: unknown;
 }
 
+function clampTerminalCols(raw: unknown): number {
+	const n = typeof raw === 'number' && Number.isFinite(raw) ? Math.trunc(raw) : 80;
+	return Math.min(300, Math.max(20, n));
+}
+
+function clampTerminalRows(raw: unknown): number {
+	const n = typeof raw === 'number' && Number.isFinite(raw) ? Math.trunc(raw) : 24;
+	return Math.min(120, Math.max(10, n));
+}
+
 export async function POST(request: Request) {
 	const auth = await authorizeTerminal(request);
 	if (!auth.authorized) return auth.response;
 
 	const ip = clientAddress(request);
-	const body = (await request.json().catch(() => ({}))) as CreateSessionBody;
+	let body: CreateSessionBody = {};
+	try {
+		body = await readBoundedJson<CreateSessionBody>(request, 32 * 1024);
+	} catch (error) {
+		if (error instanceof PayloadTooLargeError) {
+			return NextResponse.json({ error: 'Request payload is too large.' }, { status: 413 });
+		}
+	}
 	const rateKey = `2fa:terminal:${auth.user.id}`;
 	const gate = isRateLimited(rateKey, MAX_ATTEMPTS);
 	if (!gate.allowed) {
-		return NextResponse.json(
+		const res = contractErrorResponse(
+			terminalContract,
+			'TERMINAL_SESSION_LIMIT',
+			`Too many invalid 2FA attempts. Try again in ${Math.ceil(gate.retryAfter / 60)} minutes.`,
 			{
-				error: `Çok fazla hatalı 2FA denemesi. ${Math.ceil(gate.retryAfter / 60)} dakika sonra tekrar deneyin.`,
 				code: 'RATE_LIMITED',
-			},
-			{ status: 429, headers: { 'Retry-After': String(gate.retryAfter) } }
+				maxConcurrentShells: terminalContract.limits.maxConcurrentShellsPerUser,
+			}
 		);
+		res.headers.set('Retry-After', String(gate.retryAfter));
+		return res;
 	}
 
 	const user = await getUserById(auth.user.id);
 	if (!user) {
-		return NextResponse.json({ error: 'Kullanıcı bulunamadı.' }, { status: 404 });
+		return NextResponse.json({ error: 'User not found.' }, { status: 404 });
 	}
 
 	// A passkey sign-in is already multi-factor. The session can open a shell
 	// without replaying a TOTP code; a password/TOTP session still steps up.
 	if ((user.authMethod ?? 'password') === 'passkey') {
-		const cols = typeof body.cols === 'number' && body.cols > 10 ? body.cols : 80;
-		const rows = typeof body.rows === 'number' && body.rows > 5 ? body.rows : 24;
+		const cols = clampTerminalCols(body.cols);
+		const rows = clampTerminalRows(body.rows);
 		const sessionId = createTerminalSession(auth.user.id, cols, rows);
 		const userName = `${user.firstName || user.name || ''} ${user.lastName || user.surname || ''}`.trim();
 		await logSystemEvent({
 			service: 'terminal',
 			level: 'INFO',
-			message: `${userName} (${user.email}) terminal oturumu başlattı (passkey oturumu).`,
+			message: `${userName} (${user.email}) started a terminal session (passkey session).`,
+			detail: {
+				maxConcurrentShellsPerUser: terminalContract.limits.maxConcurrentShellsPerUser,
+				sessionTimeoutSeconds: terminalContract.limits.sessionTimeoutSeconds,
+			},
 			userId: user.id,
 			ip,
 		});
@@ -65,7 +92,7 @@ export async function POST(request: Request) {
 	if (Number(user.totpEnabled) !== 1) {
 		return NextResponse.json(
 			{
-				error: 'Terminali kullanabilmek için iki adımlı doğrulamayı (2FA) etkinleştirmeniz gerekmektedir.',
+				error: 'Two-factor authentication (2FA) must be enabled to use the terminal.',
 				code: '2FA_SETUP_REQUIRED',
 			},
 			{ status: 403 }
@@ -77,7 +104,7 @@ export async function POST(request: Request) {
 
 		if (!code) {
 			return NextResponse.json(
-				{ error: 'Terminali başlatmak için 2FA doğrulama kodu gereklidir.', code: '2FA_CODE_REQUIRED' },
+				{ error: 'A 2FA verification code is required to start the terminal.', code: '2FA_CODE_REQUIRED' },
 				{ status: 400 }
 			);
 		}
@@ -92,7 +119,7 @@ export async function POST(request: Request) {
 			await recordSecurityStrike({
 				ip,
 				points: 20,
-				reason: 'Terminal oturumu hatalı 2FA doğrulama denemesi',
+				reason: 'Failed 2FA verification attempt for terminal session',
 				userId: user.id,
 			});
 			const userName = `${user.firstName || user.name || ''} ${user.lastName || user.surname || ''}`.trim();
@@ -100,16 +127,16 @@ export async function POST(request: Request) {
 				service: 'terminal',
 				level: 'WARN',
 				message: alreadyUsed
-					? `${userName} (${user.email}) daha önce kullanılmış bir 2FA kodu ile terminal oturumu başlatmayı denedi.`
-					: `${userName} (${user.email}) geçersiz 2FA kodu ile terminal oturumu başlatmayı denedi.`,
+					? `${userName} (${user.email}) attempted to start a terminal session with an already-used 2FA code.`
+					: `${userName} (${user.email}) attempted to start a terminal session with an invalid 2FA code.`,
 				userId: user.id,
 				ip,
 			});
 			return NextResponse.json(
 				{
 					error: alreadyUsed
-						? 'Bu 2FA kodu daha önce kullanıldı. Authenticator uygulamanızda yeni bir kod oluşmasını bekleyip tekrar deneyin.'
-						: 'Geçersiz veya süresi dolmuş 2FA kodu.',
+						? 'This 2FA code has already been used. Wait for a new code in your authenticator app and try again.'
+						: 'Invalid or expired 2FA code.',
 					code: alreadyUsed ? 'TOTP_CODE_ALREADY_USED' : 'INVALID_2FA_CODE',
 				},
 				{ status: 401 }
@@ -127,19 +154,26 @@ export async function POST(request: Request) {
 		await logSystemEvent({
 			service: 'terminal',
 			level: 'INFO',
-			message: `${userName} (${user.email}) terminal oturumu başlattı (2FA doğrulandı).`,
+			message: `${userName} (${user.email}) started a terminal session (2FA verified).`,
+			detail: {
+				maxConcurrentShellsPerUser: terminalContract.limits.maxConcurrentShellsPerUser,
+				sessionTimeoutSeconds: terminalContract.limits.sessionTimeoutSeconds,
+			},
 			userId: user.id,
 			ip,
 		});
 
-		const cols = typeof body.cols === 'number' && body.cols > 10 ? body.cols : 80;
-		const rows = typeof body.rows === 'number' && body.rows > 5 ? body.rows : 24;
+		const cols = clampTerminalCols(body.cols);
+		const rows = clampTerminalRows(body.rows);
 
 		const sessionId = createTerminalSession(auth.user.id, cols, rows);
 		return NextResponse.json({ sessionId, ok: true });
 	} catch (error: unknown) {
-		const message = error instanceof Error ? error.message : 'Terminal oturumu başlatılamadı';
-		return NextResponse.json({ error: message }, { status: 500 });
+		console.error('[terminal/session] POST failed:', error);
+		if (error instanceof Error && error.message.includes('capacity')) {
+			return NextResponse.json({ error: 'Terminal session capacity reached.' }, { status: 429 });
+		}
+		return NextResponse.json({ error: 'Failed to start terminal session.' }, { status: 500 });
 	}
 }
 
@@ -152,7 +186,9 @@ export async function DELETE(request: Request) {
 		let sessionId = searchParams.get('sessionId');
 
 		if (!sessionId) {
-			const body = (await request.json().catch(() => ({}))) as DeleteSessionBody;
+			const body = await readBoundedJson<DeleteSessionBody>(request, 16 * 1024).catch(
+				() => ({}) as DeleteSessionBody
+			);
 			sessionId = typeof body.sessionId === 'string' ? body.sessionId : null;
 		}
 
@@ -160,12 +196,20 @@ export async function DELETE(request: Request) {
 			const session = getTerminalSession(sessionId);
 			if (session && session.userId === auth.user.id) {
 				closeTerminalSession(sessionId);
+				void logSystemEvent({
+					service: 'terminal',
+					level: 'INFO',
+					message: `${auth.user.email} closed terminal session ${sessionId}.`,
+					detail: { sessionId },
+					userId: auth.user.id,
+					ip: clientAddress(request),
+				});
 			}
 		}
 
 		return NextResponse.json({ ok: true });
 	} catch (error: unknown) {
-		const message = error instanceof Error ? error.message : 'Terminal kapatılamadı';
-		return NextResponse.json({ error: message }, { status: 500 });
+		console.error('[terminal/session] DELETE failed:', error);
+		return NextResponse.json({ error: 'Failed to close terminal session.' }, { status: 500 });
 	}
 }

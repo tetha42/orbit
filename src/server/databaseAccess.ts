@@ -71,8 +71,9 @@ export function isUserDatabaseFrozen(userId: string): boolean {
  * Server guard verifying:
  * 1. Valid user session
  * 2. User has administrative privileges (auth.user.permission.admin)
- * 3. User possesses a valid, non-expired 2FA Database Studio token in the 'x-db-token' header
- * 4. User database access is not frozen by SoC incident containment
+ * 3. User database access is not frozen by SoC incident containment
+ * 4. Either the session authenticated with a passkey (MFA) or the caller
+ *    possesses a valid, non-expired 2FA Database Studio token in 'x-db-token'
  */
 export async function requireDatabaseAdmin(
 	request: Request
@@ -87,7 +88,7 @@ export async function requireDatabaseAdmin(
 		return {
 			authorized: false,
 			response: NextResponse.json(
-				{ error: 'Bu işlem için yönetici (admin) yetkisi gereklidir.', code: 'ADMIN_REQUIRED' },
+				{ error: 'Administrator privileges are required for this action.', code: 'ADMIN_REQUIRED' },
 				{ status: 403 }
 			),
 		};
@@ -98,12 +99,16 @@ export async function requireDatabaseAdmin(
 			authorized: false,
 			response: NextResponse.json(
 				{
-					error: 'Veritabanı erişimi SoC güvenlik tecrit protokolü kapsamında dondurulmuştur.',
+					error: 'Database access has been frozen under the SoC security containment protocol.',
 					code: 'DATABASE_ACCESS_FROZEN',
 				},
 				{ status: 403 }
 			),
 		};
+	}
+
+	if ((auth.user.authMethod ?? 'password') === 'passkey') {
+		return { authorized: true, user: auth.user };
 	}
 
 	const dbToken = request.headers.get('x-db-token');
@@ -114,7 +119,7 @@ export async function requireDatabaseAdmin(
 			authorized: false,
 			response: NextResponse.json(
 				{
-					error: 'Veritabanı yöneticisi 2FA oturumu bulunamadı veya süresi doldu. Lütfen 2FA ile yeniden doğrulayın.',
+					error: 'Database administrator 2FA session not found or expired. Please re-verify with 2FA.',
 					code: '2FA_SESSION_REQUIRED',
 				},
 				{ status: 401 }

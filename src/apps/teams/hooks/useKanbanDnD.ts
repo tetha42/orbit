@@ -48,7 +48,7 @@ export function useKanbanDnD({
 		if (!orderFits(before?.order, order, after?.order)) {
 			const column = tasks
 				.filter((g) => g.status === to && g.id !== task.id)
-				.sort((a, b) => a.order - b.order || b.creation - a.creation)
+				.sort((a, b) => a.order - b.order || b.createdAt - a.createdAt)
 				.map((g) => g.id);
 			const at = after ? column.indexOf(after.id) : before ? column.indexOf(before.id) + 1 : column.length;
 			column.splice(at < 0 ? column.length : at, 0, task.id);

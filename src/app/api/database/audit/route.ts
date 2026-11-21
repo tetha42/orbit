@@ -61,7 +61,7 @@ export async function POST(request: Request) {
 	const auditId = String(body.auditId ?? '').trim();
 
 	if (!auditId) {
-		return NextResponse.json({ error: 'Geçersiz denetim kaydı ID.' }, { status: 400 });
+		return NextResponse.json({ error: 'Invalid audit log ID.' }, { status: 400 });
 	}
 
 	const pool = getPgPool();
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
 		);
 
 		if (checkRes.rows.length === 0) {
-			return NextResponse.json({ error: 'Geri alınacak denetim kaydı bulunamadı.' }, { status: 404 });
+			return NextResponse.json({ error: 'Audit record to revert was not found.' }, { status: 404 });
 		}
 
 		const rec = checkRes.rows[0];
@@ -88,11 +88,11 @@ export async function POST(request: Request) {
 		const pkVal = previous.pkVal;
 
 		if (!table || !/^[a-zA-Z0-9_]+$/.test(table)) {
-			return NextResponse.json({ error: 'Geçersiz hedef tablo.' }, { status: 400 });
+			return NextResponse.json({ error: 'Invalid target table.' }, { status: 400 });
 		}
 
 		if (!pkCol || !/^[a-zA-Z0-9_]+$/.test(pkCol) || pkVal === undefined) {
-			return NextResponse.json({ error: 'Birincil anahtar bilgisi eksik, geri alınamaz.' }, { status: 400 });
+			return NextResponse.json({ error: 'Primary key information is missing; cannot revert.' }, { status: 400 });
 		}
 
 		const setClauses: string[] = [];
@@ -108,7 +108,7 @@ export async function POST(request: Request) {
 		}
 
 		if (setClauses.length === 0) {
-			return NextResponse.json({ error: 'Geri yüklenecek eski değer bulunamadı.' }, { status: 400 });
+			return NextResponse.json({ error: 'No previous values found to restore.' }, { status: 400 });
 		}
 
 		params.push(pkVal);
@@ -118,7 +118,7 @@ export async function POST(request: Request) {
 		await logSystemEvent({
 			service: 'database',
 			level: 'WARN',
-			message: `Denetim kaydı geri alındı (#${auditId} on ${table})`,
+			message: `Audit record reverted (#${auditId} on ${table})`,
 			detail: { auditId, table: table, pkVal },
 			userId: auth.user.id,
 			ip,
@@ -126,11 +126,11 @@ export async function POST(request: Request) {
 
 		return NextResponse.json({
 			success: true,
-			message: `'${table}' tablosundaki kayıt (#${auditId}) başarıyla eski haline döndürüldü.`,
+			message: `Record (#${auditId}) in table '${table}' successfully restored to its previous state.`,
 		});
 	} catch (error) {
-		console.error(`Geri alma hatası (audit #${auditId}):`, error);
-		const msg = error instanceof Error ? error.message : 'Geri alma işlemi sırasında bir hata oluştu.';
+		console.error(`Revert failed (audit #${auditId}):`, error);
+		const msg = error instanceof Error ? error.message : 'An error occurred during revert.';
 		return NextResponse.json({ error: msg }, { status: 500 });
 	}
 }

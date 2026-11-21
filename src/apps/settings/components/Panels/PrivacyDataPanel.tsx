@@ -99,8 +99,8 @@ export function PrivacyDataPanel() {
 						fontSize: '12px',
 						padding: '9px 11px',
 						borderRadius: '8px',
-						background: message.type === 'ok' ? 'rgba(48,209,88,0.12)' : 'rgba(255,69,58,0.12)',
-						color: message.type === 'ok' ? '#30d158' : '#ff453a',
+						background: message.type === 'ok' ? 'color-mix(in srgb, var(--success) 12%, transparent)' : 'color-mix(in srgb, var(--danger) 12%, transparent)',
+						color: message.type === 'ok' ? 'var(--success)' : 'var(--danger)',
 					}}
 				>
 					{message.text}
@@ -127,8 +127,17 @@ export function PrivacyDataPanel() {
 				</div>
 			</div>
 
-			<div style={{ padding: '14px', borderRadius: '10px', border: '1px solid rgba(255,69,58,0.35)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-				<div style={{ display: 'flex', alignItems: 'center', gap: '7px', fontWeight: 700, fontSize: '13px', color: '#ff453a' }}>
+			<div
+				style={{
+					padding: '14px',
+					borderRadius: '10px',
+					border: '1px solid color-mix(in srgb, var(--danger) 35%, transparent)',
+					display: 'flex',
+					flexDirection: 'column',
+					gap: '10px',
+				}}
+			>
+				<div style={{ display: 'flex', alignItems: 'center', gap: '7px', fontWeight: 700, fontSize: '13px', color: 'var(--danger)' }}>
 					<ShieldAlert size={15} /> {t('privacyAnonymize')}
 				</div>
 				<p style={{ margin: 0, fontSize: '11.5px', opacity: 0.7 }}>{t('privacyAnonymizeDesc')}</p>
@@ -153,7 +162,7 @@ export function PrivacyDataPanel() {
 					<button
 						type="button"
 						className={ui.btn}
-						style={{ color: '#ff453a', borderColor: 'rgba(255,69,58,0.4)' }}
+						style={{ color: 'var(--danger)', borderColor: 'color-mix(in srgb, var(--danger) 40%, transparent)' }}
 						disabled={busy || !selected || confirm !== 'ANONYMIZE'}
 						onClick={() => void anonymize()}
 					>

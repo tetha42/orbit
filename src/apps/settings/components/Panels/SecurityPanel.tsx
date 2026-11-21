@@ -4,6 +4,7 @@ import React from 'react';
 import { useI18n } from '@/core/i18n';
 import { TwoFactorSettingsPanel } from './TwoFactorSettingsPanel';
 import { PasskeySettingsPanel } from './PasskeySettingsPanel';
+import { DevicesPanel } from './DevicesPanel';
 
 export function SecurityPanel() {
 	const { t } = useI18n();
@@ -43,6 +44,10 @@ export function SecurityPanel() {
 					</h3>
 					<PasskeySettingsPanel />
 				</div>
+
+				<div style={{ height: '1px', background: 'var(--border-subtle)' }} />
+
+				<DevicesPanel />
 			</div>
 		</div>
 	);

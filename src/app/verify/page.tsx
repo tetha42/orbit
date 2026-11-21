@@ -1,15 +1,18 @@
 import Link from 'next/link';
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ShieldCheck, ArrowLeft } from 'lucide-react';
+import { translate } from '@/lib/i18n';
+import { DEFAULT_LOCALE, normalizeLocale } from '@/locales/registry';
 import styles from './[code]/verify.module.css';
 
 /**
- * Certificate & official document verification lookup page (`/verify` and `/dogrula`).
+ * Certificate and official document verification lookup page (`/verify`).
  */
 export default async function VerifyIndexPage({
 	searchParams,
 }: {
-	searchParams: Promise<{ code?: string;}>;
+	searchParams: Promise<Record<string, string | undefined>>;
 }) {
 	const params = await searchParams;
 	const targetCode = (params.code || '').trim();
@@ -18,46 +21,48 @@ export default async function VerifyIndexPage({
 		redirect(`/verify/${encodeURIComponent(targetCode)}`);
 	}
 
+	const hdrs = await headers();
+	const lang = normalizeLocale(params.lang ?? hdrs.get('accept-language')?.split(',')[0], DEFAULT_LOCALE);
+	const t = (key: string) => translate(lang, key);
+
 	return (
 		<main className={styles.viewport}>
 			<div className={styles.panel}>
 				<header className={styles.header}>
 					<span>ORBIT // TETHA42</span>
-					<span style={{ color: '#fafafa' }}>CREDENTIAL LEDGER</span>
+					<span style={{ color: '#fafafa' }}>{t('verifyHeaderTag')}</span>
 				</header>
 
 				<div className={styles.body}>
 					<div className={styles.badgeRow}>
 						<span className={styles.badge}>
 							<ShieldCheck size={13} />
-							PUBLIC VERIFICATION
+							{t('verifyPublicBadge')}
 						</span>
 					</div>
 
-					<h1 className={styles.title}>Verify Credential or Document</h1>
-					<p className={styles.subtitle}>
-						Enter the verification code printed on an Orbit digital certificate or official board resolution to validate its cryptographic authenticity.
-					</p>
+					<h1 className={styles.title}>{t('verifyLookupTitle')}</h1>
+					<p className={styles.subtitle}>{t('verifyLookupDesc')}</p>
 
 					<form method="GET" action="/verify" className={styles.form}>
 						<input
 							type="text"
-							name="kod"
+							name="code"
 							required
 							autoFocus
-							placeholder="e.g. ORBIT-2026-CTF-8941 or ORBIT-DOC-2026001"
-							aria-label="Verification code"
+							placeholder={t('verifyLookupPh')}
+							aria-label={t('verifyLookupAria')}
 							className={styles.input}
 						/>
 						<button type="submit" className={styles.submitBtn}>
-							Verify Record
+							{t('verifyLookupSubmit')}
 						</button>
 					</form>
 
 					<div className={styles.footer}>
 						<Link href="/" className={styles.backLink}>
 							<ArrowLeft size={14} />
-							<span>Return to Orbit Workspace</span>
+							<span>{t('ciReturn')}</span>
 						</Link>
 					</div>
 				</div>

@@ -5,7 +5,7 @@ import type { Permissions } from '@/core/permissions';
  * The user object the client receives.
  *
  * A deliberately narrower view than the database row: it never carries
- * `passwordHash`, `aktifOturumToken`, `totpSecret` or the recovery-code hashes.
+ * `passwordHash`, `sessionToken`, `totpSecret` or the recovery-code hashes.
  * `toSessionUser` produces it, and the workspace store consumes it.
  */
 export interface SessionUser {
@@ -33,6 +33,8 @@ export interface SessionUser {
 	twoFactorRequired: boolean;
 	/** Required but not yet configured — drives the blocking setup prompt. */
 	mustSetup2fa: boolean;
+	/** The account's language for the interface and outgoing e-mail. */
+	preferredLanguage: 'tr' | 'en';
 	roleInfo: { id: string; name: string; color: string } | null;
 	/** What the role grants per app — the UI shows only what this allows. */
 	permissions: Permissions;
@@ -58,5 +60,4 @@ export interface PendingApplicant {
 	department: string;
 	grade: number;
 	createdAt: number;
-	creation: number;
 }

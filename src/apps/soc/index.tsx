@@ -1,18 +1,6 @@
 'use client';
 
 import React, { useEffect, useCallback } from 'react';
-import {
-	ShieldAlert,
-	AlertTriangle,
-	ShieldCheck,
-	Radar,
-	Flame,
-	Users,
-	FileSearch,
-	History,
-	FlaskConical,
-	X,
-} from 'lucide-react';
 import { useAppCommand, REFRESH_EVENT } from '@/core/commands';
 import { useIsMobile } from '@/lib/client/useClientValue';
 import { useIsActive } from '@/core/windows/hooks';
@@ -20,20 +8,9 @@ import { isEditableElement } from '@/lib/client/dom';
 import { SocProvider, useSoc } from './context/SocContext';
 import { SocSidebar } from './components/Sidebar/SocSidebar';
 import { SocToolbar } from './components/Toolbar/SocToolbar';
-import { RadarView } from './components/views/RadarView';
-import { FirewallView } from './components/views/FirewallView';
-import { SessionsView } from './components/views/SessionsView';
-import { SiemView } from './components/views/SiemView';
-import { InspectionView } from './components/views/InspectionView';
-import { SocAuditView } from './components/views/SocAuditView';
-import { TestbenchView } from './components/views/TestbenchView';
 import { SocInspector } from './components/Inspector/SocInspector';
-import { SocContextMenu } from './components/ContextMenu/SocContextMenu';
-import { LockdownModal } from './components/modals/LockdownModal';
-import { ForensicPayloadModal } from './components/modals/ForensicPayloadModal';
-import { WebhookModal } from './components/modals/WebhookModal';
-import { CustomDateModal } from './components/modals/CustomDateModal';
-import { SocCommandPalette } from './components/modals/SocCommandPalette';
+import { SocTabViews, SocStudioOverlays } from './SocTabViews';
+import { SocMobileNav, SocRestrictedView, SocStatusBanners } from './SocShellBanners';
 import { isLabTab } from './types';
 import type { SocTab } from './types';
 import s from './Soc.module.css';
@@ -56,7 +33,7 @@ function SocStudioShell() {
 		isResettingDefcon,
 		isSubmitting,
 		tb,
-		isEn,
+		language,
 		toggleInspector,
 		openContextMenu,
 	} = useSoc();
@@ -190,29 +167,7 @@ function SocStudioShell() {
 	}, [fetchAll, activeTab, fetchInspectionData, fimTarget, tb]);
 
 	if (!canView) {
-		return (
-			<div className={s.root} style={{ display: 'grid', placeItems: 'center', padding: 32, textAlign: 'center' }}>
-				<div
-					style={{
-						maxWidth: 440,
-						background: 'color-mix(in srgb, var(--danger, #d70015) 8%, transparent)',
-						border: '1px solid color-mix(in srgb, var(--danger, #d70015) 25%, transparent)',
-						borderRadius: 12,
-						padding: '28px 24px',
-					}}
-				>
-					<ShieldAlert size={40} color="var(--danger, #d70015)" style={{ marginBottom: 12 }} />
-					<h2 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 8px', color: 'var(--text-primary)' }}>
-						{isEn ? 'SoC Studio Restricted' : 'SoC Komuta Merkezi Permission Korumalı'}
-					</h2>
-					<p style={{ fontSize: 13, opacity: 0.8, margin: 0, lineHeight: 1.5, color: 'var(--text-secondary)' }}>
-						{isEn
-							? 'You need SoC Security Center permission to view live threat telemetry, firewall rules, and SIEM forensics.'
-							: 'Canlı tehdit telemetrisini, IP karantina duvarını ve SIEM adli kayıtlarını görüntülemek için SoC Güvenlik Merkezi yetkisine sahip olmalısınız.'}
-					</p>
-				</div>
-			</div>
-		);
+		return <SocRestrictedView language={language} />;
 	}
 
 	const defcon = overview?.defcon ?? 5;
@@ -228,104 +183,21 @@ function SocStudioShell() {
 				{/* Top Unified Toolbar */}
 				<SocToolbar />
 
-				{/* Active Lockdown Banner */}
-				{isLockdownActive && (
-					<div className={s.lockdownBanner}>
-						<div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-							<AlertTriangle size={15} />
-							<span>
-								<strong>{isEn ? 'DEFCON 1 LOCKDOWN ACTIVE:' : 'DEFCON 1 KALKAN MODU AKTİF:'}</strong>{' '}
-								{isEn
-									? 'Public registration & password resets are suspended; IPS threat scoring multiplier is 2x.'
-									: 'Yeni üye alımı ve şifre sıfırlama durduruldu; IPS tehdit puanı çarpanı 2x olarak uygulanıyor.'}
-							</span>
-						</div>
-						{canManage && (
-							<button
-								type="button"
-								className={s.actionBtn}
-								onClick={() => void handleToggleLockdown()}
-								disabled={isSubmitting}
-								style={{ padding: '3px 9px', fontSize: 11 }}
-							>
-								{isEn ? 'Lift Lockdown' : 'Kalkanı Kaldır'}
-							</button>
-						)}
-					</div>
-				)}
-
-				{/* Elevated Threat Alert Banner (DEFCON 2 & 3) */}
-				{!isLockdownActive && defcon <= 3 && (
-					<div
-						className={s.lockdownBanner}
-						style={{
-							background:
-								defcon === 2
-									? 'color-mix(in srgb, #f97316 12%, transparent)'
-									: 'color-mix(in srgb, var(--warning, #c45500) 12%, transparent)',
-							borderColor:
-								defcon === 2
-									? 'color-mix(in srgb, #f97316 30%, transparent)'
-									: 'color-mix(in srgb, var(--warning, #c45500) 30%, transparent)',
-							color: defcon === 2 ? '#f97316' : 'var(--warning, #c45500)',
-						}}
-					>
-						<div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-							<AlertTriangle size={15} />
-							<span>
-								<strong>
-									DEFCON {defcon}{' '}
-									{defcon === 2
-										? isEn
-											? 'HIGH THREAT LEVEL (Alerts Present):'
-											: 'YÜKSEK TEHDİT SEVİYESİ (Alarmlar Mevcut):'
-										: isEn
-										? 'ELEVATED VIGILANCE:'
-										: 'ARTIRILMIŞ GÜVENLİK DİKKATİ:'}
-								</strong>{' '}
-								{isEn
-									? 'Threat baseline counters indicate active security strikes or bans. Acknowledge alerts to restore DEFCON 5 peace mode.'
-									: 'Tehdit alarmları ve karantina sayaçları aktif güvenlik olaylarına işaret ediyor. Alarmları onaylayarak barış moduna (DEFCON 5) dönebilirsiniz.'}
-							</span>
-						</div>
-						{canManage && (
-							<button
-								type="button"
-								className={`${s.actionBtn} ${s.actionBtnSuccess}`}
-								onClick={handleResetDefcon}
-								disabled={isResettingDefcon}
-								style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px', fontSize: 11 }}
-							>
-								<ShieldCheck size={12} />
-								<span>{isEn ? 'Acknowledge & Reset DEFCON 5' : 'Alarmları Onayla & DEFCON 5 Yap'}</span>
-							</button>
-						)}
-					</div>
-				)}
-
-				{/* Notice Banner */}
-				{banner && (
-					<div className={`${s.bannerNotice} ${banner.type === 'err' ? s.bannerError : ''}`}>
-						<span>{banner.text}</span>
-						<button
-							type="button"
-							className={s.actionBtn}
-							onClick={() => setBanner(null)}
-							style={{ padding: '2px 7px' }}
-						>
-							<X size={12} />
-						</button>
-					</div>
-				)}
+				<SocStatusBanners
+					language={language}
+					defcon={defcon}
+					isLockdownActive={isLockdownActive}
+					canManage={canManage}
+					isSubmitting={isSubmitting}
+					isResettingDefcon={isResettingDefcon}
+					banner={banner}
+					onDismissBanner={() => setBanner(null)}
+					onToggleLockdown={handleToggleLockdown}
+					onResetDefcon={handleResetDefcon}
+				/>
 
 				{/* Canvas Content Views */}
-				{activeTab === 'radar' && <RadarView />}
-				{activeTab === 'firewall' && <FirewallView />}
-				{activeTab === 'sessions' && <SessionsView />}
-				{activeTab === 'siem' && <SiemView />}
-				{activeTab === 'inspection' && <InspectionView />}
-				{activeTab === 'audit' && <SocAuditView />}
-				{isLabTab(activeTab) && <TestbenchView />}
+				<SocTabViews activeTab={activeTab} />
 			</div>
 
 			{/* 3. Collapsible 3-Pane Inspector Drawer */}
@@ -333,77 +205,19 @@ function SocStudioShell() {
 
 			{/* Mobile Bottom Navigation */}
 			{isMobile && (
-				<nav className={s.mobileBottomNav} aria-label="SoC Mobile Navigation">
-					<button
-						type="button"
-						className={`${s.mobileNavBtn} ${activeTab === 'radar' ? s.mobileNavBtnActive : ''}`}
-						onClick={() => setActiveTab('radar')}
-					>
-						<Radar size={16} />
-						<span>{isEn ? 'Radar' : 'Radar'}</span>
-					</button>
-					<button
-						type="button"
-						className={`${s.mobileNavBtn} ${activeTab === 'firewall' ? s.mobileNavBtnActive : ''}`}
-						onClick={() => setActiveTab('firewall')}
-					>
-						<Flame size={16} />
-						<span>{isEn ? 'Firewall' : 'Karantina'}</span>
-					</button>
-					<button
-						type="button"
-						className={`${s.mobileNavBtn} ${activeTab === 'sessions' ? s.mobileNavBtnActive : ''}`}
-						onClick={() => setActiveTab('sessions')}
-					>
-						<Users size={16} />
-						<span>{isEn ? 'Sessions' : 'Oturumlar'}</span>
-					</button>
-					<button
-						type="button"
-						className={`${s.mobileNavBtn} ${activeTab === 'siem' ? s.mobileNavBtnActive : ''}`}
-						onClick={() => setActiveTab('siem')}
-					>
-						<FileSearch size={16} />
-						<span>SIEM</span>
-					</button>
-					<button
-						type="button"
-						className={`${s.mobileNavBtn} ${activeTab === 'inspection' ? s.mobileNavBtnActive : ''}`}
-						onClick={() => setActiveTab('inspection')}
-					>
-						<ShieldCheck size={16} />
-						<span>{isEn ? 'Inspection' : 'Teftiş'}</span>
-					</button>
-					{canManage && (
-						<button
-							type="button"
-							className={`${s.mobileNavBtn} ${activeTab === 'audit' ? s.mobileNavBtnActive : ''}`}
-							onClick={() => setActiveTab('audit')}
-						>
-							<History size={16} />
-							<span>{isEn ? 'Audit' : 'Denetim'}</span>
-						</button>
-					)}
-					<button
-						type="button"
-						className={`${s.mobileNavBtn} ${isLabTab(activeTab) ? s.mobileNavBtnActive : ''}`}
-						onClick={() => openLabTab(isLabTab(activeTab) ? activeTab : 'oauth')}
-					>
-						<FlaskConical size={16} />
-						<span>Lab</span>
-					</button>
-				</nav>
+				<SocMobileNav
+					language={language}
+					activeTab={activeTab}
+					canManage={canManage}
+					onSelectTab={setActiveTab}
+					onOpenLabTab={openLabTab}
+				/>
 			)}
 
-			{/* Universal Right-Click Context Menu */}
-			<SocContextMenu />
-
-			{/* Studio Modals */}
-			<LockdownModal />
-			<ForensicPayloadModal />
-			<WebhookModal />
-			<CustomDateModal />
-			<SocCommandPalette isOpen={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />
+			<SocStudioOverlays
+				commandPaletteOpen={commandPaletteOpen}
+				onCloseCommandPalette={() => setCommandPaletteOpen(false)}
+			/>
 		</div>
 	);
 }

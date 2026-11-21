@@ -34,9 +34,9 @@ const manifest = {
 	dock: 10,
 	permission: {
 		order: 12,
-		name: 'Ayarlar',
-		use: 'Kendi hesabını, güvenliğini ve görünümü ayarlar (herkese açık).',
-		manage: 'Rolleri, e-posta hesabını ve topluluk bilgilerini yönetir.',
+		name: 'Settings & System',
+		use: 'Manage personal account, security, 2FA, and appearance preferences (open to everyone).',
+		manage: 'Manage roles and permissions, configure SMTP mail, and update organization profile.',
 		everyoneOpen: true,
 	},
 	menu: {

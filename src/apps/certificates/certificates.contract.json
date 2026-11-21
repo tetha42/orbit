@@ -1,0 +1,65 @@
+{
+  "id": "certificates",
+  "name": "Certificates & Credentials",
+  "version": "1.0.0",
+  "description": "Cryptographic certificate issuance, WASM verification, and badge management.",
+  "tables": [
+    "certificates",
+    "events",
+    "users"
+  ],
+  "api": {
+    "base": "/api/certificates",
+    "endpoints": [
+      {
+        "path": "/api/certificates",
+        "methods": [
+          "GET",
+          "POST",
+          "DELETE"
+        ],
+        "description": "List, issue, or revoke verifiable certificates."
+      },
+      {
+        "path": "/api/certificates/[code]",
+        "methods": [
+          "GET"
+        ],
+        "description": "Public certificate verification endpoint."
+      }
+    ]
+  },
+  "limits": {
+    "maxVerificationCodeLength": 64,
+    "maxTitleLength": 200
+  },
+  "errorCodes": [
+    {
+      "code": "CERTIFICATE_NOT_FOUND",
+      "status": 404,
+      "i18nKey": "certNotFound",
+      "description": "Certificate not found."
+    },
+    {
+      "code": "INVALID_VERIFICATION_CODE",
+      "status": 400,
+      "i18nKey": "certInvalidCode",
+      "description": "Certificate code format invalid."
+    }
+  ],
+  "files": {
+    "actions": [
+      "src/db/repositories/certificates.repo.ts",
+      "src/lib/wasm/securityEngine.ts"
+    ],
+    "queries": [
+      "src/apps/certificates/hooks/useCertificates.ts"
+    ],
+    "ui": [
+      "src/apps/certificates/index.tsx"
+    ],
+    "i18n": [
+      "src/lib/i18nApps.ts"
+    ]
+  }
+}

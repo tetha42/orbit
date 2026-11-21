@@ -23,7 +23,10 @@ export async function GET(request: Request) {
 	try {
 		const limit = consumeRateLimit(`messages-recipients:${user.id}`, 60, 10_000);
 		if (!limit.allowed) {
-			return NextResponse.json({ error: 'Çok hızlı arama yapıyorsunuz. Birkaç saniye bekleyin.' }, { status: 429, headers: { ...NO_STORE, 'Retry-After': String(limit.retryAfter) } });
+			return NextResponse.json(
+				{ error: 'You are searching too fast. Please wait a few seconds.' },
+				{ status: 429, headers: { ...NO_STORE, 'Retry-After': String(limit.retryAfter) } }
+			);
 		}
 		const params = new URL(request.url).searchParams;
 
@@ -54,6 +57,6 @@ export async function GET(request: Request) {
 		);
 	} catch (error) {
 		console.error('API /api/messages/recipients error:', error);
-		return NextResponse.json({ error: 'Alıcılar okunamadı.' }, { status: 500, headers: NO_STORE });
+		return NextResponse.json({ error: 'Failed to load recipients.' }, { status: 500, headers: NO_STORE });
 	}
 }

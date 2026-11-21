@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { User, Shield, KeyRound, Loader2 } from 'lucide-react';
-import { useI18n } from '@/core/i18n';
+import { resolveLocalizedText, useI18n } from '@/core/i18n';
 import type { AppID } from '@/types/workspace';
 import s from './Testbench.module.css';
 import type { UserSessionInfo } from '../types';
@@ -43,7 +43,7 @@ export function SessionInspectorTab({ sessionInfo, isLoading }: SessionInspector
 			<div className={s.card}>
 				<div className={s.cardHeader}>
 					<span className={s.cardTitle}>
-						<User size={15} color="#0a84ff" /> {t('tbSessionTitle')}
+						<User size={15} color="var(--accent)" /> {t('tbSessionTitle')}
 					</span>
 					<div style={{ display: 'flex', gap: '6px' }}>
 						{user.admin && (
@@ -88,7 +88,7 @@ export function SessionInspectorTab({ sessionInfo, isLoading }: SessionInspector
 					<div>
 						<span style={{ fontSize: '11px', opacity: 0.6, display: 'block' }}>{t('tbSessionMembershipStatus')}</span>
 						<strong style={{ fontSize: '13px', textTransform: 'capitalize' }}>
-							{user.status === 'active' ? (language === 'en' ? 'Active' : 'Aktif') : user.status}
+							{user.status === 'active' ? t('active') : user.status}
 						</strong>
 					</div>
 					<div>
@@ -132,25 +132,30 @@ export function SessionInspectorTab({ sessionInfo, isLoading }: SessionInspector
 							let name = meta?.name ?? appId;
 							try {
 								const appMeta = getAppMeta(appId as AppID);
-								if (language === 'en' && appMeta?.title) {
+								if (appMeta?.title) {
 									name = appMeta.title;
 								}
 							} catch {
-								// fallback to manifest ad
+								// fallback to manifest meta
 							}
 
-							const desc =
-								language === 'en'
-									? level === 'manage'
-										? t('tbSessionDescManage')
-										: level === 'use'
-										? t('tbSessionDescUse')
-										: t('tbSessionDescNone')
-									: level === 'manage'
-									? meta?.manage ?? t('tbSessionDescManage')
+							const descKey =
+								level === 'manage'
+									? 'tbSessionDescManage'
 									: level === 'use'
-									? meta?.use ?? t('tbSessionDescUse')
-									: t('tbSessionDescNone');
+									? 'tbSessionDescUse'
+									: 'tbSessionDescNone';
+							const trDesc =
+								level === 'manage'
+									? meta?.manage
+									: level === 'use'
+									? meta?.use
+									: undefined;
+							const desc = resolveLocalizedText(
+								{ tr: trDesc, en: t(descKey) },
+								language,
+								t(descKey)
+							);
 
 							return (
 								<tr key={appId}>

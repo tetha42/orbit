@@ -2,15 +2,8 @@
 
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { useI18n } from '@/core/i18n';
-import { useDialog } from '@/components/Common/DialogProvider';
-import { fill } from '@/lib/text';
-import { Pencil, Trash2, Reply, Forward, Copy } from 'lucide-react';
-import { useContextMenu } from '@/core/shell';
-import { copyToClipboard } from '@/lib/clipboard';
-import type { MenuItem } from '@/types/workspace';
 import type { ChatMessageItem } from '../types';
-import { PollMessageCard } from './poll/PollMessageCard';
-import { ChatAttachments } from './ChatAttachments';
+import { ChatMessageRow } from './ChatMessageRow';
 import s from '../Chat.module.css';
 
 interface ChatMessageListProps {
@@ -31,253 +24,13 @@ interface ChatMessageListProps {
 	onFocusMessageHandled?: () => void;
 }
 
-interface ChatMessageRowProps {
-	msg: ChatMessageItem;
-	currentUserId: string;
-	isAdmin: boolean;
-	onStartEdit?: (message: ChatMessageItem) => void;
-	onDelete?: (messageId: string) => void;
-	onReply?: (message: ChatMessageItem) => void;
-	onForward?: (message: ChatMessageItem) => void;
-	onVotePoll?: (pollId: string, optionId: string) => Promise<boolean>;
-	onClosePoll?: (pollId: string) => Promise<boolean>;
-	formatTime: (timestamp: number) => string;
-	formatDateTime: (timestamp: number) => string;
-}
+const formatTime = (ts: number) =>
+	new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-function ChatMessageRow({
-	msg,
-	currentUserId,
-	isAdmin,
-	onStartEdit,
-	onDelete,
-	onReply,
-	onForward,
-	onVotePoll,
-	onClosePoll,
-	formatTime,
-	formatDateTime,
-}: ChatMessageRowProps) {
-	const { t } = useI18n();
-	const dialog = useDialog();
-
-	const isMine = msg.senderId === currentUserId;
-	const isDeleted = Boolean(msg.deletionDate);
-	const isEdited = Boolean(msg.editDate) && !isDeleted;
-
-	const menuItems = React.useMemo<MenuItem[]>(() => {
-		if (isDeleted) return [];
-
-		const items: MenuItem[] = [
-			{
-				id: `copy-${msg.id}`,
-				label: t('ctxChatCopy'),
-				icon: <Copy size={13} />,
-				action: () => {
-					void copyToClipboard(msg.content);
-				},
-			},
-		];
-
-		if (onReply && !msg.poll) {
-			items.push({
-				id: `reply-${msg.id}`,
-				label: t('ctxChatReply'),
-				icon: <Reply size={13} />,
-				action: () => onReply(msg),
-			});
-		}
-
-		if (onForward && !msg.poll) {
-			items.push({
-				id: `forward-${msg.id}`,
-				label: t('ctxChatForward'),
-				icon: <Forward size={13} />,
-				action: () => onForward(msg),
-			});
-		}
-
-		if (isMine && !msg.poll && onStartEdit) {
-			items.push({
-				id: `edit-${msg.id}`,
-				label: t('ctxChatEdit'),
-				icon: <Pencil size={13} />,
-				action: () => onStartEdit(msg),
-			});
-		}
-
-		if ((isMine || isAdmin) && onDelete) {
-			items.push(
-				{ id: `sep-${msg.id}`, label: '', separator: true },
-				{
-					id: `delete-${msg.id}`,
-					label: t('ctxChatDelete'),
-					icon: <Trash2 size={13} />,
-					danger: true,
-					action: async () => {
-						if (await dialog.confirm({ message: t('chatDeleteConfirm'), tone: 'danger' })) {
-							onDelete(msg.id);
-						}
-					},
-				}
-			);
-		}
-
-		return items;
-	}, [isDeleted, msg, onReply, onForward, isMine, onStartEdit, isAdmin, onDelete, dialog, t]);
-
-	const contextMenuProps = useContextMenu({ items: menuItems, disabled: isDeleted });
-
-	return (
-		<div
-			className={`${s.messageRow} ${isMine ? s.messageRowMine : ''} ${isDeleted ? s.messageRowDeleted : ''} cv-auto-row`}
-			data-message-id={msg.id}
-		>
-			{!isMine && (
-				<div className={s.messageAvatar}>
-					{msg.senderPhoto ? (
-						// eslint-disable-next-line @next/next/no-img-element
-						<img
-							src={msg.senderPhoto}
-							alt={msg.senderName || t('spotKindMember')}
-							style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-						/>
-					) : (
-						(msg.senderName || '?').slice(0, 1).toUpperCase()
-					)}
-				</div>
-			)}
-
-			<div className={s.messageBody}>
-				{!isMine && (
-					<div className={s.messageHeader}>
-						<span className={s.messageSender}>{msg.senderName || t('spotKindMember')}</span>
-						<span>{formatTime(msg.date)}</span>
-					</div>
-				)}
-
-				<div className={s.bubbleContainer} {...contextMenuProps}>
-					{msg.poll ? (
-						<PollMessageCard
-							poll={msg.poll}
-							currentUserId={currentUserId}
-							isAdmin={isAdmin}
-							onVote={onVotePoll || (async () => false)}
-							onClosePoll={onClosePoll || (async () => false)}
-						/>
-					) : (
-						<div
-							className={`${s.messageBubble} ${
-								!isDeleted && (msg.attachments?.length ?? 0) > 0 ? s.messageBubbleMedia : ''
-							} ${isDeleted ? s.messageBubbleDeleted : ''}`}
-						>
-							{/* Forwarded Header */}
-							{msg.isDelivered && !isDeleted && (
-								<div className={`${s.forwardedTag} ${isMine ? s.forwardedTagMine : ''}`}>
-									<Forward size={11} />
-									<span>{t('chatForwarded')}</span>
-								</div>
-							)}
-
-							{/* Quoted Reply Bubble */}
-							{msg.repliedMessage && !isDeleted && (
-								<div className={`${s.quotedBubble} ${isMine ? s.quotedBubbleMine : ''}`}>
-									<div className={s.quotedBar} />
-									<div className={s.quotedContent}>
-										<span className={s.quotedAuthor}>{msg.repliedMessage.senderName}</span>
-										<span className={s.quotedSnippet}>{msg.repliedMessage.content}</span>
-									</div>
-								</div>
-							)}
-
-							{isDeleted && (
-								<span className={s.deletedInlineNotice}>[{t('chatDelete').toUpperCase()}] </span>
-							)}
-							{msg.content && <div className={s.messageTextContent}>{msg.content}</div>}
-							{!isDeleted && msg.attachments?.length > 0 && <ChatAttachments attachments={msg.attachments} />}
-							{isMine && !isDeleted && (
-								<div
-									style={{
-										fontSize: '10px',
-										textAlign: 'right',
-										marginTop: '4px',
-										opacity: 0.7,
-									}}
-								>
-									{formatTime(msg.date)}
-								</div>
-							)}
-						</div>
-					)}
-
-					{/* Hover Action Menu */}
-					{!isDeleted && (
-						<div className={s.messageActions}>
-							{onReply && !msg.poll && (
-								<button
-									type="button"
-									className={s.actionBtn}
-									title={t('chatReply')}
-									onClick={() => onReply(msg)}
-								>
-									<Reply size={12} />
-								</button>
-							)}
-							{onForward && !msg.poll && (
-								<button
-									type="button"
-									className={s.actionBtn}
-									title={t('chatForward')}
-									onClick={() => onForward(msg)}
-								>
-									<Forward size={12} />
-								</button>
-							)}
-							{isMine && !msg.poll && onStartEdit && (
-								<button
-									type="button"
-									className={s.actionBtn}
-									title={t('chatEdit')}
-									onClick={() => onStartEdit(msg)}
-								>
-									<Pencil size={12} />
-								</button>
-							)}
-							{(isMine || isAdmin) && onDelete && (
-								<button
-									type="button"
-									className={`${s.actionBtn} ${s.actionBtnDanger}`}
-									title={t('chatDelete')}
-									onClick={async () => {
-										if (await dialog.confirm({ message: t('chatDeleteConfirm'), tone: 'danger' })) {
-											onDelete(msg.id);
-										}
-									}}
-								>
-									<Trash2 size={12} />
-								</button>
-							)}
-						</div>
-					)}
-				</div>
-
-				{/* Status Badges */}
-				{isDeleted && msg.deletionDate && (
-					<div className={s.deletedBadge}>
-						<span>🗑️ {fill(t('chatDeletedAt'), { time: formatDateTime(msg.deletionDate) })}</span>
-						<span className={s.adminOnlyTag}>{t('chatAdminDeletedBadge')}</span>
-					</div>
-				)}
-
-				{isEdited && msg.editDate && (
-					<div className={s.editedBadge}>
-						<span>✏️ {fill(t('chatEditedAt'), { time: formatTime(msg.editDate) })}</span>
-					</div>
-				)}
-			</div>
-		</div>
-	);
-}
+const formatDateTime = (ts: number) => {
+	const d = new Date(ts);
+	return `${d.toLocaleDateString([], { day: '2-digit', month: '2-digit', year: 'numeric' })} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+};
 
 export function ChatMessageList({
 	messages,
@@ -301,6 +54,8 @@ export function ChatMessageList({
 	const containerRef = useRef<HTMLDivElement>(null);
 	const prevMessagesRef = useRef<ChatMessageItem[]>([]);
 	const prevScrollHeightRef = useRef(0);
+	const focusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const focusedTargetRef = useRef<HTMLElement | null>(null);
 
 	// Keep the viewport stable when older messages are prepended, and only
 	// follow new messages automatically when the reader is already near the
@@ -335,6 +90,12 @@ export function ChatMessageList({
 		prevMessagesRef.current = messages;
 	}, [messages]);
 
+	useEffect(() => {
+		return () => {
+			if (focusTimerRef.current) clearTimeout(focusTimerRef.current);
+		};
+	}, []);
+
 	// A notification can point at a specific message. Wait for the room's
 	// messages, then reveal it (loading older pages if it is not in the first
 	// window). The target is cleared after it has been shown once.
@@ -346,11 +107,20 @@ export function ChatMessageList({
 			`[data-message-id="${focusedMessageId.replace(/"/g, '\\"')}"]`
 		);
 		if (target) {
+			if (focusTimerRef.current) clearTimeout(focusTimerRef.current);
+			if (focusedTargetRef.current && focusedTargetRef.current !== target) {
+				focusedTargetRef.current.classList.remove(s.messageFocused);
+			}
 			target.scrollIntoView({ block: 'center', behavior: 'auto' });
 			target.classList.add(s.messageFocused);
-			const timer = setTimeout(() => target.classList.remove(s.messageFocused), 1400);
+			focusedTargetRef.current = target;
+			focusTimerRef.current = setTimeout(() => {
+				target.classList.remove(s.messageFocused);
+				if (focusedTargetRef.current === target) focusedTargetRef.current = null;
+				focusTimerRef.current = null;
+			}, 1400);
 			onFocusMessageHandled?.();
-			return () => clearTimeout(timer);
+			return;
 		}
 		if (hasMore && !loadingOlder) onLoadOlder?.();
 	}, [focusedMessageId, messages, hasMore, loadingOlder, onLoadOlder, onFocusMessageHandled]);
@@ -359,16 +129,6 @@ export function ChatMessageList({
 		const el = containerRef.current;
 		if (!el || !hasMore || loadingOlder || !onLoadOlder) return;
 		if (el.scrollTop < 80) onLoadOlder();
-	};
-
-	const formatTime = (ts: number) => {
-		const d = new Date(ts);
-		return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-	};
-
-	const formatDateTime = (ts: number) => {
-		const d = new Date(ts);
-		return `${d.toLocaleDateString([], { day: '2-digit', month: '2-digit', year: 'numeric' })} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 	};
 
 	if (loading) {
@@ -403,17 +163,12 @@ export function ChatMessageList({
 				</div>
 			)}
 			{messages.map((msg) => {
-				// 1. WhatsApp style centered system notifications (e.g. "X created group", "Y added Z", "/clear" bot message)
 				if (msg.senderId === 'system') {
 					return (
 						<div
 							key={msg.id}
 							data-message-id={msg.id}
-							style={{
-								display: 'flex',
-								justifyContent: 'center',
-								margin: '6px 0',
-							}}
+							style={{ display: 'flex', justifyContent: 'center', margin: '6px 0' }}
 						>
 							<span
 								style={{

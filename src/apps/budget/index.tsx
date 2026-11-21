@@ -22,13 +22,13 @@ function Locked({ title, body, note }: { title: string; body: string; note?: str
 			<div
 				style={{
 					maxWidth: '460px',
-					background: 'rgba(255, 59, 48, 0.08)',
-					border: '1px solid rgba(255, 59, 48, 0.25)',
+					background: 'color-mix(in srgb, var(--danger) 8%, transparent)',
+					border: '1px solid color-mix(in srgb, var(--danger) 25%, transparent)',
 					borderRadius: '16px',
 					padding: '32px 24px',
 				}}
 			>
-				<ShieldAlert size={48} color="#ff453a" style={{ marginBottom: '14px' }} />
+				<ShieldAlert size={48} color="var(--danger)" style={{ marginBottom: '14px' }} />
 				<h3 style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 10px 0' }}>{title}</h3>
 				<p style={{ fontSize: '13.5px', opacity: 0.75, lineHeight: 1.5, margin: note ? '0 0 20px 0' : 0 }}>
 					{body}
@@ -47,7 +47,7 @@ function Locked({ title, body, note }: { title: string; body: string; note?: str
 							textAlign: 'left',
 						}}
 					>
-						<Info size={15} color="#ff9500" style={{ flexShrink: 0 }} />
+						<Info size={15} color="var(--warning)" style={{ flexShrink: 0 }} />
 						<span>{note}</span>
 					</div>
 				)}
@@ -57,7 +57,7 @@ function Locked({ title, body, note }: { title: string; body: string; note?: str
 }
 
 /**
- * The Kasa app: the general kasa and every project's kasa, side by side.
+ * The Budget app: the general vault and every project's vault, side by side.
  * Modular entry component (<90 lines).
  */
 export function BudgetApp() {
@@ -78,9 +78,9 @@ export function BudgetApp() {
 	if (!allowed || httpStatus === 403) {
 		return (
 			<Locked
-				title={t('kasaLockedTitle')}
-				body={t('kasaLockedBody')}
-				note={t('kasaLockedNote')}
+				title={t('treasuryLockedTitle')}
+				body={t('treasuryLockedBody')}
+				note={t('treasuryLockedNote')}
 			/>
 		);
 	}

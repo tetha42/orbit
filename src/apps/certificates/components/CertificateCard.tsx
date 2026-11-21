@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { Award, Calendar, Check, Share2, ShieldCheck, Trash2, Trophy, Medal, Crown, Copy } from 'lucide-react';
-import { useI18n } from '@/core/i18n';
+import { normalizeLocale, useI18n } from '@/core/i18n';
 import { useContextMenu } from '@/core/shell';
 import type { MenuItem } from '@/types/workspace';
 import type { Certificate } from '../types';
@@ -33,7 +33,7 @@ export function CertificateCard({
 
 	const catId = inferCertificateCategory(cert.title, cert.category);
 	const theme = CERTIFICATE_THEMES[catId];
-	const lang = (cert.language === 'en' || language === 'en') ? 'en' : 'tr';
+	const lang = normalizeLocale(cert.language, language);
 	const IconBadge = catId === 'honor' ? Crown : catId === 'service' ? Medal : catId === 'achievement' ? Trophy : Award;
 
 	const menuItems = useMemo<MenuItem[]>(() => {
@@ -128,7 +128,7 @@ export function CertificateCard({
 							<IconBadge size={12} />
 							{theme.label[lang]}
 						</span>
-						<ShieldCheck size={16} color="#34c759" />
+						<ShieldCheck size={16} color="var(--success)" />
 					</div>
 				</div>
 
@@ -188,7 +188,7 @@ export function CertificateCard({
 						gap: '6px',
 					}}
 				>
-					{copied ? <Check size={14} color="#34c759" /> : <Share2 size={14} />}
+					{copied ? <Check size={14} color="var(--success)" /> : <Share2 size={14} />}
 					<span>{copied ? t('certsCopiedBtn') : t('certsVerifyBtn')}</span>
 				</button>
 
@@ -198,8 +198,8 @@ export function CertificateCard({
 					style={{
 						padding: '8px 12px',
 						borderRadius: '8px',
-						border: '1px solid rgba(10, 102, 194, 0.3)',
-						background: 'rgba(10, 102, 194, 0.12)',
+						border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
+						background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
 						color: '#0a66c2',
 						fontSize: '12px',
 						fontWeight: 600,
@@ -219,9 +219,9 @@ export function CertificateCard({
 						style={{
 							padding: '8px 10px',
 							borderRadius: '8px',
-							border: '1px solid rgba(255, 69, 58, 0.4)',
-							background: 'rgba(255, 69, 58, 0.1)',
-							color: '#ff453a',
+							border: '1px solid color-mix(in srgb, var(--danger) 40%, transparent)',
+							background: 'color-mix(in srgb, var(--danger) 10%, transparent)',
+							color: 'var(--danger)',
 							cursor: 'pointer',
 							display: 'grid',
 							placeItems: 'center',

@@ -1,11 +1,12 @@
-.PHONY: help install setup dev build start lint typecheck verify test test-security test-e2e ci audit clean \
-        db-up db-down db-shell db-backup db-reset \
+.PHONY: help install setup doctor setup-url setup-reset dev build start lint typecheck verify \
+        test test-security test-e2e e2e ci audit clean \
+        db-up db-down db-status db-shell db-backup db-reset \
         up down logs pull update \
         local-build local-up local-down \
         release-bundle release push
 
 # ==============================================================================
-# Terminal Colors & Variables
+# Thin Human Facade over ./bin/orbit (NO silent DATABASE_URL overrides)
 # ==============================================================================
 CYAN    := \033[36m
 GREEN   := \033[32m
@@ -13,52 +14,53 @@ YELLOW  := \033[33m
 BOLD    := \033[1m
 RESET   := \033[0m
 
-DB_CONTAINER := orbit-db
-DB_USER      := $(if $(POSTGRES_USER),$(POSTGRES_USER),orbit)
-DB_NAME      := $(if $(POSTGRES_DB),$(POSTGRES_DB),orbit)
-DB_PASS      := $(if $(POSTGRES_PASSWORD),$(POSTGRES_PASSWORD),orbit_secret_2026)
-DATABASE_URL ?= postgresql://$(DB_USER):$(DB_PASS)@localhost:5432/$(DB_NAME)
-export DATABASE_URL
-BACKUP_DIR   := backups
+ORBIT      := ./bin/orbit
+BACKUP_DIR := backups
 
-# Production compose (Coolify & Production default - pulls GHCR image, zero build overhead)
+# Production compose (Coolify & Production default - pulls GHCR image, strict secrets)
 COMPOSE_PROD  := docker compose -f infra/docker/docker-compose.yml
 
 # Local testing compose (Builds from local Dockerfile)
 COMPOSE_LOCAL := docker compose -f infra/docker/docker-compose.yml -f infra/docker/docker-compose.build.yml
+
 # ==============================================================================
 # Help Menu
 # ==============================================================================
 help:
 	@printf "\n"
 	@printf "  $(BOLD)$(CYAN)Orbit Community OS — Development & Operations Hub$(RESET)\n"
-	@printf "  $(YELLOW)Industrial-grade DevOps automation for local & production workflows$(RESET)\n\n"
+	@printf "  $(YELLOW)Thin ergonomic shortcuts over ./bin/orbit & Docker Compose$(RESET)\n\n"
 	@printf "  $(BOLD)Development & Code Quality$(RESET)\n"
-	@printf "  $(GREEN)make install$(RESET)          Install dependencies (pnpm install --frozen-lockfile)\n"
-	@printf "  $(GREEN)make setup$(RESET)            Run automated developer setup & verification wizard\n"
-	@printf "  $(GREEN)make dev$(RESET)              Start local Next.js development server (:3000)\n"
+	@printf "  $(GREEN)make install$(RESET)          Install dependencies (pnpm install)\n"
+	@printf "  $(GREEN)make doctor$(RESET)           Check environment, config provenance, DB & setup status\n"
+	@printf "  $(GREEN)make setup$(RESET)            Alias for make doctor\n"
+	@printf "  $(GREEN)make setup-url$(RESET)        Print clickable /setup#token=... URL\n"
+	@printf "  $(GREEN)make setup-reset$(RESET)      Reset local setup state (dev only, confirms)\n"
+	@printf "  $(GREEN)make dev$(RESET)              Start local Next.js dev server (:3000)\n"
 	@printf "  $(GREEN)make verify$(RESET)           Run all quality gates (TypeScript, ESLint, i18n, Pure, Tokens)\n"
-	@printf "  $(GREEN)make test$(RESET)             Run API contract test suite (25 endpoints)\n"
+	@printf "  $(GREEN)make test$(RESET)             Run API contract test suite\n"
 	@printf "  $(GREEN)make test-security$(RESET)    Run WAF, Honeypot, Zero-Trust and security regression tests\n"
-	@printf "  $(GREEN)make test-e2e$(RESET)         Run end-to-end user and simulation suites\n"
-	@printf "  $(GREEN)make ci$(RESET)               Run full GitHub Actions CI/CD test pipeline locally\n"
+	@printf "  $(GREEN)make test-e2e$(RESET)         Run API/simulation E2E suite\n"
+	@printf "  $(GREEN)make e2e$(RESET)              Run Playwright browser UI E2E suite\n"
+	@printf "  $(GREEN)make ci$(RESET)               Run full CI pipeline locally\n"
 	@printf "  $(GREEN)make build$(RESET)            Compile Next.js standalone production build\n"
 	@printf "  $(GREEN)make clean$(RESET)            Clean Next.js build artifacts and cache directories\n\n"
-	@printf "  $(BOLD)Database Management (PostgreSQL - Isolated Container)$(RESET)\n"
-	@printf "  $(GREEN)make db-up$(RESET)            Start PostgreSQL container in the background (:5432)\n"
-	@printf "  $(GREEN)make db-down$(RESET)          Stop PostgreSQL container (preserves data)\n"
-	@printf "  $(GREEN)make db-shell$(RESET)         Open interactive psql terminal session\n"
+	@printf "  $(BOLD)Dev Database (PostgreSQL — infra/docker/docker-compose.dev.yml)$(RESET)\n"
+	@printf "  $(GREEN)make db-up$(RESET)            Start local dev PostgreSQL container (127.0.0.1:5432)\n"
+	@printf "  $(GREEN)make db-down$(RESET)          Stop dev PostgreSQL container (preserves data)\n"
+	@printf "  $(GREEN)make db-status$(RESET)        Show active DATABASE_URL source and container state\n"
+	@printf "  $(GREEN)make db-shell$(RESET)         Open interactive psql terminal session in dev container\n"
 	@printf "  $(GREEN)make db-backup$(RESET)        Save full SQL backup dump into $(BACKUP_DIR)/\n"
-	@printf "  $(GREEN)make db-reset$(RESET)         Wipe database volume and start a fresh PostgreSQL instance\n\n"
+	@printf "  $(GREEN)make db-reset$(RESET)         Wipe dev DB volume and recreate fresh PostgreSQL\n\n"
 	@printf "  $(BOLD)Local Docker Testing (Local Compose with Image Build)$(RESET)\n"
 	@printf "  $(GREEN)make local-build$(RESET)      Build Docker image locally from scratch (no-cache)\n"
 	@printf "  $(GREEN)make local-up$(RESET)         Build from local code and start full stack (DB + App)\n"
 	@printf "  $(GREEN)make local-down$(RESET)       Stop local testing containers\n\n"
-	@printf "  $(BOLD)Production & Deployment (Coolify / Pre-built GHCR Image)$(RESET)\n"
+	@printf "  $(BOLD)Production & Deployment (GHCR / Coolify)$(RESET)\n"
 	@printf "  $(GREEN)make up$(RESET)               Start production stack using official GHCR image\n"
 	@printf "  $(GREEN)make down$(RESET)             Safely stop all production services\n"
 	@printf "  $(GREEN)make logs$(RESET)             Stream live container logs (exit with Ctrl+C)\n"
-	@printf "  $(GREEN)make update$(RESET)           Pull latest GHCR image and restart services with zero-downtime\n"
+	@printf "  $(GREEN)make update$(RESET)           Pull latest GHCR image and restart services\n"
 	@printf "  $(GREEN)make release-bundle$(RESET)   Build official standalone & docker release archives (.tar.gz)\n"
 	@printf "  $(GREEN)make release TAG=v...$(RESET) Create annotated tag and push branch + tag in one command\n\n"
 
@@ -69,11 +71,20 @@ help:
 install:
 	pnpm install
 
+doctor:
+	@$(ORBIT) doctor
+
 setup:
-	@node scripts/setup.mjs
+	@$(ORBIT) doctor
+
+setup-url:
+	@$(ORBIT) setup url
+
+setup-reset:
+	@$(ORBIT) setup reset
 
 dev:
-	pnpm dev
+	@$(ORBIT) dev
 
 build:
 	pnpm build
@@ -100,7 +111,10 @@ test-security:
 	pnpm test:security
 
 test-e2e:
-	@node tests/simulation/e2e-simulation.mjs
+	pnpm test:e2e
+
+e2e:
+	pnpm e2e
 
 ci:
 	@printf "\n  $(BOLD)$(CYAN)Orbit Community OS — Local Full CI Pipeline Check$(RESET)\n"
@@ -128,27 +142,26 @@ clean:
 	@echo "✓ [OK] Build caches cleared."
 
 # ==============================================================================
-# Database (PostgreSQL)
+# Dev Database (PostgreSQL)
 # ==============================================================================
 
 db-up:
-	$(COMPOSE_PROD) up -d db
-	@echo "✓ [OK] PostgreSQL database is ready (localhost:5432)."
+	@$(ORBIT) db up
 
 db-down:
-	$(COMPOSE_PROD) stop db
-	@echo "✓ [OK] PostgreSQL container stopped."
+	@$(ORBIT) db down
+
+db-status:
+	@$(ORBIT) db status
 
 db-shell:
-	docker exec -it $(DB_CONTAINER) psql -U $(DB_USER) -d $(DB_NAME)
+	@$(ORBIT) db shell
 
 db-backup:
 	@./infra/scripts/db-backup.sh $(BACKUP_DIR)
 
 db-reset:
-	$(COMPOSE_PROD) down -v
-	$(COMPOSE_PROD) up -d db
-	@echo "✓ [OK] Database reset complete. Tables will auto-initialize on first request."
+	@$(ORBIT) db reset
 
 # ==============================================================================
 # Local Docker Testing (Local Source Build)

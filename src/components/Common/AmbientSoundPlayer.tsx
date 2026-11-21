@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useI18n } from '@/core/i18n';
 import { useSound } from '@/core/sound';
 import { useIsMounted } from '@/lib/client/useClientValue';
 
 const DEFAULT_SOUND_SRC = '/assets/sounds/sound.mp3';
 
 export function AmbientSoundPlayer({ showButton = true }: { showButton?: boolean }) {
+	const { t } = useI18n();
 	const { isAmbientSfxEnabled, toggleAmbientSfx, isMuted, volume } = useSound();
 	const audioRef = useRef<HTMLAudioElement | null>(null);
 	const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -86,6 +88,9 @@ export function AmbientSoundPlayer({ showButton = true }: { showButton?: boolean
 		canvas.height = 24 * dpr;
 
 		let running = true;
+		const activeWaveColor =
+			getComputedStyle(canvas).getPropertyValue('--cyan').trim() ||
+			getComputedStyle(canvas).getPropertyValue('--accent').trim();
 
 		const render = () => {
 			if (!running) return;
@@ -100,7 +105,7 @@ export function AmbientSoundPlayer({ showButton = true }: { showButton?: boolean
 			ctx.save();
 			ctx.beginPath();
 			ctx.lineWidth = 1.5 * dpr;
-			ctx.strokeStyle = isPlaying && isAmbientSfxEnabled && !isMuted ? '#38bdf8' : 'rgba(255, 255, 255, 0.4)';
+			ctx.strokeStyle = isPlaying && isAmbientSfxEnabled && !isMuted ? activeWaveColor : 'rgba(255, 255, 255, 0.4)';
 			ctx.lineCap = 'round';
 			ctx.lineJoin = 'round';
 
@@ -154,7 +159,7 @@ export function AmbientSoundPlayer({ showButton = true }: { showButton?: boolean
 				ref={audioRef}
 				src={DEFAULT_SOUND_SRC}
 				loop
-				preload="auto"
+				preload="none"
 				playsInline
 				onPlay={() => setIsPlaying(true)}
 				onPause={() => setIsPlaying(false)}
@@ -175,7 +180,7 @@ export function AmbientSoundPlayer({ showButton = true }: { showButton?: boolean
 					<button
 						type="button"
 						onClick={handleToggle}
-						title="Ortam SFX"
+						title={t('ambientSfxTitle', 'Ambient SFX')}
 						style={{
 							display: 'flex',
 							alignItems: 'center',
@@ -185,8 +190,8 @@ export function AmbientSoundPlayer({ showButton = true }: { showButton?: boolean
 							borderRadius: '50%',
 							background:
 								isAmbientSfxEnabled && !isMuted
-									? 'rgba(10, 16, 28, 0.65)'
-									: 'rgba(10, 16, 28, 0.35)',
+									? 'color-mix(in srgb, var(--ink-bg) 65%, transparent)'
+									: 'color-mix(in srgb, var(--ink-bg) 35%, transparent)',
 							border:
 								isAmbientSfxEnabled && !isMuted
 									? '1px solid rgba(255, 255, 255, 0.16)'

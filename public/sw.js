@@ -6,7 +6,7 @@ const PRECACHE_ASSETS = [
 	'/manifest.json',
 	'/manifest.webmanifest',
 	'/favicon.ico',
-	'/assets/img/logo-girdap.svg',
+	'/assets/img/logo-orbit.svg',
 ];
 
 // Install: Cache offline page immediately
@@ -193,6 +193,31 @@ self.addEventListener('fetch', (event) => {
 	event.respondWith(
 		fetch(request).catch(async () => {
 			return caches.match(request);
+		})
+	);
+});
+
+// Web Push: Display real-time mobile login approval or system alerts
+self.addEventListener('push', (event) => {
+	let payload = {
+		title: 'Orbit Community OS',
+		body: 'New security or workspace notification',
+		data: {},
+	};
+	if (event.data) {
+		try {
+			const parsed = event.data.json();
+			payload = { ...payload, ...parsed };
+		} catch {
+			payload.body = event.data.text() || payload.body;
+		}
+	}
+	event.waitUntil(
+		self.registration.showNotification(payload.title, {
+			body: payload.body,
+			icon: '/assets/img/logo-orbit.svg',
+			badge: '/assets/img/logo-orbit.svg',
+			data: payload.data || {},
 		})
 	);
 });

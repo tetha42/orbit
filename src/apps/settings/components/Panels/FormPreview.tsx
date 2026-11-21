@@ -72,7 +72,7 @@ export function FormPreview({
 				display: 'flex',
 				flexDirection: 'column',
 				gap: '12px',
-				background: 'var(--window-bg, rgba(20, 20, 25, 0.95))',
+				background: 'var(--window-bg, color-mix(in srgb, var(--ink-card) 95%, transparent))',
 				borderRadius: '12px',
 				padding: '14px',
 				border: '1px solid var(--window-border)',
@@ -147,7 +147,7 @@ export function FormPreview({
 									padding: isActivelyEditing ? '8px' : '0px',
 									borderRadius: '8px',
 									background: isActivelyEditing
-										? 'var(--accent-subtle, rgba(99, 102, 241, 0.12))'
+										? 'var(--accent-subtle, color-mix(in srgb, var(--indigo) 12%, transparent))'
 										: 'transparent',
 									border: isActivelyEditing
 										? '1px solid var(--accent)'
@@ -176,7 +176,7 @@ export function FormPreview({
 									>
 										{getFieldIcon(field.type)}
 										<span>{label}</span>
-										{isRequired && <span style={{ color: '#ff453a' }}>*</span>}
+										{isRequired && <span style={{ color: 'var(--danger)' }}>*</span>}
 									</label>
 									{isActivelyEditing && (
 										<span

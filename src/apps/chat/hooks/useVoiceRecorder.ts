@@ -2,7 +2,19 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-export type VoiceRecorderError = 'unsupported' | 'permission' | 'failed' | null;
+export type VoiceRecorderError = 'insecure' | 'unsupported' | 'permission' | 'not_found' | 'in_use' | 'failed' | null;
+
+function mapRecorderError(err: unknown): Exclude<VoiceRecorderError, null> {
+	const name =
+		err && typeof err === 'object' && 'name' in err
+			? String((err as { name?: unknown }).name ?? '')
+			: '';
+	if (name === 'NotAllowedError' || name === 'PermissionDeniedError') return 'permission';
+	if (name === 'NotFoundError' || name === 'DevicesNotFoundError') return 'not_found';
+	if (name === 'NotReadableError' || name === 'TrackStartError') return 'in_use';
+	if (name === 'SecurityError') return 'insecure';
+	return 'failed';
+}
 
 function voiceExtension(mime: string): string {
 	if (mime.includes('mp4')) return '.m4a';
@@ -71,6 +83,10 @@ export function useVoiceRecorder() {
 
 	const start = useCallback(async (): Promise<boolean> => {
 		setError(null);
+		if (typeof window !== 'undefined' && !window.isSecureContext) {
+			setError('insecure');
+			return false;
+		}
 		if (
 			typeof navigator === 'undefined' ||
 			!navigator.mediaDevices?.getUserMedia ||
@@ -105,8 +121,7 @@ export function useVoiceRecorder() {
 			}, 250);
 			return true;
 		} catch (err) {
-			const denied = typeof DOMException !== 'undefined' && err instanceof DOMException && err.name === 'NotAllowedError';
-			setError(denied ? 'permission' : 'failed');
+			setError(mapRecorderError(err));
 			cleanup();
 			return false;
 		}

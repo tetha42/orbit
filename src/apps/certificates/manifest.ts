@@ -36,13 +36,13 @@ const manifest = {
 	notifications: { certificate: 'use' },
 	permission: {
 		order: 4,
-		name: 'Sertifikalar',
-		use: 'Kendi sertifikalarını ve rozetlerini görür, PDF indirir.',
-		manage: 'Sertifika verir/siler, imzacıları düzenler.',
+		name: 'Certificates & Badges',
+		use: 'View personal credentials and badges, download PDF certificates.',
+		manage: 'Issue and revoke certificates, configure authorized signatories.',
 	},
 	menu: {
 		title: { tr: 'Sertifikalar', en: 'Credentials' },
-		about: { id: 'about-certs', label: { tr: 'Sertifika Doğrulama Hakkında', en: 'About Credential Verification' }, permission: 'use', ac: true },
+		about: { id: 'about-certs', label: { tr: 'Sertifika Doğrulama Hakkında', en: 'About Credential Verification' }, permission: 'use', open: true },
 	},
 } as const satisfies AppManifest;
 

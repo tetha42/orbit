@@ -32,9 +32,9 @@
 	border-radius: 11px;
 	display: grid;
 	place-items: center;
-	background: linear-gradient(135deg, var(--accent), #5e5ce6);
+	background: linear-gradient(135deg, var(--accent), var(--indigo));
 	box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 30%, transparent);
-	color: #fff;
+	color: var(--accent-contrast);
 }
 
 .title {
@@ -63,8 +63,8 @@
 	font-weight: 800;
 	padding: 0 6px;
 	border-radius: 8px;
-	background: #ff9f0a;
-	color: #fff;
+	background: var(--warning);
+	color: var(--accent-contrast);
 }
 
 .chips {
@@ -91,7 +91,7 @@
 .chipActive {
 	background: var(--accent);
 	border-color: var(--accent);
-	color: #fff;
+	color: var(--accent-contrast);
 }
 
 .grid {
@@ -130,8 +130,8 @@
 }
 
 .cardFeatured {
-	border-color: color-mix(in srgb, #ff9f0a 55%, transparent);
-	background: linear-gradient(160deg, color-mix(in srgb, #ff9f0a 9%, var(--card-bg)), var(--card-bg) 55%);
+	border-color: color-mix(in srgb, var(--warning) 55%, transparent);
+	background: linear-gradient(160deg, color-mix(in srgb, var(--warning) 9%, var(--card-bg)), var(--card-bg) 55%);
 }
 
 .cardTop {
@@ -154,8 +154,8 @@
 }
 
 .pillFeatured {
-	background: color-mix(in srgb, #ff9f0a 18%, transparent);
-	color: #d97706;
+	background: color-mix(in srgb, var(--warning) 18%, transparent);
+	color: var(--warning);
 }
 
 .pillTeam {
@@ -170,13 +170,13 @@
 }
 
 .pill_proposed {
-	background: color-mix(in srgb, #ff9f0a 16%, transparent);
-	color: #d97706;
+	background: color-mix(in srgb, var(--warning) 16%, transparent);
+	color: var(--warning);
 }
 
 .pill_published {
-	background: color-mix(in srgb, #30d158 16%, transparent);
-	color: #248a3d;
+	background: color-mix(in srgb, var(--success) 16%, transparent);
+	color: var(--success);
 }
 
 .pill_archived {
@@ -273,13 +273,13 @@
 }
 
 .starBtn:hover {
-	border-color: #ffb800;
+	border-color: var(--gold);
 }
 
 .starBtnOn {
-	border-color: color-mix(in srgb, #ffb800 60%, transparent);
-	background: color-mix(in srgb, #ffb800 14%, transparent);
-	color: #b07d00;
+	border-color: color-mix(in srgb, var(--gold) 60%, transparent);
+	background: color-mix(in srgb, var(--gold) 14%, transparent);
+	color: var(--gold-text);
 }
 
 .starBtn:disabled {
@@ -333,15 +333,15 @@
 .linkBtnPrimary {
 	background: var(--accent);
 	border-color: var(--accent);
-	color: #fff;
+	color: var(--accent-contrast);
 }
 
 .note {
 	font-size: 12.5px;
 	padding: 9px 12px;
 	border-radius: 9px;
-	background: color-mix(in srgb, #ff9f0a 12%, transparent);
-	color: color-mix(in srgb, #d97706 85%, var(--text-primary));
+	background: color-mix(in srgb, var(--warning) 12%, transparent);
+	color: color-mix(in srgb, var(--warning) 85%, var(--text-primary));
 }
 
 .counter {

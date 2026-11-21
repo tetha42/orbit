@@ -8,12 +8,14 @@ const PROJECT_SELECT = `
 	SELECT p.id, p.slug, p.title AS title, p.summary AS summary, p.description AS description,
 	       p.repo_url AS "repoUrl", p.live_url AS "liveUrl", p.tech_stack AS technologies,
 	       p.team_id AS "teamId", p.created_by AS "creatorId", p.status,
-	       p.is_featured AS "oneLeaving", p.created_at AS creation, p.updated_at AS update,
+	       p.is_featured AS "isFeatured",
+	       p.created_at AS "createdAt",
+	       p.updated_at AS "updatedAt",
 	       p.owner_team_id, p.owner_user_id, p.created_by,
 	       t.name AS "teamName",
-	       k.first_name || ' ' || k.last_name AS "creatorNameSurname",
+	       k.first_name || ' ' || k.last_name AS "creatorName",
 	       ot.name AS "ownerTeamName",
-	       ou.first_name || ' ' || ou.last_name AS "ownerUserNameSurname",
+	       ou.first_name || ' ' || ou.last_name AS "ownerUserName",
 	       jsonb_array_length(COALESCE(p.starred_by, '[]'::jsonb)) AS "likeCount",
 	       (COALESCE(p.starred_by, '[]'::jsonb) ? $1::text) AS "likedByMe"
 	FROM projects p
@@ -106,7 +108,7 @@ export async function createProject(input: ProjectInput & { creatorId: string; s
 /** Applies the given fields; omitted ones stay. Returns false when the project is gone. */
 export async function updateProject(
 	id: string,
-	patch: Partial<ProjectInput> & { status?: ProjectStatus; oneLeaving?: boolean }
+	patch: Partial<ProjectInput> & { status?: ProjectStatus; isFeatured?: boolean }
 ): Promise<boolean> {
 	await ensurePostgresInit();
 	const sets: string[] = [];
@@ -125,7 +127,7 @@ export async function updateProject(
 	if (patch.ownerTeamId !== undefined) set('owner_team_id', patch.ownerTeamId);
 	if (patch.ownerUserId !== undefined) set('owner_user_id', patch.ownerUserId);
 	if (patch.status !== undefined) set('status', patch.status);
-	if (patch.oneLeaving !== undefined) set('is_featured', patch.oneLeaving ? 1 : 0);
+	if (patch.isFeatured !== undefined) set('is_featured', patch.isFeatured ? 1 : 0);
 	set('updated_at', Date.now());
 	values.push(id);
 	const res = await getPgPool().query(`UPDATE projects SET ${sets.join(', ')} WHERE id = $${values.length}`, values);

@@ -1,221 +1,121 @@
 # Orbit Community OS
 
-![CI](https://img.shields.io/github/actions/workflow/status/tetha42/orbit/ci-cd.yml?branch=main&label=CI)
-![License](https://img.shields.io/badge/license-Apache%202.0-blue)
+**A self-hosted, modular community operating system built with Next.js 16 (App Router), React 19, TypeScript 5.9, and PostgreSQL 16.**
 
-**Engineered from the ground up by [tetha42](https://github.com/tetha42)**
-**Orbit Community OS** is a flagship open-source, self-hosted digital community operating system and collaborative web-desktop suite built for developer collectives, research labs, decentralized organizations (DAOs), academic societies, and professional guilds. Built on **Next.js 16 (App Router)**, **React 19**, and **PostgreSQL 16**, Orbit delivers a hardware-accelerated multi-window desktop shell alongside **17 application manifests (16 user-facing workspace applications + 1 internal `mediaviewer`)**, an **Autonomous Security Operations Center (SoC Pro Studio)** with automated **SOAR defense playbooks**, a built-in **OAuth 2.0 / OIDC Identity Provider**, cryptographic document and certificate verification, and real-time event check-in.
+Orbit Community OS delivers a multi-window web desktop workspace (with responsive mobile views) backed by **18** app manifests, **153** REST/SSE API route handlers, and **42** PostgreSQL tables — complete with role-based permissions, device-aware sessions & Passkey MFA, Cloud Drive quotas, real-time Chat search & WebRTC voice calls, an autonomous SOC Defense Studio, a Go `security-guard` sidecar, and a zero-config `/setup` onboarding wizard.
 
 ---
 
-## Core Philosophy: Zero Config Files
+## Key Capabilities
 
-Orbit Community OS is architected with a **Zero Config Files** philosophy:
-
-- **No `.env` or `config.ini` files required in your repository:** You never need to copy template files, generate random hex secrets by hand, or edit configuration files before starting the server.
-- **Clone, Build, Run, and Onboard in the Browser:** Launch the stack with `docker compose up -d --build` (or `npm install && npm run build && npm start` / `make up`), open your browser, and complete the interactive **Web UI Setup Wizard (`/setup`)**.
-- **Universal Organization Archetypes:** Select your community's archetype (`academic_club`, `dao_collective`, `research_lab`, or `professional_guild`) during `/setup` to tailor terminology, tracks, cohort levels, and governance defaults with zero code changes.
-- **Runtime Database & System Reconfiguration:** Configure your PostgreSQL connection (`reconfigurePgPool`), studio and organization identity, initial super-administrator account, encrypted SMTP relay, OAuth 2.0 clients, security webhooks, and granular role permissions directly from the browser at runtime via `organization_settings` and in-memory state synchronization.
-
----
-
-## Key Capabilities & Architecture Highlights
-
-| Layer | Technology & Engineering Design |
-| :--- | :--- |
-| **Runtime & Framework** | Next.js 16 (App Router, Turbopack), React 19, TypeScript 5.9, Node.js 22+ |
-| **Primary Data Store** | PostgreSQL 16 (Consolidated **32-table pure English `snake_case` schema**, `JSONB` optimizations, dynamic pool hot-swapping via `reconfigurePgPool`) |
-| **Client Data & Caching** | In-memory Stale-While-Revalidate (`useJsonResource` with 25s freshness TTL) + concurrent request deduplication |
-| **Window Compositor** | 60/120fps W3C Pointer Events window manager, 8-directional resizing, `content-visibility: hidden` offscreen culling, GPU layer promotion (`will-change`, `contain: strict`) |
-| **Real-Time Event Bus** | PostgreSQL `LISTEN/NOTIFY` + 3 dedicated Server-Sent Events (SSE) streams (`orbit_events`, `chat_events`, `soc_stream`) with `requestAnimationFrame` backpressure buffering |
-| **Identity & Authentication** | Argon2id / bcrypt password hashing, `HttpOnly` session cookies (`orbit_session`) with at-rest SHA-256 token hashing, Pass-the-Cookie IP binding shield, TOTP 2FA (`otplib`), and FIDO2 / WebAuthn Passkeys (`@simplewebauthn`) |
-| **Autonomous Cyber Defense** | SoC Pro Studio, DEFCON 1–5 posture control, automated SOAR playbooks, AI & Recon Canary honeypots, Go-powered File Integrity Monitoring (FIM), and Zero-Trust DB Studio (`x-db-token`) |
-| **OAuth 2.0 Identity Provider** | RFC 6749 Authorization Code Flow with PKCE (`S256`), OpenID Connect discovery (`/.well-known/openid-configuration`), JWKS endpoint, and scoped consent screen (`/oauth/authorize`) |
-| **Zero-Friction Localization** | Registry-driven i18n (`src/locales/registry.ts`) + PostgreSQL `translations JSONB` allowing new languages to be added in a single PR without touching SQL or React components |
-| **Design Language** | Dual-surface architecture: (1) Adaptive Light/Dark Glass & Flat Studio Desktop Shell, and (2) High-Contrast Monochrome Flat Surfaces for standalone utilities (`/setup`, `/verify`, `/checkin`, `/oauth/authorize`) |
+- **Modular Web Desktop & Mobile Workspace:** 17 user-facing mini-apps plus the internal `mediaviewer` preview window across Community (`members`, `news`, `chat`, `decisions`, `certificates`), Operations (`events`, `teams`, `projects`, `inventory`, `mail`, `database`, `soc`, `terminal`), Finance (`budget`), and Productivity (`notes`, `drive`, `settings`).
+- **Cloud Drive, Notes Media & Streaming:** Chunked resumable uploads, member/role sharing, and global/role/member storage quotas (`storage_quotas`) in **Cloud Drive** (`drive`); embedded image uploads with automatic orphan file & quota cleanup in **Notes** (`notes`); and HTTP Range (`206 Partial Content`) media streaming (`/api/uploads/[name]`).
+- **Real-Time Chat Search & WebRTC Audio Calls:** Multi-room chat, polls, quota-tracked file attachments, server-side message history search (`/api/chat/search`), and peer-to-peer WebRTC voice calls (`/api/chat/call*`).
+- **Device Sessions, Mobile Approval & Passkeys:** `bcryptjs` passwords, signed `HttpOnly` sessions (`club_session_token`), replay-protected `otplib` TOTP 2FA, and WebAuthn/Hybrid Passkeys (`@simplewebauthn/server`). Enforces single active mobile session + up to **4** concurrent desktop sessions (`MAX_DESKTOP_SESSIONS = 4`) with E-Devlet-style 2-digit number matching, 6-digit code, QR link approval, and optional VAPID Web Push / Service Worker Notification fallback. Verified Passkey sign-ins satisfy MFA directly and auto-unlock **Database Studio** and **Terminal**.
+- **RBAC, OAuth 2.0 / OIDC & Audit Hygiene:** Per-app `'none' | 'use' | 'manage'` permissions on `roles`, built-in OAuth 2.0 / OIDC Identity Provider (`/oauth/authorize`), and statically verified `withAudit(...)` coverage on every mutating endpoint.
+- **First-Run Setup & Config Provenance:** 5-step web wizard (`/setup`) featuring Docker/local PostgreSQL auto-detection, live connection-pool reconfiguration, boot-time `/setup#token=...` URL fragment announcement, and HMAC-bound `HttpOnly; SameSite=Strict` unlock cookie exchange (`/api/setup/unlock`). Configuration resolves deterministically across `Docker secrets > ENV > .env.local > .env > config.ini > data/runtime-config.json > defaults`.
+- **Autonomous SOC & Go Security Guard:** Real-time threat telemetry, File Integrity Monitoring (FIM), and WAF inspection via `services/security-guard` over a `0600` Unix domain socket (with Bearer-authenticated TCP HTTP via `SECURITY_GUARD_TOKEN` and deterministic TypeScript fallbacks).
+- **Bilingual UI & Sharded v3.1 AI Index:** AST-enforced English/Turkish (`en` / `tr`) dictionaries (with auto-discovered `src/lib/i18n/domains/*.ts`) alongside compact `AI_INDEX.json` (`v3.1.0`, `<= 4 KB`), **24** domain shards (`.ai/shards/*.json`), and `docs/generated/{SCHEMA,API,SURFACES}.md`.
 
 ---
 
-## The 17 Application Manifests (16 User-Facing + 1 Internal)
+## Quick Start
 
-Every application in Orbit Community OS is an isolated embedded microservice under `src/apps/<id>/` governed by a declarative `manifest.ts` contract:
+### Prerequisites
 
-1. **SoC Pro Studio (`soc`):**
-   - Split-view security command center with live DEFCON 1–5 threat posture and one-click Emergency Lockdown.
-   - Real-time Threat Radar, AI/Recon Canary honeypot fleet telemetry, and SIEM Forensic Log Analyzer with 24-hour histograms and multi-operator filtering.
-   - Blue Team File Integrity Monitoring (FIM) with unified diff inspection and active Web Application Firewall (WAF) rule management.
-   - Automated SOAR Playbooks for session termination, IP quarantine, Linux PTY shell kill-switch, and Zero-Trust database access freeze.
-   - Integrated Security Testbench for OAuth 2.0 PKCE simulation, WAF payload testing, and endpoint diagnostics.
-2. **Events (`events`):**
-   - End-to-end event lifecycle management, capacity tracking (`event_participants`), RSVP self-cancellation, and live QR / 6-digit short-code attendance check-in (`/checkin`).
-3. **Teams & R&D Hub (`teams`):**
-   - Organizational unit directory (`units`: squads, guilds, committees, councils), membership applications (`unit_members`), multi-column Kanban task boards (`tasks` with `checklist JSONB`), task comments, XP rewards, and dedicated unit treasury ledgers.
-4. **Member Directory (`members`):**
-   - Global member roster with Member ID / Handle search, role assignment, profile cards, custom field governance (`form_schemas`), attendance metrics, and direct SoC security posture links.
-5. **Budget & Treasury (`budget`):**
-   - Double-entry-inspired community treasury and per-unit sub-ledgers (`treasury_entries`), atomic inter-vault allocations (`transfer_pair_id`), receipt uploads with MIME verification, and immutable audit trails.
-6. **Zero-Trust Database Studio (`database`):**
-   - Interactive SQL runner, schema visualizer, table inspector, and data exporter across all 32 PostgreSQL tables protected by a 2FA-verified, short-lived `x-db-token` and server-side query guard.
-7. **Terminal (`terminal`):**
-   - Sandboxed Linux PTY shell emulator (`@xterm/xterm`) with real-time SOAR session monitoring and instant kill-switch integration.
-8. **Chat (`chat`):**
-   - Real-time messaging across community channels, unit rooms, 1-on-1 direct messages, and group chats with interactive polls (`polls`), reactions, typing indicators, and a 4-tier notification pipeline.
-9. **Mail (`mail`):**
-   - Internal community mail threads, role/unit recipient groups, and official broadcast announcements backed by AES-256-GCM encrypted SMTP relay settings and `mail_outbox`.
-10. **Projects (`projects`):**
-    - Community R&D showcase linking repositories, live deployments, technology tags (`tech_stack JSONB`), unit attributions, and member stars (`starred_user_ids JSONB`).
-11. **Inventory (`inventory`):**
-    - Hardware lab and asset tracking (`inventory_items` with `LAB-*` asset codes), loan checkouts, due-date alerts, and embedded `loan_history JSONB` workflows.
-12. **Certificates (`certificates`):**
-    - Cryptographic achievement and participation certificates with instant PDF generation and public verification at `/verify`.
-13. **News (`news`):**
-    - Multi-tier community publishing (`news_posts`: `'draft' | 'members_only' | 'published'`) with Markdown support and public REST syndication.
-14. **Notes (`notes`):**
-    - Personal workspace notes with color-coded folders, tags, pinning, and trash recovery.
-15. **Governance & Committees (`decisions`):**
-    - Committee and council directory, voting weights, meetings, proposals, and official resolutions (`governance_records`) with quorum and poll tracking.
-16. **System Settings (`settings`):**
-    - Granular RBAC role designer, Organization Archetype & identity configuration (`organization_settings`), dynamic form builder (`form_schemas`), legal document versioning (`legal_documents`), OAuth 2.0 application registry, SMTP configuration, wallpaper/theme studio, and Passkey & 2FA enrollment.
-17. **Media Viewer (`mediaviewer` — Internal Utility Window):**
-    - Internal system window for inspecting images, PDFs, receipts, and media attachments within the desktop workspace.
+- **Node.js:** `>= 22.0.0`
+- **pnpm:** `10.12+` (`packageManager: pnpm@10.12.3` — never use `npm install`)
+- **Database:** Docker (recommended for local dev) or PostgreSQL `16+`
 
----
-
-## Zero-Config Quick Start
-
-Orbit Community OS requires **no configuration files** to start. Clone the repository, launch the application, and configure everything from your browser.
-
-### Option A: Docker Compose (Recommended for Production & Self-Hosting)
+### 1. Local Development (Recommended)
 
 ```bash
-git clone https://github.com/tetha42/orbit.git
-cd orbit
-docker compose up -d --build
+git clone <repository-url> orbit && cd orbit
+pnpm install
+make db-up          # or: ./bin/orbit db up (starts isolated orbit-db PostgreSQL on 127.0.0.1:5432)
+make dev            # or: ./bin/orbit dev (starts Next.js dev server on http://localhost:3000)
 ```
 
-Open `http://localhost:3000` (or `http://localhost`). Orbit automatically detects an uninitialized instance and launches the **Web UI Setup Wizard (`/setup`)**.
+On first run (while setup is incomplete):
+1. Orbit creates `data/orbit.setup.token` (`0600`) and prints a clickable `/setup#token=...` URL at server boot (also retrievable via `make setup-url` or `./bin/orbit setup url`).
+2. Opening the URL exchanges the client-side fragment token at `/api/setup/unlock` for the scoped `HttpOnly; SameSite=Strict` `orbit_setup_session` cookie without leaking secrets to server access logs.
+3. Complete the 5-step wizard to bind PostgreSQL (including one-click Docker container detection) and create the root administrator account.
+4. Run `make doctor` (`./bin/orbit doctor`) at any time to verify Node/pnpm, Docker, PostgreSQL connectivity, setup status, and secret-masked configuration provenance.
 
-### Option B: Local Node.js / pnpm Runtime
+> **Optional Local Loopback Convenience:** Setting `ORBIT_DEV_AUTO_UNLOCK=1` enables tokenless `/setup` access strictly when `NODE_ENV=development` and the request originates directly from loopback (`127.0.0.1`/`::1`) with a `localhost` host and no forwarding headers.
+
+### 2. Production Deployment (Docker Compose)
 
 ```bash
-git clone https://github.com/tetha42/orbit.git
-cd orbit
-npm install
-npm run build
-npm start
+cp .env.example .env   # set POSTGRES_PASSWORD (required; prod compose has no default)
+make up                # or: docker compose -f infra/docker/docker-compose.yml up -d
 ```
 
-*(For active development with hot-reloading, run `make dev` or `pnpm dev` and visit `http://localhost:3000`.)*
-
-### First-Run Web Onboarding (`/setup`)
-
-When you first access Orbit Community OS in your browser, the 5-step Zero-Config Setup Wizard guides you through:
-
-1. **Database Connection & Auto-Detection:** Orbit automatically detects running PostgreSQL instances (Docker Compose, Docker network, baremetal host). If no database exists, the wizard provides a 1-click Docker command to spin up PostgreSQL in seconds. Custom URIs can be entered and tested live via `POST /api/setup/test-db`, binding the pool and running all schema initializations without rebooting.
-2. **Organization Archetype, Identity & Proxy Helper:** Choose your archetype (`academic_club`, `dao_collective`, `research_lab`, or `professional_guild`), set your Studio/Parent Entity name (default: `tetha42`), Organization name (`Orbit Community`), and primary domain (`orbit.example.com`). The built-in **Reverse Proxy Assistant** outputs copy-ready and downloadable Nginx and Caddy configs pre-tuned for SSE event streaming (`proxy_buffering off; chunked_transfer_encoding off;`).
-3. **Initial Super-Administrator:** Create the primary administrator account (minimum 12-character password, hashed with bcrypt cost 12) and automatically establish an authenticated `HttpOnly` session (`orbit_session`).
-4. **SMTP & Notification Relay (Optional):** Configure outbound SMTP credentials (encrypted at rest using AES-256-GCM in `organization_settings.smtp_config`) or skip and configure later in **Settings → System**.
-5. **Instant Workspace Launch:** Orbit persists your runtime settings into `organization_settings`, seeds the default community channel, and transitions directly into the desktop workspace.
+Starts three hardened containers: `db` (`postgres:16-alpine`), `app` (GHCR Next.js server exposing `:3000` for Coolify or an external reverse proxy — no built-in Caddy configuration), and `security-guard` (Go FIM/WAF sidecar on `:8080`). To build and run the full stack from local source instead, run `make local-up`. See [`docs/OPS_AND_SECURITY.md`](docs/OPS_AND_SECURITY.md) for deployment hardening, `TRUSTED_PROXY_MODE`, and `SECURITY_GUARD_TOKEN`.
 
 ---
 
-## Granular Role-Based Access Control (RBAC)
+## Architecture Overview
 
-Roles in Orbit are dynamic database records (`roles.permissions JSONB`)—never hardcoded enums. Every role assigns one of three pure English permission levels to each of the 16 user-facing mini-apps:
-
-| Permission Level | Behavior Across UI, Search, Notifications & API |
-| :--- | :--- |
-| **None (`'none'`)** | The application does not exist for the member: hidden from the Dock, Launcher, and Spotlight; excluded from search results and notifications; API endpoints return `403 Forbidden`. |
-| **Use (`'use'`)** | Standard member access: view content, RSVP to events, join units, borrow lab equipment, participate in chat, and vote on proposals. |
-| **Manage (`'manage'`)** | Administrative privileges for that specific domain: create/edit records, approve applications, issue certificates, manage budgets, or execute SOAR playbooks. |
-
-- **Privilege Escalation Prevention:** No member or role manager can create, edit, or assign a role that grants higher permissions on *any* mini-app than the actor currently holds.
-- **Last-Admin Protection:** Protected by PostgreSQL transaction advisory locks (`pg_advisory_xact_lock`), the last active administrator (`'role_admin'`) cannot be demoted, deactivated, or deleted.
-- **Mandatory 2FA Enforcement:** Roles flagged with mandatory 2FA (`require_2fa = true`) restrict the user exclusively to the **Settings** app (`403 2FA_SETUP_REQUIRED` on all other APIs) until TOTP or a WebAuthn Passkey is enrolled.
+| Layer | Location | Purpose |
+| :--- | :--- | :--- |
+| **App Router & APIs** | `src/app/` | **153** REST/SSE route handlers (`src/app/api/**/route.ts`) plus `/`, `/setup`, `/verify`, `/checkin`, `/oauth/authorize` |
+| **Mini-App Modules** | `src/apps/<id>/` | **18** app manifests (`manifest.ts` + `<id>.contract.json`), hooks, and desktop/mobile views |
+| **Feature Domains** | `src/domains/<domain>/` | Modular multi-layer domains (`chatSearch`, `devices`, `drive`, `webrtc`) |
+| **Generated Truth** | `src/apps/registry.gen.ts`, `AI_INDEX.json`, `.ai/shards/*.json`, `docs/generated/*` | Auto-generated manifest/i18n loaders, v3.1 `<= 4 KB` semantic index + 24 domain shards, and Markdown inventories |
+| **Core & Shell** | `src/core/`, `src/components/` | Workspace window compositor, dock, menu bar, Spotlight search, setup unlock gate, and shared UI |
+| **Server Domain** | `src/server/` | Auth/RBAC guards, config provenance, Database Studio access, storage quotas, SoC/WAF/FIM orchestration, OAuth, SMTP, terminal |
+| **Database Layer** | `src/db/` | PostgreSQL 16 `pg` pool (`INT8` -> `number`, `snake_case` -> `camelCase`), advisory-locked init, **42** tables |
+| **i18n & Locales** | `src/lib/i18n/`, `src/locales/registry.ts` | Bilingual `en` / `tr` dictionaries with auto-discovered `src/lib/i18n/domains/*.ts` |
+| **CLI & Gates** | `bin/orbit`, `scripts/`, `Makefile` | Unified 27-command CLI (`./bin/orbit`), thin `Makefile` facade, AI map/deps/impact tools, and static/AST gates |
+| **Security Sidecar** | `services/security-guard/` | Go FIM & WAF service over `0600` Unix domain socket with Bearer-authenticated TCP HTTP fallback |
 
 ---
 
-## Repository Architecture
+## CLI, Make Shortcuts & Verification
 
-```text
-src/
-├── app/                  # Next.js 16 App Router (Standalone pages & REST/SSE API routes)
-│   ├── api/              # Domain API endpoints (/api/auth, /api/soc, /api/oauth, /api/setup, ...)
-│   ├── checkin/          # Standalone high-contrast event QR & short-code check-in (/checkin)
-│   ├── oauth/            # OAuth 2.0 / OIDC authorization & consent screen (/oauth/authorize)
-│   ├── setup/            # Zero-Config Web UI Setup Wizard (/setup)
-│   └── verify/           # Public cryptographic document & certificate verification (/verify)
-├── apps/                 # 17 self-contained mini-applications (16 user-facing + 1 mediaviewer)
-│   ├── budget/           # Treasury & unit sub-ledgers
-│   ├── certificates/     # Certificate studio & PDF generator
-│   ├── chat/             # Real-time channels, DMs, and polls
-│   ├── database/         # Zero-Trust DB Studio
-│   ├── decisions/        # Governance, committees, meetings & resolutions
-│   ├── events/           # Event management & QR check-in
-│   ├── inventory/        # Hardware & asset tracking
-│   ├── mail/             # Internal mail & broadcast announcements
-│   ├── mediaviewer/      # Internal media & document preview window
-│   ├── members/          # Member directory & role assignment
-│   ├── news/             # Community news & public syndication
-│   ├── notes/            # Personal workspace notes
-│   ├── projects/         # R&D project showcase
-│   ├── settings/         # System settings, RBAC, forms, legal & OAuth apps
-│   ├── soc/              # Autonomous SoC Pro Studio & SOAR playbooks
-│   ├── teams/            # Organizational units & Kanban task boards
-│   └── terminal/         # Sandboxed Linux PTY terminal
-├── components/           # Desktop shell (TopBar, Dock, WindowManager, MobileLauncher, Auth)
-├── core/                 # Shared kernel hooks (permissions, session, windows, data SWR, i18n, theme)
-├── db/                   # PostgreSQL connection pool, schema.init.ts & repositories
-│   └── repositories/     # 26 modular PostgreSQL domain repositories (*.repo.ts)
-├── locales/              # Multi-language registry (registry.ts) & core locale bundles
-├── lib/                  # Auth guards, WAF, SOAR playbooks, rate limiters, crypto & helpers
-├── state/                # Thin workspace state aggregator (workspaceStore.tsx)
-└── proxy.ts              # Edge WAF inspection & AI/Recon Canary honeypot fleet
+`Makefile` provides thin shortcuts over `./bin/orbit` (`scripts/orbit-cli.mjs`) without silently overriding `DATABASE_URL`. Diagnostic and gate commands support `--json` and respect `NO_COLOR=1`.
+
+```bash
+# Environment, DB & Onboarding
+./bin/orbit doctor                      # or: make doctor (diagnostics, config provenance & DB health)
+./bin/orbit db up|down|status|shell|reset|explain   # dev PostgreSQL & query plans (make db-*)
+./bin/orbit setup status|url|reset                  # setup lock state & URL (make setup-url)
+./bin/orbit dev [--with-db] [--port N]              # dev server + boot setup URL hint (make dev)
+
+# AI Index, Codegen & Static Verification
+./bin/orbit ai map [<domain>]           # inspect compact v3.1 summary or single domain shard
+./bin/orbit ai deps <file>              # inspect forward/reverse module import graph
+./bin/orbit ai impact <file1,file2>     # compute affected domains, contract tests & required checks
+./bin/orbit verify [--files ...|--staged] # regenerate registry/AI index/docs + run static/AST gates
+pnpm verify                             # tsc --noEmit, eslint --cache ., and pnpm check
+./bin/orbit status                      # build status, Security Guard transport & FIM baselines
+./bin/orbit quotas                      # SSE stream quotas, HTTP upload/body limits & Guard IPC info
+
+# Test Suites & Production Build
+pnpm test                   # run contract test suites (tests/contract/*.test.mjs)
+pnpm test:security          # run WAF, honeypot, RBAC & SOC security E2E suite
+pnpm e2e                    # run Playwright Chromium UI E2E (<= 1024 MB RSS / <= 180s budget)
+pnpm build                  # build production Next.js standalone bundle
 ```
 
----
-
-## Makefile & CLI Reference
-
-Run `make help` to inspect all developer and operator workflows:
-
-| Command | Description |
-| :--- | :--- |
-| `make up` / `make compose-up` | Build and launch PostgreSQL + Orbit Community OS via Docker Compose |
-| `make down` / `make compose-down` | Gracefully stop all running Docker Compose services |
-| `make logs` / `make compose-logs` | Stream real-time container logs |
-| `make dev` | Start the local Next.js 16 Turbopack development server on `:3000` |
-| `make build` | Generate mini-app registries and build the production Next.js bundle |
-| `make verify` | Run the full verification gate: `gen:apps` + `tsc --noEmit` + `eslint` + `check-pure` + `check-i18n` + `check-tokens` |
-| `make test-e2e` | Run end-to-end security, RBAC, and workspace simulation suites |
-| `make db-up` | Start only the PostgreSQL 16 container on `:5432` |
-| `make db-shell` | Open an interactive `psql` shell inside the PostgreSQL container |
-| `make db-backup` | Dump a timestamped SQL backup into `backups/` |
-| `make db-reset` | Destroy and recreate a clean PostgreSQL volume |
-| `make release TAG=v3.0.0` | Create a signed, verified Git release tag and trigger CI/CD |
+Run `make help` or `./bin/orbit --help` for the complete list of targets and options. For browser E2E options (`E2E_DATABASE_URL`, `--base`, isolated suites), see [`tests/e2e/ui/README.md`](tests/e2e/ui/README.md).
 
 ---
 
 ## Documentation Index
 
-All canonical documentation lives in [`docs/`](docs/README.md):
-
-- **[`docs/README.md`](docs/README.md)** — Documentation index, reading paths, and governance guide.
-- **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** — Full-stack architecture, modular mini-app registry, 60/120fps window compositor, SWR data layer, and Zero-Config runtime state.
-- **[`docs/DATABASE.md`](docs/DATABASE.md)** — PostgreSQL 16 schema reference (32 consolidated tables), `JSONB` optimizations, automatic `snake_case` $\rightarrow$ `camelCase` mapping, `reconfigurePgPool`, and advisory locks.
-- **[`docs/DATA_DICTIONARY.md`](docs/DATA_DICTIONARY.md)** — Field-level data dictionary covering all 32 tables, 4 Organization Archetypes, visibility rules, and index coverage.
-- **[`docs/DATA_MODEL_ROADMAP.md`](docs/DATA_MODEL_ROADMAP.md)** — Universal Community OS data platform architecture, unit/committee model, and `translations JSONB` design.
-- **[`docs/API.md`](docs/API.md)** — REST & SSE API reference, `/api/setup` onboarding, OAuth 2.0 endpoints, SoC telemetry, Events, Certificates, Treasury, and response envelopes.
-- **[`docs/AUTH_SECURITY.md`](docs/AUTH_SECURITY.md)** — Authentication lifecycle, global legal compliance (Terms of Service, GDPR Privacy Policy, Cookie Policy), Autonomous SoC defense, DEFCON levels, Canary Honeypots, and FIM.
-- **[`docs/USER_DATA_SECURITY.md`](docs/USER_DATA_SECURITY.md)** — `users` security inventory, invitation lifecycle, password reset, `mail_outbox`, Passkey/2FA behavior, and audit trails.
-- **[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)** — Zero-Config self-hosting with Docker Compose, bare-metal Node.js/PM2, Nginx/Caddy reverse proxies, and first-run web onboarding at `/setup`.
-- **[`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)** — Developer onboarding, Embedded Microservice Mini-App Architecture, Zero-Friction 1-PR Localization Guide (`src/locales/registry.ts`), and verification gates.
-- **[`docs/OPERATIONS.md`](docs/OPERATIONS.md)** — Day-2 operations, SoC Studio monitoring, DEFCON lockdown recovery, database maintenance, and `/api/healthz` checks.
-- **[`docs/UI_AND_DESIGN.md`](docs/UI_AND_DESIGN.md)** — Dual design language specification: Adaptive Desktop Shell & Mini-Apps vs. Standalone High-Contrast Monochrome Flat Surfaces.
-- **[`docs/USER_GUIDE.md`](docs/USER_GUIDE.md)** — Complete end-user and administrator handbook covering registration with Member ID / Handle, desktop navigation, all 16 user-facing mini-apps, and community governance.
+- **[`docs/README.md`](docs/README.md)** — Documentation hub and role-based reading paths.
+- **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** — Full-stack topology, pure manifests, PostgreSQL 16 `pg` pool, 42-table domain map, and API guard conventions.
+- **[`docs/OPS_AND_SECURITY.md`](docs/OPS_AND_SECURITY.md)** — Docker Compose profiles, config provenance, `#token=` setup unlock, device sessions & Passkeys, Go `security-guard`, CLI workflow, and design tokens.
+- **[`src/apps/README.md`](src/apps/README.md)** — Mini-application manifest and `<id>.contract.json` authoring guide.
+- **[`tests/e2e/ui/README.md`](tests/e2e/ui/README.md)** — Playwright browser E2E runner and suite authoring guide.
+- **[`examples/oauth-client-node/README.md`](examples/oauth-client-node/README.md)** — Zero-dependency OAuth 2.0 + PKCE / OIDC reference client.
+- **Governance & Agent Rules:** [`CONTRIBUTING.md`](CONTRIBUTING.md) · [`SECURITY.md`](SECURITY.md) · [`AGENTS.md`](AGENTS.md)
+- **Machine-Generated References:** [`AI_INDEX.json`](AI_INDEX.json) (`v3.1.0`, `<= 4 KB`) · [`.ai/shards/`](.ai/shards) · [`docs/generated/SCHEMA.md`](docs/generated/SCHEMA.md) · [`docs/generated/API.md`](docs/generated/API.md) · [`docs/generated/SURFACES.md`](docs/generated/SURFACES.md)
 
 ---
 
-## License & Credits
+## License
 
-Crafted and maintained by **tetha42**. Released as open-source software under the Apache 2.0 License for digital communities worldwide.
+Licensed under the [Apache License 2.0](LICENSE).

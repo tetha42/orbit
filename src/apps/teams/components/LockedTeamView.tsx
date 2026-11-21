@@ -16,7 +16,7 @@ export function LockedTeamView({ joinButton }: LockedTeamViewProps) {
 	return (
 		<div className={styles.locked}>
 			<div className={styles.lockedCard}>
-				<Lock size={36} color="#ff9f0a" />
+				<Lock size={36} color="var(--warning)" />
 				<h3 style={{ margin: 0, fontSize: 17 }}>{t('tmLocked')}</h3>
 				<p className={ui.muted} style={{ margin: 0, lineHeight: 1.5 }}>
 					{t('tmLockedHint')}

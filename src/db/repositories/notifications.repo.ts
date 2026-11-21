@@ -1,10 +1,11 @@
 import { getPgPool, ensurePostgresInit } from '@/db';
 
 /** Project proposals waiting for the board. */
-export async function getPendingProjectProposals(): Promise<{ id: string; title: string; creatorNameSurname: string | null; creation: number }[]> {
+export async function getPendingProjectProposals(): Promise<{ id: string; title: string; creatorName: string | null; createdAt: number }[]> {
 	await ensurePostgresInit();
 	const res = await getPgPool().query(
-		`SELECT p.id, p.title AS title, k.first_name || ' ' || k.last_name AS "creatorNameSurname", p.created_at AS creation
+		`SELECT p.id, p.title AS title, k.first_name || ' ' || k.last_name AS "creatorName",
+		        p.created_at AS "createdAt"
 		 FROM projects p LEFT JOIN users k ON k.id = p.created_by
 		 WHERE p.status = 'proposed'
 		 ORDER BY p.created_at DESC

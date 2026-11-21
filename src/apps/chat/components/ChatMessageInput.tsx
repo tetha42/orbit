@@ -2,17 +2,13 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useI18n } from '@/core/i18n';
-import { Send, Pencil, X, Check, Plus, Reply, Paperclip, Loader2, Mic, Square } from 'lucide-react';
+import { Send, Check, Plus, Loader2, Mic, Square } from 'lucide-react';
 import type { ChatAttachmentItem, ChatMessageItem } from '../types';
 import { ComposerActionsMenu } from './composer/ComposerActionsMenu';
+import { ChatMessageInputBanners } from './composer/ChatMessageInputBanners';
 import { useVoiceRecorder } from '../hooks/useVoiceRecorder';
+import { useChatAttachmentsUpload } from '../hooks/useChatAttachmentsUpload';
 import s from '../Chat.module.css';
-
-function formatDuration(seconds: number): string {
-	const mins = Math.floor(seconds / 60);
-	const secs = seconds % 60;
-	return `${mins}:${String(secs).padStart(2, '0')}`;
-}
 
 interface ChatMessageInputProps {
 	onSendMessage: (text: string, attachments?: ChatAttachmentItem[]) => Promise<boolean>;
@@ -44,15 +40,26 @@ export function ChatMessageInput({
 	const [text, setText] = useState('');
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
-	const [attachments, setAttachments] = useState<ChatAttachmentItem[]>([]);
-	const [isUploading, setIsUploading] = useState(false);
-	const [uploadError, setUploadError] = useState<string | null>(null);
 	const voice = useVoiceRecorder();
 	const inputRef = useRef<HTMLInputElement>(null);
-	const fileInputRef = useRef<HTMLInputElement>(null);
-	const previousRoomRef = useRef(roomId);
 
-	// Sync text when editingMessage changes
+	const {
+		attachments,
+		isUploading,
+		uploadError,
+		fileInputRef,
+		uploadFiles,
+		finishVoice,
+		removeAttachment,
+		clearAttachments,
+		voiceError,
+	} = useChatAttachmentsUpload({
+		roomId,
+		isEditing: Boolean(editingMessage),
+		voice,
+		onSendMessage,
+	});
+
 	useEffect(() => {
 		if (editingMessage) {
 			setText(editingMessage.content);
@@ -62,86 +69,11 @@ export function ChatMessageInput({
 		}
 	}, [editingMessage]);
 
-	// Focus input when replyingMessage is set
 	useEffect(() => {
 		if (replyingMessage) {
 			inputRef.current?.focus();
 		}
 	}, [replyingMessage]);
-
-	// A staged upload belongs to the room it was uploaded to; switching rooms
-	// must not carry it into another conversation.
-	useEffect(() => {
-		if (previousRoomRef.current !== roomId) {
-			previousRoomRef.current = roomId;
-			setAttachments([]);
-			setUploadError(null);
-			if (voice.isRecording) void voice.cancel();
-		}
-		// Only a room change should cancel an in-flight take.
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [roomId]);
-
-	const uploadOne = async (file: File): Promise<ChatAttachmentItem | null> => {
-		if (!roomId) return null;
-		const formData = new FormData();
-		formData.set('roomId', roomId);
-		formData.set('file', file);
-		const res = await fetch('/api/chat/upload', { method: 'POST', body: formData });
-		const data = await res.json();
-		if (!res.ok || !data.ok) {
-			setUploadError(data.error || t('chatUploadFailed'));
-			return null;
-		}
-		return data.attachment as ChatAttachmentItem;
-	};
-
-	const uploadFiles = async (files: FileList | null) => {
-		if (!files || !roomId || editingMessage) return;
-		setUploadError(null);
-		setIsUploading(true);
-		try {
-			for (const file of Array.from(files).slice(0, 6)) {
-				const attachment = await uploadOne(file);
-				if (attachment) setAttachments((previous) => [...previous, attachment]);
-			}
-		} catch {
-			setUploadError(t('chatUploadFailed'));
-		} finally {
-			setIsUploading(false);
-			if (fileInputRef.current) fileInputRef.current.value = '';
-		}
-	};
-
-	const finishVoice = async () => {
-		const file = await voice.stop();
-		if (!file) {
-			setUploadError(t('chatVoiceFailed', 'The voice recording could not be created.'));
-			return;
-		}
-		setUploadError(null);
-		setIsUploading(true);
-		try {
-			const attachment = await uploadOne(file);
-			if (attachment) {
-				const ok = await onSendMessage('', [attachment]);
-				if (!ok) setAttachments((previous) => [...previous, attachment]);
-			}
-		} catch {
-			setUploadError(t('chatUploadFailed'));
-		} finally {
-			setIsUploading(false);
-		}
-	};
-
-	const voiceError =
-		voice.error === 'unsupported'
-			? t('chatVoiceUnsupported', 'Voice recording is not supported by this browser.')
-			: voice.error === 'permission'
-				? t('chatVoicePermission', 'Microphone permission is required.')
-				: voice.error === 'failed'
-					? t('chatVoiceFailed', 'The voice recording could not be saved.')
-					: null;
 
 	const handleSend = async (e?: React.FormEvent) => {
 		if (e) e.preventDefault();
@@ -162,7 +94,7 @@ export function ChatMessageInput({
 				if (!ok) {
 					setText(trimmed);
 				} else {
-					setAttachments([]);
+					clearAttachments();
 				}
 			}
 		} finally {
@@ -196,88 +128,21 @@ export function ChatMessageInput({
 				onChange={(event) => void uploadFiles(event.target.files)}
 			/>
 
-			{attachments.length > 0 && (
-				<div className={s.pendingAttachments}>
-					{attachments.map((attachment, index) => (
-						<span key={`${attachment.url}-${index}`} className={s.pendingAttachment}>
-							<Paperclip size={11} />
-							<span>{attachment.name}</span>
-							<button
-								type="button"
-								onClick={() =>
-									setAttachments((previous) =>
-										previous.filter((_, itemIndex) => itemIndex !== index)
-									)
-								}
-								title={t('delete')}
-							>
-								<X size={11} />
-							</button>
-						</span>
-					))}
-				</div>
-			)}
-
-			{uploadError && (
-				<div role="alert" style={{ padding: '5px 12px 0', fontSize: 11, color: '#ff453a' }}>
-					{uploadError}
-				</div>
-			)}
-
-			{editingMessage && (
-				<div className={s.editingBanner}>
-					<div className={s.editingBannerInfo}>
-						<Pencil size={13} className={s.editingBannerIcon} />
-						<span>
-							<strong>{t('chatEditingBanner')}:</strong>{' '}
-							{editingMessage.content.slice(0, 48)}
-							{editingMessage.content.length > 48 ? '…' : ''}
-						</span>
-					</div>
-					<button
-						type="button"
-						className={s.cancelEditBtn}
-						onClick={onCancelEdit}
-						title={t('chatCancelEdit')}
-					>
-						<X size={14} />
-						<span>{t('chatCancelEdit')}</span>
-					</button>
-				</div>
-			)}
-
-			{replyingMessage && !editingMessage && (
-				<div className={s.replyBanner}>
-					<div className={s.replyBannerInfo}>
-						<Reply size={13} className={s.replyBannerIcon} />
-						<span>
-							<strong>{t('chatReplyingBanner')}:</strong>{' '}
-							<span style={{ fontWeight: 600 }}>{replyingMessage.senderName}</span>{' '}
-							&mdash; {replyingMessage.content.slice(0, 48)}
-							{replyingMessage.content.length > 48 ? '…' : ''}
-						</span>
-					</div>
-					<button
-						type="button"
-						className={s.cancelReplyBtn}
-						onClick={onCancelReply}
-						title={t('chatCancelReply')}
-					>
-						<X size={14} />
-						<span>{t('cancel')}</span>
-					</button>
-				</div>
-			)}
-
-			{voice.isRecording && (
-				<div className={s.recordingBar}>
-					<span className={s.recordingDot} />
-					<span className={s.recordingText}>{t('chatRecording', 'Recording voice message')} · {formatDuration(voice.seconds)}</span>
-					<button type="button" className={s.recordingCancel} onClick={() => void voice.cancel()} title={t('cancel')}><X size={13} /></button>
-					<button type="button" className={s.recordingDone} onClick={() => void finishVoice()} disabled={isUploading} title={t('chatSend')}><Check size={13} /></button>
-				</div>
-			)}
-			{voiceError && <div role="alert" className={s.voiceError}>{voiceError}</div>}
+			<ChatMessageInputBanners
+				attachments={attachments}
+				onRemoveAttachment={removeAttachment}
+				uploadError={uploadError}
+				editingMessage={editingMessage}
+				onCancelEdit={onCancelEdit}
+				replyingMessage={replyingMessage}
+				onCancelReply={onCancelReply}
+				isRecording={voice.isRecording}
+				recordingSeconds={voice.seconds}
+				isUploading={isUploading}
+				onCancelVoice={() => void voice.cancel()}
+				onFinishVoice={() => void finishVoice()}
+				voiceError={voiceError}
+			/>
 
 			<form onSubmit={handleSend} className={s.inputBar}>
 				<div className={s.composerActionWrapper}>
@@ -285,7 +150,7 @@ export function ChatMessageInput({
 						type="button"
 						className={`${s.composerPlusBtn} ${isActionsMenuOpen ? s.composerPlusBtnActive : ''}`}
 						onClick={() => setIsActionsMenuOpen((prev) => !prev)}
-						title={t('chatActionsMenu') || 'Ek Eylemler'}
+						title={t('chatActionsMenu')}
 						disabled={disabled || isUploading || Boolean(editingMessage)}
 						aria-expanded={isActionsMenuOpen}
 					>

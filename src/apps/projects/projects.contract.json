@@ -1,0 +1,60 @@
+{
+  "id": "projects",
+  "name": "Projects & Showcase",
+  "version": "1.0.0",
+  "description": "Community software projects, repositories, live demos, and showcase listings.",
+  "tables": [
+    "projects",
+    "teams",
+    "users"
+  ],
+  "api": {
+    "base": "/api/projects",
+    "endpoints": [
+      {
+        "path": "/api/projects",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "description": "List or propose projects."
+      },
+      {
+        "path": "/api/projects/[id]",
+        "methods": [
+          "GET",
+          "POST",
+          "PATCH",
+          "DELETE"
+        ],
+        "description": "Inspect, join, update, or remove a project."
+      }
+    ]
+  },
+  "limits": {
+    "maxTitleLength": 200,
+    "maxTechStackTags": 15
+  },
+  "errorCodes": [
+    {
+      "code": "PROJECT_NOT_FOUND",
+      "status": 404,
+      "i18nKey": "projectNotFound",
+      "description": "Project not found."
+    }
+  ],
+  "files": {
+    "actions": [
+      "src/db/repositories/projects.repo.ts"
+    ],
+    "queries": [
+      "src/apps/projects/hooks/useProjects.ts"
+    ],
+    "ui": [
+      "src/apps/projects/index.tsx"
+    ],
+    "i18n": [
+      "src/lib/i18nApps.ts"
+    ]
+  }
+}

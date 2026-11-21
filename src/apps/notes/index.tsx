@@ -79,7 +79,16 @@ export function NotesApp() {
 				onCreateNote={notesHook.handleCreateNote}
 				onInsertText={notesHook.insertTextAtCursor}
 				onInsertChecklist={() => notesHook.insertTextAtCursor('- [ ] ')}
-				onInsertTable={() => notesHook.insertTextAtCursor(`\n| ${t('notesTableSampleHeader')} 1 | ${t('notesTableSampleHeader')} 2 | ${t('notesTableSampleHeader')} 3 |\n| --- | --- | --- |\n| ${t('notesTableSampleData')} 1 | ${t('notesTableSampleData')} 2 | ${t('notesTableSampleData')} 3 |\n| ${t('notesTableSampleData')} 4 | ${t('notesTableSampleData')} 5 | ${t('notesTableSampleData')} 6 |\n`)}
+				onInsertTable={() => {
+					const hdr = t('notesTableSampleHeader');
+					const dat = t('notesTableSampleData');
+					notesHook.insertTextAtCursor(
+						`\n| ${hdr} 1 | ${hdr} 2 | ${hdr} 3 |\n` +
+							`| --- | --- | --- |\n` +
+							`| ${dat} 1 | ${dat} 2 | ${dat} 3 |\n` +
+							`| ${dat} 4 | ${dat} 5 | ${dat} 6 |\n`
+					);
+				}}
 				onCopyText={notesHook.handleCopyText}
 				onDownloadMarkdown={notesHook.handleDownloadMarkdown}
 				onPrint={notesHook.handlePrint}

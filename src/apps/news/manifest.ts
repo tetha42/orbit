@@ -35,9 +35,9 @@ const manifest = {
 	notifications: { news: 'use' },
 	permission: {
 		order: 0,
-		name: 'Haberler',
-		use: 'Duyuruları ve haberleri okur.',
-		manage: 'Haber yazar, yayınlar, düzenler, siler.',
+		name: 'Announcements & News',
+		use: 'Read published announcements and news articles.',
+		manage: 'Draft, publish, edit, and delete news articles and announcements.',
 	},
 } as const satisfies AppManifest;
 

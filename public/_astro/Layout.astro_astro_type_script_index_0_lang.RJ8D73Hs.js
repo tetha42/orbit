@@ -1,1 +1,0 @@
-import{G as o}from"./App.ST3WWojO.js";import"./index.D-nlVayj.js";import"./ScrollTrigger.CcwueB8r.js";import"./router.2W7FzLmj.js";import"./visitedNews.BmN7K1ri.js";o.init();document.body.classList.add("loaded");

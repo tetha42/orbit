@@ -4,7 +4,7 @@ import type { ComponentType } from 'react';
  * Standard props provided to any Orbit mini-app by the Window Manager / Compositor.
  */
 export interface MiniAppProps<TTarget = unknown> {
-	/** Unique application identifier (e.g. 'chat', 'teams', 'kasa') */
+	/** Unique application identifier (e.g. 'chat', 'teams', 'budget') */
 	appId: string;
 	/** Unique window instance identifier */
 	instanceId: string;

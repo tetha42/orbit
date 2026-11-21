@@ -4,7 +4,7 @@ import { listAuditLogs } from '@/db/audit';
 import { AUDIT_CSV_LIMIT, parseAuditFilter } from '@/lib/audit';
 
 /**
- * The audit log — Settings → Roller → Değişiklik geçmişi. Read-only and only
+ * The audit log — Settings → Roles → Change History. Read-only and only
  * for system administrators (the people who manage roles).
  *
  *   GET /api/audit?user=&role=&action=&from=YYYY-MM-DD&to=YYYY-MM-DD&page=1&pageSize=50
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
 	const auth = await authenticate(request);
 	if (!auth.authorized) return auth.response;
 	if (!auth.user.permission.admin && !can(auth.user, 'soc', 'manage') && !can(auth.user, 'settings', 'manage')) {
-		return NextResponse.json({ error: 'Bu kayıt için yönetim yetkisi gerekir.' }, { status: 403 });
+		return NextResponse.json({ error: 'Management permission is required for this log.' }, { status: 403 });
 	}
 
 	try {
@@ -35,12 +35,13 @@ export async function GET(request: Request) {
 		);
 	} catch (error) {
 		console.error('API /api/audit GET error:', error);
-		return NextResponse.json({ error: 'Değişiklik geçmişi okunamadı.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to load change history.' }, { status: 500 });
 	}
 }
 
+// audit:exempt: explicit read-only 405 Method Not Allowed stub
 export async function POST() {
-	return NextResponse.json({ error: 'Bu kayıt salt okunurdur.' }, { status: 405 });
+	return NextResponse.json({ error: 'This log is read-only.' }, { status: 405 });
 }
 
 export async function DELETE(request: Request) {
@@ -57,15 +58,15 @@ export async function DELETE(request: Request) {
 		await logSystemEvent({
 			service: 'security',
 			level: 'WARN',
-			message: `Denetim geçmişi (audit_logs) yönetici tarafından sıfırlandı: ${auth.user.email}`,
+			message: `Audit history (audit_logs) cleared by administrator: ${auth.user.email}`,
 			detail: { actorId: auth.user.id, actorName: `${auth.user.name} ${auth.user.surname}`.trim() },
 			userId: auth.user.id,
 			ip,
 		});
 
-		return NextResponse.json({ ok: true, message: 'Değişiklik geçmişi temizlendi.' });
+		return NextResponse.json({ ok: true, message: 'Change history cleared.' });
 	} catch (error) {
 		console.error('API /api/audit DELETE error:', error);
-		return NextResponse.json({ error: 'Değişiklik geçmişi temizlenemedi.' }, { status: 500 });
+		return NextResponse.json({ error: 'Failed to clear change history.' }, { status: 500 });
 	}
 }

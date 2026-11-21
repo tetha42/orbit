@@ -4,6 +4,8 @@ import { requireApp } from '@/lib/auth/access';
 import { getUserNotes, saveUserNote, deleteUserNote, emptyUserNotesTrash, getPgPool } from '@/db';
 import { publishEventQuiet } from '@/db/events';
 import { inspectJsonPayload } from '@/lib/waf';
+import notesContract from '@/apps/notes/notes.contract.json';
+import { contractErrorResponse } from '@/contracts/helpers';
 
 export async function GET(request: Request) {
 	try {
@@ -16,7 +18,7 @@ export async function GET(request: Request) {
 		return NextResponse.json(notes);
 	} catch (error) {
 		console.error('API error:', error);
-		return NextResponse.json({ error: 'İşlem tamamlanamadı.' }, { status: 500 });
+		return NextResponse.json({ error: 'Operation failed.' }, { status: 500 });
 	}
 }
 
@@ -30,19 +32,38 @@ async function handlePOST(request: Request) {
 		const body = await request.json();
 		const waf = inspectJsonPayload(body);
 		if (waf.matched) {
-			return NextResponse.json({ error: 'Güvenlik duvarı (WAF): Zararlı içerik engellendi.' }, { status: 403 });
+			return NextResponse.json({ error: 'Web Application Firewall (WAF): Malicious payload blocked.' }, { status: 403 });
 		}
 
 		const { id, title, content, color, isPinned, folderId, isTrashed } = body;
 
 		if (title === undefined && content === undefined) {
-			return NextResponse.json({ error: 'Başlık veya içerik girilmelidir.' }, { status: 400 });
+			return NextResponse.json({ error: 'Title or content must be provided.' }, { status: 400 });
+		}
+		if (typeof content === 'string' && content.length > notesContract.limits.maxNoteLength) {
+			return NextResponse.json(
+				{ error: `Note content cannot exceed ${notesContract.limits.maxNoteLength} characters.` },
+				{ status: 400 }
+			);
+		}
+
+		if (Boolean(isPinned) && !Boolean(isTrashed)) {
+			const existingNotes = await getUserNotes(auth.user.id);
+			const otherPinnedCount = existingNotes.filter(
+				(n) => Boolean(n.isPinned) && !Boolean(n.isTrashed) && n.id !== id
+			).length;
+			if (otherPinnedCount >= notesContract.limits.maxPinnedNotes) {
+				return NextResponse.json(
+					{ error: `You can pin at most ${notesContract.limits.maxPinnedNotes} notes.` },
+					{ status: 400 }
+				);
+			}
 		}
 
 		const saved = await saveUserNote({
 			id,
 			userId: auth.user.id,
-			title: title !== undefined ? title : 'Başlıksız Not',
+			title: title !== undefined ? title : 'Untitled Note',
 			content: content !== undefined ? content : '',
 			color: color || folderId || 'yellow',
 			isPinned: Boolean(isPinned),
@@ -55,11 +76,11 @@ async function handlePOST(request: Request) {
 		return NextResponse.json(saved);
 	} catch (error) {
 		const msg = error instanceof Error ? error.message : '';
-		if (msg.includes('Yetkisiz işlem')) {
+		if (msg.includes('Unauthorized') || msg.includes('not authorized')) {
 			return NextResponse.json({ error: msg }, { status: 403 });
 		}
 		console.error('API error:', error);
-		return NextResponse.json({ error: 'İşlem tamamlanamadı.' }, { status: 500 });
+		return NextResponse.json({ error: 'Operation failed.' }, { status: 500 });
 	}
 }
 
@@ -80,17 +101,18 @@ async function handleDELETE(request: Request) {
 		}
 
 		if (!id) {
-			return NextResponse.json({ error: 'Not ID zorunludur.' }, { status: 400 });
+			return NextResponse.json({ error: 'Note ID is required.' }, { status: 400 });
 		}
 
 		const success = await deleteUserNote(id, auth.user.id);
-		if (success) {
-			await publishEventQuiet(getPgPool(), [{ k: 'note_updated', userId: auth.user.id }]);
+		if (!success) {
+			return contractErrorResponse(notesContract, 'NOTE_NOT_FOUND');
 		}
-		return NextResponse.json({ success });
+		await publishEventQuiet(getPgPool(), [{ k: 'note_updated', userId: auth.user.id }]);
+		return NextResponse.json({ success: true });
 	} catch (error) {
 		console.error('API error:', error);
-		return NextResponse.json({ error: 'İşlem tamamlanamadı.' }, { status: 500 });
+		return NextResponse.json({ error: 'Operation failed.' }, { status: 500 });
 	}
 }
 

@@ -11,9 +11,9 @@ import { verifyAuth } from './authGuard';
 /**
  * The server's single access check.
  *
- *   const auth = await requireApp(request, 'events', 'yonet');
+ *   const auth = await requireApp(request, 'events', 'manage');
  *   if (!auth.authorized) return auth.response;
- *   auth.user.permission.izinler …
+ *   auth.user.permission.permissions …
  *
  * A request passes when the session is valid, the member's role grants the app
  * at the required level, and — when the role demands it — the second factor is
@@ -36,7 +36,10 @@ export function twoStepPending(user: AuthorizedUser): boolean {
 
 export function twoFactorSetupResponse(): NextResponse {
 	return NextResponse.json(
-		{ error: 'Bu işlem için iki adımlı doğrulama zorunludur. Ayarlar → Güvenlik bölümünden etkinleştirin.', code: '2FA_SETUP_REQUIRED' },
+		{
+			error: 'Two-factor authentication is required for this action. Enable it in Settings -> Security.',
+			code: '2FA_SETUP_REQUIRED',
+		},
 		{ status: 403 }
 	);
 }
@@ -51,7 +54,7 @@ export async function authenticate(request: Request): Promise<AccessResult> {
 
 /**
  * Session + role + the role's second-factor rule, without naming an app — for
- * routes whose access is decided per record (a captain on their own kasa).
+ * routes whose access is decided per record (a captain on their own vault).
  */
 export async function authenticateEnrolled(request: Request): Promise<AccessResult> {
 	const auth = await authenticate(request);
@@ -144,7 +147,7 @@ export async function requireAdmin(request: Request): Promise<AccessResult> {
 		return {
 			authorized: false,
 			response: NextResponse.json(
-				{ error: 'Bu işlem yalnızca sistem yöneticileri tarafından gerçekleştirilebilir.' },
+				{ error: 'This action can only be performed by system administrators.' },
 				{ status: 403 }
 			),
 		};

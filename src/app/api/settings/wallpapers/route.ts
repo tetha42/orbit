@@ -13,6 +13,7 @@ import { WALLPAPERS } from '@/core/theme/wallpapers';
 import { requireApp } from '@/lib/auth/access';
 import { customAssetUrl, removeCustomImage, writeCustomImage } from '@/server/customData';
 import { sniffImage } from '@/lib/uploads';
+import { PayloadTooLargeError, readBoundedFormData } from '@/lib/httpBodyGuard';
 import { logSystemEvent } from '@/db/repositories/logs.repo';
 
 export const dynamic = 'force-dynamic';
@@ -45,8 +46,11 @@ export async function POST(request: Request) {
 
 	let formData: FormData;
 	try {
-		formData = await request.formData();
-	} catch {
+		formData = await readBoundedFormData(request, MAX_WALLPAPER_BYTES + 128 * 1024);
+	} catch (error) {
+		if (error instanceof PayloadTooLargeError) {
+			return NextResponse.json({ error: 'The wallpaper must be smaller than 12 MB.' }, { status: 413 });
+		}
 		return NextResponse.json({ error: 'Invalid upload request.' }, { status: 400 });
 	}
 	const file = formData.get('file');
@@ -56,8 +60,8 @@ export async function POST(request: Request) {
 	if (file.size <= 0 || file.size > MAX_WALLPAPER_BYTES) {
 		return NextResponse.json({ error: 'The wallpaper must be smaller than 12 MB.' }, { status: 413 });
 	}
-	const titleTr = clean(formData.get('titleTr')) || 'Özel Duvar Kağıdı';
-	const titleEn = clean(formData.get('titleEn')) || 'Custom Wallpaper';
+	const titleEn = clean(formData.get('titleEn')) || clean(formData.get('titleTr')) || 'Custom Wallpaper';
+	const titleTr = clean(formData.get('titleTr')) || titleEn;
 	const type = clean(formData.get('type'), 40) || 'custom';
 
 	const buffer = Buffer.from(await file.arrayBuffer());
@@ -102,11 +106,11 @@ export async function PATCH(request: Request) {
 	}
 	const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
 	const id = String(body.id ?? '').trim();
-	const titleTr = clean(body.titleTr);
-	const titleEn = clean(body.titleEn);
-	if (!id || !titleTr || !titleEn) {
+	const titleEn = clean(body.titleEn) || clean(body.titleTr);
+	const titleTr = clean(body.titleTr) || titleEn;
+	if (!id || !titleEn) {
 		return NextResponse.json(
-			{ error: 'Both Turkish and English wallpaper names are required.', code: 'WALLPAPER_NAME_REQUIRED' },
+			{ error: 'Wallpaper name is required.', code: 'WALLPAPER_NAME_REQUIRED' },
 			{ status: 400 }
 		);
 	}
@@ -116,14 +120,35 @@ export async function PATCH(request: Request) {
 		if (!exists) return NextResponse.json({ error: 'Wallpaper not found.' }, { status: 404 });
 		if (body.restore === true) {
 			const overrides = await clearWallpaperOverride(id);
+			void logSystemEvent({
+				service: 'settings',
+				level: 'INFO',
+				message: `Built-in wallpaper override cleared: ${id}`,
+				detail: { wallpaperId: id, builtin: true },
+				userId: auth.user.id,
+			});
 			return NextResponse.json({ ok: true, overrides });
 		}
 		const overrides = await setWallpaperOverride(id, { titleTr, titleEn });
+		void logSystemEvent({
+			service: 'settings',
+			level: 'INFO',
+			message: `Built-in wallpaper updated: ${id}`,
+			detail: { wallpaperId: id, builtin: true, titleEn },
+			userId: auth.user.id,
+		});
 		return NextResponse.json({ ok: true, override: overrides[id], overrides });
 	}
 
 	const wallpaper = await renameCustomWallpaper(id, titleTr, titleEn);
 	if (!wallpaper) return NextResponse.json({ error: 'Wallpaper not found.' }, { status: 404 });
+	void logSystemEvent({
+		service: 'settings',
+		level: 'INFO',
+		message: `Custom wallpaper renamed: ${titleEn}`,
+		detail: { wallpaperId: id, titleEn },
+		userId: auth.user.id,
+	});
 	return NextResponse.json({
 		ok: true,
 		wallpaper: { ...wallpaper, url: customAssetUrl('wallpapers', wallpaper.filename) },
@@ -145,6 +170,13 @@ export async function DELETE(request: Request) {
 			return NextResponse.json({ error: 'Wallpaper not found.' }, { status: 404 });
 		}
 		const overrides = await setWallpaperOverride(id, { hidden: true });
+		void logSystemEvent({
+			service: 'settings',
+			level: 'WARN',
+			message: `Built-in wallpaper hidden: ${id}`,
+			detail: { wallpaperId: id, builtin: true },
+			userId: auth.user.id,
+		});
 		return NextResponse.json({ ok: true, hiddenId: id, overrides });
 	}
 
@@ -153,5 +185,12 @@ export async function DELETE(request: Request) {
 	const removed = await deleteCustomWallpaper(id);
 	if (!removed) return NextResponse.json({ error: 'Wallpaper not found.' }, { status: 404 });
 	await removeCustomImage('wallpapers', removed.filename);
+	void logSystemEvent({
+		service: 'settings',
+		level: 'WARN',
+		message: `Custom wallpaper deleted: ${id}`,
+		detail: { wallpaperId: id, filename: removed.filename },
+		userId: auth.user.id,
+	});
 	return NextResponse.json({ ok: true, removedId: id });
 }

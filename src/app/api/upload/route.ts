@@ -7,12 +7,26 @@ import { addStoredFile } from '@/db';
 import { verifyUploadAccess } from '@/lib/vaultAccess';
 import { consumeRateLimit } from '@/lib/rateLimit';
 import { MAX_UPLOAD_BYTES, sniffFile, uploadDir } from '@/lib/uploads';
+import { PayloadTooLargeError, readBoundedFormData } from '@/lib/httpBodyGuard';
 import { getEmergencyKillSwitches } from '@/db/repositories/security.repo';
+import mediaviewerContract from '@/apps/mediaviewer/mediaviewer.contract.json';
+import { contractErrorResponse } from '@/contracts/helpers';
+
+const ALLOWED_MIME_PATTERNS = mediaviewerContract.limits.allowedMimeTypes
+	.split(',')
+	.map((s) => s.trim())
+	.filter(Boolean);
+
+function isMimeAllowed(mime: string): boolean {
+	return ALLOWED_MIME_PATTERNS.some((pattern) =>
+		pattern.endsWith('/*') ? mime.startsWith(pattern.slice(0, -1)) : mime === pattern
+	);
+}
 
 /**
  * Receipt upload.
  *
- * Only people who keep a kasa (management, project leaders) may upload. What is
+ * Only people who keep a vault (management, project leaders) may upload. What is
  * stored is decided from the file's own bytes — never the client's declared type
  * or file name — and it lands in a private directory that is read back through
  * `GET /api/uploads/[name]`, which applies the same rule as the ledger entry the
@@ -23,7 +37,7 @@ async function handlePOST(request: Request) {
 		const emergency = await getEmergencyKillSwitches();
 		if (emergency.disableUploads) {
 			return NextResponse.json(
-				{ error: 'Dosya yüklemeleri acil status güvenlik protokolü (Kill-Switch) nedeniyle geçici olarak durdurulmuştur.' },
+				{ error: 'File uploads are temporarily suspended by the emergency security protocol (Kill-Switch).' },
 				{ status: 503 }
 			);
 		}
@@ -34,34 +48,40 @@ async function handlePOST(request: Request) {
 		const limit = consumeRateLimit(`upload:${access.user.id}`, 20, 60_000);
 		if (!limit.allowed) {
 			return NextResponse.json(
-				{ error: 'Çok fazla yükleme yaptınız. Biraz sonra tekrar deneyin.' },
+				{ error: 'Too many uploads. Please try again later.' },
 				{ status: 429, headers: { 'Retry-After': String(limit.retryAfter) } }
 			);
 		}
 
+		const maxBytes = Math.min(MAX_UPLOAD_BYTES, mediaviewerContract.limits.maxFileSizeMb * 1024 * 1024);
+
 		let formData: FormData;
 		try {
-			formData = await request.formData();
-		} catch {
-			return NextResponse.json({ error: 'Geçersiz yükleme isteği.' }, { status: 400 });
+			formData = await readBoundedFormData(request, maxBytes + 128 * 1024);
+		} catch (error) {
+			if (error instanceof PayloadTooLargeError) {
+				return contractErrorResponse(
+					mediaviewerContract,
+					'FILE_TOO_LARGE',
+					'File size exceeds the maximum allowed limit.'
+				);
+			}
+			return NextResponse.json({ error: 'Invalid upload request.' }, { status: 400 });
 		}
 
 		const file = formData.get('file');
 		if (!(file instanceof File)) {
-			return NextResponse.json({ error: 'Lütfen yüklenecek bir dosya seçiniz.' }, { status: 400 });
+			return NextResponse.json({ error: 'Please select a file to upload.' }, { status: 400 });
 		}
 
-		if (file.size > MAX_UPLOAD_BYTES) {
-			return NextResponse.json({ error: 'Dosya boyutu 10MB sınırını aşamaz.' }, { status: 413 });
+		if (file.size > maxBytes) {
+			return contractErrorResponse(mediaviewerContract, 'FILE_TOO_LARGE', 'File size exceeds the maximum allowed limit.');
 		}
 
 		const buffer = Buffer.from(await file.arrayBuffer());
 		const sniffed = sniffFile(buffer);
-		if (buffer.length === 0 || !sniffed) {
-			return NextResponse.json(
-				{ error: 'Yalnızca JPEG, PNG, WEBP veya PDF formatında belgeler yüklenebilir.' },
-				{ status: 415 }
-			);
+		if (buffer.length === 0 || !sniffed || !isMimeAllowed(sniffed.mime)) {
+			return contractErrorResponse(mediaviewerContract, 'UNSUPPORTED_MEDIA_TYPE', 'Only JPEG, PNG, WEBP, or PDF files are allowed.');
 		}
 
 		const name = `${Date.now()}_${randomBytes(9).toString('hex')}${sniffed.ext}`;
@@ -87,7 +107,7 @@ async function handlePOST(request: Request) {
 		});
 	} catch (error) {
 		console.error('API /api/upload error:', error);
-		return NextResponse.json({ error: 'Dosya yüklenirken hata oluştu.' }, { status: 500 });
+		return NextResponse.json({ error: 'An error occurred while uploading the file.' }, { status: 500 });
 	}
 }
 

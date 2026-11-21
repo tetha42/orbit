@@ -7,11 +7,11 @@
 	justify-content: center;
 	min-height: 100dvh;
 	width: 100vw;
-	background-color: #0a0a0a;
+	background-color: var(--ink-vs-surface);
 	padding: 24px;
 	box-sizing: border-box;
 	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-	color: #cccccc;
+	color: var(--ink-vs-text);
 }
 
 .workbench {
@@ -20,7 +20,7 @@
 	width: 100%;
 	max-width: 1120px;
 	height: min(92vh, 840px);
-	background-color: #0a0a0a;
+	background-color: var(--ink-vs-surface);
 	border: none;
 	border-radius: 0;
 	box-shadow: none;
@@ -42,22 +42,22 @@
 	display: flex;
 	flex-direction: column;
 	width: 300px;
-	background-color: #0e0e10;
-	border-right: 1px solid #1c1c1f;
+	background-color: var(--ink-vs-elevated);
+	border-right: 1px solid var(--ink-vs-card);
 	flex-shrink: 0;
 	overflow-y: auto;
 }
 
 .sidebarHeader {
 	padding: 20px 18px 14px;
-	border-bottom: 1px solid #1c1c1f;
+	border-bottom: 1px solid var(--ink-vs-card);
 }
 
 .sidebarSectionTag {
 	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 	font-size: 10.5px;
 	letter-spacing: 0.1em;
-	color: #888888;
+	color: var(--ink-vs-muted);
 	text-transform: uppercase;
 	margin-bottom: 6px;
 }
@@ -65,7 +65,7 @@
 .sidebarTitle {
 	font-size: 16px;
 	font-weight: 600;
-	color: #ffffff;
+	color: var(--ink-text);
 	margin: 0 0 10px 0;
 	letter-spacing: -0.01em;
 }
@@ -73,7 +73,7 @@
 .progressTrack {
 	width: 100%;
 	height: 3px;
-	background-color: #333333;
+	background-color: var(--ink-vs-border);
 	border-radius: 2px;
 	overflow: hidden;
 	margin-bottom: 6px;
@@ -81,13 +81,13 @@
 
 .progressBar {
 	height: 100%;
-	background-color: #0078d4;
+	background-color: var(--ink-vs-accent);
 	transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .progressLabel {
 	font-size: 11.5px;
-	color: #8c8c8c;
+	color: var(--ink-vs-subtle);
 }
 
 .stepList {
@@ -118,8 +118,8 @@
 }
 
 .stepItemActive {
-	background-color: #1a1a1e !important;
-	color: #ffffff !important;
+	background-color: var(--ink-vs-field-hover) !important;
+	color: var(--ink-text) !important;
 }
 
 .stepItemActive::before {
@@ -129,7 +129,7 @@
 	top: 8px;
 	bottom: 8px;
 	width: 3px;
-	background-color: #0078d4;
+	background-color: var(--ink-vs-accent);
 	border-radius: 0 2px 2px 0;
 }
 
@@ -148,21 +148,21 @@
 }
 
 .stepBadgePending {
-	border: 1px solid #555555;
-	color: #888888;
+	border: 1px solid var(--ink-vs-border-strong);
+	color: var(--ink-vs-muted);
 	background-color: transparent;
 }
 
 .stepBadgeActive {
-	background-color: #0078d4;
-	color: #ffffff;
-	border: 1px solid #0078d4;
+	background-color: var(--ink-vs-accent);
+	color: var(--ink-text);
+	border: 1px solid var(--ink-vs-accent);
 }
 
 .stepBadgeDone {
-	background-color: #107c41;
-	color: #ffffff;
-	border: 1px solid #107c41;
+	background-color: var(--ink-vs-success);
+	color: var(--ink-text);
+	border: 1px solid var(--ink-vs-success);
 }
 
 .stepItemInfo {
@@ -175,20 +175,20 @@
 .stepItemTitle {
 	font-size: 13px;
 	font-weight: 500;
-	color: #cccccc;
+	color: var(--ink-vs-text);
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
 
 .stepItemActive .stepItemTitle {
-	color: #ffffff;
+	color: var(--ink-text);
 	font-weight: 600;
 }
 
 .stepItemSubtitle {
 	font-size: 11.5px;
-	color: #8c8c8c;
+	color: var(--ink-vs-subtle);
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -199,7 +199,7 @@
 .canvas {
 	flex: 1;
 	min-width: 0;
-	background-color: #0a0a0a;
+	background-color: var(--ink-vs-surface);
 	overflow-y: auto;
 	display: flex;
 	flex-direction: column;
@@ -214,7 +214,7 @@
 	gap: 8px;
 	margin-bottom: 24px;
 	padding-bottom: 16px;
-	border-bottom: 1px solid #1c1c1f;
+	border-bottom: 1px solid var(--ink-vs-card);
 }
 
 .selectionStepPill {
@@ -223,7 +223,7 @@
 	gap: 6px;
 	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 	font-size: 11px;
-	color: #0078d4;
+	color: var(--ink-vs-accent);
 	letter-spacing: 0.05em;
 	text-transform: uppercase;
 	font-weight: 600;
@@ -232,7 +232,7 @@
 .selectionTitle {
 	font-size: 24px;
 	font-weight: 600;
-	color: #ffffff;
+	color: var(--ink-text);
 	margin: 0;
 	letter-spacing: -0.02em;
 	line-height: 1.25;
@@ -240,7 +240,7 @@
 
 .selectionDescription {
 	font-size: 13.5px;
-	color: #a1a1aa;
+	color: var(--ink-text-muted);
 	margin: 0;
 	line-height: 1.6;
 	max-width: 720px;
@@ -257,8 +257,8 @@
 
 .card {
 	padding: 14px 16px;
-	background-color: #121215;
-	border: 1px solid #1f1f23;
+	background-color: var(--ink-vs-panel);
+	border: 1px solid var(--ink-vs-field-border);
 	border-radius: 6px;
 	display: flex;
 	flex-direction: column;
@@ -279,13 +279,13 @@
 
 .label {
 	font-size: 12.5px;
-	color: #cccccc;
+	color: var(--ink-vs-text);
 	font-weight: 500;
 }
 
 .helperText {
 	font-size: 11.5px;
-	color: #8c8c8c;
+	color: var(--ink-vs-subtle);
 	margin: 2px 0 0 0;
 	line-height: 1.4;
 }
@@ -299,19 +299,19 @@
 .inputIcon {
 	position: absolute;
 	left: 10px;
-	color: #8c8c8c;
+	color: var(--ink-vs-subtle);
 	pointer-events: none;
 }
 
 .input {
 	width: 100%;
 	height: 32px;
-	background-color: #161619;
-	border: 1px solid #27272a;
+	background-color: var(--ink-vs-field);
+	border: 1px solid var(--ink-border);
 	border-radius: 4px;
 	padding: 0 10px;
 	font-size: 13px;
-	color: #fafafa;
+	color: var(--ink-text);
 	box-sizing: border-box;
 	outline: none;
 	transition: border-color 0.12s ease;
@@ -322,13 +322,13 @@
 }
 
 .input:focus {
-	border-color: #0078d4;
-	background-color: #1a1a1e;
-	color: #ffffff;
+	border-color: var(--ink-vs-accent);
+	background-color: var(--ink-vs-field-hover);
+	color: var(--ink-text);
 }
 
 .input::placeholder {
-	color: #777777;
+	color: var(--ink-vs-dim);
 }
 
 /* ================= BUTTONS ================= */
@@ -340,7 +340,7 @@
 	gap: 12px;
 	margin-top: 24px;
 	padding-top: 18px;
-	border-top: 1px solid #1c1c1f;
+	border-top: 1px solid var(--ink-vs-card);
 }
 
 .btnPrimary {
@@ -350,8 +350,8 @@
 	gap: 8px;
 	height: 32px;
 	padding: 0 16px;
-	background-color: #0078d4;
-	color: #ffffff;
+	background-color: var(--ink-vs-accent);
+	color: var(--ink-text);
 	border: none;
 	border-radius: 2px;
 	font-size: 13px;
@@ -361,7 +361,7 @@
 }
 
 .btnPrimary:hover:not(:disabled) {
-	background-color: #0284c7;
+	background-color: var(--ink-vs-hover);
 }
 
 .btnPrimary:disabled {
@@ -376,9 +376,9 @@
 	gap: 6px;
 	height: 32px;
 	padding: 0 14px;
-	background-color: #3a3d41;
-	color: #cccccc;
-	border: 1px solid #3c3c3c;
+	background-color: var(--ink-vs-btn);
+	color: var(--ink-vs-text);
+	border: 1px solid var(--ink-vs-btn-border);
 	border-radius: 2px;
 	font-size: 13px;
 	font-weight: 500;
@@ -387,8 +387,8 @@
 }
 
 .btnSecondary:hover:not(:disabled) {
-	background-color: #45494e;
-	color: #ffffff;
+	background-color: var(--ink-vs-btn-hover);
+	color: var(--ink-text);
 }
 
 .btnSecondary:disabled {
@@ -409,10 +409,10 @@
 	align-items: center;
 	gap: 10px;
 	padding: 10px 14px;
-	background-color: rgba(244, 135, 113, 0.12);
-	border: 1px solid rgba(244, 135, 113, 0.4);
+	background-color: color-mix(in srgb, var(--syntax-error) 12%, transparent);
+	border: 1px solid color-mix(in srgb, var(--syntax-error) 40%, transparent);
 	border-radius: 3px;
-	color: #f48771;
+	color: var(--syntax-error);
 	font-size: 12.5px;
 }
 
@@ -421,10 +421,10 @@
 	align-items: center;
 	gap: 10px;
 	padding: 10px 14px;
-	background-color: rgba(16, 124, 65, 0.15);
-	border: 1px solid rgba(16, 124, 65, 0.45);
+	background-color: color-mix(in srgb, var(--ink-vs-success) 15%, transparent);
+	border: 1px solid color-mix(in srgb, var(--ink-vs-success) 45%, transparent);
 	border-radius: 3px;
-	color: #4ec9b0;
+	color: var(--syntax-type);
 	font-size: 12.5px;
 }
 
@@ -433,23 +433,23 @@
 	align-items: center;
 	gap: 10px;
 	padding: 10px 14px;
-	background-color: rgba(0, 120, 212, 0.12);
-	border: 1px solid rgba(0, 120, 212, 0.4);
+	background-color: color-mix(in srgb, var(--ink-vs-accent) 12%, transparent);
+	border: 1px solid color-mix(in srgb, var(--ink-vs-accent) 40%, transparent);
 	border-radius: 3px;
-	color: #9cdcfe;
+	color: var(--syntax-var);
 	font-size: 12.5px;
 }
 
 /* ================= CODE SNIPPET BOX ================= */
 
 .codeBox {
-	background-color: #181818;
-	border: 1px solid #282828;
+	background-color: var(--ink-vs-code-bg);
+	border: 1px solid var(--ink-vs-code-border);
 	border-radius: 3px;
 	padding: 10px 14px;
 	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 	font-size: 12px;
-	color: #ce9178;
+	color: var(--syntax-string);
 	overflow-x: auto;
 }
 
@@ -473,7 +473,7 @@
 	.sidebar {
 		width: 100%;
 		border-right: none;
-		border-bottom: 1px solid #1c1c1f;
+		border-bottom: 1px solid var(--ink-vs-card);
 		max-height: 220px;
 	}
 

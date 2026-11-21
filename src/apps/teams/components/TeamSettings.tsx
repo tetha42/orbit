@@ -102,11 +102,11 @@ export function TeamSettings({ team, roster, categories, notify, onChanged, onDe
 				<span className={ui.fieldLabel}>{t('tmFieldJoin')}</span>
 				<div className={styles.radioList} role="radiogroup">
 					<label className={styles.radio}>
-						<input type="radio" name="katilim" checked={participationType === 'open'} onChange={() => setParticipationType('open')} />
+						<input type="radio" name="participationType" checked={participationType === 'open'} onChange={() => setParticipationType('open')} />
 						{t('tmJoinOpen')}
 					</label>
 					<label className={styles.radio}>
-						<input type="radio" name="katilim" checked={participationType === 'approval'} onChange={() => setParticipationType('approval')} />
+						<input type="radio" name="participationType" checked={participationType === 'approval'} onChange={() => setParticipationType('approval')} />
 						{t('tmJoinApproval')}
 					</label>
 				</div>

@@ -36,9 +36,9 @@ const manifest = {
 	dock: 9,
 	permission: {
 		order: 9,
-		name: 'Notlar',
-		use: 'Kişisel notlarını tutar.',
-		manage: 'Kişisel notlarını tutar (yönetilecek ortak veri yok).',
+		name: 'Personal Notes',
+		use: 'Create and organize personal notes.',
+		manage: 'Create and organize personal notes (no shared data to manage).',
 	},
 	menu: {
 		title: { tr: 'Notlar', en: 'Notes' },

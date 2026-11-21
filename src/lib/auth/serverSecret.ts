@@ -7,7 +7,7 @@ import { getSystemSetting, setSystemSetting } from '@/db';
  *
  * Resolution order:
  *   1. `AUTH_SECRET` from the environment — recommended for deployments,
- *   2. a random value minted once and kept in `sistem_ayarlari`.
+ *   2. a random value minted once and kept in `system_settings`.
  *
  * The database-backed fallback keeps installs secure with no configuration and
  * survives restarts. Losing it invalidates pending 2FA challenges and makes
@@ -31,11 +31,22 @@ export async function getServerSecret(): Promise<string> {
 	return secret;
 }
 
+const derivedKeyCache = new Map<string, Buffer>();
+
 /**
  * Derives a purpose-bound 32-byte key from an arbitrary secret.
  */
 export function deriveKeyWithSecret(secret: string, info: string): Buffer {
-	return Buffer.from(crypto.hkdfSync('sha256', secret, 'kulup-portal', info, 32));
+	const cacheKey = `${secret}:${info}`;
+	const cached = derivedKeyCache.get(cacheKey);
+	if (cached) return cached;
+	const derived = Buffer.from(crypto.hkdfSync('sha256', secret, 'orbit-portal', info, 32));
+	if (derivedKeyCache.size >= 256) {
+		const oldest = derivedKeyCache.keys().next().value;
+		if (oldest !== undefined) derivedKeyCache.delete(oldest);
+	}
+	derivedKeyCache.set(cacheKey, derived);
+	return derived;
 }
 
 /**

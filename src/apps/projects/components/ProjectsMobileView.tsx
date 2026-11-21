@@ -1,21 +1,12 @@
 'use client';
 
 import React, { useState, useRef, useMemo } from 'react';
-import {
-	FolderGit2,
-	Lightbulb,
-	Archive,
-	PlusCircle,
-	Search,
-	Star,
-	Users,
-	ChevronRight,
-} from 'lucide-react';
+import { FolderGit2, Lightbulb, Archive, PlusCircle } from 'lucide-react';
 import { useI18n } from '@/core/i18n';
 import type { useProjects } from '../hooks/useProjects';
-import type { Project } from '@/db/schema';
 import { ProjectDetailModal } from './ProjectDetailModal';
 import { ProjectFormModal } from './ProjectFormModal';
+import { ProjectsMobileShowcaseTab, ProjectsMobileStatusTab } from './ProjectsMobileViewTabs';
 import s from './ProjectsMobile.module.css';
 
 export interface ProjectsMobileViewProps {
@@ -77,186 +68,44 @@ export function ProjectsMobileView({ p }: ProjectsMobileViewProps) {
 		{ id: 'add', label: t('pjMobAddProject'), Icon: PlusCircle },
 	];
 
-	const renderProjectCard = (proj: Project) => {
-		const isStarred = Boolean(proj.likedByMe);
-		return (
-			<div
-				key={proj.id}
-				className={s.projectCard}
-				onClick={() => p.setOpenId(proj.id)}
-			>
-				<div className={s.projectHeader}>
-					<div style={{ flex: 1, minWidth: 0 }}>
-						<div className={s.projectTitle}>{proj.title}</div>
-						{proj.teamName && (
-							<div style={{ fontSize: '11px', opacity: 0.6, marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-								<Users size={11} />
-								<span>{proj.teamName}</span>
-							</div>
-						)}
-					</div>
-					{proj.status === 'published' && (
-						<button
-							type="button"
-							className={`${s.starBtn} ${isStarred ? s.starBtnStarred : ''}`}
-							onClick={(e) => {
-								e.stopPropagation();
-								void p.star(proj);
-							}}
-						>
-							<Star size={13} fill={isStarred ? '#ffb340' : 'none'} strokeWidth={1.8} />
-							<span>{proj.likeCount ?? 0}</span>
-						</button>
-					)}
-				</div>
-
-				<div className={s.projectSummary}>{proj.summary}</div>
-
-				{proj.technologies.length > 0 && (
-					<div className={s.techRow}>
-						{proj.technologies.slice(0, 4).map((tech) => (
-							<span key={tech} className={s.techPill}>
-								{tech}
-							</span>
-						))}
-						{proj.technologies.length > 4 && (
-							<span className={s.techPill} style={{ opacity: 0.5 }}>
-								+{proj.technologies.length - 4}
-							</span>
-						)}
-					</div>
-				)}
-
-				<div className={s.metaRow}>
-					<span style={{ opacity: 0.6 }}>{proj.creatorNameSurname || '—'}</span>
-					<span style={{ color: 'var(--accent)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '2px' }}>
-						<span>{t('details')}</span>
-						<ChevronRight size={13} />
-					</span>
-				</div>
-			</div>
-		);
-	};
-
-	// 1. Showcase Tab Content
-	const renderShowcase = () => (
-		<>
-			{/* Search Input */}
-			<div className={s.searchBox}>
-				<Search size={15} className={s.searchIcon} />
-				<input
-					type="text"
-					className={s.searchInput}
-					placeholder={t('pjSearchPlaceholder')}
-					value={p.query}
-					onChange={(e) => p.setQuery(e.target.value)}
-				/>
-			</div>
-
-			{/* Technology Chips */}
-			{p.techs.length > 0 && (
-				<div className={s.chipRow}>
-					<button
-						type="button"
-						className={`${s.chip} ${p.tech === null ? s.chipActive : ''}`}
-						onClick={() => p.setTech(null)}
-					>
-						{t('pjFilterAllTech')}
-					</button>
-					{p.techs.map((tItem) => (
-						<button
-							key={tItem}
-							type="button"
-							className={`${s.chip} ${p.tech === tItem ? s.chipActive : ''}`}
-							onClick={() => p.setTech(p.tech === tItem ? null : tItem)}
-						>
-							<span>{tItem}</span>
-						</button>
-					))}
-				</div>
-			)}
-
-			{/* Projects List */}
-			<div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-				{p.data === null ? (
-					<div className={s.card} style={{ textAlign: 'center', padding: '36px', opacity: 0.65, fontSize: '13px' }}>
-						{t('loading')}
-					</div>
-				) : showcaseProjects.length === 0 ? (
-					<div className={s.card} style={{ textAlign: 'center', padding: '36px', opacity: 0.65, fontSize: '13px' }}>
-						{t('pjNoProjects')}
-					</div>
-				) : (
-					showcaseProjects.map(renderProjectCard)
-				)}
-			</div>
-		</>
-	);
-
-	// 2. Proposals Tab Content
-	const renderProposals = () => (
-		<div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-			<div style={{ padding: '0 4px' }}>
-				<h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700 }}>{t('pjTabProposals')}</h3>
-				<p style={{ margin: '2px 0 0', fontSize: '11.5px', opacity: 0.65 }}>
-					{t('pjProposalsDesc')}
-				</p>
-			</div>
-
-			<div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-				{p.data === null ? (
-					<div className={s.card} style={{ textAlign: 'center', padding: '40px 16px', opacity: 0.65, fontSize: '13px' }}>
-						<div>{t('loading')}</div>
-					</div>
-				) : proposalProjects.length === 0 ? (
-					<div className={s.card} style={{ textAlign: 'center', padding: '40px 16px', opacity: 0.65, fontSize: '13px' }}>
-						<Lightbulb size={32} style={{ margin: '0 auto 8px', opacity: 0.5 }} />
-						<div>{t('pjNoProposals')}</div>
-					</div>
-				) : (
-					proposalProjects.map(renderProjectCard)
-				)}
-			</div>
-		</div>
-	);
-
-	// 3. Archive Tab Content
-	const renderArchive = () => (
-		<div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-			<div style={{ padding: '0 4px' }}>
-				<h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700 }}>{t('pjTabArchive')}</h3>
-				<p style={{ margin: '2px 0 0', fontSize: '11.5px', opacity: 0.65 }}>
-					{t('pjArchiveDesc')}
-				</p>
-			</div>
-
-			<div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-				{p.data === null ? (
-					<div className={s.card} style={{ textAlign: 'center', padding: '40px 16px', opacity: 0.65, fontSize: '13px' }}>
-						<div>{t('loading')}</div>
-					</div>
-				) : archiveProjects.length === 0 ? (
-					<div className={s.card} style={{ textAlign: 'center', padding: '40px 16px', opacity: 0.65, fontSize: '13px' }}>
-						<Archive size={32} style={{ margin: '0 auto 8px', opacity: 0.5 }} />
-						<div>{t('pjNoArchive')}</div>
-					</div>
-				) : (
-					archiveProjects.map(renderProjectCard)
-				)}
-			</div>
-		</div>
-	);
+	const handleStarProject = (item: Parameters<typeof p.star>[0]) => void p.star(item);
 
 	return (
 		<div className={s.mobileRoot}>
-			{/* Scrollable Content Area */}
 			<div className={s.mobileScrollArea} ref={scrollAreaRef}>
-				{activeTab === 'showcase' && renderShowcase()}
-				{activeTab === 'proposals' && renderProposals()}
-				{activeTab === 'archive' && renderArchive()}
+				{activeTab === 'showcase' && (
+					<ProjectsMobileShowcaseTab
+						isLoading={p.data === null}
+						projects={showcaseProjects}
+						query={p.query}
+						onQueryChange={p.setQuery}
+						techs={p.techs}
+						selectedTech={p.tech}
+						onSelectTech={p.setTech}
+						onOpenProject={p.setOpenId}
+						onStarProject={handleStarProject}
+					/>
+				)}
+				{activeTab === 'proposals' && (
+					<ProjectsMobileStatusTab
+						kind="proposals"
+						isLoading={p.data === null}
+						projects={proposalProjects}
+						onOpenProject={p.setOpenId}
+						onStarProject={handleStarProject}
+					/>
+				)}
+				{activeTab === 'archive' && (
+					<ProjectsMobileStatusTab
+						kind="archive"
+						isLoading={p.data === null}
+						projects={archiveProjects}
+						onOpenProject={p.setOpenId}
+						onStarProject={handleStarProject}
+					/>
+				)}
 			</div>
 
-			{/* Fixed Apple iOS Bottom Tab Bar */}
 			<nav className={s.mobileBottomTabBar} role="tablist" aria-label={t('pjMobNavAria')}>
 				{tabs.map((tab) => {
 					const activeTabMatched = activeTab === tab.id;
@@ -285,7 +134,6 @@ export function ProjectsMobileView({ p }: ProjectsMobileViewProps) {
 				})}
 			</nav>
 
-			{/* Modals */}
 			{p.open && (
 				<ProjectDetailModal
 					project={p.open}

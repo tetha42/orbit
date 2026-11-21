@@ -4,7 +4,7 @@
 export const PNG_1X1 = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
 
 /** A file for `locator.setInputFiles(...)`. */
-export const png = (name = 'ornek.png') => ({ name, mimeType: 'image/png', buffer: PNG_1X1 });
+export const png = (name = 'sample.png') => ({ name, mimeType: 'image/png', buffer: PNG_1X1 });
 
 /** Not an image: an HTML page under a .png name (the server must refuse it). */
-export const fakePng = (name = 'sahte.png') => ({ name, mimeType: 'image/png', buffer: Buffer.from('<html><script>1</script></html>') });
+export const fakePng = (name = 'fake.png') => ({ name, mimeType: 'image/png', buffer: Buffer.from('<html><script>1</script></html>') });

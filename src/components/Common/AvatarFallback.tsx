@@ -6,7 +6,7 @@ import React from 'react';
  */
 export const AvatarFallback: React.FC<{ name: string; size?: number }> = ({ name, size = 32 }) => {
   const letter = (name?.trim()?.charAt(0) ?? '?').toUpperCase();
-  const macosPalette = ['#007AFF', '#34C759', '#5856D6', '#FF9500', '#AF52DE', '#FF3B30'];
+  const macosPalette = ['var(--accent)', 'var(--success)', 'var(--indigo)', 'var(--warning)', '#AF52DE', 'var(--danger)'];
   const bg = macosPalette[(letter.charCodeAt(0) || 0) % macosPalette.length];
   return (
     <div

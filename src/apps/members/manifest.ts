@@ -37,9 +37,9 @@ const manifest = {
 	notifications: { approval: 'manage' },
 	permission: {
 		order: 6,
-		name: 'Üyeler',
-		use: 'Aktif üyeleri ve herkese açık profil bilgilerini görür.',
-		manage: 'Başvuruları onaylar, gizli/özel form alanlarını inceler, üye ekler/çıkarır, role atar.',
+		name: 'Members Directory',
+		use: 'View active community members and public profile details.',
+		manage: 'Review membership applications, inspect private form data, manage member status and assign roles.',
 	},
 	menu: {
 		title: { tr: 'Rehber', en: 'Directory' },

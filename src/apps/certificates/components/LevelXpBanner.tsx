@@ -22,8 +22,8 @@ export function LevelXpBanner({
 	return (
 		<div
 			style={{
-				background: 'linear-gradient(135deg, rgba(10, 132, 255, 0.12), rgba(10, 132, 255, 0.04))',
-				border: '1px solid rgba(10, 132, 255, 0.25)',
+				background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, transparent), color-mix(in srgb, var(--accent) 4%, transparent))',
+				border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
 				borderRadius: '16px',
 				padding: '20px 24px',
 				display: 'flex',
@@ -39,10 +39,10 @@ export function LevelXpBanner({
 						width: '56px',
 						height: '56px',
 						borderRadius: '16px',
-						background: 'linear-gradient(135deg, #0a84ff, #0056b3)',
+						background: 'linear-gradient(135deg, var(--accent), #0056b3)',
 						display: 'grid',
 						placeItems: 'center',
-						boxShadow: '0 8px 20px rgba(10, 132, 255, 0.35)',
+						boxShadow: '0 8px 20px color-mix(in srgb, var(--accent) 35%, transparent)',
 					}}
 				>
 					<Medal size={30} color="#fff" />
@@ -59,8 +59,8 @@ export function LevelXpBanner({
 								fontWeight: 700,
 								padding: '2px 8px',
 								borderRadius: '6px',
-								background: 'rgba(255, 149, 0, 0.2)',
-								color: '#ff9500',
+								background: 'color-mix(in srgb, var(--warning) 20%, transparent)',
+								color: 'var(--warning)',
 							}}
 						>
 							{userXP} XP
@@ -89,7 +89,7 @@ export function LevelXpBanner({
 						style={{
 							height: '100%',
 							width: `${progressPercent}%`,
-							background: 'linear-gradient(90deg, #ff9500, #ff2d55)',
+							background: 'linear-gradient(90deg, var(--warning), var(--accent))',
 							borderRadius: '4px',
 						}}
 					/>

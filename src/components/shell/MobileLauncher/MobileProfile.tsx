@@ -7,6 +7,7 @@ import { fill } from '@/lib/text';
 import { level } from '@/lib/profile';
 import { RoleBadge, roleGradient } from '@/core/ui/RoleBadge';
 import { BadgesGrid } from '@/apps/certificates/components/BadgesGrid';
+import { DevicesPanel } from '@/apps/settings/components/Panels/DevicesPanel';
 import type { AppID } from '@/types/workspace';
 
 const BUTTON = {
@@ -75,7 +76,7 @@ export function MobileProfile({ onOpenApp }: { onOpenApp: (appId: AppID) => void
 						<span style={{ opacity: 0.75 }}>{currentUser.xp || 0} XP</span>
 					</div>
 					<div style={{ height: '8px', borderRadius: '4px', background: 'rgba(255, 255, 255, 0.12)', margin: '8px 0 6px', overflow: 'hidden' }}>
-						<div style={{ height: '100%', width: `${Math.round(levelInfo.progress * 100)}%`, background: 'linear-gradient(90deg, #0a84ff, #5e5ce6)' }} />
+						<div style={{ height: '100%', width: `${Math.round(levelInfo.progress * 100)}%`, background: 'linear-gradient(90deg, var(--accent), var(--indigo))' }} />
 					</div>
 					<div style={{ fontSize: '11.5px', opacity: 0.6 }}>{fill(t('mobXpToNext'), { n: Math.max(0, levelInfo.next - (currentUser.xp || 0)) })}</div>
 				</div>
@@ -86,11 +87,15 @@ export function MobileProfile({ onOpenApp }: { onOpenApp: (appId: AppID) => void
 				<BadgesGrid />
 			</div>
 
+			<div style={{ background: 'var(--window-bg)', color: 'var(--text-primary)', borderRadius: '18px', padding: '16px', border: '1px solid var(--window-border)' }}>
+				<DevicesPanel />
+			</div>
+
 			<div style={{ display: 'flex', gap: '10px' }}>
 				<button type="button" data-mobile-action="settings" style={BUTTON} onClick={() => onOpenApp('settings')}>
 					<Settings size={17} aria-hidden="true" /> {t('mobOpenSettings')}
 				</button>
-				<button type="button" data-mobile-action="logout" style={{ ...BUTTON, color: '#ff6961' }} onClick={() => void logout()}>
+				<button type="button" data-mobile-action="logout" style={{ ...BUTTON, color: 'var(--danger)' }} onClick={() => void logout()}>
 					<LogOut size={17} aria-hidden="true" /> {t('signOut')}
 				</button>
 			</div>

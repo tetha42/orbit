@@ -2,10 +2,12 @@
 
 import React, { useState } from 'react';
 import { useSession } from '@/core/session';
+import { useI18n } from '@/core/i18n';
 import { ShieldAlert, RefreshCw, Lock } from 'lucide-react';
 
 export function DefconLockdownOverlay() {
 	const { isLockdownActive, lockdownMessage, isAdmin, refreshSession } = useSession();
+	const { t } = useI18n();
 	const [checking, setChecking] = useState<boolean>(false);
 
 	// Admins are exempt from the lockdown overlay so they can access the SoC and remediate.
@@ -34,7 +36,7 @@ export function DefconLockdownOverlay() {
 				display: 'flex',
 				alignItems: 'center',
 				justifyContent: 'center',
-				background: 'rgba(10, 10, 15, 0.88)',
+				background: 'color-mix(in srgb, var(--ink-bg) 88%, transparent)',
 				backdropFilter: 'blur(24px)',
 				padding: '24px',
 				fontFamily: 'var(--system-font, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif)',
@@ -45,12 +47,12 @@ export function DefconLockdownOverlay() {
 				style={{
 					maxWidth: '520px',
 					width: '100%',
-					background: 'var(--card-bg, rgba(24, 24, 27, 0.95))',
-					border: '1px solid rgba(239, 68, 68, 0.45)',
-					boxShadow: '0 25px 50px -12px rgba(239, 68, 68, 0.25), 0 0 40px rgba(239, 68, 68, 0.15)',
+					background: 'var(--card-bg, color-mix(in srgb, var(--ink-card) 95%, transparent))',
+					border: '1px solid color-mix(in srgb, var(--danger) 45%, transparent)',
+					boxShadow: '0 25px 50px -12px color-mix(in srgb, var(--danger) 25%, transparent), 0 0 40px color-mix(in srgb, var(--danger) 15%, transparent)',
 					borderRadius: '16px',
 					padding: '32px 28px',
-					color: 'var(--text-primary, #ffffff)',
+					color: 'var(--text-primary)',
 					textAlign: 'center',
 					display: 'flex',
 					flexDirection: 'column',
@@ -64,13 +66,13 @@ export function DefconLockdownOverlay() {
 						width: '72px',
 						height: '72px',
 						borderRadius: '50%',
-						background: 'rgba(239, 68, 68, 0.15)',
-						border: '2px solid rgba(239, 68, 68, 0.5)',
+						background: 'color-mix(in srgb, var(--danger) 15%, transparent)',
+						border: '2px solid color-mix(in srgb, var(--danger) 50%, transparent)',
 						display: 'flex',
 						alignItems: 'center',
 						justifyContent: 'center',
-						color: '#ef4444',
-						boxShadow: '0 0 24px rgba(239, 68, 68, 0.4)',
+						color: 'var(--danger)',
+						boxShadow: '0 0 24px color-mix(in srgb, var(--danger) 40%, transparent)',
 					}}
 				>
 					<ShieldAlert size={38} strokeWidth={2.2} />
@@ -83,8 +85,8 @@ export function DefconLockdownOverlay() {
 							display: 'inline-flex',
 							alignItems: 'center',
 							gap: '6px',
-							background: 'rgba(239, 68, 68, 0.2)',
-							color: '#f87171',
+							background: 'color-mix(in srgb, var(--danger) 20%, transparent)',
+							color: 'var(--danger)',
 							padding: '3px 12px',
 							borderRadius: '999px',
 							fontSize: '11px',
@@ -95,7 +97,7 @@ export function DefconLockdownOverlay() {
 						}}
 					>
 						<Lock size={12} />
-						DEFCON 1 HARD LOCKDOWN
+						{t('socDefconLockdownBadge')}
 					</div>
 					<h2
 						id="lockdown-title"
@@ -104,10 +106,10 @@ export function DefconLockdownOverlay() {
 							fontSize: '22px',
 							fontWeight: 750,
 							letterSpacing: '-0.02em',
-							color: 'var(--text-primary, #ffffff)',
+							color: 'var(--text-primary)',
 						}}
 					>
-						Sistem Siber Kalkan Korumasında
+						{t('socDefconLockdownTitle')}
 					</h2>
 				</div>
 
@@ -117,11 +119,10 @@ export function DefconLockdownOverlay() {
 						margin: 0,
 						fontSize: '14px',
 						lineHeight: '1.6',
-						color: 'var(--text-secondary, rgba(255, 255, 255, 0.72))',
+						color: 'var(--text-secondary))',
 					}}
 				>
-					{lockdownMessage ||
-						'Sistem otomatik siber savunma kalkanı ve acil status izolasyon modundadır. Topluluk altyapısı ve veri güvenliği gereği yönetici harici tüm erişimler geçici olarak askıya alınmıştır.'}
+					{lockdownMessage || t('socDefconLockdownBody')}
 				</p>
 
 				{/* Bullet Status Box */}
@@ -135,23 +136,23 @@ export function DefconLockdownOverlay() {
 						textAlign: 'left',
 						fontSize: '12.5px',
 						lineHeight: '1.5',
-						color: 'var(--text-secondary, rgba(255, 255, 255, 0.75))',
+						color: 'var(--text-secondary))',
 						display: 'flex',
 						flexDirection: 'column',
 						gap: '6px',
 					}}
 				>
 					<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-						<span style={{ color: '#ef4444', fontWeight: 'bold' }}>•</span>
-						<span>Tüm genel ve korumalı API servisleri kilitlendi (HTTP 503).</span>
+						<span style={{ color: 'var(--danger)', fontWeight: 'bold' }}>•</span>
+						<span>{t('socDefconLockdownApiLocked')}</span>
 					</div>
 					<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-						<span style={{ color: '#ef4444', fontWeight: 'bold' }}>•</span>
-						<span>Oturum güvenliği gereği aktif üye bağlantıları sonlandırıldı.</span>
+						<span style={{ color: 'var(--danger)', fontWeight: 'bold' }}>•</span>
+						<span>{t('socDefconLockdownSessionsEnded')}</span>
 					</div>
 					<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-						<span style={{ color: '#ef4444', fontWeight: 'bold' }}>•</span>
-						<span>SoC Siber Savunma Operatörleri inceleme yapmaktadır.</span>
+						<span style={{ color: 'var(--danger)', fontWeight: 'bold' }}>•</span>
+						<span>{t('socDefconLockdownSocReview')}</span>
 					</div>
 				</div>
 
@@ -170,7 +171,7 @@ export function DefconLockdownOverlay() {
 						borderRadius: '10px',
 						background: 'var(--card-bg, rgba(255, 255, 255, 0.08))',
 						border: '1px solid var(--card-border, rgba(255, 255, 255, 0.16))',
-						color: 'var(--text-primary, #ffffff)',
+						color: 'var(--text-primary)',
 						fontSize: '14px',
 						fontWeight: 600,
 						cursor: checking ? 'not-allowed' : 'pointer',
@@ -179,7 +180,7 @@ export function DefconLockdownOverlay() {
 					}}
 				>
 					<RefreshCw size={16} className={checking ? 'animate-spin' : ''} />
-					<span>{checking ? 'Güvenlik Durumu Kontrol Ediliyor...' : 'Güvenlik Durumunu Yeniden Kontrol Et'}</span>
+					<span>{checking ? t('socDefconLockdownChecking') : t('socDefconLockdownRecheck')}</span>
 				</button>
 			</div>
 		</div>

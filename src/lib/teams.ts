@@ -15,11 +15,11 @@ export const TEAM_CATEGORIES = [
 ] as const;
 export type TeamCategory = (typeof TEAM_CATEGORIES)[number];
 
-/** `acik`: joining is immediate. `onayli`: joining is an application the captain approves. */
+/** `open`: joining is immediate. `approval`: joining is an application the captain approves. */
 export const PARTICIPATION_TYPES = ['open', 'approval'] as const;
 export type ParticipationType = (typeof PARTICIPATION_TYPES)[number];
 
-/** `askida` (paused) and `tamamlandi` (finished) teams take no new members. */
+/** `suspended` (paused) and `done` (finished) teams take no new members. */
 export const TEAM_STATUSES = ['active', 'suspended', 'done'] as const;
 export type TeamStatus = (typeof TEAM_STATUSES)[number];
 
@@ -35,7 +35,18 @@ export const CAPTAIN_ROLE = 'Team Captain';
 /** Applications a member may have waiting at once; keeps captains' queues from being flooded. */
 export const PENDING_APPLICATION_MAX = 5;
 /** Skills offered as one-tap chips in the onboarding application; anything else is typed into the note. */
-export const EXPERTISE_SUGGESTIONS = ['C++', 'Python', 'ROS2', 'PCB Tasarımı', '3D Modelleme', 'Flutter', 'React / Next.js', 'Gömülü Sistemler', 'Makine Öğrenmesi', 'Siber Güvenlik'] as const;
+export const EXPERTISE_SUGGESTIONS = [
+	'C++',
+	'Python',
+	'ROS2',
+	'PCB Design',
+	'3D Modeling',
+	'Flutter',
+	'React / Next.js',
+	'Embedded Systems',
+	'Machine Learning',
+	'Cybersecurity',
+] as const;
 export const EXPERTISE_MAX = 8;
 export const EXPERTISE_MAX_LENGTH = 30;
 
@@ -57,18 +68,18 @@ export function normalizeRole(value: unknown): string | null {
 export function capacityProblem(capacity: unknown, activeMember: number): string | null {
 	const n = Number(capacity);
 	if (!Number.isInteger(n) || n < CAPACITY_MIN || n > CAPACITY_MAX) {
-		return `Kontenjan ${CAPACITY_MIN} ile ${CAPACITY_MAX} arasında olmalıdır.`;
+		return `Capacity must be between ${CAPACITY_MIN} and ${CAPACITY_MAX}.`;
 	}
-	if (n < activeMember) return `Takımda ${activeMember} aktif üye var; kontenjan bundan az olamaz.`;
+	if (n < activeMember) return `The team has ${activeMember} active members; capacity cannot be less than this.`;
 	return null;
 }
 
 /**
  * The note stored with an application: the skills the applicant ticked on a first
- * line, then their free text, capped at `BASVURU_NOTU_MAX`. Skills are trimmed,
+ * line, then their free text, capped at `APPLICATION_NOTE_MAX`. Skills are trimmed,
  * de-duplicated (case-insensitively), and anything that is not text is dropped.
  */
-export function buildApplicationNote(expertise: unknown, not: unknown): string | null {
+export function buildApplicationNote(expertise: unknown, noteInput: unknown): string | null {
 	const seen = new Set<string>();
 	const skills: string[] = [];
 	for (const raw of Array.isArray(expertise) ? expertise : []) {
@@ -80,7 +91,7 @@ export function buildApplicationNote(expertise: unknown, not: unknown): string |
 		skills.push(skill);
 		if (skills.length >= EXPERTISE_MAX) break;
 	}
-	const text = typeof not === 'string' ? not.trim() : '';
-	const note = [skills.length ? `Uzmanlık: ${skills.join(', ')}` : '', text].filter(Boolean).join('\n');
+	const text = typeof noteInput === 'string' ? noteInput.trim() : '';
+	const note = [skills.length ? `Expertise: ${skills.join(', ')}` : '', text].filter(Boolean).join('\n');
 	return note ? note.slice(0, APPLICATION_NOTE_MAX) : null;
 }

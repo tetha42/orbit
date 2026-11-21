@@ -4,7 +4,7 @@
  * and under plain Node (scripts/check-pure.mjs).
  */
 
-/** The folders of the Mail app. `gonderilen` is a view of what the member wrote, not a place to file things. */
+/** The folders of the Mail app. `sent` is a view of what the member wrote, not a place to file things. */
 export const MAIL_FOLDERS = ['inbox', 'sent', 'archived', 'trash'] as const;
 export type MailFolder = (typeof MAIL_FOLDERS)[number];
 
@@ -80,7 +80,7 @@ export interface MailConversation {
 export interface MailSkipped {
 	id: string;
 	name: string;
-	/** `role`: the member's role does not open Mail. `pasif`: no longer an active member. */
+	/** `role`: the member's role does not open Mail. `inactive`: no longer an active member. */
 	reason: 'role' | 'inactive';
 }
 
@@ -106,7 +106,9 @@ export interface MailRecipientList {
 
 /** What the sender is told about a recipient the message did not reach. */
 export function skippedReason(a: MailSkipped): string {
-	return a.reason === 'role' ? `${a.name} kişisinin roleü Posta'yı açmıyor.` : `${a.name} artık aktif üye değil.`;
+	return a.reason === 'role'
+		? `${a.name}: their role does not open Mail, the message did not arrive.`
+		: `${a.name}: no longer an active member, the message did not arrive.`;
 }
 
 /** The first line of a message body, for lists and notifications. */

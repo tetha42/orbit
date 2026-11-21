@@ -1,0 +1,200 @@
+/* The glass classes, for CSS. (Inline styles use the same tokens: backdropFilter: 'var(--glass-blur)'.)
+   Write `backdrop-filter` ALONE: with the -webkit- spelling beside it the CSS compiler keeps only the
+   prefixed one, and Chrome then ignores the rule. */
+.glass {
+	backdrop-filter: var(--glass-blur);
+}
+
+.glass-strong {
+	backdrop-filter: var(--glass-blur-strong);
+}
+
+.glass-scrim {
+	backdrop-filter: var(--glass-blur-scrim);
+}
+
+/* Focus ring from the accent; :where() keeps it weaker than any component's own rule. */
+:where(button, a, input, select, textarea, summary, [tabindex]):focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
+/* Reduced motion: windows, dock, menus and panels still change state, they just do not travel.
+   Set by the preference, which starts from the system's prefers-reduced-motion. */
+[data-motion='reduce'] *,
+[data-motion='reduce'] *::before,
+[data-motion='reduce'] *::after {
+	animation-duration: 1ms !important;
+	animation-delay: 0s !important;
+	animation-iteration-count: 1 !important;
+	transition-duration: 1ms !important;
+	transition-delay: 0s !important;
+	scroll-behavior: auto !important;
+}
+
+* {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body {
+	height: 100%;
+	width: 100%;
+	overflow: hidden;
+	font-family: var(--system-font);
+	user-select: none;
+	background: #000;
+	color: var(--text-primary);
+}
+
+[data-topbar] {
+	font-family: var(--system-font);
+}
+
+@media (max-width: 768px) {
+	html,
+	body {
+		height: 100% !important;
+		min-height: 100% !important;
+		max-height: 100% !important;
+		overflow: hidden !important;
+		position: fixed !important;
+		width: 100% !important;
+		inset: 0 !important;
+		-webkit-overflow-scrolling: touch !important;
+		touch-action: pan-y !important;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	/* Prevent iOS Safari automatic zoom-in on input focus by guaranteeing 16px minimum */
+	input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+	textarea,
+	select {
+		font-size: 16px !important;
+	}
+
+	/* Instant tactile feedback for mobile touch taps */
+	button:active:not(:disabled),
+	[role="button"]:active:not(:disabled) {
+		transform: scale(0.98);
+		transition: transform 60ms ease;
+	}
+}
+
+/* Hardware-accelerated DOM virtualization: off-screen elements skip layout & rendering */
+.cv-auto-card {
+	content-visibility: auto;
+	contain-intrinsic-size: 85px;
+}
+
+.cv-auto-row {
+	content-visibility: auto;
+	contain-intrinsic-size: 42px;
+}
+
+button {
+	font-family: inherit;
+	border: none;
+	background: transparent;
+	color: inherit;
+	cursor: default;
+}
+
+input,
+textarea,
+select {
+	font-family: inherit;
+}
+
+select {
+	appearance: none;
+	-webkit-appearance: none;
+	cursor: pointer;
+	padding-right: 28px !important;
+	background-image: url("data:image/svg+xml,\
+%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' \
+fill='none' stroke='%238e8e93' stroke-width='2.4' stroke-linecap='round' \
+stroke-linejoin='round'%3E%3Cpath d='m7 15 5 5 5-5'/%3E%3Cpath d='m7 9 5-5 5 5'/%3E\
+%3C/svg%3E") !important;
+	background-repeat: no-repeat !important;
+	background-position: right 8px center !important;
+	background-size: 12px 12px !important;
+	transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+
+select:disabled {
+	cursor: not-allowed;
+	opacity: 0.55;
+}
+
+select[data-macos-select-open='true'] {
+	border-color: var(--accent) !important;
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent) !important;
+}
+
+select option,
+select optgroup {
+	background-color: var(--modal-bg, #222226);
+	color: var(--text-primary);
+}
+
+/* Custom Sleek Scrollbar */
+::-webkit-scrollbar {
+	width: 6px;
+	height: 6px;
+}
+
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+	background: rgba(140, 140, 150, 0.35);
+	border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: rgba(140, 140, 150, 0.55);
+}
+
+/* Mini Apps Iframe-like Window Content Frame */
+.mini-app-frame {
+	overflow-y: auto;
+	overflow-x: hidden;
+	overscroll-behavior: contain;
+	touch-action: pan-y;
+	-webkit-overflow-scrolling: touch;
+	user-select: text;
+}
+
+.mini-app-frame::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+.mini-app-frame::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.mini-app-frame::-webkit-scrollbar-thumb {
+	background: rgba(140, 140, 150, 0.45);
+	border-radius: 8px;
+}
+
+.mini-app-frame::-webkit-scrollbar-thumb:hover {
+	background: rgba(140, 140, 150, 0.75);
+}
+
+/* Horizontal scroll without visible scrollbar */
+.no-scrollbar {
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+	display: none;
+}

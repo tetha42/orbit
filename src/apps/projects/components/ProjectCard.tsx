@@ -19,7 +19,7 @@ interface Props {
 
 export function ProjectCard({ project: p, locale, onOpen, onOpenTeam, onStar }: Props) {
 	const { t } = useI18n();
-	const featured = Number(p.oneLeaving) === 1;
+	const featured = Number(p.isFeatured) === 1;
 
 	const menuItems = useMemo<MenuItem[]>(() => {
 		const items: MenuItem[] = [
@@ -83,7 +83,7 @@ export function ProjectCard({ project: p, locale, onOpen, onOpenTeam, onStar }: 
 				)}
 				{p.status !== 'published' && (
 					<span className={`${styles.pill} ${styles[`pill_${p.status}`]}`}>
-						{t(p.status === 'proposed' ? 'pjStatusOneri' : 'pjStatusArsiv')}
+						{t(p.status === 'proposed' ? 'pjStatusProposal' : 'pjStatusArchived')}
 					</span>
 				)}
 				{p.teamId && p.teamName && (
@@ -113,11 +113,11 @@ export function ProjectCard({ project: p, locale, onOpen, onOpenTeam, onStar }: 
 				</div>
 			)}
 			<div className={styles.cardFooter} onClick={(e) => e.stopPropagation()}>
-				<span className={styles.author} title={new Date(p.creation).toLocaleDateString(locale)}>
+				<span className={styles.author} title={new Date(p.createdAt ?? 0).toLocaleDateString(locale)}>
 					<span className={ui.avatar} style={{ marginLeft: 0 }}>
-						{initials(p.creatorNameSurname)}
+						{initials(p.creatorName)}
 					</span>
-					<span>{p.creatorNameSurname || '—'}</span>
+					<span>{p.creatorName || '—'}</span>
 				</span>
 				{p.repoUrl && (
 					<a

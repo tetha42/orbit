@@ -10,6 +10,7 @@ import { useFocusTarget } from '@/lib/client/useFocusTarget';
 import { fill } from '@/lib/text';
 import { level } from '@/lib/profile';
 import type { CommunityProfile } from '@/db';
+import contract from '../certificates.contract.json';
 import type { Certificate, MemberRankItem } from '../types';
 
 export function useCertificates() {
@@ -70,7 +71,16 @@ export function useCertificates() {
 		const year = certDate.getFullYear();
 		const month = certDate.getMonth() + 1;
 		const certUrl = `${window.location.origin}/verify/${cert.verificationCode}`;
-		const linkedInUrl = `https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=${encodeURIComponent(cert.title)}&organizationName=${encodeURIComponent(t('newsShareClubSuffix'))}&issueYear=${year}&issueMonth=${month}&certUrl=${encodeURIComponent(certUrl)}&certId=${encodeURIComponent(cert.verificationCode)}`;
+		const linkedInParams = new URLSearchParams({
+			startTask: 'CERTIFICATION_NAME',
+			name: cert.title,
+			organizationName: t('newsShareClubSuffix'),
+			issueYear: String(year),
+			issueMonth: String(month),
+			certUrl,
+			certId: cert.verificationCode,
+		});
+		const linkedInUrl = `https://www.linkedin.com/profile/add?${linkedInParams.toString()}`;
 		window.open(linkedInUrl, '_blank', 'noopener,noreferrer');
 	};
 
@@ -108,12 +118,16 @@ export function useCertificates() {
 			const data = await res.json();
 			if (res.ok) {
 				playSystemSound();
-				setMessage({ text: data.message || t('certsCreatedToast'), type: 'success' });
+				setMessage({
+					text: typeof data.given === 'number' ? fill(t('certsBulkIssued'), { n: data.given }) : t('certsCreatedToast'),
+					type: 'success',
+				});
 				setIsIssuing(false);
 				setIssueUserId('');
 				await fetchCerts();
 			} else {
-				setMessage({ text: data.error || t('certsCreateFailed'), type: 'error' });
+				const entry = contract.errorCodes.find((item) => item.code === data?.errorCode);
+				setMessage({ text: entry ? t(entry.i18nKey) : data.error || t('certsCreateFailed'), type: 'error' });
 			}
 		} catch {
 			setMessage({ text: t('connError'), type: 'error' });

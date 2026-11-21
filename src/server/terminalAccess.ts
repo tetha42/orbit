@@ -8,9 +8,10 @@ import { requireApp, type AccessResult } from '@/lib/auth/access';
  * on, or TERMINAL_ENABLED=0 to switch it off in development too.
  */
 export function isTerminalEnabled(): boolean {
-	const flag = process.env.TERMINAL_ENABLED;
+	const flag = (process.env.TERMINAL_ENABLED || '').trim().toLowerCase();
 	if (flag === '0' || flag === 'false') return false;
-	return true;
+	if (flag === '1' || flag === 'true') return true;
+	return process.env.NODE_ENV === 'development';
 }
 
 /**
@@ -25,7 +26,7 @@ export async function authorizeTerminal(request: Request): Promise<AccessResult>
 			authorized: false,
 			response: NextResponse.json(
 				{
-					error: 'Terminal bu ortamda devre dışı bırakılmıştır.',
+					error: 'Terminal access is disabled in this environment.',
 					code: 'TERMINAL_DISABLED',
 				},
 				{ status: 403 }

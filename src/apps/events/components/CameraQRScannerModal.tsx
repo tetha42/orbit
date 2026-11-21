@@ -26,12 +26,11 @@ export function CameraQRScannerModal({
 	mode = 'member',
 	continuous = false,
 }: CameraQRScannerModalProps) {
-	const { t, language } = useI18n();
-	const isEn = language === 'en';
+	const { t } = useI18n();
 	const modalTitle = title || t('evScanModalTitle');
-	const defaultPlaceholder = placeholder || (mode === 'staff'
-		? (isEn ? 'Ticket QR code, ticket number (BB1.…), or student ID' : 'Bilet QR kodu, bilet no (BB1.…) veya öğrenci no')
-		: (isEn ? '6-digit short code (e.g. A8K3M9) or scan QR' : '6 haneli kısa kod (örn. A8K3M9) veya QR okutun'));
+	const staffPlaceholder = t('evScanStaffPh');
+	const memberPlaceholder = t('evScanMemberPh');
+	const defaultPlaceholder = placeholder || (mode === 'staff' ? staffPlaceholder : memberPlaceholder);
 	const {
 		videoRef,
 		hasPermission,
@@ -52,7 +51,7 @@ export function CameraQRScannerModal({
 		<Sheet
 			title={modalTitle}
 			label={modalTitle}
-			icon={<Camera size={18} color="var(--accent-blue, #0a84ff)" />}
+			icon={<Camera size={18} color="var(--accent-blue, var(--accent))" />}
 			onClose={onClose}
 			maxWidth={440}
 			bodyStyle={{ padding: 0, gap: 0 }}
@@ -70,7 +69,7 @@ export function CameraQRScannerModal({
 				}}
 			>
 				{hasPermission === false ? (
-					<div style={{ padding: '24px', textAlign: 'center', color: '#ff453a' }}>
+					<div style={{ padding: '24px', textAlign: 'center', color: 'var(--danger)' }}>
 						<AlertCircle size={36} style={{ margin: '0 auto 12px auto' }} />
 						<div style={{ fontSize: '13px', lineHeight: 1.5 }}>{errorMsg}</div>
 					</div>
@@ -92,7 +91,7 @@ export function CameraQRScannerModal({
 								position: 'absolute',
 								width: '180px',
 								height: '180px',
-								border: '2px solid rgba(52, 199, 89, 0.8)',
+								border: '2px solid color-mix(in srgb, var(--success) 80%, transparent)',
 								borderRadius: '16px',
 								boxShadow: '0 0 0 4000px rgba(0, 0, 0, 0.4)',
 								pointerEvents: 'none',
@@ -102,8 +101,8 @@ export function CameraQRScannerModal({
 								style={{
 									width: '100%',
 									height: '2px',
-									background: '#34c759',
-									boxShadow: '0 0 8px #34c759',
+									background: 'var(--success)',
+									boxShadow: '0 0 8px var(--success)',
 									animation: 'scanLine 2s linear infinite',
 								}}
 							/>

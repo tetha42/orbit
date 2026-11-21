@@ -3,9 +3,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useI18n } from '@/core/i18n';
 import { fill } from '@/lib/text';
-import { X, Search, Users, ArrowLeft, Check, CheckSquare, Square } from 'lucide-react';
+import { X, Users, ArrowLeft, Check } from 'lucide-react';
 import type { ChatContactItem } from '../types';
-import s from '../Chat.module.css';
+import { ContactPickerList, filterChatContacts } from './ContactPickerList';
+import s from '../ChatModals.module.css';
 
 interface NewChatModalProps {
 	isOpen: boolean;
@@ -58,16 +59,10 @@ export function NewChatModal({
 		};
 	}, [isOpen]);
 
-	const filteredContacts = useMemo(() => {
-		const q = searchQuery.trim().toLowerCase();
-		if (!q) return contacts;
-		return contacts.filter((c) => {
-			const fullName = `${c.name} ${c.surname}`.toLowerCase();
-			const role = (c.roleName || '').toLowerCase();
-			const department = (c.department || '').toLowerCase();
-			return fullName.includes(q) || role.includes(q) || department.includes(q);
-		});
-	}, [contacts, searchQuery]);
+	const filteredContacts = useMemo(
+		() => filterChatContacts(contacts, searchQuery),
+		[contacts, searchQuery]
+	);
 
 	const toggleMemberSelection = (id: string) => {
 		setSelectedMemberIds((prev) =>
@@ -104,7 +99,6 @@ export function NewChatModal({
 	return (
 		<div className={s.modalOverlay} onClick={onClose}>
 			<div className={s.modalDialog} onClick={(e) => e.stopPropagation()}>
-				{/* Modal Header */}
 				<div className={s.modalHeader}>
 					<div className={s.modalTitle}>
 						{mode === 'group' && (
@@ -130,7 +124,6 @@ export function NewChatModal({
 					</button>
 				</div>
 
-				{/* Modal Body */}
 				<div className={s.modalBody}>
 					{mode === 'direct' ? (
 						<button
@@ -154,100 +147,24 @@ export function NewChatModal({
 						</div>
 					)}
 
-					{/* Selected Chips in Group Mode */}
-					{mode === 'group' && selectedContacts.length > 0 && (
-						<div className={s.chipsContainer}>
-							{selectedContacts.map((sc) => (
-								<div key={sc.id} className={s.chip}>
-									<span>{sc.name}</span>
-									<button
-										type="button"
-										className={s.chipRemoveBtn}
-										onClick={() => toggleMemberSelection(sc.id)}
-									>
-										<X size={12} />
-									</button>
-								</div>
-							))}
-						</div>
-					)}
-
-					{/* Search Input */}
-					<div className={s.modalSearchRow}>
-						<Search size={15} className={s.modalSearchIcon} />
-						<input
-							type="text"
-							className={s.modalSearchInput}
-							placeholder={t('chatSearchPlaceholder')}
-							value={searchQuery}
-							onChange={(e) => setSearchQuery(e.target.value)}
-						/>
-					</div>
-
-					{/* Contacts List */}
-					<div className={s.contactsList}>
-						{loading ? (
-							<div style={{ padding: '24px', textAlign: 'center', opacity: 0.6, fontSize: '13px' }}>
-								{t('loading')}
-							</div>
-						) : filteredContacts.length === 0 ? (
-							<div style={{ padding: '24px', textAlign: 'center', opacity: 0.6, fontSize: '13px' }}>
-								{t('chatNoMembersFound')}
-							</div>
-						) : (
-							filteredContacts.map((contact) => {
-								const isSelected = selectedMemberIds.includes(contact.id);
-								return (
-									<button
-										key={contact.id}
-										type="button"
-										className={`${s.contactItem} ${isSelected ? s.contactItemActive : ''}`}
-										onClick={() => {
-											if (mode === 'group') {
-												toggleMemberSelection(contact.id);
-											} else {
-												void handleDirectClick(contact.id);
-											}
-										}}
-									>
-										{mode === 'group' && (
-											<div style={{ color: isSelected ? 'var(--accent)' : 'rgba(255, 255, 255, 0.4)' }}>
-												{isSelected ? <CheckSquare size={18} /> : <Square size={18} />}
-											</div>
-										)}
-
-										<div className={s.contactAvatar}>
-											{contact.profilePhoto ? (
-												// eslint-disable-next-line @next/next/no-img-element
-												<img
-													src={contact.profilePhoto}
-													alt={contact.name}
-													style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-												/>
-											) : (
-												contact.name.slice(0, 1).toUpperCase()
-											)}
-										</div>
-
-										<div className={s.contactInfo}>
-											<div className={s.contactName}>
-												{contact.name} {contact.surname}
-											</div>
-											<div className={s.contactMeta}>
-												{contact.roleName && (
-													<span className={s.contactRoleBadge}>{contact.roleName}</span>
-												)}
-												{contact.department && <span>{contact.department}</span>}
-											</div>
-										</div>
-									</button>
-								);
-							})
-						)}
-					</div>
+					<ContactPickerList
+						contacts={filteredContacts}
+						loading={loading}
+						searchQuery={searchQuery}
+						onSearchChange={setSearchQuery}
+						multiSelect={mode === 'group'}
+						selectedIds={selectedMemberIds}
+						selectedContacts={selectedContacts}
+						onToggleOrSelect={(contactId) => {
+							if (mode === 'group') {
+								toggleMemberSelection(contactId);
+							} else {
+								void handleDirectClick(contactId);
+							}
+						}}
+					/>
 				</div>
 
-				{/* Modal Footer (only in group mode) */}
 				{mode === 'group' && (
 					<div className={s.modalFooter}>
 						<button

@@ -1,7 +1,26 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { translate, type Language } from '@/lib/i18n';
+import { DEFAULT_LOCALE, isSupportedLocale, normalizeLocale } from '@/locales/registry';
+
+function resolveClientLanguage(): Language {
+  try {
+    const stored = localStorage.getItem('orbit_locale');
+    if (isSupportedLocale(stored)) return stored;
+  } catch {
+    // Storage blocked: fall back to document or browser language
+  }
+  if (typeof document !== 'undefined') {
+    const attr = document.documentElement.getAttribute('lang');
+    if (isSupportedLocale(attr)) return attr;
+  }
+  if (typeof navigator !== 'undefined') {
+    return normalizeLocale(navigator.language, DEFAULT_LOCALE);
+  }
+  return DEFAULT_LOCALE;
+}
 
 export default function ErrorBoundary({
   error,
@@ -10,7 +29,11 @@ export default function ErrorBoundary({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const [lang, setLang] = useState<Language>(DEFAULT_LOCALE);
+  const t = (key: string) => translate(lang, key);
+
   useEffect(() => {
+    setLang(resolveClientLanguage());
     console.error('[Orbit Runtime Error]:', error);
   }, [error]);
 
@@ -24,7 +47,7 @@ export default function ErrorBoundary({
         alignItems: 'center',
         justifyContent: 'center',
         padding: '24px',
-        fontFamily: 'var(--font-sans, Inter, system-ui, sans-serif)',
+        fontFamily: 'var(--font-sans)',
       }}
     >
       <div
@@ -43,17 +66,17 @@ export default function ErrorBoundary({
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '12px 16px',
-            borderBottom: '1px solid #27272a',
-            backgroundColor: '#0c0c0e',
-            fontFamily: 'var(--font-mono, JetBrains Mono, monospace)',
+            borderBottom: '1px solid var(--ink-border)',
+            backgroundColor: 'var(--ink-surface)',
+            fontFamily: 'var(--font-mono)',
             fontSize: '11px',
             letterSpacing: '0.08em',
-            color: '#a1a1aa',
+            color: 'var(--ink-text-muted)',
             textTransform: 'uppercase',
           }}
         >
           <span>ORBIT // TETHA42</span>
-          <span style={{ color: '#ef4444' }}>RUNTIME FAULT</span>
+          <span style={{ color: 'var(--danger)' }}>{t('errRuntimeTag')}</span>
         </div>
 
         <div style={{ padding: '28px 24px' }}>
@@ -61,12 +84,12 @@ export default function ErrorBoundary({
             style={{
               display: 'inline-block',
               padding: '4px 8px',
-              backgroundColor: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
+              backgroundColor: 'var(--danger-subtle)',
+              border: '1px solid var(--danger-border)',
               borderRadius: '4px',
-              fontFamily: 'var(--font-mono, JetBrains Mono, monospace)',
+              fontFamily: 'var(--font-mono)',
               fontSize: '11px',
-              color: '#f87171',
+              color: 'var(--danger)',
               marginBottom: '16px',
             }}
           >
@@ -82,7 +105,7 @@ export default function ErrorBoundary({
               color: '#fafafa',
             }}
           >
-            Application Runtime Exception
+            {t('errRuntimeTitle')}
           </h1>
 
           <p
@@ -93,7 +116,7 @@ export default function ErrorBoundary({
               color: '#a1a1aa',
             }}
           >
-            An unexpected error occurred while rendering this view. Your session state remains intact. You can retry the operation or return to the main workspace.
+            {t('errRuntimeDesc')}
           </p>
 
           {error.message && (
@@ -104,7 +127,7 @@ export default function ErrorBoundary({
                 backgroundColor: '#09090b',
                 border: '1px solid #27272a',
                 borderRadius: '6px',
-                fontFamily: 'var(--font-mono, JetBrains Mono, monospace)',
+                fontFamily: 'var(--font-mono)',
                 fontSize: '12px',
                 color: '#a1a1aa',
                 overflowX: 'auto',
@@ -131,7 +154,7 @@ export default function ErrorBoundary({
                 cursor: 'pointer',
               }}
             >
-              Retry Operation
+              {t('errRetryBtn')}
             </button>
             <Link
               href="/"
@@ -149,7 +172,7 @@ export default function ErrorBoundary({
                 textDecoration: 'none',
               }}
             >
-              Return Home
+              {t('errReturnHome')}
             </Link>
           </div>
         </div>

@@ -2,8 +2,17 @@
 
 import React from 'react';
 import { Calendar, X } from 'lucide-react';
+import { useI18n } from '@/core/i18n';
+import { fill } from '@/lib/text';
+import socContract from '../../soc.contract.json';
 import { useSoc } from '../../context/SocContext';
+import { MODALS_I18N } from './i18nModals';
 import s from './SocModals.module.css';
+
+function toLocalInputValue(ms: number): string {
+	const d = new Date(ms);
+	return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
 
 export const CustomDateModal = React.memo(function CustomDateModal() {
 	const {
@@ -14,10 +23,25 @@ export const CustomDateModal = React.memo(function CustomDateModal() {
 		customDateEnd,
 		setCustomDateEnd,
 		handleApplyCustomDate,
-		isEn,
 	} = useSoc();
+	const { language } = useI18n();
+	const copy = MODALS_I18N[language] ?? MODALS_I18N.en;
 
 	if (!showCustomDateModal) return null;
+
+	const maxWindowHours = socContract.limits.maxSiemQueryWindowHours;
+	const startMs = customDateStart ? new Date(customDateStart).getTime() : NaN;
+	const endMs = customDateEnd ? new Date(customDateEnd).getTime() : NaN;
+	const exceedsContractWindow =
+		Number.isFinite(startMs) &&
+		Number.isFinite(endMs) &&
+		(endMs - startMs) / 3600000 > maxWindowHours;
+
+	const applyPresetHours = (hours: number) => {
+		const now = Date.now();
+		setCustomDateStart(toLocalInputValue(now - hours * 3600 * 1000));
+		setCustomDateEnd(toLocalInputValue(now));
+	};
 
 	return (
 		<div className={s.backdrop} onClick={() => setShowCustomDateModal(false)}>
@@ -25,7 +49,7 @@ export const CustomDateModal = React.memo(function CustomDateModal() {
 				<div className={s.modalHeader}>
 					<div className={s.modalHeaderTitle}>
 						<Calendar size={16} />
-						<span>{isEn ? 'Forensic Custom Time Window' : 'Özel Adli Zaman Penceresi'}</span>
+						<span>{copy.customDateTitle}</span>
 					</div>
 					<button
 						type="button"
@@ -38,13 +62,11 @@ export const CustomDateModal = React.memo(function CustomDateModal() {
 
 				<div className={s.modalBody}>
 					<p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
-						{isEn
-							? 'Specify precise start and end timestamps for deep incident investigation and correlation.'
-							: 'AppEvent korelasyonu ve derinlemesine adli analiz için başlangıç ve bitiş zaman damgalarını belirleyin.'}
+						{copy.customDateDesc}
 					</p>
 
 					<div className={s.formField}>
-						<label>{isEn ? 'Start Time' : 'Başlangıç Zamanı'}</label>
+						<label>{copy.customDateStart}</label>
 						<input
 							type="datetime-local"
 							className={s.input}
@@ -54,7 +76,7 @@ export const CustomDateModal = React.memo(function CustomDateModal() {
 					</div>
 
 					<div className={s.formField}>
-						<label>{isEn ? 'End Time' : 'Bitiş Zamanı'}</label>
+						<label>{copy.customDateEnd}</label>
 						<input
 							type="datetime-local"
 							className={s.input}
@@ -68,42 +90,33 @@ export const CustomDateModal = React.memo(function CustomDateModal() {
 							type="button"
 							className={s.btn}
 							style={{ fontSize: 11, height: 26, padding: '0 8px' }}
-							onClick={() => {
-								const now = Date.now();
-								const d = new Date(now - 12 * 3600 * 1000);
-								setCustomDateStart(new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
-								setCustomDateEnd(new Date(now - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16));
-							}}
+							onClick={() => applyPresetHours(12)}
 						>
-							{isEn ? 'Last 12 Hours' : 'Son 12 Saat'}
+							{copy.customDateLast12h}
 						</button>
 						<button
 							type="button"
 							className={s.btn}
 							style={{ fontSize: 11, height: 26, padding: '0 8px' }}
-							onClick={() => {
-								const now = Date.now();
-								const d = new Date(now - 3 * 86400 * 1000);
-								setCustomDateStart(new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
-								setCustomDateEnd(new Date(now - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16));
-							}}
+							onClick={() => applyPresetHours(3 * 24)}
 						>
-							{isEn ? 'Last 3 Days' : 'Son 3 Gün'}
+							{copy.customDateLast3d}
 						</button>
 						<button
 							type="button"
 							className={s.btn}
 							style={{ fontSize: 11, height: 26, padding: '0 8px' }}
-							onClick={() => {
-								const now = Date.now();
-								const d = new Date(now - 30 * 86400 * 1000);
-								setCustomDateStart(new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
-								setCustomDateEnd(new Date(now - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16));
-							}}
+							onClick={() => applyPresetHours(30 * 24)}
 						>
-							{isEn ? 'Last 30 Days' : 'Son 30 Gün'}
+							{copy.customDateLast30d}
 						</button>
 					</div>
+
+					{exceedsContractWindow && (
+						<div style={{ fontSize: 11.5, color: 'var(--danger)' }}>
+							{fill(copy.customDateWindowExceeded, { hours: maxWindowHours })}
+						</div>
+					)}
 				</div>
 
 				<div className={s.modalFooter}>
@@ -112,14 +125,15 @@ export const CustomDateModal = React.memo(function CustomDateModal() {
 						className={s.btn}
 						onClick={() => setShowCustomDateModal(false)}
 					>
-						{isEn ? 'Cancel' : 'İptal'}
+						{copy.customDateCancel}
 					</button>
 					<button
 						type="button"
 						className={`${s.btn} ${s.btnPrimary}`}
 						onClick={handleApplyCustomDate}
+						disabled={exceedsContractWindow}
 					>
-						{isEn ? 'Apply Range' : 'Aralığı Uygula'}
+						{copy.customDateApply}
 					</button>
 				</div>
 			</div>

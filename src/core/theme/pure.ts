@@ -105,5 +105,19 @@ export function toggledTheme(current: ResolvedTheme): ResolvedTheme {
  * scripts/check-pure.mjs runs it against those. A storage error (private window) leaves the defaults.
  */
 export function themeBootScript(): string {
-	return `(function(){var d=document.documentElement,p={};try{var r=JSON.parse(localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)})||'null');if(r&&typeof r==='object')p=r}catch(e){}function m(q){try{return matchMedia(q).matches}catch(e){return false}}var t=p.theme==='light'||p.theme==='dark'?p.theme:m('(prefers-color-scheme: dark)')?'dark':'light';var a=${JSON.stringify(ACCENTS)}.indexOf(p.accent)>=0?p.accent:${JSON.stringify(DEFAULT_THEME_PREFS.accent)};var x=typeof p.reduceMotion==='boolean'?p.reduceMotion:m('(prefers-reduced-motion: reduce)');d.setAttribute('data-theme',t);d.setAttribute('data-accent',a);d.setAttribute('data-transparency',p.transparency===true?'on':'off');d.setAttribute('data-motion',x?'reduce':'full');d.classList.toggle('dark',t==='dark')})()`;
+	const key = JSON.stringify(THEME_STORAGE_KEY);
+	const accents = JSON.stringify(ACCENTS);
+	const defAccent = JSON.stringify(DEFAULT_THEME_PREFS.accent);
+	return [
+		'(function(){var d=document.documentElement,p={};',
+		`try{var r=JSON.parse(localStorage.getItem(${key})||'null');`,
+		"if(r&&typeof r==='object')p=r}catch(e){}",
+		'function m(q){try{return matchMedia(q).matches}catch(e){return false}}',
+		"var t=p.theme==='light'||p.theme==='dark'?p.theme:m('(prefers-color-scheme: dark)')?'dark':'light';",
+		`var a=${accents}.indexOf(p.accent)>=0?p.accent:${defAccent};`,
+		"var x=typeof p.reduceMotion==='boolean'?p.reduceMotion:m('(prefers-reduced-motion: reduce)');",
+		"d.setAttribute('data-theme',t);d.setAttribute('data-accent',a);",
+		"d.setAttribute('data-transparency',p.transparency===true?'on':'off');",
+		"d.setAttribute('data-motion',x?'reduce':'full');d.classList.toggle('dark',t==='dark')})()",
+	].join('');
 }

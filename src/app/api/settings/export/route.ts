@@ -41,7 +41,7 @@ export async function GET(request: Request) {
 
 	if (table) {
 		if (!TABLE_KEYS.includes(table as (typeof TABLE_KEYS)[number])) {
-			return NextResponse.json({ error: 'Geçersiz tablo.' }, { status: 400 });
+			return NextResponse.json({ error: 'Invalid table.' }, { status: 400 });
 		}
 		const rows = data[table as (typeof TABLE_KEYS)[number]] as Record<string, unknown>[];
 		return new NextResponse(toCsv(rows), {

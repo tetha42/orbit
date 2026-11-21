@@ -51,7 +51,7 @@ const FLASH_MS = 1000;
  * overwrite the record the user asked for.
  */
 export function useFocusTarget(appId: AppID, { ready, apply, refetch }: FocusTargetOptions): FocusTarget | null {
-	const { focusTarget, clearFocusTarget } = useWindowFocusTarget();
+	const { focusTarget, clearFocusTarget } = useWindowFocusTarget(appId);
 	const pending = focusTarget && focusTarget.appId === appId ? focusTarget : null;
 	const nonce = pending?.nonce ?? null;
 

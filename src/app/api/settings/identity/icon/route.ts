@@ -11,6 +11,7 @@ import {
 	writeCustomImage,
 } from '@/server/customData';
 import { sniffImage } from '@/lib/uploads';
+import { PayloadTooLargeError, readBoundedFormData } from '@/lib/httpBodyGuard';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,8 +23,11 @@ export async function POST(request: Request) {
 
 	let formData: FormData;
 	try {
-		formData = await request.formData();
-	} catch {
+		formData = await readBoundedFormData(request, MAX_ICON_BYTES + 128 * 1024);
+	} catch (error) {
+		if (error instanceof PayloadTooLargeError) {
+			return NextResponse.json({ error: 'The icon must be smaller than 2 MB.' }, { status: 413 });
+		}
 		return NextResponse.json({ error: 'Invalid upload request.' }, { status: 400 });
 	}
 	const file = formData.get('file');
@@ -67,5 +71,12 @@ export async function DELETE(request: Request) {
 	const previous = customImageNameFromUrl(settings.site_icon);
 	await setSystemSettings({ site_icon: '', site_brand_version: `${Date.now()}-${randomBytes(4).toString('hex')}` });
 	if (previous && isSafeCustomImageName(previous)) await removeCustomImage('identity', previous);
+	void logSystemEvent({
+		service: 'settings',
+		level: 'WARN',
+		message: 'Site icon reset to default.',
+		detail: { previous },
+		userId: auth.user.id,
+	});
 	return NextResponse.json({ ok: true, iconUrl: null });
 }

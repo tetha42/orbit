@@ -43,33 +43,95 @@ export function parseIpCandidate(raw: string | null | undefined): string | null 
 }
 
 /**
- * Known internal proxy subnets and loopbacks.
+ * Known internal proxy subnets, loopbacks, and Cloudflare edge IP prefixes.
  */
 export function isTrustedProxyIp(ip: string): boolean {
-	if (ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1') return true;
+	if (!ip) return false;
+	const clean = ip.toLowerCase();
+	if (clean === '127.0.0.1' || clean === '::1' || clean === '::ffff:127.0.0.1') return true;
 	// 10.0.0.0/8, 192.168.0.0/16
-	if (ip.startsWith('10.') || ip.startsWith('192.168.')) return true;
-	// 172.16.0.0/12 (Docker / internal container networks)
-	if (ip.startsWith('172.')) {
-		const second = parseInt(ip.split('.')[1] || '', 10);
+	if (clean.startsWith('10.') || clean.startsWith('192.168.')) return true;
+	// 172.16.0.0/12 (Docker / internal container networks: 172.16.x - 172.31.x)
+	if (clean.startsWith('172.')) {
+		const second = parseInt(clean.split('.')[1] || '', 10);
+		if (second >= 16 && second <= 31) return true;
+		// Cloudflare 172.64.0.0/13 (172.64.0.0 - 172.71.255.255)
+		if (second >= 64 && second <= 71) return true;
+	}
+	// Cloudflare 104.16.0.0/12 (104.16.0.0 - 104.31.255.255)
+	if (clean.startsWith('104.')) {
+		const second = parseInt(clean.split('.')[1] || '', 10);
 		if (second >= 16 && second <= 31) return true;
 	}
+	// Cloudflare 162.158.0.0/15 (162.158.0.0 - 162.159.255.255)
+	if (clean.startsWith('162.158.') || clean.startsWith('162.159.')) return true;
+	// Cloudflare 198.41.128.0/17
+	if (clean.startsWith('198.41.')) {
+		const third = parseInt(clean.split('.')[2] || '', 10);
+		if (third >= 128 && third <= 255) return true;
+	}
+	// Cloudflare other IPv4
+	if (
+		clean.startsWith('173.245.') ||
+		clean.startsWith('103.21.') ||
+		clean.startsWith('103.22.') ||
+		clean.startsWith('103.31.') ||
+		clean.startsWith('141.101.') ||
+		clean.startsWith('108.162.') ||
+		clean.startsWith('190.93.') ||
+		clean.startsWith('188.114.') ||
+		clean.startsWith('197.234.') ||
+		clean.startsWith('131.0.72.')
+	) return true;
+
 	// IPv6 ULA (fc00::/7)
-	if (ip.startsWith('fc') || ip.startsWith('fd')) return true;
+	if (clean.startsWith('fc') || clean.startsWith('fd')) return true;
+	// Cloudflare IPv6
+	if (
+		clean.startsWith('2400:cb00:') ||
+		clean.startsWith('2606:4700:') ||
+		clean.startsWith('2803:f800:') ||
+		clean.startsWith('2405:b500:') ||
+		clean.startsWith('2405:8100:') ||
+		clean.startsWith('2a06:98c0:') ||
+		clean.startsWith('2c0f:f248:')
+	) return true;
+
 	return false;
 }
 
 /**
  * The caller's real IP address, for rate limiting and security audit logs.
  *
- * Priority order:
- *  1. `cf-connecting-ip` — set by Cloudflare edge to the true connecting client IP.
- *  2. `true-client-ip`   — Cloudflare Enterprise / CDN fallback header.
- *  3. `x-real-ip`        — set by Caddy/Nginx (`{client_ip}`).
- *  4. `x-forwarded-for`  — right-to-left traversal skipping trusted internal proxy hops.
+ * Only trusts ingress forwarding headers (`cf-connecting-ip`, `true-client-ip`,
+ * `x-forwarded-for`) if the immediate connecting remote IP is verified via `isTrustedProxyIp`.
  */
 export function clientAddress(request: Request): string {
-	const directHeaders = ['cf-connecting-ip', 'true-client-ip', 'x-real-ip'];
+	const req = request as unknown as {
+		socket?: { remoteAddress?: string };
+		connection?: { remoteAddress?: string };
+		ip?: string;
+	};
+	const connectingIp = parseIpCandidate(
+		req.socket?.remoteAddress ||
+		req.connection?.remoteAddress ||
+		req.ip
+	);
+
+	const proxyMode = (process.env.TRUSTED_PROXY_MODE || '').trim().toLowerCase();
+	if (proxyMode === 'none') {
+		return connectingIp || '127.0.0.1';
+	}
+
+	// If the connecting peer is known and is NOT a trusted proxy, do NOT trust any forwarding headers
+	if (connectingIp && !isTrustedProxyIp(connectingIp)) {
+		return connectingIp;
+	}
+
+	const directHeaders =
+		proxyMode === 'cloudflare'
+			? ['cf-connecting-ip', 'true-client-ip']
+			: ['cf-connecting-ip', 'true-client-ip', 'x-real-ip'];
 	for (const header of directHeaders) {
 		const parsed = parseIpCandidate(request.headers.get(header));
 		if (parsed) return parsed;
@@ -94,6 +156,15 @@ export function clientAddress(request: Request): string {
 		}
 	}
 
+	if (connectingIp) return connectingIp;
+	try {
+		const urlHost = new URL(request.url).hostname.toLowerCase();
+		if (urlHost === 'localhost' || urlHost === '127.0.0.1' || urlHost === '[::1]') {
+			return '127.0.0.1';
+		}
+	} catch {
+		// ignore malformed request.url
+	}
 	return 'unknown';
 }
 

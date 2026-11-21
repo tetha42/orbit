@@ -1,16 +1,15 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useSound } from '@/core/sound';
-import { useI18n } from '@/core/i18n';
-import { foldTr } from '@/lib/text';
+import { useI18n, getLocaleDefinition } from '@/core/i18n';
+import { foldSearchText } from '@/lib/text';
 import { dueStatus, type TaskStatus, type TaskPriority } from '@/lib/kanban';
 import styles from './Kanban.module.css';
 import { COLUMNS, sortTasks, type TeamMember, type TeamTask } from '../types';
 import { NewTaskModal } from './NewTaskModal';
 import { TaskDetailModal } from './TaskDetailModal';
 import { useNow } from '@/lib/client/useSheet';
-import { useAppCommand } from '@/core/commands';
 import { useToast } from '@/core/ui/Toast';
 import { KanbanToolbar, type AssigneeFilter, type SortMode } from './KanbanToolbar';
 import { KanbanColumnGrid } from './KanbanColumnGrid';
@@ -19,7 +18,7 @@ import { useKanbanDnD } from '../hooks/useKanbanDnD';
 export interface KanbanTeam {
 	id: string;
 	leadId: string;
-	leaderNameSurname: string;
+	leaderName: string;
 	members: TeamMember[];
 	tasks: TeamTask[];
 }
@@ -32,11 +31,21 @@ interface Props {
 	refetch: () => Promise<void>;
 	openTaskId: string | null;
 	setOpenTaskId: (id: string | null) => void;
+	onRegisterCommand?: (fn: ((command: string) => void) | null) => void;
 }
 
 export type Notify = (text: string, tone?: 'success' | 'error') => void;
 
-export function KanbanBoard({ team, currentUserId, isManager, mutateTasks, refetch, openTaskId, setOpenTaskId }: Props) {
+export function KanbanBoard({
+	team,
+	currentUserId,
+	isManager,
+	mutateTasks,
+	refetch,
+	openTaskId,
+	setOpenTaskId,
+	onRegisterCommand,
+}: Props) {
 	const { t, language } = useI18n();
 	const { playSystemSound } = useSound();
 	const tasks = useMemo(() => team.tasks ?? [], [team.tasks]);
@@ -51,23 +60,38 @@ export function KanbanBoard({ team, currentUserId, isManager, mutateTasks, refet
 	const [newTaskCol, setNewTaskCol] = useState<TaskStatus | null>(null);
 	const notify: Notify = useToast();
 
-	useAppCommand('teams', (command) => {
+	const commandRef = useRef((command: string) => {
 		if (command === 'new-task') {
 			if (canManage) setNewTaskCol('todo');
 			else notify(t('tmAddTaskCaptainOnly'), 'error');
 		} else if (command === 'kanban-refresh') {
-			void refetch().then(() => notify('Pano yenilendi.'));
+			void refetch().then(() => notify(t('tmTeamsRefreshed')));
 		}
 	});
+	useEffect(() => {
+		commandRef.current = (command: string) => {
+			if (command === 'new-task') {
+				if (canManage) setNewTaskCol('todo');
+				else notify(t('tmAddTaskCaptainOnly'), 'error');
+			} else if (command === 'kanban-refresh') {
+				void refetch().then(() => notify(t('tmTeamsRefreshed')));
+			}
+		};
+	}, [canManage, notify, refetch, t]);
+	useEffect(() => {
+		if (!onRegisterCommand) return;
+		onRegisterCommand((cmd) => commandRef.current(cmd));
+		return () => onRegisterCommand(null);
+	}, [onRegisterCommand]);
 
 	const members = useMemo(() => {
 		const active = (team.members ?? []).filter((u) => u.status === 'active');
-		const list = active.map((u) => ({ id: u.userId, name: u.userNameSurname, role: u.teamRole }));
+		const list = active.map((u) => ({ id: u.userId, name: u.userName, role: u.teamRole }));
 		if (team.leadId && !list.some((m) => m.id === team.leadId)) {
-			list.unshift({ id: team.leadId, name: team.leaderNameSurname, role: '' });
+			list.unshift({ id: team.leadId, name: team.leaderName, role: '' });
 		}
 		return list;
-	}, [team.members, team.leadId, team.leaderNameSurname]);
+	}, [team.members, team.leadId, team.leaderName]);
 
 	const allLabels = useMemo(
 		() => [...new Set(tasks.flatMap((g) => g.tags ?? []))].sort((a, b) => a.localeCompare(b, 'tr')),
@@ -77,9 +101,9 @@ export function KanbanBoard({ team, currentUserId, isManager, mutateTasks, refet
 	const now = useNow();
 	const filtersActive = !!query.trim() || assignee !== 'all' || !!priority || !!label;
 	const visible = useMemo(() => {
-		const q = foldTr(query.trim());
+		const q = foldSearchText(query.trim());
 		return tasks.filter((g) => {
-			if (q && !foldTr(g.title).includes(q) && !foldTr(g.description ?? '').includes(q)) return false;
+			if (q && !foldSearchText(g.title).includes(q) && !foldSearchText(g.description ?? '').includes(q)) return false;
 			if (assignee === 'mine' && g.assigneeMemberId !== currentUserId) return false;
 			if (assignee === 'pool' && g.assigneeMemberId) return false;
 			if (priority && g.priority !== priority) return false;
@@ -111,7 +135,7 @@ export function KanbanBoard({ team, currentUserId, isManager, mutateTasks, refet
 	const dueText = (state: ReturnType<typeof dueStatus>, ts: number) => {
 		if (state === 'overdue') return t('kbDueOverdue');
 		if (state === 'today') return t('kbDueToday');
-		return new Date(ts).toLocaleDateString(language === 'en' ? 'en-GB' : 'tr-TR', { day: 'numeric', month: 'short' });
+		return new Date(ts).toLocaleDateString(getLocaleDefinition(language).dateLocale, { day: 'numeric', month: 'short' });
 	};
 
 	return (

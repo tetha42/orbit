@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { WifiOff, Wifi } from 'lucide-react';
+import { useI18n } from '@/core/i18n';
 
 export function ServiceWorkerRegister() {
+	const { t } = useI18n();
 	const [isOffline, setIsOffline] = useState(false);
 	const [showBackOnline, setShowBackOnline] = useState(false);
 
@@ -30,10 +32,10 @@ export function ServiceWorkerRegister() {
 					navigator.serviceWorker
 						.register('/sw.js', { scope: '/', updateViaCache: 'none' })
 						.then((reg) => {
-							console.log('[PWA] Service Worker aktif:', reg.scope);
+							console.log('[PWA] Service Worker active:', reg.scope);
 						})
 						.catch((err) => {
-							console.warn('[PWA] Service Worker kayıt uyarısı:', err);
+							console.warn('[PWA] Service Worker registration warning:', err);
 						});
 				};
 
@@ -104,7 +106,7 @@ export function ServiceWorkerRegister() {
 					gap: '8px',
 					padding: '6px 14px',
 					borderRadius: '20px',
-					background: isOffline ? 'rgba(239, 68, 68, 0.92)' : 'rgba(52, 199, 89, 0.92)',
+					background: isOffline ? 'color-mix(in srgb, var(--danger) 92%, transparent)' : 'color-mix(in srgb, var(--success) 92%, transparent)',
 					backdropFilter: 'var(--glass-blur)',
 					color: '#fff',
 					fontSize: '12px',
@@ -116,12 +118,12 @@ export function ServiceWorkerRegister() {
 				{isOffline ? (
 					<>
 						<WifiOff size={14} />
-						<span>İnternet bağlantısı kesildi. Çevrimdışı moddasınız.</span>
+						<span>{t('swOfflineMessage')}</span>
 					</>
 				) : (
 					<>
 						<Wifi size={14} />
-						<span>Bağlantı yeniden kuruldu.</span>
+						<span>{t('swBackOnlineMessage')}</span>
 					</>
 				)}
 			</div>

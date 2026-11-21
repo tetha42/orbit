@@ -1,0 +1,29 @@
+{
+  "generatedAt": "2026-11-16T20:09:39.131Z",
+  "node": "v26.13.1",
+  "platform": "linux",
+  "arch": "x64",
+  "iterations": 200,
+  "metrics": {
+    "wafInspectionUs": {
+      "p50": 2.49,
+      "p95": 4.39,
+      "p99": 6.63
+    },
+    "wasmSecurityUs": {
+      "p50": 130.15,
+      "p95": 351.39,
+      "p99": 483.82
+    },
+    "securityRulesUs": {
+      "p50": 2.36,
+      "p95": 4.86,
+      "p99": 18.69
+    },
+    "sseProtocolUs": {
+      "p50": 0.93,
+      "p95": 2.11,
+      "p99": 8.07
+    }
+  }
+}

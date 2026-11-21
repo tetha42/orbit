@@ -100,7 +100,7 @@ export async function sendMail(options: SendMailOptions): Promise<MailerResult> 
 	try {
 		const rawTo = String(options.to ?? '').trim();
 		if (!rawTo || /[\r\n]/.test(rawTo)) {
-			return { success: false, error: 'Geçersiz alıcı e-posta adresi.' };
+			return { success: false, error: 'Invalid recipient email address.' };
 		}
 
 		// Support either a single validated address or a comma-separated list of validated addresses
@@ -109,7 +109,7 @@ export async function sendMail(options: SendMailOptions): Promise<MailerResult> 
 			.map((addr) => addr.trim())
 			.filter(Boolean);
 		if (recipients.length === 0 || recipients.length > 20 || !recipients.every((addr) => isValidEmail(addr))) {
-			return { success: false, error: 'Geçersiz alıcı e-posta adresi formatı.' };
+			return { success: false, error: 'Invalid recipient email address format.' };
 		}
 
 		const safeTo = recipients.join(', ');
@@ -129,13 +129,13 @@ export async function sendMail(options: SendMailOptions): Promise<MailerResult> 
 
 		if (hasTestRecipient || isMockMode) {
 			const reason = hasTestRecipient
-				? `Test alan adı veya simülasyon adresi tespit edildi (${safeTo})`
-				: `MOCK_MAIL test ortamı aktif`;
+				? `Test domain or simulation address detected (${safeTo})`
+				: `MOCK_MAIL test environment is active`;
 
-			console.log(`\n================== [SMTP GÜVENLİK SİMÜLASYONU] ==================`);
-			console.log(`[ALICI]: ${safeTo}`);
-			console.log(`[KONU]: ${safeSubject}`);
-			console.log(`[BİLGİ]: ${reason}. Canlı Google SMTP'ye gönderim engellendi, kota ve spam itibarı korundu.`);
+			console.log(`\n================== [SMTP SAFETY SIMULATION] ==================`);
+			console.log(`[RECIPIENT]: ${safeTo}`);
+			console.log(`[SUBJECT]: ${safeSubject}`);
+			console.log(`[INFO]: ${reason}. Delivery to live Google SMTP was blocked; quota and spam reputation were protected.`);
 			console.log(`=================================================================\n`);
 
 			recordCapturedTestEmail({
@@ -156,10 +156,10 @@ export async function sendMail(options: SendMailOptions): Promise<MailerResult> 
 		const { transporter, isConfigured, config } = await getTransporter();
 
 		if (!isConfigured || !transporter) {
-			console.log(`\n================== [SMTP SİMÜLASYONU] ==================`);
-			console.log(`[ALICI]: ${safeTo}`);
-			console.log(`[KONU]: ${safeSubject}`);
-			console.log(`[BİLGİ]: SMTP şifresi panelden girilene kadar e-postalar konsola simüle edilir.`);
+			console.log(`\n================== [SMTP SIMULATION] ==================`);
+			console.log(`[RECIPIENT]: ${safeTo}`);
+			console.log(`[SUBJECT]: ${safeSubject}`);
+			console.log(`[INFO]: Emails are simulated to the console until an SMTP password is entered in the panel.`);
 			console.log(`========================================================\n`);
 
 			return {
@@ -185,10 +185,10 @@ export async function sendMail(options: SendMailOptions): Promise<MailerResult> 
 			messageId: info.messageId,
 		};
 	} catch (error) {
-		console.error('[SMTP Hatası]:', error);
+		console.error('[SMTP Error]:', error);
 		return {
 			success: false,
-			error: errorMessage(error) || 'E-posta gönderilirken bir hata oluştu',
+			error: errorMessage(error) || 'An error occurred while sending the email',
 		};
 	}
 }

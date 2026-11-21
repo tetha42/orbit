@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import type { NextResponse } from 'next/server';
 import { User, updateUserSession } from '@/db';
 import { getRolePermission, type Permission } from '@/db/roles';
+import { createDeviceSession } from '@/domains/devices/sessionStore';
 import { clientAddress } from '@/lib/http';
 import type { SessionUser } from '@/types/session';
 
@@ -9,14 +10,10 @@ export const SESSION_COOKIE = 'club_session_token';
 const SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
 
 /**
- * Turns on the session cookie for a signed-in member.
+ * Turns on the session cookie for a signed-in member and records the device in `user_sessions`.
  *
- * Single-session policy: every call mints a new token and overwrites the one on
- * the user row, so signing in elsewhere invalidates the previous device.
- *
- * The expiry is written to the row as well as the cookie. The cookie attribute
- * only tells the browser when to stop sending it — the server needs its own
- * record to reject a cookie that is replayed after that point.
+ * Mobile sessions follow a strict single-active-device policy (new mobile login atomically revokes
+ * the previous mobile session), while up to 4 desktop sessions may remain linked concurrently.
  */
 export async function establishSession(
 	user: User,
@@ -24,6 +21,7 @@ export async function establishSession(
 	authMethod: 'password' | 'totp' | 'passkey' = 'password'
 ): Promise<string> {
 	const sessionToken = crypto.randomBytes(32).toString('base64url');
+	const expiresAt = Date.now() + SESSION_MAX_AGE_SECONDS * 1000;
 	const telemetry = request
 		? {
 				ip: clientAddress(request),
@@ -33,13 +31,19 @@ export async function establishSession(
 	await updateUserSession(
 		user.id,
 		sessionToken,
-		Date.now() + SESSION_MAX_AGE_SECONDS * 1000,
+		expiresAt,
 		telemetry,
 		authMethod
 	);
-	// Keep the in-memory row consistent with what was just stored, so a caller
-	// that builds the session user from this object does not briefly report
-	// `mustSetup2fa` to a passkey-authenticated member.
+	await createDeviceSession({
+		userId: user.id,
+		token: sessionToken,
+		expiresAt,
+		request,
+		authMethod,
+	}).catch((err) => {
+		console.warn('[Session] createDeviceSession warning:', err);
+	});
 	user.authMethod = authMethod;
 	return sessionToken;
 }
@@ -69,7 +73,7 @@ export function clearSessionCookie(response: NextResponse): NextResponse {
 /**
  * The user shape handed to the client.
  *
- * Never carries `passwordHash`, `aktifOturumToken` or `totpSecret`. The role's
+ * Never carries `passwordHash`, `sessionToken` or `totpSecret`. The role's
  * permissions travel with it: the client shows only the apps they allow (the
  * server checks every request again). `mustSetup2fa` drives the blocking setup
  * prompt when the role requires a second factor.
@@ -109,6 +113,7 @@ export function toSessionUser(user: User, permission: Permission): SessionUser {
 		twoFactorRequired,
 		authMethod: user.authMethod ?? 'password',
 		mustSetup2fa: twoFactorRequired && !twoFactorEnabled && !passkeySession,
+		preferredLanguage: user.preferredLanguage === 'tr' ? 'tr' : 'en',
 		roleInfo: permission.role ? { id: permission.role.id, name: permission.role.name, color: permission.role.color } : null,
 		permissions: permission.permissions,
 		admin: permission.admin,

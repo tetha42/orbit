@@ -48,6 +48,7 @@ export async function PATCH(request: Request) {
 			return NextResponse.json({ error: 'Site name cannot be empty.', code: 'SITE_NAME_REQUIRED' }, { status: 400 });
 		}
 		updates.club_name = siteName;
+		updates.organization_name = siteName;
 	}
 	if (body.shortName !== undefined) updates.site_short_name = clean(body.shortName, 32);
 	if (body.descriptionTr !== undefined) updates.site_description_tr = clean(body.descriptionTr, 400);

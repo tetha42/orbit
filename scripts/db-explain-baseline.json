@@ -1,0 +1,217 @@
+{
+  "generatedAt": "2026-11-16T20:07:53.432Z",
+  "rows": 100000,
+  "seeded": {
+    "totalSyntheticRows": 100000,
+    "breakdown": {
+      "usersN": 3000,
+      "logsN": 40000,
+      "auditN": 10000,
+      "notifN": 10000,
+      "eventsN": 5000,
+      "tasksN": 5000,
+      "chatN": 15000,
+      "certN": 4000,
+      "notesN": 4000,
+      "newsN": 4000
+    }
+  },
+  "plans": [
+    {
+      "id": "auth.sessionLookup",
+      "expectedIndex": "idx_users_session_token",
+      "planningTimeMs": 0.338,
+      "executionTimeMs": 0.036,
+      "actualRows": 1,
+      "sharedHitBlocks": 3,
+      "sharedReadBlocks": 0,
+      "usedIndexes": [
+        "idx_users_session_token"
+      ],
+      "seqScans": [],
+      "usesIndex": true
+    },
+    {
+      "id": "auth.emailLowerLookup",
+      "expectedIndex": "idx_users_email_lower",
+      "planningTimeMs": 0.078,
+      "executionTimeMs": 0.017,
+      "actualRows": 1,
+      "sharedHitBlocks": 3,
+      "sharedReadBlocks": 0,
+      "usedIndexes": [
+        "idx_users_email_lower"
+      ],
+      "seqScans": [],
+      "usesIndex": true
+    },
+    {
+      "id": "members.statusCreatedPage",
+      "expectedIndex": "idx_users_status_created",
+      "planningTimeMs": 0.078,
+      "executionTimeMs": 0.032,
+      "actualRows": 25,
+      "sharedHitBlocks": 20,
+      "sharedReadBlocks": 0,
+      "usedIndexes": [
+        "idx_users_status_created"
+      ],
+      "seqScans": [],
+      "usesIndex": true
+    },
+    {
+      "id": "siem.logsTimeline",
+      "expectedIndex": "idx_system_logs_timestamp",
+      "planningTimeMs": 0.224,
+      "executionTimeMs": 0.043,
+      "actualRows": 100,
+      "sharedHitBlocks": 48,
+      "sharedReadBlocks": 0,
+      "usedIndexes": [
+        "idx_system_logs_timestamp"
+      ],
+      "seqScans": [],
+      "usesIndex": true
+    },
+    {
+      "id": "siem.logsByService",
+      "expectedIndex": "idx_system_logs_service",
+      "planningTimeMs": 0.03,
+      "executionTimeMs": 0.026,
+      "actualRows": 25,
+      "sharedHitBlocks": 6,
+      "sharedReadBlocks": 0,
+      "usedIndexes": [
+        "idx_system_logs_service"
+      ],
+      "seqScans": [],
+      "usesIndex": true
+    },
+    {
+      "id": "siem.logsByUser",
+      "expectedIndex": "idx_system_logs_user_ts",
+      "planningTimeMs": 0.073,
+      "executionTimeMs": 0.05,
+      "actualRows": 25,
+      "sharedHitBlocks": 5,
+      "sharedReadBlocks": 0,
+      "usedIndexes": [
+        "idx_system_logs_user_ts"
+      ],
+      "seqScans": [],
+      "usesIndex": true
+    },
+    {
+      "id": "audit.timeline",
+      "expectedIndex": "idx_audit_logs_timestamp",
+      "planningTimeMs": 0.196,
+      "executionTimeMs": 0.025,
+      "actualRows": 50,
+      "sharedHitBlocks": 5,
+      "sharedReadBlocks": 0,
+      "usedIndexes": [
+        "idx_audit_logs_timestamp"
+      ],
+      "seqScans": [],
+      "usesIndex": true
+    },
+    {
+      "id": "notifications.userUnread",
+      "expectedIndex": "idx_notifications_user",
+      "planningTimeMs": 0.137,
+      "executionTimeMs": 0.035,
+      "actualRows": 20,
+      "sharedHitBlocks": 3,
+      "sharedReadBlocks": 0,
+      "usedIndexes": [
+        "idx_notifications_user"
+      ],
+      "seqScans": [],
+      "usesIndex": true
+    },
+    {
+      "id": "events.upcomingPublished",
+      "expectedIndex": "idx_events_status_starts",
+      "planningTimeMs": 0.237,
+      "executionTimeMs": 0.029,
+      "actualRows": 24,
+      "sharedHitBlocks": 3,
+      "sharedReadBlocks": 0,
+      "usedIndexes": [
+        "idx_events_starts_at"
+      ],
+      "seqScans": [],
+      "usesIndex": true
+    },
+    {
+      "id": "tasks.assigneeDue",
+      "expectedIndex": "idx_team_tasks_assignee_due",
+      "planningTimeMs": 0.227,
+      "executionTimeMs": 0.04,
+      "actualRows": 20,
+      "sharedHitBlocks": 3,
+      "sharedReadBlocks": 0,
+      "usedIndexes": [
+        "idx_team_tasks_assignee"
+      ],
+      "seqScans": [],
+      "usesIndex": true
+    },
+    {
+      "id": "chat.latestRoomMessages",
+      "expectedIndex": "idx_chat_messages_room_date_desc",
+      "planningTimeMs": 0.187,
+      "executionTimeMs": 0.032,
+      "actualRows": 50,
+      "sharedHitBlocks": 6,
+      "sharedReadBlocks": 0,
+      "usedIndexes": [
+        "idx_chat_messages_room_date_desc"
+      ],
+      "seqScans": [],
+      "usesIndex": true
+    },
+    {
+      "id": "certificates.userList",
+      "expectedIndex": "idx_certificates_user_created",
+      "planningTimeMs": 0.166,
+      "executionTimeMs": 0.036,
+      "actualRows": 20,
+      "sharedHitBlocks": 3,
+      "sharedReadBlocks": 0,
+      "usedIndexes": [
+        "idx_certificates_user_created"
+      ],
+      "seqScans": [],
+      "usesIndex": true
+    },
+    {
+      "id": "notes.userFolderPinned",
+      "expectedIndex": "idx_user_notes_user_folder",
+      "planningTimeMs": 0.171,
+      "executionTimeMs": 0.041,
+      "actualRows": 20,
+      "sharedHitBlocks": 3,
+      "sharedReadBlocks": 0,
+      "usedIndexes": [
+        "idx_user_notes_user"
+      ],
+      "seqScans": [],
+      "usesIndex": true
+    },
+    {
+      "id": "news.publishedFeed",
+      "expectedIndex": "idx_news_published",
+      "planningTimeMs": 0.222,
+      "executionTimeMs": 0.039,
+      "actualRows": 20,
+      "sharedHitBlocks": 4,
+      "sharedReadBlocks": 0,
+      "usedIndexes": [
+        "idx_news_published"
+      ],
+      "seqScans": [],
+      "usesIndex": true
+    }
+  ]
+}

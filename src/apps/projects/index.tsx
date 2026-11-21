@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { FolderGit2 } from 'lucide-react';
-import { useI18n } from '@/core/i18n';
+import { getLocaleDefinition, useI18n } from '@/core/i18n';
 import { useSound } from '@/core/sound';
 import { useToast } from '@/core/ui/Toast';
 import { useIsMobile } from '@/lib/client/useClientValue';
@@ -25,7 +25,7 @@ export function ProjectsApp() {
 	const { t, language } = useI18n();
 	const { playSystemSound } = useSound();
 	const notify = useToast();
-	const locale = language === 'en' ? 'en-GB' : 'tr-TR';
+	const locale = getLocaleDefinition(language).dateLocale;
 	const [viewMode, setViewMode] = React.useState<ViewMode>('grid');
 
 	if (isMobile) {

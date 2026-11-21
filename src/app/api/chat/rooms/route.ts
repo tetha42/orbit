@@ -33,11 +33,11 @@ export async function GET(request: Request) {
 		if (action === 'members') {
 			const roomId = searchParams.get('roomId');
 			if (!roomId) {
-				return NextResponse.json({ error: 'Oda ID belirtilmedi.' }, { status: 400, headers: NO_CACHE });
+				return NextResponse.json({ error: 'Room ID is missing.' }, { status: 400, headers: NO_CACHE });
 			}
 			const hasAccess = await canUserAccessChatRoom(roomId, auth.user.id, auth.user.permission.admin);
 			if (!hasAccess) {
-				return NextResponse.json({ error: 'Bu odaya erişim yetkiniz yok.' }, { status: 403, headers: NO_CACHE });
+				return NextResponse.json({ error: 'You do not have permission to access this room.' }, { status: 403, headers: NO_CACHE });
 			}
 			const members = await getRoomMembers(roomId);
 			return NextResponse.json({ ok: true, members }, { headers: NO_CACHE });
@@ -47,7 +47,7 @@ export async function GET(request: Request) {
 		return NextResponse.json({ ok: true, rooms }, { headers: NO_CACHE });
 	} catch (err) {
 		console.error('[Chat rooms error]:', err);
-		return NextResponse.json({ error: 'Sohbet verileri yüklenemedi.' }, { status: 500, headers: NO_CACHE });
+		return NextResponse.json({ error: 'Failed to load chat data.' }, { status: 500, headers: NO_CACHE });
 	}
 }
 
@@ -62,7 +62,7 @@ async function handlePOST(request: Request) {
 		if (action === 'read' && roomId) {
 			const hasAccess = await canUserAccessChatRoom(String(roomId), auth.user.id, auth.user.permission.admin);
 			if (!hasAccess) {
-				return NextResponse.json({ error: 'Bu odaya erişim yetkiniz yok.' }, { status: 403, headers: NO_CACHE });
+				return NextResponse.json({ error: 'You do not have permission to access this room.' }, { status: 403, headers: NO_CACHE });
 			}
 			await markRoomAsRead(String(roomId), auth.user.id);
 			return NextResponse.json({ ok: true }, { headers: NO_CACHE });
@@ -80,7 +80,7 @@ async function handlePOST(request: Request) {
 
 		if (action === 'create_group_dm' && Array.isArray(memberIds)) {
 			const result = await createGroupDm(
-				{ id: auth.user.id, name: auth.user.name, surname: auth.user.surname },
+				{ id: auth.user.id, name: auth.user.firstName || auth.user.name || '', surname: auth.user.lastName || auth.user.surname || '' },
 				memberIds,
 				title
 			);
@@ -90,20 +90,20 @@ async function handlePOST(request: Request) {
 		if (action === 'add_members' && roomId && Array.isArray(memberIds)) {
 			const hasAccess = await canUserAccessChatRoom(String(roomId), auth.user.id, auth.user.permission.admin);
 			if (!hasAccess) {
-				return NextResponse.json({ error: 'Bu odaya üye ekleme yetkiniz yok.' }, { status: 403, headers: NO_CACHE });
+				return NextResponse.json({ error: 'You do not have permission to add members to this room.' }, { status: 403, headers: NO_CACHE });
 			}
 			const result = await addMembersToRoom(
 				String(roomId),
-				{ id: auth.user.id, name: auth.user.name, surname: auth.user.surname },
+				{ id: auth.user.id, name: auth.user.firstName || auth.user.name || '', surname: auth.user.lastName || auth.user.surname || '' },
 				memberIds
 			);
 			return NextResponse.json({ ok: true, ...result }, { headers: NO_CACHE });
 		}
 
-		return NextResponse.json({ error: 'Geçersiz işlem.' }, { status: 400, headers: NO_CACHE });
+		return NextResponse.json({ error: 'Invalid action.' }, { status: 400, headers: NO_CACHE });
 	} catch (err) {
 		console.error('[Chat rooms POST error]:', err);
-		return NextResponse.json({ error: 'İşlem gerçekleştirilemedi.' }, { status: 500, headers: NO_CACHE });
+		return NextResponse.json({ error: 'Failed to process request.' }, { status: 500, headers: NO_CACHE });
 	}
 }
 

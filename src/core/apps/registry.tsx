@@ -1,9 +1,10 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import type { ComponentType } from 'react';
+import { memo, type ComponentType, type ReactElement } from 'react';
 import type { AppID } from '@/types/workspace';
 import { APP_LOADERS } from '@/apps/loaders.gen';
+import { useI18n } from '@/core/i18n';
 import { MiniAppErrorBoundary } from '@/core/windows/MiniAppErrorBoundary';
 import type { MiniAppProps } from '@/core/apps/sdk';
 
@@ -18,7 +19,15 @@ import type { MiniAppProps } from '@/core/apps/sdk';
  * generated from it.
  */
 function Loading() {
-	return <div data-app-loading="" style={{ display: 'grid', placeItems: 'center', height: '100%', minHeight: 160, fontSize: 13, color: 'var(--text-secondary)' }}>Yükleniyor…</div>;
+	const { t } = useI18n();
+	return (
+		<div
+			data-app-loading=""
+			style={{ display: 'grid', placeItems: 'center', height: '100%', minHeight: 160, fontSize: 13, color: 'var(--text-secondary)' }}
+		>
+			{t('loading')}
+		</div>
+	);
 }
 
 export const APP_COMPONENTS = Object.fromEntries(
@@ -56,15 +65,17 @@ export interface AppContentProps<TTarget = unknown> {
 	onReset?: () => void;
 }
 
+const NOOP = () => {};
+
 /** Renders a mini app by id wrapped in MiniAppErrorBoundary with typed MiniAppProps. */
-export function AppContent<TTarget = unknown>({
+export const AppContent = memo(function AppContent<TTarget = unknown>({
 	appId,
 	instanceId = appId,
 	target,
 	isForeground = true,
-	close = () => {},
-	minimize = () => {},
-	maximize = () => {},
+	close = NOOP,
+	minimize = NOOP,
+	maximize = NOOP,
 	setTitle,
 	setBadge,
 	onReset,
@@ -89,5 +100,5 @@ export function AppContent<TTarget = unknown>({
 			<Component {...(miniAppProps as unknown as Record<string, unknown>)} />
 		</MiniAppErrorBoundary>
 	);
-}
+}) as <TTarget = unknown>(props: AppContentProps<TTarget>) => ReactElement | null;
 

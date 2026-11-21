@@ -75,7 +75,9 @@ export function useTerminalLifecycle({
 						}
 					}, 50);
 				}
-			} catch {}
+			} catch {
+				// Terminal container may be detached or zero-sized during resize/teardown.
+			}
 		};
 
 		const resizeObserver = new ResizeObserver(handleResize);
@@ -108,7 +110,9 @@ export function useTerminalLifecycle({
 				try {
 					fitAddonRef.current?.fit();
 					terminalInstanceRef.current?.focus();
-				} catch {}
+				} catch {
+					// Terminal may already be disposed before the restore focus timer fires.
+				}
 			}, 60);
 			return () => clearTimeout(timer);
 		}
@@ -119,7 +123,9 @@ export function useTerminalLifecycle({
 			const timer = setTimeout(() => {
 				try {
 					terminalInstanceRef.current?.focus();
-				} catch {}
+				} catch {
+					// Terminal may already be unmounted before the delayed focus timer fires.
+				}
 			}, 30);
 			return () => clearTimeout(timer);
 		}
