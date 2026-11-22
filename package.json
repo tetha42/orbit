@@ -16,6 +16,8 @@
     "typecheck": "tsc --noEmit",
     "gen:apps": "node scripts/gen-apps.mjs && node scripts/gen-ai-index.mjs && node scripts/gen-docs.mjs",
     "check": "node --no-warnings scripts/orbit-cli.mjs verify --check",
+    "preflight": "node scripts/preflight.mjs",
+    "hooks:install": "git config core.hooksPath .githooks && chmod +x .githooks/*",
     "verify": "tsc --noEmit && eslint --cache . && pnpm check",
     "build:fim": "node scripts/build-fim.mjs",
     "test": "node --test tests/contract/*.test.mjs",

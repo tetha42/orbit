@@ -41,3 +41,12 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - `./bin/orbit verify`: runs codegen (`gen-apps`, `gen-ai-index`, `gen-docs`) and static verification gates (use `--check` for read-only verification).
 - `pnpm test`: runs the full `tests/contract/*.test.mjs` suite against live route handlers and PostgreSQL.
 - `pnpm e2e`: runs Playwright UI E2E suites (`tests/e2e/ui/run.mjs`).
+- `pnpm preflight` (`--full` adds `pnpm test`): local mirror of CI (override/dependency conflicts, `--frozen-lockfile` sync, `pnpm verify`). Enforced by `.githooks/pre-push`; enable once with `pnpm hooks:install`.
+
+### 6. Definition of Done (check before saying "done" or committing)
+1. Changed `package.json` dependencies or `pnpm.overrides`? Run `pnpm install`, commit `pnpm-lock.yaml` with it, and never set an override to a different range than the dependency.
+2. Run `pnpm preflight` and show its output; do not claim a check passed unless it was re-run after the last edit.
+3. Touched routes, DB, or shared libs? Also run `pnpm test`; touched UI flows? Run the affected `pnpm e2e <suite>`.
+4. New or renamed files: respect the 250-line / 180-char limits and English identifiers; run `./bin/orbit verify --staged`.
+5. Never commit build artifacts, `data/`, `.next/`, or `tests/e2e/.tmp`.
+6. When a mistake is found, add one line here so it cannot repeat.

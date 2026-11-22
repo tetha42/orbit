@@ -1,0 +1,3 @@
+#!/bin/sh
+# Blocks a push that would fail the cheap CI gates. Skip once with: git push --no-verify
+exec pnpm preflight
