@@ -17,8 +17,8 @@ COPY src ./src
 COPY scripts ./scripts
 COPY tools ./tools
 
-# Verify and build standalone production bundle
-RUN pnpm verify
+# Verify generated app registry and build standalone production bundle
+RUN node scripts/gen-apps.mjs --check
 RUN pnpm build
 
 # ==========================================
