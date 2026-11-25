@@ -25,4 +25,15 @@ kulup.db-wal
 data
 backups
 
+# Local binaries, AI index/shards, docs, examples, services, hooks, and markdown files.
+bin
+.ai
+AI_INDEX.json
+docs
+examples
+services
+.githooks
+Makefile
+*.md
+
 .DS_Store

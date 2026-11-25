@@ -90,16 +90,18 @@ export default async function suite(t) {
 	await t.close(authorCtx);
 
 	await t.step('admin: approves and publishes from the Proposals tab', async () => {
-		const { page: ap } = await t.open('admin');
+		const { page: ap, context: apCtx } = await t.open('admin');
 		const aw = await openWide(ap, 'projects');
 		await aw.getByRole('tab', { name: tr('pjTabProposals') }).click();
 		await aw.locator(`[data-project-id="${id}"]`).click();
 		const sheet = ap.getByRole('dialog', { name: title });
+		await sheet.waitFor();
 		await sheet.getByRole('button', { name: tr('evPublish') }).click();
 		await toast(ap, tr('pjPublished'));
 		t.eq((await read()).status, 'published', 'status: published');
 		t.check((await fanApi.get('/api/projects')).json.projects.some((p) => p.id === id), 'other members can see it now');
 		await t.shot(ap, 'yayinlandi');
+		await t.close(apCtx);
 	});
 
 	await t.step('stars: a member stars and unstars; the count is correct', async () => {
@@ -120,10 +122,11 @@ export default async function suite(t) {
 
 	await t.step('featuring: admin only; "Featured" badge on the card', async () => {
 		t.eq((await authorApi.patch(`/api/projects/${id}`, { isFeatured: true })).status, 403, 'the owner cannot feature it');
-		const { page: ap } = await t.open('admin');
+		const { page: ap, context: apCtx } = await t.open('admin');
 		const aw = await openWide(ap, 'projects');
 		await aw.locator(`[data-project-id="${id}"]`).click();
 		const sheet = ap.getByRole('dialog', { name: title });
+		await sheet.waitFor();
 		await sheet.getByRole('button', { name: tr('pjActPin') }).click();
 		await toast(ap, tr('evSaved'));
 		t.eq(Number((await read()).isFeatured), 1, 'featured on the server');
@@ -132,13 +135,16 @@ export default async function suite(t) {
 		t.check(await aw.locator(`[data-project-id="${id}"]`).getByText(tr('pjFeatured')).count() === 1, 'the card shows "Featured"');
 		const first = await aw.locator('[data-project-id]').first().getAttribute('data-project-id');
 		t.eq(first, id, '"Featured" ordering puts it first');
+		await t.close(apCtx);
 	});
 
 	await t.step('archive: an archived project leaves the showcase, loses featured status, cannot be starred, and its owner cannot edit it', async () => {
-		const { page: ap } = await t.open('admin');
+		const { page: ap, context: apCtx } = await t.open('admin');
 		const aw = await openWide(ap, 'projects');
 		await aw.locator(`[data-project-id="${id}"]`).click();
-		await ap.getByRole('dialog', { name: title }).getByRole('button', { name: tr('mailArchive') }).click();
+		const sheet = ap.getByRole('dialog', { name: title });
+		await sheet.waitFor();
+		await sheet.getByRole('button', { name: tr('mailArchive') }).click();
 		await toast(ap, tr('evSaved'));
 		const p = await read();
 		t.eq(p.status, 'archived', 'status: archived');
@@ -152,10 +158,12 @@ export default async function suite(t) {
 		await aw.locator(`[data-project-id="${id}"]`).click();
 		// The archive toast says the same thing; wait for it to disappear so the next one belongs to this save.
 		await ap.locator('[role=status] > div').filter({ hasText: tr('evSaved') }).waitFor({ state: 'detached', timeout: 15_000 });
-		await ap.getByRole('dialog', { name: title }).getByRole('button', { name: tr('pjActRestore') }).click();
+		await sheet.waitFor();
+		await sheet.getByRole('button', { name: tr('pjActRestore') }).click();
 		await toast(ap, tr('evSaved'));
 		t.eq((await read()).status, 'published', 'published after restoring from the archive');
 		t.eq((await read()).likeCount, 1, 'stars preserved');
+		await t.close(apCtx);
 	});
 
 	await t.step('unpublishing and deletion permissions', async () => {

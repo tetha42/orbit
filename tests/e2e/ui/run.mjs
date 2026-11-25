@@ -325,6 +325,10 @@ function buildFixtures(base, databaseUrl, bootstrap) {
 	return readFixtures(file);
 }
 
+function tokensFromFixtures(fx) {
+	return new Map(Object.entries(fx?.sessionTokens ?? {}).map(([k, v]) => [k.toLowerCase(), String(v)]));
+}
+
 function markFixtureTotpUsed(fx, scope) {
 	for (const secret of [fx.adminTotp, ...Object.values(fx.users).map((u) => u.totp)]) {
 		if (secret) markTotpUsed(secret, scope);
@@ -335,6 +339,10 @@ try {
 	if (external) {
 		const needsFx = runnable.some((s) => !s.isolated);
 		const fx = needsFx ? readFixtures(FIXTURES) : null;
+		if (fx) {
+			seedSessionTokens(BASE, fx, tokensFromFixtures(fx));
+			markFixtureTotpUsed(fx, BASE);
+		}
 		for (const s of runnable) await runSuite(s, { base: BASE, fx, browser });
 	} else {
 		if (!DATABASE_URL) {
@@ -387,7 +395,7 @@ try {
 			const server = await startTrackedServer('server-a', { port: PORT, env: serverEnv(DATABASE_URL) });
 			try {
 				const fx = buildFixtures(server.base, DATABASE_URL, bootstrap);
-				const tokens = await readActiveSessionTokens(DATABASE_URL);
+				const tokens = await readActiveSessionTokens(DATABASE_URL, tokensFromFixtures(fx));
 				seedSessionTokens(server.base, fx, tokens);
 				markFixtureTotpUsed(fx, server.base);
 				let sharedDone = 0;
@@ -425,7 +433,7 @@ try {
 				const tplServer = await startTrackedServer('server-tpl', { port: PORT, env: serverEnv(templateUrl) });
 				try {
 					fx = buildFixtures(tplServer.base, templateUrl, bootstrap);
-					tokens = await readActiveSessionTokens(templateUrl);
+					tokens = await readActiveSessionTokens(templateUrl, tokensFromFixtures(fx));
 				} finally {
 					await tplServer.stop();
 				}

@@ -54,7 +54,12 @@ function client() {
 		const json = await res.json().catch(() => null);
 		return { status: res.status, json };
 	};
-	return { call };
+	return {
+		call,
+		get token() {
+			return cookie.split('=')[1] ?? '';
+		},
+	};
 }
 
 const must = (r, what) => {
@@ -112,6 +117,8 @@ state.admin = {
 	email: ADMIN_EMAIL,
 	password: ADMIN_PASSWORD,
 };
+state.sessionTokens = state.sessionTokens ?? {};
+if (admin.token) state.sessionTokens[ADMIN_EMAIL.toLowerCase()] = admin.token;
 
 // Roles (idempotent by name)
 const rolesRes = must(await admin.call('GET', '/api/roles'), 'list roles');
@@ -148,16 +155,37 @@ if (dbUrl) {
 		await db.query("TRUNCATE TABLE audit_logs CASCADE");
 		await db.query("DELETE FROM roles WHERE name IN ('SilinemezRol', 'GeriAlinacak') OR name LIKE 'Denetim Rol\u00fc%'");
 		await db.end();
-	} catch {}
+	} catch {
+		// Ignore cleanup errors when the optional database connection is unavailable.
+	}
 }
 
 // Members with known passwords
 state.users = state.users ?? {};
 const roster = must(await admin.call('GET', '/api/members'), 'roster').members;
 for (const m of MEMBERS) {
+	const emailKey = m.email.toLowerCase();
 	const inRoster = roster.find((r) => r.email === m.email);
 	if (state.users[m.key] && inRoster) {
 		await admin.call('PATCH', '/api/members', { id: inRoster.id, roleId: state.roles[m.role], status: 'active' });
+		if (!state.sessionTokens[emailKey]) {
+			const u = client();
+			const pw = state.users[m.key].password ?? PASSWORD;
+			const r = await u.call('POST', '/api/auth/login', { email: m.email, password: pw });
+			if (r.json?.require2fa && state.users[m.key].totp) {
+				must(
+					await u.call('POST', '/api/auth/2fa/challenge', {
+						challengeToken: r.json.challengeToken,
+						code: await freshCode(state.users[m.key].totp),
+					}),
+					`2FA challenge ${m.email}`
+				);
+			} else {
+				must(r, `login ${m.email}`);
+			}
+			if (u.token) state.sessionTokens[emailKey] = u.token;
+			save();
+		}
 		continue;
 	}
 	const created = must(await admin.call('POST', '/api/members', { name: m.name, surname: m.surname, email: m.email, department: m.department, grade: m.grade, roleId: state.roles[m.role], preferredLanguage: 'tr' }), `create ${m.email}`);
@@ -172,6 +200,7 @@ for (const m of MEMBERS) {
 		must(await u.call('POST', '/api/auth/2fa/enable', { code: await freshCode(setup.secret) }), `2FA enable ${m.email}`);
 		totpSecret = setup.secret;
 	}
+	if (u.token) state.sessionTokens[emailKey] = u.token;
 	const userRecord = {
 		id: created.member.id,
 		email: m.email,

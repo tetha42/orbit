@@ -70,7 +70,7 @@ services:
       start_period: 10s
 
   app:
-    image: \${ORBIT_IMAGE:-ghcr.io/tetha42/orbit}:\${PORTAL_TAG:-${version}}
+    image: \${ORBIT_IMAGE:-ghcr.io/tetha42/orbit}:\${ORBIT_TAG:-\${PORTAL_TAG:-${version}}}
     container_name: orbit-app
     restart: unless-stopped
     depends_on:
@@ -93,13 +93,19 @@ services:
       ORBIT_CUSTOM_DIR: /app/data/custom
       PUBLIC_API_ALLOWED_ORIGINS: \${PUBLIC_API_ALLOWED_ORIGINS:-http://localhost:3000,http://orbit.local}
       PUBLIC_BASE_URL: \${PUBLIC_BASE_URL:-}
+      WEBRTC_TURN_URL: \${WEBRTC_TURN_URL:-}
+      WEBRTC_TURN_SECRET: \${WEBRTC_TURN_SECRET:-}
+      NEXT_PUBLIC_VAPID_PUBLIC_KEY: \${NEXT_PUBLIC_VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: \${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: \${VAPID_SUBJECT:-mailto:security@orbit.local}
     ports:
       - '\${PORT:-3000}:3000'
     volumes:
+      - orbit-data:/app/data
       - orbit-uploads:/app/data/uploads
       - orbit-custom:/app/data/custom
     healthcheck:
-      test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1:3000/']
+      test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1:3000/api/health']
       interval: 30s
       timeout: 5s
       retries: 3
@@ -107,6 +113,7 @@ services:
 
 volumes:
   orbit-pgdata:
+  orbit-data:
   orbit-uploads:
   orbit-custom:
 `;
@@ -222,7 +229,7 @@ Then visit \`http://localhost:3000/setup\` to configure your community identity 
 		const runStandaloneMd = `# ⚡ Orbit Community OS Standalone (Direct Node.js Execution)
 
 This bundle includes the pre-compiled Next.js standalone server and static assets.  
-Only **Node.js 20+** and a PostgreSQL instance are required.
+Only **Node.js 22+** and a PostgreSQL instance are required.
 
 ## 🚀 Run
 \`\`\`bash

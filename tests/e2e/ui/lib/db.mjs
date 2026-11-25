@@ -75,16 +75,19 @@ export async function dropDatabase(url) {
 	}
 }
 
-/** Reads active fixture session tokens from `users` so workers skip initial TOTP waits. */
-export async function readActiveSessionTokens(url) {
+/** Reads active fixture session tokens from `users` as a fallback for missing fixture tokens. */
+export async function readActiveSessionTokens(url, existing = new Map()) {
 	assertTestDatabase(url);
 	const client = new Client({ connectionString: url });
 	await client.connect();
 	try {
 		const res = await client.query(`SELECT email, session_token FROM users WHERE session_token IS NOT NULL`);
-		const tokens = new Map();
+		const tokens = new Map(existing);
 		for (const row of res.rows) {
-			if (row.email && row.session_token) tokens.set(String(row.email).toLowerCase(), String(row.session_token));
+			const email = row.email ? String(row.email).toLowerCase() : '';
+			if (email && row.session_token && !tokens.has(email)) {
+				tokens.set(email, String(row.session_token));
+			}
 		}
 		return tokens;
 	} finally {

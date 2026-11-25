@@ -119,20 +119,24 @@ e2e:
 ci:
 	@printf "\n  $(BOLD)$(CYAN)Orbit Community OS — Local Full CI Pipeline Check$(RESET)\n"
 	@printf "  $(YELLOW)Mirroring GitHub Actions CI/CD workflows locally...$(RESET)\n\n"
-	@printf "  $(CYAN)[1/5] Running verification gate (TSC, ESLint, i18n, Tokens, Audit)...$(RESET)\n"
-	@pnpm verify
-	@printf "  $(GREEN)✓ Verification gate passed.$(RESET)\n\n"
-	@printf "  $(CYAN)[2/5] Running high/critical dependency audit...$(RESET)\n"
+	@printf "  $(CYAN)[1/6] Running preflight checks (lockfile, overrides, imports, verify)...$(RESET)\n"
+	@pnpm preflight
+	@printf "  $(GREEN)✓ Preflight checks passed.$(RESET)\n\n"
+	@printf "  $(CYAN)[2/6] Running Go security-guard race tests...$(RESET)\n"
+	@(cd services/security-guard && go test -count=1 -race ./...)
+	@printf "  $(GREEN)✓ Go security-guard tests passed.$(RESET)\n\n"
+	@printf "  $(CYAN)[3/6] Running high/critical dependency audit...$(RESET)\n"
 	@pnpm audit --prod --audit-level=high
 	@printf "  $(GREEN)✓ Dependency audit passed.$(RESET)\n\n"
-	@printf "  $(CYAN)[3/5] Running autonomous cybersecurity & SOC E2E suite...$(RESET)\n"
-	@pnpm test:security
-	@printf "  $(GREEN)✓ Cybersecurity suite passed.$(RESET)\n\n"
-	@printf "  $(CYAN)[4/5] Running API contract test suite...$(RESET)\n"
+	@printf "  $(CYAN)[4/6] Compiling Next.js production build...$(RESET)\n"
+	@pnpm build
+	@printf "  $(GREEN)✓ Production build passed.$(RESET)\n\n"
+	@printf "  $(CYAN)[5/6] Running API contract test suite...$(RESET)\n"
 	@pnpm test
 	@printf "  $(GREEN)✓ Contract test suite passed.$(RESET)\n\n"
-	@printf "  $(CYAN)[5/5] Compiling Next.js production build...$(RESET)\n"
-	@pnpm build
+	@printf "  $(CYAN)[6/6] Running autonomous cybersecurity & SOC E2E suite...$(RESET)\n"
+	@pnpm test:security
+	@printf "  $(GREEN)✓ Cybersecurity suite passed.$(RESET)\n\n"
 	@printf "\n  $(BOLD)$(GREEN)================================================================$(RESET)\n"
 	@printf "  $(BOLD)$(GREEN)  ✓ ALL GITHUB ACTIONS CHECKS PASSED LOCALLY! READY FOR RELEASE$(RESET)\n"
 	@printf "  $(BOLD)$(GREEN)================================================================$(RESET)\n\n"

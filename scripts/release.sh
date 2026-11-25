@@ -40,6 +40,10 @@ if [ -n "$(git status --porcelain)" ]; then
 	exit 1
 fi
 
+# 2. Preflight gate (lockfile, overrides, undeclared imports, verify)
+echo -e "${CYAN}==> Running preflight checks...${NC}"
+pnpm preflight
+
 CURRENT_BRANCH=$(git branch --show-current)
 
 echo -e "\n${CYAN}================================================================${NC}"
@@ -59,9 +63,14 @@ echo -e "${CYAN}==> [2/3] Creating annotated tag: ${TAG}...${NC}"
 git tag -a "$TAG" -m "$MSG"
 echo -e "${GREEN}✓ Annotated tag created on HEAD.${NC}\n"
 
-# 4. Push branch and tag together in a single command to avoid double CI triggers
+# 4. Push branch first, then remove any existing remote tag and push the new tag separately
 echo -e "${CYAN}==> [3/3] Pushing branch '${CURRENT_BRANCH}' and tag '${TAG}' to GitHub...${NC}"
-git push origin "$CURRENT_BRANCH" "+refs/tags/$TAG"
+git push origin "$CURRENT_BRANCH"
+if git ls-remote --tags origin "refs/tags/$TAG" | grep -q .; then
+	echo -e "${YELLOW}==> Removing existing remote tag '${TAG}' so GitHub Actions triggers cleanly...${NC}"
+	git push origin ":refs/tags/$TAG"
+fi
+git push origin "refs/tags/$TAG"
 echo -e "${GREEN}✓ Branch and tag pushed to GitHub.${NC}\n"
 
 echo -e "${GREEN}================================================================${NC}"
