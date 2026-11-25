@@ -506,40 +506,46 @@ jobs:
         run: node scripts/package-release.mjs ${{ github.ref_name }}
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: Orbit Community OS ${{ github.ref_name }}
-          generate_release_notes: true
-          draft: false
-          prerelease: false
-          files: |
-            dist-release/*.tar.gz
-            dist-release/*.zip
-            dist-release/*.sha256
-          body: |
-            ## 🚀 Orbit Community OS ${{ github.ref_name }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          cat <<'EOF' > /tmp/release-notes.md
+          ## 🚀 Orbit Community OS ${{ github.ref_name }}
 
-            This release provides both an official **Docker image (GHCR)** and **pre-compiled standalone distribution archives**.
+          This release provides both an official **Docker image (GHCR)** and **pre-compiled standalone distribution archives**.
 
-            ---
+          ---
 
-            ### 🐳 1. Docker Deployment (Recommended)
-            Download `orbit-os-${{ github.ref_name }}-docker.tar.gz` from the Assets below:
-            ```bash
-            tar -xzf orbit-os-${{ github.ref_name }}-docker.tar.gz
-            cd orbit-os-${{ github.ref_name }}-docker
-            make up
-            ```
-            * The stack runs securely bound to `127.0.0.1:3000`.
-            * Point your host reverse proxy (e.g., Nginx) to `127.0.0.1:3000` with TLS termination, `proxy_buffering off;` (for SSE), and WebSocket upgrade headers (`Upgrade` / `Connection`).
+          ### 🐳 1. Docker Deployment (Recommended)
+          Download `orbit-os-${{ github.ref_name }}-docker.tar.gz` from the Assets below:
+          ```bash
+          tar -xzf orbit-os-${{ github.ref_name }}-docker.tar.gz
+          cd orbit-os-${{ github.ref_name }}-docker
+          make up
+          ```
+          * The stack runs securely bound to `127.0.0.1:3000`.
+          * Point your host reverse proxy (e.g., Nginx) to `127.0.0.1:3000` with TLS termination, `proxy_buffering off;` (for SSE), and WebSocket upgrade headers (`Upgrade` / `Connection`).
 
-            ---
+          ---
 
-            ### ⚡ 2. Baremetal / Direct Node.js Execution (Standalone Build)
-            If deploying directly without Docker, download `orbit-os-${{ github.ref_name }}-standalone.tar.gz`:
-            ```bash
-            tar -xzf orbit-os-${{ github.ref_name }}-standalone.tar.gz
-            cd orbit-os-${{ github.ref_name }}-standalone
-            node server.js
-            ```
-            *(Requires Node.js 22+ and PostgreSQL. No pnpm or TypeScript compiler required on the production host).*
+          ### ⚡ 2. Baremetal / Direct Node.js Execution (Standalone Build)
+          If deploying directly without Docker, download `orbit-os-${{ github.ref_name }}-standalone.tar.gz`:
+          ```bash
+          tar -xzf orbit-os-${{ github.ref_name }}-standalone.tar.gz
+          cd orbit-os-${{ github.ref_name }}-standalone
+          node server.js
+          ```
+          *(Requires Node.js 22+ and PostgreSQL. No pnpm or TypeScript compiler required on the production host).*
+          EOF
+          gh api "repos/${GITHUB_REPOSITORY}/releases/generate-notes" -f tag_name="${TAG_NAME}" -q .body >> /tmp/release-notes.md || true
+          if gh release view "${TAG_NAME}" >/dev/null 2>&1; then
+            gh release edit "${TAG_NAME}" --title "Orbit Community OS ${TAG_NAME}" --notes-file /tmp/release-notes.md
+          else
+            gh release create "${TAG_NAME}" \
+              --title "Orbit Community OS ${TAG_NAME}" \
+              --notes-file /tmp/release-notes.md
+          fi
+          for f in dist-release/*.tar.gz dist-release/*.zip dist-release/*.sha256; do
+            [ -e "$f" ] && gh release upload "${TAG_NAME}" "$f" --clobber
+          done
